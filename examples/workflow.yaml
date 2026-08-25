@@ -1,0 +1,11 @@
+document:
+  dsl: '1.0.3'
+  namespace: example
+  name: support-agent
+  version: '1.0.0'
+
+do:
+  - answer:
+      call: agent:1.0.0@default
+      with:
+        input: ${ .question }
