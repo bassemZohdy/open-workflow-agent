@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .catalog import FakeModel, FunctionCatalog, Model
+from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
 from .knowledge import KnowledgeService
 from .memory import MemoryService
@@ -23,12 +23,21 @@ class RuntimeServices:
         database_root: str | Path | None = None,
     ) -> None:
         self.config = config
-        self.model = model or FakeModel()
+        self.model = model or (
+            FakeModel()
+            if config.model.provider == "fake"
+            else LiteLLMModel(
+                config.model.name,
+                temperature=config.model.temperature,
+                options=config.model.options,
+            )
+        )
         self.agent_instruction = config.agent.instruction
+        self.database_root = Path(database_root) if database_root else None
         self.protocols = ProtocolServices()
         self.tools = ToolRegistry.from_config(config.tools, self.protocols)
         self.agent_tools = ("search_knowledge", *self.tools.names())
-        root = Path(database_root) if database_root else None
+        root = self.database_root
         knowledge_path = root / "knowledge.sqlite3" if root else config.knowledge.database
         memory_path = root / "memory.sqlite3" if root else config.memory.database
         invocation_path = root / "runtime.sqlite3" if root else config.persistence.database

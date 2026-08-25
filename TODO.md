@@ -18,11 +18,11 @@
 
 - [x] Add the ADK engine package and model adapter.
 - [x] Add the agent factory and `agent:1.0.0@default` catalog function.
-- [ ] Add ADK 2.x dynamic workflow execution using native durable operations. (Adapter boundary exists; native ADK is optional and not installed in the test environment.)
+- [x] Add ADK 2.x dynamic workflow execution using native durable operations (`Context.run_node` with SQLite session persistence).
 - [x] Add `POST /v1/invoke` and health endpoints.
 - [x] Add deterministic `FakeModel` support.
 - [x] Add `docker/Dockerfile.adk` and an end-to-end test.
-- [ ] Acceptance: model configuration -> generated default workflow -> ADK runtime -> `FakeModel` -> deterministic response. (Reference executor passes; native ADK acceptance remains.)
+- [x] Acceptance: model configuration -> generated default workflow -> ADK runtime -> `FakeModel` -> deterministic response, including native restart/resume coverage.
 
 ## Milestone 2 - Portable Workflow Profile
 
@@ -37,7 +37,7 @@
 - [x] Add model and agent adapters, an in-memory native checkpointer bridge, and `docker/Dockerfile.langgraph`.
 - [x] Run the shared contract fixtures through both adapter boundaries.
 - [x] Acceptance: ADK and LangGraph produce identical results for the current Portable Profile v1 workflows.
-- [ ] Replace the deterministic reference path with native engine compilation/checkpoint execution where framework dependencies are available.
+- [x] Replace the deterministic reference path with native engine compilation/checkpoint execution where framework dependencies are available. (ADK 2.7.1 dynamic node and LangGraph Functional API paths are covered; fallback remains for core-only environments.)
 
 ## Milestone 4 - Knowledge
 
@@ -49,9 +49,9 @@
 ## Milestone 5 - Persistence and Memory
 
 - [x] Add `InvocationStore`, `ExecutionHandle`, workflow fingerprints, persistent memory, and resume API.
-- [ ] Add the ADK durable adapter and LangGraph persistent checkpointer/store integration. (Native framework state remains an adapter follow-up.)
+- [x] Add the ADK durable adapter and LangGraph native SQLite checkpointer bridge.
 - [x] Keep public invocation metadata common while checkpoint representations remain engine-owned.
-- [ ] Acceptance: execute -> stop container -> restart -> resume -> complete works for both engines where supported. (Reference metadata resume is covered; native checkpoint/container validation remains.)
+- [ ] Acceptance: execute -> stop container -> restart -> resume -> complete works for both engines where supported. (ADK and LangGraph SQLite restart/resume tests pass; container validation remains.)
 
 ## Milestone 6 - Agent Tools
 

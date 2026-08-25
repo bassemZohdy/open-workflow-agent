@@ -25,6 +25,9 @@ dev = [
   "types-PyYAML>=6.0",
 ]
 
+[project.optional-dependencies]
+model = ["litellm>=1.50"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

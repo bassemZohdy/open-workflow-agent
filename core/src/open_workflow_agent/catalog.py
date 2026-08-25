@@ -35,6 +35,39 @@ class FakeModel:
         return {"response": prompt}
 
 
+class LiteLLMModel:
+    """Optional provider adapter; importing LiteLLM is deferred until invocation."""
+
+    def __init__(
+        self, name: str, *, temperature: float = 0.0, options: dict[str, Any] | None = None
+    ) -> None:
+        self.name = name
+        self.temperature = temperature
+        self.options = options or {}
+
+    async def complete(self, prompt: Any, *, options: dict[str, Any] | None = None) -> Any:
+        try:
+            from litellm import acompletion  # type: ignore[import-not-found]
+        except ImportError as exc:
+            raise ModelError(
+                "LiteLLM is not installed; install the optional model dependency"
+            ) from exc
+        messages = (
+            prompt if isinstance(prompt, list) else [{"role": "user", "content": str(prompt)}]
+        )
+        response = await acompletion(
+            model=self.name,
+            messages=messages,
+            temperature=self.temperature,
+            **self.options,
+            **(options or {}),
+        )
+        try:
+            return response.choices[0].message.content
+        except (AttributeError, IndexError, KeyError) as exc:
+            raise ModelError("LiteLLM returned an invalid completion response") from exc
+
+
 @dataclass(slots=True)
 class CatalogContext:
     model: Model

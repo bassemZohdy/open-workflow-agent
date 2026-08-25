@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import uuid4
 
 import httpx
 
@@ -11,16 +12,25 @@ from .errors import ToolError
 
 class HttpClient:
     def __init__(
-        self, *, timeout: float = 30.0, max_response_bytes: int = 4_000_000, verify_tls: bool = True
+        self,
+        *,
+        timeout: float = 30.0,
+        max_response_bytes: int = 4_000_000,
+        verify_tls: bool = True,
+        transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:
         self.timeout = timeout
         self.max_response_bytes = max_response_bytes
         self.verify_tls = verify_tls
+        self.transport = transport
 
     async def request(self, method: str, endpoint: str, **kwargs: Any) -> Any:
         try:
             async with httpx.AsyncClient(
-                timeout=self.timeout, verify=self.verify_tls, follow_redirects=False
+                timeout=self.timeout,
+                verify=self.verify_tls,
+                follow_redirects=False,
+                transport=self.transport,
             ) as client:
                 response = await client.request(method, endpoint, **kwargs)
                 if len(response.content) > self.max_response_bytes:
@@ -47,6 +57,40 @@ class ProtocolServices:
                 raise ToolError("http call requires endpoint")
             return await self.http.request(
                 payload.get("method", "GET"), endpoint, json=payload.get("body")
+            )
+        if protocol == "mcp":
+            endpoint = payload.get("endpoint")
+            if not endpoint:
+                raise ToolError("mcp call requires endpoint")
+            body = {
+                "jsonrpc": "2.0",
+                "id": payload.get("id", str(uuid4())),
+                "method": "tools/call",
+                "params": {
+                    "name": payload.get("name", payload.get("tool")),
+                    "arguments": payload.get("arguments", payload.get("input", {})),
+                },
+            }
+            return await self.http.request("POST", endpoint, json=body)
+        if protocol == "a2a":
+            endpoint = payload.get("endpoint")
+            if not endpoint:
+                raise ToolError("a2a call requires endpoint")
+            body = {
+                "jsonrpc": "2.0",
+                "id": payload.get("id", str(uuid4())),
+                "method": payload.get("method", "message/send"),
+                "params": payload.get("params", payload.get("message", payload)),
+            }
+            return await self.http.request("POST", endpoint, json=body)
+        if protocol == "openapi":
+            endpoint = payload.get("endpoint")
+            if not endpoint:
+                raise ToolError("openapi call requires endpoint")
+            return await self.http.request(
+                payload.get("method", "GET"),
+                endpoint,
+                json=payload.get("body", payload.get("parameters")),
             )
         endpoint = payload.get("endpoint")
         if not endpoint:
