@@ -12,7 +12,7 @@ from .memory import MemoryService
 from .observability import EventSink, InMemoryEventSink
 from .persistence import InvocationStore
 from .protocols import ProtocolServices
-from .storage import resolve_datasource
+from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
 from .tools import AgentToolBinding, ToolRegistry
 
 
@@ -99,7 +99,8 @@ class RuntimeServices:
             }.get(engine, f"{engine}-persistence.sqlite3")
             return str(self.database_root / filename)
         if self.datasource:
-            return self.datasource
+            ensure_storage_namespace(self.datasource, f"owa_{engine}")
+            return namespaced_datasource(self.datasource, f"owa_{engine}")
         filename = {
             "adk": "adk-sessions.sqlite3",
             "langgraph": "langgraph-checkpoints.sqlite3",

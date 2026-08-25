@@ -30,8 +30,17 @@ uv run --locked --extra sqlite python -m open_workflow_agent_langgraph.server
 
 The API listens on port 8080 and exposes `/health/live`, `/health/ready`, `/v1/capabilities`, `/v1/invoke`, resume, and knowledge reload endpoints. Deployments mount configuration at `/config`, documents at `/knowledge`, and writable state at `/data`.
 
+SQLite is the reference persistence backend. PostgreSQL is available through the locked `postgres` extra and uses separate namespaces for runtime metadata, memory, knowledge metadata, and each engine's native durable state:
+
+```yaml
+persistence:
+  datasource: postgresql://user:password@host:5432/database
+```
+
+The ADK image uses ADK's database session service with `asyncpg`; the LangGraph image uses `langgraph-checkpoint-postgres`. Build/runtime images include these optional drivers without changing the public configuration.
+
 ## Containers and Status
 
 Build independent images with `docker build -f docker/Dockerfile.adk .` or the LangGraph equivalent. Each image packages the pinned local FastEmbed/ONNX `all-MiniLM-L6-v2` model, runs as a non-root arbitrary UID, and has a 2 GiB CI size gate. Local image, mounted-knowledge, read-only-root, health, deterministic invocation, and stop/restart/resume acceptance passes. GitHub Actions reproduces root, engine, and Docker gates on Ubuntu; the first remote run remains the CI verification step.
 
-No automated test requires paid model/API access. The first GitHub Actions verification for commit `45ef8a1` completed with root and Docker acceptance failures; engine jobs passed. Remote CI diagnosis, CI-level restart/resume coverage, and external datasource support remain active backlog work. See [Project Definition.md](Project%20Definition.md) for the specification, [PROJECT.md](PROJECT.md) for verified working context, [TODO.md](TODO.md) for active work, and [AGENTS.md](AGENTS.md) for contributor rules.
+No automated test requires paid model/API access. Remote CI and PostgreSQL container acceptance remain active verification gates. See [Project Definition.md](Project%20Definition.md) for the specification, [PROJECT.md](PROJECT.md) for verified working context, [TODO.md](TODO.md) for active work, and [AGENTS.md](AGENTS.md) for contributor rules.

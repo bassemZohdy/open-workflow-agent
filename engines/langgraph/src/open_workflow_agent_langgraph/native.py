@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from open_workflow_agent.storage import is_postgresql_datasource
+
 try:
     from langgraph.checkpoint.memory import InMemorySaver
     from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
@@ -16,6 +18,11 @@ except ImportError:  # pragma: no cover - exercised only without optional depend
     AsyncSqliteSaver = None  # type: ignore[assignment,misc]
     entrypoint = None  # type: ignore[assignment]
     LANGGRAPH_AVAILABLE = False
+
+try:
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+except ImportError:  # pragma: no cover - optional PostgreSQL extra
+    AsyncPostgresSaver = None  # type: ignore[assignment,misc]
 
 
 class LangGraphFunctionalAdapter:
@@ -51,6 +58,15 @@ class LangGraphFunctionalAdapter:
         if not LANGGRAPH_AVAILABLE:
             return await runner(input_data)
         config = {"configurable": {"thread_id": thread_id}}
+        if self.database_path and is_postgresql_datasource(self.database_path):
+            if AsyncPostgresSaver is None:
+                raise RuntimeError(
+                    "PostgreSQL LangGraph persistence requires langgraph-checkpoint-postgres"
+                )
+            async with AsyncPostgresSaver.from_conn_string(self.database_path) as saver:
+                await saver.setup()
+                graph = self.compile(runner, checkpointer=saver)
+                return await graph.ainvoke(input_data, config=config)
         if self.database_path and AsyncSqliteSaver is not None:
             async with AsyncSqliteSaver.from_conn_string(self.database_path) as saver:
                 await saver.setup()
@@ -71,6 +87,15 @@ class LangGraphFunctionalAdapter:
         from langgraph.types import Command
 
         config = {"configurable": {"thread_id": thread_id}}
+        if self.database_path and is_postgresql_datasource(self.database_path):
+            if AsyncPostgresSaver is None:
+                raise RuntimeError(
+                    "PostgreSQL LangGraph persistence requires langgraph-checkpoint-postgres"
+                )
+            async with AsyncPostgresSaver.from_conn_string(self.database_path) as saver:
+                await saver.setup()
+                graph = self.compile(runner, checkpointer=saver)
+                return await graph.ainvoke(Command(resume=resume_input), config=config)
         if self.database_path and AsyncSqliteSaver is not None:
             async with AsyncSqliteSaver.from_conn_string(self.database_path) as saver:
                 await saver.setup()

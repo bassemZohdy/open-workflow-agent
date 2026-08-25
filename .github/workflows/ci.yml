@@ -40,6 +40,23 @@ jobs:
         run: |
           uv build
           uv build --directory core
+      - name: Verify release metadata and lock inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import tomllib
+          from pathlib import Path
+
+          expected = tomllib.loads(Path("pyproject.toml").read_text())['project']['version']
+          for path in ("core/pyproject.toml", "engines/adk/pyproject.toml", "engines/langgraph/pyproject.toml"):
+              actual = tomllib.loads(Path(path).read_text())['project']['version']
+              assert actual == expected, f"{path} has version {actual}, expected {expected}"
+          print(f"release version: {expected}")
+          PY
+          uv lock --check
+          uv lock --directory engines/adk --check
+          uv lock --directory engines/langgraph --check
       - name: Validate wheel contents
         shell: bash
         run: |
@@ -48,13 +65,14 @@ jobs:
           from pathlib import Path
           import zipfile
 
-          wheels = sorted(Path("dist").glob("*.whl"))
+          wheels = sorted(Path("dist").glob("*.whl")) + sorted(Path("core/dist").glob("*.whl"))
           assert wheels, "no wheels were built"
           for wheel in wheels:
               with zipfile.ZipFile(wheel) as archive:
                   names = archive.namelist()
                   assert any(name.endswith("open_workflow_agent/__init__.py") for name in names)
-                  assert any("open_workflow_schema_1.0.3.json" in name for name in names)
+                  schema = "open_workflow_agent/_resources/open-workflow/1.0.3/workflow.yaml"
+                  assert schema in names, f"missing packaged Open Workflow schema in {wheel.name}"
           PY
 
   engines:
@@ -102,7 +120,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - name: Build independent runtime image
-        run: docker build --file docker/Dockerfile.${{ matrix.engine }} --tag owa-${{ matrix.engine }}:${{ github.sha }} .
+        run: docker build --build-arg OWA_VERSION=0.1.0 --build-arg VCS_REF=${{ github.sha }} --file docker/Dockerfile.${{ matrix.engine }} --tag owa-${{ matrix.engine }}:${{ github.sha }} .
+      - name: Verify image metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "owa-${{ matrix.engine }}:${{ github.sha }}")"
+          revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "owa-${{ matrix.engine }}:${{ github.sha }}")"
+          test "$version" = "0.1.0"
+          test "$revision" = "${{ github.sha }}"
       - name: Enforce image-size gate
         shell: bash
         run: |
@@ -125,6 +151,7 @@ jobs:
           set -euo pipefail
           workdir="$(mktemp -d)"
           mkdir -p "$workdir/config" "$workdir/knowledge" "$workdir/data"
+          chmod 0777 "$workdir/data"
           cat > "$workdir/config/agent.yaml" <<'YAML'
           model:
             provider: fake
@@ -169,6 +196,7 @@ jobs:
           set -euo pipefail
           workdir="$(mktemp -d)"
           mkdir -p "$workdir/config" "$workdir/knowledge" "$workdir/data"
+          chmod 0777 "$workdir/data"
           cat > "$workdir/config/agent.yaml" <<'YAML'
           model:
             provider: fake
@@ -269,3 +297,136 @@ jobs:
           name: docker-${{ matrix.engine }}-logs
           path: ${{ runner.temp }}/owa-${{ matrix.engine }}-container.log
           if-no-files-found: ignore
+
+  postgres:
+    name: PostgreSQL persistence ${{ matrix.engine }} acceptance
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: adk
+            port: 18180
+          - engine: langgraph
+            port: 18181
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build PostgreSQL-enabled runtime image
+        run: docker build --build-arg OWA_VERSION=0.1.0 --build-arg VCS_REF=${{ github.sha }} --file docker/Dockerfile.${{ matrix.engine }} --tag owa-${{ matrix.engine }}:postgres-${{ github.sha }} .
+      - name: Start, restart, and invoke against PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          mkdir -p "$workdir/config" "$workdir/knowledge" "$workdir/data"
+          chmod 0777 "$workdir/data"
+          cat > "$workdir/config/agent.yaml" <<'YAML'
+          model:
+            provider: fake
+            name: fake/default
+          persistence:
+            datasource: postgresql://owa:owa@host.docker.internal:5432/owa
+          knowledge:
+            path: /knowledge
+            reload:
+              mode: startup
+          YAML
+          printf '%s\n' 'PostgreSQL persistence acceptance document.' > "$workdir/knowledge/policy.md"
+          name="owa-${{ matrix.engine }}-postgres"
+          restarted_name="${name}-restarted"
+          log_file="$RUNNER_TEMP/owa-${{ matrix.engine }}-postgres.log"
+          restarted_log_file="$RUNNER_TEMP/owa-${{ matrix.engine }}-postgres-restarted.log"
+          cleanup() {
+            docker logs "$name" > "$log_file" 2>&1 || true
+            docker logs "$restarted_name" > "$restarted_log_file" 2>&1 || true
+            docker rm --force "$name" "$restarted_name" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          run_args=(
+            --read-only
+            --tmpfs /tmp:rw,nosuid,nodev,size=256m
+            --user 12345:0
+            --add-host host.docker.internal:host-gateway
+            --volume "$workdir/config:/config:ro"
+            --volume "$workdir/knowledge:/knowledge:ro"
+            --volume "$workdir/data:/data:rw"
+          )
+          docker run --detach --name "$name" --publish ${{ matrix.port }}:8080 "${run_args[@]}" \
+            "owa-${{ matrix.engine }}:postgres-${{ github.sha }}"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/health/ready" >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/health/ready" >/dev/null
+          invocation="$(curl --fail --silent --request POST --header 'content-type: application/json' \
+            --data '{"input":{"question":"postgres"}}' \
+            "http://127.0.0.1:${{ matrix.port }}/v1/invoke")"
+          python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["status"] == "completed"; assert d["output"]["response"]["question"] == "postgres"' "$invocation"
+          docker stop --time 5 "$name" >/dev/null
+          docker rm "$name" >/dev/null
+          docker run --detach --name "$restarted_name" --publish ${{ matrix.port }}:8080 "${run_args[@]}" \
+            "owa-${{ matrix.engine }}:postgres-${{ github.sha }}"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/health/ready" >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/health/ready" >/dev/null
+          curl --fail --silent --request POST --header 'content-type: application/json' \
+            --data '{"input":{"question":"postgres-after-restart"}}' \
+            "http://127.0.0.1:${{ matrix.port }}/v1/invoke" \
+            | python -c 'import json, sys; d=json.load(sys.stdin); assert d["status"] == "completed"'
+      - name: Upload PostgreSQL container logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-${{ matrix.engine }}-postgres-logs
+          path: ${{ runner.temp }}/owa-${{ matrix.engine }}-postgres*.log
+          if-no-files-found: ignore
+
+  postgres-core:
+    name: PostgreSQL common-store integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Run isolated PostgreSQL store tests
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+        run: uv run --locked --extra postgres pytest tests/core/test_postgres_persistence.py -q

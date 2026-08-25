@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
 from .errors import WorkflowDefinitionChanged
+from .storage import StorageConnection, open_storage
 
 
 @dataclass(slots=True)
@@ -27,9 +27,7 @@ class ExecutionHandle:
 
 class InvocationStore:
     def __init__(self, database: str | Path = ":memory:") -> None:
-        if str(database) != ":memory:":
-            Path(database).parent.mkdir(parents=True, exist_ok=True)
-        self.connection = sqlite3.connect(str(database), check_same_thread=False)
+        self.connection: StorageConnection = open_storage(database, "owa_runtime")
         self.connection.execute(
             """CREATE TABLE IF NOT EXISTS invocations (
             invocation_id TEXT PRIMARY KEY, payload TEXT NOT NULL, status TEXT NOT NULL)"""

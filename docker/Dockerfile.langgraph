@@ -12,7 +12,7 @@ COPY resources ./resources
 COPY runtime-catalog ./runtime-catalog
 
 RUN pip install --no-cache-dir "uv==0.11.26" \
-    && uv sync --directory /build/engines/langgraph --locked --no-dev --no-editable --extra sqlite --extra knowledge \
+    && uv sync --directory /build/engines/langgraph --locked --no-dev --no-editable --extra sqlite --extra knowledge --extra postgres \
     && rm -rf /tmp/uv-cache /root/.cache
 
 RUN mkdir -p /build/opt/models \
@@ -22,6 +22,12 @@ RUN mkdir -p /build/opt/models \
     && find /build -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
 
 FROM python:3.12-slim AS runtime
+
+ARG OWA_VERSION=0.1.0
+ARG VCS_REF=unknown
+LABEL org.opencontainers.image.title="open-workflow-agent-langgraph" \
+      org.opencontainers.image.version="$OWA_VERSION" \
+      org.opencontainers.image.revision="$VCS_REF"
 
 ENV PATH=/opt/venv/bin:$PATH \
     FASTEMBED_CACHE_PATH=/tmp/fastembed \

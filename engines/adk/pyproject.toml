@@ -7,6 +7,7 @@ dependencies = ["open-workflow-agent"]
 [project.optional-dependencies]
 native = ["google-adk==2.7.1"]
 knowledge = ["open-workflow-agent[knowledge]"]
+postgres = ["open-workflow-agent[postgres]", "google-adk[db]==2.7.1", "asyncpg==0.31.0"]
 
 [build-system]
 requires = ["hatchling"]

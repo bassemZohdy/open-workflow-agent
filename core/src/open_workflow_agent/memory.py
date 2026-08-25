@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 import time
-from pathlib import Path
 from typing import Any
+
+from .storage import StorageConnection, open_storage
 
 
 class MemoryService:
@@ -14,13 +14,13 @@ class MemoryService:
         self.database = database
         self._items: list[dict[str, Any]] = []
         self._next_id = 1
-        self._connection: sqlite3.Connection | None = None
+        self._connection: StorageConnection | None = None
         if database:
-            Path(database).parent.mkdir(parents=True, exist_ok=True)
-            self._connection = sqlite3.connect(database, check_same_thread=False)
+            self._connection = open_storage(database, "owa_memory")
+            identifier_type = "BIGSERIAL" if self._connection.is_postgresql else "INTEGER"
             self._connection.execute(
-                """CREATE TABLE IF NOT EXISTS memory (
-                    id INTEGER PRIMARY KEY,
+                f"""CREATE TABLE IF NOT EXISTS memory (
+                    id {identifier_type} PRIMARY KEY,
                     text TEXT NOT NULL,
                     metadata TEXT,
                     created REAL NOT NULL
@@ -37,6 +37,14 @@ class MemoryService:
                 {"id": identifier, "text": text, "metadata": metadata, "created": time.time()}
             )
             return identifier
+        if self._connection.is_postgresql:
+            cursor = self._connection.execute(
+                "INSERT INTO memory(text, metadata, created) VALUES (?, ?, ?) RETURNING id",
+                (text, json.dumps(metadata), time.time()),
+            )
+            identifier = cursor.fetchone()[0]
+            self._connection.commit()
+            return int(identifier)
         cursor = self._connection.execute(
             "INSERT INTO memory(text, metadata, created) VALUES (?, ?, ?)",
             (text, json.dumps(metadata), time.time()),
@@ -76,7 +84,7 @@ class MemoryService:
             return len(self._items) != before
         cursor = self._connection.execute("DELETE FROM memory WHERE id = ?", (memory_id,))
         self._connection.commit()
-        return cursor.rowcount > 0
+        return int(cursor.rowcount) > 0
 
     def close(self) -> None:
         if self._connection:

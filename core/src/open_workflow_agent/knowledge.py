@@ -8,7 +8,6 @@ import importlib
 import json
 import os
 import re
-import sqlite3
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -16,6 +15,7 @@ import numpy as np
 import yaml
 
 from .errors import KnowledgeError
+from .storage import StorageConnection, open_storage
 
 
 class EmbeddingProvider(Protocol):
@@ -115,12 +115,11 @@ class KnowledgeService:
         chunk_overlap: int = 40,
     ) -> None:
         self.root = Path(root)
-        self.database = Path(database)
+        self.database = database
         self.embedding = embedding or FastEmbedEmbeddingProvider()
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.database.parent.mkdir(parents=True, exist_ok=True)
-        self.connection = sqlite3.connect(self.database, check_same_thread=False)
+        self.connection: StorageConnection = open_storage(database, "owa_knowledge")
         self.connection.execute(
             """CREATE TABLE IF NOT EXISTS manifest (
                 path TEXT PRIMARY KEY,
@@ -128,13 +127,15 @@ class KnowledgeService:
                 parser TEXT,
                 chunking TEXT,
                 embedding TEXT
-            )"""
+        )"""
         )
-        self.connection.execute("""CREATE TABLE IF NOT EXISTS chunks (
-            id INTEGER PRIMARY KEY,
+        identifier_type = "BIGSERIAL" if self.connection.is_postgresql else "INTEGER"
+        vector_type = "BYTEA" if self.connection.is_postgresql else "BLOB"
+        self.connection.execute(f"""CREATE TABLE IF NOT EXISTS chunks (
+            id {identifier_type} PRIMARY KEY,
             path TEXT,
             content TEXT,
-            vector BLOB
+            vector {vector_type}
         )""")
         self.connection.commit()
         self._watch_task: asyncio.Task[None] | None = None
@@ -179,18 +180,36 @@ class KnowledgeService:
                     "INSERT INTO chunks(path, content, vector) VALUES (?, ?, ?)",
                     (path_string, chunk, vector),
                 )
-            self.connection.execute(
-                """INSERT OR REPLACE INTO manifest(
-                    path, hash, parser, chunking, embedding
-                ) VALUES (?, ?, ?, ?, ?)""",
-                (
-                    path_string,
-                    digest,
-                    path.suffix.lower(),
-                    str(self.chunk_size),
-                    self.embedding.identity,
-                ),
-            )
+            if self.connection.is_postgresql:
+                self.connection.execute(
+                    """INSERT INTO manifest(path, hash, parser, chunking, embedding)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(path) DO UPDATE SET
+                        hash = EXCLUDED.hash,
+                        parser = EXCLUDED.parser,
+                        chunking = EXCLUDED.chunking,
+                        embedding = EXCLUDED.embedding""",
+                    (
+                        path_string,
+                        digest,
+                        path.suffix.lower(),
+                        str(self.chunk_size),
+                        self.embedding.identity,
+                    ),
+                )
+            else:
+                self.connection.execute(
+                    """INSERT OR REPLACE INTO manifest(
+                        path, hash, parser, chunking, embedding
+                    ) VALUES (?, ?, ?, ?, ?)""",
+                    (
+                        path_string,
+                        digest,
+                        path.suffix.lower(),
+                        str(self.chunk_size),
+                        self.embedding.identity,
+                    ),
+                )
         for removed in set(existing) - set(current):
             counts["deleted"] += 1
             self.connection.execute("DELETE FROM chunks WHERE path = ?", (removed,))

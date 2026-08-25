@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 from collections.abc import Awaitable, Callable
 from typing import Any
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunsplit
+
+from open_workflow_agent.storage import is_postgresql_datasource
 
 try:
     from google.adk.agents.context import Context
@@ -23,6 +26,11 @@ except ImportError:  # pragma: no cover - exercised in the core-only environment
     FunctionNode = None  # type: ignore[assignment]
     types = None  # type: ignore[assignment]
     ADK_AVAILABLE = False
+
+try:
+    from google.adk.sessions import DatabaseSessionService as _DatabaseSessionService
+except ImportError:  # pragma: no cover - optional ADK db extra
+    _DatabaseSessionService = None  # type: ignore[assignment]
 
 
 class NativeAdkRunner:
@@ -52,11 +60,29 @@ class NativeAdkRunner:
             raise RuntimeError("google-adk 2.x is not installed")
         app_name = "open-workflow-agent"
         user = user_id or "owa-user"
-        sessions = (
-            SqliteSessionService(database_path)
-            if database_path and SqliteSessionService is not None
-            else InMemorySessionService()
-        )
+        if database_path and is_postgresql_datasource(database_path):
+            if _DatabaseSessionService is None:
+                raise RuntimeError("PostgreSQL ADK persistence requires google-adk[db] and asyncpg")
+            parsed = urlparse(database_path)
+            query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+            query.pop("options", None)
+            db_url = urlunsplit(
+                (
+                    "postgresql+asyncpg",
+                    parsed.netloc,
+                    parsed.path,
+                    urlencode(query),
+                    parsed.fragment,
+                )
+            )
+            sessions = _DatabaseSessionService(
+                db_url,
+                connect_args={"server_settings": {"search_path": "owa_adk,public"}},
+            )
+        elif database_path and SqliteSessionService is not None:
+            sessions = SqliteSessionService(database_path)
+        else:
+            sessions = InMemorySessionService()
         existing = await sessions.get_session(
             app_name=app_name,
             user_id=user,

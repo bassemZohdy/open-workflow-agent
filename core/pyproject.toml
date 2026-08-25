@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 model = ["litellm==1.80.5"]
 knowledge = ["fastembed==0.8.0"]
+postgres = ["psycopg[binary]==3.3.4"]
 
 [build-system]
 requires = ["hatchling"]
