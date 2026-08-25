@@ -8,15 +8,23 @@ from typing import Any
 from .errors import UnsupportedWorkflowFeature
 from .persistence import ExecutionHandle
 from .services import RuntimeServices
-from .workflow import WorkflowExecutor, WorkflowPlan
+from .workflow import (
+    SUPPORTED_FUNCTION_CALLS,
+    SUPPORTED_PROTOCOL_CALLS,
+    SUPPORTED_TASKS,
+    WorkflowExecutor,
+    WorkflowPlan,
+)
 
 
 @dataclass(frozen=True, slots=True)
 class EngineCapabilities:
     engine: str
     portable_profile: str = "1"
-    tasks: tuple[str, ...] = ("do", "call", "set", "switch", "for", "fork")
-    functions: tuple[str, ...] = ("agent:1.0.0@default", "llm:1.0.0@default")
+    tasks: tuple[str, ...] = SUPPORTED_TASKS
+    protocols: tuple[str, ...] = SUPPORTED_PROTOCOL_CALLS
+    functions: tuple[str, ...] = SUPPORTED_FUNCTION_CALLS
+    policies: tuple[str, ...] = ("retry", "timeout")
     resume: bool = True
     streaming: bool = False
 
@@ -28,7 +36,9 @@ class EngineCapabilities:
             "workflowDsl": "1.0.3",
             "portableProfile": self.portable_profile,
             "tasks": list(self.tasks),
+            "protocols": list(self.protocols),
             "functions": list(self.functions),
+            "policies": list(self.policies),
             "features": {"resume": self.resume, "streaming": self.streaming},
         }
 

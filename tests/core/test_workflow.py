@@ -8,6 +8,7 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import (
     UnsupportedWorkflowFeature,
+    WorkflowExecutionError,
     WorkflowSchemaError,
     WorkflowSemanticError,
 )
@@ -166,6 +167,61 @@ async def test_retry_and_timeout_task_policies(services):
         compile_workflow(workflow), {}
     )
     assert result["ok"] is True
+
+
+@pytest.mark.asyncio
+async def test_try_catches_filtered_raise_and_exports_error(services):
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "test",
+            "name": "try-catch",
+            "version": "1.0.0",
+        },
+        "do": [
+            {
+                "recover": {
+                    "try": [{"fail": {"raise": {"error": "controlled failure"}}}],
+                    "catch": {
+                        "errors": {"with": {"detail": "controlled failure"}},
+                        "as": "failure",
+                        "do": [{"set_recovery": {"set": {"recovered": "${ $failure.message }"}}}],
+                    },
+                }
+            }
+        ],
+    }
+
+    result = await WorkflowExecutor(services.catalog, services=services).execute(
+        compile_workflow(workflow), {}
+    )
+
+    assert result == {"recovered": "controlled failure"}
+
+
+@pytest.mark.asyncio
+async def test_task_timeout_is_translated_to_common_workflow_error(services):
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "test",
+            "name": "timeout",
+            "version": "1.0.0",
+        },
+        "do": [
+            {
+                "pause": {
+                    "wait": {"milliseconds": 20},
+                    "timeout": {"after": {"milliseconds": 1}},
+                }
+            }
+        ],
+    }
+
+    with pytest.raises(WorkflowExecutionError, match="timed out"):
+        await WorkflowExecutor(services.catalog, services=services).execute(
+            compile_workflow(workflow), {}
+        )
 
 
 def test_strict_configuration_rejects_unknown_keys():

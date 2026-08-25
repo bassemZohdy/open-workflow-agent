@@ -4,8 +4,9 @@ import json
 
 import httpx
 import pytest
-from open_workflow_agent.errors import ToolError
+from open_workflow_agent.errors import ToolError, UnsupportedWorkflowFeature
 from open_workflow_agent.protocols import EnvironmentAuthentication, HttpClient, ProtocolServices
+from open_workflow_agent.workflow import compile_workflow
 
 
 @pytest.mark.asyncio
@@ -89,3 +90,90 @@ async def test_protocol_timeout_and_redirects_are_translated():
     )
     with pytest.raises(ToolError, match="HTTP request failed"):
         await redirect_services.call("http", {"endpoint": "https://service.test"})
+
+
+@pytest.mark.asyncio
+async def test_http_status_errors_expose_filterable_workflow_details():
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, json={"missing": True})
+
+    services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
+    with pytest.raises(ToolError) as raised:
+        await services.call("http", {"endpoint": "https://service.test"})
+    assert raised.value.details["status"] == 404
+    assert raised.value.details["type"].endswith("communication")
+
+
+@pytest.mark.asyncio
+async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
+    seen: list[httpx.Request] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"path": request.url.path})
+
+    services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
+    assert await services.call(
+        "http", {"method": "POST", "endpoint": "https://service.test/http", "body": {"ok": 1}}
+    ) == {"path": "/http"}
+    assert await services.call(
+        "mcp",
+        {
+            "method": "tools/list",
+            "transport": {"http": {"endpoint": "https://service.test/mcp"}},
+            "parameters": {},
+        },
+    ) == {"path": "/mcp"}
+    assert await services.call(
+        "a2a",
+        {
+            "server": "https://service.test/a2a",
+            "method": "message/send",
+            "parameters": {"message": "hello"},
+        },
+    ) == {"path": "/a2a"}
+    assert await services.call(
+        "openapi",
+        {
+            "document": {"endpoint": "https://service.test/openapi"},
+            "operationId": "lookup",
+            "parameters": {"query": "hello"},
+        },
+    ) == {"path": "/openapi"}
+    assert [request.url.path for request in seen] == ["/http", "/mcp", "/a2a", "/openapi"]
+
+
+@pytest.mark.asyncio
+async def test_http_contract_exposes_bounded_output_modes():
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(201, json={"created": True}, headers={"x-test": "yes"})
+
+    services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
+    assert await services.call("http", {"endpoint": "https://service.test", "output": "raw"}) == (
+        '{"created":true}'
+    )
+    response = await services.call(
+        "http", {"endpoint": "https://service.test", "output": "response"}
+    )
+    assert response["status"] == 201
+    assert response["body"] == {"created": True}
+    assert response["headers"]["x-test"] == "yes"
+
+
+def test_unsupported_protocol_transport_fails_during_workflow_validation():
+    workflow = {
+        "document": {"dsl": "1.0.3", "namespace": "test", "name": "stdio", "version": "1.0.0"},
+        "do": [
+            {
+                "invoke": {
+                    "call": "mcp",
+                    "with": {
+                        "method": "tools/list",
+                        "transport": {"stdio": {"command": "mcp-server"}},
+                    },
+                }
+            }
+        ],
+    }
+    with pytest.raises(UnsupportedWorkflowFeature, match="stdio"):
+        compile_workflow(workflow)

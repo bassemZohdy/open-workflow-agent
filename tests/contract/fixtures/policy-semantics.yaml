@@ -1,0 +1,28 @@
+document:
+  dsl: '1.0.3'
+  namespace: tests
+  name: policy-semantics
+  version: '1.0.0'
+do:
+  - recover:
+      try:
+        - fail:
+            raise:
+              error: controlled failure
+      catch:
+        errors:
+          with:
+            detail: controlled failure
+        do:
+          - mark_recovered:
+              set:
+                recovered: true
+  - pause:
+      wait:
+        milliseconds: 0
+      timeout:
+        after:
+          seconds: 1
+  - finish:
+      set:
+        completed: true

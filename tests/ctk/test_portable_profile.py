@@ -38,6 +38,8 @@ def _load_scenarios() -> list[dict[str, Any]]:
                     current = "workflow"
                 elif "workflow input" in preceding:
                     current = "input"
+                elif "fault with error" in preceding:
+                    current = "fault_error"
                 else:
                     current = "output"
                 buffer = []
@@ -50,6 +52,15 @@ def _load_scenarios() -> list[dict[str, Any]]:
                 match = re.match(r"    And (\S+) should run (first|last)", line)
                 if match:
                     blocks.setdefault(match.group(2), []).append(match.group(1))
+                match = re.match(
+                    r"    And workflow output should have a '([^']+)' property "
+                    r"containing (\d+) items",
+                    line,
+                )
+                if match:
+                    blocks.setdefault("property_counts", {})[match.group(1)] = int(match.group(2))
+                if line == "    Then the workflow should fault":
+                    blocks["fault"] = True
             preceding = line
         if name and blocks.get("workflow") is not None:
             scenarios.append({"name": name, **blocks})
@@ -80,8 +91,24 @@ async def test_upstream_ctk_portable_profile_scenarios(engine_type, scenario, tm
         workflow_fingerprint=plan.fingerprint,
     )
     result = await engine.invoke(plan, handle, scenario.get("input", {}))
+    if scenario.get("fault") or "fault_error" in scenario:
+        assert result.status == "faulted"
+        if "fault_error" in scenario:
+            assert result.error is not None
+            details = result.error.get("details", {})
+            assert all(details.get(key) == value for key, value in scenario["fault_error"].items())
+        services.close()
+        return
     assert result.status == "completed"
-    assert result.output == scenario["output"]
+    if "output" in scenario:
+        assert result.output == scenario["output"]
+    for path, expected_count in scenario.get("property_counts", {}).items():
+        value: Any = result.output
+        for part in path.split("."):
+            assert isinstance(value, dict)
+            value = value[part]
+        assert isinstance(value, list)
+        assert len(value) == expected_count
     task_names = [
         event.task_name for event in services.events.events if event.event_type == "TaskStarted"
     ]

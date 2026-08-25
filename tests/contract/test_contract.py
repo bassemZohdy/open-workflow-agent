@@ -36,6 +36,7 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
         "protocol-calls",
         "controlled-error",
         "wait-timeout",
+        "policy-semantics",
     ],
 )
 async def test_portable_fixture_has_same_result_on_each_engine(
@@ -44,7 +45,9 @@ async def test_portable_fixture_has_same_result_on_each_engine(
     fixture = Path(__file__).parent / "fixtures" / f"{fixture_name}.yaml"
     workflow = yaml.safe_load(fixture.read_text(encoding="utf-8"))
     services = RuntimeServices(
-        RuntimeConfig(), model=FakeModel({"response": "ok"}), database_root=tmp_path / engine_name
+        RuntimeConfig(),
+        model=FakeModel({"response": "ok"}, failures=1 if fixture_name == "retry" else 0),
+        database_root=tmp_path / engine_name,
     )
     if fixture_name == "protocol-calls":
 
@@ -106,4 +109,6 @@ def _expected(fixture_name: str, input_data: dict[str, object]) -> object:
         return {"nested": "hello"}
     if fixture_name == "protocol-calls":
         return {"path": "/openapi"}
+    if fixture_name == "policy-semantics":
+        return {"completed": True}
     return input_data

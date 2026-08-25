@@ -20,6 +20,9 @@ async def test_invoke_capabilities_health_and_reload(tmp_path):
             assert (await client.get("/health/live")).json() == {"status": "ok"}
             capabilities = (await client.get("/v1/capabilities")).json()
             assert capabilities["workflowDsl"] == "1.0.3"
+            assert capabilities["protocols"] == ["http", "mcp", "a2a", "openapi"]
+            assert capabilities["policies"] == ["retry", "timeout"]
+            assert {"try", "wait", "raise"} <= set(capabilities["tasks"])
             result = await client.post("/v1/invoke", json={"input": {"question": "hi"}})
             assert result.status_code == 200
             assert result.json()["status"] == "completed"

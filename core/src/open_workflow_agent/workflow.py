@@ -20,6 +20,7 @@ from jsonschema import Draft202012Validator
 from .catalog import CatalogContext, FunctionCatalog
 from .errors import (
     ExpressionError,
+    ToolError,
     UnsupportedWorkflowFeature,
     WorkflowExecutionError,
     WorkflowSchemaError,
@@ -39,15 +40,10 @@ DEFAULT_WORKFLOW: dict[str, Any] = {
 
 OFFICIAL_SCHEMA_RELATIVE_PATH = Path("resources/open-workflow/1.0.3/workflow.yaml")
 
-SUPPORTED_TASKS = {"do", "call", "set", "switch", "for", "fork", "try", "wait", "raise"}
-SUPPORTED_CALLS = {
-    "http",
-    "mcp",
-    "a2a",
-    "openapi",
-    "agent:1.0.0@default",
-    "llm:1.0.0@default",
-}
+SUPPORTED_TASKS = ("do", "call", "set", "switch", "for", "fork", "try", "wait", "raise")
+SUPPORTED_PROTOCOL_CALLS = ("http", "mcp", "a2a", "openapi")
+SUPPORTED_FUNCTION_CALLS = ("agent:1.0.0@default", "llm:1.0.0@default")
+SUPPORTED_CALLS = {*SUPPORTED_PROTOCOL_CALLS, *SUPPORTED_FUNCTION_CALLS}
 DISABLED_TASKS = {"run"}
 
 
@@ -117,17 +113,23 @@ def validate_capabilities(workflow: Mapping[str, Any]) -> None:
             raise UnsupportedWorkflowFeature(
                 f"task '{name}' is disabled", details={"reference": reference}
             )
-        known = task_keys & SUPPORTED_TASKS
+        known = task_keys.intersection(SUPPORTED_TASKS)
         if not known:
             raise UnsupportedWorkflowFeature(
                 f"no supported task type found at {reference}", details={"keys": sorted(task_keys)}
             )
         if "call" in definition:
             call = definition["call"]
-            if isinstance(call, str) and call not in SUPPORTED_CALLS:
-                if not call.startswith("agent:") and not call.startswith("llm:"):
+            if not isinstance(call, str) or call not in SUPPORTED_CALLS:
+                raise UnsupportedWorkflowFeature(
+                    f"call '{call}' is not enabled", details={"reference": reference}
+                )
+            if call == "mcp":
+                with_value = definition.get("with")
+                transport = with_value.get("transport") if isinstance(with_value, Mapping) else None
+                if isinstance(transport, Mapping) and "stdio" in transport:
                     raise UnsupportedWorkflowFeature(
-                        f"call '{call}' is not enabled", details={"reference": reference}
+                        "mcp stdio transport is not enabled", details={"reference": reference}
                     )
         for task_list in _nested_task_lists(definition):
             validate_capabilities({"do": task_list})
@@ -448,7 +450,19 @@ class WorkflowExecutor:
             variables={"context": context, "input": copy.deepcopy(input_data)},
         )
         try:
-            await self._run_tasks(plan.source.get("do", []), state)
+            workflow_timeout = _duration_seconds(workflow.get("timeout"))
+            if workflow_timeout is None:
+                await self._run_tasks(plan.source.get("do", []), state)
+            else:
+                try:
+                    await asyncio.wait_for(
+                        self._run_tasks(plan.source.get("do", []), state), workflow_timeout
+                    )
+                except TimeoutError as exc:
+                    raise WorkflowExecutionError(
+                        "workflow timed out",
+                        details={"timeout_seconds": workflow_timeout},
+                    ) from exc
         except Exception as exc:
             self._emit(
                 "WorkflowFaulted",
@@ -496,6 +510,8 @@ class WorkflowExecutor:
             try:
                 result = await self._run_with_policy(str(name), definition, state, reference)
             except Exception as exc:
+                if isinstance(exc, WorkflowExecutionError):
+                    exc.details.setdefault("instance", reference)
                 self._emit(
                     "TaskFaulted",
                     {
@@ -512,6 +528,7 @@ class WorkflowExecutor:
                         WorkflowSemanticError,
                         UnsupportedWorkflowFeature,
                         ExpressionError,
+                        ToolError,
                     ),
                 ):
                     raise
@@ -528,7 +545,8 @@ class WorkflowExecutor:
                     "status": "completed",
                 },
             )
-            self._apply_transition(definition.get("then"), state)
+            if state.jump_to is None and not state.stop:
+                self._apply_transition(definition.get("then"), state)
             if state.stop:
                 return
             if state.jump_to is not None:
@@ -571,7 +589,13 @@ class WorkflowExecutor:
             try:
                 operation = self._run_task(name, definition, state)
                 if timeout_seconds is not None:
-                    return await asyncio.wait_for(operation, timeout_seconds)
+                    try:
+                        return await asyncio.wait_for(operation, timeout_seconds)
+                    except TimeoutError as exc:
+                        raise WorkflowExecutionError(
+                            f"task {name} timed out",
+                            details={"task": name, "timeout_seconds": timeout_seconds},
+                        ) from exc
                 return await operation
             except Exception as exc:
                 last_error = exc
@@ -617,6 +641,7 @@ class WorkflowExecutor:
             if str(definition["call"]) in {"http", "mcp", "a2a", "openapi"} and isinstance(
                 payload, Mapping
             ):
+                payload = _resolve_protocol_endpoints(payload, state.data, state.variables)
                 payload = {
                     **payload,
                     "operation_id": payload.get("operation_id")
@@ -645,7 +670,16 @@ class WorkflowExecutor:
                     await self._run_tasks(_task_body(definition["try"]), state)
                     return state.data
                 except Exception as exc:
-                    if attempt + 1 < attempts:
+                    error = _error_details(exc)
+                    state.variables["error"] = error
+                    if not _catch_matches(catch, error, state, self.expressions):
+                        raise
+                    if attempt + 1 < attempts and _retry_allowed(
+                        catch_retry, state, self.expressions
+                    ):
+                        delay = _retry_delay(catch_retry, attempt)
+                        if delay:
+                            await asyncio.sleep(delay)
                         self._emit(
                             "TaskRetried",
                             {
@@ -656,7 +690,11 @@ class WorkflowExecutor:
                             },
                         )
                         continue
+                    as_name = catch.get("as", "error")
+                    if isinstance(as_name, str):
+                        state.variables[as_name] = error
                     await self._run_tasks(_task_body(catch.get("do", [])), state)
+                    self._apply_transition(catch.get("then"), state)
                     return state.data
         if "wait" in definition:
             wait_value = self.expressions.evaluate(
@@ -671,12 +709,15 @@ class WorkflowExecutor:
                 error = raise_value.get("error", raise_value)
                 if isinstance(error, Mapping):
                     message = error.get("detail") or error.get("title") or error.get("type")
+                    details = dict(error)
                 else:
                     message = error
+                    details = {}
             else:
                 message = raise_value
+                details = {}
             message = self.expressions.evaluate(message, state.data, variables=state.variables)
-            raise WorkflowExecutionError(str(message))
+            raise WorkflowExecutionError(str(message), details=details)
         raise UnsupportedWorkflowFeature(f"unsupported task {name}")
 
     async def _call(self, call: str, payload: Any, state: ExecutionState) -> Any:
@@ -760,7 +801,12 @@ class WorkflowExecutor:
         return results[-1] if results else state.data
 
     async def _run_fork(self, definition: Any, state: ExecutionState) -> Any:
-        branches = definition.get("branches", []) if isinstance(definition, Mapping) else definition
+        compete = False
+        if isinstance(definition, Mapping):
+            branches = definition.get("branches", [])
+            compete = bool(definition.get("compete", False))
+        else:
+            branches = definition
         if not isinstance(branches, list):
             raise WorkflowSemanticError("fork branches must be a list")
 
@@ -776,6 +822,16 @@ class WorkflowExecutor:
                 child,
             )
             return child.data
+
+        if compete:
+            branch_tasks = [asyncio.create_task(run_branch(branch)) for branch in branches]
+            if not branch_tasks:
+                return state.data
+            done, pending = await asyncio.wait(branch_tasks, return_when=asyncio.FIRST_COMPLETED)
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            return next(iter(done)).result()
 
         results = await asyncio.gather(*(run_branch(branch) for branch in branches))
         if results and all(isinstance(result, Mapping) for result in results):
@@ -866,6 +922,36 @@ def _merge(left: Any, right: Any) -> Any:
     return right
 
 
+def _resolve_protocol_endpoints(
+    payload: Mapping[str, Any], data: Any, variables: Mapping[str, Any]
+) -> dict[str, Any]:
+    endpoint_keys = {"endpoint", "server", "uri", "url"}
+
+    def resolve(value: Any, key: str | None = None) -> Any:
+        if isinstance(value, Mapping):
+            return {name: resolve(item, str(name)) for name, item in value.items()}
+        if isinstance(value, list):
+            return [resolve(item, key) for item in value]
+        if key not in endpoint_keys or not isinstance(value, str):
+            return value
+
+        def replace(match: re.Match[str]) -> str:
+            expression = match.group(1).strip()
+            lookup = expression[1:] if expression.startswith("$") else expression
+            resolved = _path_get(data, lookup.lstrip("."))
+            if resolved is None and lookup in variables:
+                resolved = variables[lookup]
+            if resolved is None:
+                raise WorkflowSemanticError(
+                    f"unable to resolve protocol endpoint template: {{{expression}}}"
+                )
+            return str(resolved)
+
+        return re.sub(r"\{([^{}]+)\}", replace, value)
+
+    return cast(dict[str, Any], resolve(payload))
+
+
 def _retry_attempts(value: Any) -> int:
     if value is None:
         return 1
@@ -883,6 +969,68 @@ def _retry_attempts(value: Any) -> int:
         return max(1, int(value) + 1)
     except (TypeError, ValueError):
         return 1
+
+
+def _catch_matches(
+    catch: Mapping[str, Any],
+    error: Mapping[str, Any],
+    state: ExecutionState,
+    expressions: ExpressionEvaluator,
+) -> bool:
+    errors = catch.get("errors")
+    filters = errors.get("with") if isinstance(errors, Mapping) else None
+    if isinstance(filters, Mapping):
+        error_details: Mapping[str, Any] = (
+            error["details"] if isinstance(error.get("details"), Mapping) else {}
+        )
+        values = {
+            "type": error_details.get("type", error.get("code")),
+            "status": error_details.get("status", error.get("status_code")),
+            "instance": error_details.get("instance"),
+            "title": error_details.get("title", error.get("code")),
+            "detail": error_details.get("detail", error.get("message")),
+        }
+        if any(values.get(key) != value for key, value in filters.items()):
+            return False
+    if catch.get("when") is not None and not expressions.condition(
+        catch["when"], state.data, variables=state.variables
+    ):
+        return False
+    if catch.get("exceptWhen") is not None and expressions.condition(
+        catch["exceptWhen"], state.data, variables=state.variables
+    ):
+        return False
+    return True
+
+
+def _retry_allowed(retry: Any, state: ExecutionState, expressions: ExpressionEvaluator) -> bool:
+    if not isinstance(retry, Mapping):
+        return True
+    if retry.get("when") is not None and not expressions.condition(
+        retry["when"], state.data, variables=state.variables
+    ):
+        return False
+    if retry.get("exceptWhen") is not None and expressions.condition(
+        retry["exceptWhen"], state.data, variables=state.variables
+    ):
+        return False
+    return True
+
+
+def _retry_delay(retry: Any, attempt: int) -> float | None:
+    if not isinstance(retry, Mapping):
+        return None
+    delay = _duration_seconds(retry.get("delay"))
+    if delay is None:
+        return None
+    delay_seconds: float = float(delay)
+    backoff = retry.get("backoff")
+    if isinstance(backoff, Mapping):
+        if "exponential" in backoff:
+            return delay_seconds * (2.0**attempt)
+        if "linear" in backoff:
+            return delay_seconds * (attempt + 1)
+    return delay_seconds
 
 
 def _error_details(error: Exception) -> dict[str, Any]:
