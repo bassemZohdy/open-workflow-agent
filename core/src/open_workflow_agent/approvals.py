@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from .errors import (
     ApprovalAuthorizationError,
@@ -42,11 +42,15 @@ class ApprovalRecord:
 
     @property
     def request_event(self) -> dict[str, Any]:
-        return json.loads(self.request_event_json)
+        return cast(dict[str, Any], json.loads(self.request_event_json))
 
     @property
     def decision_event(self) -> dict[str, Any] | None:
-        return json.loads(self.decision_event_json) if self.decision_event_json else None
+        return (
+            cast(dict[str, Any], json.loads(self.decision_event_json))
+            if self.decision_event_json
+            else None
+        )
 
     def as_dict(self) -> dict[str, Any]:
         value: dict[str, Any] = {
