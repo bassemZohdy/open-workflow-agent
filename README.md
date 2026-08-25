@@ -1,19 +1,77 @@
 # Open Workflow Agent
 
-Open Workflow Agent is a configuration-driven, model-agnostic runtime for Open Workflow 1.0.3. A framework-neutral core validates the official schema, applies the Portable Profile gate, builds an internal plan, and owns common data semantics, catalogs, knowledge, memory, protocols, persistence metadata, observability, and API errors. ADK and LangGraph are independently packaged engine adapters with native agent/tool bindings and durable state.
+Open Workflow Agent is a configuration-driven runtime for running AI agents and Open Workflow 1.0.3 workflows without writing application-specific orchestration code.
 
-Every invocation is a workflow invocation. If no workflow is configured, the runtime generates the default workflow calling `agent:1.0.0@default`.
+You provide configuration, an optional workflow, optional knowledge, and optional tools. The runtime executes the same public contract on interchangeable engines such as ADK and LangGraph.
 
-## Quick Start
+## Why use it?
 
-Install the locked development environment and run the local gates:
+Use Open Workflow Agent when you want to:
 
-```text
-uv sync --locked
-uv run pytest -q
+- run a simple AI agent from configuration only;
+- add knowledge, memory, tools, or workflows without changing application code;
+- keep workflow definitions portable across supported execution engines;
+- expose the runtime through a stable HTTP API;
+- run locally, in Docker, or on Kubernetes/OpenShift.
+
+Every invocation is executed as a workflow. If you do not provide a workflow, Open Workflow Agent generates a default one that calls the configured agent.
+
+## 5-minute quick start
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/bassemZohdy/open-workflow-agent.git
+cd open-workflow-agent
 ```
 
-For deterministic operation, configure:
+### 2. Start one engine
+
+The repository includes a deterministic `fake/default` model so you can validate the runtime without an API key or paid model.
+
+```bash
+cp .env.example .env
+docker compose --profile adk up --build
+```
+
+Or start LangGraph instead:
+
+```bash
+docker compose --profile langgraph up --build
+```
+
+Default ports:
+
+- ADK: `http://localhost:8080`
+- LangGraph: `http://localhost:8081`
+
+### 3. Check readiness
+
+```bash
+curl http://localhost:8080/health/ready
+```
+
+Expected response:
+
+```json
+{"status":"ok"}
+```
+
+### 4. Invoke the default agent
+
+```bash
+curl -X POST http://localhost:8080/v1/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "input": "Hello from Open Workflow Agent"
+  }'
+```
+
+The response includes an `invocation_id`, `session_id`, status, and output.
+
+## Minimal configuration
+
+Create `/config/agent.yaml` or set `OWA_CONFIG_FILE` to another path:
 
 ```yaml
 model:
@@ -21,52 +79,157 @@ model:
   name: fake/default
 ```
 
-Run an engine from its package directory:
-
-```text
-uv run --locked --extra native python -m open_workflow_agent_adk.server
-uv run --locked --extra sqlite python -m open_workflow_agent_langgraph.server
-```
-
-The API listens on port 8080 and exposes `/health/live`, `/health/ready`, `/v1/capabilities`, `/v1/invoke`, `/v1/events`, `/v1/events/lifecycle`, `/v1/schedules`, invocation resume/cancel, schedule cancellation, and knowledge reload endpoints. Deployments mount configuration at `/config`, documents at `/knowledge`, and writable state at `/data`.
-
-Run the PostgreSQL-backed container stack with Docker Compose. The engine profiles are
-mutually selectable so ADK and LangGraph do not compete for the same host port:
-
-```text
-cp .env.example .env
-docker compose --profile adk up --build
-# or: docker compose --profile langgraph up --build
-docker compose down
-```
-
-`.env` is ignored and is intended for local values only. `.env.example` contains
-non-secret defaults; change the password and ports before using the stack outside a
-local development environment. Compose exposes PostgreSQL on `POSTGRES_PORT`, ADK
-on `ADK_PORT`, and LangGraph on `LANGGRAPH_PORT`.
-
-SQLite is the reference persistence backend. PostgreSQL is available through the locked `postgres` extra and uses separate namespaces for runtime metadata, memory, knowledge metadata, and each engine's native durable state:
+A more typical configuration can include an agent instruction, workflow, knowledge, memory, persistence, tools, and server settings.
 
 ```yaml
+agent:
+  name: support
+  instruction: |
+    Answer questions using available knowledge and tools.
+
+model:
+  provider: fake
+  name: fake/default
+
+workflow:
+  path: /config/workflow.yaml
+
+knowledge:
+  path: /knowledge
+
+memory:
+  enabled: auto
+
 persistence:
-  datasource: postgresql://user:password@host:5432/database
+  datasource: postgresql://owa:password@postgres:5432/owa
 ```
 
-The ADK image uses ADK's database session service with `asyncpg`; the LangGraph image uses `langgraph-checkpoint-postgres`. Build/runtime images include these optional drivers without changing the public configuration.
+Configuration precedence is:
 
-Local sub-workflows are configured under `workflow.catalog` as Open Workflow
-definitions. A parent uses the standard `run.workflow` reference; the runtime
-creates a separate child invocation and engine-owned execution state. Remote or
-external workflow catalogs are disabled.
+```text
+built-in defaults < YAML < environment variables
+```
 
-## Containers and Status
+Environment variables use the `OWA__...` convention, for example:
 
-Build independent images with `docker build -f docker/Dockerfile.adk .` or the LangGraph equivalent, or use the Compose profiles above. Each image packages the pinned local FastEmbed/ONNX `all-MiniLM-L6-v2` model, runs as a non-root arbitrary UID, and has a 2 GiB CI size gate. GitHub Actions reproduces root, engine, Docker, CTK, and PostgreSQL gates on Ubuntu; green run [`32846277244`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32846277244) retained Docker and CTK provenance artifacts for the local sub-workflow milestone.
+```bash
+OWA__MODEL__NAME=fake/default
+OWA__SERVER__PORT=8080
+```
 
-No automated test requires paid model/API access. The applicable remote CI, CTK, and PostgreSQL acceptance gates are green. See [Project Definition.md](Project%20Definition.md) for the specification, [PROJECT.md](PROJECT.md) for verified working context, [TODO.md](TODO.md) for active work, and [AGENTS.md](AGENTS.md) for contributor rules.
+Unknown configuration properties are rejected.
 
-## Current support and roadmap
+## Add a workflow
 
-The common core currently provides bounded HTTP, MCP, A2A, and OpenAPI clients for explicit workflow calls and configured agent tools. Explicit workflow calls and agent tools remain separate execution paths. These paths enforce endpoint validation, optional host allowlists, TLS verification, bounded responses, redirect policy, authentication abstraction, operation identifiers, idempotency headers, and common error translation. Portable lifecycle events cover invocation/task start, progress, wait, retry, fault, completion, cancellation, and resume. Portable eventing supports `emit`, `listen` with one-event matching, and `/v1/events` injection through a process-local non-durable bus; durable replay, `all`/`any` strategies, and listener iteration are unsupported. The optional lifecycle CloudEvents boundary exposes a bounded CloudEvents 1.0 JSON batch snapshot at `/v1/events/lifecycle`; it is not a stream or durable broker. Bounded scheduling supports durable `after` one-shot and `every` recurring starts through `/v1/schedules`, with single-runtime ownership and lease-based restart reclaim; cron, event-triggered schedules, and distributed scheduler ownership are unsupported. Sub-workflows support registered local `run.workflow` references with separate child invocation/session metadata and engine-owned state; shell/script execution and external catalogs are unsupported. `/v1/capabilities` reports the supported task, function, protocol, policy, resume, waiting, cancellation, eventing, CloudEvents, scheduling, and sub-workflow surface. These are intentionally bounded adapters, not claims of full MCP, A2A, OpenAPI, or Open Workflow ecosystem conformance.
+Open Workflow 1.0.3 is the only public workflow DSL.
 
-The next milestone is **durable HITL and secure external catalogs**. The contract boundary is documented first: current event/listen support is non-durable generic input, there is no approval identity or dedicated approval API, and Open Workflow `use.catalogs` definitions are rejected explicitly. Optional A2A exposure, streaming, and additional engines remain deferred. The ordered plan is in [TODO.md](TODO.md).
+Example:
+
+```yaml
+document:
+  dsl: '1.0.3'
+  namespace: example
+  name: support-agent
+  version: '1.0.0'
+
+do:
+  - answer:
+      call: agent:1.0.0@default
+      with:
+        input: ${ .question }
+```
+
+Then invoke it with:
+
+```bash
+curl -X POST http://localhost:8080/v1/invoke \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "input": {
+      "question": "How can I renew my license?"
+    }
+  }'
+```
+
+## Add knowledge
+
+Mount files into `/knowledge`. Supported documents are indexed by the common knowledge service and exposed to agents through the `search_knowledge` tool.
+
+The production images package a local FastEmbed/ONNX `all-MiniLM-L6-v2` embedding model, so mounted knowledge does not require a separate paid embedding API.
+
+You can reload knowledge manually with:
+
+```bash
+curl -X POST http://localhost:8080/v1/admin/knowledge/reload
+```
+
+## Use a real LLM provider
+
+The core runtime supports LiteLLM through the optional `model` dependency. Provider credentials should be supplied through deployment secrets/environment variables, not placed directly in workflow files.
+
+The current repository Dockerfiles are optimized for the default deterministic model and do not install the optional `model` extra. To use LiteLLM in a container, build an image that includes `open-workflow-agent[model]` (or add the equivalent locked dependency to the selected engine image).
+
+## Main API
+
+The runtime exposes:
+
+```text
+GET  /health/live
+GET  /health/ready
+GET  /v1/capabilities
+POST /v1/invoke
+POST /v1/invocations/{id}/resume
+POST /v1/invocations/{id}/cancel
+POST /v1/admin/knowledge/reload
+POST /v1/events
+GET  /v1/events/lifecycle
+POST /v1/schedules
+GET  /v1/schedules/{id}
+POST /v1/schedules/{id}/cancel
+```
+
+Use `/v1/capabilities` to discover what the selected engine/runtime version supports rather than assuming every optional capability is portable.
+
+## Documentation
+
+- [Getting started](docs/getting-started.md) — run the project and invoke your first agent.
+- [Configuration](docs/configuration.md) — complete runtime configuration reference.
+- [API guide](docs/api.md) — HTTP endpoints and request/response examples.
+- [Deployment guide](docs/deployment.md) — Docker, persistence, Kubernetes/OpenShift considerations.
+- [Developer guide](docs/development.md) — repository structure, tests, engine boundaries, and contribution workflow.
+- [Project Definition](Project%20Definition.md) — authoritative architecture and product contract.
+- [PROJECT.md](PROJECT.md) — verified implementation status.
+- [TODO.md](TODO.md) — active backlog.
+- [AGENTS.md](AGENTS.md) — mandatory contributor/AI-agent rules.
+
+## Runtime model
+
+```text
+Configuration + Open Workflow + Knowledge + Memory + Tools
+                         |
+                         v
+                 Open Workflow Agent
+                         |
+              +----------+----------+
+              |                     |
+             ADK                 LangGraph
+```
+
+ADK and LangGraph are implementation engines, not public application contracts. The same public configuration and workflow are intended to remain portable when they use capabilities in the common profile.
+
+## Current scope
+
+The runtime currently supports the common workflow/core capabilities already verified by the shared contract and CI suites, including deterministic workflow execution, agent/LLM catalog calls, knowledge, memory, persistence, HTTP/MCP/A2A/OpenAPI protocol adapters, lifecycle events, bounded scheduling, local sub-workflows, cancellation, and resume where supported.
+
+The project does not claim full Open Workflow, MCP, A2A, or OpenAPI ecosystem conformance. Shell/script execution and external remote catalogs are disabled by default.
+
+## Development
+
+For local development:
+
+```bash
+uv sync --locked
+uv run pytest -q
+```
+
+See [docs/development.md](docs/development.md) for the full validation matrix and engine-specific commands.
