@@ -22,7 +22,7 @@ Use strict typed Python, four-space indentation, exact dependency locks, shared 
 
 Local root, core, contract, ADK, LangGraph, selected CTK, format, lint, mypy, lock, build, and schema-wheel checks pass. Local images are below the 2 GiB gate: ADK is approximately 202 MB and LangGraph approximately 198 MB. Both pass local health, capabilities, FakeModel, mounted-knowledge, read-only-root, arbitrary-UID, offline-search, reload, restart, and stop/restart/resume acceptance. The original images were approximately 3.06 GB and 3.05 GB; CUDA/Torch and the Sentence-Transformers dependency graph were removed in favor of FastEmbed/ONNX and a packaged local model.
 
-The GitHub workflow is present but has no verified remote run until a push or pull request executes it. SQLite is the reference datasource; unsupported external URLs fail explicitly. The applicable CTK subset is locally integrated, while remote CTK/release verification and a locked external persistence backend remain open.
+The GitHub workflow is present. Remote run `32804388684` for commit `45ef8a1` completed with failures in root `Tests` and both Docker acceptance jobs; the ADK and LangGraph engine jobs passed. The failure must be diagnosed and fixed before closing the CI milestone. The workflow also still needs a true container stop/restart/resume job, not only local proof. SQLite is the reference datasource; unsupported external URLs fail explicitly. The applicable CTK subset is locally integrated, while remote CTK/release verification and a locked external persistence backend remain open.
 
 ## Key Commands
 
