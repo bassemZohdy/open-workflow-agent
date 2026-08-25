@@ -144,7 +144,18 @@ def test_approval_api_requires_authorization_and_reports_capability(tmp_path) ->
             },
         )
         assert request.status_code == 200
-        assert client.get("/v1/approvals/approval-api-1").json()["status"] == "pending"
+        assert client.get("/v1/approvals/approval-api-1").status_code == 403
+
+        operator_headers = {
+            "Authorization": "Bearer secret",
+            "X-Operator-Id": "operator-api",
+        }
+        pending = client.get(
+            "/v1/approvals/approval-api-1",
+            headers=operator_headers,
+        )
+        assert pending.status_code == 200
+        assert pending.json()["status"] == "pending"
 
         unauthorized = client.post(
             "/v1/approvals/approval-api-1/decision",
@@ -154,17 +165,17 @@ def test_approval_api_requires_authorization_and_reports_capability(tmp_path) ->
 
         decision = client.post(
             "/v1/approvals/approval-api-1/decision",
-            headers={
-                "Authorization": "Bearer secret",
-                "X-Operator-Id": "operator-api",
-                "Idempotency-Key": "decision-api-1",
-            },
+            headers={**operator_headers, "Idempotency-Key": "decision-api-1"},
             json={"decision": "approved", "value": {"ticket": "CHG-2"}},
         )
         assert decision.status_code == 200
         assert decision.json()["status"] == "approved"
         assert decision.json()["operator_id"] == "operator-api"
-        listed = client.get("/v1/approvals", params={"status": "approved"})
+        listed = client.get(
+            "/v1/approvals",
+            params={"status": "approved"},
+            headers=operator_headers,
+        )
         assert listed.status_code == 200
         assert [item["approval_id"] for item in listed.json()] == ["approval-api-1"]
     services.close()

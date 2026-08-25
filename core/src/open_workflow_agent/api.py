@@ -237,16 +237,22 @@ def create_app(
     async def list_approvals(
         status: str | None = Query(default=None),
         limit: int = Query(default=100, ge=1, le=1000),
+        authorization: str | None = Header(default=None, alias="Authorization"),
+        operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
     ) -> list[dict[str, Any]]:
-        runtime_services.approvals.ensure_enabled()
+        runtime_services.approvals.authorize(authorization, operator_id)
         return [
             record.as_dict()
             for record in runtime_services.approvals.store.list(status=status, limit=limit)
         ]
 
     @app.get("/v1/approvals/{approval_id}")
-    async def get_approval(approval_id: str) -> dict[str, Any]:
-        runtime_services.approvals.ensure_enabled()
+    async def get_approval(
+        approval_id: str,
+        authorization: str | None = Header(default=None, alias="Authorization"),
+        operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
+    ) -> dict[str, Any]:
+        runtime_services.approvals.authorize(authorization, operator_id)
         record = runtime_services.approvals.store.get(approval_id)
         if record is None:
             raise ApprovalNotFound("approval not found", details={"approval_id": approval_id})
