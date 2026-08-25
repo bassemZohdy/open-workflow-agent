@@ -1,0 +1,17 @@
+document:
+  dsl: '1.0.3'
+  namespace: tests
+  name: fork
+  version: '1.0.0'
+do:
+  - parallel:
+      fork:
+        branches:
+          - do:
+              - left:
+                  set:
+                    left: true
+          - do:
+              - right:
+                  set:
+                    right: true

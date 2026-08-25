@@ -1,0 +1,17 @@
+document:
+  dsl: '1.0.3'
+  namespace: tests
+  name: switch
+  version: '1.0.0'
+do:
+  - route:
+      switch:
+        - when: ${ .kind == 'priority' }
+          then:
+            - set_result:
+                set:
+                  result: fast
+        - otherwise:
+            - set_result:
+                set:
+                  result: normal

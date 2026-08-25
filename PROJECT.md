@@ -16,8 +16,8 @@ Every invocation is a workflow invocation. When no workflow is configured, gener
 
 ## Repository Structure
 
-- `core/`: shared package and `src/open_workflow_agent/` modules.
-- `engines/adk/`, `engines/langgraph/`: engine packages, source, locks, and image-specific behavior.
+- `core/`: shared package, `pyproject.toml`, and `src/open_workflow_agent/` modules.
+- `engines/adk/`, `engines/langgraph/`: engine packages, source, independent `uv.lock` files, and image-specific behavior.
 - `runtime-catalog/`, `resources/`: built-in functions and Open Workflow resources.
 - `docker/`: separate ADK and LangGraph Dockerfiles.
 - `tests/contract/`, `tests/core/`, `tests/adk/`, `tests/langgraph/`, `tests/e2e/`: layered tests.
@@ -29,18 +29,23 @@ Use typed Python, strict Pydantic configuration models, four-space indentation, 
 
 ## Current Implementation Status
 
-The repository is initialized with directory scaffolding and context files only. No package manifests, runtime code, workflow schema resources, Dockerfiles, or test suite are implemented. Milestone 0 is not started.
+Milestone 0 core contracts and the current deterministic Portable Profile are implemented and verified. The repository now has strict configuration, workflow loading/validation/capability checks, default workflow generation, immutable plans and fingerprints, a catalog, engine SPI, common errors, invocation persistence, memory, knowledge indexing, protocol clients, and a FastAPI surface. ADK and LangGraph adapter boundaries and deterministic contract tests are present.
+
+The full upstream Open Workflow 1.0.3 schema is not yet vendored; the current validator is a local Portable Profile structural gate carrying the official schema identifier. Native ADK dynamic-workflow execution and native LangGraph compilation/checkpoint use are still pending; adapters currently use the shared deterministic reference executor, with an optional LangGraph bridge. Dockerfiles exist but cannot be built until a Docker daemon is available in the environment. Protocol clients currently provide secure HTTP-backed adapters rather than full protocol SDK implementations. The reference persistence backend is SQLite; configured datasource URLs are not yet wired to external databases.
 
 ## Build and Test Commands
 
-There are currently no runnable build or test commands. Once package manifests exist, run each package independently:
+Run the repository quality gates with:
 
 ```text
 uv sync
-pytest
-pytest tests/contract
+uv run ruff format core engines tests
+uv run ruff check .
+uv run mypy core/src
+uv run pytest -q
+uv run pytest tests/contract -q
 docker build -f docker/Dockerfile.adk .
 docker build -f docker/Dockerfile.langgraph .
 ```
 
-Run commands from the relevant package/repository context and never install dependencies during container startup.
+The Docker commands remain pending until the image definitions are added. Run engine dependency environments independently and never install dependencies during container startup.

@@ -1,0 +1,14 @@
+document:
+  dsl: '1.0.3'
+  namespace: tests
+  name: for
+  version: '1.0.0'
+do:
+  - each_item:
+      for:
+        each: item
+        in: ${ .items }
+        do:
+          - capture:
+              set:
+                last: '@item'

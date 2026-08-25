@@ -1,0 +1,14 @@
+document:
+  dsl: '1.0.3'
+  namespace: tests
+  name: retry
+  version: '1.0.0'
+do:
+  - response:
+      call: llm:1.0.0@default
+      with:
+        prompt: retryable
+      retry:
+        max_attempts: 1
+      timeout:
+        after: 1s
