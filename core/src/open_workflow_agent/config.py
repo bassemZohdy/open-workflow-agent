@@ -66,6 +66,11 @@ class PersistenceConfig(StrictModel):
     database: str = "/data/runtime.sqlite3"
 
 
+class ApprovalConfig(StrictModel):
+    enabled: bool = False
+    operator_token: str | None = None
+
+
 class ToolConfig(StrictModel):
     type: Literal["mcp", "openapi", "a2a"]
     name: str | None = None
@@ -91,6 +96,7 @@ class RuntimeConfig(StrictModel):
     embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     persistence: PersistenceConfig = Field(default_factory=PersistenceConfig)
+    approvals: ApprovalConfig = Field(default_factory=ApprovalConfig)
     tools: list[ToolConfig] = Field(default_factory=list)
     server: ServerConfig = Field(default_factory=ServerConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
