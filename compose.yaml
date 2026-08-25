@@ -1,0 +1,82 @@
+name: open-workflow-agent
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-owa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-owa-local-only}
+      POSTGRES_DB: ${POSTGRES_DB:-owa}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  adk:
+    profiles: ["adk"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.adk
+      args:
+        OWA_VERSION: ${OWA_VERSION:-0.1.0}
+        VCS_REF: ${VCS_REF:-local}
+    image: ${ADK_IMAGE:-owa-adk:local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      OWA__MODEL__PROVIDER: ${MODEL_PROVIDER:-fake}
+      OWA__MODEL__NAME: ${MODEL_NAME:-fake/default}
+      OWA__PERSISTENCE__DATASOURCE: postgresql://${POSTGRES_USER:-owa}:${POSTGRES_PASSWORD:-owa-local-only}@postgres:5432/${POSTGRES_DB:-owa}
+      OWA__KNOWLEDGE__PATH: /knowledge
+      OWA__SERVER__HOST: 0.0.0.0
+    ports:
+      - "${ADK_PORT:-8080}:8080"
+    volumes:
+      - adk_data:/data
+      - ./knowledge:/knowledge:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=256m
+    user: "10001:0"
+    restart: unless-stopped
+
+  langgraph:
+    profiles: ["langgraph"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.langgraph
+      args:
+        OWA_VERSION: ${OWA_VERSION:-0.1.0}
+        VCS_REF: ${VCS_REF:-local}
+    image: ${LANGGRAPH_IMAGE:-owa-langgraph:local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      OWA__MODEL__PROVIDER: ${MODEL_PROVIDER:-fake}
+      OWA__MODEL__NAME: ${MODEL_NAME:-fake/default}
+      OWA__PERSISTENCE__DATASOURCE: postgresql://${POSTGRES_USER:-owa}:${POSTGRES_PASSWORD:-owa-local-only}@postgres:5432/${POSTGRES_DB:-owa}
+      OWA__KNOWLEDGE__PATH: /knowledge
+      OWA__SERVER__HOST: 0.0.0.0
+    ports:
+      - "${LANGGRAPH_PORT:-8081}:8080"
+    volumes:
+      - langgraph_data:/data
+      - ./knowledge:/knowledge:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=256m
+    user: "10001:0"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  adk_data:
+  langgraph_data:

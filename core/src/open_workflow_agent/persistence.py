@@ -8,7 +8,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from .errors import WorkflowDefinitionChanged
+from .errors import InvocationStateError, WorkflowDefinitionChanged
+from .lifecycle import VALID_INVOCATION_TRANSITIONS
 from .storage import StorageConnection, open_storage
 
 
@@ -23,6 +24,8 @@ class ExecutionHandle:
     workflow_version: str
     workflow_fingerprint: str
     status: str = "running"
+    output: Any = None
+    error: dict[str, Any] | None = None
 
 
 class InvocationStore:
@@ -68,6 +71,13 @@ class InvocationStore:
         return ExecutionHandle(**json.loads(row[0])) if row else None
 
     def update(self, handle: ExecutionHandle, **changes: Any) -> ExecutionHandle:
+        requested_status = changes.get("status", handle.status)
+        allowed = VALID_INVOCATION_TRANSITIONS.get(handle.status, frozenset())
+        if requested_status not in allowed:
+            raise InvocationStateError(
+                f"invalid invocation transition: {handle.status} -> {requested_status}",
+                details={"from": handle.status, "to": requested_status},
+            )
         for key, value in changes.items():
             if hasattr(handle, key):
                 setattr(handle, key, value)

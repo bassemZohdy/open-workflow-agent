@@ -20,12 +20,14 @@ from jsonschema import Draft202012Validator
 from .catalog import CatalogContext, FunctionCatalog
 from .errors import (
     ExpressionError,
+    InvocationCancelled,
     ToolError,
     UnsupportedWorkflowFeature,
     WorkflowExecutionError,
     WorkflowSchemaError,
     WorkflowSemanticError,
 )
+from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
 
 DEFAULT_WORKFLOW: dict[str, Any] = {
@@ -45,6 +47,17 @@ SUPPORTED_PROTOCOL_CALLS = ("http", "mcp", "a2a", "openapi")
 SUPPORTED_FUNCTION_CALLS = ("agent:1.0.0@default", "llm:1.0.0@default")
 SUPPORTED_CALLS = {*SUPPORTED_PROTOCOL_CALLS, *SUPPORTED_FUNCTION_CALLS}
 DISABLED_TASKS = {"run"}
+
+
+class _NoCancellationToken:
+    def checkpoint(self) -> None:
+        return None
+
+    async def sleep(self, seconds: float) -> None:
+        await asyncio.sleep(seconds)
+
+    async def await_operation(self, operation: Any) -> Any:
+        return await operation
 
 
 def load_workflow(source: str | Path | Mapping[str, Any]) -> dict[str, Any]:
@@ -427,29 +440,30 @@ class WorkflowExecutor:
         self, plan: WorkflowPlan, input_data: Any, *, metadata: dict[str, Any] | None = None
     ) -> Any:
         workflow = plan.source
-        metadata = metadata or {}
+        metadata = dict(metadata or {})
+        metadata.setdefault("_lifecycle", LifecycleControl())
         event_context = {
             "invocation_id": metadata.get("invocation_id"),
             "session_id": metadata.get("session_id"),
             "workflow_name": plan.name,
             "workflow_version": plan.version,
             "engine": metadata.get("engine"),
-            "engine_execution_reference": metadata.get("engine_execution_reference"),
         }
         started = time.perf_counter()
-        self._emit("WorkflowStarted", event_context)
-        self._validate_data_schema(workflow.get("input"), input_data, "workflow input")
-        initial_data = input_data
-        input_spec = workflow.get("input")
-        if isinstance(input_spec, Mapping) and "from" in input_spec:
-            initial_data = self.expressions.evaluate(input_spec["from"], input_data)
+        self._emit("WorkflowStarted", {**event_context, "status": "running"})
         context = metadata
         state = ExecutionState(
-            data=copy.deepcopy(initial_data),
+            data=copy.deepcopy(input_data),
             context=context,
             variables={"context": context, "input": copy.deepcopy(input_data)},
         )
         try:
+            self._validate_data_schema(workflow.get("input"), input_data, "workflow input")
+            initial_data = input_data
+            input_spec = workflow.get("input")
+            if isinstance(input_spec, Mapping) and "from" in input_spec:
+                initial_data = self.expressions.evaluate(input_spec["from"], input_data)
+                state.data = copy.deepcopy(initial_data)
             workflow_timeout = _duration_seconds(workflow.get("timeout"))
             if workflow_timeout is None:
                 await self._run_tasks(plan.source.get("do", []), state)
@@ -463,7 +477,21 @@ class WorkflowExecutor:
                         "workflow timed out",
                         details={"timeout_seconds": workflow_timeout},
                     ) from exc
+        except InvocationCancelled as exc:
+            self._set_invocation_status(state, "cancelled")
+            self._emit(
+                "WorkflowCancelled",
+                {
+                    **event_context,
+                    "duration": time.perf_counter() - started,
+                    "status": "cancelled",
+                    "reason": exc.details.get("reason", "cancelled"),
+                    "error": _error_details(exc),
+                },
+            )
+            raise
         except Exception as exc:
+            self._set_invocation_status(state, "faulted")
             self._emit(
                 "WorkflowFaulted",
                 {
@@ -488,6 +516,7 @@ class WorkflowExecutor:
                 "status": "completed",
             },
         )
+        self._set_invocation_status(state, "completed")
         return result
 
     async def _run_tasks(
@@ -496,6 +525,7 @@ class WorkflowExecutor:
         tasks = list(task_list)
         index = 0
         while index < len(tasks):
+            self._token(state).checkpoint()
             item = tasks[index]
             if not isinstance(item, Mapping) or len(item) != 1:
                 raise WorkflowExecutionError(f"invalid task at sequence index {index}")
@@ -505,10 +535,26 @@ class WorkflowExecutor:
             before = copy.deepcopy(state.data)
             reference = f"{prefix}/{index}/{name}"
             state.variables["_task_reference"] = reference
+            state.variables["_task_name"] = str(name)
             task_started = time.perf_counter()
-            self._emit("TaskStarted", self._task_event(reference, name, state))
+            self._emit(
+                "TaskStarted",
+                {**self._task_event(reference, name, state), "status": "running"},
+            )
             try:
                 result = await self._run_with_policy(str(name), definition, state, reference)
+            except InvocationCancelled as exc:
+                self._emit(
+                    "TaskCancelled",
+                    {
+                        **self._task_event(reference, name, state),
+                        "duration": time.perf_counter() - task_started,
+                        "status": "cancelled",
+                        "reason": exc.details.get("reason", "cancelled"),
+                        "error": _error_details(exc),
+                    },
+                )
+                raise
             except Exception as exc:
                 if isinstance(exc, WorkflowExecutionError):
                     exc.details.setdefault("instance", reference)
@@ -587,18 +633,32 @@ class WorkflowExecutor:
         last_error: Exception | None = None
         for attempt in range(max(1, attempts)):
             try:
+                self._token(state).checkpoint()
+                self._emit(
+                    "TaskProgress",
+                    {
+                        **self._task_event(reference, name, state),
+                        "status": "running",
+                        "attempt": attempt + 1,
+                        "progress": {"phase": "executing"},
+                    },
+                )
                 operation = self._run_task(name, definition, state)
                 if timeout_seconds is not None:
                     try:
-                        return await asyncio.wait_for(operation, timeout_seconds)
+                        return await asyncio.wait_for(
+                            self._await_with_cancellation(operation, state), timeout_seconds
+                        )
                     except TimeoutError as exc:
                         raise WorkflowExecutionError(
                             f"task {name} timed out",
                             details={"task": name, "timeout_seconds": timeout_seconds},
                         ) from exc
-                return await operation
+                return await self._await_with_cancellation(operation, state)
             except Exception as exc:
                 last_error = exc
+                if isinstance(exc, InvocationCancelled):
+                    raise
                 if attempt + 1 < max(1, attempts):
                     self._emit(
                         "TaskRetried",
@@ -670,6 +730,8 @@ class WorkflowExecutor:
                     await self._run_tasks(_task_body(definition["try"]), state)
                     return state.data
                 except Exception as exc:
+                    if isinstance(exc, InvocationCancelled):
+                        raise
                     error = _error_details(exc)
                     state.variables["error"] = error
                     if not _catch_matches(catch, error, state, self.expressions):
@@ -679,11 +741,15 @@ class WorkflowExecutor:
                     ):
                         delay = _retry_delay(catch_retry, attempt)
                         if delay:
-                            await asyncio.sleep(delay)
+                            await self._token(state).sleep(delay)
                         self._emit(
                             "TaskRetried",
                             {
-                                "task_name": name,
+                                **self._task_event(
+                                    str(state.variables.get("_task_reference", "unknown-task")),
+                                    state.variables.get("_task_name", name),
+                                    state,
+                                ),
                                 "status": "retrying",
                                 "attempt": attempt + 1,
                                 "error": _error_details(exc),
@@ -700,8 +766,35 @@ class WorkflowExecutor:
             wait_value = self.expressions.evaluate(
                 definition["wait"], state.data, variables=state.variables
             )
-            seconds = _duration_seconds(wait_value) or 0
-            await asyncio.sleep(max(0.0, min(seconds, 300.0)))
+            seconds = max(0.0, min(_duration_seconds(wait_value) or 0, 300.0))
+            self._set_invocation_status(state, "waiting")
+            task_reference = str(state.variables.get("_task_reference", "unknown-task"))
+            wait_event = {
+                **self._task_event(task_reference, name, state),
+                "status": "waiting",
+                "progress": {"phase": "waiting", "seconds": seconds},
+            }
+            self._emit("TaskProgress", wait_event)
+            self._emit("TaskWaiting", wait_event)
+            self._emit("WorkflowWaiting", wait_event)
+            control = self._control(state)
+            resumed = False
+            if control is None:
+                await asyncio.sleep(seconds)
+            else:
+                resumed = await control.wait_or_resume(seconds)
+            self._token(state).checkpoint()
+            if control is not None and resumed:
+                state.variables["resume_input"] = copy.deepcopy(control.resume_input)
+            self._set_invocation_status(state, "running")
+            resume_event = {
+                **self._task_event(task_reference, name, state),
+                "status": "running",
+                "reason": "resume_requested" if resumed else "wait_elapsed",
+                "progress": {"phase": "resumed"},
+            }
+            self._emit("TaskProgress", resume_event)
+            self._emit("WorkflowResumed", resume_event)
             return state.data
         if "raise" in definition:
             raise_value = definition["raise"]
@@ -894,6 +987,27 @@ class WorkflowExecutor:
     def _emit(self, event_type: str, payload: dict[str, Any]) -> None:
         self.event_sink.emit(WorkflowEvent(event_type=event_type, **payload))
 
+    def _control(self, state: ExecutionState) -> LifecycleControl | None:
+        control = state.context.get("_lifecycle")
+        return control if isinstance(control, LifecycleControl) else None
+
+    def _token(self, state: ExecutionState) -> Any:
+        control = self._control(state)
+        if control is None:
+            return _NoCancellationToken()
+        return control.token
+
+    async def _await_with_cancellation(self, operation: Any, state: ExecutionState) -> Any:
+        control = self._control(state)
+        if control is None:
+            return await operation
+        return await control.token.await_operation(operation)
+
+    def _set_invocation_status(self, state: ExecutionState, status: str) -> None:
+        handle = state.context.get("_invocation_handle")
+        if handle is not None and self.services is not None:
+            self.services.invocations.update(handle, status=status)
+
     def _task_event(self, reference: str, name: Any, state: ExecutionState) -> dict[str, Any]:
         context = state.context
         return {
@@ -904,7 +1018,7 @@ class WorkflowExecutor:
             "task_name": str(name),
             "task_reference": reference,
             "engine": context.get("engine"),
-            "engine_execution_reference": context.get("engine_execution_reference"),
+            "operation_id": self._operation_id(state),
         }
 
     @staticmethod

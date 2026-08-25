@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Header, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -61,7 +61,8 @@ class RequestSizeLimitMiddleware:
 
 def _is_limited_path(path: str) -> bool:
     return path == "/v1/invoke" or (
-        path.startswith("/v1/invocations/") and path.endswith("/resume")
+        path.startswith("/v1/invocations/")
+        and (path.endswith("/resume") or path.endswith("/cancel"))
     )
 
 
@@ -193,7 +194,10 @@ def create_app(
         return result.as_dict()
 
     @app.post("/v1/invocations/{invocation_id}/resume")
-    async def resume(invocation_id: str, request: ResumeRequest) -> Any:
+    async def resume(
+        invocation_id: str,
+        request: ResumeRequest,
+    ) -> Any:
         handle = runtime_services.invocations.get(invocation_id)
         if handle is None:
             raise InvocationNotFound(
@@ -204,6 +208,19 @@ def create_app(
             result = await runtime_engine.resume(handle, request.input, plan)
         except OwaError as exc:
             return JSONResponse(status_code=exc.status_code, content={"error": exc.as_dict()})
+        return result.as_dict()
+
+    @app.post("/v1/invocations/{invocation_id}/cancel")
+    async def cancel(
+        invocation_id: str,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    ) -> Any:
+        handle = runtime_services.invocations.get(invocation_id)
+        if handle is None:
+            raise InvocationNotFound(
+                "invocation not found", details={"invocation_id": invocation_id}
+            )
+        result = await runtime_engine.cancel(handle, operation_id=idempotency_key)
         return result.as_dict()
 
     @app.post("/v1/admin/knowledge/reload")

@@ -77,3 +77,13 @@ class WorkflowDefinitionChanged(OwaError):
 class InvocationNotFound(OwaError):
     code = "invocation_not_found"
     status_code = 404
+
+
+class InvocationStateError(OwaError):
+    code = "invalid_invocation_state"
+    status_code = 409
+
+
+class InvocationCancelled(OwaError):
+    code = "invocation_cancelled"
+    status_code = 409

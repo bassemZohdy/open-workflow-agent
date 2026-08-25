@@ -231,6 +231,7 @@ Examples:
 ```text
 POST /v1/invoke
 POST /v1/invocations/{id}/resume
+POST /v1/invocations/{id}/cancel
 GET  /v1/capabilities
 GET  /health/live
 GET  /health/ready
@@ -1793,12 +1794,11 @@ It must not automatically be treated as authenticated security identity.
 }
 ```
 
-Possible states eventually include:
+The portable lifecycle state set includes:
 
 ```text
 running
 waiting
-suspended
 completed
 faulted
 cancelled
@@ -1885,6 +1885,8 @@ Example:
   ],
   "features": {
     "resume": true,
+    "cancellation": true,
+    "waiting": true,
     "streaming": false
   }
 }
@@ -2057,11 +2059,17 @@ Create a common internal event model:
 WorkflowStarted
 WorkflowCompleted
 WorkflowFaulted
+WorkflowWaiting
+WorkflowResumed
+WorkflowCancelled
 
 TaskStarted
 TaskCompleted
 TaskFaulted
 TaskRetried
+TaskProgress
+TaskWaiting
+TaskCancelled
 ```
 
 Initially these events can drive:

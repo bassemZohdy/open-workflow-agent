@@ -44,4 +44,8 @@ uv run --directory engines/langgraph --locked --extra sqlite --with pytest --wit
 uv run --locked pytest tests/core/test_protocols.py tests/contract/test_contract.py tests/contract/test_tools.py -q
 docker build -f docker/Dockerfile.adk .
 docker build -f docker/Dockerfile.langgraph .
+cp .env.example .env
+docker compose --profile adk up --build
+# or: docker compose --profile langgraph up --build
+docker compose down
 ```

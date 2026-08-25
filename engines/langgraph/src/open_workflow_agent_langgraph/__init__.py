@@ -3,6 +3,7 @@
 from typing import Any
 
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
+from open_workflow_agent.errors import InvocationCancelled
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.workflow import WorkflowPlan
 
@@ -21,6 +22,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
     engine_name = "langgraph"
 
     def __init__(self) -> None:
+        super().__init__()
         self.native = LangGraphFunctionalAdapter()
 
     async def initialize(self, services: Any) -> None:
@@ -41,78 +43,88 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
     ) -> InvocationResult:
         if not self.native.checkpointer and not self.native.database_path:
             return await super().invoke(workflow, invocation, input_data)
+        active = self._begin_active(invocation)
+        result: InvocationResult | None = None
         try:
             output = await self.native.invoke(
                 lambda value: self.executor.execute(
                     workflow,
                     value,
-                    metadata={
-                        "invocation_id": invocation.invocation_id,
-                        "session_id": invocation.session_id,
-                        "engine": invocation.engine,
-                        "engine_execution_reference": invocation.engine_execution_reference,
-                        "workflow_name": workflow.name,
-                        "workflow_version": workflow.version,
-                    },
+                    metadata=self._metadata(workflow, invocation, active),
                 ),
                 input_data,
                 thread_id=invocation.session_id,
             )
-            invocation.status = "completed"
-            self.services.invocations.update(invocation, status="completed")
-            return InvocationResult(
-                invocation.invocation_id, invocation.session_id, "completed", output
-            )
+            if active.control.token.cancelled or invocation.status == "cancelled":
+                result = self._stored_result(invocation)
+            else:
+                result = self._record_result(invocation, status="completed", output=output)
+            return result
+        except InvocationCancelled as exc:
+            result = self._record_result(invocation, status="cancelled", error=exc.as_dict())
+            return result
         except Exception as exc:
-            invocation.status = "faulted"
-            self.services.invocations.update(invocation, status="faulted")
             error = (
                 exc.as_dict()
                 if hasattr(exc, "as_dict")
                 else {"code": "workflow_execution_error", "message": str(exc), "details": {}}
             )
-            return InvocationResult(
-                invocation.invocation_id,
-                invocation.session_id,
-                "faulted",
-                error=error,
+            result = (
+                self._stored_result(invocation)
+                if invocation.status == "cancelled"
+                else self._record_result(invocation, status="faulted", error=error)
             )
+            return result
+        finally:
+            if result is not None:
+                self._finish_active(invocation, result)
+            else:
+                self._active.pop(invocation.invocation_id, None)
 
     async def resume(
         self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
     ) -> InvocationResult:
         self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+        active_result = await self._resume_active_or_terminal(handle, resume_input)
+        if active_result is not None:
+            return active_result
         if not self.native.checkpointer and not self.native.database_path:
-            return await super().resume(handle, resume_input, plan)
-        if handle.status not in {"running", "waiting", "suspended"}:
-            return await super().resume(handle, resume_input, plan)
+            return await PortableWorkflowEngine.resume(self, handle, resume_input, plan)
+        if handle.status == "waiting":
+            self._restart_resume_inputs[handle.invocation_id] = resume_input
+            self.services.invocations.update(handle, status="running")
+        if handle.status != "running":
+            return self._stored_result(handle)
+        active = self._begin_active(handle)
+        result: InvocationResult | None = None
         try:
             output = await self.native.resume(
                 lambda value: self.executor.execute(
                     plan,
                     value,
-                    metadata={
-                        "invocation_id": handle.invocation_id,
-                        "session_id": handle.session_id,
-                        "engine": handle.engine,
-                        "engine_execution_reference": handle.engine_execution_reference,
-                        "workflow_name": plan.name,
-                        "workflow_version": plan.version,
-                    },
+                    metadata=self._metadata(plan, handle, active),
                 ),
                 resume_input,
                 thread_id=handle.session_id,
             )
-            self.services.invocations.update(handle, status="completed")
-            return InvocationResult(handle.invocation_id, handle.session_id, "completed", output)
+            result = self._record_result(handle, status="completed", output=output)
+            return result
+        except InvocationCancelled as exc:
+            result = self._record_result(handle, status="cancelled", error=exc.as_dict())
+            return result
         except Exception as exc:
-            self.services.invocations.update(handle, status="faulted")
             error = (
                 exc.as_dict()
                 if hasattr(exc, "as_dict")
                 else {"code": "workflow_execution_error", "message": str(exc), "details": {}}
             )
-            return InvocationResult(handle.invocation_id, handle.session_id, "faulted", error=error)
+            result = self._record_result(handle, status="faulted", error=error)
+            return result
+        finally:
+            if result is not None:
+                self._finish_active(handle, result)
+            else:
+                self._active.pop(handle.invocation_id, None)
 
 
 __all__ = ["LangGraphWorkflowEngine"]

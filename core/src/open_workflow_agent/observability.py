@@ -16,10 +16,12 @@ class WorkflowEvent:
     task_name: str | None = None
     task_reference: str | None = None
     engine: str | None = None
-    engine_execution_reference: str | None = None
+    operation_id: str | None = None
     duration: float | None = None
     status: str | None = None
     attempt: int | None = None
+    progress: dict[str, Any] | None = None
+    reason: str | None = None
     error: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:

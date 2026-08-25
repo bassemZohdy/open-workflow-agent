@@ -28,7 +28,22 @@ uv run --locked --extra native python -m open_workflow_agent_adk.server
 uv run --locked --extra sqlite python -m open_workflow_agent_langgraph.server
 ```
 
-The API listens on port 8080 and exposes `/health/live`, `/health/ready`, `/v1/capabilities`, `/v1/invoke`, resume, and knowledge reload endpoints. Deployments mount configuration at `/config`, documents at `/knowledge`, and writable state at `/data`.
+The API listens on port 8080 and exposes `/health/live`, `/health/ready`, `/v1/capabilities`, `/v1/invoke`, invocation resume/cancel, and knowledge reload endpoints. Deployments mount configuration at `/config`, documents at `/knowledge`, and writable state at `/data`.
+
+Run the PostgreSQL-backed container stack with Docker Compose. The engine profiles are
+mutually selectable so ADK and LangGraph do not compete for the same host port:
+
+```text
+cp .env.example .env
+docker compose --profile adk up --build
+# or: docker compose --profile langgraph up --build
+docker compose down
+```
+
+`.env` is ignored and is intended for local values only. `.env.example` contains
+non-secret defaults; change the password and ports before using the stack outside a
+local development environment. Compose exposes PostgreSQL on `POSTGRES_PORT`, ADK
+on `ADK_PORT`, and LangGraph on `LANGGRAPH_PORT`.
 
 SQLite is the reference persistence backend. PostgreSQL is available through the locked `postgres` extra and uses separate namespaces for runtime metadata, memory, knowledge metadata, and each engine's native durable state:
 
@@ -41,7 +56,7 @@ The ADK image uses ADK's database session service with `asyncpg`; the LangGraph 
 
 ## Containers and Status
 
-Build independent images with `docker build -f docker/Dockerfile.adk .` or the LangGraph equivalent. Each image packages the pinned local FastEmbed/ONNX `all-MiniLM-L6-v2` model, runs as a non-root arbitrary UID, and has a 2 GiB CI size gate. GitHub Actions reproduces root, engine, Docker, CTK, and PostgreSQL gates on Ubuntu; green run [`32816720537`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32816720537) retained Docker and CTK provenance artifacts.
+Build independent images with `docker build -f docker/Dockerfile.adk .` or the LangGraph equivalent, or use the Compose profiles above. Each image packages the pinned local FastEmbed/ONNX `all-MiniLM-L6-v2` model, runs as a non-root arbitrary UID, and has a 2 GiB CI size gate. GitHub Actions reproduces root, engine, Docker, CTK, and PostgreSQL gates on Ubuntu; green run [`32816720537`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32816720537) retained Docker and CTK provenance artifacts.
 
 No automated test requires paid model/API access. The applicable remote CI, CTK, and PostgreSQL acceptance gates are green. See [Project Definition.md](Project%20Definition.md) for the specification, [PROJECT.md](PROJECT.md) for verified working context, [TODO.md](TODO.md) for active work, and [AGENTS.md](AGENTS.md) for contributor rules.
 
