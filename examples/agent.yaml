@@ -1,0 +1,23 @@
+agent:
+  name: support
+  instruction: |
+    Answer questions using available knowledge and tools.
+
+model:
+  provider: fake
+  name: fake/default
+
+workflow:
+  path: /config/workflow.yaml
+
+knowledge:
+  path: /knowledge
+  reload:
+    mode: startup
+
+memory:
+  enabled: auto
+
+server:
+  host: 0.0.0.0
+  port: 8080
