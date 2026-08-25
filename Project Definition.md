@@ -715,6 +715,33 @@ selected engine's native execution/checkpoint path. Common lifecycle events
 retain `parent_invocation_id` and `parent_task_reference`. Shell/script `run`
 variants and remote or external catalog resolution remain unsupported.
 
+### Deferred HITL and external-catalog contract
+
+The next lifecycle slice is contract-defined but not enabled as a portable
+feature. Open Workflow 1.0.3 has no separate `approval` task, so a future
+bounded approval flow must compose the existing event contract: an operator
+deployment may publish a request and a decision as ordinary events, while a
+workflow uses the standard `listen` task with a deterministic `one.with`
+filter. Event `data` is untrusted workflow input and must be validated by the
+workflow's input/output schemas before it affects a side effect.
+
+This does not currently constitute durable HITL. The process-local event bus
+has no approval inbox, replay, durable delivery, operator identity,
+authorization, decision expiry, or dedicated approval endpoint. A waiting
+invocation may be persisted as common lifecycle metadata, but a pending
+approval event is not guaranteed to survive process restart. `/v1/capabilities`
+therefore reports generic event/listen/wait support only; it must not claim
+approval or HITL support. Deployment authentication and authorization remain
+outside the portable core.
+
+External catalogs are disabled explicitly. `workflow.catalog` is limited to
+deployment-provided local definitions; an Open Workflow `use.catalogs` resource
+is rejected with `unsupported_workflow_feature` rather than fetched or silently
+ignored. A future external-catalog profile must first define endpoint allowlists,
+TLS/authentication, version and digest pinning, signature or trust policy,
+bounded responses, caching, persistence, failure behavior, and capability
+advertisement. It must never expose catalog credentials or engine-native state.
+
 ---
 
 # 18. Engine-Specific Capabilities Are Allowed

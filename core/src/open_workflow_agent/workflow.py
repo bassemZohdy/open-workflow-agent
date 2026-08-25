@@ -130,6 +130,7 @@ def validate_schema(workflow: Mapping[str, Any]) -> None:
 
 
 def validate_capabilities(workflow: Mapping[str, Any]) -> None:
+    _validate_catalog_capability(workflow)
     _validate_schedule_capability(workflow)
     for reference, definition in _walk_tasks(workflow.get("do", []), prefix="/do"):
         if not isinstance(definition, Mapping):
@@ -166,6 +167,17 @@ def validate_capabilities(workflow: Mapping[str, Any]) -> None:
             _validate_listen_capability(definition["listen"], reference)
         if "run" in definition:
             _validate_run_capability(definition["run"], reference)
+
+
+def _validate_catalog_capability(workflow: Mapping[str, Any]) -> None:
+    use = workflow.get("use")
+    catalogs = use.get("catalogs") if isinstance(use, Mapping) else None
+    if not isinstance(catalogs, Mapping) or not catalogs:
+        return
+    raise UnsupportedWorkflowFeature(
+        "external workflow catalogs are disabled",
+        details={"catalogs": sorted(str(name) for name in catalogs)},
+    )
 
 
 def _validate_schedule_capability(workflow: Mapping[str, Any]) -> None:

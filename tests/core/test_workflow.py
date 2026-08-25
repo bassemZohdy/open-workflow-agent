@@ -47,6 +47,14 @@ def test_workflow_schema_and_capability_errors():
     with pytest.raises(UnsupportedWorkflowFeature):
         compile_workflow(workflow)
 
+    external_catalog = {
+        "document": {"dsl": "1.0.3", "namespace": "x", "name": "x", "version": "1.0.0"},
+        "use": {"catalogs": {"remote": {"endpoint": "https://catalog.example.test"}}},
+        "do": [{"finish": {"set": {"done": True}}}],
+    }
+    with pytest.raises(UnsupportedWorkflowFeature, match="external workflow catalogs"):
+        compile_workflow(external_catalog)
+
 
 def test_expression_evaluator_supports_paths_templates_and_conditions():
     evaluator = ExpressionEvaluator()
