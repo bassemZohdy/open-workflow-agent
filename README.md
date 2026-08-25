@@ -56,7 +56,7 @@ The ADK image uses ADK's database session service with `asyncpg`; the LangGraph 
 
 ## Containers and Status
 
-Build independent images with `docker build -f docker/Dockerfile.adk .` or the LangGraph equivalent, or use the Compose profiles above. Each image packages the pinned local FastEmbed/ONNX `all-MiniLM-L6-v2` model, runs as a non-root arbitrary UID, and has a 2 GiB CI size gate. GitHub Actions reproduces root, engine, Docker, CTK, and PostgreSQL gates on Ubuntu; green run [`32831528433`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32831528433) retained Docker and CTK provenance artifacts.
+Build independent images with `docker build -f docker/Dockerfile.adk .` or the LangGraph equivalent, or use the Compose profiles above. Each image packages the pinned local FastEmbed/ONNX `all-MiniLM-L6-v2` model, runs as a non-root arbitrary UID, and has a 2 GiB CI size gate. GitHub Actions reproduces root, engine, Docker, CTK, and PostgreSQL gates on Ubuntu; green run [`32839633551`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32839633551) retained Docker and CTK provenance artifacts.
 
 No automated test requires paid model/API access. The applicable remote CI, CTK, and PostgreSQL acceptance gates are green. See [Project Definition.md](Project%20Definition.md) for the specification, [PROJECT.md](PROJECT.md) for verified working context, [TODO.md](TODO.md) for active work, and [AGENTS.md](AGENTS.md) for contributor rules.
 
