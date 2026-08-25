@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .config import RuntimeConfig
 from .engine import PortableWorkflowEngine, WorkflowEngine
-from .errors import InvocationNotFound, OwaError
+from .errors import EventValidationError, InvocationNotFound, OwaError
 from .services import RuntimeServices
 from .workflow import compile_workflow
 
@@ -60,7 +60,7 @@ class RequestSizeLimitMiddleware:
 
 
 def _is_limited_path(path: str) -> bool:
-    return path == "/v1/invoke" or (
+    return path in {"/v1/invoke", "/v1/events"} or (
         path.startswith("/v1/invocations/")
         and (path.endswith("/resume") or path.endswith("/cancel"))
     )
@@ -96,6 +96,12 @@ class ResumeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     input: Any = Field(default_factory=dict)
+
+
+class PublishEventRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    event: dict[str, Any]
 
 
 def create_app(
@@ -171,6 +177,17 @@ def create_app(
     @app.get("/v1/capabilities")
     async def capabilities() -> dict[str, Any]:
         return runtime_engine.capabilities().as_dict()
+
+    @app.post("/v1/events")
+    async def publish_event(request: PublishEventRequest) -> dict[str, Any]:
+        try:
+            envelope = await runtime_services.event_bus.publish(
+                request.event,
+                default_source="urn:open-workflow-agent:api",
+            )
+        except ValueError as exc:
+            raise EventValidationError(str(exc)) from exc
+        return envelope.as_dict()
 
     @app.post("/v1/invoke")
     async def invoke(request: InvokeRequest) -> Any:

@@ -54,6 +54,7 @@ class EngineCapabilities:
                 "streaming": self.streaming,
                 "cancellation": self.cancellation,
                 "waiting": self.waiting,
+                "events": {"emit": True, "listen": True, "durable": False},
             },
         }
 

@@ -17,6 +17,8 @@ class WorkflowEvent:
     task_reference: str | None = None
     engine: str | None = None
     operation_id: str | None = None
+    event_id: str | None = None
+    event_name: str | None = None
     duration: float | None = None
     status: str | None = None
     attempt: int | None = None

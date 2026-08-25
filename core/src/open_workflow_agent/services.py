@@ -7,6 +7,7 @@ from typing import Any
 
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
+from .events import EventBus, InMemoryEventBus
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
 from .memory import MemoryService
 from .observability import EventSink, InMemoryEventSink
@@ -24,6 +25,7 @@ class RuntimeServices:
         model: Model | None = None,
         database_root: str | Path | None = None,
         event_sink: EventSink | None = None,
+        event_bus: EventBus | None = None,
     ) -> None:
         self.config = config
         self.model = model or (
@@ -39,6 +41,7 @@ class RuntimeServices:
         self.database_root = Path(database_root) if database_root else None
         self.datasource = resolve_datasource(config.persistence.datasource)
         self.events = event_sink or InMemoryEventSink()
+        self.event_bus = event_bus or InMemoryEventBus()
         self.protocols = ProtocolServices()
         self.tools = ToolRegistry.from_config(config.tools, self.protocols)
         self.memory_enabled = config.memory.enabled is not False

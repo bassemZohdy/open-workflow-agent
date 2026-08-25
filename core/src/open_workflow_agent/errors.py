@@ -87,3 +87,8 @@ class InvocationStateError(OwaError):
 class InvocationCancelled(OwaError):
     code = "invocation_cancelled"
     status_code = 409
+
+
+class EventValidationError(OwaError):
+    code = "event_validation_error"
+    status_code = 400

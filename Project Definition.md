@@ -648,8 +648,6 @@ try
 retry
 timeout
 wait
-listen
-emit
 raise
 run workflow
 MCP
@@ -660,6 +658,17 @@ AsyncAPI
 ```
 
 Only after both engines pass the relevant contract tests should a capability become part of the portable profile.
+
+The bounded eventing slice is now supported by both engines:
+
+```text
+emit: publish one event envelope to the process-local event bus
+listen: await one matching event and read data, envelope, or raw JSON
+```
+
+The bus is non-durable and has no replay, broker, `all`/`any` strategy, or
+subscription iterator semantics. Those features remain unsupported until a
+later milestone proves their contracts.
 
 ---
 
@@ -1891,6 +1900,8 @@ Example:
     "fork",
     "try",
     "wait",
+    "listen",
+    "emit",
     "raise"
   ],
   "functions": [
@@ -1901,6 +1912,11 @@ Example:
     "resume": true,
     "cancellation": true,
     "waiting": true,
+    "events": {
+      "emit": true,
+      "listen": true,
+      "durable": false
+    },
     "streaming": false
   }
 }
@@ -2084,6 +2100,8 @@ TaskRetried
 TaskProgress
 TaskWaiting
 TaskCancelled
+EventEmitted
+EventReceived
 ```
 
 Initially these events can drive:
@@ -2097,6 +2115,19 @@ tests
 Later expose Open Workflow lifecycle CloudEvents.
 
 This provides observability independent of ADK/LangGraph's different event formats.
+
+Portable workflow eventing uses the official event properties (`id`, `source`,
+`type`, `time`, `subject`, content metadata, and `data`) in a common envelope.
+External injection is available through:
+
+```text
+POST /v1/events
+{ "event": { "type": "...", "data": {} } }
+```
+
+The endpoint and `emit` task publish to the selected process-local runtime; a
+`listen` task consumes one matching event. The API does not expose broker,
+checkpoint, or engine-native identifiers.
 
 ---
 
@@ -2648,8 +2679,6 @@ raise
 Potential:
 
 ```text
-listen
-emit
 CloudEvents
 schedule
 sub-workflows

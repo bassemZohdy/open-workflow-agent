@@ -21,13 +21,13 @@ Use strict typed Python, four-space indentation, exact dependency locks, shared 
 
 ## Verified Status
 
-Local root, core, contract, ADK, LangGraph, selected CTK, format, lint, mypy, lock, diff, Compose configuration, and PostgreSQL persistence checks pass. The full remote workflow also passed root build and wheel checks, both engine suites, the selected CTK subset, both Docker acceptance jobs, and PostgreSQL persistence acceptance after B-002 lifecycle coverage was added.
+Local root, core, contract, eventing, ADK, LangGraph, selected CTK, format, lint, mypy, lock, diff, Compose configuration, and PostgreSQL persistence checks pass. The full remote workflow also passed root build and wheel checks, both engine suites, the selected CTK subset, both Docker acceptance jobs, and PostgreSQL persistence acceptance after B-002 lifecycle coverage was added.
 
 The GitHub workflow is green on Ubuntu in remote run [`32829369754`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32829369754) for the B-002 implementation. It passed root tests/contracts, release metadata and all three lock checks, Compose profile validation, wheel resource validation, both image metadata and 2 GiB gates, both independent Docker health/invocation/knowledge gates, genuine stop/restart/resume across a container boundary for ADK and LangGraph, PostgreSQL common-store durability, and PostgreSQL acceptance for both engine images. The pinned CTK subset passed in both engine jobs and produced `ctk-adk-results` and `ctk-langgraph-results` artifacts containing test output, the repository commit, the pinned upstream CTK commit, and scenario hashes. SQLite remains the reference datasource; PostgreSQL common stores and ADK/LangGraph native PostgreSQL adapters are implemented behind locked `postgres` extras with isolated namespaces.
 
 ## Current Next Step
 
-B-003 in `TODO.md` is the next milestone. It prioritizes `listen`/`emit`, optional lifecycle CloudEvents, scheduling, sub-workflows, HITL, external catalogs, optional A2A exposure and streaming, and additional engines. These remain deferred; full MCP, A2A, OpenAPI, or Open Workflow ecosystem conformance remains unclaimed.
+B-003 in `TODO.md` is the current milestone. Its bounded `listen`/`emit` eventing slice is complete; lifecycle CloudEvents are next, followed by scheduling, sub-workflows, HITL, external catalogs, optional A2A exposure and streaming, and additional engines. Full MCP, A2A, OpenAPI, or Open Workflow ecosystem conformance remains unclaimed.
 
 ## Key Commands
 

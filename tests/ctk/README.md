@@ -8,9 +8,10 @@ their declared outputs, fault details, property-count assertions, and
 task-order assertions.
 
 This is an applicable Portable Profile subset, not a claim of full Open
-Workflow conformance. CTK scenarios requiring emit, flow, HTTP fixtures,
-OpenAPI, or other capabilities outside the current profile remain excluded
-until their runtime contracts are implemented.
+Workflow conformance. The pinned selected files do not include eventing
+scenarios, so `emit`/`listen` are covered by the shared eventing contract
+fixtures instead. CTK scenarios requiring flow, HTTP fixtures, OpenAPI, or
+other capabilities outside the current profile remain excluded.
 
 The selected subset passed for both engines in GitHub Actions run
 [`32816720537`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32816720537). Each engine job uploads test output plus provenance containing

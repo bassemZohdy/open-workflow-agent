@@ -28,7 +28,7 @@ uv run --locked --extra native python -m open_workflow_agent_adk.server
 uv run --locked --extra sqlite python -m open_workflow_agent_langgraph.server
 ```
 
-The API listens on port 8080 and exposes `/health/live`, `/health/ready`, `/v1/capabilities`, `/v1/invoke`, invocation resume/cancel, and knowledge reload endpoints. Deployments mount configuration at `/config`, documents at `/knowledge`, and writable state at `/data`.
+The API listens on port 8080 and exposes `/health/live`, `/health/ready`, `/v1/capabilities`, `/v1/invoke`, `/v1/events`, invocation resume/cancel, and knowledge reload endpoints. Deployments mount configuration at `/config`, documents at `/knowledge`, and writable state at `/data`.
 
 Run the PostgreSQL-backed container stack with Docker Compose. The engine profiles are
 mutually selectable so ADK and LangGraph do not compete for the same host port:
@@ -56,12 +56,12 @@ The ADK image uses ADK's database session service with `asyncpg`; the LangGraph 
 
 ## Containers and Status
 
-Build independent images with `docker build -f docker/Dockerfile.adk .` or the LangGraph equivalent, or use the Compose profiles above. Each image packages the pinned local FastEmbed/ONNX `all-MiniLM-L6-v2` model, runs as a non-root arbitrary UID, and has a 2 GiB CI size gate. GitHub Actions reproduces root, engine, Docker, CTK, and PostgreSQL gates on Ubuntu; green run [`32816720537`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32816720537) retained Docker and CTK provenance artifacts.
+Build independent images with `docker build -f docker/Dockerfile.adk .` or the LangGraph equivalent, or use the Compose profiles above. Each image packages the pinned local FastEmbed/ONNX `all-MiniLM-L6-v2` model, runs as a non-root arbitrary UID, and has a 2 GiB CI size gate. GitHub Actions reproduces root, engine, Docker, CTK, and PostgreSQL gates on Ubuntu; green run [`32829369754`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32829369754) retained Docker and CTK provenance artifacts.
 
 No automated test requires paid model/API access. The applicable remote CI, CTK, and PostgreSQL acceptance gates are green. See [Project Definition.md](Project%20Definition.md) for the specification, [PROJECT.md](PROJECT.md) for verified working context, [TODO.md](TODO.md) for active work, and [AGENTS.md](AGENTS.md) for contributor rules.
 
 ## Current support and roadmap
 
-The common core currently provides bounded HTTP, MCP, A2A, and OpenAPI clients for explicit workflow calls and configured agent tools. Explicit workflow calls and agent tools remain separate execution paths. These paths enforce endpoint validation, optional host allowlists, TLS verification, bounded responses, redirect policy, authentication abstraction, operation identifiers, idempotency headers, and common error translation. Portable lifecycle events cover invocation/task start, progress, wait, retry, fault, completion, cancellation, and resume; waiting, cancellation, restart/resume, and duplicate terminal operations are supported by both engines. `/v1/capabilities` reports the supported task, function, protocol, policy, resume, waiting, and cancellation surface. These are intentionally bounded adapters, not claims of full MCP, A2A, OpenAPI, or Open Workflow ecosystem conformance.
+The common core currently provides bounded HTTP, MCP, A2A, and OpenAPI clients for explicit workflow calls and configured agent tools. Explicit workflow calls and agent tools remain separate execution paths. These paths enforce endpoint validation, optional host allowlists, TLS verification, bounded responses, redirect policy, authentication abstraction, operation identifiers, idempotency headers, and common error translation. Portable lifecycle events cover invocation/task start, progress, wait, retry, fault, completion, cancellation, and resume. Portable eventing now supports `emit`, `listen` with one-event matching, and `/v1/events` injection through a process-local non-durable bus; durable replay, `all`/`any` strategies, and listener iteration are unsupported. `/v1/capabilities` reports the supported task, function, protocol, policy, resume, waiting, cancellation, and eventing surface. These are intentionally bounded adapters, not claims of full MCP, A2A, OpenAPI, or Open Workflow ecosystem conformance.
 
-The next milestone is **Deferred workflow lifecycle features**: prioritized `listen`/`emit`, optional CloudEvents, scheduling, sub-workflows, HITL, external catalogs, optional A2A exposure, streaming, and additional engines. The ordered plan is in [TODO.md](TODO.md); these features are not implemented yet.
+The next milestone is **Lifecycle CloudEvents**: an optional, versioned CloudEvents boundary over the common lifecycle/event model. Scheduling, sub-workflows, HITL, external catalogs, optional A2A exposure, streaming, and additional engines remain deferred. The ordered plan is in [TODO.md](TODO.md).

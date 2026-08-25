@@ -42,7 +42,19 @@ DEFAULT_WORKFLOW: dict[str, Any] = {
 
 OFFICIAL_SCHEMA_RELATIVE_PATH = Path("resources/open-workflow/1.0.3/workflow.yaml")
 
-SUPPORTED_TASKS = ("do", "call", "set", "switch", "for", "fork", "try", "wait", "raise")
+SUPPORTED_TASKS = (
+    "do",
+    "call",
+    "set",
+    "switch",
+    "for",
+    "fork",
+    "try",
+    "wait",
+    "listen",
+    "emit",
+    "raise",
+)
 SUPPORTED_PROTOCOL_CALLS = ("http", "mcp", "a2a", "openapi")
 SUPPORTED_FUNCTION_CALLS = ("agent:1.0.0@default", "llm:1.0.0@default")
 SUPPORTED_CALLS = {*SUPPORTED_PROTOCOL_CALLS, *SUPPORTED_FUNCTION_CALLS}
@@ -146,6 +158,10 @@ def validate_capabilities(workflow: Mapping[str, Any]) -> None:
                     )
         for task_list in _nested_task_lists(definition):
             validate_capabilities({"do": task_list})
+        if "emit" in definition:
+            _validate_emit_capability(definition["emit"], reference)
+        if "listen" in definition:
+            _validate_listen_capability(definition["listen"], reference)
 
 
 def compile_workflow(source: str | Path | Mapping[str, Any] | None = None) -> WorkflowPlan:
@@ -709,6 +725,10 @@ class WorkflowExecutor:
                     or self._operation_id(state),
                 }
             return await self._call(str(definition["call"]), payload, state)
+        if "emit" in definition:
+            return await self._run_emit(definition["emit"], state)
+        if "listen" in definition:
+            return await self._run_listen(definition["listen"], state)
         if "switch" in definition:
             return await self._run_switch(definition["switch"], state)
         if "for" in definition:
@@ -934,6 +954,108 @@ class WorkflowExecutor:
             return merged
         return results
 
+    async def _run_emit(self, definition: Any, state: ExecutionState) -> Any:
+        if self.services is None or not hasattr(self.services, "event_bus"):
+            raise WorkflowExecutionError("event service unavailable for emit task")
+        if not isinstance(definition, Mapping):
+            raise WorkflowSemanticError("emit configuration must be an object")
+        event = definition.get("event")
+        properties = event.get("with") if isinstance(event, Mapping) else None
+        if not isinstance(properties, Mapping):
+            raise WorkflowSemanticError("emit event.with must be an object")
+        evaluated = self.expressions.evaluate(properties, state.data, variables=state.variables)
+        if not isinstance(evaluated, Mapping):
+            raise WorkflowSemanticError("emit event.with must evaluate to an object")
+        try:
+            envelope = await self.services.event_bus.publish(
+                evaluated,
+                default_source=self._default_event_source(state),
+            )
+        except ValueError as exc:
+            raise WorkflowSemanticError(str(exc)) from exc
+        task_reference = str(state.variables.get("_task_reference", "unknown-task"))
+        task_name = state.variables.get("_task_name", "emit")
+        self._emit(
+            "EventEmitted",
+            {
+                **self._task_event(task_reference, task_name, state),
+                "status": "completed",
+                "event_id": envelope.id,
+                "event_name": envelope.type,
+            },
+        )
+        return state.data
+
+    async def _run_listen(self, definition: Any, state: ExecutionState) -> Any:
+        if self.services is None or not hasattr(self.services, "event_bus"):
+            raise WorkflowExecutionError("event service unavailable for listen task")
+        if not isinstance(definition, Mapping):
+            raise WorkflowSemanticError("listen configuration must be an object")
+        if not isinstance(definition.get("to"), Mapping):
+            raise WorkflowSemanticError("listen.to must be an object")
+        strategy = self.expressions.evaluate(
+            definition["to"], state.data, variables=state.variables
+        )
+        if not isinstance(strategy, Mapping):
+            raise WorkflowSemanticError("listen.to must evaluate to an object")
+        read = definition.get("read", "data")
+        if read not in {"data", "envelope", "raw"}:
+            raise WorkflowSemanticError(f"unsupported listen read mode: {read}")
+        task_reference = str(state.variables.get("_task_reference", "unknown-task"))
+        task_name = state.variables.get("_task_name", "listen")
+        self._set_invocation_status(state, "waiting")
+        waiting_event = {
+            **self._task_event(task_reference, task_name, state),
+            "status": "waiting",
+            "progress": {"phase": "listening"},
+        }
+        self._emit("TaskProgress", waiting_event)
+        self._emit("TaskWaiting", waiting_event)
+        self._emit("WorkflowWaiting", waiting_event)
+        envelope = await self._await_with_cancellation(
+            self.services.event_bus.receive(strategy), state
+        )
+        self._token(state).checkpoint()
+        state.variables["event"] = envelope.as_dict()
+        self._set_invocation_status(state, "running")
+        event_context = {
+            **self._task_event(task_reference, task_name, state),
+            "status": "completed",
+            "event_id": envelope.id,
+            "event_name": envelope.type,
+        }
+        self._emit("EventReceived", event_context)
+        self._emit(
+            "TaskProgress",
+            {
+                **event_context,
+                "status": "running",
+                "reason": "event_received",
+                "progress": {"phase": "event_received"},
+            },
+        )
+        self._emit(
+            "WorkflowResumed",
+            {
+                **self._task_event(task_reference, task_name, state),
+                "status": "running",
+                "reason": "event_received",
+                "event_id": envelope.id,
+                "event_name": envelope.type,
+            },
+        )
+        if read == "data":
+            return envelope.data
+        if read == "envelope":
+            return envelope.as_dict()
+        return envelope.raw()
+
+    @staticmethod
+    def _default_event_source(state: ExecutionState) -> str:
+        name = state.context.get("workflow_name", "workflow")
+        version = state.context.get("workflow_version", "1.0.0")
+        return f"urn:open-workflow-agent:{name}:{version}"
+
     @staticmethod
     def _apply_transition(transition: Any, state: ExecutionState) -> None:
         if transition is None or transition == "continue":
@@ -1034,6 +1156,32 @@ def _merge(left: Any, right: Any) -> Any:
         merged.update(right)
         return merged
     return right
+
+
+def _validate_emit_capability(definition: Any, reference: str) -> None:
+    if not isinstance(definition, Mapping):
+        raise WorkflowSemanticError(f"emit configuration must be an object at {reference}")
+    event = definition.get("event")
+    if not isinstance(event, Mapping) or not isinstance(event.get("with"), Mapping):
+        raise WorkflowSemanticError(f"emit requires event.with at {reference}")
+
+
+def _validate_listen_capability(definition: Any, reference: str) -> None:
+    if not isinstance(definition, Mapping):
+        raise WorkflowSemanticError(f"listen configuration must be an object at {reference}")
+    strategy = definition.get("to")
+    if not isinstance(strategy, Mapping) or set(strategy) != {"one"}:
+        raise UnsupportedWorkflowFeature(
+            "listen currently supports only the one-event strategy",
+            details={"reference": reference, "supported": ["one"]},
+        )
+    selected = strategy.get("one")
+    if not isinstance(selected, Mapping) or not isinstance(selected.get("with"), Mapping):
+        raise WorkflowSemanticError(f"listen.one.with is required at {reference}")
+    if "foreach" in definition:
+        raise UnsupportedWorkflowFeature(
+            "listen foreach iteration is not enabled", details={"reference": reference}
+        )
 
 
 def _resolve_protocol_endpoints(

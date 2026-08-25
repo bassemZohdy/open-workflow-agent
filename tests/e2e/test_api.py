@@ -27,6 +27,17 @@ async def test_invoke_capabilities_health_and_reload(tmp_path):
             assert {"try", "wait", "raise"} <= set(capabilities["tasks"])
             assert capabilities["features"]["cancellation"] is True
             assert capabilities["features"]["waiting"] is True
+            assert capabilities["features"]["events"] == {
+                "emit": True,
+                "listen": True,
+                "durable": False,
+            }
+            event = await client.post(
+                "/v1/events",
+                json={"event": {"id": "api-event-1", "type": "api.test", "data": {"ok": True}}},
+            )
+            assert event.status_code == 200
+            assert event.json()["id"] == "api-event-1"
             result = await client.post("/v1/invoke", json={"input": {"question": "hi"}})
             assert result.status_code == 200
             assert result.json()["status"] == "completed"
