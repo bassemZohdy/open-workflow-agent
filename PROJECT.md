@@ -2,7 +2,7 @@
 
 ## Source of Truth and Current Phase
 
-`Project Definition.md` is authoritative; `AGENTS.md` contains mandatory contributor rules and `TODO.md` is the active backlog. Core implementation, local acceptance, remote CI/release verification, the applicable CTK gate, and configured PostgreSQL persistence acceptance are complete. The current phase is Milestone 7: Extended Workflow Calls and Portable Profile conformance.
+`Project Definition.md` is authoritative; `AGENTS.md` contains mandatory contributor rules and `TODO.md` is the active backlog. Core implementation, local acceptance, remote CI/release verification, the applicable CTK gate, configured PostgreSQL persistence acceptance, and B-001 are complete. The current phase is B-002: Lifecycle and operational semantics.
 
 ## Architecture
 
@@ -21,13 +21,13 @@ Use strict typed Python, four-space indentation, exact dependency locks, shared 
 
 ## Verified Status
 
-Local root, core, contract, ADK, LangGraph, selected CTK, format, lint, mypy, lock, build, and schema-wheel checks pass. Local images are below the 2 GiB gate: ADK is approximately 202 MB and LangGraph approximately 198 MB. Both pass local health, capabilities, FakeModel, mounted-knowledge, read-only-root, arbitrary-UID, offline-search, reload, restart, and stop/restart/resume acceptance. The original images were approximately 3.06 GB and 3.05 GB; CUDA/Torch and the Sentence-Transformers dependency graph were removed in favor of FastEmbed/ONNX and a packaged local model.
+Local root, core, contract, ADK, LangGraph, selected CTK, format, lint, mypy, lock, and diff checks pass. The full remote workflow also passed root build and wheel checks, both engine suites, the selected CTK subset, both Docker acceptance jobs, and PostgreSQL persistence acceptance.
 
-The GitHub workflow is green on Ubuntu in remote run `32807640820` for the current `main` commit. It passed root tests/contracts, release metadata and all three lock checks, wheel resource validation, both image metadata and 2 GiB gates, both independent Docker health/invocation/knowledge gates, genuine stop/restart/resume across a container boundary for ADK and LangGraph, PostgreSQL common-store durability, and PostgreSQL acceptance for both engine images. The run retained four Docker log artifacts. The pinned CTK subset passed in both engine jobs and produced `ctk-adk-results` and `ctk-langgraph-results` artifacts containing test output, the repository commit, the pinned upstream CTK commit, and scenario hashes. SQLite remains the reference datasource; PostgreSQL common stores and ADK/LangGraph native PostgreSQL adapters are implemented behind locked `postgres` extras with isolated namespaces.
+The GitHub workflow is green on Ubuntu in remote run `32816463784` for the B-001 implementation commit. It passed root tests/contracts, release metadata and all three lock checks, wheel resource validation, both image metadata and 2 GiB gates, both independent Docker health/invocation/knowledge gates, genuine stop/restart/resume across a container boundary for ADK and LangGraph, PostgreSQL common-store durability, and PostgreSQL acceptance for both engine images. The pinned CTK subset passed in both engine jobs and produced `ctk-adk-results` and `ctk-langgraph-results` artifacts containing test output, the repository commit, the pinned upstream CTK commit, and scenario hashes. SQLite remains the reference datasource; PostgreSQL common stores and ADK/LangGraph native PostgreSQL adapters are implemented behind locked `postgres` extras with isolated namespaces.
 
 ## Current Next Step
 
-Milestone 7 is a conformance/hardening phase, not an engine redesign. The runtime already has bounded common protocol clients and policy execution. B-001 in `TODO.md` will make their portable contracts explicit, test request/response/error semantics identically on both engines, reconcile the capabilities endpoint, and expand CTK only where the declared Portable Profile supports it. Full MCP, A2A, or OpenAPI ecosystem conformance must not be claimed until those contract tests exist.
+B-002 in `TODO.md` is the next milestone. It will define common lifecycle events and portable cancellation, waiting, restart/resume, and idempotent-side-effect behavior, then add the operator-facing cross-engine test matrix. It must not expose engine-specific checkpoint representations. Full MCP, A2A, OpenAPI, or Open Workflow ecosystem conformance remains unclaimed.
 
 ## Key Commands
 

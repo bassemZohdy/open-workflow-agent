@@ -13,7 +13,8 @@ OpenAPI, or other capabilities outside the current profile remain excluded
 until their runtime contracts are implemented.
 
 The selected subset passed for both engines in GitHub Actions run
-`32807640820`. Each engine job uploads test output plus provenance containing
+`32816463784`. Each engine job uploads test output plus provenance containing
 the repository commit, this pinned upstream CTK commit, and SHA-256 hashes for
-the selected scenario files. Expansion is tracked in `TODO.md` B-001 and must
-remain limited to scenarios supported by the declared Portable Profile.
+the selected scenario files. Further expansion is deferred to later backlog
+items and must remain limited to scenarios supported by the declared Portable
+Profile.
