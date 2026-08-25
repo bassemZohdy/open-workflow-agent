@@ -16,6 +16,8 @@
 ### A-001 - Remote CI and release acceptance (P0)
 
 - [ ] Diagnose and fix the failed remote run `32804388684`: root `Tests` and both Docker acceptance jobs failed while the ADK/LangGraph engine jobs passed.
+- [ ] Normalize POSIX absolute SQLite URLs consistently (`sqlite:////tmp/...` must resolve to `/tmp/...`); the current Windows-only test did not expose this Ubuntu failure.
+- [ ] Give CI containers enough writable `/tmp` space for the packaged offline FastEmbed cache; the current 64 MiB tmpfs causes startup `No space left on device` failures.
 - [ ] Run the GitHub Actions workflow on push and pull request and verify every Ubuntu job passes from a clean checkout.
 - [ ] Verify remote wheel contents, image tags/version metadata, exact lock inputs, image-size gate, and container acceptance.
 - [ ] Add a Docker acceptance job that invokes a resumable workflow, stops each engine container, starts a new container with the persisted `/data`, resumes the same invocation, and asserts completion for both engines.
