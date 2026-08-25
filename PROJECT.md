@@ -21,7 +21,7 @@ Every invocation is a workflow invocation. When no workflow is configured, gener
 - `runtime-catalog/`, `resources/`: built-in functions and Open Workflow resources.
 - `docker/`: separate ADK and LangGraph Dockerfiles.
 - `tests/contract/`, `tests/core/`, `tests/adk/`, `tests/langgraph/`, `tests/e2e/`: layered tests.
-- `docs/`, `examples/`: supporting documentation and fixtures.
+- `docs/` and `examples/`: reserved for future supporting material.
 
 ## Development Conventions
 
@@ -29,9 +29,22 @@ Use typed Python, strict Pydantic configuration models, four-space indentation, 
 
 ## Current Implementation Status
 
-Milestone 0 core contracts and the current deterministic Portable Profile are implemented and verified. The repository now has strict configuration, workflow loading/validation/capability checks, default workflow generation, immutable plans and fingerprints, a catalog, engine SPI, common errors, invocation persistence, memory, knowledge indexing, protocol clients, and a FastAPI surface. ADK and LangGraph adapter boundaries, native engine integrations, and deterministic contract tests are present. The latest root quality run is 30 passed/2 skipped; both engine environments pass 14 tests each.
+The implementation contains the M0–M7 core scope: strict configuration, workflow loading/default generation, a typed immutable plan, catalog functions, Portable Profile execution, ADK and LangGraph adapter/native paths, knowledge and memory services, invocation persistence/resume APIs, protocol clients, configured tool definitions, and the HTTP surface. The latest verified quality run was 30 root tests passed/2 skipped, 12 contract tests passed, and 14 tests passed in each engine environment.
 
-The full upstream Open Workflow 1.0.3 schema is not yet vendored; the current validator is a local Portable Profile structural gate carrying the official schema identifier. ADK 2.7.1 native dynamic execution and SQLite session restart/resume pass in the engine environment. LangGraph invokes the native Functional API with an optional SQLite checkpointer and retains the deterministic reference fallback. Dockerfiles exist but cannot be built until a Docker daemon is available in the environment. Protocol clients currently provide secure HTTP-backed adapters rather than full protocol SDK implementations. The reference persistence backend is SQLite; configured datasource URLs are not yet wired to external databases.
+The milestones are not yet complete against the full specification. The current schema validator is a local Portable Profile structural gate; the exact upstream Open Workflow 1.0.3 schema is not vendored. Native tests restart services after a completed invocation rather than proving interrupted container resume. The Dockerfiles have not been validated and currently need packaging fixes so each image installs its own engine/native dependencies independently. Knowledge uses a deterministic hash embedding provider instead of a pinned local embedding model. Configured tools are registered centrally but are not yet wired through real engine-native tool-call loops. Common lifecycle events/task-level observability, request-size/readiness enforcement, protocol authentication/idempotency, and full Portable Profile fixture parity remain backlog work.
+
+ADK 2.7.1 dynamic execution and LangGraph Functional API paths are available in their engine environments, with a deterministic reference fallback for core-only environments. Protocol clients are secure HTTP-backed adapters rather than full protocol SDK implementations. SQLite is the reference persistence backend; configured external datasource URLs are not yet wired to external databases. Public wording must remain “Open Workflow 1.0.3 based runtime” / “supports OWA Portable Profile v1”, not full Open Workflow conformance.
+
+## Reviewed Backlog Priorities
+
+Work is tracked in `TODO.md` by dependency and priority:
+
+1. `B-001` — vendor and enforce the exact upstream schema.
+2. `B-002` — make the ADK and LangGraph images independently buildable and runnable.
+3. `B-003`/`B-004` — complete image-based knowledge and interrupted-resume acceptance.
+4. `B-005`/`B-006`/`B-007` — finish contract parity, the pinned embedding model, and native agent tools.
+5. `B-008`/`B-009`/`B-010` — add observability and runtime/security hardening.
+6. `B-011` — add the Open Workflow CTK gate after schema and fixture parity.
 
 ## Build and Test Commands
 
@@ -48,4 +61,4 @@ docker build -f docker/Dockerfile.adk .
 docker build -f docker/Dockerfile.langgraph .
 ```
 
-The package build passes. Docker image commands are defined but could not be executed because no Docker daemon is available in this environment. Run engine dependency environments independently and never install dependencies during container startup. Engine-specific gates use `uv run --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract -q` from `engines/adk`, with the analogous `tests/langgraph` command from `engines/langgraph`.
+The package build passes. Docker image commands are currently blocked by the unavailable daemon and remain a backlog acceptance gate. Run engine dependency environments independently and never install dependencies during container startup. Engine-specific gates use `uv run --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract -q` from `engines/adk`, with the analogous `tests/langgraph` command from `engines/langgraph`.
