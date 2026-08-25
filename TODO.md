@@ -1,46 +1,52 @@
-# Active Implementation Plan
+# Open Workflow Agent Backlog
 
-`Project Definition.md` is authoritative. This file contains only active work and a concise verified summary.
+`Project Definition.md` is authoritative. `AGENTS.md` defines repository rules. This file is the concise execution backlog; completed work is retained as history so active tasks stay actionable.
 
-## Verified Milestones
+## Current Phase
 
-- [x] Framework-neutral core, official Open Workflow 1.0.3 schema validation, Portable Profile gate, shared semantics, API hardening, protocol security, observability, tools, and deterministic tests.
-- [x] Independently packaged ADK and LangGraph engines with exact locks, native persistence, multi-stage images, non-root execution, and no startup installation.
-- [x] FastEmbed/ONNX offline knowledge support with mounted-folder reload, deletion, unchanged-manifest reuse, restart, and deterministic test providers.
-- [x] Local container acceptance for health/readiness, capabilities, FakeModel invocation, mounts, arbitrary UID, read-only root, configured tools, state externalization, and genuine stop/restart/resume for both engines.
-- [x] Common memory tools with cross-engine add/search/delete and persistence coverage.
-- [x] Pinned applicable CTK subset (`do`, `set`, `switch`, `for`) integrated with both engine contract suites and passing locally.
+**Milestone 7 — Extended Workflow Calls and Portable Profile conformance.**
 
-## Active Work (Dependency Order)
+The next step is to make the existing bounded HTTP/MCP/A2A/OpenAPI adapters and workflow policies (`try`, `retry`, `timeout`, `wait`, and `raise`) explicit, capability-accurate, and demonstrably equivalent across ADK and LangGraph. This is a conformance and hardening milestone; it must preserve the framework-neutral core, engine-native durability, and Open Workflow 1.0.3 contract.
 
-### A-001 - Remote CI and release acceptance (P0)
+## Completed Work
 
-- [x] Re-run the workflow after the local POSIX SQLite normalization and CI tmpfs-size fixes; verify root `Tests` and both Docker acceptance jobs pass from a clean checkout.
-- [x] Verify the CI Docker containers have enough writable `/tmp` space for the packaged offline FastEmbed cache and retain useful failure logs.
-- [x] Verify the newly added CI stop/restart/resume step crosses a real container boundary for both engines and passes on GitHub-hosted Ubuntu runners.
-- [x] Verify remote wheel contents, image tags/version metadata, exact lock inputs, image-size gate, and container acceptance.
-- Acceptance: the workflow is green and reproducible on GitHub-hosted runners.
+- **A-001 — Remote CI and release acceptance:** Ubuntu CI is green from a clean checkout. Root tests/contracts, exact lock checks, wheel resource validation, release/image metadata, image-size gates, Docker health/invocation/knowledge acceptance, retained logs, and real stop/restart/resume acceptance pass for both engines.
+- **A-002 — CTK compatibility gate:** the selected Portable Profile subset (`do`, `set`, `switch`, `for`) passes in both engine jobs. The pinned upstream CTK commit, repository commit, scenario hashes, and test output are uploaded as `ctk-adk-results` and `ctk-langgraph-results` artifacts.
+- **A-003 — Configured external persistence:** locked PostgreSQL support is implemented for common invocation metadata, memory, and knowledge metadata, with isolated namespaces and engine-native ADK/LangGraph persistence. Unit/integration tests and Docker restart acceptance pass for both images; unsupported datasource schemes fail explicitly.
+- **Local verification:** root suite `83 passed, 6 skipped`; Ruff, mypy, lock checks, wheel checks, engine suites, and local container gates pass.
 
-### A-002 - CTK compatibility gate (P1)
+Evidence: green GitHub Actions run [`32807640820`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32807640820) on the current `main` documentation commit.
 
-- [x] Verify the selected CTK subset in a green remote workflow and reconcile capability wording with actual coverage.
-- [ ] Expand coverage only for scenarios supported by the implemented Portable Profile and declared capabilities.
-- [x] Preserve pinned CTK provenance and upload scenario/test output as a CI artifact for compatibility review.
-- Acceptance: applicable CTK results are reproducible in CI without claiming unsupported scenarios. Green run: `32807385884`; artifacts: `ctk-adk-results`, `ctk-langgraph-results`.
+## Active Backlog — Ordered
 
-### A-003 - Configured external persistence (P2)
+### B-001 — Milestone 7: Extended Workflow Calls and conformance (P1)
 
-- [x] Add a locked PostgreSQL-capable datasource abstraction for common invocation metadata, memory, and knowledge metadata stores; keep SQLite as the reference backend.
-- [x] Add explicit, separate table/schema namespaces for invocation metadata, memory, knowledge metadata, and each engine's native durable state.
-- [x] Integrate engine-native PostgreSQL durability where the pinned ADK and LangGraph APIs support it; otherwise document and test the closest architecture-compatible adapter without sharing checkpoint representations.
-- [x] Add deterministic unit/contract coverage and Docker PostgreSQL acceptance for persistence across service restart and for both engine images.
-- [x] Keep unsupported datasource URLs failing explicitly until their backend and isolation tests exist.
-- Acceptance: configured datasource behavior is durable, explicit, isolated, and architecture-compatible. Green run: `32807385884`.
+Goal: provide a precise, portable contract for supported workflow calls and control-flow policies without claiming protocol features that are not implemented.
 
-## Deferred Future Candidates
+- Inventory the implemented workflow-call and policy behavior against the official Open Workflow 1.0.3 schema and the declared Portable Profile.
+- Add shared fixtures and contract assertions for HTTP, MCP, A2A, and OpenAPI workflow calls, including request shape, response mapping, operation identifiers/idempotency headers, timeout, redirect, response-size, authentication, and error translation.
+- Keep configured agent tools separate from explicit workflow calls; test both paths on ADK and LangGraph with identical inputs and expected outputs.
+- Complete and test `try`, retry limits, timeout behavior, `wait`, and `raise`, including faulted, retried, waiting, and resumed invocation states where the engine supports them.
+- Reconcile `/v1/capabilities` with the actual supported task/function/protocol surface and add a contract test preventing under- or over-reporting.
+- Expand the pinned CTK subset only for scenarios supported by the implemented Portable Profile; preserve upstream commit pinning, scenario hashes, and CI artifacts.
+- Run local root/engine suites and the full Ubuntu workflow; retain protocol/CTK artifacts and document any intentionally unsupported scenario.
 
-`listen`, `emit`, CloudEvents, scheduling, sub-workflows, external catalogs, HITL, A2A exposure, streaming, and additional engines.
+Acceptance: both engines produce equivalent results for the shared fixtures; unsupported protocol/task features fail explicitly; capabilities, docs, and CTK coverage agree; CI is green.
 
-## Explicit Non-Goals
+### B-002 — Lifecycle and operational semantics (P2)
 
-Do not build a visual designer, custom workflow DSL, BPMN engine, distributed scheduler, custom LLM/MCP/A2A protocols, enterprise vector database, multi-tenant UI, arbitrary Python plugins, or arbitrary shell execution in the initial project.
+- Map common invocation/task events to stable structured logs and metrics without exposing engine-specific checkpoint representations.
+- Define cancellation and waiting-state behavior for long-running calls, including restart/resume boundaries and idempotent side effects.
+- Add an operator-facing test matrix for fault, retry, timeout, cancellation, resume, and duplicate-operation handling.
+
+### B-003 — Deferred workflow lifecycle features (P3)
+
+- Evaluate `listen`, `emit`, lifecycle CloudEvents, scheduling, sub-workflows, external catalogs, HITL, A2A exposure, streaming, and additional engines only after B-001/B-002 acceptance.
+- Keep custom MCP/A2A protocols, visual designers, BPMN, arbitrary shell execution, and distributed scheduling out of scope unless the Project Definition changes.
+
+## Working Rules
+
+- Add or update tests before marking a backlog item complete.
+- Keep the common core framework-neutral; adapters remain engine-owned.
+- Preserve separate knowledge, memory, session, checkpoint, and invocation metadata lifecycles.
+- Do not require paid model/API access or install dependencies at container startup.

@@ -10,3 +10,9 @@ This is an applicable Portable Profile subset, not a claim of full Open
 Workflow conformance. CTK scenarios requiring emit, flow, HTTP fixtures,
 OpenAPI, or other capabilities outside the current profile remain excluded
 until their runtime contracts are implemented.
+
+The selected subset passed for both engines in GitHub Actions run
+`32807640820`. Each engine job uploads test output plus provenance containing
+the repository commit, this pinned upstream CTK commit, and SHA-256 hashes for
+the selected scenario files. Expansion is tracked in `TODO.md` B-001 and must
+remain limited to scenarios supported by the declared Portable Profile.
