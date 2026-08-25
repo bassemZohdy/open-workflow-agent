@@ -150,4 +150,3 @@ def ensure_storage_namespace(database: str, namespace: str) -> None:
         return
     connection = open_storage(database, namespace)
     connection.close()
-

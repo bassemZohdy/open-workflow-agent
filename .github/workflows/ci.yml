@@ -455,4 +455,3 @@ jobs:
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
         run: uv run --locked --extra postgres pytest tests/core/test_postgres_persistence.py -q
-
