@@ -33,6 +33,7 @@ async def test_native_adk_dynamic_plan_invocation(tmp_path):
     )
     result = await engine.invoke(plan, handle, {"question": "hello"})
     assert result.status == "completed"
+    assert result.output == {"response": "native"}
     services.close()
 
     restarted_services = RuntimeServices(
@@ -113,6 +114,7 @@ async def test_native_adk_interrupted_resume_preserves_operation_identity(tmp_pa
     assert persisted.status == "running"
     resumed = await resumed_engine.resume(persisted, {}, plan)
     assert resumed.status == "completed"
+    assert resumed.output == {"done": True}
     assert len(calls) >= 2
     assert len(set(calls[-2:])) == 1
     restarted.close()

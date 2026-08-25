@@ -89,21 +89,21 @@ async def test_portable_fixture_has_same_result_on_each_engine(
 
 def _expected(fixture_name: str, input_data: dict[str, object]) -> object:
     if fixture_name in {"minimal-agent", "llm-call", "retry"}:
-        return {**input_data, "response": "ok"}
+        return {"response": "ok"}
     if fixture_name == "set":
-        return {**input_data, "answer": "hello"}
+        return {"answer": "hello"}
     if fixture_name == "for":
-        return {**input_data, "last": 2}
+        return {"last": 2}
     if fixture_name == "fork":
         return {**input_data, "left": True, "right": True}
     if fixture_name == "sequence":
-        return {**input_data, "copied": "hello", "answer": "hello"}
+        return {"answer": "hello"}
     if fixture_name == "data-transform":
         return 3
     if fixture_name == "input-validation":
-        return {**input_data, "accepted": "hello"}
+        return {"accepted": "hello"}
     if fixture_name == "nested-references":
-        return {**input_data, "nested": "hello"}
+        return {"nested": "hello"}
     if fixture_name == "protocol-calls":
-        return {**input_data, "path": "/openapi"}
+        return {"path": "/openapi"}
     return input_data

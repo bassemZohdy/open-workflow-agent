@@ -1,40 +1,35 @@
 # Active Implementation Plan
 
-`Project Definition.md` is authoritative. This backlog contains only work that still requires action; verified implementation history is summarized below.
+`Project Definition.md` is authoritative. This file contains only active work and a concise verified summary.
 
-## Verified Acceptance
+## Verified Milestones
 
-- [x] Core, official Open Workflow 1.0.3 schema gate, Portable Profile gate, default workflow, shared semantics, API hardening, protocol security, observability, tools, and deterministic tests.
-- [x] Independent ADK and LangGraph locked environments and multi-stage images with no startup installation.
-- [x] Local container smoke acceptance for both engines: health, capabilities, FakeModel, mounts, arbitrary UID, read-only root, configured tools, and state externalization.
-- [x] Local image knowledge acceptance for both engines: startup/manual/watch reload, deletion, unchanged-manifest reuse, packaged offline FastEmbed/ONNX search, and restart.
-- [x] Genuine container stop -> restart -> resume -> complete for both engines with persisted native state, stable fingerprints, common status, and repeated side effects using the same idempotency key.
+- [x] Framework-neutral core, official Open Workflow 1.0.3 schema validation, Portable Profile gate, shared semantics, API hardening, protocol security, observability, tools, and deterministic tests.
+- [x] Independently packaged ADK and LangGraph engines with exact locks, native persistence, multi-stage images, non-root execution, and no startup installation.
+- [x] FastEmbed/ONNX offline knowledge support with mounted-folder reload, deletion, unchanged-manifest reuse, restart, and deterministic test providers.
+- [x] Local container acceptance for health/readiness, capabilities, FakeModel invocation, mounts, arbitrary UID, read-only root, configured tools, state externalization, and genuine stop/restart/resume for both engines.
+- [x] Common memory tools with cross-engine add/search/delete and persistence coverage.
+- [x] Pinned applicable CTK subset (`do`, `set`, `switch`, `for`) integrated with both engine contract suites and passing locally.
 
 ## Active Work (Dependency Order)
 
-### A-001 — GitHub Actions and release gates (P0)
+### A-001 - Remote CI and release acceptance (P0)
 
-- [x] Add Ubuntu GitHub Actions jobs for root format/lint/mypy/tests/builds, both native + shared contract suites, independent Docker matrix builds, the 2 GiB image gate, health/readiness/capabilities, deterministic invocation, mounted knowledge, read-only root, and container logs.
-- [ ] Run the workflow on GitHub for push and pull request and verify every job passes from a clean checkout; retain any failure logs/artifacts and fix discrepancies from local behavior.
-- [ ] Verify release wheel contents, image tags/version metadata, and exact lock inputs in a completed remote run.
-- Acceptance: the remote workflow is green and reproducible on GitHub-hosted Ubuntu runners.
+- [ ] Run the GitHub Actions workflow on push and pull request and verify every Ubuntu job passes from a clean checkout.
+- [ ] Verify remote wheel contents, image tags/version metadata, exact lock inputs, image-size gate, and container acceptance.
+- Acceptance: the workflow is green and reproducible on GitHub-hosted runners.
 
-### A-002 — Applicable Open Workflow CTK gate (P1; depends on A-001)
+### A-002 - CTK compatibility gate (P1)
 
-- [ ] Select CTK scenarios covered by Portable Profile v1, integrate the Gherkin scenarios and adapter harness, and run them beside contracts in CI.
-- [ ] Keep public wording as an Open Workflow 1.0.3 based runtime supporting OWA Portable Profile v1 until the applicable scenarios pass.
-- Acceptance: CTK results are reproducible and capabilities match actual coverage.
+- [ ] Verify the selected CTK subset in a green remote workflow and reconcile capability wording with actual coverage.
+- [ ] Expand coverage only for scenarios supported by the implemented Portable Profile and declared capabilities.
+- Acceptance: applicable CTK results are reproducible in CI without claiming unsupported scenarios.
 
-### A-003 — Configured persistence backend completeness (P2; specification gap)
+### A-003 - Configured external persistence (P2)
 
-- [ ] Implement and test `persistence.datasource` selection for invocation metadata, memory, knowledge metadata, and engine-owned persistence with separate namespaces; retain SQLite as the reference backend.
-- Acceptance: configured datasource behavior is explicit, durable, isolated, and never shares one engine’s checkpoint representation with another.
-
-### A-004 — Agent memory exposure (P2; specification gap)
-
-- [ ] Expose common `MemoryService` to configured ADK and LangGraph agents through engine-native tool bindings while preserving the distinction between memory, knowledge, sessions, and checkpoints.
-- [ ] Add deterministic cross-engine add/search/delete and persistence tests.
-- Acceptance: both engines can use configured memory through the common contract without exposing framework-native state publicly.
+- [ ] Implement a locked external datasource backend usable by both native engines for invocation metadata, memory, knowledge metadata, and engine-owned persistence with isolated namespaces.
+- [ ] Keep SQLite as the reference backend and fail unsupported datasource URLs explicitly until the external backend exists.
+- Acceptance: configured datasource behavior is durable, explicit, isolated, and architecture-compatible.
 
 ## Deferred Future Candidates
 

@@ -103,3 +103,40 @@ async def test_search_knowledge_tool_is_engine_independent(tmp_path, engine_type
     assert result.output["response"] == "knowledge-result-used"
     assert len(model.calls) == 2
     services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_type", [AdkWorkflowEngine, LangGraphWorkflowEngine])
+async def test_memory_tools_are_engine_independent_and_persistent(tmp_path, engine_type):
+    database_root = tmp_path / engine_type.__name__
+    config = RuntimeConfig.model_validate({"model": {"provider": "fake"}})
+    services = RuntimeServices(config, model=FakeModel(), database_root=database_root)
+    engine = engine_type()
+    await engine.initialize(services)
+    tool_names = {getattr(tool, "name", "") for tool in engine.agent.tools}
+    assert {"add_memory", "search_memory", "delete_memory"} <= tool_names
+
+    added = await services.invoke_agent_tool(
+        "add_memory", {"text": "license renewal policy", "metadata": {"source": "policy"}}
+    )
+    identifier = added["id"]
+    assert (await services.invoke_agent_tool("search_memory", {"query": "renewal"}))[0][
+        "id"
+    ] == identifier
+    assert await services.invoke_agent_tool("delete_memory", {"id": identifier}) == {
+        "deleted": True
+    }
+    assert await services.invoke_agent_tool("search_memory", {"query": "renewal"}) == []
+    services.close()
+
+    restarted = RuntimeServices(config, model=FakeModel(), database_root=database_root)
+    assert await restarted.invoke_agent_tool("search_memory", {"query": "renewal"}) == []
+    persisted_id = (
+        await restarted.invoke_agent_tool("add_memory", {"text": "restart-safe memory"})
+    )["id"]
+    restarted.close()
+    reopened = RuntimeServices(config, model=FakeModel(), database_root=database_root)
+    assert (await reopened.invoke_agent_tool("search_memory", {"query": "restart-safe"}))[0][
+        "id"
+    ] == persisted_id
+    reopened.close()

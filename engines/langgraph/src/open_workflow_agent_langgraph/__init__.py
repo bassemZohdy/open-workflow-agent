@@ -1,6 +1,5 @@
 """LangGraph engine adapter."""
 
-from pathlib import Path
 from typing import Any
 
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
@@ -32,14 +31,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             services.config.model,
             factory.bind_tools(services.agent_tool_bindings()),
         )
-        database = (
-            services.database_root / "langgraph-checkpoints.sqlite3"
-            if services.database_root
-            else Path(services.config.persistence.database).with_name(
-                "langgraph-checkpoints.sqlite3"
-            )
-        )
-        self.native.database_path = str(database)
+        self.native.database_path = services.engine_database_path("langgraph")
 
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(engine=self.engine_name, resume=True, streaming=False)

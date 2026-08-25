@@ -72,11 +72,15 @@ class NativeAdkRunner:
         else:
             existing.state["owa_input"] = input_data
 
+        result_value: Any = None
+
         async def root_node(ctx: Context) -> Any:
             node_input = ctx.state.get("owa_input", {})
 
             async def dynamic_node(node_input: Any) -> Any:
-                return await runner(node_input)
+                nonlocal result_value
+                result_value = await runner(node_input)
+                return result_value
 
             return await ctx.run_node(
                 dynamic_node,
@@ -105,7 +109,7 @@ class NativeAdkRunner:
         ):
             if getattr(event, "output", None) is not None:
                 output = event.output
-        return output
+        return output if output is not None else result_value
 
     async def resume(
         self,

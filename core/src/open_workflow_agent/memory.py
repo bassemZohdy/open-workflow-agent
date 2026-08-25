@@ -13,6 +13,7 @@ class MemoryService:
     def __init__(self, database: str | None = None) -> None:
         self.database = database
         self._items: list[dict[str, Any]] = []
+        self._next_id = 1
         self._connection: sqlite3.Connection | None = None
         if database:
             Path(database).parent.mkdir(parents=True, exist_ok=True)
@@ -30,8 +31,12 @@ class MemoryService:
     def add(self, text: str, metadata: dict[str, Any] | None = None) -> int:
         metadata = metadata or {}
         if self._connection is None:
-            self._items.append({"text": text, "metadata": metadata, "created": time.time()})
-            return len(self._items)
+            identifier = self._next_id
+            self._next_id += 1
+            self._items.append(
+                {"id": identifier, "text": text, "metadata": metadata, "created": time.time()}
+            )
+            return identifier
         cursor = self._connection.execute(
             "INSERT INTO memory(text, metadata, created) VALUES (?, ?, ?)",
             (text, json.dumps(metadata), time.time()),
@@ -64,14 +69,14 @@ class MemoryService:
             row for row in ranked if not terms or any(term in row["text"].lower() for term in terms)
         ][:limit]
 
-    def delete(self, memory_id: int) -> None:
+    def delete(self, memory_id: int) -> bool:
         if self._connection is None:
-            index = memory_id - 1
-            if 0 <= index < len(self._items):
-                self._items.pop(index)
-            return
-        self._connection.execute("DELETE FROM memory WHERE id = ?", (memory_id,))
+            before = len(self._items)
+            self._items[:] = [item for item in self._items if item["id"] != memory_id]
+            return len(self._items) != before
+        cursor = self._connection.execute("DELETE FROM memory WHERE id = ?", (memory_id,))
         self._connection.commit()
+        return cursor.rowcount > 0
 
     def close(self) -> None:
         if self._connection:

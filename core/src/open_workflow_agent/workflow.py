@@ -270,11 +270,13 @@ class ExpressionEvaluator:
 
     def _evaluate_atom(self, expression: str, data: Any, variables: Mapping[str, Any]) -> Any:
         expression = expression.strip()
+        while _is_wrapped(expression, "(", ")"):
+            expression = expression[1:-1].strip()
         if expression in (".", "$"):
             return data
         if expression.startswith("@"):
             return variables.get(expression[1:])
-        if expression.startswith("."):
+        if expression.startswith(".") and len(_split_top_level(expression, "+")) == 1:
             return _path_get(data, expression[1:])
         if expression.startswith("$"):
             variable_path = expression[1:].lstrip(".")
@@ -290,6 +292,35 @@ class ExpressionEvaluator:
             return variables[expression]
         if expression in {"true", "false", "null"}:
             return {"true": True, "false": False, "null": None}[expression]
+        addition = _split_top_level(expression, "+")
+        if len(addition) > 1:
+            values = [self._evaluate_atom(part, data, variables) for part in addition]
+            result = values[0]
+            for value in values[1:]:
+                if isinstance(result, list) and isinstance(value, list):
+                    result = result + value
+                elif isinstance(result, dict) and isinstance(value, dict):
+                    result = {**result, **value}
+                elif result is None:
+                    result = value
+                elif value is None:
+                    continue
+                else:
+                    result = result + value
+            return result
+        if expression.startswith("{") and expression.endswith("}"):
+            return {
+                key.strip(" '\""): self._evaluate_atom(value, data, variables)
+                for item in _split_top_level(expression[1:-1], ",")
+                if item.strip()
+                for key, value in [_split_mapping_item(item)]
+            }
+        if expression.startswith("[") and expression.endswith("]"):
+            return [
+                self._evaluate_atom(item, data, variables)
+                for item in _split_top_level(expression[1:-1], ",")
+                if item.strip()
+            ]
         try:
             return json.loads(expression)
         except json.JSONDecodeError:
@@ -312,6 +343,57 @@ def _path_get(value: Any, path: str) -> Any:
         else:
             return None
     return current
+
+
+def _is_wrapped(value: str, opening: str, closing: str) -> bool:
+    if not (value.startswith(opening) and value.endswith(closing)):
+        return False
+    depth = 0
+    quote: str | None = None
+    for index, character in enumerate(value):
+        if quote:
+            if character == quote and (index == 0 or value[index - 1] != "\\"):
+                quote = None
+            continue
+        if character in {"'", '"'}:
+            quote = character
+        elif character == opening:
+            depth += 1
+        elif character == closing:
+            depth -= 1
+            if depth == 0 and index != len(value) - 1:
+                return False
+    return depth == 0 and quote is None
+
+
+def _split_top_level(value: str, separator: str) -> list[str]:
+    parts: list[str] = []
+    start = 0
+    depth = 0
+    quote: str | None = None
+    for index, character in enumerate(value):
+        if quote:
+            if character == quote and (index == 0 or value[index - 1] != "\\"):
+                quote = None
+            continue
+        if character in {"'", '"'}:
+            quote = character
+        elif character in "([{":
+            depth += 1
+        elif character in ")]}":
+            depth -= 1
+        elif character == separator and depth == 0:
+            parts.append(value[start:index].strip())
+            start = index + 1
+    parts.append(value[start:].strip())
+    return parts
+
+
+def _split_mapping_item(value: str) -> tuple[str, str]:
+    parts = _split_top_level(value, ":")
+    if len(parts) < 2:
+        raise ExpressionError(f"invalid object expression: {value}")
+    return parts[0], ":".join(parts[1:])
 
 
 @dataclass(slots=True)
@@ -363,7 +445,7 @@ class WorkflowExecutor:
         state = ExecutionState(
             data=copy.deepcopy(initial_data),
             context=context,
-            variables={"context": context},
+            variables={"context": context, "input": copy.deepcopy(input_data)},
         )
         try:
             await self._run_tasks(plan.source.get("do", []), state)
@@ -524,6 +606,7 @@ class WorkflowExecutor:
                 input_spec, state.data, variables=state.variables
             )
         self._validate_data_schema(input_spec, task_input, f"task {name} input")
+        state.variables["input"] = copy.deepcopy(task_input)
         if "set" in definition:
             return self.expressions.evaluate(
                 definition["set"], task_input, variables=state.variables
@@ -660,7 +743,7 @@ class WorkflowExecutor:
         variable = str(configuration.get("each", configuration.get("as", "item")))
         body = _task_body(definition.get("do", definition.get("body", [])))
         results: list[Any] = []
-        for value in values:
+        for index, value in enumerate(values):
             child = ExecutionState(
                 copy.deepcopy(state.data),
                 dict(state.outputs),
@@ -668,7 +751,9 @@ class WorkflowExecutor:
                 dict(state.context),
             )
             child.variables[variable] = value
+            child.variables["index"] = index
             await self._run_tasks(body, child)
+            state.data = child.data
             results.append(child.data)
         if definition.get("output") == "array":
             return results
@@ -727,7 +812,7 @@ class WorkflowExecutor:
             state.variables["context"] = state.context
             self._validate_data_schema(export_spec, exported, "task export")
         if isinstance(output, Mapping) and isinstance(before, Mapping):
-            return _merge(before, output)
+            return dict(output)
         return output
 
     def _validate_data_schema(self, specification: Any, value: Any, label: str) -> None:

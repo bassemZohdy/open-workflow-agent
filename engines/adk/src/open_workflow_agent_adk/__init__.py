@@ -1,6 +1,5 @@
 """ADK engine adapter."""
 
-from pathlib import Path
 from typing import Any
 
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
@@ -23,11 +22,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
     engine_name = "adk"
 
     def _session_database_path(self) -> str:
-        if self.services.database_root:
-            return str(self.services.database_root / "adk-sessions.sqlite3")
-        return str(
-            Path(self.services.config.persistence.database).with_name("adk-sessions.sqlite3")
-        )
+        return self.services.engine_database_path("adk")
 
     def __init__(self) -> None:
         self.native = NativeAdkRunner()
@@ -96,8 +91,9 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         if not self.native.available or handle.status not in {"running", "waiting", "suspended"}:
             return await super().resume(handle, resume_input, plan)
         try:
-            output = await self.native.resume(
-                lambda value: self.executor.execute(
+
+            async def execute_workflow(value: Any) -> Any:
+                return await self.executor.execute(
                     plan,
                     value,
                     metadata={
@@ -108,13 +104,22 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                         "workflow_name": plan.name,
                         "workflow_version": plan.version,
                     },
-                ),
+                )
+
+            output = await self.native.resume(
+                execute_workflow,
                 resume_input,
                 session_id=handle.session_id,
                 user_id=handle.user_id,
                 invocation_id=handle.engine_execution_reference,
                 database_path=self._session_database_path(),
             )
+            if output is None:
+                # ADK 2.x can complete a resumed dynamic node without
+                # surfacing its returned value after a process restart. Keep
+                # the native resume attempt, then recover the public result
+                # through the same portable plan contract.
+                output = await execute_workflow(resume_input)
             self.services.invocations.update(handle, status="completed")
             return InvocationResult(handle.invocation_id, handle.session_id, "completed", output)
         except Exception as exc:

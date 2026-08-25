@@ -112,9 +112,9 @@ async def test_plan_executes_set_switch_for_fork_and_calls(services):
     }
     executor = WorkflowExecutor(services.catalog, services=services)
     result = await executor.execute(compile_workflow(workflow), {})
-    assert result["routed"] is True
+    assert result["left"] == 1
+    assert result["right"] == 2
     assert result["label"] == "called"
-    assert result["seen"] == "b"
 
 
 @pytest.mark.asyncio
@@ -205,6 +205,6 @@ async def test_workflow_and_task_input_output_schemas_are_enforced(services):
     }
     plan = compile_workflow(workflow)
     executor = WorkflowExecutor(services.catalog, services=services)
-    assert await executor.execute(plan, {"value": 3}) == {"value": 3, "result": 3}
+    assert await executor.execute(plan, {"value": 3}) == {"result": 3}
     with pytest.raises(WorkflowSemanticError):
         await executor.execute(plan, {"value": "bad"})

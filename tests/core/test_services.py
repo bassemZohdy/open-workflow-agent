@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from open_workflow_agent.errors import ConfigurationError
 from open_workflow_agent.knowledge import (
     DeterministicEmbeddingProvider,
     KnowledgeService,
@@ -7,14 +8,26 @@ from open_workflow_agent.knowledge import (
 )
 from open_workflow_agent.memory import MemoryService
 from open_workflow_agent.persistence import InvocationStore
+from open_workflow_agent.workflow import compile_workflow
 
 
 def test_memory_add_search_delete(tmp_path):
     memory = MemoryService(str(tmp_path / "memory.sqlite3"))
     identifier = memory.add("license renewal policy", {"source": "policy"})
     assert memory.search("renewal")[0]["id"] == identifier
-    memory.delete(identifier)
+    assert memory.delete(identifier) is True
     assert memory.search("renewal") == []
+    memory.close()
+
+
+def test_memory_without_database_has_stable_ids_and_delete_result():
+    memory = MemoryService()
+    first = memory.add("first")
+    second = memory.add("second")
+    assert [item["id"] for item in memory.search("")] == [first, second]
+    assert memory.delete(first) is True
+    assert memory.delete(first) is False
+    assert [item["id"] for item in memory.search("")] == [second]
     memory.close()
 
 
@@ -97,5 +110,57 @@ def test_tools_are_external_configuration_not_workflow_state(tmp_path):
     )
     services = RuntimeServices(config, database_root=tmp_path)
     assert services.tools.names() == ("catalog",)
-    assert services.agent_tools == ("search_knowledge", "catalog")
+    assert services.agent_tools == (
+        "search_knowledge",
+        "add_memory",
+        "search_memory",
+        "delete_memory",
+        "catalog",
+    )
     services.close()
+
+
+def test_configured_sqlite_datasource_is_shared_by_durable_services(tmp_path):
+    from open_workflow_agent.catalog import FakeModel
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    database = tmp_path / "runtime.sqlite3"
+    config = RuntimeConfig.model_validate(
+        {"persistence": {"datasource": f"sqlite:///{database.as_posix()}"}}
+    )
+    services = RuntimeServices(config, model=FakeModel())
+    identifier = services.memory.add("durable datasource memory")
+    plan = compile_workflow()
+    handle = services.invocations.create(
+        engine="test",
+        session_id="session",
+        user_id=None,
+        workflow_name=plan.name,
+        workflow_version=plan.version,
+        workflow_fingerprint=plan.fingerprint,
+    )
+    assert services.memory.search("durable")[0]["id"] == identifier
+    assert services.invocations.get(handle.invocation_id) is not None
+    services.close()
+
+    reopened = RuntimeServices(config, model=FakeModel())
+    assert reopened.memory.search("durable")[0]["id"] == identifier
+    assert reopened.invocations.get(handle.invocation_id) is not None
+    assert reopened.datasource == str(database)
+    reopened.close()
+
+
+def test_unsupported_datasource_is_not_silently_treated_as_sqlite():
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    config = RuntimeConfig.model_validate(
+        {"persistence": {"datasource": "postgresql://example.invalid/owa"}}
+    )
+    try:
+        RuntimeServices(config)
+    except ConfigurationError as exc:
+        assert exc.details["scheme"] == "postgresql"
+    else:
+        raise AssertionError("unsupported datasource was accepted")

@@ -113,6 +113,7 @@ async def test_native_langgraph_interrupted_resume_preserves_operation_identity(
     assert persisted.status == "running"
     resumed = await resumed_engine.resume(persisted, {}, plan)
     assert resumed.status == "completed"
+    assert resumed.output == {"done": True}
     assert len(calls) >= 2
     assert len(set(calls[-2:])) == 1
     restarted.close()

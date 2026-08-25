@@ -12,6 +12,7 @@ from .memory import MemoryService
 from .observability import EventSink, InMemoryEventSink
 from .persistence import InvocationStore
 from .protocols import ProtocolServices
+from .storage import resolve_datasource
 from .tools import AgentToolBinding, ToolRegistry
 
 
@@ -36,14 +37,31 @@ class RuntimeServices:
         )
         self.agent_instruction = config.agent.instruction
         self.database_root = Path(database_root) if database_root else None
+        self.datasource = resolve_datasource(config.persistence.datasource)
         self.events = event_sink or InMemoryEventSink()
         self.protocols = ProtocolServices()
         self.tools = ToolRegistry.from_config(config.tools, self.protocols)
-        self.agent_tools = ("search_knowledge", *self.tools.names())
+        self.memory_enabled = config.memory.enabled is not False
+        memory_tools = (
+            ("add_memory", "search_memory", "delete_memory") if self.memory_enabled else ()
+        )
+        self.agent_tools = ("search_knowledge", *memory_tools, *self.tools.names())
         root = self.database_root
-        knowledge_path = root / "knowledge.sqlite3" if root else config.knowledge.database
-        memory_path = root / "memory.sqlite3" if root else config.memory.database
-        invocation_path = root / "runtime.sqlite3" if root else config.persistence.database
+        knowledge_path: str | Path
+        memory_path: str | Path
+        invocation_path: str | Path
+        if root:
+            knowledge_path = root / "knowledge.sqlite3"
+            memory_path = root / "memory.sqlite3"
+            invocation_path = root / "runtime.sqlite3"
+        elif self.datasource:
+            knowledge_path = self.datasource
+            memory_path = self.datasource
+            invocation_path = self.datasource
+        else:
+            knowledge_path = config.knowledge.database
+            memory_path = config.memory.database
+            invocation_path = config.persistence.database
         self.knowledge = KnowledgeService(
             config.knowledge.path,
             knowledge_path,
@@ -55,7 +73,10 @@ class RuntimeServices:
             chunk_overlap=config.knowledge.chunk_overlap,
         )
         memory_database = (
-            memory_path if config.memory.enabled is True or config.persistence.datasource else None
+            memory_path
+            if self.memory_enabled
+            and (root is not None or config.memory.enabled is True or config.persistence.datasource)
+            else None
         )
         self.memory = MemoryService(str(memory_database) if memory_database else None)
         self.invocations = InvocationStore(invocation_path)
@@ -63,26 +84,96 @@ class RuntimeServices:
             self.model, instruction=self.agent_instruction, services=self
         )
         self.catalog.register("search_knowledge", self._search_knowledge)
+        if self.memory_enabled:
+            self.catalog.register("add_memory", self._add_memory)
+            self.catalog.register("search_memory", self._search_memory)
+            self.catalog.register("delete_memory", self._delete_memory)
+
+    def engine_database_path(self, engine: str) -> str:
+        """Return the native persistence path without exposing engine state publicly."""
+
+        if self.database_root:
+            filename = {
+                "adk": "adk-sessions.sqlite3",
+                "langgraph": "langgraph-checkpoints.sqlite3",
+            }.get(engine, f"{engine}-persistence.sqlite3")
+            return str(self.database_root / filename)
+        if self.datasource:
+            return self.datasource
+        filename = {
+            "adk": "adk-sessions.sqlite3",
+            "langgraph": "langgraph-checkpoints.sqlite3",
+        }.get(engine, f"{engine}-persistence.sqlite3")
+        return str(Path(self.config.persistence.database).with_name(filename))
 
     async def _search_knowledge(self, payload: Any, _context: Any) -> Any:
         query = payload.get("query", "") if isinstance(payload, dict) else str(payload)
         limit = int(payload.get("limit", 5)) if isinstance(payload, dict) else 5
         return self.knowledge.search(query, limit)
 
+    async def _add_memory(self, payload: Any, _context: Any) -> dict[str, int]:
+        if not isinstance(payload, dict) or not isinstance(payload.get("text"), str):
+            raise ValueError("add_memory requires a text string")
+        metadata = payload.get("metadata", {})
+        if not isinstance(metadata, dict):
+            raise ValueError("add_memory metadata must be an object")
+        return {"id": self.memory.add(payload["text"], metadata)}
+
+    async def _search_memory(self, payload: Any, _context: Any) -> list[dict[str, Any]]:
+        if not isinstance(payload, dict):
+            payload = {"query": str(payload)}
+        query = payload.get("query", "")
+        limit = int(payload.get("limit", 10))
+        if not isinstance(query, str) or limit < 1 or limit > 100:
+            raise ValueError("search_memory requires a query and a limit between 1 and 100")
+        return self.memory.search(query, limit)
+
+    async def _delete_memory(self, payload: Any, _context: Any) -> dict[str, bool]:
+        if not isinstance(payload, dict) or not isinstance(payload.get("id"), int):
+            raise ValueError("delete_memory requires an integer id")
+        return {"deleted": self.memory.delete(payload["id"])}
+
     async def invoke_agent_tool(self, name: str, payload: Any) -> Any:
         if name == "search_knowledge":
             return await self._search_knowledge(payload, None)
+        if name == "add_memory":
+            return await self._add_memory(payload, None)
+        if name == "search_memory":
+            return await self._search_memory(payload, None)
+        if name == "delete_memory":
+            return await self._delete_memory(payload, None)
         return await self.tools.invoke(name, payload)
 
     def agent_tool_bindings(self) -> tuple[AgentToolBinding, ...]:
-        return (
+        bindings: list[AgentToolBinding] = [
             AgentToolBinding(
                 name="search_knowledge",
                 description="Search mounted knowledge documents.",
                 invoke=lambda payload: self._search_knowledge(payload, None),
-            ),
-            *self.tools.bindings(),
-        )
+            )
+        ]
+        if self.memory_enabled:
+            bindings.extend(
+                [
+                    AgentToolBinding(
+                        name="add_memory",
+                        description="Store durable agent memory with optional metadata.",
+                        invoke=lambda payload: self._add_memory(payload, None),
+                    ),
+                    AgentToolBinding(
+                        name="search_memory",
+                        description="Search long-term agent memory.",
+                        invoke=lambda payload: self._search_memory(payload, None),
+                    ),
+                    AgentToolBinding(
+                        name="delete_memory",
+                        description="Delete a long-term agent memory by id.",
+                        invoke=lambda payload: self._delete_memory(payload, None),
+                    ),
+                ]
+            )
+        bindings.extend(self.tools.bindings())
+        return tuple(bindings)
 
     async def call_protocol(self, protocol: str, payload: Any) -> Any:
         return await self.protocols.call(protocol, payload)
