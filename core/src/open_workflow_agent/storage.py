@@ -125,7 +125,7 @@ def open_storage(database: str | Path, namespace: str) -> StorageConnection:
     except ImportError as exc:
         raise ConfigurationError(
             "PostgreSQL persistence requires the optional 'postgres' dependency",
-            details={"datasource": "postgresql", "extra": "postgres"},
+            details={"scheme": "postgresql", "datasource": "postgresql", "extra": "postgres"},
         ) from exc
     try:
         connection = psycopg.connect(value, autocommit=True)
