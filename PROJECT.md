@@ -29,7 +29,7 @@ Use typed Python, strict Pydantic configuration models, four-space indentation, 
 
 ## Current Implementation Status
 
-Milestone 0 core contracts and the current deterministic Portable Profile are implemented and verified. The repository now has strict configuration, workflow loading/validation/capability checks, default workflow generation, immutable plans and fingerprints, a catalog, engine SPI, common errors, invocation persistence, memory, knowledge indexing, protocol clients, and a FastAPI surface. ADK and LangGraph adapter boundaries and deterministic contract tests are present.
+Milestone 0 core contracts and the current deterministic Portable Profile are implemented and verified. The repository now has strict configuration, workflow loading/validation/capability checks, default workflow generation, immutable plans and fingerprints, a catalog, engine SPI, common errors, invocation persistence, memory, knowledge indexing, protocol clients, and a FastAPI surface. ADK and LangGraph adapter boundaries, native engine integrations, and deterministic contract tests are present. The latest root quality run is 30 passed/2 skipped; both engine environments pass 14 tests each.
 
 The full upstream Open Workflow 1.0.3 schema is not yet vendored; the current validator is a local Portable Profile structural gate carrying the official schema identifier. ADK 2.7.1 native dynamic execution and SQLite session restart/resume pass in the engine environment. LangGraph invokes the native Functional API with an optional SQLite checkpointer and retains the deterministic reference fallback. Dockerfiles exist but cannot be built until a Docker daemon is available in the environment. Protocol clients currently provide secure HTTP-backed adapters rather than full protocol SDK implementations. The reference persistence backend is SQLite; configured datasource URLs are not yet wired to external databases.
 
@@ -48,4 +48,4 @@ docker build -f docker/Dockerfile.adk .
 docker build -f docker/Dockerfile.langgraph .
 ```
 
-The Docker commands remain pending until the image definitions are added. Run engine dependency environments independently and never install dependencies during container startup.
+The package build passes. Docker image commands are defined but could not be executed because no Docker daemon is available in this environment. Run engine dependency environments independently and never install dependencies during container startup. Engine-specific gates use `uv run --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract -q` from `engines/adk`, with the analogous `tests/langgraph` command from `engines/langgraph`.
