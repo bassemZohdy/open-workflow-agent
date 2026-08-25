@@ -63,15 +63,12 @@ def test_knowledge_watch_can_start_and_stop(tmp_path):
 
 
 def test_pinned_embedding_provider_is_injectable_and_records_identity():
-    class FakeSentenceTransformer:
-        def get_sentence_embedding_dimension(self):
-            return 3
-
-        def encode(self, values, **kwargs):
+    class FakeFastEmbed:
+        def embed(self, values):
             assert values == ["hello"]
-            return [[1.0, 0.0, 0.0]]
+            yield [1.0, 0.0, 0.0]
 
-    provider = SentenceTransformerEmbeddingProvider(model=FakeSentenceTransformer())
+    provider = SentenceTransformerEmbeddingProvider(model=FakeFastEmbed())
     assert provider.identity.endswith("@ea78891063587eb050ed4166b20062eaf978037c")
     assert provider.embed("hello").tolist() == [1.0, 0.0, 0.0]
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import importlib
 import json
 import os
 import re
@@ -41,8 +42,8 @@ class DeterministicEmbeddingProvider:
         return vector / norm if norm else vector
 
 
-class SentenceTransformerEmbeddingProvider:
-    """Pinned local CPU embedding provider for mounted-folder knowledge."""
+class FastEmbedEmbeddingProvider:
+    """Pinned local CPU provider backed by FastEmbed's ONNX runtime."""
 
     model_name = "sentence-transformers/all-MiniLM-L6-v2"
     model_revision = "ea78891063587eb050ed4166b20062eaf978037c"
@@ -53,32 +54,50 @@ class SentenceTransformerEmbeddingProvider:
         model_name: str = model_name,
         model_revision: str = model_revision,
         model: Any | None = None,
+        cache_dir: str | Path | None = None,
     ) -> None:
         self.model_name = model_name
         self.model_revision = model_revision
         self.identity = f"{model_name}@{model_revision}"
         self._model = model
+        self.cache_dir = str(cache_dir) if cache_dir else os.getenv("FASTEMBED_CACHE_PATH")
         self.dimensions = 384
 
     def embed(self, text: str) -> np.ndarray:
         if self._model is None:
             try:
-                from sentence_transformers import SentenceTransformer  # type: ignore[import-not-found]  # noqa: I001
+                fastembed: Any = importlib.import_module("fastembed")
             except ImportError as exc:
                 raise KnowledgeError(
-                    "sentence-transformers is required for the configured local embedding model"
+                    "fastembed is required for the configured local embedding model"
                 ) from exc
-            self._model = SentenceTransformer(
-                self.model_name,
-                revision=self.model_revision,
-                device="cpu",
-                cache_folder=os.getenv("SENTENCE_TRANSFORMERS_HOME"),
-            )
-            self.dimensions = int(self._model.get_sentence_embedding_dimension())
-        vector = self._model.encode(
-            [text], convert_to_numpy=True, normalize_embeddings=True, show_progress_bar=False
-        )[0]
-        return np.asarray(vector, dtype=np.float32)
+            options: dict[str, Any] = {
+                "model_name": self.model_name,
+                "local_files_only": True,
+            }
+            if self.cache_dir:
+                options["cache_dir"] = self.cache_dir
+            self._model = fastembed.TextEmbedding(**options)
+        if hasattr(self._model, "embed"):
+            vector = next(iter(self._model.embed([text])))
+        elif hasattr(self._model, "encode"):
+            # Accept the old injectable test-double shape for integrations that
+            # used the provisional provider directly.
+            vector = self._model.encode(
+                [text], convert_to_numpy=True, normalize_embeddings=True, show_progress_bar=False
+            )[0]
+        else:
+            raise KnowledgeError("configured embedding model does not expose an embed method")
+        result = np.asarray(vector, dtype=np.float32)
+        if result.ndim != 1:
+            result = result[0]
+        self.dimensions = int(result.shape[0])
+        return result
+
+
+# Keep the provisional name importable for integrations while making FastEmbed
+# the only default implementation and runtime dependency.
+SentenceTransformerEmbeddingProvider = FastEmbedEmbeddingProvider
 
 
 # Backward-compatible import for integrations that used the provisional test provider.
@@ -97,7 +116,7 @@ class KnowledgeService:
     ) -> None:
         self.root = Path(root)
         self.database = Path(database)
-        self.embedding = embedding or SentenceTransformerEmbeddingProvider()
+        self.embedding = embedding or FastEmbedEmbeddingProvider()
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.database.parent.mkdir(parents=True, exist_ok=True)

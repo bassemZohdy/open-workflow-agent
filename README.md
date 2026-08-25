@@ -1,19 +1,19 @@
 # Open Workflow Agent
 
-Open Workflow Agent is a configuration-driven, model-agnostic runtime for executing Open Workflow 1.0.3 definitions through interchangeable ADK and LangGraph engines. The same public configuration is intended to work with either engine image.
+Open Workflow Agent is a configuration-driven, model-agnostic runtime for Open Workflow 1.0.3. A framework-neutral core validates the official schema, applies the Portable Profile gate, builds an internal plan, and owns common data semantics, catalogs, knowledge, memory, protocols, persistence metadata, observability, and API errors. ADK and LangGraph are independently packaged engine adapters with native agent/tool bindings and durable state.
 
-The framework-neutral core loads and validates the official schema, applies the OWA Portable Profile capability gate, builds an internal immutable execution plan, and provides common catalogs, `jq` data semantics, knowledge, memory, protocols, persistence metadata, observability, and API errors. Engine packages own native agent/tool bindings and checkpointing. Every invocation runs through a workflow; without one, the runtime generates a workflow calling `agent:1.0.0@default`.
+Every invocation is a workflow invocation. If no workflow is configured, the runtime generates the default workflow calling `agent:1.0.0@default`.
 
 ## Quick Start
 
-Install the locked development environment and run the local quality gates:
+Install the locked development environment and run the local gates:
 
 ```text
 uv sync --locked
 uv run pytest -q
 ```
 
-For a deterministic local server, use a configuration such as:
+For deterministic operation, configure:
 
 ```yaml
 model:
@@ -21,34 +21,17 @@ model:
   name: fake/default
 ```
 
-Then set `OWA_CONFIG_FILE` to that file and run an engine entry point. From `engines/adk`:
+Run an engine from its package directory:
 
 ```text
 uv run --locked --extra native python -m open_workflow_agent_adk.server
+uv run --locked --extra sqlite python -m open_workflow_agent_langgraph.server
 ```
 
-From `engines/langgraph`, use `--extra sqlite` and `open_workflow_agent_langgraph.server`. The API is available on port 8080 by default:
+The API listens on port 8080 and exposes `/health/live`, `/health/ready`, `/v1/capabilities`, `/v1/invoke`, resume, and knowledge reload endpoints. Deployments mount configuration at `/config`, documents at `/knowledge`, and writable state at `/data`.
 
-```text
-GET  /health/live
-GET  /health/ready
-GET  /v1/capabilities
-POST /v1/invoke
-POST /v1/invocations/{id}/resume
-POST /v1/admin/knowledge/reload
-```
+## Containers and Status
 
-Mount deployment configuration at `/config`, documents at `/knowledge`, and writable runtime state at `/data`. The Dockerfiles build separate ADK and LangGraph images and prefetch the pinned local CPU embedding model; image acceptance is still pending a Docker-capable runner.
+Build independent images with `docker build -f docker/Dockerfile.adk .` or the LangGraph equivalent. Each image packages the pinned local FastEmbed/ONNX `all-MiniLM-L6-v2` model, runs as a non-root arbitrary UID, and has a 2 GiB CI size gate. Local image, mounted-knowledge, read-only-root, health, deterministic invocation, and stop/restart/resume acceptance passes. GitHub Actions reproduces root, engine, and Docker gates on Ubuntu; the first remote run remains the CI verification step.
 
-## Development
-
-Use typed Python, strict configuration, deterministic `FakeModel` tests, and independent engine locks. Run formatting, linting, type checking, root/contract tests, engine suites, and package builds before a change is considered ready. No automated test requires paid model/API access.
-
-## Project Status and References
-
-The core and engine feature milestones are implemented. Active work is acceptance and release hardening: CI/container runners, real image E2E, image-level knowledge and embedding checks, container resume, CTK compatibility, configured datasource persistence, and agent memory exposure.
-
-- [Project Definition.md](Project%20Definition.md) - authoritative architecture and requirements
-- [PROJECT.md](PROJECT.md) - verified working context and commands
-- [TODO.md](TODO.md) - dependency-ordered active implementation plan
-- [AGENTS.md](AGENTS.md) - contributor and autonomous-agent rules
+No automated test requires paid model/API access. See [Project Definition.md](Project%20Definition.md) for the specification, [PROJECT.md](PROJECT.md) for verified working context, [TODO.md](TODO.md) for active work, and [AGENTS.md](AGENTS.md) for contributor rules.

@@ -1,5 +1,6 @@
 """ADK engine adapter."""
 
+from pathlib import Path
 from typing import Any
 
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
@@ -20,6 +21,13 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
     """
 
     engine_name = "adk"
+
+    def _session_database_path(self) -> str:
+        if self.services.database_root:
+            return str(self.services.database_root / "adk-sessions.sqlite3")
+        return str(
+            Path(self.services.config.persistence.database).with_name("adk-sessions.sqlite3")
+        )
 
     def __init__(self) -> None:
         self.native = NativeAdkRunner()
@@ -59,11 +67,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 session_id=invocation.session_id,
                 user_id=invocation.user_id,
                 invocation_id=invocation.engine_execution_reference,
-                database_path=(
-                    str(self.services.database_root / "adk-sessions.sqlite3")
-                    if self.services.database_root
-                    else self.services.config.persistence.database
-                ),
+                database_path=self._session_database_path(),
             )
             invocation.status = "completed"
             self.services.invocations.update(invocation, status="completed")
@@ -109,11 +113,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 session_id=handle.session_id,
                 user_id=handle.user_id,
                 invocation_id=handle.engine_execution_reference,
-                database_path=(
-                    str(self.services.database_root / "adk-sessions.sqlite3")
-                    if self.services.database_root
-                    else self.services.config.persistence.database
-                ),
+                database_path=self._session_database_path(),
             )
             self.services.invocations.update(handle, status="completed")
             return InvocationResult(handle.invocation_id, handle.session_id, "completed", output)

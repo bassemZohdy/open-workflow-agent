@@ -27,7 +27,7 @@ dev = [
 
 [project.optional-dependencies]
 model = ["litellm==1.80.5"]
-knowledge = ["sentence-transformers==5.7.0"]
+knowledge = ["fastembed==0.8.0"]
 
 [build-system]
 requires = ["hatchling"]

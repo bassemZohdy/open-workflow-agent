@@ -48,7 +48,9 @@ class KnowledgeConfig(StrictModel):
 
 
 class EmbeddingConfig(StrictModel):
-    provider: Literal["sentence-transformers"] = "sentence-transformers"
+    # sentence-transformers remains accepted as a migration alias for existing
+    # config files; the packaged implementation is FastEmbed/ONNX.
+    provider: Literal["fastembed", "sentence-transformers"] = "fastembed"
     model: str = "sentence-transformers/all-MiniLM-L6-v2"
     revision: str = "ea78891063587eb050ed4166b20062eaf978037c"
 

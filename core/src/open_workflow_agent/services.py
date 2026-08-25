@@ -7,7 +7,7 @@ from typing import Any
 
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
-from .knowledge import KnowledgeService, SentenceTransformerEmbeddingProvider
+from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
 from .memory import MemoryService
 from .observability import EventSink, InMemoryEventSink
 from .persistence import InvocationStore
@@ -47,7 +47,7 @@ class RuntimeServices:
         self.knowledge = KnowledgeService(
             config.knowledge.path,
             knowledge_path,
-            embedding=SentenceTransformerEmbeddingProvider(
+            embedding=FastEmbedEmbeddingProvider(
                 model_name=config.embedding.model,
                 model_revision=config.embedding.revision,
             ),

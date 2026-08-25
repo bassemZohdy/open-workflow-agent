@@ -1,38 +1,32 @@
 # Project Context
 
-## Source of Truth
+## Source of Truth and Phase
 
-`Project Definition.md` is authoritative. `AGENTS.md` contains mandatory development rules. `TODO.md` is the active acceptance plan; this file is verified working context, not a replacement specification.
+`Project Definition.md` is authoritative; `AGENTS.md` is mandatory guidance and `TODO.md` is the active backlog. Core feature milestones are implemented. The current phase is acceptance/release hardening: the next action is to run and inspect the new GitHub Actions workflow, then integrate the applicable Open Workflow CTK scenarios.
 
-## Current Phase
+## Architecture
 
-The implementation is past the M0-M7 feature milestones and is now in acceptance and release-hardening. Do not begin deferred features. The next dependency-ordered action is A-001 in `TODO.md`: establish CI and a Docker-capable runner so image acceptance can be reproduced even when local Docker is unavailable.
+The runtime is `load -> official schema validation -> Portable Profile gate -> normalize -> immutable internal plan -> engine execution`. Core is framework-neutral. `engines/adk` and `engines/langgraph` have separate exact locks, native agent/tool adapters, and engine-owned state. Every request executes a workflow, with a generated default workflow when none is supplied. Mounted knowledge uses the common `EmbeddingProvider`; the packaged default is FastEmbed 0.8.0/ONNX using the 384-dimensional `sentence-transformers/all-MiniLM-L6-v2` model identity. Deterministic hash embeddings remain injectable for tests.
 
-## Architecture and Capabilities
+## Repository Structure and Conventions
 
-The runtime is:
+- `core/`: common configuration, schema/data semantics, catalogs, services, API, and errors.
+- `engines/adk/`, `engines/langgraph/`: independent adapters, native persistence, locks, and package metadata.
+- `resources/`, `runtime-catalog/`: official Open Workflow resources and built-in catalog.
+- `docker/`: independent multi-stage runtime images; `.github/workflows/ci.yml`: Ubuntu quality/container gates.
+- `tests/core`, `tests/contract`, `tests/adk`, `tests/langgraph`, `tests/e2e`: layered deterministic coverage.
 
-`load -> official schema validation -> Portable Profile gate -> normalize -> immutable plan -> engine execution`
-
-Core is framework-neutral and owns configuration, the byte-identical official Open Workflow 1.0.3 schema, Open Workflow data semantics, `jq`, catalogs, protocols, knowledge, memory, invocation metadata, observability events, and common errors. ADK and LangGraph are separate packages with exact dependency locks, native agent/tool adapters, and engine-owned durability. Every invocation uses a workflow; missing workflow generates the default `agent:1.0.0@default` workflow. `agent` and `llm` remain distinct catalog functions.
-
-Implemented public behavior includes `/v1/invoke`, resume, capabilities, liveness/readiness, knowledge reload, request-size/error handling, Portable Profile tasks and calls, MCP/A2A/OpenAPI HTTP-backed calls, configured native tools, local knowledge indexing, protocol security/idempotency, lifecycle events, and deterministic FakeModel coverage.
-
-## Repository Structure
-
-- `core/`: framework-neutral runtime package and standalone build metadata.
-- `engines/adk/`, `engines/langgraph/`: engine adapters, native integrations, and independent locks.
-- `resources/`, `runtime-catalog/`: official schema and built-in catalog functions.
-- `docker/`: separate engine images.
-- `tests/core`, `tests/contract`, `tests/adk`, `tests/langgraph`, `tests/e2e`: layered tests.
+Use strict typed Python, four-space indentation, exact dependency locks, shared contract fixtures, and `FakeModel`; never install packages at container startup or require paid APIs in tests.
 
 ## Verified Status
 
-Fresh local gates pass: root `65 passed, 4 skipped`; contract `32 passed`; ADK `36 passed` with one pinned-framework deprecation warning; LangGraph `36 passed`. Locked sync and lock checks pass for root, ADK, and LangGraph. Ruff format/check, mypy, root build, standalone core build, and schema wheel inclusion pass. The four root skips are optional native-engine tests; engine-specific locked suites provide the native verification.
+Local gates: root `65 passed, 4 skipped`; contract `32 passed`; ADK `36 passed` with one pinned-framework deprecation warning; LangGraph `36 passed`; format, lint, mypy, lock checks, root/core builds, and schema wheel checks pass.
 
-Not yet verified: Docker build/runtime smoke tests, image-level knowledge and local-model acceptance, container stop/restart/resume, CI reproducibility, and the official CTK gate. `persistence.datasource` is configured but not wired to a shared external backend, and `MemoryService` is not yet exposed as an agent-native tool. Protocols are secure HTTP-backed adapters rather than full protocol SDKs; SQLite remains the reference persistence backend.
+Original images were ADK `3,061,701,964` bytes and LangGraph `3,048,836,739` bytes. Final optimized images are ADK `202,387,127` bytes and LangGraph `197,563,217` bytes. The bloat was CUDA/Torch (`nvidia` about 2.7 GB, Torch about 1.1 GB) retained in the Sentence-Transformers dependency graph. Multi-stage builds retain only a 226–245 MB runtime environment and an 87 MB local model; `/root`, `/tmp`, and build caches are absent from the final images.
 
-## Development Commands
+Both images pass local health, capabilities, FakeModel, mounted config/knowledge, reload/watch/deletion/restart, arbitrary-UID, read-only-root, and offline search checks. Fresh container stop -> restart -> resume -> complete tests pass for both engines with persisted `adk-sessions.sqlite3` / `langgraph-checkpoints.sqlite3`, stable workflow fingerprints, and repeated side effects carrying the same idempotency key. GitHub Actions is added but has no remote run result until a push/PR executes it.
+
+## Commands
 
 ```text
 uv sync --locked
@@ -43,13 +37,10 @@ uv run pytest -q
 uv run pytest tests/contract -q
 uv build
 uv build --directory core
+uv run --directory engines/adk --locked --extra native --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract -q
+uv run --directory engines/langgraph --locked --extra sqlite --with pytest --with pytest-asyncio pytest ../../tests/langgraph ../../tests/contract -q
+docker build -f docker/Dockerfile.adk .
+docker build -f docker/Dockerfile.langgraph .
 ```
 
-Engine suites run from their package directories with their locked `uv.lock` files:
-
-```text
-uv run --locked --extra native --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract -q
-uv run --locked --extra sqlite --with pytest --with pytest-asyncio pytest ../../tests/langgraph ../../tests/contract -q
-```
-
-Docker commands are `docker build -f docker/Dockerfile.adk .` and the analogous LangGraph command. Current local Docker fails because the Docker Desktop Linux daemon is unavailable.
+Remaining limitations are the applicable CTK gate, configured external `persistence.datasource`, and agent-native `MemoryService` exposure. Protocol adapters are secure HTTP-backed implementations rather than full SDKs; SQLite remains the reference backend. Deferred streaming, HITL, scheduling, CloudEvents, additional engines, and other future candidates remain out of scope.
