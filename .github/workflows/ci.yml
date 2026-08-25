@@ -101,7 +101,32 @@ jobs:
       - name: Check engine lock
         run: uv lock --check
       - name: Native and shared contract tests
-        run: uv run --locked --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract ../../tests/ctk -q
+        run: uv run --locked --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract -q
+      - name: Portable Profile CTK subset
+        shell: bash
+        run: |
+          set -o pipefail
+          uv run --locked --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
+            pytest ../../tests/ctk -q | tee "$RUNNER_TEMP/ctk-${{ matrix.engine }}.log"
+      - name: Capture CTK provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "repository_commit=$(git rev-parse HEAD)"
+            sed -n '1,8p' ../../tests/ctk/README.md
+            echo "scenario_sha256="
+            sha256sum ../../tests/ctk/features/*.feature
+          } > "$RUNNER_TEMP/ctk-${{ matrix.engine }}-provenance.txt"
+      - name: Upload CTK results and provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctk-${{ matrix.engine }}-results
+          path: |
+            ${{ runner.temp }}/ctk-${{ matrix.engine }}.log
+            ${{ runner.temp }}/ctk-${{ matrix.engine }}-provenance.txt
+          if-no-files-found: warn
 
   containers:
     name: Docker ${{ matrix.engine }} acceptance
@@ -430,3 +455,4 @@ jobs:
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
         run: uv run --locked --extra postgres pytest tests/core/test_postgres_persistence.py -q
+

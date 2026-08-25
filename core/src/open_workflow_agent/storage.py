@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sqlite3
 from dataclasses import dataclass
+from importlib import import_module
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import parse_qsl, unquote, urlencode, urlparse, urlunsplit
@@ -119,8 +120,8 @@ def open_storage(database: str | Path, namespace: str) -> StorageConnection:
         return StorageConnection(sqlite3.connect(path, check_same_thread=False), "sqlite")
 
     try:
-        import psycopg
-        from psycopg import sql
+        psycopg = import_module("psycopg")
+        sql = import_module("psycopg.sql")
     except ImportError as exc:
         raise ConfigurationError(
             "PostgreSQL persistence requires the optional 'postgres' dependency",
@@ -149,3 +150,4 @@ def ensure_storage_namespace(database: str, namespace: str) -> None:
         return
     connection = open_storage(database, namespace)
     connection.close()
+
