@@ -2,7 +2,7 @@
 
 ## Source of Truth and Current Phase
 
-`Project Definition.md` is authoritative; `AGENTS.md` contains mandatory contributor rules and `TODO.md` is the active backlog. Core implementation, local acceptance, remote CI/release verification, the applicable CTK gate, configured PostgreSQL persistence acceptance, B-001, and B-002 are complete. The current phase is B-003: Deferred workflow lifecycle features.
+`Project Definition.md` is authoritative; `AGENTS.md` contains mandatory contributor rules and `TODO.md` is the active backlog. Core implementation, local acceptance, remote CI/release verification, the applicable CTK gate, configured PostgreSQL persistence acceptance, B-001, B-002, and the bounded B-003 eventing/CloudEvents/scheduling/sub-workflow/HITL slices are complete. The current phase remains B-003, with secure external catalog resolution as the next implementation boundary.
 
 ## Architecture
 
@@ -10,24 +10,35 @@ The runtime is `load -> official schema validation -> Portable Profile gate -> n
 
 ## Repository Structure and Conventions
 
-- `core/`: common configuration, schema, workflow semantics, catalogs, services, API, persistence metadata, and errors.
+- `core/`: common configuration, schema, workflow semantics, catalogs, services, API, persistence metadata, approval/schedule state, and errors.
 - `engines/adk/`, `engines/langgraph/`: independent adapters, native persistence, locks, and package metadata.
 - `resources/`, `runtime-catalog/`: official resources and built-in catalog.
 - `docker/`: independent multi-stage runtime images; `.github/workflows/ci.yml`: Ubuntu quality/container gates.
 - `tests/core`, `tests/contract`, `tests/adk`, `tests/langgraph`, `tests/ctk`, `tests/e2e`: layered deterministic coverage.
 - `core/src/open_workflow_agent/protocols.py`: bounded common HTTP/MCP/A2A/OpenAPI clients used by workflow calls and configured agent tools.
+- `core/src/open_workflow_agent/approvals.py`: bounded durable approval state and replay layered on standard event/listen semantics.
 
 Use strict typed Python, four-space indentation, exact dependency locks, shared contract fixtures, and `FakeModel`; tests must not require paid APIs. Do not install packages at container startup.
 
 ## Verified Status
 
-Local root, core, contract, eventing, ADK, LangGraph, selected CTK, format, lint, mypy, lock, diff, Compose configuration, and PostgreSQL persistence checks pass. The full remote workflow also passed root build and wheel checks, both engine suites, the selected CTK subset, both Docker acceptance jobs, and PostgreSQL persistence acceptance after B-002 lifecycle coverage was added.
+Root format/lint/mypy/tests/contracts, ADK/LangGraph native suites, selected CTK, Docker image/health/knowledge/restart-resume gates, and PostgreSQL persistence acceptance remain green. The durable HITL implementation was merged through PR #2 after green branch CI run `32849496990`; the subsequent PostgreSQL common-store acceptance also verifies the isolated `owa_approvals` namespace and persisted decisions. The merge to `main` triggers the same full Ubuntu workflow.
 
-The GitHub workflow is green on Ubuntu in remote run [`32846277244`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32846277244) for the bounded local sub-workflow milestone. It passed root tests/contracts, release metadata and all three lock checks, Compose profile validation, wheel resource validation, both image metadata and 2 GiB gates, both independent Docker health/invocation/knowledge/eventing/CloudEvents gates, genuine stop/restart/resume across a container boundary for ADK and LangGraph, PostgreSQL common-store and persistence acceptance, and the pinned CTK subset in both engine jobs. The run produced CTK provenance artifacts containing test output, the repository commit, the pinned upstream CTK commit, and scenario hashes. SQLite remains the reference datasource; PostgreSQL common stores and ADK/LangGraph native PostgreSQL adapters are implemented behind locked `postgres` extras with isolated namespaces.
+SQLite remains the reference datasource. PostgreSQL common stores and ADK/LangGraph native PostgreSQL adapters are implemented behind locked `postgres` extras with isolated namespaces. Runtime images remain below the 2 GiB quality gate and use packaged FastEmbed/ONNX knowledge embeddings rather than Torch/CUDA.
+
+## Completed B-003 Behavior
+
+- Generic `emit`/`listen(one)` event delivery is process-local and non-durable.
+- Lifecycle events are available as bounded CloudEvents 1.0 JSON snapshots.
+- `schedule.after` and `schedule.every` persist scheduler state with restart reclaim and at-least-once semantics.
+- Local sub-workflows use the standard `run` task against deployment-configured `workflow.catalog` definitions.
+- Durable HITL approvals use standard event composition rather than a proprietary task: approval request/decision state is persisted separately, operator decisions are bearer-authorized and idempotent, inbox reads are protected, and terminal decisions replay through the normal `listen` path after restart. ADK and LangGraph share the same observable contract. The bearer/operator-header guard is deliberately a bounded deployment authorization boundary, not a replacement for an enterprise identity provider.
 
 ## Current Next Step
 
-B-003 in `TODO.md` is the current phase. Its bounded `listen`/`emit` eventing slice, optional lifecycle CloudEvents 1.0 bounded snapshot boundary, bounded durable scheduling, and local sub-workflows are complete. The HITL and external-catalog boundary is now specified: durable approval state and secure catalog resolution remain the next implementation work, followed by optional A2A exposure and streaming, and additional engines. Full MCP, A2A, OpenAPI, or Open Workflow ecosystem conformance remains unclaimed.
+Implement secure external catalog resolution without weakening the trust boundary. Open Workflow `use.catalogs` remains rejected until a deployment-controlled resolver has explicit allowlists/trust configuration, TLS verification, timeout/redirect/response-size controls, integrity or version pinning, caching/revalidation, fail-closed errors, capabilities reporting, and deterministic cross-engine contracts. After that, evaluate optional A2A exposure/streaming and only then additional engines.
+
+Full MCP, A2A, OpenAPI, external-catalog, streaming, or Open Workflow ecosystem conformance remains unclaimed beyond the tested Portable Profile/capabilities.
 
 ## Key Commands
 
