@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from .approvals import ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
 from .events import EventBus, InMemoryEventBus
@@ -44,7 +45,7 @@ class RuntimeServices:
         self.datasource = resolve_datasource(config.persistence.datasource)
         self.events = event_sink or InMemoryEventSink()
         self.lifecycle_events = LifecycleCloudEventSink(self.events)
-        self.event_bus = event_bus or InMemoryEventBus()
+        raw_event_bus = event_bus or InMemoryEventBus()
         self.workflow_catalog = WorkflowCatalog()
         self.workflow_runner: Any = None
         self.protocols = ProtocolServices()
@@ -70,6 +71,13 @@ class RuntimeServices:
             knowledge_path = config.knowledge.database
             memory_path = config.memory.database
             invocation_path = config.persistence.database
+        self.approvals = ApprovalService(
+            invocation_path,
+            enabled=config.approvals.enabled,
+            operator_token=config.approvals.operator_token,
+            event_bus=raw_event_bus,
+        )
+        self.event_bus = self.approvals.event_bus
         self.knowledge = KnowledgeService(
             config.knowledge.path,
             knowledge_path,
@@ -193,3 +201,4 @@ class RuntimeServices:
         self.memory.close()
         self.schedules.close()
         self.invocations.close()
+        self.approvals.close()

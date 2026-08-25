@@ -107,3 +107,23 @@ class ScheduleNotFound(OwaError):
 class ScheduleOperationConflict(OwaError):
     code = "schedule_operation_conflict"
     status_code = 409
+
+
+class ApprovalValidationError(OwaError):
+    code = "approval_validation_error"
+    status_code = 400
+
+
+class ApprovalNotFound(OwaError):
+    code = "approval_not_found"
+    status_code = 404
+
+
+class ApprovalConflict(OwaError):
+    code = "approval_conflict"
+    status_code = 409
+
+
+class ApprovalAuthorizationError(OwaError):
+    code = "approval_authorization_error"
+    status_code = 403

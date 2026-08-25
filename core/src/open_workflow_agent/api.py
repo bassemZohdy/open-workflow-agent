@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
@@ -13,14 +13,20 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .config import RuntimeConfig
 from .engine import PortableWorkflowEngine, WorkflowEngine
-from .errors import EventValidationError, InvocationNotFound, OwaError, ScheduleNotFound
+from .errors import (
+    ApprovalNotFound,
+    EventValidationError,
+    InvocationNotFound,
+    OwaError,
+    ScheduleNotFound,
+)
 from .scheduling import WorkflowScheduler
 from .services import RuntimeServices
 from .workflow import compile_workflow
 
 
 class RequestSizeLimitMiddleware:
-    """Buffer only invocation/resume requests and reject oversized bodies early."""
+    """Buffer only mutation requests and reject oversized bodies early."""
 
     def __init__(self, app: Any, *, max_bytes: int) -> None:
         self.app = app
@@ -62,8 +68,12 @@ class RequestSizeLimitMiddleware:
 
 def _is_limited_path(path: str) -> bool:
     return path in {"/v1/invoke", "/v1/events", "/v1/schedules"} or (
-        (path.startswith("/v1/invocations/") or path.startswith("/v1/schedules/"))
-        and (path.endswith("/resume") or path.endswith("/cancel"))
+        (
+            path.startswith("/v1/invocations/")
+            or path.startswith("/v1/schedules/")
+            or path.startswith("/v1/approvals/")
+        )
+        and (path.endswith("/resume") or path.endswith("/cancel") or path.endswith("/decision"))
     )
 
 
@@ -109,6 +119,13 @@ class CreateScheduleRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     input: Any = Field(default_factory=dict)
+
+
+class ApprovalDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: Literal["approved", "rejected"]
+    value: Any = None
 
 
 def create_app(
@@ -190,7 +207,9 @@ def create_app(
 
     @app.get("/v1/capabilities")
     async def capabilities() -> dict[str, Any]:
-        return runtime_engine.capabilities().as_dict()
+        value = runtime_engine.capabilities().as_dict()
+        value.setdefault("features", {})["approvals"] = runtime_services.approvals.capabilities()
+        return value
 
     @app.post("/v1/events")
     async def publish_event(request: PublishEventRequest) -> dict[str, Any]:
@@ -213,6 +232,47 @@ def create_app(
             ],
             media_type="application/cloudevents-batch+json",
         )
+
+    @app.get("/v1/approvals")
+    async def list_approvals(
+        status: str | None = Query(default=None),
+        limit: int = Query(default=100, ge=1, le=1000),
+    ) -> list[dict[str, Any]]:
+        runtime_services.approvals.ensure_enabled()
+        return [
+            record.as_dict()
+            for record in runtime_services.approvals.store.list(status=status, limit=limit)
+        ]
+
+    @app.get("/v1/approvals/{approval_id}")
+    async def get_approval(approval_id: str) -> dict[str, Any]:
+        runtime_services.approvals.ensure_enabled()
+        record = runtime_services.approvals.store.get(approval_id)
+        if record is None:
+            raise ApprovalNotFound(
+                "approval not found", details={"approval_id": approval_id}
+            )
+        return record.as_dict()
+
+    @app.post("/v1/approvals/{approval_id}/decision")
+    async def decide_approval(
+        approval_id: str,
+        request: ApprovalDecisionRequest,
+        authorization: str | None = Header(default=None, alias="Authorization"),
+        operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    ) -> dict[str, Any]:
+        authorized_operator = runtime_services.approvals.authorize(
+            authorization, operator_id
+        )
+        record = await runtime_services.approvals.decide(
+            approval_id,
+            decision=request.decision,
+            operator_id=authorized_operator,
+            value=request.value,
+            operation_key=idempotency_key,
+        )
+        return record.as_dict()
 
     @app.post("/v1/schedules")
     async def create_schedule(
