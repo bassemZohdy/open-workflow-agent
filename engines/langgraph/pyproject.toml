@@ -2,10 +2,11 @@
 name = "open-workflow-agent-langgraph"
 version = "0.1.0"
 requires-python = ">=3.11"
-dependencies = ["open-workflow-agent", "langgraph>=0.2"]
+dependencies = ["open-workflow-agent", "langgraph==1.2.11"]
 
 [project.optional-dependencies]
-sqlite = ["langgraph-checkpoint-sqlite>=2.0"]
+sqlite = ["langgraph-checkpoint-sqlite==3.1.1"]
+knowledge = ["open-workflow-agent[knowledge]"]
 
 [build-system]
 requires = ["hatchling"]

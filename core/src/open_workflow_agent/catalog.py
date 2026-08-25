@@ -26,10 +26,15 @@ class FakeModel:
         if self.failures:
             self.failures -= 1
             raise ModelError("controlled fake model failure")
-        if callable(self.response):
-            return self.response(prompt)
-        if self.response is not None:
-            return self.response
+        response = self.response
+        if isinstance(response, list):
+            response = response.pop(0) if response else None
+        if callable(response):
+            response = response(prompt)
+        if response is not None:
+            if hasattr(response, "__await__"):
+                return await response
+            return response
         if isinstance(prompt, dict):
             return {"response": prompt.get("input", prompt.get("prompt", prompt))}
         return {"response": prompt}
@@ -113,7 +118,27 @@ class FunctionCatalog:
                 "instruction": context.agent_instruction,
                 "tools": available_tools,
             }
-            return await context.model.complete(prompt)
+            messages: list[dict[str, Any]] = [
+                {"role": "user", "content": prompt.get("input", prompt)}
+            ]
+            current: Any = prompt
+            for _ in range(8):
+                response = await context.model.complete(current)
+                requests = _tool_requests(response)
+                if not requests:
+                    return response
+                if context.services is None:
+                    raise ToolError("agent tool execution requires runtime services")
+                messages.append({"role": "assistant", "tool_calls": requests})
+                results: list[dict[str, Any]] = []
+                for request in requests:
+                    name = str(request.get("name", ""))
+                    arguments = request.get("arguments", request.get("input", {}))
+                    result = await context.services.invoke_agent_tool(name, arguments)
+                    results.append({"name": name, "result": result})
+                    messages.append({"role": "tool", "name": name, "content": result})
+                current = {**prompt, "messages": messages, "tool_results": results}
+            raise ToolError("agent exceeded the maximum tool-call rounds")
 
         async def llm(payload: Any, context: CatalogContext) -> Any:
             return await context.model.complete(payload)
@@ -121,3 +146,15 @@ class FunctionCatalog:
         catalog.register("agent:1.0.0@default", agent)
         catalog.register("llm:1.0.0@default", llm)
         return catalog
+
+
+def _tool_requests(response: Any) -> list[dict[str, Any]]:
+    if not isinstance(response, dict):
+        return []
+    single = response.get("tool_call")
+    if isinstance(single, dict):
+        return [single]
+    multiple = response.get("tool_calls")
+    if isinstance(multiple, list):
+        return [item for item in multiple if isinstance(item, dict)]
+    return []

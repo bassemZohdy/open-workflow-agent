@@ -58,3 +58,23 @@ class LangGraphFunctionalAdapter:
                 return await graph.ainvoke(input_data, config=config)
         graph = self.compile(runner)
         return await graph.ainvoke(input_data, config=config)
+
+    async def resume(
+        self,
+        runner: Callable[[Any], Awaitable[Any]],
+        resume_input: Any,
+        *,
+        thread_id: str,
+    ) -> Any:
+        if not LANGGRAPH_AVAILABLE:
+            return await runner(resume_input)
+        from langgraph.types import Command
+
+        config = {"configurable": {"thread_id": thread_id}}
+        if self.database_path and AsyncSqliteSaver is not None:
+            async with AsyncSqliteSaver.from_conn_string(self.database_path) as saver:
+                await saver.setup()
+                graph = self.compile(runner, checkpointer=saver)
+                return await graph.ainvoke(Command(resume=resume_input), config=config)
+        graph = self.compile(runner)
+        return await graph.ainvoke(Command(resume=resume_input), config=config)

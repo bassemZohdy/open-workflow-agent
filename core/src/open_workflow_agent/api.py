@@ -6,14 +6,81 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from .config import RuntimeConfig
 from .engine import PortableWorkflowEngine, WorkflowEngine
-from .errors import OwaError
+from .errors import InvocationNotFound, OwaError
 from .services import RuntimeServices
 from .workflow import compile_workflow
+
+
+class RequestSizeLimitMiddleware:
+    """Buffer only invocation/resume requests and reject oversized bodies early."""
+
+    def __init__(self, app: Any, *, max_bytes: int) -> None:
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope.get("type") != "http" or not _is_limited_path(scope.get("path", "")):
+            await self.app(scope, receive, send)
+            return
+        headers = {key.lower(): value for key, value in scope.get("headers", [])}
+        declared = int(headers.get(b"content-length", b"0") or b"0")
+        if declared > self.max_bytes:
+            await _send_limit_error(scope, send, self.max_bytes)
+            return
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            message = await receive()
+            body = message.get("body", b"")
+            total += len(body)
+            if total > self.max_bytes:
+                await _send_limit_error(scope, send, self.max_bytes)
+                return
+            chunks.append(body)
+            if not message.get("more_body", False):
+                break
+        body = b"".join(chunks)
+        sent = False
+
+        async def replay() -> dict[str, Any]:
+            nonlocal sent
+            if sent:
+                return {"type": "http.disconnect"}
+            sent = True
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        await self.app(scope, replay, send)
+
+
+def _is_limited_path(path: str) -> bool:
+    return path == "/v1/invoke" or (
+        path.startswith("/v1/invocations/") and path.endswith("/resume")
+    )
+
+
+async def _send_limit_error(scope: dict[str, Any], send: Any, max_bytes: int) -> None:
+    response = JSONResponse(
+        status_code=413,
+        content={
+            "error": {
+                "code": "request_too_large",
+                "message": f"request body exceeds {max_bytes} bytes",
+                "details": {"max_request_bytes": max_bytes},
+            }
+        },
+    )
+
+    async def receive() -> dict[str, Any]:
+        return {"type": "http.disconnect"}
+
+    await response(scope, receive, send)
 
 
 class InvokeRequest(BaseModel):
@@ -42,18 +109,20 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-        await runtime_engine.initialize(runtime_services)
-        workflow_source: Any = runtime_config.workflow.definition
-        if workflow_source is None and runtime_config.workflow.path:
-            workflow_source = runtime_config.workflow.path
-        app.state.plan = compile_workflow(workflow_source)
-        if runtime_config.knowledge.reload.mode == "startup":
-            runtime_services.knowledge.reload()
-        elif runtime_config.knowledge.reload.mode == "watch":
-            await runtime_services.knowledge.start_watch(
-                runtime_config.knowledge.reload.interval_seconds
-            )
+        app.state.ready = False
         try:
+            await runtime_engine.initialize(runtime_services)
+            workflow_source: Any = runtime_config.workflow.definition
+            if workflow_source is None and runtime_config.workflow.path:
+                workflow_source = runtime_config.workflow.path
+            app.state.plan = compile_workflow(workflow_source)
+            if runtime_config.knowledge.reload.mode == "startup":
+                runtime_services.knowledge.reload()
+            elif runtime_config.knowledge.reload.mode == "watch":
+                await runtime_services.knowledge.start_watch(
+                    runtime_config.knowledge.reload.interval_seconds
+                )
+            app.state.ready = True
             yield
         finally:
             await runtime_services.knowledge.stop_watch()
@@ -62,16 +131,40 @@ def create_app(
                 runtime_services.close()
 
     app = FastAPI(title="Open Workflow Agent", version="0.1.0", lifespan=lifespan)
+    app.add_middleware(
+        RequestSizeLimitMiddleware, max_bytes=runtime_config.server.max_request_bytes
+    )
+
+    @app.exception_handler(OwaError)
+    async def owa_error(_request: Request, exc: OwaError) -> JSONResponse:
+        return JSONResponse(status_code=exc.status_code, content={"error": exc.as_dict()})
+
+    @app.exception_handler(RequestValidationError)
+    async def request_validation(_request: Request, exc: RequestValidationError) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": {
+                    "code": "request_validation_error",
+                    "message": "request validation failed",
+                    "details": {"errors": exc.errors()},
+                }
+            },
+        )
+
     app.state.config = runtime_config
     app.state.services = runtime_services
     app.state.engine = runtime_engine
+    app.state.ready = False
 
     @app.get("/health/live")
     async def live() -> dict[str, str]:
         return {"status": "ok"}
 
     @app.get("/health/ready")
-    async def ready() -> dict[str, str]:
+    async def ready() -> Any:
+        if not app.state.ready:
+            return JSONResponse(status_code=503, content={"status": "not_ready"})
         return {"status": "ok"}
 
     @app.get("/v1/capabilities")
@@ -79,7 +172,7 @@ def create_app(
         return runtime_engine.capabilities().as_dict()
 
     @app.post("/v1/invoke")
-    async def invoke(request: InvokeRequest) -> dict[str, Any]:
+    async def invoke(request: InvokeRequest) -> Any:
         plan = getattr(app.state, "plan", compile_workflow())
         handle = runtime_services.invocations.create(
             engine=runtime_engine.engine_name,
@@ -91,19 +184,26 @@ def create_app(
         )
         result = await runtime_engine.invoke(plan, handle, request.input)
         if result.status == "faulted":
-            raise HTTPException(status_code=500, detail=result.error)
+            error = result.error or {
+                "code": "workflow_execution_error",
+                "message": "invocation faulted",
+                "details": {},
+            }
+            return JSONResponse(status_code=500, content={"error": error})
         return result.as_dict()
 
     @app.post("/v1/invocations/{invocation_id}/resume")
-    async def resume(invocation_id: str, request: ResumeRequest) -> dict[str, Any]:
+    async def resume(invocation_id: str, request: ResumeRequest) -> Any:
         handle = runtime_services.invocations.get(invocation_id)
         if handle is None:
-            raise HTTPException(status_code=404, detail="invocation not found")
+            raise InvocationNotFound(
+                "invocation not found", details={"invocation_id": invocation_id}
+            )
         plan = getattr(app.state, "plan", compile_workflow())
         try:
             result = await runtime_engine.resume(handle, request.input, plan)
         except OwaError as exc:
-            raise HTTPException(status_code=exc.status_code, detail=exc.as_dict()) from exc
+            return JSONResponse(status_code=exc.status_code, content={"error": exc.as_dict()})
         return result.as_dict()
 
     @app.post("/v1/admin/knowledge/reload")

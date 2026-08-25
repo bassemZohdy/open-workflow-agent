@@ -1,0 +1,17 @@
+document:
+  dsl: '1.0.3'
+  namespace: tests
+  name: input-validation
+  version: '1.0.0'
+input:
+  schema:
+    document:
+      type: object
+      required: [question]
+      properties:
+        question:
+          type: string
+do:
+  - answer:
+      set:
+        accepted: ${ .question }

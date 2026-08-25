@@ -5,9 +5,12 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+import os
 import re
+import time
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
@@ -22,6 +25,7 @@ from .errors import (
     WorkflowSchemaError,
     WorkflowSemanticError,
 )
+from .observability import EventSink, NullEventSink, WorkflowEvent
 
 DEFAULT_WORKFLOW: dict[str, Any] = {
     "document": {
@@ -33,26 +37,9 @@ DEFAULT_WORKFLOW: dict[str, Any] = {
     "do": [{"respond": {"call": "agent:1.0.0@default"}}],
 }
 
-# This is a structural validation gate for the Portable Profile. The official
-# upstream schema remains the normative schema; the loader intentionally does
-# not add proprietary task or call keywords to it.
-PORTABLE_SCHEMA: dict[str, Any] = {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://open-workflow-specification.org/schemas/1.0.3/workflow.yaml",
-    "type": "object",
-    "required": ["document", "do"],
-    "properties": {
-        "document": {"type": "object", "required": ["dsl", "namespace", "name", "version"]},
-        "do": {"type": "array", "minItems": 1, "items": {"type": "object", "minProperties": 1}},
-        "input": {"type": "object"},
-        "output": {"type": "object"},
-        "use": {"type": "array"},
-        "timeout": {"type": "object"},
-    },
-    "additionalProperties": True,
-}
+OFFICIAL_SCHEMA_RELATIVE_PATH = Path("resources/open-workflow/1.0.3/workflow.yaml")
 
-SUPPORTED_TASKS = {"call", "set", "switch", "for", "fork", "try", "wait", "raise"}
+SUPPORTED_TASKS = {"do", "call", "set", "switch", "for", "fork", "try", "wait", "raise"}
 SUPPORTED_CALLS = {
     "http",
     "mcp",
@@ -84,8 +71,32 @@ def generate_default_workflow() -> dict[str, Any]:
     return copy.deepcopy(DEFAULT_WORKFLOW)
 
 
+@lru_cache(maxsize=1)
+def _official_schema() -> dict[str, Any]:
+    configured = os.getenv("OWA_SCHEMA_PATH")
+    candidates = ((Path(configured),) if configured else ()) + (
+        Path(__file__).resolve().parent / "_resources/open-workflow/1.0.3/workflow.yaml",
+        Path(__file__).resolve().parents[3] / OFFICIAL_SCHEMA_RELATIVE_PATH,
+        Path.cwd() / OFFICIAL_SCHEMA_RELATIVE_PATH,
+    )
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            schema = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except (OSError, yaml.YAMLError) as exc:
+            raise WorkflowSchemaError(f"unable to load official schema: {path}") from exc
+        if not isinstance(schema, dict):
+            raise WorkflowSchemaError(f"official schema must be an object: {path}")
+        return cast(dict[str, Any], schema)
+    raise WorkflowSchemaError(
+        "official Open Workflow 1.0.3 schema is unavailable; expected "
+        f"{OFFICIAL_SCHEMA_RELATIVE_PATH}"
+    )
+
+
 def validate_schema(workflow: Mapping[str, Any]) -> None:
-    validator = Draft202012Validator(PORTABLE_SCHEMA)
+    validator = Draft202012Validator(_official_schema())
     errors = sorted(validator.iter_errors(workflow), key=lambda error: list(error.path))
     if errors:
         first = errors[0]
@@ -118,11 +129,8 @@ def validate_capabilities(workflow: Mapping[str, Any]) -> None:
                     raise UnsupportedWorkflowFeature(
                         f"call '{call}' is not enabled", details={"reference": reference}
                     )
-        for nested_key in ("switch", "for", "fork", "try"):
-            if nested_key in definition:
-                nested = _nested_task_lists(definition[nested_key], nested_key)
-                for task_list in nested:
-                    validate_capabilities({"do": task_list})
+        for task_list in _nested_task_lists(definition):
+            validate_capabilities({"do": task_list})
 
 
 def compile_workflow(source: str | Path | Mapping[str, Any] | None = None) -> WorkflowPlan:
@@ -269,7 +277,15 @@ class ExpressionEvaluator:
         if expression.startswith("."):
             return _path_get(data, expression[1:])
         if expression.startswith("$"):
-            return _path_get(data, expression[1:].lstrip("."))
+            variable_path = expression[1:].lstrip(".")
+            variable_name, _, remainder = variable_path.partition(".")
+            if variable_name in variables:
+                return (
+                    _path_get(variables[variable_name], remainder)
+                    if remainder
+                    else variables[variable_name]
+                )
+            return _path_get(data, variable_path)
         if expression in variables:
             return variables[expression]
         if expression in {"true", "false", "null"}:
@@ -304,39 +320,117 @@ class ExecutionState:
     outputs: dict[str, Any] = field(default_factory=dict)
     variables: dict[str, Any] = field(default_factory=dict)
     context: dict[str, Any] = field(default_factory=dict)
+    jump_to: str | None = None
+    stop: bool = False
 
 
 class WorkflowExecutor:
     """Engine-neutral execution of normalized portable plan semantics."""
 
-    def __init__(self, catalog: FunctionCatalog, *, services: Any = None) -> None:
+    def __init__(
+        self,
+        catalog: FunctionCatalog,
+        *,
+        services: Any = None,
+        event_sink: EventSink | None = None,
+    ) -> None:
         self.catalog = catalog
         self.services = services
         self.expressions = ExpressionEvaluator()
+        self.event_sink = event_sink or NullEventSink()
 
     async def execute(
         self, plan: WorkflowPlan, input_data: Any, *, metadata: dict[str, Any] | None = None
     ) -> Any:
-        state = ExecutionState(data=copy.deepcopy(input_data), context=metadata or {})
-        await self._run_tasks(plan.source.get("do", []), state)
+        workflow = plan.source
+        metadata = metadata or {}
+        event_context = {
+            "invocation_id": metadata.get("invocation_id"),
+            "session_id": metadata.get("session_id"),
+            "workflow_name": plan.name,
+            "workflow_version": plan.version,
+            "engine": metadata.get("engine"),
+            "engine_execution_reference": metadata.get("engine_execution_reference"),
+        }
+        started = time.perf_counter()
+        self._emit("WorkflowStarted", event_context)
+        self._validate_data_schema(workflow.get("input"), input_data, "workflow input")
+        initial_data = input_data
+        input_spec = workflow.get("input")
+        if isinstance(input_spec, Mapping) and "from" in input_spec:
+            initial_data = self.expressions.evaluate(input_spec["from"], input_data)
+        context = metadata
+        state = ExecutionState(
+            data=copy.deepcopy(initial_data),
+            context=context,
+            variables={"context": context},
+        )
+        try:
+            await self._run_tasks(plan.source.get("do", []), state)
+        except Exception as exc:
+            self._emit(
+                "WorkflowFaulted",
+                {
+                    **event_context,
+                    "duration": time.perf_counter() - started,
+                    "status": "faulted",
+                    "error": _error_details(exc),
+                },
+            )
+            raise
         output = plan.source.get("output")
         if isinstance(output, Mapping) and "as" in output:
-            return self.expressions.evaluate(output["as"], state.data, variables=state.variables)
-        return state.data
+            result = self.expressions.evaluate(output["as"], state.data, variables=state.variables)
+        else:
+            result = state.data
+        self._validate_data_schema(output, result, "workflow output")
+        self._emit(
+            "WorkflowCompleted",
+            {
+                **event_context,
+                "duration": time.perf_counter() - started,
+                "status": "completed",
+            },
+        )
+        return result
 
-    async def _run_tasks(self, task_list: Iterable[Any], state: ExecutionState) -> None:
-        for index, item in enumerate(task_list):
+    async def _run_tasks(
+        self, task_list: Iterable[Any], state: ExecutionState, *, prefix: str = "/do"
+    ) -> None:
+        tasks = list(task_list)
+        index = 0
+        while index < len(tasks):
+            item = tasks[index]
             if not isinstance(item, Mapping) or len(item) != 1:
                 raise WorkflowExecutionError(f"invalid task at sequence index {index}")
             name, definition = next(iter(item.items()))
             if not isinstance(definition, Mapping):
                 raise WorkflowExecutionError(f"task {name} definition must be an object")
             before = copy.deepcopy(state.data)
+            reference = f"{prefix}/{index}/{name}"
+            state.variables["_task_reference"] = reference
+            task_started = time.perf_counter()
+            self._emit("TaskStarted", self._task_event(reference, name, state))
             try:
-                result = await self._run_with_policy(str(name), definition, state)
+                result = await self._run_with_policy(str(name), definition, state, reference)
             except Exception as exc:
+                self._emit(
+                    "TaskFaulted",
+                    {
+                        **self._task_event(reference, name, state),
+                        "duration": time.perf_counter() - task_started,
+                        "status": "faulted",
+                        "error": _error_details(exc),
+                    },
+                )
                 if isinstance(
-                    exc, (WorkflowExecutionError, UnsupportedWorkflowFeature, ExpressionError)
+                    exc,
+                    (
+                        WorkflowExecutionError,
+                        WorkflowSemanticError,
+                        UnsupportedWorkflowFeature,
+                        ExpressionError,
+                    ),
                 ):
                     raise
                 raise WorkflowExecutionError(
@@ -344,9 +438,43 @@ class WorkflowExecutor:
                 ) from exc
             state.outputs[str(name)] = result
             state.data = self._apply_task_data(definition, result, before, state)
+            self._emit(
+                "TaskCompleted",
+                {
+                    **self._task_event(reference, name, state),
+                    "duration": time.perf_counter() - task_started,
+                    "status": "completed",
+                },
+            )
+            self._apply_transition(definition.get("then"), state)
+            if state.stop:
+                return
+            if state.jump_to is not None:
+                target = state.jump_to
+                state.jump_to = None
+                target_index = next(
+                    (
+                        candidate
+                        for candidate, task in enumerate(tasks)
+                        if isinstance(task, Mapping) and target in task
+                    ),
+                    None,
+                )
+                if target_index is None:
+                    raise WorkflowExecutionError(
+                        f"task transition target not found: {target}",
+                        details={"task": str(name)},
+                    )
+                index = target_index
+                continue
+            index += 1
 
     async def _run_with_policy(
-        self, name: str, definition: Mapping[str, Any], state: ExecutionState
+        self,
+        name: str,
+        definition: Mapping[str, Any],
+        state: ExecutionState,
+        reference: str,
     ) -> Any:
         retry = definition.get("retry")
         attempts = 1
@@ -357,7 +485,7 @@ class WorkflowExecutor:
         timeout = definition.get("timeout")
         timeout_seconds = _duration_seconds(timeout)
         last_error: Exception | None = None
-        for _attempt in range(max(1, attempts)):
+        for attempt in range(max(1, attempts)):
             try:
                 operation = self._run_task(name, definition, state)
                 if timeout_seconds is not None:
@@ -365,12 +493,26 @@ class WorkflowExecutor:
                 return await operation
             except Exception as exc:
                 last_error = exc
+                if attempt + 1 < max(1, attempts):
+                    self._emit(
+                        "TaskRetried",
+                        {
+                            **self._task_event(reference, name, state),
+                            "status": "retrying",
+                            "attempt": attempt + 1,
+                            "error": _error_details(exc),
+                        },
+                    )
         assert last_error is not None
         raise last_error
 
     async def _run_task(
         self, name: str, definition: Mapping[str, Any], state: ExecutionState
     ) -> Any:
+        if "if" in definition and not self.expressions.condition(
+            definition["if"], state.data, variables=state.variables
+        ):
+            return state.data
         task_input = state.data
         input_spec = definition.get("input")
         if isinstance(input_spec, Mapping) and "from" in input_spec:
@@ -381,6 +523,7 @@ class WorkflowExecutor:
             task_input = self.expressions.evaluate(
                 input_spec, state.data, variables=state.variables
             )
+        self._validate_data_schema(input_spec, task_input, f"task {name} input")
         if "set" in definition:
             return self.expressions.evaluate(
                 definition["set"], task_input, variables=state.variables
@@ -388,23 +531,50 @@ class WorkflowExecutor:
         if "call" in definition:
             payload = definition.get("with", task_input)
             payload = self.expressions.evaluate(payload, state.data, variables=state.variables)
+            if str(definition["call"]) in {"http", "mcp", "a2a", "openapi"} and isinstance(
+                payload, Mapping
+            ):
+                payload = {
+                    **payload,
+                    "operation_id": payload.get("operation_id")
+                    or payload.get("operationId")
+                    or self._operation_id(state),
+                }
             return await self._call(str(definition["call"]), payload, state)
         if "switch" in definition:
             return await self._run_switch(definition["switch"], state)
         if "for" in definition:
-            return await self._run_for(definition["for"], state)
+            return await self._run_for(definition, state)
         if "fork" in definition:
             return await self._run_fork(definition["fork"], state)
+        if "do" in definition:
+            await self._run_tasks(_task_body(definition["do"]), state)
+            return state.data
         if "try" in definition:
-            try:
+            catch = definition.get("catch") or definition.get("except")
+            if catch is None:
                 await self._run_tasks(_task_body(definition["try"]), state)
                 return state.data
-            except Exception:
-                catch = definition.get("catch") or definition.get("except")
-                if catch is None:
-                    raise
-                await self._run_tasks(_task_body(catch), state)
-                return state.data
+            catch_retry = catch.get("retry") if isinstance(catch, Mapping) else None
+            attempts = _retry_attempts(catch_retry)
+            for attempt in range(attempts):
+                try:
+                    await self._run_tasks(_task_body(definition["try"]), state)
+                    return state.data
+                except Exception as exc:
+                    if attempt + 1 < attempts:
+                        self._emit(
+                            "TaskRetried",
+                            {
+                                "task_name": name,
+                                "status": "retrying",
+                                "attempt": attempt + 1,
+                                "error": _error_details(exc),
+                            },
+                        )
+                        continue
+                    await self._run_tasks(_task_body(catch.get("do", [])), state)
+                    return state.data
         if "wait" in definition:
             wait_value = self.expressions.evaluate(
                 definition["wait"], state.data, variables=state.variables
@@ -413,9 +583,16 @@ class WorkflowExecutor:
             await asyncio.sleep(max(0.0, min(seconds, 300.0)))
             return state.data
         if "raise" in definition:
-            message = self.expressions.evaluate(
-                definition["raise"], state.data, variables=state.variables
-            )
+            raise_value = definition["raise"]
+            if isinstance(raise_value, Mapping):
+                error = raise_value.get("error", raise_value)
+                if isinstance(error, Mapping):
+                    message = error.get("detail") or error.get("title") or error.get("type")
+                else:
+                    message = error
+            else:
+                message = raise_value
+            message = self.expressions.evaluate(message, state.data, variables=state.variables)
             raise WorkflowExecutionError(str(message))
         raise UnsupportedWorkflowFeature(f"unsupported task {name}")
 
@@ -446,13 +623,22 @@ class WorkflowExecutor:
         for entry in entries:
             if not isinstance(entry, Mapping):
                 continue
+            case = entry
+            if len(entry) == 1:
+                candidate = next(iter(entry.values()))
+                if isinstance(candidate, Mapping):
+                    case = candidate
             if "otherwise" in entry:
                 otherwise = entry["otherwise"]
                 continue
-            condition = entry.get("when", entry.get("case", entry.get("if")))
-            if self.expressions.condition(condition, state.data, variables=state.variables):
-                body = entry.get("then", entry.get("do", []))
-                await self._run_tasks(_task_body(body), state)
+            condition = case.get("when", case.get("case", case.get("if")))
+            if condition is None or self.expressions.condition(
+                condition, state.data, variables=state.variables
+            ):
+                body = case.get("do")
+                if body is not None:
+                    await self._run_tasks(_task_body(body), state)
+                self._apply_transition(case.get("then"), state)
                 return state.data
         if otherwise is not None:
             await self._run_tasks(_task_body(otherwise), state)
@@ -461,12 +647,17 @@ class WorkflowExecutor:
     async def _run_for(self, definition: Any, state: ExecutionState) -> Any:
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError("for must be an object")
+        configuration = definition.get("for", definition)
+        if not isinstance(configuration, Mapping):
+            raise WorkflowSemanticError("for configuration must be an object")
         values = self.expressions.evaluate(
-            definition.get("in", definition.get("over", [])), state.data, variables=state.variables
+            configuration.get("in", configuration.get("over", [])),
+            state.data,
+            variables=state.variables,
         )
         if values is None:
             return state.data
-        variable = str(definition.get("each", definition.get("as", "item")))
+        variable = str(configuration.get("each", configuration.get("as", "item")))
         body = _task_body(definition.get("do", definition.get("body", [])))
         results: list[Any] = []
         for value in values:
@@ -509,6 +700,16 @@ class WorkflowExecutor:
             return merged
         return results
 
+    @staticmethod
+    def _apply_transition(transition: Any, state: ExecutionState) -> None:
+        if transition is None or transition == "continue":
+            return
+        if transition in {"end", "exit"}:
+            state.stop = True
+            return
+        if isinstance(transition, str):
+            state.jump_to = transition
+
     def _apply_task_data(
         self, definition: Mapping[str, Any], result: Any, before: Any, state: ExecutionState
     ) -> Any:
@@ -516,15 +717,60 @@ class WorkflowExecutor:
         output_spec = definition.get("output")
         if isinstance(output_spec, Mapping) and "as" in output_spec:
             output = self.expressions.evaluate(output_spec["as"], result, variables=state.variables)
+        self._validate_data_schema(output_spec, output, "task output")
         export_spec = definition.get("export")
         if isinstance(export_spec, Mapping) and "as" in export_spec:
             exported = self.expressions.evaluate(
                 export_spec["as"], result, variables=state.variables
             )
-            return _merge(before, exported)
+            state.context = _merge(state.context, exported)
+            state.variables["context"] = state.context
+            self._validate_data_schema(export_spec, exported, "task export")
         if isinstance(output, Mapping) and isinstance(before, Mapping):
             return _merge(before, output)
         return output
+
+    def _validate_data_schema(self, specification: Any, value: Any, label: str) -> None:
+        if not isinstance(specification, Mapping):
+            return
+        schema = specification.get("schema")
+        if not isinstance(schema, Mapping):
+            return
+        document = schema.get("document")
+        if not isinstance(document, Mapping):
+            return
+        errors = sorted(
+            Draft202012Validator(document).iter_errors(value),
+            key=lambda error: list(error.path),
+        )
+        if errors:
+            first = errors[0]
+            path = "/".join(str(item) for item in first.path) or "root"
+            raise WorkflowSemanticError(
+                f"{label} schema validation failed at {path}: {first.message}"
+            )
+
+    def _emit(self, event_type: str, payload: dict[str, Any]) -> None:
+        self.event_sink.emit(WorkflowEvent(event_type=event_type, **payload))
+
+    def _task_event(self, reference: str, name: Any, state: ExecutionState) -> dict[str, Any]:
+        context = state.context
+        return {
+            "invocation_id": context.get("invocation_id"),
+            "session_id": context.get("session_id"),
+            "workflow_name": context.get("workflow_name"),
+            "workflow_version": context.get("workflow_version"),
+            "task_name": str(name),
+            "task_reference": reference,
+            "engine": context.get("engine"),
+            "engine_execution_reference": context.get("engine_execution_reference"),
+        }
+
+    @staticmethod
+    def _operation_id(state: ExecutionState) -> str:
+        invocation = state.context.get("invocation_id", "unknown-invocation")
+        reference = state.variables.get("_task_reference", "unknown-task")
+        return f"{invocation}:{reference}"
 
 
 def _merge(left: Any, right: Any) -> Any:
@@ -535,16 +781,65 @@ def _merge(left: Any, right: Any) -> Any:
     return right
 
 
+def _retry_attempts(value: Any) -> int:
+    if value is None:
+        return 1
+    if isinstance(value, Mapping):
+        limit = value.get("limit", value.get("max_attempts", 0))
+        if isinstance(limit, Mapping):
+            limit = limit.get("attempt", {}).get("count", 0)
+            if isinstance(limit, Mapping):
+                limit = limit.get("count", 0)
+        try:
+            return max(1, int(limit) + 1)
+        except (TypeError, ValueError):
+            return 1
+    try:
+        return max(1, int(value) + 1)
+    except (TypeError, ValueError):
+        return 1
+
+
+def _error_details(error: Exception) -> dict[str, Any]:
+    if hasattr(error, "as_dict"):
+        return cast(dict[str, Any], error.as_dict())
+    return {"code": "workflow_execution_error", "message": str(error), "details": {}}
+
+
 def _duration_seconds(value: Any) -> float | None:
     if value is None:
         return None
     if isinstance(value, Mapping):
-        value = value.get("after")
+        if "after" in value:
+            return _duration_seconds(value["after"])
+        units = {
+            "days": 86_400,
+            "hours": 3_600,
+            "minutes": 60,
+            "seconds": 1,
+            "milliseconds": 0.001,
+        }
+        if any(unit in value for unit in units):
+            return sum(float(value.get(unit, 0)) * multiplier for unit, multiplier in units.items())
     if value is None:
         return None
     if isinstance(value, (int, float)):
         return float(value)
     text = str(value).strip().lower()
+    iso = re.fullmatch(
+        r"p(?:(?P<days>[0-9]+(?:\.[0-9]+)?)d)?(?:t(?:(?P<hours>[0-9]+(?:\.[0-9]+)?)h)?(?:(?P<minutes>[0-9]+(?:\.[0-9]+)?)m)?(?:(?P<seconds>[0-9]+(?:\.[0-9]+)?)s)?)?",
+        text,
+    )
+    if iso and any(iso.group(name) for name in ("days", "hours", "minutes", "seconds")):
+        return sum(
+            float(iso.group(name) or 0) * multiplier
+            for name, multiplier in (
+                ("days", 86_400),
+                ("hours", 3_600),
+                ("minutes", 60),
+                ("seconds", 1),
+            )
+        )
     match = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)\s*(ms|s|m|h)?", text)
     if not match:
         raise WorkflowSemanticError(f"invalid duration: {value}")
@@ -570,31 +865,33 @@ def _task_body(value: Any) -> list[Any]:
     return []
 
 
-def _nested_task_lists(value: Any, key: str) -> list[list[Any]]:
-    if key == "switch":
-        entries = (
-            value
-            if isinstance(value, list)
-            else value.get("cases", [])
-            if isinstance(value, Mapping)
-            else []
-        )
-        return [
-            _task_body(entry.get("then", entry.get("do", [])))
-            for entry in entries
-            if isinstance(entry, Mapping)
-        ]
-    if key == "fork":
-        branches = value.get("branches", []) if isinstance(value, Mapping) else value
-        return [
-            _task_body(branch.get("do", branch) if isinstance(branch, Mapping) else branch)
-            for branch in branches
-        ]
-    if key == "for" and isinstance(value, Mapping):
-        return [_task_body(value.get("do", value.get("body", [])))]
-    if key == "try" and isinstance(value, Mapping):
-        return [_task_body(value)]
-    return []
+def _nested_task_lists(definition: Mapping[str, Any]) -> list[list[Any]]:
+    nested: list[list[Any]] = []
+    if isinstance(definition.get("do"), list):
+        nested.append(definition["do"])
+    for_key = definition.get("for")
+    if isinstance(for_key, Mapping) and isinstance(definition.get("do"), list):
+        nested.append(definition["do"])
+    fork = definition.get("fork")
+    branches = fork.get("branches", []) if isinstance(fork, Mapping) else []
+    if isinstance(branches, list):
+        for branch in branches:
+            nested.append(_task_body(branch))
+    try_tasks = definition.get("try")
+    if isinstance(try_tasks, list):
+        nested.append(try_tasks)
+    catch = definition.get("catch")
+    if isinstance(catch, Mapping) and isinstance(catch.get("do"), list):
+        nested.append(catch["do"])
+    switch = definition.get("switch")
+    entries = switch if isinstance(switch, list) else []
+    for entry in entries:
+        if not isinstance(entry, Mapping):
+            continue
+        case = next(iter(entry.values())) if len(entry) == 1 else entry
+        if isinstance(case, Mapping) and case.get("do") is not None:
+            nested.append(_task_body(case["do"]))
+    return nested
 
 
 def _walk_tasks(task_list: Any, *, prefix: str) -> Iterable[tuple[str, Any]]:

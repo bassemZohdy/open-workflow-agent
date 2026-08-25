@@ -1,0 +1,39 @@
+document:
+  dsl: '1.0.3'
+  namespace: tests
+  name: protocol-calls
+  version: '1.0.0'
+do:
+  - http_call:
+      call: http
+      with:
+        method: POST
+        endpoint: https://service.test/http
+        body:
+          value: http
+  - mcp_call:
+      call: mcp
+      with:
+        method: tools/call
+        transport:
+          http:
+            endpoint: https://service.test/mcp
+        parameters:
+          name: lookup
+          arguments:
+            value: mcp
+  - a2a_call:
+      call: a2a
+      with:
+        server: https://service.test/a2a
+        method: message/send
+        parameters:
+          value: a2a
+  - openapi_call:
+      call: openapi
+      with:
+        document:
+          endpoint: https://service.test/openapi
+        operationId: lookup
+        parameters:
+          value: openapi

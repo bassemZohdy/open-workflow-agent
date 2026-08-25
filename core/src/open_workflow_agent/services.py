@@ -7,11 +7,12 @@ from typing import Any
 
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
-from .knowledge import KnowledgeService
+from .knowledge import KnowledgeService, SentenceTransformerEmbeddingProvider
 from .memory import MemoryService
+from .observability import EventSink, InMemoryEventSink
 from .persistence import InvocationStore
 from .protocols import ProtocolServices
-from .tools import ToolRegistry
+from .tools import AgentToolBinding, ToolRegistry
 
 
 class RuntimeServices:
@@ -21,6 +22,7 @@ class RuntimeServices:
         *,
         model: Model | None = None,
         database_root: str | Path | None = None,
+        event_sink: EventSink | None = None,
     ) -> None:
         self.config = config
         self.model = model or (
@@ -34,6 +36,7 @@ class RuntimeServices:
         )
         self.agent_instruction = config.agent.instruction
         self.database_root = Path(database_root) if database_root else None
+        self.events = event_sink or InMemoryEventSink()
         self.protocols = ProtocolServices()
         self.tools = ToolRegistry.from_config(config.tools, self.protocols)
         self.agent_tools = ("search_knowledge", *self.tools.names())
@@ -44,6 +47,10 @@ class RuntimeServices:
         self.knowledge = KnowledgeService(
             config.knowledge.path,
             knowledge_path,
+            embedding=SentenceTransformerEmbeddingProvider(
+                model_name=config.embedding.model,
+                model_revision=config.embedding.revision,
+            ),
             chunk_size=config.knowledge.chunk_size,
             chunk_overlap=config.knowledge.chunk_overlap,
         )
@@ -61,6 +68,21 @@ class RuntimeServices:
         query = payload.get("query", "") if isinstance(payload, dict) else str(payload)
         limit = int(payload.get("limit", 5)) if isinstance(payload, dict) else 5
         return self.knowledge.search(query, limit)
+
+    async def invoke_agent_tool(self, name: str, payload: Any) -> Any:
+        if name == "search_knowledge":
+            return await self._search_knowledge(payload, None)
+        return await self.tools.invoke(name, payload)
+
+    def agent_tool_bindings(self) -> tuple[AgentToolBinding, ...]:
+        return (
+            AgentToolBinding(
+                name="search_knowledge",
+                description="Search mounted knowledge documents.",
+                invoke=lambda payload: self._search_knowledge(payload, None),
+            ),
+            *self.tools.bindings(),
+        )
 
     async def call_protocol(self, protocol: str, payload: Any) -> Any:
         return await self.protocols.call(protocol, payload)

@@ -39,6 +39,7 @@ class NativeAdkRunner:
         session_id: str,
         user_id: str | None,
         database_path: str | None = None,
+        invocation_id: str | None = None,
     ) -> Any:
         if (
             not ADK_AVAILABLE
@@ -98,9 +99,30 @@ class NativeAdkRunner:
         async for event in framework_runner.run_async(
             user_id=user,
             session_id=session_id,
+            invocation_id=invocation_id,
             new_message=message,
             yield_user_message=False,
         ):
             if getattr(event, "output", None) is not None:
                 output = event.output
         return output
+
+    async def resume(
+        self,
+        runner: Callable[[Any], Awaitable[Any]],
+        resume_input: Any,
+        *,
+        session_id: str,
+        user_id: str | None,
+        invocation_id: str,
+        database_path: str | None = None,
+    ) -> Any:
+        """Resume an ADK invocation using its persisted native invocation id."""
+        return await self.invoke(
+            runner,
+            resume_input,
+            session_id=session_id,
+            user_id=user_id,
+            invocation_id=invocation_id,
+            database_path=database_path,
+        )

@@ -6,12 +6,8 @@ document:
 do:
   - route:
       switch:
-        - when: ${ .kind == 'priority' }
-          then:
-            - set_result:
-                set:
-                  result: fast
-        - otherwise:
-            - set_result:
-                set:
-                  result: normal
+        - priority:
+            when: ${ .kind == 'priority' }
+            then: continue
+        - default:
+            then: continue

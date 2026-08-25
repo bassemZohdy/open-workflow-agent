@@ -8,7 +8,7 @@ do:
       for:
         each: item
         in: ${ .items }
-        do:
-          - capture:
-              set:
-                last: '@item'
+      do:
+        - capture:
+            set:
+              last: ${ $item }

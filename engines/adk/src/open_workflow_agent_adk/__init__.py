@@ -6,6 +6,7 @@ from open_workflow_agent.engine import EngineCapabilities, InvocationResult, Por
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.workflow import WorkflowPlan
 
+from .agent import AdkAgentFactory
 from .native import NativeAdkRunner
 
 
@@ -23,6 +24,15 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
     def __init__(self) -> None:
         self.native = NativeAdkRunner()
 
+    async def initialize(self, services: Any) -> None:
+        await super().initialize(services)
+        factory = AdkAgentFactory()
+        self.agent = factory.create(
+            services.config.agent,
+            services.config.model,
+            factory.bind_tools(services.agent_tool_bindings()),
+        )
+
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(engine=self.engine_name, resume=True, streaming=False)
 
@@ -34,11 +44,21 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         try:
             output = await self.native.invoke(
                 lambda value: self.executor.execute(
-                    workflow, value, metadata={"invocation_id": invocation.invocation_id}
+                    workflow,
+                    value,
+                    metadata={
+                        "invocation_id": invocation.invocation_id,
+                        "session_id": invocation.session_id,
+                        "engine": invocation.engine,
+                        "engine_execution_reference": invocation.engine_execution_reference,
+                        "workflow_name": workflow.name,
+                        "workflow_version": workflow.version,
+                    },
                 ),
                 input_data,
                 session_id=invocation.session_id,
                 user_id=invocation.user_id,
+                invocation_id=invocation.engine_execution_reference,
                 database_path=(
                     str(self.services.database_root / "adk-sessions.sqlite3")
                     if self.services.database_root
@@ -64,6 +84,47 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 "faulted",
                 error=error,
             )
+
+    async def resume(
+        self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
+    ) -> InvocationResult:
+        self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+        if not self.native.available or handle.status not in {"running", "waiting", "suspended"}:
+            return await super().resume(handle, resume_input, plan)
+        try:
+            output = await self.native.resume(
+                lambda value: self.executor.execute(
+                    plan,
+                    value,
+                    metadata={
+                        "invocation_id": handle.invocation_id,
+                        "session_id": handle.session_id,
+                        "engine": handle.engine,
+                        "engine_execution_reference": handle.engine_execution_reference,
+                        "workflow_name": plan.name,
+                        "workflow_version": plan.version,
+                    },
+                ),
+                resume_input,
+                session_id=handle.session_id,
+                user_id=handle.user_id,
+                invocation_id=handle.engine_execution_reference,
+                database_path=(
+                    str(self.services.database_root / "adk-sessions.sqlite3")
+                    if self.services.database_root
+                    else self.services.config.persistence.database
+                ),
+            )
+            self.services.invocations.update(handle, status="completed")
+            return InvocationResult(handle.invocation_id, handle.session_id, "completed", output)
+        except Exception as exc:
+            self.services.invocations.update(handle, status="faulted")
+            error = (
+                exc.as_dict()
+                if hasattr(exc, "as_dict")
+                else {"code": "workflow_execution_error", "message": str(exc), "details": {}}
+            )
+            return InvocationResult(handle.invocation_id, handle.session_id, "faulted", error=error)
 
 
 __all__ = ["AdkWorkflowEngine"]

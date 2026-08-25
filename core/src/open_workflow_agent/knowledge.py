@@ -5,10 +5,11 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import re
 import sqlite3
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import numpy as np
 import yaml
@@ -16,9 +17,19 @@ import yaml
 from .errors import KnowledgeError
 
 
-class LocalEmbeddingProvider:
+class EmbeddingProvider(Protocol):
+    dimensions: int
+    identity: str
+
+    def embed(self, text: str) -> np.ndarray: ...
+
+
+class DeterministicEmbeddingProvider:
+    """Small offline provider reserved for deterministic tests."""
+
     def __init__(self, dimensions: int = 64) -> None:
         self.dimensions = dimensions
+        self.identity = f"deterministic-sha256/{dimensions}"
 
     def embed(self, text: str) -> np.ndarray:
         vector = np.zeros(self.dimensions, dtype=np.float32)
@@ -30,19 +41,63 @@ class LocalEmbeddingProvider:
         return vector / norm if norm else vector
 
 
+class SentenceTransformerEmbeddingProvider:
+    """Pinned local CPU embedding provider for mounted-folder knowledge."""
+
+    model_name = "sentence-transformers/all-MiniLM-L6-v2"
+    model_revision = "ea78891063587eb050ed4166b20062eaf978037c"
+
+    def __init__(
+        self,
+        *,
+        model_name: str = model_name,
+        model_revision: str = model_revision,
+        model: Any | None = None,
+    ) -> None:
+        self.model_name = model_name
+        self.model_revision = model_revision
+        self.identity = f"{model_name}@{model_revision}"
+        self._model = model
+        self.dimensions = 384
+
+    def embed(self, text: str) -> np.ndarray:
+        if self._model is None:
+            try:
+                from sentence_transformers import SentenceTransformer  # type: ignore[import-not-found]  # noqa: I001
+            except ImportError as exc:
+                raise KnowledgeError(
+                    "sentence-transformers is required for the configured local embedding model"
+                ) from exc
+            self._model = SentenceTransformer(
+                self.model_name,
+                revision=self.model_revision,
+                device="cpu",
+                cache_folder=os.getenv("SENTENCE_TRANSFORMERS_HOME"),
+            )
+            self.dimensions = int(self._model.get_sentence_embedding_dimension())
+        vector = self._model.encode(
+            [text], convert_to_numpy=True, normalize_embeddings=True, show_progress_bar=False
+        )[0]
+        return np.asarray(vector, dtype=np.float32)
+
+
+# Backward-compatible import for integrations that used the provisional test provider.
+LocalEmbeddingProvider = DeterministicEmbeddingProvider
+
+
 class KnowledgeService:
     def __init__(
         self,
         root: str | Path,
         database: str | Path,
         *,
-        embedding: LocalEmbeddingProvider | None = None,
+        embedding: EmbeddingProvider | None = None,
         chunk_size: int = 400,
         chunk_overlap: int = 40,
     ) -> None:
         self.root = Path(root)
         self.database = Path(database)
-        self.embedding = embedding or LocalEmbeddingProvider()
+        self.embedding = embedding or SentenceTransformerEmbeddingProvider()
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.database.parent.mkdir(parents=True, exist_ok=True)
@@ -81,11 +136,15 @@ class KnowledgeService:
             }:
                 current[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
         existing = {
-            row[0]: row[1] for row in self.connection.execute("SELECT path, hash FROM manifest")
+            row[0]: (row[1], row[2])
+            for row in self.connection.execute("SELECT path, hash, embedding FROM manifest")
         }
         counts = {"added": 0, "updated": 0, "deleted": 0, "unchanged": 0}
         for path_string, digest in current.items():
-            if path_string in existing and existing[path_string] == digest:
+            if path_string in existing and existing[path_string] == (
+                digest,
+                self.embedding.identity,
+            ):
                 counts["unchanged"] += 1
                 continue
             if path_string in existing:
@@ -110,7 +169,7 @@ class KnowledgeService:
                     digest,
                     path.suffix.lower(),
                     str(self.chunk_size),
-                    str(self.embedding.dimensions),
+                    self.embedding.identity,
                 ),
             )
         for removed in set(existing) - set(current):
@@ -121,6 +180,8 @@ class KnowledgeService:
         return counts
 
     def search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
+        if not self.connection.execute("SELECT 1 FROM chunks LIMIT 1").fetchone():
+            return []
         query_vector = self.embedding.embed(query)
         scored: list[dict[str, Any]] = []
         for path, content, blob in self.connection.execute(

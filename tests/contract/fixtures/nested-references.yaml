@@ -1,0 +1,13 @@
+document:
+  dsl: '1.0.3'
+  namespace: tests
+  name: nested-references
+  version: '1.0.0'
+do:
+  - outer:
+      do:
+        - inner:
+            input:
+              from: ${ .question }
+            set:
+              nested: ${ . }

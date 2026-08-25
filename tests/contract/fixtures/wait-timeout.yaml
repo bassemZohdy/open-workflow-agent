@@ -1,0 +1,12 @@
+document:
+  dsl: '1.0.3'
+  namespace: tests
+  name: wait-timeout
+  version: '1.0.0'
+do:
+  - pause:
+      wait:
+        milliseconds: 0
+      timeout:
+        after:
+          seconds: 1

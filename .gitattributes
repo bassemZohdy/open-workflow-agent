@@ -1,0 +1,3 @@
+# Preserve the official upstream schema byte-for-byte, including its source whitespace.
+resources/open-workflow/1.0.3/workflow.yaml binary
+core/src/open_workflow_agent/_resources/open-workflow/1.0.3/workflow.yaml binary

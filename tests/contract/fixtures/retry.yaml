@@ -5,10 +5,13 @@ document:
   version: '1.0.0'
 do:
   - response:
-      call: llm:1.0.0@default
-      with:
-        prompt: retryable
-      retry:
-        max_attempts: 1
-      timeout:
-        after: 1s
+      try:
+        - model:
+            call: llm:1.0.0@default
+            with:
+              prompt: retryable
+      catch:
+        retry:
+          limit:
+            attempt:
+              count: 1

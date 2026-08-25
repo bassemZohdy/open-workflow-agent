@@ -1,0 +1,10 @@
+document:
+  dsl: '1.0.3'
+  namespace: tests
+  name: llm-call
+  version: '1.0.0'
+do:
+  - answer:
+      call: llm:1.0.0@default
+      with:
+        prompt: ${ .question }

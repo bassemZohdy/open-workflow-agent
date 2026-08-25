@@ -5,7 +5,8 @@ requires-python = ">=3.11"
 dependencies = ["open-workflow-agent"]
 
 [project.optional-dependencies]
-native = ["google-adk>=1.0"]
+native = ["google-adk==2.7.1"]
+knowledge = ["open-workflow-agent[knowledge]"]
 
 [build-system]
 requires = ["hatchling"]

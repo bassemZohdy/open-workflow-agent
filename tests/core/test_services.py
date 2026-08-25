@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from open_workflow_agent.knowledge import KnowledgeService
+from open_workflow_agent.knowledge import (
+    DeterministicEmbeddingProvider,
+    KnowledgeService,
+    SentenceTransformerEmbeddingProvider,
+)
 from open_workflow_agent.memory import MemoryService
 from open_workflow_agent.persistence import InvocationStore
 
@@ -18,7 +22,9 @@ def test_knowledge_manifest_skips_unchanged_documents(tmp_path):
     root = tmp_path / "knowledge"
     root.mkdir()
     (root / "policy.md").write_text("License renewal requires an application.", encoding="utf-8")
-    knowledge = KnowledgeService(root, tmp_path / "knowledge.sqlite3")
+    knowledge = KnowledgeService(
+        root, tmp_path / "knowledge.sqlite3", embedding=DeterministicEmbeddingProvider()
+    )
     assert knowledge.reload()["added"] == 1
     assert knowledge.reload()["unchanged"] == 1
     assert knowledge.search("renewal")[0]["path"].endswith("policy.md")
@@ -27,16 +33,47 @@ def test_knowledge_manifest_skips_unchanged_documents(tmp_path):
     knowledge.close()
 
 
+def test_knowledge_reindexes_when_embedding_identity_changes(tmp_path):
+    root = tmp_path / "knowledge"
+    root.mkdir()
+    (root / "policy.md").write_text("License renewal policy.", encoding="utf-8")
+    database = tmp_path / "knowledge.sqlite3"
+    first = KnowledgeService(root, database, embedding=DeterministicEmbeddingProvider(8))
+    assert first.reload()["added"] == 1
+    first.close()
+    second = KnowledgeService(root, database, embedding=DeterministicEmbeddingProvider(16))
+    assert second.reload()["updated"] == 1
+    second.close()
+
+
 def test_knowledge_watch_can_start_and_stop(tmp_path):
     import asyncio
 
     async def run():
-        knowledge = KnowledgeService(tmp_path / "knowledge", tmp_path / "knowledge.sqlite3")
+        knowledge = KnowledgeService(
+            tmp_path / "knowledge",
+            tmp_path / "knowledge.sqlite3",
+            embedding=DeterministicEmbeddingProvider(),
+        )
         await knowledge.start_watch(1)
         await knowledge.stop_watch()
         knowledge.close()
 
     asyncio.run(run())
+
+
+def test_pinned_embedding_provider_is_injectable_and_records_identity():
+    class FakeSentenceTransformer:
+        def get_sentence_embedding_dimension(self):
+            return 3
+
+        def encode(self, values, **kwargs):
+            assert values == ["hello"]
+            return [[1.0, 0.0, 0.0]]
+
+    provider = SentenceTransformerEmbeddingProvider(model=FakeSentenceTransformer())
+    assert provider.identity.endswith("@ea78891063587eb050ed4166b20062eaf978037c")
+    assert provider.embed("hello").tolist() == [1.0, 0.0, 0.0]
 
 
 def test_invocation_fingerprint_is_persisted_and_checked(tmp_path):

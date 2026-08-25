@@ -84,14 +84,25 @@ class PortableWorkflowEngine(WorkflowEngine):
 
     async def initialize(self, services: RuntimeServices) -> None:
         await super().initialize(services)
-        self.executor = WorkflowExecutor(services.catalog, services=services)
+        self.executor = WorkflowExecutor(
+            services.catalog, services=services, event_sink=services.events
+        )
 
     async def invoke(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> InvocationResult:
         try:
             output = await self.executor.execute(
-                workflow, input_data, metadata={"invocation_id": invocation.invocation_id}
+                workflow,
+                input_data,
+                metadata={
+                    "invocation_id": invocation.invocation_id,
+                    "session_id": invocation.session_id,
+                    "engine": invocation.engine,
+                    "engine_execution_reference": invocation.engine_execution_reference,
+                    "workflow_name": workflow.name,
+                    "workflow_version": workflow.version,
+                },
             )
             invocation.status = "completed"
             self.services.invocations.update(invocation, status="completed")

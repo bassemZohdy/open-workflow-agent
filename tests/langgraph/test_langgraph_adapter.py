@@ -1,4 +1,5 @@
 from open_workflow_agent.config import AgentConfig, ModelConfig
+from open_workflow_agent.tools import AgentToolBinding
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 from open_workflow_agent_langgraph.agent import LangGraphAgentFactory
 from open_workflow_agent_langgraph.model import LangGraphModelAdapter
@@ -13,3 +14,14 @@ def test_langgraph_factory_and_native_bridge_are_optional():
     assert LangGraphWorkflowEngine().capabilities().engine == "langgraph"
     assert LangGraphModelAdapter(ModelConfig()).config.name == "fake/default"
     assert LangGraphFunctionalAdapter().compile(lambda value: value) is not None
+
+
+def test_langgraph_factory_binds_real_structured_tools():
+    async def invoke(payload):
+        return payload
+
+    tools = LangGraphAgentFactory().bind_tools(
+        (AgentToolBinding("configured", "configured tool", invoke),)
+    )
+    assert tools
+    assert tools[0].name == "configured"

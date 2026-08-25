@@ -47,6 +47,12 @@ class KnowledgeConfig(StrictModel):
     chunk_overlap: int = 40
 
 
+class EmbeddingConfig(StrictModel):
+    provider: Literal["sentence-transformers"] = "sentence-transformers"
+    model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    revision: str = "ea78891063587eb050ed4166b20062eaf978037c"
+
+
 class MemoryConfig(StrictModel):
     enabled: bool | Literal["auto"] = "auto"
     database: str = "/data/memory.sqlite3"
@@ -79,6 +85,7 @@ class RuntimeConfig(StrictModel):
     model: ModelConfig = Field(default_factory=ModelConfig)
     workflow: WorkflowConfig = Field(default_factory=WorkflowConfig)
     knowledge: KnowledgeConfig = Field(default_factory=KnowledgeConfig)
+    embedding: EmbeddingConfig = Field(default_factory=EmbeddingConfig)
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     persistence: PersistenceConfig = Field(default_factory=PersistenceConfig)
     tools: list[ToolConfig] = Field(default_factory=list)

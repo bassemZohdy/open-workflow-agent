@@ -1,0 +1,24 @@
+document:
+  dsl: '1.0.3'
+  namespace: tests
+  name: data-transform
+  version: '1.0.0'
+input:
+  from: ${ .payload }
+do:
+  - transform:
+      input:
+        from: ${ .value }
+        schema:
+          document:
+            type: integer
+      set:
+        doubled: ${ . }
+      output:
+        as:
+          doubled: ${ .doubled }
+      export:
+        as:
+          last_value: ${ .doubled }
+output:
+  as: ${ .doubled }
