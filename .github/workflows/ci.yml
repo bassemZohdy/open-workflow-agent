@@ -94,8 +94,10 @@ jobs:
         include:
           - engine: adk
             port: 18080
+            resume_port: 19080
           - engine: langgraph
             port: 18081
+            resume_port: 19081
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -136,8 +138,8 @@ jobs:
           printf '%s\n' 'CI knowledge acceptance document.' > "$workdir/knowledge/policy.md"
           name="owa-${{ matrix.engine }}-ci"
           log_file="$RUNNER_TEMP/owa-${{ matrix.engine }}-container.log"
-          docker run --detach --rm --name "$name" --publish ${{ matrix.port }}:8080 \
-            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=64m --user 12345:0 \
+          docker run --detach --name "$name" --publish ${{ matrix.port }}:8080 \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=256m --user 12345:0 \
             --volume "$workdir/config:/config:ro" \
             --volume "$workdir/knowledge:/knowledge:ro" \
             --volume "$workdir/data:/data:rw" \
@@ -161,6 +163,105 @@ jobs:
           python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["status"] == "completed"; assert d["output"]["response"]["question"] == "ci"' "$invocation"
           reload="$(curl --fail --silent --request POST "http://127.0.0.1:${{ matrix.port }}/v1/admin/knowledge/reload")"
           python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["added"] == 0; assert d["unchanged"] == 1' "$reload"
+      - name: Container stop, restart, and resume acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          mkdir -p "$workdir/config" "$workdir/knowledge" "$workdir/data"
+          cat > "$workdir/config/agent.yaml" <<'YAML'
+          model:
+            provider: fake
+            name: fake/default
+          workflow:
+            path: /config/resume.yaml
+          knowledge:
+            path: /knowledge
+            database: /data/knowledge.sqlite3
+            reload:
+              mode: startup
+          YAML
+          cat > "$workdir/config/resume.yaml" <<'YAML'
+          document:
+            dsl: '1.0.3'
+            namespace: ci
+            name: restart-resume
+            version: '1.0.0'
+          do:
+            - pause:
+                wait:
+                  seconds: 30
+            - finish:
+                set:
+                  done: true
+          YAML
+          printf '%s\n' 'CI restart-resume acceptance document.' > "$workdir/knowledge/policy.md"
+          name="owa-${{ matrix.engine }}-resume"
+          resumed_name="${name}-restarted"
+          log_file="$RUNNER_TEMP/owa-${{ matrix.engine }}-resume.log"
+          resumed_log_file="$RUNNER_TEMP/owa-${{ matrix.engine }}-resume-restarted.log"
+          cleanup() {
+            docker logs "$name" > "$log_file" 2>&1 || true
+            docker logs "$resumed_name" > "$resumed_log_file" 2>&1 || true
+            docker rm --force "$name" "$resumed_name" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          docker run --detach --name "$name" --publish ${{ matrix.resume_port }}:8080 \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=256m --user 12345:0 \
+            --volume "$workdir/config:/config:ro" \
+            --volume "$workdir/knowledge:/knowledge:ro" \
+            --volume "$workdir/data:/data:rw" \
+            "owa-${{ matrix.engine }}:${{ github.sha }}"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent "http://127.0.0.1:${{ matrix.resume_port }}/health/ready" >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent "http://127.0.0.1:${{ matrix.resume_port }}/health/ready" >/dev/null
+          curl --fail --silent --request POST --header 'content-type: application/json' \
+            --data '{"input":{}}' "http://127.0.0.1:${{ matrix.resume_port }}/v1/invoke" > "$workdir/invoke.json" &
+          invoke_pid=$!
+          invocation_id=""
+          for attempt in $(seq 1 30); do
+            invocation_id="$(python - "$workdir/data/runtime.sqlite3" <<'PY'
+          import sqlite3
+          import sys
+          try:
+              with sqlite3.connect(sys.argv[1]) as connection:
+                  row = connection.execute(
+                      "SELECT invocation_id FROM invocations WHERE status = 'running' ORDER BY rowid DESC LIMIT 1"
+                  ).fetchone()
+              print(row[0] if row else "")
+          except sqlite3.Error:
+              print("")
+          PY
+            )"
+            if [[ -n "$invocation_id" ]]; then
+              break
+            fi
+            sleep 1
+          done
+          test -n "$invocation_id"
+          docker stop --time 1 "$name" >/dev/null
+          kill "$invoke_pid" >/dev/null 2>&1 || true
+          wait "$invoke_pid" >/dev/null 2>&1 || true
+          docker rm "$name" >/dev/null
+          docker run --detach --name "$resumed_name" --publish ${{ matrix.resume_port }}:8080 \
+            --read-only --tmpfs /tmp:rw,nosuid,nodev,size=256m --user 12345:0 \
+            --volume "$workdir/config:/config:ro" \
+            --volume "$workdir/knowledge:/knowledge:ro" \
+            --volume "$workdir/data:/data:rw" \
+            "owa-${{ matrix.engine }}:${{ github.sha }}"
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent "http://127.0.0.1:${{ matrix.resume_port }}/health/ready" >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          resume="$(curl --fail --silent --request POST --header 'content-type: application/json' \
+            --data '{"input":{}}' "http://127.0.0.1:${{ matrix.resume_port }}/v1/invocations/${invocation_id}/resume")"
+          python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["status"] == "completed"; assert d["output"] == {"done": True}' "$resume"
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v4

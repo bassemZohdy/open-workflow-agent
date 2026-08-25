@@ -164,3 +164,13 @@ def test_unsupported_datasource_is_not_silently_treated_as_sqlite():
         assert exc.details["scheme"] == "postgresql"
     else:
         raise AssertionError("unsupported datasource was accepted")
+
+
+def test_sqlite_absolute_url_normalizes_posix_root():
+    import os
+
+    if os.name == "nt":
+        return
+    from open_workflow_agent.storage import resolve_datasource
+
+    assert resolve_datasource("sqlite:////tmp/owa-runtime.sqlite3") == "/tmp/owa-runtime.sqlite3"

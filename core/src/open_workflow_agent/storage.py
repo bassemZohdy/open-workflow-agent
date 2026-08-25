@@ -30,6 +30,10 @@ def resolve_datasource(datasource: str | None) -> str | None:
         )
     if parsed.scheme == "sqlite":
         raw_path = unquote(parsed.path)
+        if os.name != "nt" and raw_path.startswith("//"):
+            # A rooted path interpolated into sqlite:/// becomes sqlite:////
+            # and urlparse retains both leading separators on POSIX.
+            raw_path = raw_path[1:]
         if os.name == "nt" and raw_path.startswith("/") and len(raw_path) > 2:
             if raw_path[2] == ":":
                 raw_path = raw_path[1:]
