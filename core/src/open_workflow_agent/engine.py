@@ -6,7 +6,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any
 
-from .errors import InvocationCancelled
+from .errors import InvocationCancelled, WorkflowExecutionError
 from .lifecycle import (
     INVOCATION_STATES,
     TERMINAL_INVOCATION_STATES,
@@ -69,6 +69,12 @@ class EngineCapabilities:
                     "durable": True,
                     "owner": "single_runtime",
                 },
+                "subWorkflows": {
+                    "run": True,
+                    "separateInvocation": True,
+                    "localCatalog": True,
+                    "externalCatalog": False,
+                },
             },
         }
 
@@ -102,6 +108,47 @@ class WorkflowEngine:
 
     async def initialize(self, services: RuntimeServices) -> None:
         self.services = services
+        services.workflow_runner = self.run_child
+
+    async def run_child(
+        self,
+        workflow: WorkflowPlan,
+        input_data: Any,
+        parent_context: dict[str, Any],
+        task_reference: str,
+    ) -> Any:
+        parent_handle = parent_context.get("_invocation_handle")
+        if not isinstance(parent_handle, ExecutionHandle):
+            raise WorkflowExecutionError("nested workflow requires an invocation handle")
+        child = self.services.invocations.create(
+            engine=self.engine_name,
+            session_id=None,
+            user_id=parent_handle.user_id,
+            workflow_name=workflow.name,
+            workflow_version=workflow.version,
+            workflow_fingerprint=workflow.fingerprint,
+            parent_invocation_id=parent_handle.invocation_id,
+            parent_task_reference=task_reference,
+        )
+        try:
+            result = await self.invoke(workflow, child, input_data)
+        except asyncio.CancelledError:
+            await self.cancel(
+                child,
+                operation_id=f"{parent_handle.invocation_id}:{task_reference}",
+            )
+            raise
+        if result.status == "completed":
+            return result.output
+        if result.status == "cancelled":
+            raise InvocationCancelled(
+                "nested workflow was cancelled",
+                details={"invocation_id": child.invocation_id},
+            )
+        raise WorkflowExecutionError(
+            "nested workflow faulted",
+            details={"invocation_id": child.invocation_id, "error": result.error or {}},
+        )
 
     async def compile(self, plan: WorkflowPlan) -> WorkflowPlan:
         return plan
@@ -208,6 +255,8 @@ class WorkflowEngine:
             "engine_execution_reference": invocation.engine_execution_reference,
             "workflow_name": workflow.name,
             "workflow_version": workflow.version,
+            "parent_invocation_id": invocation.parent_invocation_id,
+            "parent_task_reference": invocation.parent_task_reference,
             "_invocation_handle": invocation,
             "_lifecycle": active.control,
         }

@@ -27,7 +27,7 @@ The GitHub workflow is green on Ubuntu in remote run [`32841601557`](https://git
 
 ## Current Next Step
 
-B-003 in `TODO.md` is the current phase. Its bounded `listen`/`emit` eventing slice, optional lifecycle CloudEvents 1.0 bounded snapshot boundary, and bounded durable scheduling are complete; sub-workflows are next, followed by HITL, external catalogs, optional A2A exposure and streaming, and additional engines. Full MCP, A2A, OpenAPI, or Open Workflow ecosystem conformance remains unclaimed.
+B-003 in `TODO.md` is the current phase. Its bounded `listen`/`emit` eventing slice, optional lifecycle CloudEvents 1.0 bounded snapshot boundary, bounded durable scheduling, and local sub-workflows are complete; HITL and external catalog contracts are next, followed by optional A2A exposure and streaming, and additional engines. Full MCP, A2A, OpenAPI, or Open Workflow ecosystem conformance remains unclaimed.
 
 ## Key Commands
 

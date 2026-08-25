@@ -697,6 +697,24 @@ restart to reclaim an interrupted dispatch. Execution remains at-least-once.
 `cron`, event-triggered `on`, distributed scheduler ownership, and streaming are
 not part of the bounded profile.
 
+The bounded sub-workflow profile supports the standard `run.workflow` task for
+workflow definitions explicitly registered in local configuration:
+
+```yaml
+workflow:
+  catalog:
+    - document: { dsl: "1.0.3", namespace: "example", name: "child", version: "1.0.0" }
+      do:
+        - finish:
+            set:
+              done: true
+```
+
+The child gets a new common invocation and session identity and uses the
+selected engine's native execution/checkpoint path. Common lifecycle events
+retain `parent_invocation_id` and `parent_task_reference`. Shell/script `run`
+variants and remote or external catalog resolution remain unsupported.
+
 ---
 
 # 18. Engine-Specific Capabilities Are Allowed
@@ -2722,7 +2740,6 @@ raise
 Potential:
 
 ```text
-sub-workflows
 external catalogs
 HITL
 A2A exposure

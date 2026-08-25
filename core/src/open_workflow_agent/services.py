@@ -16,6 +16,7 @@ from .protocols import ProtocolServices
 from .scheduling import ScheduleStore
 from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
 from .tools import AgentToolBinding, ToolRegistry
+from .workflow_catalog import WorkflowCatalog
 
 
 class RuntimeServices:
@@ -44,6 +45,8 @@ class RuntimeServices:
         self.events = event_sink or InMemoryEventSink()
         self.lifecycle_events = LifecycleCloudEventSink(self.events)
         self.event_bus = event_bus or InMemoryEventBus()
+        self.workflow_catalog = WorkflowCatalog()
+        self.workflow_runner: Any = None
         self.protocols = ProtocolServices()
         self.tools = ToolRegistry.from_config(config.tools, self.protocols)
         self.memory_enabled = config.memory.enabled is not False

@@ -25,6 +25,8 @@ class WorkflowEvent:
     task_reference: str | None = None
     engine: str | None = None
     operation_id: str | None = None
+    parent_invocation_id: str | None = None
+    parent_task_reference: str | None = None
     event_id: str = field(default_factory=lambda: str(uuid4()))
     event_name: str | None = None
     duration: float | None = None
@@ -54,6 +56,8 @@ class WorkflowEvent:
             "task_reference",
             "engine",
             "operation_id",
+            "parent_invocation_id",
+            "parent_task_reference",
             "event_name",
             "duration",
             "status",

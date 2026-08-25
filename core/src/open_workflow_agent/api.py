@@ -131,6 +131,9 @@ def create_app(
             if workflow_source is None and runtime_config.workflow.path:
                 workflow_source = runtime_config.workflow.path
             app.state.plan = compile_workflow(workflow_source)
+            runtime_services.workflow_catalog.register(app.state.plan)
+            for child_workflow in runtime_config.workflow.catalog:
+                runtime_services.workflow_catalog.register(child_workflow)
             if runtime_config.knowledge.reload.mode == "startup":
                 runtime_services.knowledge.reload()
             elif runtime_config.knowledge.reload.mode == "watch":

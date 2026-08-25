@@ -32,6 +32,7 @@ class AgentConfig(StrictModel):
 class WorkflowConfig(StrictModel):
     path: str | None = None
     definition: dict[str, Any] | None = None
+    catalog: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class ReloadConfig(StrictModel):

@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**B-003 — Deferred workflow lifecycle features.** Bounded eventing, lifecycle CloudEvents, and bounded scheduling are complete.
+**B-003 — Deferred workflow lifecycle features.** Bounded eventing, lifecycle CloudEvents, scheduling, and local sub-workflows are complete.
 
 ## Active Backlog — Ordered
 
@@ -12,10 +12,9 @@
 
 Prioritized next backlog, ordered by dependency and the Project Definition:
 
-1. **P2 — sub-workflows:** add workflow composition and child invocation identity while preserving separate invocation, session, checkpoint, memory, and knowledge lifecycles.
-2. **P3 — HITL and external catalogs:** specify security, persistence, approval, and capability contracts before implementation; keep external catalogs disabled by default.
-3. **P3 — A2A exposure and streaming:** evaluate only as optional capabilities with explicit engine support and no portability claim by default.
-4. **P3 — additional engines:** add another adapter only after the shared contracts remain framework-neutral and the existing cross-engine fixtures are extended.
+1. **P3 — HITL and external catalogs:** specify security, persistence, approval, and capability contracts before implementation; keep external catalogs disabled by default.
+2. **P3 — A2A exposure and streaming:** evaluate only as optional capabilities with explicit engine support and no portability claim by default.
+3. **P3 — additional engines:** add another adapter only after the shared contracts remain framework-neutral and the existing cross-engine fixtures are extended.
 
 The completed eventing slice supports `emit`, `listen` with the `one` strategy, and
 `POST /v1/events` through a process-local non-durable bus. `all`, `any`, `foreach`,
@@ -30,6 +29,13 @@ The completed scheduling slice supports durable `schedule.after` one-shot and
 runtime process owns dispatch, leases due rows for restart reclaim, and preserves
 at-least-once execution. `cron`, event-triggered `on`, distributed ownership,
 and scheduler streaming remain explicitly unsupported.
+
+The completed sub-workflow slice supports the Open Workflow `run` task against
+explicitly configured local workflow definitions (`workflow.catalog`). Child
+invocations receive separate common invocation/session metadata and engine-owned
+execution state, with parent invocation/task references retained in common
+lifecycle events. Shell/script execution and external/remote catalogs remain
+explicitly unsupported.
 
 Custom MCP/A2A protocols, visual designers, BPMN, arbitrary shell execution, and distributed scheduling remain out of scope unless the Project Definition changes.
 

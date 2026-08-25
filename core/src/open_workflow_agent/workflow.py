@@ -53,12 +53,13 @@ SUPPORTED_TASKS = (
     "wait",
     "listen",
     "emit",
+    "run",
     "raise",
 )
 SUPPORTED_PROTOCOL_CALLS = ("http", "mcp", "a2a", "openapi")
 SUPPORTED_FUNCTION_CALLS = ("agent:1.0.0@default", "llm:1.0.0@default")
 SUPPORTED_CALLS = {*SUPPORTED_PROTOCOL_CALLS, *SUPPORTED_FUNCTION_CALLS}
-DISABLED_TASKS = {"run"}
+DISABLED_TASKS: set[str] = set()
 
 
 class _NoCancellationToken:
@@ -163,6 +164,8 @@ def validate_capabilities(workflow: Mapping[str, Any]) -> None:
             _validate_emit_capability(definition["emit"], reference)
         if "listen" in definition:
             _validate_listen_capability(definition["listen"], reference)
+        if "run" in definition:
+            _validate_run_capability(definition["run"], reference)
 
 
 def _validate_schedule_capability(workflow: Mapping[str, Any]) -> None:
@@ -485,6 +488,8 @@ class WorkflowExecutor:
             "workflow_name": plan.name,
             "workflow_version": plan.version,
             "engine": metadata.get("engine"),
+            "parent_invocation_id": metadata.get("parent_invocation_id"),
+            "parent_task_reference": metadata.get("parent_task_reference"),
         }
         started = time.perf_counter()
         self._emit("WorkflowStarted", {**event_context, "status": "running"})
@@ -750,6 +755,8 @@ class WorkflowExecutor:
             return await self._run_emit(definition["emit"], state)
         if "listen" in definition:
             return await self._run_listen(definition["listen"], state)
+        if "run" in definition:
+            return await self._run_subworkflow(definition["run"], state)
         if "switch" in definition:
             return await self._run_switch(definition["switch"], state)
         if "for" in definition:
@@ -975,6 +982,23 @@ class WorkflowExecutor:
             return merged
         return results
 
+    async def _run_subworkflow(self, definition: Any, state: ExecutionState) -> Any:
+        if self.services is None or not hasattr(self.services, "workflow_catalog"):
+            raise WorkflowExecutionError("workflow catalog is unavailable for run task")
+        runner = getattr(self.services, "workflow_runner", None)
+        if runner is None:
+            raise WorkflowExecutionError("workflow runner is unavailable for run task")
+        if not isinstance(definition, Mapping):
+            raise WorkflowSemanticError("run configuration must be an object")
+        reference = definition.get("workflow")
+        if not isinstance(reference, Mapping):
+            raise WorkflowSemanticError("run.workflow must be an object")
+        plan = self.services.workflow_catalog.resolve(reference)
+        child_input = reference.get("input", state.data)
+        child_input = self.expressions.evaluate(child_input, state.data, variables=state.variables)
+        task_reference = str(state.variables.get("_task_reference", "unknown-task"))
+        return await runner(plan, child_input, state.context, task_reference)
+
     async def _run_emit(self, definition: Any, state: ExecutionState) -> Any:
         if self.services is None or not hasattr(self.services, "event_bus"):
             raise WorkflowExecutionError("event service unavailable for emit task")
@@ -1162,6 +1186,8 @@ class WorkflowExecutor:
             "task_reference": reference,
             "engine": context.get("engine"),
             "operation_id": self._operation_id(state),
+            "parent_invocation_id": context.get("parent_invocation_id"),
+            "parent_task_reference": context.get("parent_task_reference"),
         }
 
     @staticmethod
@@ -1202,6 +1228,24 @@ def _validate_listen_capability(definition: Any, reference: str) -> None:
     if "foreach" in definition:
         raise UnsupportedWorkflowFeature(
             "listen foreach iteration is not enabled", details={"reference": reference}
+        )
+
+
+def _validate_run_capability(definition: Any, reference: str) -> None:
+    if not isinstance(definition, Mapping):
+        raise WorkflowSemanticError(f"run configuration must be an object at {reference}")
+    if "shell" in definition or "script" in definition:
+        raise UnsupportedWorkflowFeature(
+            "run shell and script execution are disabled",
+            details={"reference": reference},
+        )
+    workflow = definition.get("workflow")
+    if not isinstance(workflow, Mapping):
+        raise WorkflowSemanticError(f"run.workflow is required at {reference}")
+    required = {"namespace", "name", "version"}
+    if not required.issubset(workflow):
+        raise WorkflowSemanticError(
+            f"run.workflow requires namespace, name, and version at {reference}"
         )
 
 

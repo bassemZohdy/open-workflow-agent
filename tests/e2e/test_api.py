@@ -38,6 +38,12 @@ async def test_invoke_capabilities_health_and_reload(tmp_path):
                 "delivery": "bounded_snapshot",
                 "durable": False,
             }
+            assert capabilities["features"]["subWorkflows"] == {
+                "run": True,
+                "separateInvocation": True,
+                "localCatalog": True,
+                "externalCatalog": False,
+            }
             event = await client.post(
                 "/v1/events",
                 json={"event": {"id": "api-event-1", "type": "api.test", "data": {"ok": True}}},
@@ -184,4 +190,55 @@ async def test_api_schedule_is_durable_and_idempotent(tmp_path):
             )
             assert cancelled.status_code == 200
             assert cancelled.json()["status"] == "completed"
+    services.close()
+
+
+@pytest.mark.asyncio
+async def test_api_runs_a_registered_local_subworkflow(tmp_path):
+    child = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "api-subworkflow",
+            "name": "child",
+            "version": "1.0.0",
+        },
+        "do": [{"make_child": {"set": {"child": "${ .value }"}}}],
+    }
+    parent = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "api-subworkflow",
+            "name": "parent",
+            "version": "1.0.0",
+        },
+        "do": [
+            {
+                "child": {
+                    "run": {
+                        "workflow": {
+                            "namespace": "api-subworkflow",
+                            "name": "child",
+                            "version": "1.0.0",
+                            "input": {"value": "${ .value }"},
+                        }
+                    }
+                }
+            },
+            {"finish": {"set": {"result": "${ .child }"}}},
+        ],
+    }
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake"},
+            "workflow": {"definition": parent, "catalog": [child]},
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post("/v1/invoke", json={"input": {"value": "api"}})
+            assert response.status_code == 200
+            assert response.json()["output"] == {"result": "api"}
     services.close()

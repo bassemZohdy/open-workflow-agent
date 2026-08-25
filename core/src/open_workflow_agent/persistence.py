@@ -26,6 +26,8 @@ class ExecutionHandle:
     status: str = "running"
     output: Any = None
     error: dict[str, Any] | None = None
+    parent_invocation_id: str | None = None
+    parent_task_reference: str | None = None
 
 
 class InvocationStore:
@@ -46,6 +48,8 @@ class InvocationStore:
         workflow_name: str,
         workflow_version: str,
         workflow_fingerprint: str,
+        parent_invocation_id: str | None = None,
+        parent_task_reference: str | None = None,
     ) -> ExecutionHandle:
         handle = ExecutionHandle(
             invocation_id=str(uuid.uuid4()),
@@ -56,6 +60,8 @@ class InvocationStore:
             workflow_name=workflow_name,
             workflow_version=workflow_version,
             workflow_fingerprint=workflow_fingerprint,
+            parent_invocation_id=parent_invocation_id,
+            parent_task_reference=parent_task_reference,
         )
         self.connection.execute(
             "INSERT INTO invocations(invocation_id, payload, status) VALUES (?, ?, ?)",
