@@ -681,6 +681,22 @@ It returns a bounded in-memory snapshot of CloudEvents 1.0 structured JSON.
 The boundary is non-streaming and non-durable; it exposes only common lifecycle
 identifiers and sanitized error codes, never engine-native checkpoint state.
 
+The bounded scheduling profile is also supported by both engines:
+
+```text
+POST /v1/schedules
+GET  /v1/schedules/{schedule_id}
+POST /v1/schedules/{schedule_id}/cancel
+```
+
+The configured workflow may declare exactly one of `schedule.after` or
+`schedule.every`. `after` creates one delayed start; `every` creates recurring
+starts after successful completion. Schedule metadata is durable in the common
+runtime store, dispatch is owned by one runtime process, and leases allow a
+restart to reclaim an interrupted dispatch. Execution remains at-least-once.
+`cron`, event-triggered `on`, distributed scheduler ownership, and streaming are
+not part of the bounded profile.
+
 ---
 
 # 18. Engine-Specific Capabilities Are Allowed
@@ -1934,6 +1950,14 @@ Example:
       "delivery": "bounded_snapshot",
       "durable": false
     },
+    "scheduling": {
+      "after": true,
+      "every": true,
+      "cron": false,
+      "on": false,
+      "durable": true,
+      "owner": "single_runtime"
+    },
     "streaming": false
   }
 }
@@ -2698,7 +2722,6 @@ raise
 Potential:
 
 ```text
-schedule
 sub-workflows
 external catalogs
 HITL

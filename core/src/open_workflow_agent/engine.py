@@ -61,6 +61,14 @@ class EngineCapabilities:
                     "delivery": "bounded_snapshot",
                     "durable": False,
                 },
+                "scheduling": {
+                    "after": True,
+                    "every": True,
+                    "cron": False,
+                    "on": False,
+                    "durable": True,
+                    "owner": "single_runtime",
+                },
             },
         }
 

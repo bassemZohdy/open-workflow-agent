@@ -8,7 +8,9 @@ import pytest
 from open_workflow_agent.knowledge import DeterministicEmbeddingProvider, KnowledgeService
 from open_workflow_agent.memory import MemoryService
 from open_workflow_agent.persistence import InvocationStore
+from open_workflow_agent.scheduling import ScheduleStore
 from open_workflow_agent.storage import namespaced_datasource, resolve_datasource
+from open_workflow_agent.workflow import compile_workflow
 
 
 def _postgres_url() -> str:
@@ -33,6 +35,7 @@ def test_postgres_common_stores_are_durable_and_isolated(tmp_path) -> None:
     (knowledge_root / "policy.md").write_text("PostgreSQL persistence policy", encoding="utf-8")
 
     invocations = InvocationStore(url)
+    schedules = ScheduleStore(url)
     memory = MemoryService(url)
     knowledge = KnowledgeService(
         knowledge_root,
@@ -47,6 +50,19 @@ def test_postgres_common_stores_are_durable_and_isolated(tmp_path) -> None:
         workflow_version="1.0.0",
         workflow_fingerprint="fingerprint",
     )
+    plan = compile_workflow(
+        {
+            "document": {
+                "dsl": "1.0.3",
+                "namespace": "postgres",
+                "name": "scheduled",
+                "version": "1.0.0",
+            },
+            "schedule": {"after": {"seconds": 1}},
+            "do": [{"finish": {"set": {"done": True}}}],
+        }
+    )
+    schedule = schedules.create(plan, {"durable": True}, operation_key="postgres-schedule")
     memory_id = memory.add("durable PostgreSQL memory", {"source": "test"})
     assert knowledge.reload() == {
         "added": 1,
@@ -55,10 +71,12 @@ def test_postgres_common_stores_are_durable_and_isolated(tmp_path) -> None:
         "unchanged": 0,
     }
     invocations.close()
+    schedules.close()
     memory.close()
     knowledge.close()
 
     reopened_invocations = InvocationStore(url)
+    reopened_schedules = ScheduleStore(url)
     reopened_memory = MemoryService(url)
     reopened_knowledge = KnowledgeService(
         knowledge_root,
@@ -67,6 +85,9 @@ def test_postgres_common_stores_are_durable_and_isolated(tmp_path) -> None:
     )
     try:
         assert reopened_invocations.get(handle.invocation_id) == handle
+        persisted_schedule = reopened_schedules.get(schedule.schedule_id)
+        assert persisted_schedule is not None
+        assert persisted_schedule.input_data == {"durable": True}
         assert reopened_memory.search("PostgreSQL", limit=5)[0]["id"] == memory_id
         assert reopened_knowledge.reload()["unchanged"] == 1
         assert reopened_knowledge.search("persistence", limit=1)[0]["path"].endswith("policy.md")
@@ -83,5 +104,6 @@ def test_postgres_common_stores_are_durable_and_isolated(tmp_path) -> None:
         assert [row[0] for row in rows] == ["owa_knowledge", "owa_memory", "owa_runtime"]
     finally:
         reopened_invocations.close()
+        reopened_schedules.close()
         reopened_memory.close()
         reopened_knowledge.close()

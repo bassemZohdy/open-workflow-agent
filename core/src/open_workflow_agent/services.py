@@ -13,6 +13,7 @@ from .memory import MemoryService
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
 from .persistence import InvocationStore
 from .protocols import ProtocolServices
+from .scheduling import ScheduleStore
 from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
 from .tools import AgentToolBinding, ToolRegistry
 
@@ -84,6 +85,7 @@ class RuntimeServices:
         )
         self.memory = MemoryService(str(memory_database) if memory_database else None)
         self.invocations = InvocationStore(invocation_path)
+        self.schedules = ScheduleStore(invocation_path)
         self.catalog = FunctionCatalog.default(
             self.model, instruction=self.agent_instruction, services=self
         )
@@ -186,4 +188,5 @@ class RuntimeServices:
     def close(self) -> None:
         self.knowledge.close()
         self.memory.close()
+        self.schedules.close()
         self.invocations.close()

@@ -132,3 +132,56 @@ async def test_api_cancel_waiting_invocation_is_idempotent(tmp_path):
             invoke_result = await invoke_task
             assert invoke_result.status_code == 200
             assert invoke_result.json()["status"] == "cancelled"
+
+
+@pytest.mark.asyncio
+async def test_api_schedule_is_durable_and_idempotent(tmp_path):
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake"},
+            "workflow": {
+                "definition": {
+                    "document": {
+                        "dsl": "1.0.3",
+                        "namespace": "tests",
+                        "name": "api-schedule",
+                        "version": "1.0.0",
+                    },
+                    "schedule": {"after": {"milliseconds": 1}},
+                    "do": [{"finish": {"set": {"done": True}}}],
+                }
+            },
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            first = await client.post(
+                "/v1/schedules",
+                json={"input": {"from": "api"}},
+                headers={"Idempotency-Key": "schedule-api-1"},
+            )
+            duplicate = await client.post(
+                "/v1/schedules",
+                json={"input": {"from": "ignored"}},
+                headers={"Idempotency-Key": "schedule-api-1"},
+            )
+            assert first.status_code == duplicate.status_code == 200
+            assert first.json()["schedule_id"] == duplicate.json()["schedule_id"]
+            schedule_id = first.json()["schedule_id"]
+            for _ in range(100):
+                current = await client.get(f"/v1/schedules/{schedule_id}")
+                if current.json()["status"] == "completed":
+                    break
+                await asyncio.sleep(0.005)
+            assert current.json()["status"] == "completed"
+            assert current.json()["last_status"] == "completed"
+            cancelled = await client.post(
+                f"/v1/schedules/{schedule_id}/cancel",
+                headers={"Idempotency-Key": "schedule-cancel-1"},
+            )
+            assert cancelled.status_code == 200
+            assert cancelled.json()["status"] == "completed"
+    services.close()

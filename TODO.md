@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**B-003 — Deferred workflow lifecycle features.** Bounded eventing and the optional lifecycle CloudEvents boundary are complete.
+**B-003 — Deferred workflow lifecycle features.** Bounded eventing, lifecycle CloudEvents, and bounded scheduling are complete.
 
 ## Active Backlog — Ordered
 
@@ -12,11 +12,10 @@
 
 Prioritized next backlog, ordered by dependency and the Project Definition:
 
-1. **P2 — scheduling:** define bounded, durable scheduling semantics only after event delivery and operational ownership are explicit.
-2. **P2 — sub-workflows:** add workflow composition and child invocation identity while preserving separate invocation, session, checkpoint, memory, and knowledge lifecycles.
-3. **P3 — HITL and external catalogs:** specify security, persistence, approval, and capability contracts before implementation; keep external catalogs disabled by default.
-4. **P3 — A2A exposure and streaming:** evaluate only as optional capabilities with explicit engine support and no portability claim by default.
-5. **P3 — additional engines:** add another adapter only after the shared contracts remain framework-neutral and the existing cross-engine fixtures are extended.
+1. **P2 — sub-workflows:** add workflow composition and child invocation identity while preserving separate invocation, session, checkpoint, memory, and knowledge lifecycles.
+2. **P3 — HITL and external catalogs:** specify security, persistence, approval, and capability contracts before implementation; keep external catalogs disabled by default.
+3. **P3 — A2A exposure and streaming:** evaluate only as optional capabilities with explicit engine support and no portability claim by default.
+4. **P3 — additional engines:** add another adapter only after the shared contracts remain framework-neutral and the existing cross-engine fixtures are extended.
 
 The completed eventing slice supports `emit`, `listen` with the `one` strategy, and
 `POST /v1/events` through a process-local non-durable bus. `all`, `any`, `foreach`,
@@ -25,6 +24,12 @@ replay, and durable broker delivery remain explicitly unsupported.
 The completed lifecycle CloudEvents slice exposes common lifecycle events through
 `GET /v1/events/lifecycle` as bounded CloudEvents 1.0 JSON batches. It is a
 non-streaming, non-durable snapshot and does not expose engine-native state.
+
+The completed scheduling slice supports durable `schedule.after` one-shot and
+`schedule.every` recurring workflow starts through `POST /v1/schedules`. A single
+runtime process owns dispatch, leases due rows for restart reclaim, and preserves
+at-least-once execution. `cron`, event-triggered `on`, distributed ownership,
+and scheduler streaming remain explicitly unsupported.
 
 Custom MCP/A2A protocols, visual designers, BPMN, arbitrary shell execution, and distributed scheduling remain out of scope unless the Project Definition changes.
 

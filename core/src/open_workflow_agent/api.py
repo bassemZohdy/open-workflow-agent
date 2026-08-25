@@ -13,7 +13,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .config import RuntimeConfig
 from .engine import PortableWorkflowEngine, WorkflowEngine
-from .errors import EventValidationError, InvocationNotFound, OwaError
+from .errors import EventValidationError, InvocationNotFound, OwaError, ScheduleNotFound
+from .scheduling import WorkflowScheduler
 from .services import RuntimeServices
 from .workflow import compile_workflow
 
@@ -60,8 +61,8 @@ class RequestSizeLimitMiddleware:
 
 
 def _is_limited_path(path: str) -> bool:
-    return path in {"/v1/invoke", "/v1/events"} or (
-        path.startswith("/v1/invocations/")
+    return path in {"/v1/invoke", "/v1/events", "/v1/schedules"} or (
+        (path.startswith("/v1/invocations/") or path.startswith("/v1/schedules/"))
         and (path.endswith("/resume") or path.endswith("/cancel"))
     )
 
@@ -104,6 +105,12 @@ class PublishEventRequest(BaseModel):
     event: dict[str, Any]
 
 
+class CreateScheduleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    input: Any = Field(default_factory=dict)
+
+
 def create_app(
     *,
     config: RuntimeConfig | None = None,
@@ -113,6 +120,7 @@ def create_app(
     runtime_config = config or RuntimeConfig()
     runtime_services = services or RuntimeServices(runtime_config)
     runtime_engine = engine or PortableWorkflowEngine()
+    scheduler = WorkflowScheduler(runtime_services, runtime_engine)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -129,9 +137,11 @@ def create_app(
                 await runtime_services.knowledge.start_watch(
                     runtime_config.knowledge.reload.interval_seconds
                 )
+            await scheduler.start()
             app.state.ready = True
             yield
         finally:
+            await scheduler.stop()
             await runtime_services.knowledge.stop_watch()
             await runtime_engine.shutdown()
             if services is None:
@@ -162,6 +172,7 @@ def create_app(
     app.state.config = runtime_config
     app.state.services = runtime_services
     app.state.engine = runtime_engine
+    app.state.scheduler = scheduler
     app.state.ready = False
 
     @app.get("/health/live")
@@ -199,6 +210,39 @@ def create_app(
             ],
             media_type="application/cloudevents-batch+json",
         )
+
+    @app.post("/v1/schedules")
+    async def create_schedule(
+        request: CreateScheduleRequest,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    ) -> dict[str, Any]:
+        plan = getattr(app.state, "plan", compile_workflow())
+        record = runtime_services.schedules.create(
+            plan,
+            request.input,
+            operation_key=idempotency_key,
+        )
+        return record.as_dict()
+
+    @app.get("/v1/schedules/{schedule_id}")
+    async def get_schedule(schedule_id: str) -> dict[str, Any]:
+        record = runtime_services.schedules.get(schedule_id)
+        if record is None:
+            raise ScheduleNotFound("schedule not found", details={"schedule_id": schedule_id})
+        return record.as_dict()
+
+    @app.post("/v1/schedules/{schedule_id}/cancel")
+    async def cancel_schedule(
+        schedule_id: str,
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    ) -> dict[str, Any]:
+        try:
+            record = await scheduler.cancel(schedule_id, operation_id=idempotency_key)
+        except KeyError as exc:
+            raise ScheduleNotFound(
+                "schedule not found", details={"schedule_id": schedule_id}
+            ) from exc
+        return record.as_dict()
 
     @app.post("/v1/invoke")
     async def invoke(request: InvokeRequest) -> Any:

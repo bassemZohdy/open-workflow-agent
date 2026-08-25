@@ -92,3 +92,18 @@ class InvocationCancelled(OwaError):
 class EventValidationError(OwaError):
     code = "event_validation_error"
     status_code = 400
+
+
+class ScheduleValidationError(OwaError):
+    code = "schedule_validation_error"
+    status_code = 400
+
+
+class ScheduleNotFound(OwaError):
+    code = "schedule_not_found"
+    status_code = 404
+
+
+class ScheduleOperationConflict(OwaError):
+    code = "schedule_operation_conflict"
+    status_code = 409

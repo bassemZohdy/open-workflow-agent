@@ -129,6 +129,7 @@ def validate_schema(workflow: Mapping[str, Any]) -> None:
 
 
 def validate_capabilities(workflow: Mapping[str, Any]) -> None:
+    _validate_schedule_capability(workflow)
     for reference, definition in _walk_tasks(workflow.get("do", []), prefix="/do"):
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError(f"task {reference} must be an object")
@@ -162,6 +163,26 @@ def validate_capabilities(workflow: Mapping[str, Any]) -> None:
             _validate_emit_capability(definition["emit"], reference)
         if "listen" in definition:
             _validate_listen_capability(definition["listen"], reference)
+
+
+def _validate_schedule_capability(workflow: Mapping[str, Any]) -> None:
+    schedule = workflow.get("schedule")
+    if schedule is None:
+        return
+    if not isinstance(schedule, Mapping):
+        raise WorkflowSemanticError("workflow schedule must be an object")
+    unsupported = sorted(set(schedule) & {"cron", "on", "read"})
+    if unsupported:
+        raise UnsupportedWorkflowFeature(
+            "schedule features are unsupported in the bounded profile",
+            details={"unsupported": unsupported},
+        )
+    configured = [key for key in ("after", "every") if key in schedule]
+    if len(configured) != 1:
+        raise WorkflowSemanticError("schedule requires exactly one of after or every")
+    duration = _duration_seconds(schedule[configured[0]])
+    if duration is None or duration <= 0:
+        raise WorkflowSemanticError("schedule duration must be greater than zero")
 
 
 def compile_workflow(source: str | Path | Mapping[str, Any] | None = None) -> WorkflowPlan:
