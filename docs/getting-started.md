@@ -85,7 +85,7 @@ A successful response has this general shape:
 
 ## Add your own configuration
 
-The default configuration path is:
+The default configuration path inside the runtime is:
 
 ```text
 /config/agent.yaml
@@ -126,6 +126,25 @@ knowledge:
 memory:
   enabled: auto
 ```
+
+The provided Compose file configures the runtime through environment variables and does not bind-mount `/config`. For a YAML-based local run, build the selected image and mount the example files directly.
+
+ADK example:
+
+```bash
+docker build -f docker/Dockerfile.adk -t owa-adk:local .
+mkdir -p knowledge data
+
+docker run --rm \
+  -p 8080:8080 \
+  -v "$(pwd)/examples/agent.yaml:/config/agent.yaml:ro" \
+  -v "$(pwd)/examples/workflow.yaml:/config/workflow.yaml:ro" \
+  -v "$(pwd)/knowledge:/knowledge:ro" \
+  -v "$(pwd)/data:/data" \
+  owa-adk:local
+```
+
+For LangGraph, build `docker/Dockerfile.langgraph` and use the corresponding image name.
 
 See [configuration.md](configuration.md) for all supported settings.
 
