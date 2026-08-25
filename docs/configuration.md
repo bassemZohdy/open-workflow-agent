@@ -34,6 +34,8 @@ OWA__MODEL__NAME=fake/default
 
 Environment values are parsed as YAML values, so booleans and numbers can be supplied naturally.
 
+> YAML values are not environment-variable templates. A value such as `${DATABASE_URL}` is not expanded by the runtime. Override the field with `OWA__PERSISTENCE__DATASOURCE` instead.
+
 ## Full configuration shape
 
 ```yaml
@@ -232,6 +234,12 @@ persistence:
   datasource: postgresql://user:password@host:5432/database
 ```
 
+For production secret injection, keep `datasource` unset in YAML and override it at deployment time:
+
+```bash
+OWA__PERSISTENCE__DATASOURCE='postgresql://user:password@host:5432/database'
+```
+
 The datasource is shared as a connection target, but subsystems use isolated namespaces/tables. ADK and LangGraph retain their own native durable state rather than sharing engine checkpoint formats.
 
 ## `tools`
@@ -280,9 +288,7 @@ The runtime also emits engine-neutral lifecycle records containing stable workfl
 
 ## Recommended deployment pattern
 
-Keep non-secret runtime behavior in `agent.yaml` and pass secrets through the deployment platform.
-
-Example:
+Keep non-secret runtime behavior in `agent.yaml`:
 
 ```yaml
 agent:
@@ -298,9 +304,12 @@ workflow:
 
 knowledge:
   path: /knowledge
+```
 
-persistence:
-  datasource: ${DATABASE_URL}
+Inject secrets and environment-specific values separately:
+
+```bash
+OWA__PERSISTENCE__DATASOURCE='postgresql://user:password@host:5432/database'
 ```
 
 Do not place API keys, passwords, or bearer tokens directly in ordinary workflow definitions.
