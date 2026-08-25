@@ -1832,6 +1832,17 @@ checkpoint IDs
 
 directly.
 
+Cancellation is exposed as the minimal engine-neutral operation:
+
+```text
+POST /v1/invocations/{invocation_id}/cancel
+```
+
+Cancellation is idempotent for terminal invocations and is valid while an invocation is
+`running` or `waiting`. The public operation accepts only the common invocation identity;
+native ADK run identifiers, LangGraph thread/checkpoint data, and checkpoint payloads are
+never required or returned.
+
 ---
 
 # 57. Streaming
@@ -1877,7 +1888,10 @@ Example:
     "set",
     "switch",
     "for",
-    "fork"
+    "fork",
+    "try",
+    "wait",
+    "raise"
   ],
   "functions": [
     "agent:1.0.0@default",

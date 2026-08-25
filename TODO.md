@@ -4,24 +4,23 @@
 
 ## Current Phase
 
-**B-002 — Lifecycle and operational semantics.**
+**B-003 — Deferred workflow lifecycle features.**
 
 ## Active Backlog — Ordered
 
-### B-002 — Lifecycle and operational semantics (P2)
-
-Goal: define portable lifecycle behavior without leaking ADK/LangGraph checkpoint or runtime representations.
-
-- Specify a stable common event vocabulary and structured payload for invocation/task start, progress, wait, retry, fault, completion, cancellation, and resume; map both engines to it.
-- Define cancellation and waiting-state transitions across restart/resume boundaries, including ownership and retry behavior for idempotent side effects.
-- Add an operator-facing matrix covering fault, retry, timeout, cancellation, wait, restart/resume, and duplicate-operation handling on both engines.
-
-Acceptance: shared lifecycle fixtures produce equivalent observable events and terminal results on both engines; cancellation, wait, resume, and duplicate-operation behavior is explicit and tested; no engine-specific checkpoint data appears in the common contract or API.
-
 ### B-003 — Deferred workflow lifecycle features (P3)
 
-- Evaluate `listen`, `emit`, lifecycle CloudEvents, scheduling, sub-workflows, external catalogs, HITL, A2A exposure, streaming, and additional engines only after B-002 acceptance.
-- Keep custom MCP/A2A protocols, visual designers, BPMN, arbitrary shell execution, and distributed scheduling out of scope unless the Project Definition changes.
+Prioritized next backlog, ordered by dependency and the Project Definition:
+
+1. **P1 — `listen` and `emit`:** define portable event subscription/emission contracts on the completed lifecycle event model, with deterministic cross-engine fixtures.
+2. **P1 — lifecycle CloudEvents:** expose the common event vocabulary through an optional, versioned CloudEvents boundary without changing the mandatory API.
+3. **P2 — scheduling:** define bounded, durable scheduling semantics only after event delivery and operational ownership are explicit.
+4. **P2 — sub-workflows:** add workflow composition and child invocation identity while preserving separate invocation, session, checkpoint, memory, and knowledge lifecycles.
+5. **P3 — HITL and external catalogs:** specify security, persistence, approval, and capability contracts before implementation; keep external catalogs disabled by default.
+6. **P3 — A2A exposure and streaming:** evaluate only as optional capabilities with explicit engine support and no portability claim by default.
+7. **P3 — additional engines:** add another adapter only after the shared contracts remain framework-neutral and the existing cross-engine fixtures are extended.
+
+Custom MCP/A2A protocols, visual designers, BPMN, arbitrary shell execution, and distributed scheduling remain out of scope unless the Project Definition changes.
 
 ## Working Rules
 
