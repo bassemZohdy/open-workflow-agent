@@ -89,7 +89,9 @@ class ApprovalStore:
 
     def create_request(self, event: EventEnvelope) -> ApprovalRecord:
         if event.type != APPROVAL_REQUEST_EVENT:
-            raise ApprovalValidationError("approval request must use the reserved request event type")
+            raise ApprovalValidationError(
+                "approval request must use the reserved request event type"
+            )
         if not event.subject or event.subject != event.id:
             raise ApprovalValidationError(
                 "durable approval requests require subject to equal the stable approval id",
@@ -147,9 +149,7 @@ class ApprovalStore:
     def list(self, *, status: str | None = None, limit: int = 100) -> list[ApprovalRecord]:
         self._expire_due()
         if status is not None and status not in APPROVAL_STATES:
-            raise ApprovalValidationError(
-                "unsupported approval status", details={"status": status}
-            )
+            raise ApprovalValidationError("unsupported approval status", details={"status": status})
         if limit < 1 or limit > 1000:
             raise ApprovalValidationError("approval list limit must be between 1 and 1000")
         if status is None:
@@ -308,9 +308,7 @@ class ApprovalEventBus:
         self.delegate = delegate
         self.store = store
 
-    async def publish(
-        self, properties: Mapping[str, Any], *, default_source: str
-    ) -> EventEnvelope:
+    async def publish(self, properties: Mapping[str, Any], *, default_source: str) -> EventEnvelope:
         if properties.get("type") == APPROVAL_DECISION_EVENT:
             raise ValueError("approval decisions must be submitted through the approval API")
         envelope = await self.delegate.publish(properties, default_source=default_source)
@@ -344,9 +342,7 @@ class ApprovalService:
         self.enabled = enabled
         self.operator_token = operator_token
         self.store = ApprovalStore(database)
-        self.event_bus: EventBus = (
-            ApprovalEventBus(event_bus, self.store) if enabled else event_bus
-        )
+        self.event_bus: EventBus = ApprovalEventBus(event_bus, self.store) if enabled else event_bus
 
     def ensure_enabled(self) -> None:
         if not self.enabled:
@@ -441,9 +437,7 @@ def _envelope(value: Mapping[str, Any]) -> EventEnvelope:
         time=str(value["time"]),
         subject=value.get("subject") if isinstance(value.get("subject"), str) else None,
         datacontenttype=(
-            value.get("datacontenttype")
-            if isinstance(value.get("datacontenttype"), str)
-            else None
+            value.get("datacontenttype") if isinstance(value.get("datacontenttype"), str) else None
         ),
         dataschema=value.get("dataschema") if isinstance(value.get("dataschema"), str) else None,
         data=value.get("data"),

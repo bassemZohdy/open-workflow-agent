@@ -249,9 +249,7 @@ def create_app(
         runtime_services.approvals.ensure_enabled()
         record = runtime_services.approvals.store.get(approval_id)
         if record is None:
-            raise ApprovalNotFound(
-                "approval not found", details={"approval_id": approval_id}
-            )
+            raise ApprovalNotFound("approval not found", details={"approval_id": approval_id})
         return record.as_dict()
 
     @app.post("/v1/approvals/{approval_id}/decision")
@@ -262,9 +260,7 @@ def create_app(
         operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     ) -> dict[str, Any]:
-        authorized_operator = runtime_services.approvals.authorize(
-            authorization, operator_id
-        )
+        authorized_operator = runtime_services.approvals.authorize(authorization, operator_id)
         record = await runtime_services.approvals.decide(
             approval_id,
             decision=request.decision,
