@@ -212,11 +212,13 @@ jobs:
           curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/health/live" >/dev/null
           curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/health/ready" >/dev/null
           capabilities="$(curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/v1/capabilities")"
-          python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["engine"] == sys.argv[2]; assert d["workflowDsl"] == "1.0.3"; assert d["features"]["resume"] is True; assert d["features"]["cancellation"] is True; assert d["features"]["waiting"] is True; assert d["features"]["events"] == {"emit": True, "listen": True, "durable": False}' "$capabilities" "${{ matrix.engine }}"
+          python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["engine"] == sys.argv[2]; assert d["workflowDsl"] == "1.0.3"; assert d["features"]["resume"] is True; assert d["features"]["cancellation"] is True; assert d["features"]["waiting"] is True; assert d["features"]["events"] == {"emit": True, "listen": True, "durable": False}; assert d["features"]["cloudEvents"] == {"lifecycle": True, "specversion": "1.0", "delivery": "bounded_snapshot", "durable": False}' "$capabilities" "${{ matrix.engine }}"
           event="$(curl --fail --silent --request POST --header 'content-type: application/json' --data '{"event":{"id":"ci-event-1","type":"ci.acceptance","data":{"ok":true}}}' "http://127.0.0.1:${{ matrix.port }}/v1/events")"
           python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["id"] == "ci-event-1"; assert d["type"] == "ci.acceptance"' "$event"
           invocation="$(curl --fail --silent --request POST --header 'content-type: application/json' --data '{"input":{"question":"ci"}}' "http://127.0.0.1:${{ matrix.port }}/v1/invoke")"
           python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["status"] == "completed"; assert d["output"]["response"]["question"] == "ci"' "$invocation"
+          lifecycle="$(curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/v1/events/lifecycle?limit=2")"
+          python -c 'import json, sys; events=json.loads(sys.argv[1]); assert len(events) == 2; assert all(event["specversion"] == "1.0" for event in events); assert all(event["source"] == "urn:open-workflow-agent:lifecycle" for event in events)' "$lifecycle"
           reload="$(curl --fail --silent --request POST "http://127.0.0.1:${{ matrix.port }}/v1/admin/knowledge/reload")"
           python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["added"] == 0; assert d["unchanged"] == 1' "$reload"
       - name: Container stop, restart, and resume acceptance

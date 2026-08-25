@@ -55,6 +55,12 @@ class EngineCapabilities:
                 "cancellation": self.cancellation,
                 "waiting": self.waiting,
                 "events": {"emit": True, "listen": True, "durable": False},
+                "cloudEvents": {
+                    "lifecycle": True,
+                    "specversion": "1.0",
+                    "delivery": "bounded_snapshot",
+                    "durable": False,
+                },
             },
         }
 
@@ -125,7 +131,7 @@ class WorkflowEngine:
             active.control.token.cancel("cancelled")
         self.services.invocations.update(handle, status="cancelled", error=error.as_dict())
         if active is None:
-            self.services.events.emit(
+            self.services.lifecycle_events.emit(
                 WorkflowEvent(
                     event_type="WorkflowCancelled",
                     invocation_id=handle.invocation_id,
@@ -224,7 +230,7 @@ class PortableWorkflowEngine(WorkflowEngine):
     async def initialize(self, services: RuntimeServices) -> None:
         await super().initialize(services)
         self.executor = WorkflowExecutor(
-            services.catalog, services=services, event_sink=services.events
+            services.catalog, services=services, event_sink=services.lifecycle_events
         )
 
     async def invoke(

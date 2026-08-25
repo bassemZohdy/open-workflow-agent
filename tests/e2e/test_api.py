@@ -32,6 +32,12 @@ async def test_invoke_capabilities_health_and_reload(tmp_path):
                 "listen": True,
                 "durable": False,
             }
+            assert capabilities["features"]["cloudEvents"] == {
+                "lifecycle": True,
+                "specversion": "1.0",
+                "delivery": "bounded_snapshot",
+                "durable": False,
+            }
             event = await client.post(
                 "/v1/events",
                 json={"event": {"id": "api-event-1", "type": "api.test", "data": {"ok": True}}},
@@ -41,6 +47,13 @@ async def test_invoke_capabilities_health_and_reload(tmp_path):
             result = await client.post("/v1/invoke", json={"input": {"question": "hi"}})
             assert result.status_code == 200
             assert result.json()["status"] == "completed"
+            lifecycle = await client.get("/v1/events/lifecycle?limit=2")
+            assert lifecycle.status_code == 200
+            assert lifecycle.headers["content-type"].startswith(
+                "application/cloudevents-batch+json"
+            )
+            assert len(lifecycle.json()) == 2
+            assert all(event["specversion"] == "1.0" for event in lifecycle.json())
             assert (await client.post("/v1/admin/knowledge/reload")).status_code == 200
 
 

@@ -10,7 +10,7 @@ from .config import RuntimeConfig
 from .events import EventBus, InMemoryEventBus
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
 from .memory import MemoryService
-from .observability import EventSink, InMemoryEventSink
+from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
 from .persistence import InvocationStore
 from .protocols import ProtocolServices
 from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
@@ -41,6 +41,7 @@ class RuntimeServices:
         self.database_root = Path(database_root) if database_root else None
         self.datasource = resolve_datasource(config.persistence.datasource)
         self.events = event_sink or InMemoryEventSink()
+        self.lifecycle_events = LifecycleCloudEventSink(self.events)
         self.event_bus = event_bus or InMemoryEventBus()
         self.protocols = ProtocolServices()
         self.tools = ToolRegistry.from_config(config.tools, self.protocols)

@@ -5,7 +5,11 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.engine import PortableWorkflowEngine
 from open_workflow_agent.errors import WorkflowExecutionError, WorkflowSemanticError
-from open_workflow_agent.observability import InMemoryEventSink
+from open_workflow_agent.observability import (
+    InMemoryEventSink,
+    LifecycleCloudEventSink,
+    WorkflowEvent,
+)
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import WorkflowExecutor, compile_workflow
 
@@ -147,3 +151,33 @@ async def test_resume_emits_common_lifecycle_events(tmp_path):
     assert sum(event.event_type == "WorkflowCompleted" for event in sink.events) == 1
     assert resumed.output == handle.output
     services.close()
+
+
+def test_lifecycle_cloud_event_is_versioned_and_redacts_error_details():
+    downstream = InMemoryEventSink()
+    sink = LifecycleCloudEventSink(downstream, max_events=1)
+    event = WorkflowEvent(
+        event_type="WorkflowFaulted",
+        invocation_id="invocation-1",
+        workflow_name="safe-workflow",
+        workflow_version="1.0.0",
+        engine="langgraph",
+        status="faulted",
+        error={
+            "code": "workflow_execution_error",
+            "message": "secret-token",
+            "details": {"checkpoint": "native-state"},
+        },
+    )
+
+    sink.emit(event)
+    cloud_event = sink.snapshot()[0].as_dict()
+
+    assert cloud_event["specversion"] == "1.0"
+    assert cloud_event["id"] == event.event_id
+    assert cloud_event["type"] == "com.openworkflow.agent.lifecycle.workflow.faulted.v1"
+    assert cloud_event["source"] == "urn:open-workflow-agent:lifecycle"
+    assert cloud_event["data"]["error"] == {"code": "workflow_execution_error"}
+    assert "secret-token" not in str(cloud_event)
+    assert "native-state" not in str(cloud_event)
+    assert downstream.events == [event]

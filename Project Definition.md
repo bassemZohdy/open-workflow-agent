@@ -670,6 +670,17 @@ The bus is non-durable and has no replay, broker, `all`/`any` strategy, or
 subscription iterator semantics. Those features remain unsupported until a
 later milestone proves their contracts.
 
+The optional lifecycle CloudEvents boundary is supported by both engines:
+
+```text
+GET /v1/events/lifecycle?limit=100
+Content-Type: application/cloudevents-batch+json
+```
+
+It returns a bounded in-memory snapshot of CloudEvents 1.0 structured JSON.
+The boundary is non-streaming and non-durable; it exposes only common lifecycle
+identifiers and sanitized error codes, never engine-native checkpoint state.
+
 ---
 
 # 18. Engine-Specific Capabilities Are Allowed
@@ -1917,6 +1928,12 @@ Example:
       "listen": true,
       "durable": false
     },
+    "cloudEvents": {
+      "lifecycle": true,
+      "specversion": "1.0",
+      "delivery": "bounded_snapshot",
+      "durable": false
+    },
     "streaming": false
   }
 }
@@ -2112,7 +2129,9 @@ metrics
 tests
 ```
 
-Later expose Open Workflow lifecycle CloudEvents.
+The optional lifecycle CloudEvents boundary exposes these events as CloudEvents
+1.0 JSON batches through `GET /v1/events/lifecycle`. It is bounded, in-memory,
+non-streaming, and non-durable.
 
 This provides observability independent of ADK/LangGraph's different event formats.
 
@@ -2679,7 +2698,6 @@ raise
 Potential:
 
 ```text
-CloudEvents
 schedule
 sub-workflows
 external catalogs

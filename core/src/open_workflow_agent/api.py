@@ -6,7 +6,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, Header, Request
+from fastapi import FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -188,6 +188,17 @@ def create_app(
         except ValueError as exc:
             raise EventValidationError(str(exc)) from exc
         return envelope.as_dict()
+
+    @app.get("/v1/events/lifecycle")
+    async def lifecycle_events(
+        limit: int = Query(default=100, ge=1, le=1000),
+    ) -> JSONResponse:
+        return JSONResponse(
+            content=[
+                event.as_dict() for event in runtime_services.lifecycle_events.snapshot(limit)
+            ],
+            media_type="application/cloudevents-batch+json",
+        )
 
     @app.post("/v1/invoke")
     async def invoke(request: InvokeRequest) -> Any:
