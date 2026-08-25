@@ -15,27 +15,27 @@
 
 ### A-001 - Remote CI and release acceptance (P0)
 
-- [ ] Re-run the workflow after the local POSIX SQLite normalization and CI tmpfs-size fixes; verify root `Tests` and both Docker acceptance jobs pass from a clean checkout.
-- [ ] Verify the CI Docker containers have enough writable `/tmp` space for the packaged offline FastEmbed cache and retain useful failure logs.
-- [ ] Verify the newly added CI stop/restart/resume step crosses a real container boundary for both engines and passes on GitHub-hosted Ubuntu runners.
-- [ ] Verify remote wheel contents, image tags/version metadata, exact lock inputs, image-size gate, and container acceptance.
+- [x] Re-run the workflow after the local POSIX SQLite normalization and CI tmpfs-size fixes; verify root `Tests` and both Docker acceptance jobs pass from a clean checkout.
+- [x] Verify the CI Docker containers have enough writable `/tmp` space for the packaged offline FastEmbed cache and retain useful failure logs.
+- [x] Verify the newly added CI stop/restart/resume step crosses a real container boundary for both engines and passes on GitHub-hosted Ubuntu runners.
+- [x] Verify remote wheel contents, image tags/version metadata, exact lock inputs, image-size gate, and container acceptance.
 - Acceptance: the workflow is green and reproducible on GitHub-hosted runners.
 
 ### A-002 - CTK compatibility gate (P1)
 
-- [ ] Verify the selected CTK subset in a green remote workflow and reconcile capability wording with actual coverage.
+- [x] Verify the selected CTK subset in a green remote workflow and reconcile capability wording with actual coverage.
 - [ ] Expand coverage only for scenarios supported by the implemented Portable Profile and declared capabilities.
-- [ ] Preserve pinned CTK provenance and upload scenario/test output as a CI artifact for compatibility review.
-- Acceptance: applicable CTK results are reproducible in CI without claiming unsupported scenarios.
+- [x] Preserve pinned CTK provenance and upload scenario/test output as a CI artifact for compatibility review.
+- Acceptance: applicable CTK results are reproducible in CI without claiming unsupported scenarios. Green run: `32807385884`; artifacts: `ctk-adk-results`, `ctk-langgraph-results`.
 
 ### A-003 - Configured external persistence (P2)
 
-- [ ] Add a locked PostgreSQL-capable datasource abstraction for common invocation metadata, memory, and knowledge metadata stores; keep SQLite as the reference backend.
-- [ ] Add explicit, separate table/schema namespaces for invocation metadata, memory, knowledge metadata, and each engine's native durable state.
-- [ ] Integrate engine-native PostgreSQL durability where the pinned ADK and LangGraph APIs support it; otherwise document and test the closest architecture-compatible adapter without sharing checkpoint representations.
-- [ ] Add deterministic unit/contract coverage and Docker PostgreSQL acceptance for persistence across service restart and for both engine images.
-- [ ] Keep unsupported datasource URLs failing explicitly until their backend and isolation tests exist.
-- Acceptance: configured datasource behavior is durable, explicit, isolated, and architecture-compatible.
+- [x] Add a locked PostgreSQL-capable datasource abstraction for common invocation metadata, memory, and knowledge metadata stores; keep SQLite as the reference backend.
+- [x] Add explicit, separate table/schema namespaces for invocation metadata, memory, knowledge metadata, and each engine's native durable state.
+- [x] Integrate engine-native PostgreSQL durability where the pinned ADK and LangGraph APIs support it; otherwise document and test the closest architecture-compatible adapter without sharing checkpoint representations.
+- [x] Add deterministic unit/contract coverage and Docker PostgreSQL acceptance for persistence across service restart and for both engine images.
+- [x] Keep unsupported datasource URLs failing explicitly until their backend and isolation tests exist.
+- Acceptance: configured datasource behavior is durable, explicit, isolated, and architecture-compatible. Green run: `32807385884`.
 
 ## Deferred Future Candidates
 

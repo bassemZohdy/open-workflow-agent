@@ -2,7 +2,7 @@
 
 ## Source of Truth and Current Phase
 
-`Project Definition.md` is authoritative; `AGENTS.md` contains mandatory contributor rules and `TODO.md` is the active backlog. Core implementation and local acceptance are complete. The current phase is remote CI/release verification, followed by the applicable CTK gate and then external persistence.
+`Project Definition.md` is authoritative; `AGENTS.md` contains mandatory contributor rules and `TODO.md` is the active backlog. Core implementation, local acceptance, remote CI/release verification, the applicable CTK gate, and configured PostgreSQL persistence acceptance are complete. Remaining unchecked TODO work is future Portable Profile expansion only.
 
 ## Architecture
 
@@ -22,7 +22,7 @@ Use strict typed Python, four-space indentation, exact dependency locks, shared 
 
 Local root, core, contract, ADK, LangGraph, selected CTK, format, lint, mypy, lock, build, and schema-wheel checks pass. Local images are below the 2 GiB gate: ADK is approximately 202 MB and LangGraph approximately 198 MB. Both pass local health, capabilities, FakeModel, mounted-knowledge, read-only-root, arbitrary-UID, offline-search, reload, restart, and stop/restart/resume acceptance. The original images were approximately 3.06 GB and 3.05 GB; CUDA/Torch and the Sentence-Transformers dependency graph were removed in favor of FastEmbed/ONNX and a packaged local model.
 
-The GitHub workflow is present. Remote run `32805216540` for commit `1339118` completed with a wheel-content assertion failure and both Docker acceptance jobs failing to start because the mounted `/data` directory was not writable by the arbitrary UID. The ADK and LangGraph engine jobs passed. The wheel check now validates the packaged Open Workflow 1.0.3 YAML resource, CI gives mounted state writable permissions, verifies image/release metadata, retains logs, and includes real stop/restart/resume and PostgreSQL jobs; these changes remain pending remote verification. SQLite remains the reference datasource, and PostgreSQL common stores plus ADK/LangGraph native PostgreSQL adapters are implemented behind the locked `postgres` extras. The applicable CTK subset is locally integrated, while the remote CTK gate and full persistence acceptance remain open.
+The GitHub workflow is green on Ubuntu in remote run `32807385884` for commit `5f2ee232`. It passed root tests/contracts, release metadata and all three lock checks, wheel resource validation, both image metadata and 2 GiB gates, both independent Docker health/invocation/knowledge gates, genuine stop/restart/resume across a container boundary for ADK and LangGraph, PostgreSQL common-store durability, and PostgreSQL acceptance for both engine images. The run retained four Docker log artifacts. The pinned CTK subset passed in both engine jobs and produced `ctk-adk-results` and `ctk-langgraph-results` artifacts containing test output, the repository commit, the pinned upstream CTK commit, and scenario hashes. SQLite remains the reference datasource; PostgreSQL common stores and ADK/LangGraph native PostgreSQL adapters are implemented behind locked `postgres` extras with isolated namespaces.
 
 ## Key Commands
 
