@@ -266,6 +266,16 @@ POST /v1/schedules/{id}/cancel
 
 Use `/v1/capabilities` to discover the capabilities of the selected engine/runtime version.
 
+## Sandbox execution roadmap
+
+Executable Open Workflow operations are intentionally not enabled yet. `run.shell`, `run.script`, and `run.container` remain rejected until the planned sandbox milestones pass their security and cross-engine acceptance gates.
+
+The next execution foundation is an **internal sandbox** that works inside the normal runtime deployment and does not require Docker or Kubernetes. It provides controlled child-process execution with bounded environment, workspace, input/output, timeout, cancellation, cleanup, and enforceable resource limits. It is explicitly **not** a hard isolation boundary.
+
+Docker and Kubernetes/OpenShift are planned later as optional stronger-isolation backends behind the same framework-neutral `SandboxManager`. ADK and LangGraph must not implement their own subprocess/container execution paths, and the main runtime must not receive unrestricted Docker socket or cluster-wide Kubernetes access.
+
+See [Sandbox execution architecture](docs/sandbox-execution.md) and the ordered B-005/B-006 backlog in [TODO.md](TODO.md).
+
 ## Documentation
 
 - [Getting started](docs/getting-started.md) — run a published image and invoke your first agent.
@@ -273,6 +283,7 @@ Use `/v1/capabilities` to discover the capabilities of the selected engine/runti
 - [API guide](docs/api.md) — HTTP endpoints and request/response examples.
 - [Deployment guide](docs/deployment.md) — Docker Hub/GHCR images, persistence, Docker, Kubernetes, and OpenShift.
 - [Developer guide](docs/development.md) — source checkout, repository structure, tests, and contribution workflow.
+- [Sandbox execution architecture](docs/sandbox-execution.md) — planned internal sandbox and later external execution backends.
 - [Project Definition](Project%20Definition.md) — authoritative architecture and product contract.
 - [PROJECT.md](PROJECT.md) — verified implementation status.
 - [TODO.md](TODO.md) — active backlog.

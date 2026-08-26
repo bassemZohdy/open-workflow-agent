@@ -16,11 +16,20 @@ Treat `Project Definition.md` as authoritative; read it before implementation. U
 - Core must not import ADK or LangGraph. Engine state and checkpointing remain engine-native; public identity and workflow fingerprints remain common.
 - Keep `agent` and `llm`, knowledge and memory, session and checkpointing, and agent tools and workflow calls separate.
 - Portability requires identical shared fixtures and expected results on both engines; advertise differences through capabilities.
+- Executable workflow operations must use the common sandbox execution contract. ADK and LangGraph must never create independent subprocess, Docker, or Kubernetes execution paths.
+- The internal sandbox is a controlled execution boundary, not a hard isolation boundary. Do not describe subprocess restrictions as equivalent to container, pod, VM, or microVM isolation.
+- Implement the internal sandbox before any external Docker/Kubernetes/OpenShift backend. Docker/Kubernetes must remain optional backends, not core runtime prerequisites.
 
 ## Development and Verification
 
-Use strict typed Python, four-space indentation, deterministic fakes, and no paid APIs in tests. Keep engine dependency environments independent and never install packages at container startup. Preserve Open Workflow task references, translate framework exceptions into the common error contract, and run the relevant contract suite after engine changes.
+Use strict typed Python, four-space indentation, deterministic fakes, and no paid APIs in tests. Keep engine dependency environments independent and never install packages at container startup or as part of sandbox execution. Preserve Open Workflow task references, translate framework exceptions into the common error contract, and run the relevant contract suite after engine changes.
+
+For sandbox work, follow `docs/sandbox-execution.md` and the ordered B-005/B-006 tasks in `TODO.md`. Do not advertise `run.script`, `run.shell`, or `run.container` until their deterministic cross-engine and container/backend acceptance gates are green.
 
 ## Security
 
 Treat user input as untrusted. Never log secrets or place credentials in ordinary workflow files. Shell, script, container execution, and external catalogs are disabled by default. Protocol clients require timeouts, TLS verification, response-size limits, redirect policy, and authentication abstraction.
+
+For internal process execution, do not inherit the full runtime environment, runtime working directory, unrestricted file descriptors, or unlimited output/time/resources. Preserve a dedicated execution workspace and capability-advertise only controls actually enforced by the platform.
+
+For external sandbox execution, do not mount an unrestricted Docker socket into the Open Workflow Agent runtime and do not give the runtime cluster-wide Kubernetes/OpenShift permissions. Use a separate/restricted execution control boundary with least-privilege access.

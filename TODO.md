@@ -6,6 +6,8 @@
 
 **B-004 — Secure external catalog resolution (in progress).** B-003 bounded eventing, lifecycle CloudEvents, scheduling, local sub-workflows, and durable HITL approvals remain complete. External catalog support is implemented behind explicit deployment trust, with final container/CI acceptance still pending.
 
+**Next planned phase:** **B-005 — Internal sandbox execution foundation.** It must be completed before enabling `run.script` or `run.shell`, and before any Docker/Kubernetes/OpenShift execution backend is implemented.
+
 ## Active Backlog — Ordered
 
 ### B-004 — Secure external catalog resolution (P3)
@@ -73,7 +75,111 @@ External catalogs must be deployment-controlled, fail closed, and portable acros
 
 **B-004 acceptance:** an explicitly approved external catalog can be fetched, verified, validated, cached/revalidated, and resolved through the common core with bounded secure behavior; both engines produce equivalent contract results; failures are fail-closed and non-sensitive; CI and both container images pass all relevant gates. Only then may `use.catalogs` be enabled in the advertised capability profile.
 
-### B-005 — Optional A2A exposure and streaming evaluation (P3)
+### B-005 — Internal sandbox execution foundation (P1)
+
+This is the prerequisite for executable Open Workflow operations. The first sandbox must run inside the normal Open Workflow Agent deployment and must not require a Docker Engine, Kubernetes, or OpenShift. The internal sandbox is a controlled execution boundary, not a hard security boundary.
+
+Architecture requirements are documented in `docs/sandbox-execution.md`.
+
+#### B-005.1 — Define the sandbox contract and threat model
+
+- [ ] Define `SandboxManager`, `SandboxBackend`, `SandboxExecutionRequest`, `SandboxExecutionResult`, cancellation, capability, and engine-neutral error contracts in core.
+- [ ] Define the distinction between managed runtime functions, internal child-process execution, and later external isolation backends.
+- [ ] Document threats including command injection, environment/secret leakage, path traversal, inherited file descriptors, runaway process trees, fork/process bombs, CPU/memory/disk exhaustion, oversized output, timeout escape, workspace leakage, network access, retry/resume duplication, and cleanup failure.
+- [ ] State explicitly that an internal subprocess shares the runtime container/host kernel and is not equivalent to a container, pod, VM, or microVM isolation boundary.
+- [ ] Preserve Open Workflow task references and keep backend/process-native identifiers out of the public API contract.
+
+#### B-005.2 — Add strict sandbox policy and capability models
+
+- [ ] Add strict typed configuration only for implemented internal policies: backend selection, timeout, input/output limits, environment policy, workspace policy, supported runtimes, and enforceable resource controls.
+- [ ] Reject unknown/insecure configuration and do not expose a configuration switch for controls the implementation cannot actually enforce.
+- [ ] Add sanitized `/v1/capabilities` reporting for internal process execution, supported script runtimes, shell support, cancellation, resource-limit enforcement, filesystem isolation level, and network isolation level.
+- [ ] Keep sandbox policy common across ADK and LangGraph; engines must not own their own execution configuration.
+
+#### B-005.3 — Introduce a managed function capability boundary
+
+- [ ] Keep built-in `agent`, `llm`, and bounded protocol functions as managed runtime functions rather than converting them into child processes.
+- [ ] Define the minimal capability-scoped execution context available to managed/executable functions: input, cancellation, approved workspace/files, approved protocol/network services, approved secret references, and observability context.
+- [ ] Prevent future executable/plugin-style functions from receiving unrestricted runtime objects, environment access, filesystem access, secrets, or arbitrary subprocess access by default.
+- [ ] Keep arbitrary in-process Python plugins outside the current public product contract.
+
+#### B-005.4 — Implement `InternalSandboxBackend`
+
+- [ ] Add a core-only internal backend that starts controlled OS child processes without Docker/Kubernetes dependencies.
+- [ ] Prefer direct executable/argument-vector execution rather than implementation-created shell interpolation where Open Workflow semantics allow it.
+- [ ] Create one execution-scoped temporary workspace per process and do not use the runtime working directory as the child workspace.
+- [ ] Do not inherit the full runtime environment; allow only deployment-approved variables/values and explicit secret references.
+- [ ] Close inherited file descriptors except those explicitly required and sanitize process startup state.
+- [ ] Bound stdin, stdout, stderr, total output, execution time, and workspace usage where enforceable.
+- [ ] Apply supported OS resource limits for CPU/process/file-size/address-space usage where practical and capability-advertise platform differences.
+- [ ] Implement cancellation and terminate the child process tree/process group where the supported platform permits it.
+- [ ] Guarantee best-effort workspace/process cleanup after success, failure, timeout, cancellation, or runtime shutdown.
+
+#### B-005.5 — Integrate internal script execution
+
+- [ ] Add a `RunPlan`/common run executor path that delegates `run.script` to `SandboxManager`; neither engine may call subprocess APIs directly.
+- [ ] Define the initial supported script runtime set explicitly and package required interpreters in the release image; no dynamic package/runtime installation is allowed at startup or execution time.
+- [ ] Preserve official Open Workflow script semantics without introducing another script DSL or templating language.
+- [ ] Reject unsupported runtimes, dependency-install requests, host-path mounts, and backend-specific execution fields.
+
+#### B-005.6 — Integrate internal shell execution
+
+- [ ] Add `run.shell` only after the internal backend and script slice are proven.
+- [ ] Keep shell execution separately capability-gated because it has a larger injection/expansion surface than direct executable invocation.
+- [ ] Do not concatenate workflow/user data into an implementation-created command string; preserve Open Workflow-defined command semantics and fail closed on unsupported behavior.
+- [ ] Apply the same timeout, cancellation, environment, output, resource, workspace, observability, and cleanup policies as script execution.
+
+#### B-005.7 — Integrate lifecycle, retry, resume, and observability
+
+- [ ] Emit common execution lifecycle events keyed by `invocation_id`, `session_id`, workflow identity, Open Workflow task reference, execution ID, duration, status, and sanitized error code.
+- [ ] Translate timeout, cancellation, policy rejection, invalid runtime/executable, resource limit, output limit, non-zero exit, startup failure, and cleanup failure into the common error contract.
+- [ ] Define retry/resume behavior explicitly: sandbox execution is not exactly-once and side-effecting commands require idempotency/deduplication discipline.
+- [ ] Persist only common lifecycle/recovery metadata where required; do not make PID/process-group/backend-native state a stable application contract.
+
+#### B-005.8 — Prove security and cross-engine portability
+
+- [ ] Add deterministic core tests for timeout, cancellation, process-tree termination, environment filtering, secret non-leakage, workspace isolation/cleanup, invalid executables/runtimes, non-zero exit, output limits, and resource limits where supported.
+- [ ] Add negative tests for attempts to read unapproved environment secrets, inherit runtime file descriptors, access disallowed runtime paths, escape the workspace through path tricks, and leave orphan child processes.
+- [ ] Add shared `run.script` and `run.shell` contract fixtures and verify identical observable ADK/LangGraph results.
+- [ ] Verify arbitrary UID, read-only root filesystem, bounded `/tmp`, no startup installation, graceful SIGTERM, and retained-log secret safety in both release images.
+- [ ] Ensure the internal milestone test suite requires no Docker daemon, Kubernetes cluster, public network, or paid API.
+- [ ] Keep `run.script` and `run.shell` rejected in production capabilities until all relevant B-005 acceptance checks are green.
+
+**B-005 acceptance:** both engines route executable tasks through one framework-neutral `SandboxManager`; the internal backend executes approved script/shell operations with bounded process, environment, workspace, output, timeout, cancellation, cleanup, and observability behavior; security limitations are explicit; deterministic contracts prove parity; and Docker/Kubernetes are not required.
+
+### B-006 — External sandbox backends (P2)
+
+Depends on B-005. External backends provide stronger infrastructure isolation and must reuse the same sandbox request/result/capability contract rather than creating engine-specific execution paths.
+
+#### B-006.1 — Backend-neutral external execution contract
+
+- [ ] Confirm the B-005 SPI can represent image/runtime selection, files, environment references, resource limits, network/isolation requirements, cancellation, bounded output, and cleanup without exposing infrastructure-native identifiers publicly.
+- [ ] Define backend selection as deployment configuration, not workflow authoring syntax.
+- [ ] Define policy compatibility/fail-closed behavior when a workflow requires an isolation capability the selected backend cannot provide.
+
+#### B-006.2 — Docker backend
+
+- [ ] Implement an optional Docker sandbox backend without giving the Open Workflow Agent runtime unrestricted `/var/run/docker.sock` access.
+- [ ] Use a separate controller or restricted Docker API/socket proxy exposing only the minimum create/start/wait/log/stop/remove operations required for sandbox workloads.
+- [ ] Enforce approved registries/images, non-root execution, no privileged mode, no host networking, no host mounts, bounded resources/output, timeout, cleanup, and secret isolation.
+- [ ] Add deterministic local acceptance where Docker is available without making Docker a dependency of the internal sandbox/core test suite.
+
+#### B-006.3 — Kubernetes/OpenShift backend
+
+- [ ] Implement an optional backend that creates ephemeral Pods/Jobs in a dedicated sandbox namespace/project through a narrowly scoped ServiceAccount.
+- [ ] Enforce non-root/arbitrary UID compatibility, no privileged mode, no host namespaces, no hostPath mounts, bounded ephemeral storage, resource requests/limits, approved images, NetworkPolicy/egress restrictions, and cleanup/TTL behavior.
+- [ ] Keep the runtime ServiceAccount unable to manage unrelated workloads/namespaces.
+- [ ] Add OpenShift-focused acceptance for SCC/security-context compatibility and cleanup after timeout/cancellation/restart.
+
+#### B-006.4 — Enable container execution only on container-capable backends
+
+- [ ] Route `run.container` through `SandboxManager` only when the selected external backend advertises container execution.
+- [ ] Reject container execution on the internal backend rather than silently emulating it.
+- [ ] Add shared ADK/LangGraph contracts proving backend-independent observable semantics and explicit capability differences.
+
+**B-006 acceptance:** Docker and/or Kubernetes/OpenShift can be selected as stronger sandbox backends without changing workflow definitions or engine adapters; infrastructure permissions are narrowly scoped; direct unrestricted daemon/cluster access from the runtime is avoided; and `run.container` is advertised only where the selected backend safely supports it.
+
+### B-007 — Optional A2A exposure and streaming evaluation (P3)
 
 Depends on B-004 and a separate capability decision. These features must remain optional and must not become a default portability claim.
 
@@ -82,7 +188,7 @@ Depends on B-004 and a separate capability decision. These features must remain 
 - [ ] Decide whether each feature is engine-neutral, engine-specific, or intentionally deferred; update `/v1/capabilities` and the Project Definition accordingly.
 - [ ] If approved, implement one bounded slice with deterministic tests, explicit security controls, and no claim of full A2A/Open Workflow ecosystem conformance.
 
-### B-006 — Additional engine adapter (P3)
+### B-008 — Additional engine adapter (P3)
 
 Depends on stable core contracts and completed cross-engine acceptance.
 
@@ -100,12 +206,16 @@ Depends on stable core contracts and completed cross-engine acceptance.
 
 External catalogs are opt-in behind the in-progress B-004 resolver and are not yet part of the advertised production acceptance profile. Generic workflow event delivery remains process-local/non-durable; durability is currently provided only for the bounded approval contract and scheduler state.
 
-Custom MCP/A2A protocols, visual designers, BPMN, arbitrary shell execution, and distributed scheduling remain out of scope unless the Project Definition changes.
+Custom inbound A2A exposure, visual designers, BPMN, executable shell/script/container tasks, and distributed scheduling remain out of the advertised production profile unless their planned acceptance gates are completed.
 
 ## Working Rules
 
 - Add or update tests before marking a backlog item complete.
 - Keep the common core framework-neutral; adapters remain engine-owned.
-- Preserve separate knowledge, memory, session, checkpoint, invocation metadata, approval, and schedule lifecycles.
-- Do not require paid model/API access or install dependencies at container startup.
-- Do not advertise external catalog, A2A exposure, streaming, or additional-engine portability before deterministic contracts and capabilities prove it.
+- Route future executable workflow operations through the common sandbox service; engines must never create independent subprocess/Docker/Kubernetes execution paths.
+- Treat the internal sandbox as a controlled execution boundary, not a hard isolation boundary; advertise only controls actually enforced on the current platform/backend.
+- Do not make Docker or Kubernetes a requirement for the internal sandbox milestone.
+- Do not give the main runtime unrestricted Docker socket or cluster-wide Kubernetes access for external sandbox execution.
+- Preserve separate knowledge, memory, session, checkpoint, invocation metadata, approval, schedule, sandbox execution, and engine-native state lifecycles.
+- Do not require paid model/API access or install dependencies at container startup/runtime execution.
+- Do not advertise external catalog, executable sandbox tasks, A2A exposure, streaming, or additional-engine portability before deterministic contracts and capabilities prove it.
