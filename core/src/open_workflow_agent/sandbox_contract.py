@@ -133,7 +133,9 @@ class SandboxBackendCapabilities:
         }
 
 
-def internal_backend_capabilities(runtime_capabilities: dict[str, object]) -> SandboxBackendCapabilities:
+def internal_backend_capabilities(
+    runtime_capabilities: dict[str, object],
+) -> SandboxBackendCapabilities:
     """Translate the current internal backend report into the common SPI descriptor."""
 
     if runtime_capabilities.get("backend") != "internal":
@@ -142,11 +144,14 @@ def internal_backend_capabilities(runtime_capabilities: dict[str, object]) -> Sa
     shell = runtime_capabilities.get("shell")
     container = runtime_capabilities.get("container")
     resource_limits = runtime_capabilities.get("resourceLimits")
-    if not isinstance(script, dict) or not isinstance(shell, dict) or not isinstance(container, dict):
+    if not all(isinstance(value, dict) for value in (script, shell, container)):
         raise ValueError("runtime sandbox capabilities are incomplete")
     if not isinstance(resource_limits, dict):
         raise ValueError("runtime sandbox resource capabilities are incomplete")
 
+    assert isinstance(script, dict)
+    assert isinstance(shell, dict)
+    assert isinstance(container, dict)
     kinds: list[SandboxExecutionKind] = []
     if script.get("enabled"):
         kinds.append("script")
@@ -209,7 +214,11 @@ def validate_backend_compatibility(
 
     resource_requirements = (
         (requirements.resources.timeout_seconds, capabilities.supports_timeout, "timeout"),
-        (requirements.resources.max_output_bytes, capabilities.supports_output_limit, "output_limit"),
+        (
+            requirements.resources.max_output_bytes,
+            capabilities.supports_output_limit,
+            "output_limit",
+        ),
         (
             requirements.resources.max_workspace_bytes,
             capabilities.supports_workspace_limit,
