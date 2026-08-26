@@ -49,9 +49,7 @@ class ControllerConfig(StrictModel):
             if item.strip()
         ]
         return cls(
-            docker_socket=os.getenv(
-                "OWA_SANDBOX_CONTROLLER_DOCKER_SOCKET", "/var/run/docker.sock"
-            ),
+            docker_socket=os.getenv("OWA_SANDBOX_CONTROLLER_DOCKER_SOCKET", "/var/run/docker.sock"),
             docker_binary=os.getenv(
                 "OWA_SANDBOX_CONTROLLER_DOCKER_BINARY", "/usr/local/bin/docker"
             ),
@@ -60,21 +58,13 @@ class ControllerConfig(StrictModel):
             max_timeout_seconds=float(
                 os.getenv("OWA_SANDBOX_CONTROLLER_MAX_TIMEOUT_SECONDS", "60")
             ),
-            max_input_bytes=int(
-                os.getenv("OWA_SANDBOX_CONTROLLER_MAX_INPUT_BYTES", "1048576")
-            ),
-            max_output_bytes=int(
-                os.getenv("OWA_SANDBOX_CONTROLLER_MAX_OUTPUT_BYTES", "1048576")
-            ),
+            max_input_bytes=int(os.getenv("OWA_SANDBOX_CONTROLLER_MAX_INPUT_BYTES", "1048576")),
+            max_output_bytes=int(os.getenv("OWA_SANDBOX_CONTROLLER_MAX_OUTPUT_BYTES", "1048576")),
             max_workspace_bytes=int(
                 os.getenv("OWA_SANDBOX_CONTROLLER_MAX_WORKSPACE_BYTES", "33554432")
             ),
-            max_memory_bytes=int(
-                os.getenv("OWA_SANDBOX_CONTROLLER_MAX_MEMORY_BYTES", "536870912")
-            ),
-            max_process_count=int(
-                os.getenv("OWA_SANDBOX_CONTROLLER_MAX_PROCESS_COUNT", "64")
-            ),
+            max_memory_bytes=int(os.getenv("OWA_SANDBOX_CONTROLLER_MAX_MEMORY_BYTES", "536870912")),
+            max_process_count=int(os.getenv("OWA_SANDBOX_CONTROLLER_MAX_PROCESS_COUNT", "64")),
         )
 
     @field_validator("docker_socket", "docker_binary")
@@ -276,9 +266,10 @@ class DockerCliRunner:
         self._active: dict[str, _ActiveExecution] = {}
 
     async def ready(self) -> bool:
-        if not Path(self.config.docker_socket).is_socket() or not Path(
-            self.config.docker_binary
-        ).is_file():
+        if (
+            not Path(self.config.docker_socket).is_socket()
+            or not Path(self.config.docker_binary).is_file()
+        ):
             return False
         try:
             process = await asyncio.create_subprocess_exec(
@@ -353,9 +344,7 @@ class DockerCliRunner:
                 duration=time.perf_counter() - started,
             )
         except OSError as exc:
-            raise ControllerFailure(
-                "sandbox_process_error", "Docker CLI failed to start"
-            ) from exc
+            raise ControllerFailure("sandbox_process_error", "Docker CLI failed to start") from exc
         finally:
             self._active.pop(request.execution_id, None)
             if process is not None and process.returncode is None:
@@ -389,9 +378,7 @@ class DockerCliRunner:
             )
         serialized = json.dumps(request.model_dump(), separators=(",", ":")).encode()
         if len(serialized) > self.config.max_input_bytes:
-            raise ControllerFailure(
-                "sandbox_policy_error", "sandbox input limit exceeded", 422
-            )
+            raise ControllerFailure("sandbox_policy_error", "sandbox input limit exceeded", 422)
         limits = request.limits
         if limits.timeout_seconds <= 0 or limits.timeout_seconds > self.config.max_timeout_seconds:
             self._limit_error("timeout_seconds")
