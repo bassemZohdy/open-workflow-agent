@@ -2,6 +2,55 @@
 
 Open Workflow Agent is packaged as separate ADK and LangGraph runtime images. The public configuration contract is shared; selecting the image selects the execution engine.
 
+## Published GHCR images
+
+Versioned releases are published to GitHub Container Registry after the repository CI workflow passes for a `vX.Y.Z` release tag.
+
+```bash
+docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+```
+
+Stable releases publish these tags for each engine:
+
+```text
+0.1.0       exact project version
+0.1         release series
+latest      latest stable release
+sha-...     verified source commit
+```
+
+The release workflow publishes OCI SBOM/provenance metadata and GitHub build provenance attestations alongside the images. It uses the repository-scoped `GITHUB_TOKEN`; no Docker Hub credential or long-lived registry token is required.
+
+GitHub Package visibility is managed independently from repository visibility. After the first package publication, set each GHCR container package to **Public** in its package settings if anonymous pulls are required. Private packages require normal GHCR authentication.
+
+## Release process
+
+Normal pushes and pull requests run `.github/workflows/ci.yml`. That workflow validates root quality, native engine/contract tests, the selected CTK subset, Docker image size and container behavior, genuine stop/restart/resume, and PostgreSQL acceptance.
+
+`.github/workflows/release.yml` listens for successful CI completion. It publishes only when the verified commit has an exact stable tag matching the project version:
+
+```text
+vX.Y.Z
+```
+
+For example, when the repository version is `0.1.0`:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The tag push starts CI. Only after that CI run succeeds does the release workflow:
+
+1. verify the tag matches the root, core, ADK, and LangGraph package versions;
+2. build and push the ADK and LangGraph images to GHCR;
+3. publish version, series, `latest`, and commit-SHA tags;
+4. attach SBOM/provenance and GitHub build attestations;
+5. create the matching GitHub Release with generated release notes and image pull commands.
+
+Release images currently target `linux/amd64`, matching the tested GitHub-hosted Ubuntu/OpenShift deployment baseline. Add another platform only after it has equivalent container and engine acceptance coverage.
+
 ## Image model
 
 Build either engine independently:
