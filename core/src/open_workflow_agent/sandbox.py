@@ -322,9 +322,7 @@ class InternalSandboxBackend:
         ]
         return os.pathsep.join(dict.fromkeys(value for value in values if value))
 
-    async def _write_stdin(
-        self, process: asyncio.subprocess.Process, value: str | None
-    ) -> None:
+    async def _write_stdin(self, process: asyncio.subprocess.Process, value: str | None) -> None:
         if process.stdin is None:
             return
         try:
@@ -341,9 +339,7 @@ class InternalSandboxBackend:
                 pass
 
     @staticmethod
-    async def _read_stream(
-        stream: asyncio.StreamReader | None, budget: _OutputBudget
-    ) -> str:
+    async def _read_stream(stream: asyncio.StreamReader | None, budget: _OutputBudget) -> str:
         if stream is None:
             return ""
         chunks: list[bytes] = []
@@ -471,9 +467,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
         if "shell" in definition:
             return await self._run_shell(definition["shell"], state)
         if "container" in definition:
-            raise UnsupportedWorkflowFeature(
-                "run.container requires an external sandbox backend"
-            )
+            raise UnsupportedWorkflowFeature("run.container requires an external sandbox backend")
         return await super()._run_subworkflow(definition, state)
 
     async def _run_script(self, definition: Any, state: ExecutionState) -> Any:
@@ -522,9 +516,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
                 "progress": {"phase": "sandbox_start"},
             },
         )
-        result = await self._await_with_cancellation(
-            self.services.sandbox.execute(request), state
-        )
+        result = await self._await_with_cancellation(self.services.sandbox.execute(request), state)
         self._emit(
             "TaskProgress",
             {
@@ -586,9 +578,7 @@ def compile_sandbox_workflow(
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
-    validate_sandbox_capabilities(
-        workflow, sandbox=sandbox, trusted_catalogs=trusted_catalogs
-    )
+    validate_sandbox_capabilities(workflow, sandbox=sandbox, trusted_catalogs=trusted_catalogs)
     return normalize_workflow(workflow)
 
 
@@ -603,9 +593,7 @@ async def resolve_and_compile_sandbox_workflow(
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
     await resolver.resolve_workflow(workflow, catalog)
-    validate_sandbox_capabilities(
-        workflow, sandbox=sandbox, trusted_catalogs=trusted_catalogs
-    )
+    validate_sandbox_capabilities(workflow, sandbox=sandbox, trusted_catalogs=trusted_catalogs)
     return normalize_workflow(workflow)
 
 
