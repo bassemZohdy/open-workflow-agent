@@ -135,7 +135,13 @@ class ExternalCatalogResolver:
             policy = policies[reference.catalog]
             resource_uri = _function_uri(endpoint, reference)
             _validate_endpoint(resource_uri, policy)
-            resource = await self._fetch(resource_uri, policy, reference.value)
+            try:
+                resource = await self._fetch(resource_uri, policy, reference.value)
+            except OwaError as exc:
+                self._states[reference.catalog] = (
+                    "unavailable" if isinstance(exc, ToolError) else "rejected"
+                )
+                raise
             call, function_with = _validate_function_definition(resource.definition, reference)
             runtime_protocols = ProtocolServices(
                 self._client(policy, auth_host=urlparse(resource_uri).hostname)
@@ -306,6 +312,7 @@ class ExternalCatalogResolver:
             raise ToolError("external catalog returned an invalid HTTP response")
         status = response.get("status")
         if status == 304 and cached is not None:
+            self._verify_pin(cached.digest, policy, reference, resource_uri)
             cached.fetched_at = now
             self._emit("CatalogRevalidated", reference, status="revalidated")
             return cached
@@ -424,7 +431,10 @@ def _endpoint_uri(definition: Any) -> str | None:
 
 
 def _validate_endpoint(uri: str, policy: ExternalCatalogConfig) -> None:
-    parsed = urlparse(uri)
+    try:
+        parsed = urlparse(uri)
+    except ValueError as exc:
+        raise WorkflowSchemaError("external catalog endpoint is malformed") from exc
     if parsed.scheme != "https" or not parsed.hostname:
         raise UnsupportedWorkflowFeature(
             "external catalogs require absolute HTTPS endpoints",
@@ -542,7 +552,10 @@ async def _validate_invocation_destinations(
 async def _validate_network_destination(
     uri: str, policy: ExternalCatalogConfig, client: HttpClient
 ) -> None:
-    parsed = urlparse(uri)
+    try:
+        parsed = urlparse(uri)
+    except ValueError as exc:
+        raise WorkflowSchemaError("external catalog destination is malformed") from exc
     host = parsed.hostname
     if host is None:
         return
@@ -571,9 +584,15 @@ async def _validate_network_destination(
             "external catalog destination could not be resolved",
             details={"host": host},
         ) from exc
-    resolved = {
-        ipaddress.ip_address(str(item[4][0])) for item in addresses if item[4] and item[4][0]
-    }
+    try:
+        resolved = {
+            ipaddress.ip_address(str(item[4][0])) for item in addresses if item[4] and item[4][0]
+        }
+    except (IndexError, TypeError, ValueError) as exc:
+        raise ToolError(
+            "external catalog destination could not be resolved",
+            details={"host": host},
+        ) from exc
     if not resolved or any(not address.is_global for address in resolved):
         raise UnsupportedWorkflowFeature(
             "external catalog destination resolves to a disallowed IP address",

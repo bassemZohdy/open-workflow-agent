@@ -130,6 +130,7 @@ async def test_api_does_not_report_ready_when_external_catalog_is_unavailable(tm
         assert not hasattr(app.state, "plan")
         assert "temporarily unavailable" not in str(failure.value)
         assert "catalog.test" not in repr(failure.value.details)
+        assert services.external_catalogs.capabilities()["states"]["trusted"] == "unavailable"
     finally:
         services.close()
 

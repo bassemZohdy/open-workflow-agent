@@ -141,6 +141,18 @@ async def test_external_catalog_rejects_untrusted_endpoint_variants(
 
 
 @pytest.mark.asyncio
+async def test_external_catalog_rejects_malformed_endpoint(services):
+    workflow = _workflow()
+    workflow["use"]["catalogs"]["trusted"]["endpoint"]["uri"] = "https://[invalid/root"  # type: ignore[index]
+    policy = ExternalCatalogConfig(allowed_hosts=["catalog.test"])
+    resolver = ExternalCatalogResolver({"trusted": policy}, http=HttpClient())
+    plan = compile_workflow(workflow, trusted_catalogs={"trusted": policy})
+
+    with pytest.raises(WorkflowSchemaError, match="endpoint is malformed"):
+        await resolver.resolve_workflow(plan.source, services.catalog)
+
+
+@pytest.mark.asyncio
 async def test_external_catalog_revalidates_cached_definition_and_checks_integrity(tmp_path):
     calls: list[httpx.Request] = []
 
@@ -163,6 +175,29 @@ async def test_external_catalog_revalidates_cached_definition_and_checks_integri
         assert len(calls) == 2
     finally:
         services.close()
+
+
+@pytest.mark.asyncio
+async def test_external_catalog_rechecks_pin_on_not_modified_revalidation(services):
+    calls = 0
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(200, text=FUNCTION_YAML, headers={"ETag": '"function-v1"'})
+        return httpx.Response(304, headers={"ETag": '"function-v1"'})
+
+    digest = hashlib.sha256(FUNCTION_YAML.encode()).hexdigest()
+    resolver = _resolver(handler, pins={"echo:1.0.0@trusted": digest})
+    plan = compile_workflow(_workflow(), trusted_catalogs={"trusted": resolver.policies["trusted"]})
+    await resolver.resolve_workflow(plan.source, services.catalog)
+    resolver.policies["trusted"] = resolver.policies["trusted"].model_copy(
+        update={"integrity_pins": {"echo:1.0.0@trusted": "0" * 64}}
+    )
+
+    with pytest.raises(ToolError, match="integrity verification failed"):
+        await resolver.resolve_workflow(plan.source, services.catalog)
 
 
 @pytest.mark.asyncio
