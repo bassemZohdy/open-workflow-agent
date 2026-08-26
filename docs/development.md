@@ -8,6 +8,7 @@ Before changing architecture or public contracts, read:
 2. `PROJECT.md` — verified implementation status.
 3. `TODO.md` — active ordered backlog.
 4. `AGENTS.md` — mandatory repository rules.
+5. `docs/sandbox-execution.md` — approved sandbox execution architecture and security boundary.
 
 ## Architecture boundary
 
@@ -39,7 +40,8 @@ Core owns:
 - knowledge and memory abstractions;
 - protocol services;
 - invocation metadata;
-- common errors and lifecycle events.
+- common errors and lifecycle events;
+- sandbox policy, manager/backend contracts, and portable executable-task semantics when B-005 is implemented.
 
 Each engine owns:
 
@@ -48,6 +50,8 @@ Each engine owns:
 - checkpoint/resume integration;
 - engine-specific persistence;
 - framework exception translation at the boundary.
+
+Engines do **not** own subprocess, Docker, or Kubernetes execution for portable Open Workflow tasks. Executable tasks must delegate to the common sandbox execution service.
 
 ## Repository layout
 
@@ -66,6 +70,8 @@ tests/e2e/                container/end-to-end coverage
 docker/                   engine Dockerfiles and entrypoint
 docs/                     user/operator/developer documentation
 ```
+
+The exact sandbox package layout will be introduced during B-005, but it must remain under framework-neutral core services rather than either engine package.
 
 ## Local setup
 
@@ -132,6 +138,8 @@ When adding portable behavior:
 
 Do not silently ignore unsupported Open Workflow features.
 
+For future executable tasks, the shared fixture must exercise the common `SandboxManager`; it must not validate two separate engine-owned subprocess implementations.
+
 ## Models in tests
 
 Automated tests must not require paid APIs.
@@ -167,6 +175,8 @@ ADK owns ADK durable/session state. LangGraph owns LangGraph checkpointer/store 
 
 Never make one engine read another engine's checkpoint representation.
 
+Sandbox execution metadata follows the same portability rule: common execution identity/status may be persisted when required, but PIDs, Docker container IDs, Kubernetes Pod/Job names, and other backend-native identifiers must not become the public invocation contract.
+
 ## Workflow rules
 
 Open Workflow 1.0.3 is the authoring DSL.
@@ -180,6 +190,38 @@ The internal canonical execution plan is:
 
 Do not introduce a second external workflow language and do not fork the Open Workflow schema to add AI-specific calls. `agent:1.0.0@default` and `llm:1.0.0@default` are runtime catalog functions.
 
+`run.workflow` remains child workflow execution through the invocation service. It must not be routed through a process/container sandbox merely because it is represented by an Open Workflow `run` task.
+
+## Sandbox execution boundary
+
+The approved roadmap is documented in [sandbox-execution.md](sandbox-execution.md).
+
+The required order is:
+
+```text
+common SandboxManager/SPI
+        |
+        v
+InternalSandboxBackend
+        |
+        +-- run.script
+        +-- run.shell
+        |
+        v
+external backends later
+        +-- Docker
+        +-- Kubernetes/OpenShift
+        |
+        v
+run.container where supported
+```
+
+The internal backend must work without Docker or Kubernetes. It provides controlled process execution with bounded environment, workspace, input/output, timeout, cancellation, cleanup, and enforceable resource limits.
+
+It is not a hard security boundary. A subprocess inside the runtime container still shares the container/host kernel and some namespaces/resources. Do not document or advertise stronger isolation than the implementation actually enforces.
+
+Built-in `agent`/`llm` functions and bounded protocol calls remain managed runtime services; do not move them into subprocesses solely for conceptual uniformity.
+
 ## Security expectations
 
 Treat invocation/user input as untrusted and workflow definitions as trusted deployment artifacts.
@@ -188,9 +230,15 @@ Do not:
 
 - log secrets;
 - put credentials in ordinary workflow examples;
-- enable arbitrary shell/script/container execution;
+- enable arbitrary shell/script/container execution before the corresponding sandbox milestone is accepted;
+- execute shell/script directly from an ADK or LangGraph adapter;
+- inherit the full runtime environment into child processes;
+- use the runtime working directory as an unrestricted execution workspace;
+- describe temporary-directory/process limits as equivalent to container/VM isolation;
+- mount an unrestricted Docker socket into the runtime for external sandbox execution;
+- grant the runtime cluster-wide Kubernetes/OpenShift permissions for sandbox workloads;
 - bypass TLS/timeout/response-size protocol protections;
-- dynamically install packages at runtime startup.
+- dynamically install packages at runtime startup or as part of sandbox execution.
 
 ## Docker validation
 
@@ -212,8 +260,10 @@ docker compose --profile langgraph up --build
 
 Remote CI additionally validates image metadata/size, container acceptance, PostgreSQL persistence, selected CTK coverage, and stop/restart/resume behavior.
 
+When B-005 is implemented, container acceptance must also verify internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container.
+
 ## Documentation rule
 
 When changing public configuration, API behavior, supported workflow semantics, deployment requirements, or capabilities, update the corresponding file under `docs/` and keep README quick-start examples valid.
 
-Implementation status belongs in `PROJECT.md`; active work belongs in `TODO.md`; architecture decisions belong in `Project Definition.md`. Avoid turning README back into a status log.
+Implementation status belongs in `PROJECT.md`; active work belongs in `TODO.md`; architecture decisions belong in `Project Definition.md` and approved focused architecture documents such as `docs/sandbox-execution.md`. Avoid turning README back into a status log.
