@@ -8,6 +8,8 @@
 
 **Next planned phase:** **B-005 — Internal sandbox execution foundation.** It must be completed before enabling `run.script` or `run.shell`, and before any Docker/Kubernetes/OpenShift execution backend is implemented.
 
+A parallel branch, `docs/internal-sandbox-foundation`, contains sandbox design work and is intentionally not part of `main` until it is reviewed and merged.
+
 ## Active Backlog — Ordered
 
 ### B-004 — Secure external catalog resolution (P3)
