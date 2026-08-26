@@ -8,6 +8,7 @@ from typing import Any
 from .approvals import ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
+from .docker_sandbox import DockerSandboxBackend
 from .events import EventBus, InMemoryEventBus
 from .external_catalog import ExternalCatalogResolver
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
@@ -15,7 +16,7 @@ from .memory import MemoryService
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
 from .persistence import InvocationStore
 from .protocols import ProtocolServices
-from .sandbox import InternalSandboxBackend, SandboxManager
+from .sandbox import InternalSandboxBackend, SandboxBackend, SandboxManager
 from .scheduling import ScheduleStore
 from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
 from .tools import AgentToolBinding, ToolRegistry
@@ -55,7 +56,12 @@ class RuntimeServices:
         self.workflow_runner: Any = None
         self.protocols = ProtocolServices()
         self.tools = ToolRegistry.from_config(config.tools, self.protocols)
-        self.sandbox = SandboxManager(InternalSandboxBackend(config.sandbox))
+        sandbox_backend: SandboxBackend
+        if config.sandbox.backend == "docker":
+            sandbox_backend = DockerSandboxBackend(config.sandbox)
+        else:
+            sandbox_backend = InternalSandboxBackend(config.sandbox)
+        self.sandbox = SandboxManager(sandbox_backend)
         self.memory_enabled = config.memory.enabled is not False
         memory_tools = (
             ("add_memory", "search_memory", "delete_memory") if self.memory_enabled else ()
