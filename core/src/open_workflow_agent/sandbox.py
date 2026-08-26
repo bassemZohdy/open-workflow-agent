@@ -7,6 +7,7 @@ import copy
 import os
 import shutil
 import signal
+import subprocess
 import sys
 import tempfile
 import time
@@ -27,7 +28,6 @@ from .errors import (
     UnsupportedWorkflowFeature,
     WorkflowSemanticError,
 )
-from .observability import EventSink, NullEventSink
 from .workflow import (
     ExecutionState,
     WorkflowExecutor,
@@ -41,6 +41,7 @@ from .workflow import (
 
 SandboxKind = Literal["script", "shell"]
 SandboxStatus = Literal["completed"]
+_RESERVED_ENVIRONMENT = frozenset({"PATH", "HOME", "TMPDIR"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,14 +163,14 @@ class InternalSandboxBackend:
                     close_fds=True,
                     preexec_fn=self._resource_limiter(),
                 )
-            except (OSError, asyncio.SubprocessError) as exc:
+            except (OSError, subprocess.SubprocessError) as exc:
                 raise SandboxProcessError(
                     "sandbox process failed to start",
                     details={"execution_id": request.execution_id},
                 ) from exc
             self._active[request.execution_id] = process
             budget = _OutputBudget(self.config.max_output_bytes)
-            tasks = [
+            tasks: list[asyncio.Task[Any]] = [
                 asyncio.create_task(self._write_stdin(process, request.stdin)),
                 asyncio.create_task(self._read_stream(process.stdout, budget)),
                 asyncio.create_task(self._read_stream(process.stderr, budget)),
@@ -178,7 +179,7 @@ class InternalSandboxBackend:
             ]
             try:
                 async with asyncio.timeout(self.config.timeout_seconds):
-                    _, stdout, stderr, exit_code, _ = await asyncio.gather(*tasks)
+                    results = await asyncio.gather(*tasks)
             except TimeoutError as exc:
                 await self._terminate_process(process)
                 await self._cancel_tasks(tasks)
@@ -196,6 +197,9 @@ class InternalSandboxBackend:
                 raise
             finally:
                 self._active.pop(request.execution_id, None)
+            stdout = cast(str, results[1])
+            stderr = cast(str, results[2])
+            exit_code = cast(int, results[3])
             self._check_workspace(workspace)
             if exit_code != 0:
                 if exit_code < 0 and self._resource_signal(-exit_code):
@@ -209,9 +213,9 @@ class InternalSandboxBackend:
                 )
             return SandboxExecutionResult(
                 execution_id=request.execution_id,
-                exit_code=cast(int, exit_code),
-                stdout=cast(str, stdout),
-                stderr=cast(str, stderr),
+                exit_code=exit_code,
+                stdout=stdout,
+                stderr=stderr,
                 duration=time.perf_counter() - started,
             )
 
@@ -261,7 +265,7 @@ class InternalSandboxBackend:
         command = request.command or ""
         if not command or "/" in command or (os.altsep and os.altsep in command):
             raise SandboxPolicyError("shell command must be a direct executable name")
-        executable = shutil.which(command, path=self.config.executable_search_path)
+        executable = shutil.which(command, path=self._effective_search_path())
         if executable is None:
             raise SandboxPolicyError(
                 "shell executable is not available in the approved search path",
@@ -273,7 +277,7 @@ class InternalSandboxBackend:
         self, request: SandboxExecutionRequest, workspace: Path
     ) -> dict[str, str]:
         environment = {
-            "PATH": self.config.executable_search_path,
+            "PATH": self._effective_search_path(),
             "HOME": str(workspace),
             "TMPDIR": str(workspace),
             "LANG": "C.UTF-8",
@@ -283,6 +287,11 @@ class InternalSandboxBackend:
             if value is not None:
                 environment[name] = value
         for name, value in request.environment:
+            if name in _RESERVED_ENVIRONMENT:
+                raise SandboxPolicyError(
+                    "sandbox environment cannot override runtime isolation variables",
+                    details={"name": name},
+                )
             if isinstance(value, SandboxSecretReference):
                 if value.name not in self.config.secret_environment:
                     raise SandboxPolicyError(
@@ -305,6 +314,13 @@ class InternalSandboxBackend:
                 details={"max_input_bytes": self.config.max_input_bytes},
             )
         return environment
+
+    def _effective_search_path(self) -> str:
+        values = [
+            str(Path(sys.executable).parent),
+            *self.config.executable_search_path.split(os.pathsep),
+        ]
+        return os.pathsep.join(dict.fromkeys(value for value in values if value))
 
     async def _write_stdin(
         self, process: asyncio.subprocess.Process, value: str | None
@@ -371,12 +387,14 @@ class InternalSandboxBackend:
         def apply_limits() -> None:
             import resource
 
-            limits = (
+            limits: list[tuple[int, int | None]] = [
                 (resource.RLIMIT_CPU, self.config.cpu_seconds),
                 (resource.RLIMIT_AS, self.config.memory_bytes),
                 (resource.RLIMIT_FSIZE, self.config.file_size_bytes),
-                (resource.RLIMIT_NPROC, self.config.process_count),
-            )
+            ]
+            process_limit = getattr(resource, "RLIMIT_NPROC", None)
+            if process_limit is not None:
+                limits.append((process_limit, self.config.process_count))
             for resource_id, value in limits:
                 if value is not None:
                     resource.setrlimit(resource_id, (value, value))
@@ -669,13 +687,21 @@ def _validate_environment(value: Any, sandbox: SandboxConfig, reference: str) ->
         return
     if not isinstance(value, Mapping):
         raise WorkflowSemanticError(f"sandbox environment must be an object at {reference}")
-    for raw in value.values():
+    for name, raw in value.items():
+        if str(name) in _RESERVED_ENVIRONMENT:
+            raise UnsupportedWorkflowFeature(
+                "sandbox environment cannot override runtime isolation variables",
+                details={"reference": reference, "name": str(name)},
+            )
         if isinstance(raw, Mapping) and set(raw) == {"fromEnv"}:
-            name = raw.get("fromEnv")
-            if not isinstance(name, str) or name not in sandbox.secret_environment:
+            environment_name = raw.get("fromEnv")
+            if (
+                not isinstance(environment_name, str)
+                or environment_name not in sandbox.secret_environment
+            ):
                 raise UnsupportedWorkflowFeature(
                     "sandbox secret reference is not deployment-approved",
-                    details={"reference": reference, "name": name},
+                    details={"reference": reference, "name": environment_name},
                 )
 
 
