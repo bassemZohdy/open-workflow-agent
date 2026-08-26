@@ -158,7 +158,9 @@ class DockerSandboxBackend:
                 duration=float(value["duration"]),
             )
         except (KeyError, TypeError, ValueError) as exc:
-            raise SandboxProcessError("Docker sandbox controller returned an invalid response") from exc
+            raise SandboxProcessError(
+                "Docker sandbox controller returned an invalid response"
+            ) from exc
 
     async def cancel(self, execution_id: str) -> None:
         if execution_id not in self._active:
