@@ -1,6 +1,22 @@
 # Configuration Reference
 
-Open Workflow Agent uses strict YAML configuration with environment-variable overrides.
+Open Workflow Agent uses strict YAML configuration with environment-variable overrides. For normal use, configuration is mounted into the published GHCR image; changing configuration, workflows, knowledge, memory, persistence, or tools does not require rebuilding the image.
+
+Published images use:
+
+```text
+/config     runtime configuration and workflow definitions
+/knowledge  mounted knowledge documents
+/data       writable runtime state
+```
+
+Example image:
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+```
+
+The same configuration works with the LangGraph image when the selected features are in the common portable profile.
 
 Configuration precedence:
 
@@ -30,6 +46,19 @@ Equivalent overrides:
 ```bash
 OWA__SERVER__PORT=8080
 OWA__MODEL__NAME=fake/default
+```
+
+When running a published image:
+
+```bash
+docker run --rm \
+  -p 8080:8080 \
+  -e OWA__SERVER__PORT=8080 \
+  -e OWA__MODEL__NAME=fake/default \
+  -v "$(pwd)/config:/config:ro" \
+  -v "$(pwd)/knowledge:/knowledge:ro" \
+  -v "$(pwd)/data:/data" \
+  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
 ```
 
 Environment values are parsed as YAML values, so booleans and numbers can be supplied naturally.
@@ -116,12 +145,10 @@ model:
 
 Supported runtime behavior:
 
-- `provider: fake` uses the deterministic built-in model for tests and local validation.
-- any non-`fake` provider is resolved through the LiteLLM model adapter.
+- `provider: fake` uses the deterministic built-in model for tests and runtime validation.
+- any non-`fake` provider is resolved through the LiteLLM model adapter when the optional `model` dependency is installed in the image.
 
-For LiteLLM-backed use, the optional `model` dependency must be installed. Provider credentials should be supplied with environment variables/secrets expected by the selected LiteLLM provider, not embedded in workflow files.
-
-Example:
+Example real-provider configuration:
 
 ```yaml
 model:
@@ -130,7 +157,13 @@ model:
   temperature: 0.1
 ```
 
-The exact provider/model identifier and required secret variables are governed by LiteLLM/provider configuration.
+Provider credentials should be supplied with deployment secrets/environment variables expected by the selected LiteLLM provider, not embedded in workflow files.
+
+### Current published-image limitation
+
+The current standard ADK and LangGraph release images do not install the optional LiteLLM `model` dependency. They can be used directly with `fake/default` and the rest of the packaged runtime capabilities. A model-enabled published variant is required before a real LiteLLM provider can be used without building a custom image.
+
+This is an image packaging limitation, not a configuration-format difference.
 
 ## `workflow`
 
@@ -162,6 +195,8 @@ If neither is supplied, the runtime generates the default one-task workflow.
 
 `workflow.catalog` registers deployment-provided local child workflows for `run.workflow`. External/remote catalogs are currently disabled.
 
+Workflow files are mounted under `/config`; adding or replacing them does not require rebuilding the published image.
+
 ## `knowledge`
 
 ```yaml
@@ -187,7 +222,7 @@ Manual reload:
 curl -X POST http://localhost:8080/v1/admin/knowledge/reload
 ```
 
-Knowledge is exposed to agents as the `search_knowledge` tool.
+Knowledge is exposed to agents as the `search_knowledge` tool. Mount source documents into `/knowledge`; no image rebuild is required.
 
 ## `embedding`
 
@@ -198,7 +233,7 @@ embedding:
   revision: ea78891063587eb050ed4166b20062eaf978037c
 ```
 
-`sentence-transformers` is still accepted as a migration alias for the provider field, but the packaged implementation uses FastEmbed/ONNX.
+`sentence-transformers` is still accepted as a migration alias for the provider field, but the packaged implementation uses FastEmbed/ONNX. The standard release images package the default local model so the normal knowledge path does not require an external embedding service.
 
 ## `memory`
 
@@ -242,6 +277,8 @@ OWA__PERSISTENCE__DATASOURCE='postgresql://user:password@host:5432/database'
 
 The datasource is shared as a connection target, but subsystems use isolated namespaces/tables. ADK and LangGraph retain their own native durable state rather than sharing engine checkpoint formats.
 
+Persist `/data` using a host volume/PVC when SQLite is used. No source-code change or image rebuild is required to switch between configured persistence targets supported by the image.
+
 ## `tools`
 
 Supported configured tool types are:
@@ -264,7 +301,7 @@ tools:
 
 Protocol clients are bounded by runtime policies such as TLS verification, timeouts, redirect handling, response-size limits, endpoint validation, and optional host allowlists.
 
-Configured agent tools are distinct from explicit workflow protocol calls.
+Configured agent tools are distinct from explicit workflow protocol calls. Tool definitions are deployment configuration; adding/removing configured tools does not require rebuilding the image.
 
 ## `server`
 
@@ -288,7 +325,7 @@ The runtime also emits engine-neutral lifecycle records containing stable workfl
 
 ## Recommended deployment pattern
 
-Keep non-secret runtime behavior in `agent.yaml`:
+Keep non-secret runtime behavior in `agent.yaml` mounted into `/config`:
 
 ```yaml
 agent:
@@ -296,8 +333,8 @@ agent:
   instruction: Answer using approved knowledge.
 
 model:
-  provider: litellm
-  name: provider/model
+  provider: fake
+  name: fake/default
 
 workflow:
   path: /config/workflow.yaml
@@ -313,3 +350,9 @@ OWA__PERSISTENCE__DATASOURCE='postgresql://user:password@host:5432/database'
 ```
 
 Do not place API keys, passwords, or bearer tokens directly in ordinary workflow definitions.
+
+## Source code is not required for configuration
+
+Configuration, workflows, mounted knowledge, persistence endpoints, and configured tools are external runtime inputs. End users should change these inputs around the published GHCR image rather than editing or rebuilding the Open Workflow Agent source tree.
+
+Source checkout/build instructions are intentionally kept in the [developer guide](development.md).
