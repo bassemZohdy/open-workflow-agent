@@ -120,6 +120,16 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      - name: Validate Docker Hub publishing configuration
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$DOCKERHUB_USERNAME" || { echo "DOCKERHUB_USERNAME repository variable is required." >&2; exit 1; }
+          test -n "$DOCKERHUB_TOKEN" || { echo "DOCKERHUB_TOKEN repository secret is required." >&2; exit 1; }
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -127,11 +137,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Generate image metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}
+          images: |
+            ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}
+            docker.io/${{ vars.DOCKERHUB_USERNAME }}/open-workflow-agent-${{ matrix.engine }}
           tags: |
             type=raw,value=${{ needs.prepare.outputs.version }}
             type=raw,value=${{ needs.prepare.outputs.series }}
@@ -142,7 +160,7 @@ jobs:
             org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
             org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
 
-      - name: Build and push release image
+      - name: Build once and push to GHCR and Docker Hub
         id: build
         uses: docker/build-push-action@v6
         with:
@@ -160,19 +178,20 @@ jobs:
           provenance: mode=max
           sbom: true
 
-      - name: Attest published image provenance
+      - name: Attest published GHCR image provenance
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
-      - name: Record published image
+      - name: Record published images
         shell: bash
         run: |
           {
             echo "### ${{ matrix.engine }} image"
-            echo "- Image: \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}:${{ needs.prepare.outputs.version }}\`"
+            echo "- GHCR: \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}:${{ needs.prepare.outputs.version }}\`"
+            echo "- Docker Hub: \`docker.io/${{ vars.DOCKERHUB_USERNAME }}/open-workflow-agent-${{ matrix.engine }}:${{ needs.prepare.outputs.version }}\`"
             echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
             echo "- Tags: \`${{ needs.prepare.outputs.version }}\`, \`${{ needs.prepare.outputs.series }}\`, \`latest\`, \`sha-${{ needs.prepare.outputs.short_sha }}\`"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -189,18 +208,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
         run: |
           set -euo pipefail
           notes="$RUNNER_TEMP/release-notes.md"
           cat > "$notes" <<EOF
           ## Container images
 
+          Docker Hub:
+
+          \`\`\`bash
+          docker pull ${DOCKERHUB_USERNAME}/open-workflow-agent-adk:${RELEASE_VERSION}
+          docker pull ${DOCKERHUB_USERNAME}/open-workflow-agent-langgraph:${RELEASE_VERSION}
+          \`\`\`
+
+          GitHub Container Registry:
+
           \`\`\`bash
           docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:${RELEASE_VERSION}
           docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:${RELEASE_VERSION}
           \`\`\`
 
-          The same images are also tagged \`${RELEASE_VERSION%.*}\`, \`latest\`, and with the verified commit SHA. Release images include OCI SBOM/provenance metadata and GitHub build provenance attestations.
+          Both registries receive the same release build and tags: \`${RELEASE_VERSION}\`, \`${RELEASE_VERSION%.*}\`, \`latest\`, and the verified commit SHA. Release builds include OCI SBOM/provenance metadata; GitHub build provenance attestations are published with the canonical GHCR image.
           EOF
 
           gh release create "$RELEASE_TAG" \
