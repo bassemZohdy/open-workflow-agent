@@ -161,7 +161,7 @@ jobs:
 
   containers:
     name: Docker ${{ matrix.engine }} acceptance
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, x64, docker]
     needs: engines
     timeout-minutes: 30
     strategy:
