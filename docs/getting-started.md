@@ -228,11 +228,32 @@ Prefer injecting the real datasource through an environment variable or secret:
 
 The runtime and engine-specific durable state use isolated namespaces; ADK and LangGraph do not share checkpoint representations.
 
-## Real LLM providers
+## Use a real LLM provider
 
-The runtime has a LiteLLM adapter, but the current base published engine images do not install the optional `model` extra. Therefore the image-first path currently supports the built-in deterministic model directly; a model-enabled published variant is needed before a real LiteLLM provider can be used without rebuilding.
+The standard release images include the locked LiteLLM runtime. Replace the fake model configuration with the provider/model identifier you want to use:
 
-Provider secrets must be supplied through deployment secrets/environment variables rather than workflow files.
+```yaml
+model:
+  provider: litellm
+  name: provider/model
+  temperature: 0.1
+```
+
+Then supply provider credentials through environment variables or your deployment secret mechanism. For example, if the selected provider expects `PROVIDER_API_KEY`:
+
+```bash
+docker run --rm --name open-workflow-agent \
+  -p 8080:8080 \
+  -e PROVIDER_API_KEY \
+  -v "$(pwd)/config:/config:ro" \
+  -v "$(pwd)/knowledge:/knowledge:ro" \
+  -v "$(pwd)/data:/data" \
+  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+```
+
+Use the actual environment-variable names required by the selected LiteLLM provider. Secrets must not be placed in ordinary workflow files.
+
+No source checkout, Python installation, or custom image build is required for the standard LiteLLM path.
 
 ## Stop the runtime
 
