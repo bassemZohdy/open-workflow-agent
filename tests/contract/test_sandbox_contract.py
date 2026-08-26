@@ -78,6 +78,28 @@ async def test_internal_sandbox_run_tasks_have_cross_engine_parity(
             for event in services.events.events
             if event.event_type in {"TaskStarted", "TaskCompleted", "TaskProgress"}
         )
+        sandbox_events = [
+            event
+            for event in services.events.events
+            if event.event_type.startswith("SandboxExecution")
+        ]
+        assert [event.event_type for event in sandbox_events] == [
+            "SandboxExecutionStarted",
+            "SandboxExecutionCompleted",
+        ]
+        assert sandbox_events[0].execution_id
+        assert sandbox_events[0].execution_id == sandbox_events[1].execution_id
+        assert sandbox_events[0].invocation_id == handle.invocation_id
+        assert sandbox_events[1].duration is not None
+        assert sandbox_events[1].duration >= 0
+        assert sandbox_events[1].status == "completed"
+        cloud_events = [
+            event.data
+            for event in services.lifecycle_events.events
+            if event.data.get("event_type", "").startswith("SandboxExecution")
+        ]
+        assert cloud_events[-1]["execution_id"] == sandbox_events[1].execution_id
+        assert cloud_events[-1]["status"] == "completed"
     finally:
         await engine.shutdown()
         services.close()
