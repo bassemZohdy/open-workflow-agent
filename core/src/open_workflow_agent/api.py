@@ -20,9 +20,9 @@ from .errors import (
     OwaError,
     ScheduleNotFound,
 )
+from .sandbox import compile_sandbox_workflow, resolve_and_compile_sandbox_workflow
 from .scheduling import WorkflowScheduler
 from .services import RuntimeServices
-from .workflow import compile_workflow, resolve_and_compile_workflow
 
 
 class RequestSizeLimitMiddleware:
@@ -147,16 +147,18 @@ def create_app(
             workflow_source: Any = runtime_config.workflow.definition
             if workflow_source is None and runtime_config.workflow.path:
                 workflow_source = runtime_config.workflow.path
-            app.state.plan = await resolve_and_compile_workflow(
+            app.state.plan = await resolve_and_compile_sandbox_workflow(
                 workflow_source,
+                sandbox=runtime_config.sandbox,
                 trusted_catalogs=runtime_config.workflow.external_catalogs,
                 resolver=runtime_services.external_catalogs,
                 catalog=runtime_services.catalog,
             )
             runtime_services.workflow_catalog.register(app.state.plan)
             for child_workflow in runtime_config.workflow.catalog:
-                child_plan = await resolve_and_compile_workflow(
+                child_plan = await resolve_and_compile_sandbox_workflow(
                     child_workflow,
+                    sandbox=runtime_config.sandbox,
                     trusted_catalogs=runtime_config.workflow.external_catalogs,
                     resolver=runtime_services.external_catalogs,
                     catalog=runtime_services.catalog,
@@ -223,6 +225,7 @@ def create_app(
         value.setdefault("features", {})["catalogs"] = (
             runtime_services.external_catalogs.capabilities()
         )
+        value.setdefault("features", {})["sandbox"] = runtime_services.sandbox.capabilities()
         return value
 
     @app.post("/v1/events")
@@ -295,7 +298,11 @@ def create_app(
         request: CreateScheduleRequest,
         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     ) -> dict[str, Any]:
-        plan = getattr(app.state, "plan", compile_workflow())
+        plan = getattr(
+            app.state,
+            "plan",
+            compile_sandbox_workflow(sandbox=runtime_config.sandbox),
+        )
         record = runtime_services.schedules.create(
             plan,
             request.input,
@@ -325,7 +332,11 @@ def create_app(
 
     @app.post("/v1/invoke")
     async def invoke(request: InvokeRequest) -> Any:
-        plan = getattr(app.state, "plan", compile_workflow())
+        plan = getattr(
+            app.state,
+            "plan",
+            compile_sandbox_workflow(sandbox=runtime_config.sandbox),
+        )
         handle = runtime_services.invocations.create(
             engine=runtime_engine.engine_name,
             session_id=request.session_id,
@@ -354,7 +365,11 @@ def create_app(
             raise InvocationNotFound(
                 "invocation not found", details={"invocation_id": invocation_id}
             )
-        plan = getattr(app.state, "plan", compile_workflow())
+        plan = getattr(
+            app.state,
+            "plan",
+            compile_sandbox_workflow(sandbox=runtime_config.sandbox),
+        )
         try:
             result = await runtime_engine.resume(handle, request.input, plan)
         except OwaError as exc:

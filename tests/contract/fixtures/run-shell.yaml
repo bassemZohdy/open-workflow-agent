@@ -1,0 +1,12 @@
+document:
+  dsl: '1.0.3'
+  namespace: contract
+  name: run-shell
+  version: '1.0.0'
+do:
+  - execute:
+      run:
+        shell:
+          command: printf
+          arguments:
+            - shell-ok

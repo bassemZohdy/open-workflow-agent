@@ -1,0 +1,12 @@
+document:
+  dsl: '1.0.3'
+  namespace: contract
+  name: run-script
+  version: '1.0.0'
+do:
+  - execute:
+      run:
+        script:
+          language: python
+          code: |
+            print("script-ok")

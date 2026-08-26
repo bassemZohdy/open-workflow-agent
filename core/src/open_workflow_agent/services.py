@@ -15,6 +15,7 @@ from .memory import MemoryService
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
 from .persistence import InvocationStore
 from .protocols import ProtocolServices
+from .sandbox import InternalSandboxBackend, SandboxManager
 from .scheduling import ScheduleStore
 from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
 from .tools import AgentToolBinding, ToolRegistry
@@ -54,6 +55,7 @@ class RuntimeServices:
         self.workflow_runner: Any = None
         self.protocols = ProtocolServices()
         self.tools = ToolRegistry.from_config(config.tools, self.protocols)
+        self.sandbox = SandboxManager(InternalSandboxBackend(config.sandbox))
         self.memory_enabled = config.memory.enabled is not False
         memory_tools = (
             ("add_memory", "search_memory", "delete_memory") if self.memory_enabled else ()

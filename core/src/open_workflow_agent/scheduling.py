@@ -14,8 +14,9 @@ from typing import Any, cast
 
 from .errors import ScheduleOperationConflict, ScheduleValidationError
 from .persistence import ExecutionHandle
+from .sandbox import resolve_and_compile_sandbox_workflow
 from .storage import StorageConnection, open_storage
-from .workflow import WorkflowPlan, _duration_seconds, resolve_and_compile_workflow
+from .workflow import WorkflowPlan, _duration_seconds
 
 SCHEDULE_STATES = frozenset({"active", "completed", "cancelled", "faulted"})
 
@@ -275,8 +276,9 @@ class WorkflowScheduler:
             await self._execute(record)
 
     async def _execute(self, record: ScheduleRecord) -> None:
-        plan = await resolve_and_compile_workflow(
+        plan = await resolve_and_compile_sandbox_workflow(
             json.loads(record.workflow_source_json),
+            sandbox=self.services.config.sandbox,
             trusted_catalogs=self.services.config.workflow.external_catalogs,
             resolver=self.services.external_catalogs,
             catalog=self.services.catalog,

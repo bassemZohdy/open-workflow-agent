@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
@@ -11,6 +12,8 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from .errors import ConfigurationError
+
+_ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class StrictModel(BaseModel):
@@ -193,6 +196,100 @@ class ApprovalConfig(StrictModel):
     operator_token: str | None = None
 
 
+class SandboxConfig(StrictModel):
+    """Deployment policy for the bounded in-process child-process sandbox backend."""
+
+    enabled: bool = False
+    backend: Literal["internal"] = "internal"
+    allow_shell: bool = False
+    script_runtimes: list[str] = Field(default_factory=lambda: ["python"])
+    timeout_seconds: float = 30.0
+    max_input_bytes: int = 1_048_576
+    max_output_bytes: int = 1_048_576
+    max_workspace_bytes: int = 33_554_432
+    workspace_root: str = "/tmp/owa-sandbox"
+    executable_search_path: str = "/opt/venv/bin:/usr/local/bin:/usr/bin:/bin"
+    inherited_environment: list[str] = Field(default_factory=list)
+    secret_environment: list[str] = Field(default_factory=list)
+    cpu_seconds: int | None = 30
+    memory_bytes: int | None = 536_870_912
+    file_size_bytes: int | None = 33_554_432
+    process_count: int | None = 64
+
+    @field_validator("script_runtimes")
+    @classmethod
+    def validate_script_runtimes(cls, value: list[str]) -> list[str]:
+        runtimes = [runtime.strip().lower() for runtime in value]
+        if not runtimes or any(not runtime for runtime in runtimes):
+            raise ValueError("script_runtimes must contain at least one runtime")
+        if len(set(runtimes)) != len(runtimes):
+            raise ValueError("script_runtimes must not contain duplicates")
+        unsupported = sorted(set(runtimes) - {"python"})
+        if unsupported:
+            raise ValueError(f"unsupported internal script runtimes: {unsupported}")
+        return runtimes
+
+    @field_validator("timeout_seconds")
+    @classmethod
+    def validate_sandbox_timeout(cls, value: float) -> float:
+        if value <= 0:
+            raise ValueError("sandbox timeout_seconds must be greater than zero")
+        return value
+
+    @field_validator(
+        "max_input_bytes",
+        "max_output_bytes",
+        "max_workspace_bytes",
+    )
+    @classmethod
+    def validate_positive_limits(cls, value: int) -> int:
+        if value <= 0:
+            raise ValueError("sandbox byte limits must be greater than zero")
+        return value
+
+    @field_validator("cpu_seconds", "memory_bytes", "file_size_bytes", "process_count")
+    @classmethod
+    def validate_optional_limits(cls, value: int | None) -> int | None:
+        if value is not None and value <= 0:
+            raise ValueError("sandbox resource limits must be greater than zero when configured")
+        return value
+
+    @field_validator("workspace_root")
+    @classmethod
+    def validate_workspace_root(cls, value: str) -> str:
+        path = Path(value)
+        if not path.is_absolute():
+            raise ValueError("sandbox workspace_root must be an absolute path")
+        return str(path)
+
+    @field_validator("executable_search_path")
+    @classmethod
+    def validate_executable_search_path(cls, value: str) -> str:
+        paths = [item for item in value.split(os.pathsep) if item]
+        if not paths or any(not Path(item).is_absolute() for item in paths):
+            raise ValueError("sandbox executable_search_path must contain absolute paths")
+        return os.pathsep.join(paths)
+
+    @field_validator("inherited_environment", "secret_environment")
+    @classmethod
+    def validate_environment_names(cls, value: list[str]) -> list[str]:
+        names = [name.strip() for name in value]
+        if any(not _ENVIRONMENT_NAME.fullmatch(name) for name in names):
+            raise ValueError("sandbox environment names must be valid environment variable names")
+        if len(set(names)) != len(names):
+            raise ValueError("sandbox environment lists must not contain duplicates")
+        return names
+
+    @model_validator(mode="after")
+    def validate_environment_boundaries(self) -> SandboxConfig:
+        overlap = sorted(set(self.inherited_environment) & set(self.secret_environment))
+        if overlap:
+            raise ValueError(
+                f"sandbox inherited_environment and secret_environment must not overlap: {overlap}"
+            )
+        return self
+
+
 class ToolConfig(StrictModel):
     type: Literal["mcp", "openapi", "a2a"]
     name: str | None = None
@@ -219,6 +316,7 @@ class RuntimeConfig(StrictModel):
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     persistence: PersistenceConfig = Field(default_factory=PersistenceConfig)
     approvals: ApprovalConfig = Field(default_factory=ApprovalConfig)
+    sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
     tools: list[ToolConfig] = Field(default_factory=list)
     server: ServerConfig = Field(default_factory=ServerConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)

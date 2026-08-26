@@ -15,12 +15,12 @@ from .lifecycle import (
 )
 from .observability import WorkflowEvent
 from .persistence import ExecutionHandle
+from .sandbox import SandboxWorkflowExecutor
 from .services import RuntimeServices
 from .workflow import (
     SUPPORTED_FUNCTION_CALLS,
     SUPPORTED_PROTOCOL_CALLS,
     SUPPORTED_TASKS,
-    WorkflowExecutor,
     WorkflowPlan,
 )
 
@@ -278,7 +278,9 @@ class WorkflowEngine:
         return EngineCapabilities(engine=self.engine_name)
 
     async def shutdown(self) -> None:
-        return None
+        sandbox = getattr(self.services, "sandbox", None)
+        if sandbox is not None:
+            await sandbox.shutdown()
 
 
 class PortableWorkflowEngine(WorkflowEngine):
@@ -286,7 +288,7 @@ class PortableWorkflowEngine(WorkflowEngine):
 
     async def initialize(self, services: RuntimeServices) -> None:
         await super().initialize(services)
-        self.executor = WorkflowExecutor(
+        self.executor = SandboxWorkflowExecutor(
             services.catalog, services=services, event_sink=services.lifecycle_events
         )
 
