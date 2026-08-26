@@ -141,11 +141,32 @@ No separate paid embedding API is required for the default knowledge path.
 
 ## Real model providers
 
-The runtime supports LiteLLM through the optional `model` dependency, but the current base published engine images do not install that optional extra.
+The standard ADK and LangGraph release images include the locked LiteLLM model runtime. A real provider can therefore be selected through the same mounted configuration without rebuilding the image.
 
-Therefore the current published images can run the built-in deterministic model and the packaged runtime capabilities directly, while real LiteLLM-backed providers require a model-enabled image variant until that dependency is included in the standard release image.
+Example:
 
-When real providers are enabled, API keys and provider credentials should come from Kubernetes/OpenShift Secrets, Docker secrets, or equivalent environment injection—not workflow files.
+```yaml
+model:
+  provider: litellm
+  name: provider/model
+  temperature: 0.1
+```
+
+Inject the credentials required by the selected LiteLLM provider through Docker, Kubernetes/OpenShift Secrets, or an equivalent secret mechanism. Do not place API keys in workflow definitions or committed configuration.
+
+Example Docker pattern:
+
+```bash
+docker run -d --name open-workflow-agent-adk \
+  -p 8080:8080 \
+  -e PROVIDER_API_KEY \
+  -v "$(pwd)/config:/config:ro" \
+  -v "$(pwd)/knowledge:/knowledge:ro" \
+  -v "$(pwd)/data:/data" \
+  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+```
+
+Replace `PROVIDER_API_KEY` with the actual environment variable required by the selected provider. CI and release acceptance continue to use `fake/default`, so no paid provider access is required to build or validate the images.
 
 ## Kubernetes/OpenShift
 
@@ -217,7 +238,7 @@ Example:
 
 ```yaml
 OWA__SERVER__PORT: "8080"
-OWA__MODEL__NAME: fake/default
+OWA__MODEL__NAME: provider/model
 OWA__PERSISTENCE__DATASOURCE: postgresql://...
 ```
 
@@ -268,7 +289,14 @@ After the first package publication, set the GHCR package visibility to **Public
 
 ## Image size and verification
 
-CI enforces a 2 GiB hard image-size limit for each engine image. The optimized FastEmbed/ONNX runtime images remain far below that threshold and avoid Torch/CUDA dependency bloat.
+CI enforces a 2 GiB hard image-size limit for each engine image. With LiteLLM, FastEmbed/ONNX, PostgreSQL support, and the selected engine runtime bundled, the verified images are approximately:
+
+```text
+ADK        575 MB
+LangGraph  515 MB
+```
+
+They remain well below the gate and avoid the earlier Torch/CUDA dependency bloat.
 
 CI also validates:
 
@@ -277,6 +305,7 @@ CI also validates:
 - liveness/readiness;
 - capabilities;
 - deterministic invocation;
+- LiteLLM importability in the built image;
 - mounted knowledge and reload behavior;
 - genuine stop → restart → resume across container boundaries;
 - PostgreSQL-backed persistence.
@@ -290,8 +319,7 @@ Current bounded features should not be interpreted as broader infrastructure gua
 - scheduling uses single-runtime ownership rather than distributed scheduler ownership;
 - external workflow catalogs are disabled;
 - shell/script/container execution is disabled;
-- authentication is expected at the deployment boundary unless another trusted layer is introduced;
-- the current standard published images do not yet bundle the optional LiteLLM model dependency.
+- authentication is expected at the deployment boundary unless another trusted layer is introduced.
 
 Always check `/v1/capabilities` and the current project status before relying on optional features.
 
