@@ -159,14 +159,16 @@ PY
 
 docker exec "$name" sh -eu -c 'test -z "$(find /tmp/owa-sandbox -mindepth 1 -maxdepth 1 -print -quit)"'
 
-timed_out="$(curl --fail --silent --request POST --header 'content-type: application/json' \
+timeout_status="$(curl --silent --output "$workdir/timed-out.json" --write-out '%{http_code}' \
+  --request POST --header 'content-type: application/json' \
   --data '{"input":{"delay":"10"}}' "http://127.0.0.1:${port}/v1/invoke")"
-python - "$timed_out" <<'PY'
+test "$timeout_status" = "500"
+python - "$workdir/timed-out.json" <<'PY'
 import json
 import sys
+from pathlib import Path
 
-result = json.loads(sys.argv[1])
-assert result["status"] == "faulted"
+result = json.loads(Path(sys.argv[1]).read_text())
 assert result["error"]["code"] == "sandbox_timeout"
 PY
 
