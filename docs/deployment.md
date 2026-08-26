@@ -1,173 +1,194 @@
 # Deployment Guide
 
-Open Workflow Agent is packaged as separate ADK and LangGraph runtime images. The public configuration contract is shared; selecting the image selects the execution engine.
+Open Workflow Agent is packaged as separate ADK and LangGraph runtime images. End-user and production deployments should consume the prebuilt images from GitHub Container Registry (GHCR). Building from source is a developer/customization workflow, not the normal deployment path.
 
-## Published GHCR images
+## Published images
 
-Versioned releases are published to GitHub Container Registry after the repository CI workflow passes for a `vX.Y.Z` release tag.
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk:<version>
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<version>
+```
+
+Example stable release:
 
 ```bash
 docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
 docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
 ```
 
-Stable releases publish these tags for each engine:
+Stable releases also publish:
 
 ```text
-0.1.0       exact project version
-0.1         release series
-latest      latest stable release
-sha-...     verified source commit
+0.1.0        exact release
+0.1          minor series
+latest       latest stable release
+sha-<sha>    immutable verified source revision
 ```
 
-The release workflow publishes OCI SBOM/provenance metadata and GitHub build provenance attestations alongside the images. It uses the repository-scoped `GITHUB_TOKEN`; no Docker Hub credential or long-lived registry token is required.
+For production, prefer the exact version tag or image digest rather than `latest`.
 
-GitHub Package visibility is managed independently from repository visibility. After the first package publication, set each GHCR container package to **Public** in its package settings if anonymous pulls are required. Private packages require normal GHCR authentication.
+Each image is published only after the full GitHub Actions CI gate succeeds for the tagged commit. Release artifacts include OCI SBOM/provenance metadata and GitHub build provenance attestations.
 
-## Release process
+## Runtime paths
 
-Normal pushes and pull requests run `.github/workflows/ci.yml`. That workflow validates root quality, native engine/contract tests, the selected CTK subset, Docker image size and container behavior, genuine stop/restart/resume, and PostgreSQL acceptance.
-
-`.github/workflows/release.yml` listens for successful CI completion. It publishes only when the verified commit has an exact stable tag matching the project version:
+Both engine images expose port `8080` and use the same public paths:
 
 ```text
-vX.Y.Z
-```
-
-For example, when the repository version is `0.1.0`:
-
-```bash
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-The tag push starts CI. Only after that CI run succeeds does the release workflow:
-
-1. verify the tag matches the root, core, ADK, and LangGraph package versions;
-2. build and push the ADK and LangGraph images to GHCR;
-3. publish version, series, `latest`, and commit-SHA tags;
-4. attach SBOM/provenance and GitHub build attestations;
-5. create the matching GitHub Release with generated release notes and image pull commands.
-
-Release images currently target `linux/amd64`, matching the tested GitHub-hosted Ubuntu/OpenShift deployment baseline. Add another platform only after it has equivalent container and engine acceptance coverage.
-
-## Image model
-
-Build either engine independently:
-
-```bash
-docker build -f docker/Dockerfile.adk -t open-workflow-agent-adk:local .
-```
-
-```bash
-docker build -f docker/Dockerfile.langgraph -t open-workflow-agent-langgraph:local .
-```
-
-The repository does not require both engine dependency graphs in one image.
-
-Both images expose port `8080` and use these standard paths:
-
-```text
-/config     runtime configuration/workflow artifacts
+/config     runtime configuration and workflow artifacts
 /knowledge  mounted knowledge documents
 /data       writable runtime state
 ```
 
-## Docker Compose
+Selecting the image selects the engine; application configuration should not require an engine field.
 
-The provided Compose stack starts PostgreSQL and one selected engine profile.
+## Standalone Docker deployment
 
-```bash
-cp .env.example .env
-```
-
-ADK:
+Create local directories:
 
 ```bash
-docker compose --profile adk up --build
+mkdir -p config knowledge data
 ```
 
-LangGraph:
+Create `config/agent.yaml`:
+
+```yaml
+model:
+  provider: fake
+  name: fake/default
+```
+
+Run ADK:
 
 ```bash
-docker compose --profile langgraph up --build
+docker run -d --name open-workflow-agent-adk \
+  -p 8080:8080 \
+  --read-only \
+  --tmpfs /tmp:rw,nosuid,nodev,size=256m \
+  -v "$(pwd)/config:/config:ro" \
+  -v "$(pwd)/knowledge:/knowledge:ro" \
+  -v "$(pwd)/data:/data" \
+  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
 ```
 
-Default host ports:
+Run LangGraph instead by changing only the container/image name:
+
+```bash
+docker run -d --name open-workflow-agent-langgraph \
+  -p 8080:8080 \
+  --read-only \
+  --tmpfs /tmp:rw,nosuid,nodev,size=256m \
+  -v "$(pwd)/config:/config:ro" \
+  -v "$(pwd)/knowledge:/knowledge:ro" \
+  -v "$(pwd)/data:/data" \
+  ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+```
+
+No source checkout or Docker build is required.
+
+## Docker Compose without source checkout
+
+A deployment Compose file can reference GHCR directly:
+
+```yaml
+services:
+  owa:
+    image: ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+    ports:
+      - "8080:8080"
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m
+    volumes:
+      - ./config:/config:ro
+      - ./knowledge:/knowledge:ro
+      - ./data:/data
+```
+
+Switch to LangGraph by changing `image` to:
 
 ```text
-PostgreSQL 5432
-ADK        8080
-LangGraph  8081
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
 ```
 
-Change these in `.env` when required.
+The repository's developer Compose file may build from source for contributor testing; that is not required for normal users.
 
 ## Persistence
 
-SQLite is the reference local datasource. PostgreSQL can be configured with:
+SQLite is the reference local datasource and works with the writable `/data` mount.
+
+PostgreSQL can be configured with:
 
 ```yaml
 persistence:
   datasource: postgresql://user:password@host:5432/database
 ```
 
+For production, inject the datasource using a secret/environment variable instead of committing credentials:
+
+```text
+OWA__PERSISTENCE__DATASOURCE=postgresql://...
+```
+
 The common runtime and each engine keep isolated storage namespaces. Engine-native durable state is not shared between ADK and LangGraph.
 
-For production use, provide credentials through your platform's secret mechanism instead of committing them to configuration files.
+## Knowledge
 
-## Filesystem requirements
+The published images package the pinned local FastEmbed/ONNX `all-MiniLM-L6-v2` embedding model.
 
-The containers are designed to:
+At startup the runtime stages the packaged model into writable `/tmp/fastembed` because FastEmbed creates small runtime metadata files. Mount application knowledge read-only at `/knowledge` where practical.
 
-- run as non-root;
-- avoid requiring a fixed host UID;
-- support a read-only root filesystem;
-- write runtime data only to writable locations such as `/data` and `/tmp`;
-- handle `SIGTERM` through the Python server process;
-- avoid installing packages during startup.
-
-The Compose configuration demonstrates a read-only root filesystem plus writable `/tmp` tmpfs and persistent data volumes.
-
-## Knowledge model
-
-Production images package the pinned local FastEmbed/ONNX `all-MiniLM-L6-v2` embedding model.
-
-At startup the entrypoint stages the packaged model into writable `/tmp/fastembed` because FastEmbed creates small runtime metadata files.
-
-Mount application knowledge read-only at `/knowledge` where practical.
+No separate paid embedding API is required for the default knowledge path.
 
 ## Real model providers
 
-The core supports LiteLLM through the optional `model` dependency. The current engine Dockerfiles install native engine, knowledge, and PostgreSQL extras, but not the optional `model` extra.
+The runtime supports LiteLLM through the optional `model` dependency, but the current base published engine images do not install that optional extra.
 
-If your deployment needs LiteLLM-backed models, extend/build the selected image with the locked model dependency included. Do not dynamically install it at container startup.
+Therefore the current published images can run the built-in deterministic model and the packaged runtime capabilities directly, while real LiteLLM-backed providers require a model-enabled image variant until that dependency is included in the standard release image.
 
-Provider API keys and credentials should come from Kubernetes/OpenShift Secrets, Docker secrets, or equivalent environment injection.
+When real providers are enabled, API keys and provider credentials should come from Kubernetes/OpenShift Secrets, Docker secrets, or equivalent environment injection—not workflow files.
 
-## Kubernetes/OpenShift baseline
+## Kubernetes/OpenShift
 
-A typical workload should configure:
+Use the published GHCR image directly in the workload specification.
 
-```text
-containerPort: 8080
-readiness: GET /health/ready
-liveness:  GET /health/live
-config mount: /config
-knowledge mount: /knowledge
-state/PVC: /data
+ADK example:
+
+```yaml
+containers:
+  - name: open-workflow-agent
+    image: ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+    ports:
+      - containerPort: 8080
+    readinessProbe:
+      httpGet:
+        path: /health/ready
+        port: 8080
+    livenessProbe:
+      httpGet:
+        path: /health/live
+        port: 8080
+    volumeMounts:
+      - name: config
+        mountPath: /config
+        readOnly: true
+      - name: knowledge
+        mountPath: /knowledge
+        readOnly: true
+      - name: data
+        mountPath: /data
 ```
+
+For LangGraph, replace only the image name.
 
 Recommended security posture:
 
-- runAsNonRoot;
-- allow arbitrary UID where the platform requires it;
-- readOnlyRootFilesystem where possible;
+- run as non-root;
+- allow an arbitrary UID where OpenShift requires it;
+- use a read-only root filesystem where possible;
 - drop unnecessary Linux capabilities;
-- use a writable volume/PVC for `/data`;
-- use a bounded writable `/tmp`;
+- provide writable `/data` and bounded `/tmp`;
 - restrict network egress to required model/tool/protocol endpoints;
-- inject secrets separately from workflow definitions.
+- inject credentials separately from workflow definitions.
 
 ## Configuration and secrets
 
@@ -190,13 +211,13 @@ Persistent volume / PostgreSQL
   durable state
 ```
 
-Environment variables override YAML, so deployment-specific values can be injected without rewriting the base configuration.
+Environment variables override YAML, so deployment-specific values can be injected without rebuilding the image.
 
 Example:
 
 ```yaml
 OWA__SERVER__PORT: "8080"
-OWA__MODEL__NAME: provider/model
+OWA__MODEL__NAME: fake/default
 OWA__PERSISTENCE__DATASOURCE: postgresql://...
 ```
 
@@ -210,23 +231,70 @@ curl http://host:8080/health/ready
 curl http://host:8080/v1/capabilities
 ```
 
-`/v1/capabilities` is useful for validating that the deployed engine advertises the expected runtime features.
+`/v1/capabilities` is the authoritative runtime capability view for the selected engine/version.
 
-## Image size and CI
+## Release and registry workflow
 
-The CI pipeline enforces a 2 GiB image-size gate for both engine images and exercises Docker health/invocation/knowledge acceptance.
+The repository keeps normal CI and release publication separate:
 
-The repository also validates PostgreSQL-backed persistence and genuine stop/restart/resume behavior across container boundaries for both engines.
+```text
+push / pull request
+        |
+        v
+      CI
+        |
+        +-- root quality gates
+        +-- ADK/LangGraph native + contracts + CTK
+        +-- Docker build/size/health/knowledge
+        +-- stop/restart/resume
+        +-- PostgreSQL acceptance
 
-## Production limitations to account for
+version tag vX.Y.Z on a green commit
+        |
+        v
+   Release workflow
+        |
+        +-- verify tag == project version
+        +-- build ADK image
+        +-- build LangGraph image
+        +-- push both to GHCR
+        +-- attach SBOM/provenance + attestations
+        +-- create GitHub Release
+```
 
-Current bounded features should not be treated as broader infrastructure guarantees:
+The release workflow uses the repository `GITHUB_TOKEN` with package-write permission. No Docker Hub account is required.
+
+After the first package publication, set the GHCR package visibility to **Public** if anonymous pulls are required.
+
+## Image size and verification
+
+CI enforces a 2 GiB hard image-size limit for each engine image. The optimized FastEmbed/ONNX runtime images remain far below that threshold and avoid Torch/CUDA dependency bloat.
+
+CI also validates:
+
+- non-root/arbitrary-UID startup;
+- read-only root filesystem behavior;
+- liveness/readiness;
+- capabilities;
+- deterministic invocation;
+- mounted knowledge and reload behavior;
+- genuine stop → restart → resume across container boundaries;
+- PostgreSQL-backed persistence.
+
+## Production limitations
+
+Current bounded features should not be interpreted as broader infrastructure guarantees:
 
 - generic event delivery is process-local and non-durable;
 - lifecycle CloudEvents are a bounded snapshot, not a stream/broker;
 - scheduling uses single-runtime ownership rather than distributed scheduler ownership;
 - external workflow catalogs are disabled;
 - shell/script/container execution is disabled;
-- authentication is expected at the deployment boundary unless another trusted layer is introduced.
+- authentication is expected at the deployment boundary unless another trusted layer is introduced;
+- the current standard published images do not yet bundle the optional LiteLLM model dependency.
 
 Always check `/v1/capabilities` and the current project status before relying on optional features.
+
+## Building from source
+
+Building the Dockerfiles directly is intentionally documented only for developers and custom image maintainers. See [development.md](development.md) if you need to modify dependencies, change runtime code, or build a custom variant.
