@@ -181,3 +181,25 @@ def test_lifecycle_cloud_event_is_versioned_and_redacts_error_details():
     assert "secret-token" not in str(cloud_event)
     assert "native-state" not in str(cloud_event)
     assert downstream.events == [event]
+
+
+def test_lifecycle_normalizes_cancelled_sandbox_failure():
+    downstream = InMemoryEventSink()
+    sink = LifecycleCloudEventSink(downstream)
+    sink.emit(
+        WorkflowEvent(
+            event_type="SandboxExecutionFailed",
+            invocation_id="invocation-1",
+            execution_id="sandbox-1",
+            status="faulted",
+            error={"code": "invocation_cancelled"},
+        )
+    )
+
+    normalized = downstream.events[0]
+    assert normalized.event_type == "SandboxExecutionCancelled"
+    assert normalized.status == "cancelled"
+    assert normalized.reason == "cancelled"
+    cloud_event = sink.snapshot()[0].as_dict()
+    assert cloud_event["data"]["event_type"] == "SandboxExecutionCancelled"
+    assert cloud_event["data"]["execution_id"] == "sandbox-1"
