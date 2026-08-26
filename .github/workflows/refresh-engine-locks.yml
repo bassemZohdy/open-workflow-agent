@@ -1,0 +1,39 @@
+name: Refresh engine locks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - engines/adk/pyproject.toml
+      - engines/langgraph/pyproject.toml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+      - name: Install Python
+        run: uv python install 3.12
+      - name: Refresh independent engine locks
+        run: |
+          uv lock --directory engines/adk
+          uv lock --directory engines/langgraph
+      - name: Commit refreshed locks
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- engines/adk/uv.lock engines/langgraph/uv.lock; then
+            echo "Engine lockfiles are already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add engines/adk/uv.lock engines/langgraph/uv.lock
+          git commit -m "chore: refresh engine locks for LiteLLM"
+          git push origin HEAD:main
