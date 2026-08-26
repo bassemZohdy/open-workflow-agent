@@ -14,6 +14,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   REGISTRY_NAMESPACE: bassemzohdy
+  DOCKERHUB_NAMESPACE: bzohdy
 
 concurrency:
   group: release-${{ github.event.workflow_run.head_sha }}
@@ -21,14 +22,17 @@ concurrency:
 
 jobs:
   prepare:
-    name: Resolve verified release tag
+    name: Resolve verified publication metadata
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
-      should_release: ${{ steps.release.outputs.should_release }}
+      should_publish: ${{ steps.release.outputs.should_publish }}
+      is_release: ${{ steps.release.outputs.is_release }}
+      should_create_release: ${{ steps.release.outputs.should_create_release }}
       tag: ${{ steps.release.outputs.tag }}
       version: ${{ steps.release.outputs.version }}
       series: ${{ steps.release.outputs.series }}
@@ -39,7 +43,7 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
-      - name: Resolve semver tag and project version
+      - name: Resolve project version and optional SemVer release tag
         id: release
         shell: bash
         env:
@@ -49,33 +53,15 @@ jobs:
           set -euo pipefail
           git fetch --force --tags
 
-          tag="$(git tag --points-at "$RELEASE_SHA" --list 'v*.*.*' --sort=-v:refname | head -n1)"
-          if [[ -z "$tag" ]]; then
-            echo "No release tag points at verified commit $RELEASE_SHA; nothing to publish."
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Tag $tag is not a supported stable release tag (expected vX.Y.Z)." >&2
-            exit 1
-          fi
-
-          version="${tag#v}"
-          series="${version%.*}"
           project_version="$(python - <<'PY'
           import tomllib
           from pathlib import Path
           print(tomllib.loads(Path('pyproject.toml').read_text())['project']['version'])
           PY
           )"
+          series="${project_version%.*}"
 
-          if [[ "$version" != "$project_version" ]]; then
-            echo "Release tag $tag does not match project version $project_version." >&2
-            exit 1
-          fi
-
-          python - "$version" <<'PY'
+          python - "$project_version" <<'PY'
           import sys
           import tomllib
           from pathlib import Path
@@ -92,22 +78,40 @@ jobs:
                   raise SystemExit(f'{path} has version {actual}, expected {expected}')
           PY
 
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            echo "GitHub Release $tag already exists; skipping duplicate publication."
-            echo "should_release=false" >> "$GITHUB_OUTPUT"
-            exit 0
+          tag="$(git tag --points-at "$RELEASE_SHA" --list 'v*.*.*' --sort=-v:refname | head -n1)"
+          is_release=false
+          should_create_release=false
+
+          if [[ -n "$tag" ]]; then
+            if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Tag $tag is not a supported stable release tag (expected vX.Y.Z)." >&2
+              exit 1
+            fi
+
+            version="${tag#v}"
+            if [[ "$version" != "$project_version" ]]; then
+              echo "Release tag $tag does not match project version $project_version." >&2
+              exit 1
+            fi
+
+            is_release=true
+            if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              should_create_release=true
+            fi
           fi
 
-          echo "should_release=true" >> "$GITHUB_OUTPUT"
+          echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          echo "is_release=$is_release" >> "$GITHUB_OUTPUT"
+          echo "should_create_release=$should_create_release" >> "$GITHUB_OUTPUT"
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "version=$project_version" >> "$GITHUB_OUTPUT"
           echo "series=$series" >> "$GITHUB_OUTPUT"
           echo "short_sha=${RELEASE_SHA:0:12}" >> "$GITHUB_OUTPUT"
 
   publish:
     name: Publish ${{ matrix.engine }} image
     needs: prepare
-    if: needs.prepare.outputs.should_release == 'true'
+    if: needs.prepare.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -149,12 +153,12 @@ jobs:
         with:
           images: |
             ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}
-            docker.io/${{ vars.DOCKERHUB_USERNAME }}/open-workflow-agent-${{ matrix.engine }}
+            docker.io/${{ env.DOCKERHUB_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}
           tags: |
-            type=raw,value=${{ needs.prepare.outputs.version }}
-            type=raw,value=${{ needs.prepare.outputs.series }}
             type=raw,value=latest
             type=raw,value=sha-${{ needs.prepare.outputs.short_sha }}
+            type=raw,value=${{ needs.prepare.outputs.version }},enable=${{ needs.prepare.outputs.is_release == 'true' }}
+            type=raw,value=${{ needs.prepare.outputs.series }},enable=${{ needs.prepare.outputs.is_release == 'true' }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
@@ -187,19 +191,25 @@ jobs:
 
       - name: Record published images
         shell: bash
+        env:
+          IS_RELEASE: ${{ needs.prepare.outputs.is_release }}
         run: |
           {
             echo "### ${{ matrix.engine }} image"
-            echo "- GHCR: \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}:${{ needs.prepare.outputs.version }}\`"
-            echo "- Docker Hub: \`docker.io/${{ vars.DOCKERHUB_USERNAME }}/open-workflow-agent-${{ matrix.engine }}:${{ needs.prepare.outputs.version }}\`"
+            echo "- GHCR: \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}:latest\`"
+            echo "- Docker Hub: \`docker.io/${{ env.DOCKERHUB_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}:latest\`"
             echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
-            echo "- Tags: \`${{ needs.prepare.outputs.version }}\`, \`${{ needs.prepare.outputs.series }}\`, \`latest\`, \`sha-${{ needs.prepare.outputs.short_sha }}\`"
+            if [[ "$IS_RELEASE" == "true" ]]; then
+              echo "- Tags: \`latest\`, \`sha-${{ needs.prepare.outputs.short_sha }}\`, \`${{ needs.prepare.outputs.version }}\`, \`${{ needs.prepare.outputs.series }}\`"
+            else
+              echo "- Tags: \`latest\`, \`sha-${{ needs.prepare.outputs.short_sha }}\`"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   github-release:
     name: Create GitHub Release
     needs: [prepare, publish]
-    if: needs.prepare.outputs.should_release == 'true'
+    if: needs.prepare.outputs.should_create_release == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Create release with pull instructions
@@ -208,7 +218,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_NAMESPACE: ${{ env.DOCKERHUB_NAMESPACE }}
         run: |
           set -euo pipefail
           notes="$RUNNER_TEMP/release-notes.md"
@@ -218,8 +228,8 @@ jobs:
           Docker Hub:
 
           \`\`\`bash
-          docker pull ${DOCKERHUB_USERNAME}/open-workflow-agent-adk:${RELEASE_VERSION}
-          docker pull ${DOCKERHUB_USERNAME}/open-workflow-agent-langgraph:${RELEASE_VERSION}
+          docker pull ${DOCKERHUB_NAMESPACE}/open-workflow-agent-adk:${RELEASE_VERSION}
+          docker pull ${DOCKERHUB_NAMESPACE}/open-workflow-agent-langgraph:${RELEASE_VERSION}
           \`\`\`
 
           GitHub Container Registry:
