@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 import json
+import socket
 
 import httpx
 import pytest
 from open_workflow_agent.errors import ToolError, UnsupportedWorkflowFeature
-from open_workflow_agent.protocols import EnvironmentAuthentication, HttpClient, ProtocolServices
+from open_workflow_agent.protocols import (
+    EnvironmentAuthentication,
+    HttpClient,
+    ProtocolServices,
+    _PinnedNetworkBackend,
+    resolve_public_addresses_async,
+)
 from open_workflow_agent.workflow import compile_workflow
 
 
@@ -177,3 +184,49 @@ def test_unsupported_protocol_transport_fails_during_workflow_validation():
     }
     with pytest.raises(UnsupportedWorkflowFeature, match="stdio"):
         compile_workflow(workflow)
+
+
+@pytest.mark.asyncio
+async def test_public_address_resolution_rejects_private_dns_results(monkeypatch):
+    def fake_getaddrinfo(*_args: object, **_kwargs: object) -> list[tuple[object, ...]]:
+        return [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443)),
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443)),
+        ]
+
+    monkeypatch.setattr(socket, "getaddrinfo", fake_getaddrinfo)
+    assert await resolve_public_addresses_async("https://service.test") == ("93.184.216.34",)
+
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *_args, **_kwargs: [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))],
+    )
+    with pytest.raises(ToolError, match="disallowed IP"):
+        await resolve_public_addresses_async("https://service.test")
+
+
+@pytest.mark.asyncio
+async def test_pinned_network_backend_connects_only_to_approved_addresses():
+    class RecordingDelegate:
+        def __init__(self) -> None:
+            self.calls: list[tuple[str, int, dict[str, object]]] = []
+
+        async def connect_tcp(self, host: str, port: int, **kwargs: object) -> object:
+            self.calls.append((host, port, kwargs))
+            return "stream"
+
+    delegate = RecordingDelegate()
+    backend = _PinnedNetworkBackend(
+        delegate,
+        hostname="Service.TEST.",
+        port=443,
+        addresses=("93.184.216.34",),
+    )
+
+    assert (
+        await backend.connect_tcp("service.test", 443, server_hostname="service.test") == "stream"
+    )
+    assert delegate.calls == [("93.184.216.34", 443, {"server_hostname": "service.test"})]
+    with pytest.raises(OSError, match="unexpected network destination"):
+        await backend.connect_tcp("other.test", 443)

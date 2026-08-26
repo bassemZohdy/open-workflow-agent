@@ -24,6 +24,7 @@ from .protocols import (
     EnvironmentAuthentication,
     HttpClient,
     ProtocolServices,
+    resolve_public_addresses_async,
 )
 
 CATALOG_FUNCTION_REFERENCE = re.compile(
@@ -177,9 +178,10 @@ class ExternalCatalogResolver:
                         details={"function": reference_value},
                     )
                 _validate_invocation_endpoints(invocation_payload, trust_policy)
-                await _validate_invocation_destinations(
-                    invocation_payload, trust_policy, protocols.http
-                )
+                if protocols.http.transport is not None:
+                    await _validate_invocation_destinations(
+                        invocation_payload, trust_policy, protocols.http
+                    )
                 return await protocols.call(call_name, dict(invocation_payload))
 
             catalog.register(reference.value, invoke)
@@ -238,7 +240,19 @@ class ExternalCatalogResolver:
 
     def _client(self, policy: ExternalCatalogConfig, *, auth_host: str | None = None) -> HttpClient:
         if self.http is not None:
-            return self.http
+            if self.http.transport is not None:
+                return self.http
+            return HttpClient(
+                timeout=self.http.timeout,
+                max_response_bytes=self.http.max_response_bytes,
+                verify_tls=True,
+                follow_redirects=False,
+                allowed_hosts=self.http.allowed_hosts,
+                authentication=self.http.authentication,
+                destination_resolver=lambda endpoint: _resolve_external_destination(
+                    endpoint, policy
+                ),
+            )
         auth = policy.authentication
         authentication: AuthenticationProvider | None = _authentication(auth)
         if authentication is not None and auth_host:
@@ -274,7 +288,8 @@ class ExternalCatalogResolver:
         try:
             client = self._client(policy, auth_host=urlparse(resource_uri).hostname)
             self._emit("CatalogFetchStarted", reference, status="fetching")
-            await _validate_network_destination(resource_uri, policy, client)
+            if client.transport is not None:
+                await _validate_network_destination(resource_uri, policy, client)
             response = await client.request(
                 "GET",
                 resource_uri,
@@ -547,6 +562,26 @@ async def _validate_invocation_destinations(
             await _validate_invocation_destinations(item, policy, client, key=key)
     elif key in endpoint_keys and isinstance(value, str):
         await _validate_network_destination(value, policy, client)
+
+
+async def _resolve_external_destination(uri: str, policy: ExternalCatalogConfig) -> tuple[str, ...]:
+    try:
+        parsed = urlparse(uri)
+        host = parsed.hostname
+    except ValueError as exc:
+        raise WorkflowSchemaError("external catalog destination is malformed") from exc
+    try:
+        return await resolve_public_addresses_async(uri, timeout=policy.timeout_seconds)
+    except ToolError as exc:
+        if "disallowed IP address" in str(exc):
+            raise UnsupportedWorkflowFeature(
+                "external catalog destination resolves to a disallowed IP address",
+                details={"host": host},
+            ) from exc
+        raise ToolError(
+            "external catalog destination could not be resolved",
+            details={"host": host},
+        ) from exc
 
 
 async def _validate_network_destination(

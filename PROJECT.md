@@ -2,7 +2,7 @@
 
 ## Source of Truth and Current Phase
 
-`Project Definition.md` is authoritative; `AGENTS.md` contains mandatory contributor rules and `TODO.md` is the active backlog. Core implementation, local acceptance, remote CI/release verification, the applicable CTK gate, configured PostgreSQL persistence acceptance, B-001, B-002, and the bounded B-003 eventing/CloudEvents/scheduling/sub-workflow/HITL slices are complete. The current phase is B-004, secure external catalog resolution. The first implementation slice is present in core behind explicit deployment trust; deterministic security/API coverage and resolve-before-plan ordering are now verified locally, while completion remains gated on connection-level DNS-rebinding resistance and final container/CI acceptance.
+`Project Definition.md` is authoritative; `AGENTS.md` contains mandatory contributor rules and `TODO.md` is the active backlog. Core implementation, local acceptance, remote CI/release verification, the applicable CTK gate, configured PostgreSQL persistence acceptance, B-001, B-002, and the bounded B-003 eventing/CloudEvents/scheduling/sub-workflow/HITL slices are complete. The current phase is B-004, secure external catalog resolution. The first implementation slice is present in core behind explicit deployment trust; deterministic security/API coverage, connection-level DNS-rebinding resistance, and resolve-before-plan ordering are now verified locally, while completion remains gated on final container/CI acceptance.
 
 ## Architecture
 
@@ -27,6 +27,8 @@ Use strict typed Python, four-space indentation, exact dependency locks, shared 
 Root format/lint/mypy/tests/contracts, ADK/LangGraph native suites, selected CTK, Docker image/health/knowledge/restart-resume gates, and PostgreSQL persistence acceptance remain green. CI run `32915495802` verifies the standard images after adding locked LiteLLM 1.80.5 to both independent engine dependency graphs. GitHub Actions run `32930787715` verifies the current catalog-resolution change and passed every root, engine, CTK, Docker, and PostgreSQL job for commit `75be75603620a4155fd49e8e4f89d721bb437dec`.
 
 The Docker build performs an explicit LiteLLM import check. The same CI run verifies image metadata, the 2 GiB quality gate, arbitrary-UID/read-only-root execution, health/readiness, deterministic invocation, mounted knowledge, genuine container stop/restart/resume, and PostgreSQL persistence for both engines.
+
+The latest local external-catalog hardening adds one-shot DNS resolution with public-address validation and a pinned HTTP transport that connects only to the approved addresses while preserving hostname-based TLS verification. The full local suite passes with `169 passed, 6 skipped`; Ruff format/lint and mypy also pass. The latest remote push run for the then-current main commit was cancelled after the in-progress run stop, so the published change still requires a fresh CI run.
 
 Verified standard image sizes with LiteLLM, local FastEmbed/ONNX knowledge embeddings, PostgreSQL support, and native engine dependencies are:
 
@@ -60,7 +62,7 @@ The release pipeline adds exact-version, minor-series, `latest`, and immutable s
 
 ## Current Next Step
 
-Finish B-004 secure external catalog resolution without weakening the trust boundary. The current slice adds deployment-controlled alias/host/endpoint policy, HTTPS/TLS enforcement, bounded streaming fetches, no redirects, environment-only authentication, semantic-version references, optional/required SHA-256 pins, isolated cache/revalidation, sanitized capability state, equivalent ADK/LangGraph contract coverage, and resolve-before-plan ordering across startup, child workflows, and schedules. Remaining acceptance work is connection-level DNS-rebinding resistance and container acceptance with an explicitly configured external catalog; the general root, engine, CTK, Docker, and PostgreSQL CI gates are green. After B-004, evaluate optional A2A exposure/streaming and only then additional engines.
+Finish B-004 secure external catalog resolution without weakening the trust boundary. The current slice adds deployment-controlled alias/host/endpoint policy, HTTPS/TLS enforcement, bounded streaming fetches, no redirects, environment-only authentication, semantic-version references, optional/required SHA-256 pins, isolated cache/revalidation, sanitized capability state, equivalent ADK/LangGraph contract coverage, resolve-before-plan ordering across startup, child workflows, and schedules, and connection-level DNS-rebinding resistance. Remaining acceptance work is container validation with an explicitly configured external catalog and a fresh CI run; the general root, engine, CTK, Docker, and PostgreSQL gates remain green from the previous verified commit. After B-004, evaluate optional A2A exposure/streaming and only then additional engines.
 
 Full MCP, A2A, OpenAPI, external-catalog, streaming, or Open Workflow ecosystem conformance remains unclaimed beyond the tested Portable Profile/capabilities.
 

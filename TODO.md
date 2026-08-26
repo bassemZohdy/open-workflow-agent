@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**B-004 — Secure external catalog resolution (in progress).** B-003 bounded eventing, lifecycle CloudEvents, scheduling, local sub-workflows, and durable HITL approvals remain complete. External catalog support is implemented behind explicit deployment trust, with connection-level DNS pinning and final container/CI acceptance still pending.
+**B-004 — Secure external catalog resolution (in progress).** B-003 bounded eventing, lifecycle CloudEvents, scheduling, local sub-workflows, and durable HITL approvals remain complete. External catalog support is implemented behind explicit deployment trust, with final container/CI acceptance still pending.
 
 ## Active Backlog — Ordered
 
@@ -16,7 +16,7 @@ External catalogs must be deployment-controlled, fail closed, and portable acros
 
 - [x] Document the supported Open Workflow 1.0.3 `use.catalogs` shape and the mapping from a workflow catalog alias to a deployment-approved catalog definition.
 - [x] Define supported declarative function contents, path identity, exact semantic-version selection, optional SHA-256 pin policy, built-in collision behavior, and common error semantics. External workflow definitions and remote scripts remain unsupported.
-- [x] Define the trust model and threat cases: SSRF, private/link-local address access, redirect escape, oversized responses, malicious catalog content, credential leakage, stale cache use, and catalog substitution. DNS destinations are re-checked immediately before production requests; transport pinning remains an acceptance follow-up.
+- [x] Define the trust model and threat cases: SSRF, private/link-local address access, redirect escape, oversized responses, malicious catalog content, credential leakage, stale cache use, and catalog substitution. DNS destinations are resolved and validated immediately before production requests, then pinned at connection level.
 - [x] Define the capability contract for configured, validated, resolved, cached, rejected, and unavailable catalogs without claiming ecosystem-wide Open Workflow conformance.
 
 #### B-004.2 — Add deployment-controlled trust configuration
@@ -29,7 +29,7 @@ External catalogs must be deployment-controlled, fail closed, and portable acros
 #### B-004.3 — Implement a dedicated secure catalog transport and resolver
 
 - [x] Implement a core-only resolver with bounded connect/read/write/pool timeouts, response-size enforcement before unbounded parsing, TLS verification by default, and redirects disabled by default.
-- [ ] Enforce host allowlists and validate every redirect target; prevent loopback, private, link-local, multicast, reserved, and other disallowed network destinations, including complete DNS-rebinding resistance. Current code rejects literal/private results and re-checks DNS immediately before each production request; connection-level address pinning remains.
+- [x] Enforce host allowlists and reject redirects by default; prevent loopback, private, link-local, multicast, reserved, and other disallowed network destinations, including DNS-rebinding resistance. Production requests pin the validated public address set at the connection boundary while retaining the original hostname for TLS verification.
 - [x] Use the configured authentication abstraction without accepting arbitrary credential material from workflow definitions; bind deployment credentials to the catalog resource host and prevent authorization headers from crossing hosts or appearing in errors/logs.
 - [x] Translate transport, parse, trust, pin, and availability failures into the common error contract with safe, non-sensitive details.
 
@@ -58,7 +58,7 @@ External catalogs must be deployment-controlled, fail closed, and portable acros
 #### B-004.7 — Prove cross-engine portability and security
 
 - [x] Add deterministic resolver unit tests using mock transports; no test may require a public network, paid provider, or live external catalog.
-- [ ] Cover invalid schemes, disallowed hosts and IP ranges, DNS/rebinding defenses, TLS-verification policy, redirect escape, timeout, response-size, malformed payload, authentication isolation, digest/signature mismatch, version mismatch, cache/revalidation, and fail-closed behavior. The deterministic matrix now covers the bounded controls; complete connection-level DNS-rebinding resistance remains an explicit acceptance gap.
+- [x] Cover invalid schemes, disallowed hosts and IP ranges, DNS/rebinding defenses, TLS-verification policy, redirect escape, timeout, response-size, malformed payload, authentication isolation, digest/signature mismatch, version mismatch, cache/revalidation, and fail-closed behavior. Deterministic tests cover private DNS results and the connection-level pinned backend; the full local suite passes without public network access.
 - [x] Add shared contract fixtures where an approved external catalog contributes a supported definition, and verify identical observable results on ADK and LangGraph.
 - [x] Run the existing shared contract suite after every engine change; add CTK coverage only for scenarios supported by the implemented Portable Profile and preserve pinned provenance.
 - [x] Add API and readiness tests proving rejected/unavailable catalogs do not execute partially compiled workflows or leak sensitive details.
