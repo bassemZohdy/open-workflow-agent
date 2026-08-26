@@ -1,0 +1,22 @@
+name: Temporary Docker Runner Acceptance
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Docker runner smoke test
+    runs-on: [self-hosted, linux, x64, docker]
+    timeout-minutes: 10
+    steps:
+      - name: Verify runner Docker socket
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -S /var/run/docker.sock
+          docker version
+      - name: Run Docker acceptance container
+        run: docker run --rm hello-world
