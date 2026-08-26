@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from typing import Any
@@ -76,7 +77,9 @@ class DockerSandboxBackend:
                 "workspaceQuota": True,
                 "outputBytes": True,
                 "timeout": True,
+                "cpu": False,
                 "memory": self.config.memory_bytes is not None,
+                "fileSize": False,
                 "processCount": self.config.process_count is not None,
             },
             "filesystemIsolation": "isolated_root",
@@ -132,7 +135,11 @@ class DockerSandboxBackend:
         self._active.add(request.execution_id)
         try:
             response = await self._client.post("/v1/executions", content=encoded)
+        except asyncio.CancelledError:
+            await self._cancel_controller_execution(request.execution_id)
+            raise
         except httpx.TimeoutException as exc:
+            await self._cancel_controller_execution(request.execution_id)
             raise SandboxTimeoutError("Docker sandbox controller request timed out") from exc
         except httpx.HTTPError as exc:
             raise SandboxProcessError("Docker sandbox controller is unavailable") from exc
@@ -156,21 +163,24 @@ class DockerSandboxBackend:
     async def cancel(self, execution_id: str) -> None:
         if execution_id not in self._active:
             return
+        await self._cancel_controller_execution(execution_id)
+
+    async def shutdown(self) -> None:
+        executions = tuple(self._active)
+        for execution_id in executions:
+            try:
+                await self._cancel_controller_execution(execution_id)
+            except SandboxProcessError:
+                pass
+        await self._client.aclose()
+
+    async def _cancel_controller_execution(self, execution_id: str) -> None:
         try:
             response = await self._client.delete(f"/v1/executions/{execution_id}")
         except httpx.HTTPError as exc:
             raise SandboxProcessError("Docker sandbox cancellation request failed") from exc
         if response.status_code not in {200, 202, 204, 404}:
             raise self._controller_error(response)
-
-    async def shutdown(self) -> None:
-        executions = tuple(self._active)
-        for execution_id in executions:
-            try:
-                await self.cancel(execution_id)
-            except SandboxProcessError:
-                pass
-        await self._client.aclose()
 
     def _resolve_environment(self, request: SandboxExecutionRequest) -> dict[str, str]:
         environment: dict[str, str] = {}
