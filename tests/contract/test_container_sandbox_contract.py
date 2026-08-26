@@ -162,15 +162,22 @@ async def test_container_sandbox_has_cross_engine_output_and_lifecycle_parity(
 
 
 def test_internal_and_docker_capabilities_remain_explicitly_distinct() -> None:
-    internal = SandboxConfig(enabled=True)
-    docker = SandboxConfig(
-        enabled=True,
-        backend="docker",
-        docker={"allowed_images": [_IMAGE]},
+    internal_config = RuntimeConfig(sandbox=SandboxConfig(enabled=True))
+    docker_config = RuntimeConfig(
+        sandbox=SandboxConfig(
+            enabled=True,
+            backend="docker",
+            docker={"allowed_images": [_IMAGE]},
+        )
     )
-
-    internal_services = RuntimeServices(internal_config := RuntimeConfig(sandbox=internal))
-    docker_services = RuntimeServices(docker_config := RuntimeConfig(sandbox=docker))
+    internal_services = RuntimeServices(
+        internal_config,
+        model=FakeModel({"response": "ok"}),
+    )
+    docker_services = RuntimeServices(
+        docker_config,
+        model=FakeModel({"response": "ok"}),
+    )
     try:
         internal_capabilities = internal_services.sandbox.capabilities()
         docker_capabilities = docker_services.sandbox.capabilities()
