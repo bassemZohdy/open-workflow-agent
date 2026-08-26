@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import uuid4
@@ -159,6 +159,17 @@ class LifecycleCloudEventSink:
         self.events: list[CloudEvent] = []
 
     def emit(self, event: WorkflowEvent) -> None:
+        if (
+            event.event_type == "SandboxExecutionFailed"
+            and isinstance(event.error, dict)
+            and event.error.get("code") == "invocation_cancelled"
+        ):
+            event = replace(
+                event,
+                event_type="SandboxExecutionCancelled",
+                status="cancelled",
+                reason="cancelled",
+            )
         self.downstream.emit(event)
         self.events.append(event.to_cloud_event())
         if len(self.events) > self.max_events:
