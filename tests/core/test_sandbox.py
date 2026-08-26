@@ -300,7 +300,9 @@ async def test_cancellation_terminates_descendant_process_tree(tmp_path: Path) -
                 script_code=(
                     "import subprocess, sys, time\n"
                     "from pathlib import Path\n"
-                    "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])\n"
+                    "child = subprocess.Popen(\n"
+                    "    [sys.executable, '-c', 'import time; time.sleep(30)']\n"
+                    ")\n"
                     "Path(sys.argv[1]).write_text(str(child.pid))\n"
                     "time.sleep(30)\n"
                 ),
