@@ -196,21 +196,45 @@ curl -X POST http://localhost:8080/v1/admin/knowledge/reload
 
 ## Real LLM providers
 
-The standard ADK and LangGraph release images bundle the locked LiteLLM runtime, so real providers can be selected entirely through configuration without cloning the source repository or rebuilding the image.
+The standard ADK and LangGraph images bundle LiteLLM. Use `provider: litellm`; the `model.name` prefix selects the real provider.
 
-Example:
+| Provider | Model identifier | Main credential/connection |
+| --- | --- | --- |
+| OpenAI | `openai/<model>` | `OPENAI_API_KEY` |
+| Anthropic | `anthropic/<model>` | `ANTHROPIC_API_KEY` |
+| OpenRouter | `openrouter/<provider>/<model>` | `OPENROUTER_API_KEY` |
+| Ollama | `ollama/<local-model>` | `model.options.api_base` |
+| Other LiteLLM provider | `<provider-prefix>/<model>` | provider-specific LiteLLM variables |
 
-```yaml
-model:
-  provider: litellm
-  name: provider/model
+For repository-local Compose usage:
+
+```bash
+cp .env.example .env
 ```
 
-Supply the provider-specific API key and other credentials through Docker/Kubernetes/OpenShift secrets or environment variables expected by the selected LiteLLM provider. Do not put credentials in workflow files.
+Then edit `.env`, for example:
 
-CI intentionally continues to use `fake/default`; publishing and testing the runtime never requires a paid model API.
+```dotenv
+MODEL_PROVIDER=litellm
+MODEL_NAME=openai/<model-name>
+OPENAI_API_KEY=replace-me
+```
 
-See [configuration](docs/configuration.md) and [deployment](docs/deployment.md) for runtime configuration and secret-injection examples.
+For Ollama running on the Docker host:
+
+```dotenv
+MODEL_PROVIDER=litellm
+MODEL_NAME=ollama/<local-model-name>
+OWA__MODEL__OPTIONS__API_BASE=http://host.docker.internal:11434
+```
+
+`compose.yaml` passes the local `.env` through to the runtime container so LiteLLM can read provider-specific variables. `.env` is ignored by git; use deployment secrets rather than `.env` in production.
+
+For another LiteLLM provider, set `MODEL_NAME=<provider-prefix>/<model>` and add the provider-specific environment variables to `.env`. Custom/OpenAI-compatible endpoints can use `OWA__MODEL__OPTIONS__API_KEY`, `OWA__MODEL__OPTIONS__API_BASE`, and `OWA__MODEL__OPTIONS__API_VERSION`.
+
+CI intentionally continues to use `fake/default`; building and testing the runtime never requires a paid model API.
+
+See [configuration](docs/configuration.md#model) for OpenAI, Anthropic, OpenRouter, Ollama, direct Docker, Compose, and generic provider examples.
 
 ## Main API
 
@@ -234,7 +258,7 @@ Use `/v1/capabilities` to discover the capabilities of the selected engine/runti
 ## Documentation
 
 - [Getting started](docs/getting-started.md) — run a published image and invoke your first agent.
-- [Configuration](docs/configuration.md) — runtime configuration reference.
+- [Configuration](docs/configuration.md) — runtime configuration and model-provider reference.
 - [API guide](docs/api.md) — HTTP endpoints and request/response examples.
 - [Deployment guide](docs/deployment.md) — GHCR images, persistence, Docker, Kubernetes, and OpenShift.
 - [Developer guide](docs/development.md) — source checkout, repository structure, tests, and contribution workflow.
