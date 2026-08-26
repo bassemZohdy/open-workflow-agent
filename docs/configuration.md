@@ -1,6 +1,6 @@
 # Configuration Reference
 
-Open Workflow Agent uses strict YAML configuration with environment-variable overrides. For normal use, configuration is mounted into the published GHCR image; changing configuration, workflows, knowledge, memory, persistence, or tools does not require rebuilding the image.
+Open Workflow Agent uses strict YAML configuration with environment-variable overrides. For normal use, configuration is mounted into the published GHCR image; changing configuration, workflows, knowledge, memory, persistence, tools, or model providers does not require rebuilding the image.
 
 Published images use:
 
@@ -75,7 +75,7 @@ agent:
 
 model:
   provider: litellm
-  name: fake/default
+  name: provider/model
   temperature: 0.0
   options: {}
 
@@ -135,6 +135,8 @@ Fields:
 
 ## `model`
 
+For deterministic validation without a provider API:
+
 ```yaml
 model:
   provider: fake
@@ -143,27 +145,36 @@ model:
   options: {}
 ```
 
-Supported runtime behavior:
-
-- `provider: fake` uses the deterministic built-in model for tests and runtime validation.
-- any non-`fake` provider is resolved through the LiteLLM model adapter when the optional `model` dependency is installed in the image.
-
-Example real-provider configuration:
+For a real provider through the LiteLLM adapter:
 
 ```yaml
 model:
   provider: litellm
-  name: openai/gpt-4.1-mini
+  name: provider/model
   temperature: 0.1
 ```
 
-Provider credentials should be supplied with deployment secrets/environment variables expected by the selected LiteLLM provider, not embedded in workflow files.
+Runtime behavior:
 
-### Current published-image limitation
+- `provider: fake` uses the deterministic built-in model for tests and runtime validation.
+- any non-`fake` provider is resolved through the common `LiteLLMModel` adapter.
+- the standard ADK and LangGraph release images bundle the locked LiteLLM dependency, so switching from `fake` to a real configured provider does not require rebuilding the image.
 
-The current standard ADK and LangGraph release images do not install the optional LiteLLM `model` dependency. They can be used directly with `fake/default` and the rest of the packaged runtime capabilities. A model-enabled published variant is required before a real LiteLLM provider can be used without building a custom image.
+Provider credentials must be supplied with deployment secrets/environment variables expected by the selected LiteLLM provider, not embedded in workflow files.
 
-This is an image packaging limitation, not a configuration-format difference.
+Example Docker pattern:
+
+```bash
+docker run --rm \
+  -p 8080:8080 \
+  -e PROVIDER_API_KEY \
+  -v "$(pwd)/config:/config:ro" \
+  -v "$(pwd)/knowledge:/knowledge:ro" \
+  -v "$(pwd)/data:/data" \
+  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+```
+
+Replace `PROVIDER_API_KEY` with the actual variable required by your LiteLLM provider. CI does not call paid providers; it validates the runtime with `fake/default` and verifies that LiteLLM is importable in both built engine images.
 
 ## `workflow`
 
@@ -333,8 +344,8 @@ agent:
   instruction: Answer using approved knowledge.
 
 model:
-  provider: fake
-  name: fake/default
+  provider: litellm
+  name: provider/model
 
 workflow:
   path: /config/workflow.yaml
@@ -343,7 +354,7 @@ knowledge:
   path: /knowledge
 ```
 
-Inject secrets and environment-specific values separately:
+Inject secrets and environment-specific values separately using the variable names expected by the provider plus runtime overrides such as:
 
 ```bash
 OWA__PERSISTENCE__DATASOURCE='postgresql://user:password@host:5432/database'
@@ -353,6 +364,6 @@ Do not place API keys, passwords, or bearer tokens directly in ordinary workflow
 
 ## Source code is not required for configuration
 
-Configuration, workflows, mounted knowledge, persistence endpoints, and configured tools are external runtime inputs. End users should change these inputs around the published GHCR image rather than editing or rebuilding the Open Workflow Agent source tree.
+Configuration, model selection, workflows, mounted knowledge, persistence endpoints, and configured tools are external runtime inputs. End users should change these inputs around the published GHCR image rather than editing or rebuilding the Open Workflow Agent source tree.
 
 Source checkout/build instructions are intentionally kept in the [developer guide](development.md).
