@@ -1,0 +1,21 @@
+FROM docker:27.5.1-cli
+
+RUN apk add --no-cache python3 py3-pip \
+    && python3 -m venv /opt/venv
+
+ENV PATH="/opt/venv/bin:/usr/local/bin:/usr/bin:/bin" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+COPY sandbox-controller /app/sandbox-controller
+RUN pip install --no-cache-dir /app/sandbox-controller \
+    && adduser -D -H -u 65532 -G root owa-sandbox \
+    && mkdir -p /run/owa-sandbox \
+    && chown 65532:0 /run/owa-sandbox \
+    && chmod 0770 /run/owa-sandbox
+
+USER 65532:0
+
+ENTRYPOINT ["/bin/sh", "-c", "umask 0002; exec uvicorn open_workflow_agent_sandbox_controller.app:app --uds /run/owa-sandbox/controller.sock"]
