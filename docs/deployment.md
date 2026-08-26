@@ -180,6 +180,51 @@ For a rollback, remove `use.catalogs` from the workflow and remove the external
 catalog policy; local `workflow.catalog` child workflows remain available
 without network access.
 
+## Sandbox execution deployment boundary (planned)
+
+Executable Open Workflow tasks are not enabled in the current production profile. `run.script`, `run.shell`, and `run.container` remain rejected until the corresponding sandbox milestones are implemented and verified.
+
+The first sandbox milestone is intentionally **internal**:
+
+```text
+Open Workflow Agent runtime
+        |
+        v
+common SandboxManager
+        |
+        v
+InternalSandboxBackend
+        |
+        v
+controlled child process
+```
+
+This internal backend must work without a Docker Engine, Kubernetes, or OpenShift. It provides bounded process execution and policy controls, but it is not a hard isolation boundary because the child process still shares the runtime container/host kernel and namespaces.
+
+Docker and Kubernetes/OpenShift are later optional backends for stronger isolation:
+
+```text
+SandboxManager
+   |
+   +-- InternalSandboxBackend
+   +-- DockerSandboxBackend       later
+   +-- KubernetesSandboxBackend   later
+```
+
+Deployment requirements for those future backends are strict:
+
+- do not mount unrestricted `/var/run/docker.sock` into the Open Workflow Agent runtime;
+- use a separate/restricted Docker controller or socket/API proxy exposing only the minimum required sandbox operations;
+- use a dedicated Kubernetes/OpenShift sandbox namespace/project and narrowly scoped ServiceAccount;
+- do not grant cluster-wide workload management permissions;
+- prohibit privileged mode, host networking/namespaces, and host-path mounts for sandbox workloads;
+- enforce approved images/registries, resource limits, ephemeral-storage bounds, network policy/egress restrictions, secret isolation, timeout, and cleanup/TTL behavior;
+- advertise only isolation controls actually enforced by the selected backend.
+
+Backend selection will be deployment policy, not a workflow-specific Docker/Kubernetes extension. The same Open Workflow definition should be able to move from the internal backend to an external backend when the required capability is supported.
+
+See [sandbox-execution.md](sandbox-execution.md) for the approved architecture and [TODO.md](../TODO.md) for B-005/B-006 acceptance tasks.
+
 ## Real model providers
 
 The standard ADK and LangGraph published images include LiteLLM. Use `provider: litellm` and select the upstream provider through the model prefix.
@@ -396,7 +441,7 @@ Current bounded features should not be interpreted as broader infrastructure gua
 - lifecycle CloudEvents are a bounded snapshot, not a stream/broker;
 - scheduling uses single-runtime ownership rather than distributed scheduler ownership;
 - external workflow catalogs are disabled;
-- shell/script/container execution is disabled;
+- shell/script/container execution is disabled; the internal and external sandbox designs are roadmap items only;
 - authentication is expected at the deployment boundary unless another trusted layer is introduced.
 
 Always check `/v1/capabilities` and the current project status before relying on optional features.
