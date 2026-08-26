@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
+    branches: [main]
 
 permissions:
   contents: write
@@ -14,7 +15,6 @@ permissions:
 env:
   REGISTRY: ghcr.io
   REGISTRY_NAMESPACE: bassemzohdy
-  DOCKERHUB_NAMESPACE: bzohdy
 
 concurrency:
   group: release-${{ github.event.workflow_run.head_sha }}
@@ -127,9 +127,11 @@ jobs:
       - name: Validate Docker Hub publishing configuration
         shell: bash
         env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
         run: |
           set -euo pipefail
+          test -n "$DOCKERHUB_USERNAME" || { echo "DOCKERHUB_USERNAME repository variable is required." >&2; exit 1; }
           test -n "$DOCKERHUB_TOKEN" || { echo "DOCKERHUB_TOKEN repository secret is required." >&2; exit 1; }
 
       - name: Log in to GitHub Container Registry
@@ -142,7 +144,7 @@ jobs:
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ env.DOCKERHUB_NAMESPACE }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Generate image metadata
@@ -151,7 +153,7 @@ jobs:
         with:
           images: |
             ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}
-            docker.io/${{ env.DOCKERHUB_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}
+            docker.io/${{ vars.DOCKERHUB_USERNAME }}/open-workflow-agent-${{ matrix.engine }}
           tags: |
             type=raw,value=latest
             type=raw,value=sha-${{ needs.prepare.outputs.short_sha }}
@@ -195,7 +197,7 @@ jobs:
           {
             echo "### ${{ matrix.engine }} image"
             echo "- GHCR: \`${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}:latest\`"
-            echo "- Docker Hub: \`docker.io/${{ env.DOCKERHUB_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}:latest\`"
+            echo "- Docker Hub: \`docker.io/${{ vars.DOCKERHUB_USERNAME }}/open-workflow-agent-${{ matrix.engine }}:latest\`"
             echo "- Digest: \`${{ steps.build.outputs.digest }}\`"
             if [[ "$IS_RELEASE" == "true" ]]; then
               echo "- Tags: \`latest\`, \`sha-${{ needs.prepare.outputs.short_sha }}\`, \`${{ needs.prepare.outputs.version }}\`, \`${{ needs.prepare.outputs.series }}\`"
@@ -216,7 +218,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-          DOCKERHUB_NAMESPACE: ${{ env.DOCKERHUB_NAMESPACE }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
         run: |
           set -euo pipefail
           notes="$RUNNER_TEMP/release-notes.md"
@@ -226,8 +228,8 @@ jobs:
           Docker Hub:
 
           \`\`\`bash
-          docker pull ${DOCKERHUB_NAMESPACE}/open-workflow-agent-adk:${RELEASE_VERSION}
-          docker pull ${DOCKERHUB_NAMESPACE}/open-workflow-agent-langgraph:${RELEASE_VERSION}
+          docker pull ${DOCKERHUB_USERNAME}/open-workflow-agent-adk:${RELEASE_VERSION}
+          docker pull ${DOCKERHUB_USERNAME}/open-workflow-agent-langgraph:${RELEASE_VERSION}
           \`\`\`
 
           GitHub Container Registry:
