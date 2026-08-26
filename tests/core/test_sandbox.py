@@ -5,8 +5,6 @@ import os
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
-
 from open_workflow_agent.config import SandboxConfig
 from open_workflow_agent.errors import (
     SandboxOutputLimitError,
@@ -22,6 +20,7 @@ from open_workflow_agent.sandbox import (
     compile_sandbox_workflow,
     validate_sandbox_capabilities,
 )
+from pydantic import ValidationError
 
 
 def _workflow(run: dict[str, object]) -> dict[str, object]:
