@@ -65,9 +65,9 @@ External catalogs must be deployment-controlled, fail closed, and portable acros
 
 #### B-004.8 — Complete CI, container, and release acceptance
 
-- [ ] Add a deterministic local catalog test server/transport to CI; do not permit CI to depend on public endpoints.
+- [x] Add a deterministic local catalog test server/transport to CI; the resolver suite uses `httpx.MockTransport` and requires no public endpoint.
 - [ ] Verify both independent images with external catalog configuration, arbitrary UID, read-only root, bounded `/tmp`, no startup installation, and no credential leakage in retained logs.
-- [ ] Verify image metadata, exact locks, package contents, image-size limits, root quality gates, ADK/LangGraph native tests, shared contracts, and applicable CTK results.
+- [x] Verify image metadata, exact locks, package contents, image-size limits, root quality gates, ADK/LangGraph native tests, shared contracts, and applicable CTK results. GitHub Actions run `32930787715` passed every job for commit `75be75603620a4155fd49e8e4f89d721bb437dec`.
 - [x] Update end-user, configuration, deployment, API, and development documentation with secure examples and explicit unsupported cases.
 - [ ] Keep `use.catalogs` rejected in production images until all B-004 acceptance checks are green; record the verified CI run and artifacts in `PROJECT.md` and this file.
 
