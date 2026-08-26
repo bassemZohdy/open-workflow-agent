@@ -74,11 +74,47 @@ class LiteLLMModel:
 
 
 @dataclass(slots=True)
+class ManagedFunctionCapabilities:
+    """Narrow runtime view exposed to trusted managed catalog functions.
+
+    This is a programming/policy boundary, not hostile-code isolation. The
+    object intentionally exposes only the approved agent-tool surface and does
+    not provide configuration, raw environment, filesystem, secrets, protocol
+    clients, persistence stores, or subprocess APIs.
+    """
+
+    agent_tools: tuple[str, ...] = ()
+    _invoke_agent_tool: Callable[[str, Any], Awaitable[Any]] | None = field(
+        default=None, repr=False
+    )
+
+    async def invoke_agent_tool(self, name: str, payload: Any) -> Any:
+        if name not in self.agent_tools:
+            raise ToolError(f"agent tool is not approved for managed function context: {name}")
+        if self._invoke_agent_tool is None:
+            raise ToolError("managed function tool execution is unavailable")
+        return await self._invoke_agent_tool(name, payload)
+
+
+@dataclass(slots=True)
 class CatalogContext:
     model: Model
     agent_instruction: str = ""
     services: Any = None
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        """Replace broad runtime services with a capability-scoped facade."""
+
+        services = self.services
+        if services is None or isinstance(services, ManagedFunctionCapabilities):
+            return
+        tools = tuple(str(name) for name in getattr(services, "agent_tools", ()))
+        invoker = getattr(services, "invoke_agent_tool", None)
+        self.services = ManagedFunctionCapabilities(
+            agent_tools=tools,
+            _invoke_agent_tool=invoker if callable(invoker) else None,
+        )
 
 
 CatalogFunction = Callable[[Any, CatalogContext], Awaitable[Any]]
