@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig, SandboxConfig
 from open_workflow_agent.sandbox import compile_sandbox_workflow
