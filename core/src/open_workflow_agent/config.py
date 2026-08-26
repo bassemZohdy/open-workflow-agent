@@ -285,8 +285,7 @@ class SandboxConfig(StrictModel):
         overlap = sorted(set(self.inherited_environment) & set(self.secret_environment))
         if overlap:
             raise ValueError(
-                "sandbox inherited_environment and secret_environment must not overlap: "
-                f"{overlap}"
+                f"sandbox inherited_environment and secret_environment must not overlap: {overlap}"
             )
         return self
 
