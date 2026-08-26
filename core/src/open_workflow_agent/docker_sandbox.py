@@ -136,10 +136,10 @@ class DockerSandboxBackend:
         try:
             response = await self._client.post("/v1/executions", content=encoded)
         except asyncio.CancelledError:
-            await self._cancel_controller_execution(request.execution_id)
+            await self._best_effort_cancel(request.execution_id)
             raise
         except httpx.TimeoutException as exc:
-            await self._cancel_controller_execution(request.execution_id)
+            await self._best_effort_cancel(request.execution_id)
             raise SandboxTimeoutError("Docker sandbox controller request timed out") from exc
         except httpx.HTTPError as exc:
             raise SandboxProcessError("Docker sandbox controller is unavailable") from exc
@@ -168,11 +168,15 @@ class DockerSandboxBackend:
     async def shutdown(self) -> None:
         executions = tuple(self._active)
         for execution_id in executions:
-            try:
-                await self._cancel_controller_execution(execution_id)
-            except SandboxProcessError:
-                pass
+            await self._best_effort_cancel(execution_id)
         await self._client.aclose()
+
+    async def _best_effort_cancel(self, execution_id: str) -> None:
+        try:
+            await asyncio.shield(self._cancel_controller_execution(execution_id))
+        except Exception:
+            # Cleanup failure must not replace cancellation/timeout semantics.
+            return
 
     async def _cancel_controller_execution(self, execution_id: str) -> None:
         try:
