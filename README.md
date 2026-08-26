@@ -18,23 +18,32 @@ Every invocation is executed as a workflow. If you do not provide a workflow, Op
 
 ## Published container images
 
-End users should use the prebuilt images published to GitHub Container Registry (GHCR). Building from source is only required for development or for creating a customized runtime image.
+End users can pull the prebuilt runtime images from Docker Hub or GitHub Container Registry (GHCR). Docker Hub is used in end-user examples because it gives the shortest standard Docker image name; GHCR remains the canonical release/provenance registry.
+
+Docker Hub:
 
 ```text
-ghcr.io/bassemzohdy/open-workflow-agent-adk:<version>
-ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<version>
+bzohdy/open-workflow-agent-adk:<tag>
+bzohdy/open-workflow-agent-langgraph:<tag>
 ```
 
-For example, after release `0.1.0` is published:
+GHCR:
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk:<tag>
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<tag>
+```
+
+For the latest verified `main` build:
 
 ```bash
-docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
-docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+docker pull bzohdy/open-workflow-agent-adk:latest
+docker pull bzohdy/open-workflow-agent-langgraph:latest
 ```
 
-Stable releases also publish the matching minor-series tag, `latest`, and an immutable source-SHA tag. For production, prefer an explicit version such as `0.1.0` rather than `latest`.
+Every verified `main` build publishes `latest` and an immutable `sha-<sha>` tag to both registries. A formal SemVer release such as `v0.1.0` additionally publishes `0.1.0` and `0.1`. For production, prefer an explicit release version or image digest rather than `latest` once a formal release is available.
 
-Release images are published only after the GitHub Actions quality, engine, CTK, Docker, restart/resume, and persistence gates succeed. They include SBOM/provenance metadata and GitHub build provenance attestations.
+Images are published only after the GitHub Actions quality, engine, CTK, Docker, restart/resume, and persistence gates succeed. Both registries receive the same build and tags. OCI SBOM/provenance metadata is generated during the build, and GitHub build provenance attestations are published against the canonical GHCR image.
 
 ## 5-minute quick start
 
@@ -62,28 +71,30 @@ The deterministic `fake/default` model lets you validate the runtime without an 
 ADK:
 
 ```bash
-docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+docker pull bzohdy/open-workflow-agent-adk:latest
 
 docker run --rm --name open-workflow-agent \
   -p 8080:8080 \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+  bzohdy/open-workflow-agent-adk:latest
 ```
 
 LangGraph uses the same configuration and mounts; only the image changes:
 
 ```bash
-docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+docker pull bzohdy/open-workflow-agent-langgraph:latest
 
 docker run --rm --name open-workflow-agent \
   -p 8080:8080 \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+  bzohdy/open-workflow-agent-langgraph:latest
 ```
+
+If you prefer GHCR, replace the image with the corresponding `ghcr.io/bassemzohdy/...` image and keep the same tag.
 
 ### 3. Check readiness
 
@@ -260,7 +271,7 @@ Use `/v1/capabilities` to discover the capabilities of the selected engine/runti
 - [Getting started](docs/getting-started.md) — run a published image and invoke your first agent.
 - [Configuration](docs/configuration.md) — runtime configuration and model-provider reference.
 - [API guide](docs/api.md) — HTTP endpoints and request/response examples.
-- [Deployment guide](docs/deployment.md) — GHCR images, persistence, Docker, Kubernetes, and OpenShift.
+- [Deployment guide](docs/deployment.md) — Docker Hub/GHCR images, persistence, Docker, Kubernetes, and OpenShift.
 - [Developer guide](docs/development.md) — source checkout, repository structure, tests, and contribution workflow.
 - [Project Definition](Project%20Definition.md) — authoritative architecture and product contract.
 - [PROJECT.md](PROJECT.md) — verified implementation status.
