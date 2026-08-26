@@ -283,31 +283,34 @@ class InternalSandboxBackend:
             "LANG": "C.UTF-8",
         }
         for name in self.config.inherited_environment:
-            value = os.getenv(name)
-            if value is not None:
-                environment[name] = value
-        for name, value in request.environment:
+            inherited_value = os.getenv(name)
+            if inherited_value is not None:
+                environment[name] = inherited_value
+        for name, configured_value in request.environment:
             if name in _RESERVED_ENVIRONMENT:
                 raise SandboxPolicyError(
                     "sandbox environment cannot override runtime isolation variables",
                     details={"name": name},
                 )
-            if isinstance(value, SandboxSecretReference):
-                if value.name not in self.config.secret_environment:
+            if isinstance(configured_value, SandboxSecretReference):
+                if configured_value.name not in self.config.secret_environment:
                     raise SandboxPolicyError(
                         "sandbox secret reference is not deployment-approved",
-                        details={"name": value.name},
+                        details={"name": configured_value.name},
                     )
-                resolved = os.getenv(value.name)
+                resolved = os.getenv(configured_value.name)
                 if resolved is None:
                     raise SandboxPolicyError(
                         "sandbox secret reference is unavailable",
-                        details={"name": value.name},
+                        details={"name": configured_value.name},
                     )
                 environment[name] = resolved
             else:
-                environment[name] = value
-        total = sum(len(key.encode()) + len(value.encode()) for key, value in environment.items())
+                environment[name] = configured_value
+        total = sum(
+            len(key.encode()) + len(environment_value.encode())
+            for key, environment_value in environment.items()
+        )
         if total > self.config.max_input_bytes:
             raise SandboxPolicyError(
                 "sandbox environment limit exceeded",
