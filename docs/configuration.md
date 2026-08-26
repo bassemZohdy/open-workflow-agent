@@ -145,7 +145,7 @@ model:
   options: {}
 ```
 
-For a real provider through the LiteLLM adapter:
+For real providers use the bundled LiteLLM adapter:
 
 ```yaml
 model:
@@ -157,24 +157,192 @@ model:
 Runtime behavior:
 
 - `provider: fake` uses the deterministic built-in model for tests and runtime validation.
-- any non-`fake` provider is resolved through the common `LiteLLMModel` adapter.
-- the standard ADK and LangGraph release images bundle the locked LiteLLM dependency, so switching from `fake` to a real configured provider does not require rebuilding the image.
+- `provider: litellm` is the recommended value for real providers.
+- LiteLLM chooses the actual upstream provider from the prefix in `model.name`.
+- the standard ADK and LangGraph release images bundle LiteLLM, so changing providers does not require rebuilding the image.
 
-Provider credentials must be supplied with deployment secrets/environment variables expected by the selected LiteLLM provider, not embedded in workflow files.
+### Common LiteLLM providers
 
-Example Docker pattern:
+| Provider | `model.name` format | Credential / connection |
+| --- | --- | --- |
+| OpenAI | `openai/<model>` | `OPENAI_API_KEY` |
+| Anthropic | `anthropic/<model>` | `ANTHROPIC_API_KEY` |
+| OpenRouter | `openrouter/<provider>/<model>` | `OPENROUTER_API_KEY` |
+| Ollama | `ollama/<local-model>` | no API key normally; set `model.options.api_base` |
+| Other LiteLLM provider | `<provider-prefix>/<model>` | provider-specific environment variables or `model.options` |
+
+The model identifiers above intentionally use placeholders because available provider models change independently of this runtime. Use the provider/model identifier documented by LiteLLM and the upstream provider.
+
+### OpenAI
+
+`agent.yaml`:
+
+```yaml
+model:
+  provider: litellm
+  name: openai/<model-name>
+```
+
+Credential:
+
+```bash
+OPENAI_API_KEY=replace-me
+```
+
+With the repository Compose helper, put both selections in `.env`:
+
+```dotenv
+MODEL_PROVIDER=litellm
+MODEL_NAME=openai/<model-name>
+OPENAI_API_KEY=replace-me
+```
+
+For a published image started directly with Docker:
 
 ```bash
 docker run --rm \
   -p 8080:8080 \
-  -e PROVIDER_API_KEY \
-  -v "$(pwd)/config:/config:ro" \
-  -v "$(pwd)/knowledge:/knowledge:ro" \
-  -v "$(pwd)/data:/data" \
+  -e OWA__MODEL__PROVIDER=litellm \
+  -e 'OWA__MODEL__NAME=openai/<model-name>' \
+  -e OPENAI_API_KEY \
   ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
 ```
 
-Replace `PROVIDER_API_KEY` with the actual variable required by your LiteLLM provider. CI does not call paid providers; it validates the runtime with `fake/default` and verifies that LiteLLM is importable in both built engine images.
+### Anthropic
+
+`agent.yaml`:
+
+```yaml
+model:
+  provider: litellm
+  name: anthropic/<model-name>
+```
+
+Credential:
+
+```bash
+ANTHROPIC_API_KEY=replace-me
+```
+
+Compose `.env`:
+
+```dotenv
+MODEL_PROVIDER=litellm
+MODEL_NAME=anthropic/<model-name>
+ANTHROPIC_API_KEY=replace-me
+```
+
+### OpenRouter
+
+OpenRouter model IDs contain the upstream provider/model path after the LiteLLM `openrouter/` prefix:
+
+```yaml
+model:
+  provider: litellm
+  name: openrouter/<provider>/<model-name>
+```
+
+Credential:
+
+```bash
+OPENROUTER_API_KEY=replace-me
+```
+
+Compose `.env`:
+
+```dotenv
+MODEL_PROVIDER=litellm
+MODEL_NAME=openrouter/<provider>/<model-name>
+OPENROUTER_API_KEY=replace-me
+```
+
+### Ollama
+
+For Ollama running outside the Open Workflow Agent container:
+
+```yaml
+model:
+  provider: litellm
+  name: ollama/<local-model-name>
+  options:
+    api_base: http://host.docker.internal:11434
+```
+
+Repository Compose `.env`:
+
+```dotenv
+MODEL_PROVIDER=litellm
+MODEL_NAME=ollama/<local-model-name>
+OWA__MODEL__OPTIONS__API_BASE=http://host.docker.internal:11434
+```
+
+The repository `compose.yaml` maps `host.docker.internal` to the Docker host for local development. Ollama normally requires no API key.
+
+For Kubernetes/OpenShift, do not use `host.docker.internal`; use the DNS name or URL of the Ollama service reachable from the runtime pod, for example:
+
+```yaml
+model:
+  provider: litellm
+  name: ollama/<local-model-name>
+  options:
+    api_base: http://ollama.ai-platform.svc.cluster.local:11434
+```
+
+### Any other LiteLLM provider
+
+Use the same pattern:
+
+```yaml
+model:
+  provider: litellm
+  name: <litellm-provider-prefix>/<model-name>
+```
+
+Then provide the provider-specific credential/environment variables documented by LiteLLM. The repository Compose helper passes variables from the local `.env` file through to the ADK or LangGraph runtime container, so provider-specific variables can be added there without changing the image.
+
+For providers or OpenAI-compatible endpoints where explicit connection values are easier, the runtime passes `model.options` directly to LiteLLM:
+
+```yaml
+model:
+  provider: litellm
+  name: <provider-prefix>/<model-name>
+  options:
+    api_key: replace-me
+    api_base: https://provider.example/v1
+    api_version: optional-version
+```
+
+Prefer environment variables/secrets rather than storing `api_key` in a committed YAML file. The equivalent runtime environment variables are:
+
+```bash
+OWA__MODEL__OPTIONS__API_KEY=replace-me
+OWA__MODEL__OPTIONS__API_BASE=https://provider.example/v1
+OWA__MODEL__OPTIONS__API_VERSION=optional-version
+```
+
+Provider prefixes and provider-specific authentication requirements are maintained by LiteLLM: <https://docs.litellm.ai/>.
+
+### `.env.example` and Compose
+
+For repository-local development:
+
+```bash
+cp .env.example .env
+```
+
+Then edit the model section of `.env` and start one engine:
+
+```bash
+docker compose --profile adk up --build
+# or
+docker compose --profile langgraph up --build
+```
+
+`compose.yaml` reads the model-selection variables and also passes the local `.env` into the runtime container so LiteLLM can see provider-specific variables such as `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and `OPENROUTER_API_KEY`.
+
+`.env` is ignored by git. Populate only the credentials needed for the selected provider. Production deployments should use Kubernetes/OpenShift Secrets, Docker secrets, or an equivalent secret manager instead of a shared `.env` file.
+
+CI does not call paid providers; it validates the runtime with `fake/default` and verifies that LiteLLM is importable in both built engine images.
 
 ## `workflow`
 
@@ -345,7 +513,7 @@ agent:
 
 model:
   provider: litellm
-  name: provider/model
+  name: openai/<model-name>
 
 workflow:
   path: /config/workflow.yaml
@@ -357,6 +525,7 @@ knowledge:
 Inject secrets and environment-specific values separately using the variable names expected by the provider plus runtime overrides such as:
 
 ```bash
+OPENAI_API_KEY=replace-me
 OWA__PERSISTENCE__DATASOURCE='postgresql://user:password@host:5432/database'
 ```
 
