@@ -9,6 +9,8 @@ import os
 import re
 import tempfile
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
@@ -17,7 +19,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-_IMAGE_DIGEST = re.compile(r"^.+@sha256:[0-9a-fA-F]{64}$")
+_IMMUTABLE_IMAGE = re.compile(r"^(?:.+@sha256:|sha256:)[0-9a-fA-F]{64}$")
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
@@ -26,6 +28,8 @@ class StrictModel(BaseModel):
 
 
 class ControllerConfig(StrictModel):
+    """Deployment-owned hard limits for the Docker control plane."""
+
     docker_socket: str = "/var/run/docker.sock"
     docker_binary: str = "/usr/local/bin/docker"
     allowed_images: list[str] = Field(default_factory=list)
@@ -87,8 +91,10 @@ class ControllerConfig(StrictModel):
         images = [image.strip() for image in value]
         if len(set(images)) != len(images):
             raise ValueError("controller allowed_images must not contain duplicates")
-        if any(not _IMAGE_DIGEST.fullmatch(image) for image in images):
-            raise ValueError("controller images must use immutable sha256 digests")
+        if any(not _IMMUTABLE_IMAGE.fullmatch(image) for image in images):
+            raise ValueError(
+                "controller images must be immutable named digests or local sha256 image IDs"
+            )
         return images
 
     @field_validator("run_as_user")
@@ -188,6 +194,63 @@ class ExecutionRunner(Protocol):
     async def shutdown(self) -> None: ...
 
 
+class RequestSizeLimitMiddleware:
+    """Reject oversized execution requests before JSON/Pydantic parsing."""
+
+    def __init__(self, app: Any, *, max_bytes: int) -> None:
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope.get("type") != "http" or scope.get("path") != "/v1/executions":
+            await self.app(scope, receive, send)
+            return
+        headers = {key.lower(): value for key, value in scope.get("headers", [])}
+        declared = int(headers.get(b"content-length", b"0") or b"0")
+        if declared > self.max_bytes:
+            await self._reject(scope, send)
+            return
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            message = await receive()
+            body = message.get("body", b"")
+            total += len(body)
+            if total > self.max_bytes:
+                await self._reject(scope, send)
+                return
+            chunks.append(body)
+            if not message.get("more_body", False):
+                break
+        body = b"".join(chunks)
+        sent = False
+
+        async def replay() -> dict[str, Any]:
+            nonlocal sent
+            if sent:
+                return {"type": "http.disconnect"}
+            sent = True
+            return {"type": "http.request", "body": body, "more_body": False}
+
+        await self.app(scope, replay, send)
+
+    async def _reject(self, scope: dict[str, Any], send: Any) -> None:
+        response = JSONResponse(
+            status_code=413,
+            content={
+                "error": {
+                    "code": "sandbox_policy_error",
+                    "message": "sandbox controller request exceeds configured input limit",
+                }
+            },
+        )
+
+        async def receive() -> dict[str, Any]:
+            return {"type": "http.disconnect"}
+
+        await response(scope, receive, send)
+
+
 @dataclass(slots=True)
 class _ActiveExecution:
     process: asyncio.subprocess.Process
@@ -202,10 +265,7 @@ class _OutputBudget:
     def add(self, amount: int) -> None:
         self.used += amount
         if self.used > self.limit:
-            raise ControllerFailure(
-                "sandbox_output_limit",
-                "sandbox output limit exceeded",
-            )
+            raise ControllerFailure("sandbox_output_limit", "sandbox output limit exceeded")
 
 
 class DockerCliRunner:
@@ -216,9 +276,30 @@ class DockerCliRunner:
         self._active: dict[str, _ActiveExecution] = {}
 
     async def ready(self) -> bool:
-        return Path(self.config.docker_socket).is_socket() and Path(
+        if not Path(self.config.docker_socket).is_socket() or not Path(
             self.config.docker_binary
-        ).is_file()
+        ).is_file():
+            return False
+        try:
+            process = await asyncio.create_subprocess_exec(
+                self.config.docker_binary,
+                "version",
+                "--format",
+                "{{.Server.Version}}",
+                env=self._docker_environment(),
+                stdin=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.DEVNULL,
+                close_fds=True,
+            )
+            try:
+                return await asyncio.wait_for(process.wait(), timeout=3) == 0
+            except TimeoutError:
+                process.kill()
+                await process.wait()
+                return False
+        except OSError:
+            return False
 
     async def execute(self, request: ExecutionRequest) -> ExecutionResult:
         self._validate_request(request)
@@ -228,9 +309,8 @@ class DockerCliRunner:
         process: asyncio.subprocess.Process | None = None
         tasks: list[asyncio.Task[Any]] = []
         try:
-            argv = self._docker_run_argv(request, container_name, environment_file)
             process = await asyncio.create_subprocess_exec(
-                *argv,
+                *self._docker_run_argv(request, container_name, environment_file),
                 env=self._docker_environment(),
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
@@ -250,22 +330,13 @@ class DockerCliRunner:
                 async with asyncio.timeout(request.limits.timeout_seconds):
                     results = await asyncio.gather(*tasks)
             except TimeoutError as exc:
-                await self._force_remove(container_name)
-                await self._terminate_cli(process)
-                await self._cancel_tasks(tasks)
-                raise ControllerFailure(
-                    "sandbox_timeout",
-                    "sandbox execution timed out",
-                ) from exc
+                await self._cleanup_running(process, container_name, tasks)
+                raise ControllerFailure("sandbox_timeout", "sandbox execution timed out") from exc
             except asyncio.CancelledError:
-                await self._force_remove(container_name)
-                await self._terminate_cli(process)
-                await self._cancel_tasks(tasks)
+                await self._cleanup_running(process, container_name, tasks)
                 raise
             except ControllerFailure:
-                await self._force_remove(container_name)
-                await self._terminate_cli(process)
-                await self._cancel_tasks(tasks)
+                await self._cleanup_running(process, container_name, tasks)
                 raise
             stdout = str(results[1])
             stderr = str(results[2])
@@ -283,8 +354,7 @@ class DockerCliRunner:
             )
         except OSError as exc:
             raise ControllerFailure(
-                "sandbox_process_error",
-                "Docker CLI failed to start",
+                "sandbox_process_error", "Docker CLI failed to start"
             ) from exc
         finally:
             self._active.pop(request.execution_id, None)
@@ -303,8 +373,7 @@ class DockerCliRunner:
         await self._terminate_cli(active.process)
 
     async def shutdown(self) -> None:
-        active = tuple(self._active.items())
-        for execution_id, execution in active:
+        for execution_id, execution in tuple(self._active.items()):
             try:
                 await self._force_remove(execution.container_name)
                 await self._terminate_cli(execution.process)
@@ -321,9 +390,7 @@ class DockerCliRunner:
         serialized = json.dumps(request.model_dump(), separators=(",", ":")).encode()
         if len(serialized) > self.config.max_input_bytes:
             raise ControllerFailure(
-                "sandbox_policy_error",
-                "sandbox input limit exceeded",
-                422,
+                "sandbox_policy_error", "sandbox input limit exceeded", 422
             )
         limits = request.limits
         if limits.timeout_seconds <= 0 or limits.timeout_seconds > self.config.max_timeout_seconds:
@@ -365,6 +432,8 @@ class DockerCliRunner:
         container_name: str,
         environment_file: Path,
     ) -> tuple[str, ...]:
+        temporary_bytes = max(1, request.limits.max_workspace_bytes // 4)
+        workspace_bytes = max(1, request.limits.max_workspace_bytes - temporary_bytes)
         argv = [
             self.config.docker_binary,
             "run",
@@ -375,6 +444,8 @@ class DockerCliRunner:
             "--read-only",
             "--network",
             "none",
+            "--ipc",
+            "none",
             "--cap-drop",
             "ALL",
             "--security-opt",
@@ -384,14 +455,17 @@ class DockerCliRunner:
             "--workdir",
             "/workspace",
             "--tmpfs",
-            f"/tmp:rw,noexec,nosuid,nodev,size={request.limits.max_workspace_bytes}",
+            f"/tmp:rw,noexec,nosuid,nodev,size={temporary_bytes}",
             "--tmpfs",
-            f"/workspace:rw,noexec,nosuid,nodev,size={request.limits.max_workspace_bytes}",
+            f"/workspace:rw,noexec,nosuid,nodev,size={workspace_bytes}",
+            "--ulimit",
+            "nofile=1024:1024",
             "--env-file",
             str(environment_file),
         ]
         if request.limits.memory_bytes is not None:
-            argv.extend(["--memory", str(request.limits.memory_bytes)])
+            memory = str(request.limits.memory_bytes)
+            argv.extend(["--memory", memory, "--memory-swap", memory])
         if request.limits.process_count is not None:
             argv.extend(["--pids-limit", str(request.limits.process_count)])
         argv.append(request.image)
@@ -401,25 +475,29 @@ class DockerCliRunner:
         return tuple(argv)
 
     def _write_environment_file(self, environment: dict[str, str]) -> Path:
-        handle = tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            prefix="owa-sandbox-env-",
-            delete=False,
-        )
+        path: Path | None = None
         try:
-            os.chmod(handle.name, 0o600)
-            for name, value in environment.items():
-                if "\n" in value or "\r" in value:
-                    raise ControllerFailure(
-                        "sandbox_policy_error",
-                        "container environment values cannot contain newlines",
-                        422,
-                    )
-                handle.write(f"{name}={value}\n")
-        finally:
-            handle.close()
-        return Path(handle.name)
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                prefix="owa-sandbox-env-",
+                delete=False,
+            ) as handle:
+                path = Path(handle.name)
+                os.chmod(path, 0o600)
+                for name, value in environment.items():
+                    if "\n" in value or "\r" in value:
+                        raise ControllerFailure(
+                            "sandbox_policy_error",
+                            "container environment values cannot contain newlines",
+                            422,
+                        )
+                    handle.write(f"{name}={value}\n")
+            return path
+        except Exception:
+            if path is not None:
+                path.unlink(missing_ok=True)
+            raise
 
     def _docker_environment(self) -> dict[str, str]:
         return {
@@ -427,6 +505,16 @@ class DockerCliRunner:
             "HOME": "/tmp",
             "PATH": "/usr/local/bin:/usr/bin:/bin",
         }
+
+    async def _cleanup_running(
+        self,
+        process: asyncio.subprocess.Process,
+        container_name: str,
+        tasks: list[asyncio.Task[Any]],
+    ) -> None:
+        await self._force_remove(container_name)
+        await self._terminate_cli(process)
+        await self._cancel_tasks(tasks)
 
     async def _force_remove(self, container_name: str) -> None:
         try:
@@ -529,7 +617,20 @@ def create_app(
 ) -> FastAPI:
     selected_config = config or ControllerConfig.from_environment()
     selected_runner = runner or DockerCliRunner(selected_config)
-    app = FastAPI(title="Open Workflow Agent Sandbox Controller", version="0.1.0")
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        try:
+            yield
+        finally:
+            await selected_runner.shutdown()
+
+    app = FastAPI(
+        title="Open Workflow Agent Sandbox Controller",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+    app.add_middleware(RequestSizeLimitMiddleware, max_bytes=selected_config.max_input_bytes)
 
     @app.exception_handler(ControllerFailure)
     async def controller_error(_request: Any, exc: ControllerFailure) -> JSONResponse:
@@ -553,7 +654,7 @@ def create_app(
         return {
             "backend": "docker",
             "container": True,
-            "imagePolicy": "exact_digest_allowlist",
+            "imagePolicy": "exact_immutable_allowlist",
             "pullPolicy": "never",
             "network": "denied",
             "readOnlyRoot": True,
@@ -562,6 +663,7 @@ def create_app(
             "privileged": False,
             "dropAllCapabilities": True,
             "noNewPrivileges": True,
+            "defaultSeccomp": True,
             "runAsUser": selected_config.run_as_user,
         }
 
@@ -579,10 +681,6 @@ def create_app(
     async def cancel(execution_id: str) -> dict[str, str]:
         await selected_runner.cancel(execution_id)
         return {"status": "cancelled"}
-
-    @app.on_event("shutdown")
-    async def shutdown() -> None:
-        await selected_runner.shutdown()
 
     app.state.config = selected_config
     app.state.runner = selected_runner
