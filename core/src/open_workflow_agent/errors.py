@@ -69,6 +69,31 @@ class WorkflowExecutionError(OwaError):
     code = "workflow_execution_error"
 
 
+class SandboxError(WorkflowExecutionError):
+    code = "sandbox_error"
+
+
+class SandboxPolicyError(SandboxError):
+    code = "sandbox_policy_error"
+    status_code = 422
+
+
+class SandboxTimeoutError(SandboxError):
+    code = "sandbox_timeout"
+
+
+class SandboxOutputLimitError(SandboxError):
+    code = "sandbox_output_limit"
+
+
+class SandboxResourceLimitError(SandboxError):
+    code = "sandbox_resource_limit"
+
+
+class SandboxProcessError(SandboxError):
+    code = "sandbox_process_error"
+
+
 class WorkflowDefinitionChanged(OwaError):
     code = "workflow_definition_changed"
     status_code = 409
