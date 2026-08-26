@@ -12,7 +12,8 @@ COPY resources ./resources
 COPY runtime-catalog ./runtime-catalog
 
 RUN pip install --no-cache-dir "uv==0.11.26" \
-    && uv sync --directory /build/engines/adk --locked --no-dev --no-editable --extra native --extra knowledge --extra postgres \
+    && uv sync --directory /build/engines/adk --locked --no-dev --no-editable --extra native --extra knowledge --extra model --extra postgres \
+    && /build/engines/adk/.venv/bin/python -c "import litellm; from open_workflow_agent.catalog import LiteLLMModel" \
     && rm -rf /tmp/uv-cache /root/.cache
 
 RUN mkdir -p /build/opt/models \
