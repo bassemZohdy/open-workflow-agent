@@ -9,6 +9,7 @@ from .approvals import ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
 from .events import EventBus, InMemoryEventBus
+from .external_catalog import ExternalCatalogResolver
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
 from .memory import MemoryService
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
@@ -47,6 +48,9 @@ class RuntimeServices:
         self.lifecycle_events = LifecycleCloudEventSink(self.events)
         raw_event_bus = event_bus or InMemoryEventBus()
         self.workflow_catalog = WorkflowCatalog()
+        self.external_catalogs = ExternalCatalogResolver(
+            config.workflow.external_catalogs, event_sink=self.events
+        )
         self.workflow_runner: Any = None
         self.protocols = ProtocolServices()
         self.tools = ToolRegistry.from_config(config.tools, self.protocols)

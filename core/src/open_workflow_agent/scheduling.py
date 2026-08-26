@@ -275,7 +275,11 @@ class WorkflowScheduler:
             await self._execute(record)
 
     async def _execute(self, record: ScheduleRecord) -> None:
-        plan = compile_workflow(json.loads(record.workflow_source_json))
+        plan = compile_workflow(
+            json.loads(record.workflow_source_json),
+            trusted_catalogs=self.services.config.workflow.external_catalogs,
+        )
+        await self.services.external_catalogs.resolve_workflow(plan.source, self.services.catalog)
         handle = self.services.invocations.create(
             engine=self.engine.engine_name,
             session_id=None,

@@ -2,7 +2,7 @@
 
 ## Source of Truth and Current Phase
 
-`Project Definition.md` is authoritative; `AGENTS.md` contains mandatory contributor rules and `TODO.md` is the active backlog. Core implementation, local acceptance, remote CI/release verification, the applicable CTK gate, configured PostgreSQL persistence acceptance, B-001, B-002, and the bounded B-003 eventing/CloudEvents/scheduling/sub-workflow/HITL slices are complete. The current phase remains B-003, with secure external catalog resolution as the next implementation boundary.
+`Project Definition.md` is authoritative; `AGENTS.md` contains mandatory contributor rules and `TODO.md` is the active backlog. Core implementation, local acceptance, remote CI/release verification, the applicable CTK gate, configured PostgreSQL persistence acceptance, B-001, B-002, and the bounded B-003 eventing/CloudEvents/scheduling/sub-workflow/HITL slices are complete. The current phase is B-004, secure external catalog resolution. The first implementation slice is present in core behind explicit deployment trust; completion remains gated on connection-level DNS-rebinding resistance, the full security-case matrix, and container/CI acceptance.
 
 ## Architecture
 
@@ -60,7 +60,7 @@ The release pipeline adds exact-version, minor-series, `latest`, and immutable s
 
 ## Current Next Step
 
-Implement secure external catalog resolution without weakening the trust boundary. Open Workflow `use.catalogs` remains rejected until a deployment-controlled resolver has explicit allowlists/trust configuration, TLS verification, timeout/redirect/response-size controls, integrity or version pinning, caching/revalidation, fail-closed errors, capabilities reporting, and deterministic cross-engine contracts. After that, evaluate optional A2A exposure/streaming and only then additional engines.
+Finish B-004 secure external catalog resolution without weakening the trust boundary. The current slice adds deployment-controlled alias/host/endpoint policy, HTTPS/TLS enforcement, bounded streaming fetches, no redirects, environment-only authentication, semantic-version references, optional/required SHA-256 pins, isolated cache/revalidation, sanitized capability state, and equivalent ADK/LangGraph contract coverage. Remaining acceptance work is connection-level DNS-rebinding resistance, the complete security-case matrix, API/readiness coverage, and both container/CI gates. After B-004, evaluate optional A2A exposure/streaming and only then additional engines.
 
 Full MCP, A2A, OpenAPI, external-catalog, streaming, or Open Workflow ecosystem conformance remains unclaimed beyond the tested Portable Profile/capabilities.
 

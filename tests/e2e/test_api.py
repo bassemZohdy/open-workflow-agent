@@ -7,6 +7,9 @@ import pytest
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.errors import ToolError
+from open_workflow_agent.external_catalog import ExternalCatalogResolver
+from open_workflow_agent.protocols import HttpClient
 from open_workflow_agent.services import RuntimeServices
 
 
@@ -85,6 +88,46 @@ async def test_api_limits_payloads_and_normalizes_not_found(tmp_path):
             malformed = await client.post("/v1/invoke", json={"unexpected": True})
             assert malformed.status_code == 422
             assert malformed.json()["error"]["code"] == "request_validation_error"
+
+
+@pytest.mark.asyncio
+async def test_api_does_not_report_ready_when_external_catalog_is_unavailable(tmp_path):
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "api-catalog",
+            "name": "unavailable",
+            "version": "1.0.0",
+        },
+        "use": {"catalogs": {"trusted": {"endpoint": {"uri": "https://catalog.test/root"}}}},
+        "do": [{"remote": {"call": "echo:1.0.0@trusted"}}],
+    }
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake"},
+            "workflow": {
+                "definition": workflow,
+                "external_catalogs": {"trusted": {"allowed_hosts": ["catalog.test"]}},
+            },
+        }
+    )
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, text="temporarily unavailable")
+
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    services.external_catalogs = ExternalCatalogResolver(
+        config.workflow.external_catalogs,
+        http=HttpClient(transport=httpx.MockTransport(handler)),
+    )
+    app = create_app(config=config, services=services)
+    try:
+        with pytest.raises(ToolError):
+            async with app.router.lifespan_context(app):
+                raise AssertionError("unavailable catalog must prevent startup")
+        assert app.state.ready is False
+    finally:
+        services.close()
 
 
 @pytest.mark.asyncio

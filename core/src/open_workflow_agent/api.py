@@ -147,10 +147,24 @@ def create_app(
             workflow_source: Any = runtime_config.workflow.definition
             if workflow_source is None and runtime_config.workflow.path:
                 workflow_source = runtime_config.workflow.path
-            app.state.plan = compile_workflow(workflow_source)
-            runtime_services.workflow_catalog.register(app.state.plan)
+            app.state.plan = compile_workflow(
+                workflow_source,
+                trusted_catalogs=runtime_config.workflow.external_catalogs,
+            )
+            await runtime_services.external_catalogs.resolve_workflow(
+                app.state.plan.source, runtime_services.catalog
+            )
+            runtime_services.workflow_catalog.register(
+                app.state.plan, trusted_catalogs=runtime_config.workflow.external_catalogs
+            )
             for child_workflow in runtime_config.workflow.catalog:
-                runtime_services.workflow_catalog.register(child_workflow)
+                child_plan = runtime_services.workflow_catalog.register(
+                    child_workflow,
+                    trusted_catalogs=runtime_config.workflow.external_catalogs,
+                )
+                await runtime_services.external_catalogs.resolve_workflow(
+                    child_plan.source, runtime_services.catalog
+                )
             if runtime_config.knowledge.reload.mode == "startup":
                 runtime_services.knowledge.reload()
             elif runtime_config.knowledge.reload.mode == "watch":
@@ -209,6 +223,9 @@ def create_app(
     async def capabilities() -> dict[str, Any]:
         value = runtime_engine.capabilities().as_dict()
         value.setdefault("features", {})["approvals"] = runtime_services.approvals.capabilities()
+        value.setdefault("features", {})["catalogs"] = (
+            runtime_services.external_catalogs.capabilities()
+        )
         return value
 
     @app.post("/v1/events")

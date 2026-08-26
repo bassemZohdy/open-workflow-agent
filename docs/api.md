@@ -46,6 +46,11 @@ Use this endpoint to discover the selected engine and supported portable/optiona
 
 Do not assume that every engine exposes identical optional features.
 
+When enabled, `features.catalogs` reports the external-catalog trust mode and
+resolved function references without returning catalog endpoints, credentials,
+or remote definitions. Readiness is not reported until configured catalog
+functions have been fetched and verified.
+
 ## Invoke a workflow
 
 ```http

@@ -162,6 +162,24 @@ At startup the runtime stages the packaged model into writable `/tmp/fastembed` 
 
 No separate paid embedding API is required for the default knowledge path.
 
+## External catalog egress
+
+External Open Workflow function catalogs are disabled unless the deployment
+configures `workflow.external_catalogs`. Keep catalog credentials in a secret
+manager or environment variables referenced by `authentication`; never put
+tokens in the workflow file. Egress must be limited to the exact HTTPS hosts
+and, where possible, the exact `allowed_endpoints` configured for the alias.
+
+Catalog functions must use an exact semantic version and are fetched before
+readiness is announced. The runtime rejects redirects, private/link-local
+destinations, oversized or malformed definitions, remote scripts, and failed
+integrity pins. It does not use stale or unverified content after a failed
+revalidation. `/v1/capabilities` exposes the sanitized catalog policy/state.
+
+For a rollback, remove `use.catalogs` from the workflow and remove the external
+catalog policy; local `workflow.catalog` child workflows remain available
+without network access.
+
 ## Real model providers
 
 The standard ADK and LangGraph published images include LiteLLM. Use `provider: litellm` and select the upstream provider through the model prefix.

@@ -27,6 +27,7 @@ from .errors import (
     WorkflowSchemaError,
     WorkflowSemanticError,
 )
+from .external_catalog import parse_catalog_function_reference
 from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
 
@@ -129,8 +130,12 @@ def validate_schema(workflow: Mapping[str, Any]) -> None:
         raise WorkflowSchemaError("only Open Workflow DSL 1.0.3 is supported")
 
 
-def validate_capabilities(workflow: Mapping[str, Any]) -> None:
-    _validate_catalog_capability(workflow)
+def validate_capabilities(
+    workflow: Mapping[str, Any], *, trusted_catalogs: Mapping[str, Any] | None = None
+) -> None:
+    _validate_catalog_capability(workflow, trusted_catalogs=trusted_catalogs)
+    use = workflow.get("use")
+    catalogs = use.get("catalogs") if isinstance(use, Mapping) else None
     _validate_schedule_capability(workflow)
     for reference, definition in _walk_tasks(workflow.get("do", []), prefix="/do"):
         if not isinstance(definition, Mapping):
@@ -148,7 +153,10 @@ def validate_capabilities(workflow: Mapping[str, Any]) -> None:
             )
         if "call" in definition:
             call = definition["call"]
-            if not isinstance(call, str) or call not in SUPPORTED_CALLS:
+            if not isinstance(call, str) or (
+                call not in SUPPORTED_CALLS
+                and not _is_trusted_catalog_call(call, catalogs, trusted_catalogs)
+            ):
                 raise UnsupportedWorkflowFeature(
                     f"call '{call}' is not enabled", details={"reference": reference}
                 )
@@ -160,7 +168,10 @@ def validate_capabilities(workflow: Mapping[str, Any]) -> None:
                         "mcp stdio transport is not enabled", details={"reference": reference}
                     )
         for task_list in _nested_task_lists(definition):
-            validate_capabilities({"do": task_list})
+            nested: dict[str, Any] = {"do": task_list}
+            if isinstance(catalogs, Mapping):
+                nested["use"] = {"catalogs": catalogs}
+            validate_capabilities(nested, trusted_catalogs=trusted_catalogs)
         if "emit" in definition:
             _validate_emit_capability(definition["emit"], reference)
         if "listen" in definition:
@@ -169,14 +180,37 @@ def validate_capabilities(workflow: Mapping[str, Any]) -> None:
             _validate_run_capability(definition["run"], reference)
 
 
-def _validate_catalog_capability(workflow: Mapping[str, Any]) -> None:
+def _validate_catalog_capability(
+    workflow: Mapping[str, Any], *, trusted_catalogs: Mapping[str, Any] | None = None
+) -> None:
     use = workflow.get("use")
     catalogs = use.get("catalogs") if isinstance(use, Mapping) else None
     if not isinstance(catalogs, Mapping) or not catalogs:
         return
-    raise UnsupportedWorkflowFeature(
-        "external workflow catalogs are disabled",
-        details={"catalogs": sorted(str(name) for name in catalogs)},
+    if trusted_catalogs is None:
+        raise UnsupportedWorkflowFeature(
+            "external workflow catalogs require deployment trust configuration",
+            details={"catalogs": sorted(str(name) for name in catalogs)},
+        )
+    missing = sorted(str(name) for name in catalogs if str(name) not in trusted_catalogs)
+    if missing:
+        raise UnsupportedWorkflowFeature(
+            "external workflow catalog is not deployment-trusted",
+            details={"catalogs": missing},
+        )
+
+
+def _is_trusted_catalog_call(
+    call: str, catalogs: Any, trusted_catalogs: Mapping[str, Any] | None
+) -> bool:
+    reference = parse_catalog_function_reference(call)
+    return bool(
+        reference is not None
+        and reference.catalog != "default"
+        and isinstance(catalogs, Mapping)
+        and reference.catalog in catalogs
+        and trusted_catalogs is not None
+        and reference.catalog in trusted_catalogs
     )
 
 
@@ -200,10 +234,14 @@ def _validate_schedule_capability(workflow: Mapping[str, Any]) -> None:
         raise WorkflowSemanticError("schedule duration must be greater than zero")
 
 
-def compile_workflow(source: str | Path | Mapping[str, Any] | None = None) -> WorkflowPlan:
+def compile_workflow(
+    source: str | Path | Mapping[str, Any] | None = None,
+    *,
+    trusted_catalogs: Mapping[str, Any] | None = None,
+) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
-    validate_capabilities(workflow)
+    validate_capabilities(workflow, trusted_catalogs=trusted_catalogs)
     return normalize_workflow(workflow)
 
 

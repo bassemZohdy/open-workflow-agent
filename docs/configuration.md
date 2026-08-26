@@ -97,6 +97,7 @@ workflow:
   path: null
   definition: null
   catalog: []
+  external_catalogs: {}
 
 knowledge:
   path: /knowledge
@@ -386,7 +387,69 @@ workflow:
 
 If neither is supplied, the runtime generates the default one-task workflow.
 
-`workflow.catalog` registers deployment-provided local child workflows for `run.workflow`. External/remote catalogs are currently disabled.
+`workflow.catalog` registers deployment-provided local child workflows for `run.workflow`.
+
+External function catalogs are opt-in and require a deployment trust policy. The
+workflow may name an approved alias, but it cannot supply credentials or relax
+transport controls:
+
+```yaml
+workflow:
+  path: /config/workflow.yaml
+  external_catalogs:
+    trusted:
+      allowed_hosts:
+        - catalog.example.com
+        - api.example.com
+      allowed_endpoints:
+        - https://catalog.example.com/open-workflow
+      timeout_seconds: 10
+      max_response_bytes: 4000000
+      follow_redirects: false
+      verify_tls: true
+      cache_ttl_seconds: 300
+      max_cache_age_seconds: 86400
+      max_cache_entries: 128
+      revalidate: true
+      require_integrity_pin: true
+      integrity_pins:
+        "echo:1.0.0@trusted": <sha256-of-function-yaml>
+      authentication:
+        bearer_token_env: OWA_CATALOG_TOKEN
+```
+
+The workflow references a function with its exact semantic version:
+
+```yaml
+use:
+  catalogs:
+    trusted:
+      endpoint:
+        uri: https://catalog.example.com/open-workflow
+do:
+  - call_echo:
+      call: echo:1.0.0@trusted
+```
+
+Only declarative catalog functions whose definition calls one of the bounded
+`http`, `mcp`, `a2a`, or `openapi` protocol adapters are enabled. Remote
+`run.script` functions and inline workflow credentials are rejected. Catalog
+fetches use HTTPS, exact host allowlists, TLS verification, no redirects,
+bounded responses, conditional revalidation, and fail-closed errors. Credentials
+are read from deployment environment variables and are never serialized into
+workflow plans or capability responses. If external catalog configuration is
+absent, `use.catalogs` remains rejected and local `workflow.catalog` continues
+to work without network access.
+
+The resolver supports versioned `function.yaml` entries with a declarative
+protocol call. It does not execute catalog scripts, follow remote references,
+or let external entries replace the built-in `agent` and `llm` functions. A
+missing alias, malformed definition, transport failure, expired or unavailable
+revalidation, or pin mismatch fails startup/readiness; there is no fallback to
+unverified or stale content. The in-memory cache is bounded by entry count and
+age and is separate from invocations, memory, knowledge, approvals, schedules,
+and engine checkpoints. Catalog events retain only sanitized status/error codes
+and correlation IDs.
 
 Workflow files are mounted under `/config`; adding or replacing them does not require rebuilding the published image.
 

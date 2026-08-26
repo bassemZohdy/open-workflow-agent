@@ -106,6 +106,7 @@ class HttpClient:
         follow_redirects: bool | None = None,
         output: str = "content",
         request_timeout: float | None = None,
+        allow_not_modified: bool = False,
         **kwargs: Any,
     ) -> Any:
         self._check_endpoint(endpoint)
@@ -132,10 +133,26 @@ class HttpClient:
                 follow_redirects=redirects_enabled,
                 transport=self.transport,
             ) as client:
-                response = await client.request(method, endpoint, **kwargs)
-                if len(response.content) > self.max_response_bytes:
-                    raise ToolError("HTTP response exceeds configured maximum size")
-                if response.is_error or (response.is_redirect and not redirects_enabled):
+                async with client.stream(method, endpoint, **kwargs) as streamed:
+                    chunks: list[bytes] = []
+                    total = 0
+                    async for chunk in streamed.aiter_bytes():
+                        total += len(chunk)
+                        if total > self.max_response_bytes:
+                            raise ToolError("HTTP response exceeds configured maximum size")
+                        chunks.append(chunk)
+                    response = httpx.Response(
+                        streamed.status_code,
+                        headers=streamed.headers,
+                        content=b"".join(chunks),
+                        request=streamed.request,
+                        extensions=streamed.extensions,
+                    )
+                if response.is_error or (
+                    response.is_redirect
+                    and not redirects_enabled
+                    and not (allow_not_modified and response.status_code == 304)
+                ):
                     raise ToolError(
                         "HTTP request failed with an error status",
                         details={

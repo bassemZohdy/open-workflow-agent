@@ -15,8 +15,17 @@ class WorkflowCatalog:
     def __init__(self) -> None:
         self._plans: dict[tuple[str, str, str], WorkflowPlan] = {}
 
-    def register(self, workflow: WorkflowPlan | Mapping[str, Any]) -> WorkflowPlan:
-        plan = workflow if isinstance(workflow, WorkflowPlan) else compile_workflow(workflow)
+    def register(
+        self,
+        workflow: WorkflowPlan | Mapping[str, Any],
+        *,
+        trusted_catalogs: Mapping[str, Any] | None = None,
+    ) -> WorkflowPlan:
+        plan = (
+            workflow
+            if isinstance(workflow, WorkflowPlan)
+            else compile_workflow(workflow, trusted_catalogs=trusted_catalogs)
+        )
         self._plans[(plan.namespace, plan.name, plan.version)] = plan
         return plan
 
