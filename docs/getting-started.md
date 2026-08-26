@@ -1,22 +1,28 @@
 # Getting Started
 
-This guide runs Open Workflow Agent from the published GitHub Container Registry images. You do not need to clone the repository or install Python to use the runtime.
+This guide runs Open Workflow Agent from the published container images. Docker Hub is the default in end-user examples; the same verified images and tags are also published to GitHub Container Registry (GHCR). You do not need to clone the repository or install Python to use the runtime.
 
 ## Prerequisites
 
-You need:
-
-- Docker;
-- a published Open Workflow Agent image version.
-
-The examples below use `0.1.0`. For production, pin an explicit release version rather than `latest`.
+You need Docker.
 
 Published images:
 
+Docker Hub:
+
 ```text
-ghcr.io/bassemzohdy/open-workflow-agent-adk:<version>
-ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<version>
+bzohdy/open-workflow-agent-adk:<tag>
+bzohdy/open-workflow-agent-langgraph:<tag>
 ```
+
+GHCR alternative:
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk:<tag>
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<tag>
+```
+
+Every verified `main` build publishes `latest` and an immutable `sha-<sha>` tag to both registries. Formal SemVer releases additionally publish the exact version and minor-series tags. For production, prefer an explicit release version or digest rather than `latest` once a formal release is available.
 
 ## Create a local runtime directory
 
@@ -40,13 +46,13 @@ The built-in deterministic fake model requires no API key and is useful for vali
 ADK:
 
 ```bash
-docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+docker pull bzohdy/open-workflow-agent-adk:latest
 ```
 
 LangGraph:
 
 ```bash
-docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+docker pull bzohdy/open-workflow-agent-langgraph:latest
 ```
 
 You normally run one engine. Both use the same public configuration and mounted paths.
@@ -59,7 +65,7 @@ docker run --rm --name open-workflow-agent \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+  bzohdy/open-workflow-agent-adk:latest
 ```
 
 ## Start LangGraph
@@ -70,10 +76,10 @@ docker run --rm --name open-workflow-agent \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+  bzohdy/open-workflow-agent-langgraph:latest
 ```
 
-The host port is `8080` in both examples. Change only the image when switching engines.
+The host port is `8080` in both examples. Change only the image when switching engines. If you prefer GHCR, use the corresponding `ghcr.io/bassemzohdy/...` image with the same tag.
 
 ## Verify the runtime
 
@@ -153,7 +159,7 @@ docker run --rm \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+  bzohdy/open-workflow-agent-adk:latest
 ```
 
 See [configuration.md](configuration.md) for all supported settings.
@@ -230,7 +236,7 @@ The runtime and engine-specific durable state use isolated namespaces; ADK and L
 
 ## Use a real LLM provider
 
-The standard release images include LiteLLM. Set `provider: litellm`, then use the LiteLLM provider prefix in the model name.
+The standard published images include LiteLLM. Set `provider: litellm`, then use the LiteLLM provider prefix in the model name.
 
 Common patterns:
 
@@ -354,5 +360,5 @@ The examples use `--rm`, so Docker removes the container after it exits while th
 
 - Configure agents, models, memory, knowledge, and tools: [configuration.md](configuration.md)
 - Integrate through HTTP: [api.md](api.md)
-- Deploy with GHCR/Docker/Kubernetes/OpenShift: [deployment.md](deployment.md)
+- Deploy with Docker Hub/GHCR/Docker/Kubernetes/OpenShift: [deployment.md](deployment.md)
 - Contribute to the source code: [development.md](development.md)

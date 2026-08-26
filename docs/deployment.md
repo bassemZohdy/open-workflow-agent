@@ -1,33 +1,49 @@
 # Deployment Guide
 
-Open Workflow Agent is packaged as separate ADK and LangGraph runtime images. End-user and production deployments should consume the prebuilt images from GitHub Container Registry (GHCR). Building from source is a developer/customization workflow, not the normal deployment path.
+Open Workflow Agent is packaged as separate ADK and LangGraph runtime images. End-user and production deployments should consume the prebuilt images from Docker Hub or GitHub Container Registry (GHCR). Docker Hub is used in end-user examples for convenience; GHCR remains the canonical release/provenance registry. Building from source is a developer/customization workflow, not the normal deployment path.
 
 ## Published images
 
+Docker Hub:
+
 ```text
-ghcr.io/bassemzohdy/open-workflow-agent-adk:<version>
-ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<version>
+bzohdy/open-workflow-agent-adk:<tag>
+bzohdy/open-workflow-agent-langgraph:<tag>
 ```
 
-Example stable release:
+GitHub Container Registry:
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk:<tag>
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<tag>
+```
+
+Pull the latest verified `main` build from Docker Hub:
 
 ```bash
-docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
-docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+docker pull bzohdy/open-workflow-agent-adk:latest
+docker pull bzohdy/open-workflow-agent-langgraph:latest
 ```
 
-Stable releases also publish:
+The corresponding GHCR pulls are:
+
+```bash
+docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:latest
+docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:latest
+```
+
+Publication tags are:
 
 ```text
-0.1.0        exact release
-0.1          minor series
-latest       latest stable release
+latest       latest verified main build
 sha-<sha>    immutable verified source revision
+0.1.0        exact SemVer release, when a matching v0.1.0 release is published
+0.1          minor series, when a matching SemVer release is published
 ```
 
-For production, prefer the exact version tag or image digest rather than `latest`.
+For production, prefer an exact SemVer tag or image digest rather than `latest` once a formal release is available. Both registries receive the same verified build and tags.
 
-Each image is published only after the full GitHub Actions CI gate succeeds for the tagged commit. Release artifacts include OCI SBOM/provenance metadata and GitHub build provenance attestations.
+Images are published only after the full GitHub Actions CI gate succeeds. OCI SBOM/provenance metadata is generated for the published build, and GitHub build provenance attestations are attached to the canonical GHCR image.
 
 ## Runtime paths
 
@@ -67,7 +83,7 @@ docker run -d --name open-workflow-agent-adk \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+  bzohdy/open-workflow-agent-adk:latest
 ```
 
 Run LangGraph instead by changing only the container/image name:
@@ -80,19 +96,19 @@ docker run -d --name open-workflow-agent-langgraph \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+  bzohdy/open-workflow-agent-langgraph:latest
 ```
 
-No source checkout or Docker build is required.
+No source checkout or Docker build is required. Replace `latest` with a release tag or digest for production deployments when available. Use the corresponding `ghcr.io/bassemzohdy/...` image if GHCR is preferred by your platform or supply-chain policy.
 
 ## Docker Compose without source checkout
 
-A deployment Compose file can reference GHCR directly:
+A deployment Compose file can reference Docker Hub directly:
 
 ```yaml
 services:
   owa:
-    image: ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+    image: bzohdy/open-workflow-agent-adk:latest
     ports:
       - "8080:8080"
     read_only: true
@@ -107,7 +123,14 @@ services:
 Switch to LangGraph by changing `image` to:
 
 ```text
-ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+bzohdy/open-workflow-agent-langgraph:latest
+```
+
+GHCR can be used instead with the same tag:
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk:latest
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph:latest
 ```
 
 The repository's developer Compose file may build from source for contributor testing; that is not required for normal users.
@@ -141,7 +164,7 @@ No separate paid embedding API is required for the default knowledge path.
 
 ## Real model providers
 
-The standard ADK and LangGraph release images include LiteLLM. Use `provider: litellm` and select the upstream provider through the model prefix.
+The standard ADK and LangGraph published images include LiteLLM. Use `provider: litellm` and select the upstream provider through the model prefix.
 
 | Provider | `model.name` | Secret / endpoint |
 | --- | --- | --- |
@@ -201,14 +224,14 @@ See [configuration.md](configuration.md#model) for detailed OpenAI, Anthropic, O
 
 ## Kubernetes/OpenShift
 
-Use the published GHCR image directly in the workload specification.
+Use either published registry in the workload specification. Docker Hub is shown below for consistency with end-user examples; replace it with the corresponding GHCR image if your organization prefers the canonical provenance registry.
 
 ADK example:
 
 ```yaml
 containers:
   - name: open-workflow-agent
-    image: ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+    image: bzohdy/open-workflow-agent-adk:latest
     ports:
       - containerPort: 8080
     readinessProbe:
@@ -230,7 +253,7 @@ containers:
         mountPath: /data
 ```
 
-For LangGraph, replace only the image name.
+For LangGraph, replace only the image name. For production, pin the workload to a SemVer tag or digest when available.
 
 Recommended security posture:
 
@@ -289,7 +312,7 @@ curl http://host:8080/v1/capabilities
 
 ## Release and registry workflow
 
-The repository keeps normal CI and release publication separate:
+The repository keeps normal CI and publication separate:
 
 ```text
 push / pull request
@@ -303,22 +326,26 @@ push / pull request
         +-- stop/restart/resume
         +-- PostgreSQL acceptance
 
-version tag vX.Y.Z on a green commit
+successful push CI on main
         |
         v
    Release workflow
         |
-        +-- verify tag == project version
-        +-- build ADK image
-        +-- build LangGraph image
-        +-- push both to GHCR
-        +-- attach SBOM/provenance + attestations
-        +-- create GitHub Release
+        +-- resolve project version and optional matching SemVer tag
+        +-- build ADK image once
+        +-- build LangGraph image once
+        +-- push each build to Docker Hub and GHCR
+        +-- publish latest + sha-<sha>
+        +-- if matching vX.Y.Z exists: also publish X.Y.Z + X.Y
+        +-- attach SBOM/provenance; attest canonical GHCR image
+        +-- create GitHub Release for matching SemVer release
 ```
 
-The release workflow uses the repository `GITHUB_TOKEN` with package-write permission. No Docker Hub account is required.
+Docker Hub publication uses the repository variable `DOCKERHUB_USERNAME` and repository secret `DOCKERHUB_TOKEN`. GHCR publication uses the repository `GITHUB_TOKEN` with package-write permission.
 
-After the first package publication, set the GHCR package visibility to **Public** if anonymous pulls are required.
+Docker Hub is the convenient end-user distribution path. GHCR is retained as the canonical provenance/attestation registry. Both receive the same image build and corresponding tags.
+
+After the first GHCR package publication, set the GHCR package visibility to **Public** if anonymous pulls are required.
 
 ## Image size and verification
 
