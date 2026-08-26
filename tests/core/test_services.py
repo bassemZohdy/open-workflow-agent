@@ -134,7 +134,9 @@ def test_managed_catalog_context_scopes_runtime_services(tmp_path):
         assert not hasattr(context.services, "config")
         assert not hasattr(context.services, "sandbox")
         assert not hasattr(context.services, "memory")
-        assert asyncio.run(context.services.invoke_agent_tool("search_knowledge", {"query": ""})) == []
+        assert (
+            asyncio.run(context.services.invoke_agent_tool("search_knowledge", {"query": ""})) == []
+        )
         with pytest.raises(ToolError, match="not approved"):
             asyncio.run(context.services.invoke_agent_tool("arbitrary-subprocess", {}))
     finally:
