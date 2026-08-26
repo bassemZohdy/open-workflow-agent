@@ -337,7 +337,9 @@ class SandboxConfig(StrictModel):
                 f"sandbox inherited_environment and secret_environment must not overlap: {overlap}"
             )
         if self.enabled and self.backend == "docker" and not self.docker.allowed_images:
-            raise ValueError("enabled Docker sandbox requires at least one deployment-approved image")
+            raise ValueError(
+                "enabled Docker sandbox requires at least one deployment-approved image"
+            )
         return self
 
 
