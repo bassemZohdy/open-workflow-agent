@@ -22,7 +22,7 @@ from .errors import (
 )
 from .scheduling import WorkflowScheduler
 from .services import RuntimeServices
-from .workflow import compile_workflow
+from .workflow import compile_workflow, resolve_and_compile_workflow
 
 
 class RequestSizeLimitMiddleware:
@@ -147,24 +147,21 @@ def create_app(
             workflow_source: Any = runtime_config.workflow.definition
             if workflow_source is None and runtime_config.workflow.path:
                 workflow_source = runtime_config.workflow.path
-            app.state.plan = compile_workflow(
+            app.state.plan = await resolve_and_compile_workflow(
                 workflow_source,
                 trusted_catalogs=runtime_config.workflow.external_catalogs,
+                resolver=runtime_services.external_catalogs,
+                catalog=runtime_services.catalog,
             )
-            await runtime_services.external_catalogs.resolve_workflow(
-                app.state.plan.source, runtime_services.catalog
-            )
-            runtime_services.workflow_catalog.register(
-                app.state.plan, trusted_catalogs=runtime_config.workflow.external_catalogs
-            )
+            runtime_services.workflow_catalog.register(app.state.plan)
             for child_workflow in runtime_config.workflow.catalog:
-                child_plan = runtime_services.workflow_catalog.register(
+                child_plan = await resolve_and_compile_workflow(
                     child_workflow,
                     trusted_catalogs=runtime_config.workflow.external_catalogs,
+                    resolver=runtime_services.external_catalogs,
+                    catalog=runtime_services.catalog,
                 )
-                await runtime_services.external_catalogs.resolve_workflow(
-                    child_plan.source, runtime_services.catalog
-                )
+                runtime_services.workflow_catalog.register(child_plan)
             if runtime_config.knowledge.reload.mode == "startup":
                 runtime_services.knowledge.reload()
             elif runtime_config.knowledge.reload.mode == "watch":

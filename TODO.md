@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**B-004 — Secure external catalog resolution (in progress).** B-003 bounded eventing, lifecycle CloudEvents, scheduling, local sub-workflows, and durable HITL approvals remain complete. External catalog support is implemented behind explicit deployment trust, with final security-case and container acceptance still pending.
+**B-004 — Secure external catalog resolution (in progress).** B-003 bounded eventing, lifecycle CloudEvents, scheduling, local sub-workflows, and durable HITL approvals remain complete. External catalog support is implemented behind explicit deployment trust, with connection-level DNS pinning and final container/CI acceptance still pending.
 
 ## Active Backlog — Ordered
 
@@ -35,7 +35,7 @@ External catalogs must be deployment-controlled, fail closed, and portable acros
 
 #### B-004.4 — Integrate catalog loading with the workflow pipeline
 
-- [ ] Resolve approved catalogs before plan construction, then apply the existing `official schema validation → capability validation → normalization → plan` pipeline to every loaded definition. Current startup resolution completes before readiness and execution; ordering will be tightened before acceptance.
+- [x] Resolve approved catalogs before plan construction, then apply the existing `official schema validation → capability validation → normalization → plan` pipeline to every loaded definition. Startup, local child-workflow registration, and scheduled execution now use the same ordering before readiness or execution.
 - [x] Keep the canonical execution plan internal and immutable; do not introduce a public catalog DSL or a second workflow language.
 - [x] Define deterministic precedence and collision rules for built-in, local, and external catalog entries; external aliases cannot shadow the built-in `default` catalog.
 - [x] Fail closed on missing catalogs, unsupported definitions, invalid pins/digests, and ambiguous resolution; stale or unverified content is never used.
@@ -57,18 +57,18 @@ External catalogs must be deployment-controlled, fail closed, and portable acros
 
 #### B-004.7 — Prove cross-engine portability and security
 
-- [ ] Add deterministic resolver unit tests using mock transports; no test may require a public network, paid provider, or live external catalog.
-- [ ] Cover invalid schemes, disallowed hosts and IP ranges, DNS/rebinding defenses, TLS-verification policy, redirect escape, timeout, response-size, malformed payload, authentication isolation, digest/signature mismatch, version mismatch, cache/revalidation, and fail-closed behavior.
-- [ ] Add shared contract fixtures where an approved external catalog contributes a supported definition, and verify identical observable results on ADK and LangGraph.
-- [ ] Run the existing shared contract suite after every engine change; add CTK coverage only for scenarios supported by the implemented Portable Profile and preserve pinned provenance.
-- [ ] Add API and readiness tests proving rejected/unavailable catalogs do not execute partially compiled workflows or leak sensitive details.
+- [x] Add deterministic resolver unit tests using mock transports; no test may require a public network, paid provider, or live external catalog.
+- [ ] Cover invalid schemes, disallowed hosts and IP ranges, DNS/rebinding defenses, TLS-verification policy, redirect escape, timeout, response-size, malformed payload, authentication isolation, digest/signature mismatch, version mismatch, cache/revalidation, and fail-closed behavior. The deterministic matrix now covers the bounded controls; complete connection-level DNS-rebinding resistance remains an explicit acceptance gap.
+- [x] Add shared contract fixtures where an approved external catalog contributes a supported definition, and verify identical observable results on ADK and LangGraph.
+- [x] Run the existing shared contract suite after every engine change; add CTK coverage only for scenarios supported by the implemented Portable Profile and preserve pinned provenance.
+- [x] Add API and readiness tests proving rejected/unavailable catalogs do not execute partially compiled workflows or leak sensitive details.
 
 #### B-004.8 — Complete CI, container, and release acceptance
 
 - [ ] Add a deterministic local catalog test server/transport to CI; do not permit CI to depend on public endpoints.
 - [ ] Verify both independent images with external catalog configuration, arbitrary UID, read-only root, bounded `/tmp`, no startup installation, and no credential leakage in retained logs.
 - [ ] Verify image metadata, exact locks, package contents, image-size limits, root quality gates, ADK/LangGraph native tests, shared contracts, and applicable CTK results.
-- [ ] Update end-user, configuration, deployment, API, and development documentation with secure examples and explicit unsupported cases.
+- [x] Update end-user, configuration, deployment, API, and development documentation with secure examples and explicit unsupported cases.
 - [ ] Keep `use.catalogs` rejected in production images until all B-004 acceptance checks are green; record the verified CI run and artifacts in `PROJECT.md` and this file.
 
 **B-004 acceptance:** an explicitly approved external catalog can be fetched, verified, validated, cached/revalidated, and resolved through the common core with bounded secure behavior; both engines produce equivalent contract results; failures are fail-closed and non-sensitive; CI and both container images pass all relevant gates. Only then may `use.catalogs` be enabled in the advertised capability profile.

@@ -47,6 +47,7 @@ async def test_invoke_capabilities_health_and_reload(tmp_path):
                 "localCatalog": True,
                 "externalCatalog": False,
             }
+            assert capabilities["features"]["catalogs"]["enabled"] is False
             event = await client.post(
                 "/v1/events",
                 json={"event": {"id": "api-event-1", "type": "api.test", "data": {"ok": True}}},
@@ -122,10 +123,13 @@ async def test_api_does_not_report_ready_when_external_catalog_is_unavailable(tm
     )
     app = create_app(config=config, services=services)
     try:
-        with pytest.raises(ToolError):
+        with pytest.raises(ToolError) as failure:
             async with app.router.lifespan_context(app):
                 raise AssertionError("unavailable catalog must prevent startup")
         assert app.state.ready is False
+        assert not hasattr(app.state, "plan")
+        assert "temporarily unavailable" not in str(failure.value)
+        assert "catalog.test" not in repr(failure.value.details)
     finally:
         services.close()
 

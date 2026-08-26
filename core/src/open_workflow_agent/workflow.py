@@ -245,6 +245,22 @@ def compile_workflow(
     return normalize_workflow(workflow)
 
 
+async def resolve_and_compile_workflow(
+    source: str | Path | Mapping[str, Any] | None = None,
+    *,
+    trusted_catalogs: Mapping[str, Any] | None = None,
+    resolver: Any,
+    catalog: FunctionCatalog,
+) -> WorkflowPlan:
+    """Resolve deployment-trusted catalogs before building the internal plan."""
+
+    workflow = generate_default_workflow() if source is None else load_workflow(source)
+    validate_schema(workflow)
+    await resolver.resolve_workflow(workflow, catalog)
+    validate_capabilities(workflow, trusted_catalogs=trusted_catalogs)
+    return normalize_workflow(workflow)
+
+
 @dataclass(frozen=True, slots=True)
 class TaskPlan:
     name: str

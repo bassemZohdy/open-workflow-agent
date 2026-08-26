@@ -12,7 +12,11 @@ from open_workflow_agent.errors import ToolError, UnsupportedWorkflowFeature, Wo
 from open_workflow_agent.external_catalog import ExternalCatalogResolver
 from open_workflow_agent.protocols import HttpClient
 from open_workflow_agent.services import RuntimeServices
-from open_workflow_agent.workflow import WorkflowExecutor, compile_workflow
+from open_workflow_agent.workflow import (
+    WorkflowExecutor,
+    compile_workflow,
+    resolve_and_compile_workflow,
+)
 
 
 def _workflow() -> dict[str, object]:
@@ -70,6 +74,29 @@ async def test_external_catalog_function_is_resolved_and_executed(services):
     assert result == {"echo": "hello"}
 
 
+@pytest.mark.asyncio
+async def test_catalog_resolution_precedes_plan_construction(services):
+    order: list[str] = []
+
+    class RecordingResolver:
+        async def resolve_workflow(self, workflow, catalog):
+            del workflow, catalog
+            order.append("resolve")
+            return {}
+
+    policy = ExternalCatalogConfig(allowed_hosts=["catalog.test"])
+    plan = await resolve_and_compile_workflow(
+        _workflow(),
+        trusted_catalogs={"trusted": policy},
+        resolver=RecordingResolver(),
+        catalog=services.catalog,
+    )
+    order.append("plan")
+
+    assert order == ["resolve", "plan"]
+    assert plan.name == "external"
+
+
 def test_external_catalog_requires_deployment_trust():
     with pytest.raises(UnsupportedWorkflowFeature, match="deployment trust"):
         compile_workflow(_workflow())
@@ -86,6 +113,31 @@ def test_external_catalog_rejects_inline_authentication():
             workflow,
             trusted_catalogs={"trusted": ExternalCatalogConfig(allowed_hosts=["catalog.test"])},
         )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("endpoint", "error_type", "message"),
+    [
+        ("http://catalog.test/root", UnsupportedWorkflowFeature, "HTTPS"),
+        ("https://other.test/root", UnsupportedWorkflowFeature, "host is not allowed"),
+        ("https://user:password@catalog.test/root", WorkflowSchemaError, "credentials"),
+    ],
+)
+async def test_external_catalog_rejects_untrusted_endpoint_variants(
+    services, endpoint, error_type, message
+):
+    workflow = _workflow()
+    workflow["use"]["catalogs"]["trusted"]["endpoint"]["uri"] = endpoint  # type: ignore[index]
+    policy = ExternalCatalogConfig(allowed_hosts=["catalog.test"])
+    resolver = ExternalCatalogResolver(
+        {"trusted": policy},
+        http=HttpClient(transport=httpx.MockTransport(lambda _: httpx.Response(500))),
+    )
+    plan = compile_workflow(workflow, trusted_catalogs={"trusted": policy})
+
+    with pytest.raises(error_type, match=message):
+        await resolver.resolve_workflow(plan.source, services.catalog)
 
 
 @pytest.mark.asyncio
@@ -111,6 +163,30 @@ async def test_external_catalog_revalidates_cached_definition_and_checks_integri
         assert len(calls) == 2
     finally:
         services.close()
+
+
+@pytest.mark.asyncio
+async def test_external_catalog_rejects_changed_pinned_definition(services):
+    changed_definition = FUNCTION_YAML + "\n# changed\n"
+    calls = 0
+
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(
+            200,
+            text=FUNCTION_YAML if calls == 1 else changed_definition,
+            headers={"ETag": f'"function-v{calls}"'},
+        )
+
+    digest = hashlib.sha256(FUNCTION_YAML.encode()).hexdigest()
+    resolver = _resolver(handler, pins={"echo:1.0.0@trusted": digest})
+    plan = compile_workflow(_workflow(), trusted_catalogs={"trusted": resolver.policies["trusted"]})
+    await resolver.resolve_workflow(plan.source, services.catalog)
+
+    with pytest.raises(ToolError, match="integrity verification failed"):
+        await resolver.resolve_workflow(plan.source, services.catalog)
+    assert resolver._cache[next(iter(resolver._cache))].digest == digest
 
 
 @pytest.mark.asyncio
@@ -172,6 +248,32 @@ async def test_external_catalog_rejects_redirects_and_oversized_documents(servic
 
 
 @pytest.mark.asyncio
+async def test_external_catalog_rejects_malformed_payload_and_sanitizes_timeout(services):
+    async def malformed_handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text="[")
+
+    malformed_resolver = _resolver(malformed_handler)
+    malformed_plan = compile_workflow(
+        _workflow(), trusted_catalogs={"trusted": malformed_resolver.policies["trusted"]}
+    )
+    with pytest.raises(WorkflowSchemaError, match="not valid YAML") as malformed:
+        await malformed_resolver.resolve_workflow(malformed_plan.source, services.catalog)
+    assert "catalog.test" not in str(malformed.value)
+
+    async def timeout_handler(_request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("private timeout details")
+
+    timeout_resolver = _resolver(timeout_handler)
+    timeout_plan = compile_workflow(
+        _workflow(), trusted_catalogs={"trusted": timeout_resolver.policies["trusted"]}
+    )
+    with pytest.raises(ToolError, match="external catalog resolution failed") as timeout:
+        await timeout_resolver.resolve_workflow(timeout_plan.source, services.catalog)
+    assert "private timeout details" not in str(timeout.value)
+    assert "catalog.test" not in repr(timeout.value.details)
+
+
+@pytest.mark.asyncio
 async def test_external_catalog_rejects_remote_scripts(services):
     async def handler(_request: httpx.Request) -> httpx.Response:
         return httpx.Response(
@@ -182,6 +284,36 @@ async def test_external_catalog_rejects_remote_scripts(services):
     plan = compile_workflow(_workflow(), trusted_catalogs={"trusted": resolver.policies["trusted"]})
     with pytest.raises(UnsupportedWorkflowFeature, match="script functions"):
         await resolver.resolve_workflow(plan.source, services.catalog)
+
+
+@pytest.mark.asyncio
+async def test_external_catalog_rejects_authorization_headers_in_function_definition(services):
+    async def handler(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text="""\
+call: http
+with:
+  endpoint: https://api.test/echo
+  headers:
+    Authorization: Bearer secret
+""",
+        )
+
+    resolver = _resolver(handler)
+    plan = compile_workflow(_workflow(), trusted_catalogs={"trusted": resolver.policies["trusted"]})
+    with pytest.raises(UnsupportedWorkflowFeature, match="authorization headers") as error:
+        await resolver.resolve_workflow(plan.source, services.catalog)
+    assert "secret" not in str(error.value)
+
+
+def test_external_catalog_requires_exact_semantic_version():
+    workflow = _workflow()
+    workflow["do"][0]["remote"]["call"] = "echo:latest@trusted"  # type: ignore[index]
+    policy = ExternalCatalogConfig(allowed_hosts=["catalog.test"])
+
+    with pytest.raises(UnsupportedWorkflowFeature, match="is not enabled"):
+        compile_workflow(workflow, trusted_catalogs={"trusted": policy})
 
 
 @pytest.mark.asyncio
