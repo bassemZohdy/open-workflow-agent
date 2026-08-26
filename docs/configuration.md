@@ -1,6 +1,20 @@
 # Configuration Reference
 
-Open Workflow Agent uses strict YAML configuration with environment-variable overrides. For normal use, configuration is mounted into the published GHCR image; changing configuration, workflows, knowledge, memory, persistence, tools, or model providers does not require rebuilding the image.
+Open Workflow Agent uses strict YAML configuration with environment-variable overrides. For normal use, configuration is mounted into a published container image; changing configuration, workflows, knowledge, memory, persistence, tools, or model providers does not require rebuilding the image.
+
+Docker Hub is the default registry in end-user examples:
+
+```text
+bzohdy/open-workflow-agent-adk:<tag>
+bzohdy/open-workflow-agent-langgraph:<tag>
+```
+
+The same verified builds and tags are also published to the canonical GitHub Container Registry (GHCR):
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk:<tag>
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<tag>
+```
 
 Published images use:
 
@@ -13,7 +27,7 @@ Published images use:
 Example image:
 
 ```text
-ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+bzohdy/open-workflow-agent-adk:latest
 ```
 
 The same configuration works with the LangGraph image when the selected features are in the common portable profile.
@@ -58,7 +72,7 @@ docker run --rm \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+  bzohdy/open-workflow-agent-adk:latest
 ```
 
 Environment values are parsed as YAML values, so booleans and numbers can be supplied naturally.
@@ -205,7 +219,7 @@ docker run --rm \
   -e OWA__MODEL__PROVIDER=litellm \
   -e 'OWA__MODEL__NAME=openai/<model-name>' \
   -e OPENAI_API_KEY \
-  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+  bzohdy/open-workflow-agent-adk:latest
 ```
 
 ### Anthropic
@@ -533,6 +547,6 @@ Do not place API keys, passwords, or bearer tokens directly in ordinary workflow
 
 ## Source code is not required for configuration
 
-Configuration, model selection, workflows, mounted knowledge, persistence endpoints, and configured tools are external runtime inputs. End users should change these inputs around the published GHCR image rather than editing or rebuilding the Open Workflow Agent source tree.
+Configuration, model selection, workflows, mounted knowledge, persistence endpoints, and configured tools are external runtime inputs. End users should change these inputs around the published Docker Hub or GHCR image rather than editing or rebuilding the Open Workflow Agent source tree.
 
 Source checkout/build instructions are intentionally kept in the [developer guide](development.md).
