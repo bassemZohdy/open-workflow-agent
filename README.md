@@ -16,6 +16,17 @@ Use Open Workflow Agent when you want to:
 
 Every invocation is executed as a workflow. If you do not provide a workflow, Open Workflow Agent generates a default one that calls the configured agent.
 
+## Published container images
+
+Stable releases publish separate engine images to GitHub Container Registry after the full GitHub Actions CI gate succeeds for the tagged commit:
+
+```bash
+docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+```
+
+Each stable release also publishes the matching minor-series tag, `latest`, and an immutable source-SHA tag. Release images include SBOM/provenance metadata and GitHub build provenance attestations. See the [deployment guide](docs/deployment.md) for the release process and package visibility details.
+
 ## 5-minute quick start
 
 ### 1. Clone the repository
@@ -195,7 +206,7 @@ Use `/v1/capabilities` to discover what the selected engine/runtime version supp
 - [Getting started](docs/getting-started.md) — run the project and invoke your first agent.
 - [Configuration](docs/configuration.md) — complete runtime configuration reference.
 - [API guide](docs/api.md) — HTTP endpoints and request/response examples.
-- [Deployment guide](docs/deployment.md) — Docker, persistence, Kubernetes/OpenShift considerations.
+- [Deployment guide](docs/deployment.md) — Docker, GHCR releases, persistence, Kubernetes/OpenShift considerations.
 - [Developer guide](docs/development.md) — repository structure, tests, engine boundaries, and contribution workflow.
 - [Project Definition](Project%20Definition.md) — authoritative architecture and product contract.
 - [PROJECT.md](PROJECT.md) — verified implementation status.
