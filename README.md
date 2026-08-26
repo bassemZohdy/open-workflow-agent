@@ -196,9 +196,21 @@ curl -X POST http://localhost:8080/v1/admin/knowledge/reload
 
 ## Real LLM providers
 
-The runtime supports LiteLLM through the optional `model` dependency. Provider credentials belong in deployment secrets/environment variables, not workflow files.
+The standard ADK and LangGraph release images bundle the locked LiteLLM runtime, so real providers can be selected entirely through configuration without cloning the source repository or rebuilding the image.
 
-The current base engine images do not install the optional LiteLLM `model` extra. The published images are therefore directly usable with the built-in deterministic model and all non-LiteLLM runtime capabilities. A model-enabled image variant is required before a real LiteLLM provider can be used without rebuilding. See [configuration](docs/configuration.md) and [deployment](docs/deployment.md) for this current limitation.
+Example:
+
+```yaml
+model:
+  provider: litellm
+  name: provider/model
+```
+
+Supply the provider-specific API key and other credentials through Docker/Kubernetes/OpenShift secrets or environment variables expected by the selected LiteLLM provider. Do not put credentials in workflow files.
+
+CI intentionally continues to use `fake/default`; publishing and testing the runtime never requires a paid model API.
+
+See [configuration](docs/configuration.md) and [deployment](docs/deployment.md) for runtime configuration and secret-injection examples.
 
 ## Main API
 
