@@ -8,6 +8,7 @@ import pytest
 from open_workflow_agent.config import SandboxConfig
 from open_workflow_agent.errors import (
     SandboxOutputLimitError,
+    SandboxPolicyError,
     SandboxProcessError,
     SandboxResourceLimitError,
     SandboxTimeoutError,
@@ -122,6 +123,34 @@ async def test_internal_script_resolves_only_approved_secret_reference(
 
 
 @pytest.mark.asyncio
+async def test_runtime_generated_errors_do_not_echo_approved_secret(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    secret = "sandbox-secret-value-that-must-not-be-logged"
+    monkeypatch.setenv("SANDBOX_TEST_SECRET", secret)
+    backend = InternalSandboxBackend(
+        SandboxConfig(
+            enabled=True,
+            allow_shell=True,
+            workspace_root=str(tmp_path / "sandbox"),
+            secret_environment=["SANDBOX_TEST_SECRET"],
+            memory_bytes=None,
+        )
+    )
+    with pytest.raises(SandboxProcessError) as error:
+        await backend.execute(
+            SandboxExecutionRequest(
+                execution_id="secret-error",
+                kind="shell",
+                command="false",
+                environment=(("TOKEN", SandboxSecretReference("SANDBOX_TEST_SECRET")),),
+            )
+        )
+    assert secret not in str(error.value)
+    assert secret not in repr(error.value.details)
+
+
+@pytest.mark.asyncio
 async def test_internal_sandbox_enforces_timeout_output_and_exit_status(tmp_path: Path) -> None:
     timeout_backend = InternalSandboxBackend(
         SandboxConfig(
@@ -175,6 +204,35 @@ async def test_internal_sandbox_enforces_timeout_output_and_exit_status(tmp_path
 
 
 @pytest.mark.asyncio
+async def test_internal_sandbox_rejects_invalid_runtime_and_executable(tmp_path: Path) -> None:
+    backend = InternalSandboxBackend(
+        SandboxConfig(
+            enabled=True,
+            allow_shell=True,
+            workspace_root=str(tmp_path / "sandbox"),
+            memory_bytes=None,
+        )
+    )
+    with pytest.raises(SandboxPolicyError, match="runtime"):
+        await backend.execute(
+            SandboxExecutionRequest(
+                execution_id="runtime",
+                kind="script",
+                script_language="node",
+                script_code="console.log('x')",
+            )
+        )
+    with pytest.raises(SandboxPolicyError, match="not available"):
+        await backend.execute(
+            SandboxExecutionRequest(
+                execution_id="executable",
+                kind="shell",
+                command="owa-command-that-does-not-exist",
+            )
+        )
+
+
+@pytest.mark.asyncio
 async def test_internal_sandbox_enforces_workspace_limit(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
         SandboxConfig(
@@ -224,6 +282,143 @@ async def test_cancelling_execution_terminates_and_cleans_workspace(tmp_path: Pa
     assert not any(root.iterdir())
 
 
+@pytest.mark.asyncio
+@pytest.mark.skipif(os.name != "posix", reason="process groups are POSIX specific")
+async def test_cancellation_terminates_descendant_process_tree(tmp_path: Path) -> None:
+    root = tmp_path / "tree"
+    pid_file = tmp_path / "child.pid"
+    backend = InternalSandboxBackend(
+        SandboxConfig(enabled=True, workspace_root=str(root), memory_bytes=None)
+    )
+    task = asyncio.create_task(
+        backend.execute(
+            SandboxExecutionRequest(
+                execution_id="tree",
+                kind="script",
+                script_language="python",
+                arguments=(str(pid_file),),
+                script_code=(
+                    "import subprocess, sys, time\n"
+                    "from pathlib import Path\n"
+                    "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'])\n"
+                    "Path(sys.argv[1]).write_text(str(child.pid))\n"
+                    "time.sleep(30)\n"
+                ),
+            )
+        )
+    )
+    for _ in range(100):
+        if pid_file.exists():
+            break
+        await asyncio.sleep(0.02)
+    assert pid_file.exists()
+    child_pid = int(pid_file.read_text())
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    for _ in range(100):
+        stat = Path(f"/proc/{child_pid}/stat")
+        if not stat.exists():
+            break
+        try:
+            state = stat.read_text().split()[2]
+        except FileNotFoundError:
+            break
+        if state == "Z":
+            break
+        await asyncio.sleep(0.02)
+    else:
+        pytest.fail("sandbox descendant process remained running after cancellation")
+    assert not any(root.iterdir())
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(os.name != "posix", reason="file descriptor inheritance is POSIX specific")
+async def test_child_does_not_inherit_parent_file_descriptors(tmp_path: Path) -> None:
+    inherited = tmp_path / "parent-only.txt"
+    with inherited.open("w+") as handle:
+        os.set_inheritable(handle.fileno(), True)
+        backend = InternalSandboxBackend(
+            SandboxConfig(
+                enabled=True,
+                workspace_root=str(tmp_path / "sandbox"),
+                memory_bytes=None,
+            )
+        )
+        result = await backend.execute(
+            SandboxExecutionRequest(
+                execution_id="fd",
+                kind="script",
+                script_language="python",
+                arguments=(str(handle.fileno()),),
+                script_code=(
+                    "import os, sys\n"
+                    "try:\n"
+                    "    os.fstat(int(sys.argv[1]))\n"
+                    "except OSError:\n"
+                    "    print('closed')\n"
+                    "else:\n"
+                    "    print('inherited')\n"
+                ),
+            )
+        )
+    assert result.stdout == "closed\n"
+
+
+@pytest.mark.asyncio
+async def test_concurrent_success_and_failure_cleanup(tmp_path: Path) -> None:
+    root = tmp_path / "concurrent"
+    backend = InternalSandboxBackend(
+        SandboxConfig(enabled=True, workspace_root=str(root), memory_bytes=None)
+    )
+    results = await asyncio.gather(
+        backend.execute(
+            SandboxExecutionRequest(
+                execution_id="ok",
+                kind="script",
+                script_language="python",
+                script_code="print('ok')\n",
+            )
+        ),
+        backend.execute(
+            SandboxExecutionRequest(
+                execution_id="fail",
+                kind="script",
+                script_language="python",
+                script_code="raise SystemExit(9)\n",
+            )
+        ),
+        return_exceptions=True,
+    )
+    assert results[0].stdout == "ok\n"  # type: ignore[union-attr]
+    assert isinstance(results[1], SandboxProcessError)
+    assert list(root.iterdir()) == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(os.name != "posix", reason="POSIX resource limits are Linux/Unix specific")
+async def test_posix_cpu_limit_terminates_runaway_process(tmp_path: Path) -> None:
+    backend = InternalSandboxBackend(
+        SandboxConfig(
+            enabled=True,
+            workspace_root=str(tmp_path / "sandbox"),
+            timeout_seconds=5,
+            cpu_seconds=1,
+            memory_bytes=None,
+        )
+    )
+    with pytest.raises(SandboxResourceLimitError):
+        await backend.execute(
+            SandboxExecutionRequest(
+                execution_id="cpu-limit",
+                kind="script",
+                script_language="python",
+                script_code="while True:\n    pass\n",
+            )
+        )
+
+
 @pytest.mark.skipif(os.name != "posix", reason="POSIX resource limits are Linux/Unix specific")
 def test_posix_capabilities_advertise_resource_limits(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
@@ -232,4 +427,5 @@ def test_posix_capabilities_advertise_resource_limits(tmp_path: Path) -> None:
     capabilities = backend.capabilities()
     assert capabilities["resourceLimits"]["posixRlimit"] is True
     assert capabilities["hardIsolation"] is False
+    assert capabilities["filesystemIsolation"] == "workspace_cwd_only"
     assert capabilities["networkIsolation"] == "none"
