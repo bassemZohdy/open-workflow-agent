@@ -230,30 +230,115 @@ The runtime and engine-specific durable state use isolated namespaces; ADK and L
 
 ## Use a real LLM provider
 
-The standard release images include the locked LiteLLM runtime. Replace the fake model configuration with the provider/model identifier you want to use:
+The standard release images include LiteLLM. Set `provider: litellm`, then use the LiteLLM provider prefix in the model name.
+
+Common patterns:
+
+| Provider | Model name | Credential / connection |
+| --- | --- | --- |
+| OpenAI | `openai/<model>` | `OPENAI_API_KEY` |
+| Anthropic | `anthropic/<model>` | `ANTHROPIC_API_KEY` |
+| OpenRouter | `openrouter/<provider>/<model>` | `OPENROUTER_API_KEY` |
+| Ollama | `ollama/<local-model>` | `api_base`, usually no key |
+| Other | `<litellm-provider-prefix>/<model>` | provider-specific LiteLLM variables |
+
+### OpenAI
 
 ```yaml
 model:
   provider: litellm
-  name: provider/model
-  temperature: 0.1
+  name: openai/<model-name>
 ```
-
-Then supply provider credentials through environment variables or your deployment secret mechanism. For example, if the selected provider expects `PROVIDER_API_KEY`:
 
 ```bash
-docker run --rm --name open-workflow-agent \
-  -p 8080:8080 \
-  -e PROVIDER_API_KEY \
-  -v "$(pwd)/config:/config:ro" \
-  -v "$(pwd)/knowledge:/knowledge:ro" \
-  -v "$(pwd)/data:/data" \
-  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+export OPENAI_API_KEY=replace-me
 ```
 
-Use the actual environment-variable names required by the selected LiteLLM provider. Secrets must not be placed in ordinary workflow files.
+### Anthropic
 
-No source checkout, Python installation, or custom image build is required for the standard LiteLLM path.
+```yaml
+model:
+  provider: litellm
+  name: anthropic/<model-name>
+```
+
+```bash
+export ANTHROPIC_API_KEY=replace-me
+```
+
+### OpenRouter
+
+```yaml
+model:
+  provider: litellm
+  name: openrouter/<provider>/<model-name>
+```
+
+```bash
+export OPENROUTER_API_KEY=replace-me
+```
+
+### Ollama
+
+When Open Workflow Agent runs in Docker and Ollama runs on the host:
+
+```yaml
+model:
+  provider: litellm
+  name: ollama/<local-model-name>
+  options:
+    api_base: http://host.docker.internal:11434
+```
+
+When both run in Kubernetes/OpenShift, use the Ollama service URL instead of `host.docker.internal`.
+
+### Repository Compose helper
+
+For local source-based development, copy the provided environment template:
+
+```bash
+cp .env.example .env
+```
+
+Then choose a provider in `.env`. Example OpenAI configuration:
+
+```dotenv
+MODEL_PROVIDER=litellm
+MODEL_NAME=openai/<model-name>
+OPENAI_API_KEY=replace-me
+```
+
+OpenRouter:
+
+```dotenv
+MODEL_PROVIDER=litellm
+MODEL_NAME=openrouter/<provider>/<model-name>
+OPENROUTER_API_KEY=replace-me
+```
+
+Ollama:
+
+```dotenv
+MODEL_PROVIDER=litellm
+MODEL_NAME=ollama/<local-model-name>
+OWA__MODEL__OPTIONS__API_BASE=http://host.docker.internal:11434
+```
+
+Then start one engine:
+
+```bash
+docker compose --profile adk up --build
+# or
+docker compose --profile langgraph up --build
+```
+
+The repository Compose file passes `.env` through to the selected runtime container, so LiteLLM can read provider-specific environment variables. `.env` is ignored by git; production deployments should use a proper secret manager.
+
+For any other LiteLLM provider, set `MODEL_NAME=<provider-prefix>/<model>` and add the credential/environment variables required by that provider. For custom/OpenAI-compatible endpoints you can also use `OWA__MODEL__OPTIONS__API_KEY`, `OWA__MODEL__OPTIONS__API_BASE`, and `OWA__MODEL__OPTIONS__API_VERSION`.
+
+See [configuration.md](configuration.md#model) for the full provider guide.
+
+No source checkout, Python installation, or custom image build is required for the standard LiteLLM path. CI continues to use `fake/default`, so project validation never needs a paid API key.
 
 ## Stop the runtime
 
