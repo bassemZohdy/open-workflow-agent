@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from open_workflow_agent.errors import ConfigurationError
+import asyncio
+
+import pytest
+from open_workflow_agent.catalog import CatalogContext, FakeModel, ManagedFunctionCapabilities
+from open_workflow_agent.errors import ConfigurationError, ToolError
 from open_workflow_agent.knowledge import (
     DeterministicEmbeddingProvider,
     KnowledgeService,
@@ -60,8 +64,6 @@ def test_knowledge_reindexes_when_embedding_identity_changes(tmp_path):
 
 
 def test_knowledge_watch_can_start_and_stop(tmp_path):
-    import asyncio
-
     async def run():
         knowledge = KnowledgeService(
             tmp_path / "knowledge",
@@ -120,8 +122,28 @@ def test_tools_are_external_configuration_not_workflow_state(tmp_path):
     services.close()
 
 
+def test_managed_catalog_context_scopes_runtime_services(tmp_path):
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    try:
+        context = CatalogContext(model=services.model, services=services)
+        assert isinstance(context.services, ManagedFunctionCapabilities)
+        assert context.services.agent_tools == services.agent_tools
+        assert not hasattr(context.services, "config")
+        assert not hasattr(context.services, "sandbox")
+        assert not hasattr(context.services, "memory")
+        assert (
+            asyncio.run(context.services.invoke_agent_tool("search_knowledge", {"query": ""})) == []
+        )
+        with pytest.raises(ToolError, match="not approved"):
+            asyncio.run(context.services.invoke_agent_tool("arbitrary-subprocess", {}))
+    finally:
+        services.close()
+
+
 def test_configured_sqlite_datasource_is_shared_by_durable_services(tmp_path):
-    from open_workflow_agent.catalog import FakeModel
     from open_workflow_agent.config import RuntimeConfig
     from open_workflow_agent.services import RuntimeServices
 

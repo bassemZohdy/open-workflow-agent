@@ -511,24 +511,63 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             raise SandboxPolicyError("sandbox service is unavailable")
         reference = str(state.variables.get("_task_reference", "unknown-task"))
         name = state.variables.get("_task_name", "run")
+        event = {
+            **self._task_event(reference, name, state),
+            "execution_id": request.execution_id,
+        }
+        self._emit("SandboxExecutionStarted", {**event, "status": "running"})
         self._emit(
             "TaskProgress",
             {
-                **self._task_event(reference, name, state),
+                **event,
                 "status": "running",
                 "progress": {"phase": "sandbox_start"},
             },
         )
-        result = await self._await_with_cancellation(self.services.sandbox.execute(request), state)
+        try:
+            result = await self._await_with_cancellation(
+                self.services.sandbox.execute(request), state
+            )
+        except asyncio.CancelledError:
+            self._emit(
+                "SandboxExecutionCancelled",
+                {
+                    **event,
+                    "status": "cancelled",
+                    "error": {"code": "invocation_cancelled"},
+                },
+            )
+            raise
+        except Exception as exc:
+            code = getattr(exc, "code", "sandbox_error")
+            self._emit(
+                "SandboxExecutionFailed",
+                {
+                    **event,
+                    "status": "faulted",
+                    "error": {"code": str(code)},
+                },
+            )
+            raise
+        typed_result = cast(SandboxExecutionResult, result)
+        self._emit(
+            "SandboxExecutionCompleted",
+            {
+                **event,
+                "status": "completed",
+                "duration": typed_result.duration,
+            },
+        )
         self._emit(
             "TaskProgress",
             {
-                **self._task_event(reference, name, state),
+                **event,
                 "status": "running",
+                "duration": typed_result.duration,
                 "progress": {"phase": "sandbox_finished"},
             },
         )
-        return cast(SandboxExecutionResult, result).as_output()
+        return typed_result.as_output()
 
     def _stdin(self, definition: Mapping[str, Any], state: ExecutionState) -> str | None:
         value = definition.get("stdin")
