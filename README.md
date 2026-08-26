@@ -8,53 +8,82 @@ You provide configuration, an optional workflow, optional knowledge, and optiona
 
 Use Open Workflow Agent when you want to:
 
-- run a simple AI agent from configuration only;
+- run an AI agent from configuration;
 - add knowledge, memory, tools, or workflows without changing application code;
 - keep workflow definitions portable across supported execution engines;
 - expose the runtime through a stable HTTP API;
-- run locally, in Docker, or on Kubernetes/OpenShift.
+- run the same packaged runtime in Docker, Kubernetes, or OpenShift.
 
-Every invocation is executed as a workflow. If you do not provide a workflow, Open Workflow Agent generates a default one that calls the configured agent.
+Every invocation is executed as a workflow. If you do not provide a workflow, Open Workflow Agent generates a default workflow that calls the configured agent.
 
 ## Published container images
 
-Stable releases publish separate engine images to GitHub Container Registry after the full GitHub Actions CI gate succeeds for the tagged commit:
+End users should use the prebuilt images published to GitHub Container Registry (GHCR). Building from source is only required for development or for creating a customized runtime image.
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk:<version>
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<version>
+```
+
+For example, after release `0.1.0` is published:
 
 ```bash
 docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
 docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
 ```
 
-Each stable release also publishes the matching minor-series tag, `latest`, and an immutable source-SHA tag. Release images include SBOM/provenance metadata and GitHub build provenance attestations. See the [deployment guide](docs/deployment.md) for the release process and package visibility details.
+Stable releases also publish the matching minor-series tag, `latest`, and an immutable source-SHA tag. For production, prefer an explicit version such as `0.1.0` rather than `latest`.
+
+Release images are published only after the GitHub Actions quality, engine, CTK, Docker, restart/resume, and persistence gates succeed. They include SBOM/provenance metadata and GitHub build provenance attestations.
 
 ## 5-minute quick start
 
-### 1. Clone the repository
+You need Docker only. No source checkout or Python environment is required.
+
+### 1. Create runtime directories
 
 ```bash
-git clone https://github.com/bassemZohdy/open-workflow-agent.git
-cd open-workflow-agent
+mkdir -p owa/config owa/knowledge owa/data
+cd owa
 ```
 
-### 2. Start one engine
+Create `config/agent.yaml`:
 
-The repository includes a deterministic `fake/default` model so you can validate the runtime without an API key or paid model.
+```yaml
+model:
+  provider: fake
+  name: fake/default
+```
+
+The deterministic `fake/default` model lets you validate the runtime without an API key or paid model.
+
+### 2. Pull and start one engine
+
+ADK:
 
 ```bash
-cp .env.example .env
-docker compose --profile adk up --build
+docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
+
+docker run --rm --name open-workflow-agent \
+  -p 8080:8080 \
+  -v "$(pwd)/config:/config:ro" \
+  -v "$(pwd)/knowledge:/knowledge:ro" \
+  -v "$(pwd)/data:/data" \
+  ghcr.io/bassemzohdy/open-workflow-agent-adk:0.1.0
 ```
 
-Or start LangGraph instead:
+LangGraph uses the same configuration and mounts; only the image changes:
 
 ```bash
-docker compose --profile langgraph up --build
+docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
+
+docker run --rm --name open-workflow-agent \
+  -p 8080:8080 \
+  -v "$(pwd)/config:/config:ro" \
+  -v "$(pwd)/knowledge:/knowledge:ro" \
+  -v "$(pwd)/data:/data" \
+  ghcr.io/bassemzohdy/open-workflow-agent-langgraph:0.1.0
 ```
-
-Default ports:
-
-- ADK: `http://localhost:8080`
-- LangGraph: `http://localhost:8081`
 
 ### 3. Check readiness
 
@@ -73,16 +102,22 @@ Expected response:
 ```bash
 curl -X POST http://localhost:8080/v1/invoke \
   -H 'Content-Type: application/json' \
-  -d '{
-    "input": "Hello from Open Workflow Agent"
-  }'
+  -d '{"input":"Hello from Open Workflow Agent"}'
 ```
 
 The response includes an `invocation_id`, `session_id`, status, and output.
 
-## Minimal configuration
+## Configuration and mounted content
 
-Create `/config/agent.yaml` or set `OWA_CONFIG_FILE` to another path:
+The published images use these standard paths:
+
+```text
+/config     runtime configuration and workflow definitions
+/knowledge  read-only knowledge documents
+/data       writable runtime state
+```
+
+Minimal configuration:
 
 ```yaml
 model:
@@ -90,7 +125,7 @@ model:
   name: fake/default
 ```
 
-A more typical configuration can include an agent instruction, workflow, knowledge, memory, persistence, tools, and server settings.
+A typical configuration can add an agent instruction, workflow, knowledge, memory, persistence, and tools without rebuilding the image.
 
 ```yaml
 agent:
@@ -110,9 +145,6 @@ knowledge:
 
 memory:
   enabled: auto
-
-persistence:
-  datasource: postgresql://owa:password@postgres:5432/owa
 ```
 
 Configuration precedence is:
@@ -121,20 +153,11 @@ Configuration precedence is:
 built-in defaults < YAML < environment variables
 ```
 
-Environment variables use the `OWA__...` convention, for example:
-
-```bash
-OWA__MODEL__NAME=fake/default
-OWA__SERVER__PORT=8080
-```
-
-Unknown configuration properties are rejected.
+Environment variables use the `OWA__...` convention.
 
 ## Add a workflow
 
-Open Workflow 1.0.3 is the only public workflow DSL.
-
-Example:
+Create `config/workflow.yaml`:
 
 ```yaml
 document:
@@ -150,39 +173,34 @@ do:
         input: ${ .question }
 ```
 
-Then invoke it with:
+Then point `config/agent.yaml` to it:
 
-```bash
-curl -X POST http://localhost:8080/v1/invoke \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "input": {
-      "question": "How can I renew my license?"
-    }
-  }'
+```yaml
+workflow:
+  path: /config/workflow.yaml
 ```
+
+No image rebuild is required.
 
 ## Add knowledge
 
-Mount files into `/knowledge`. Supported documents are indexed by the common knowledge service and exposed to agents through the `search_knowledge` tool.
+Place supported files in the host `knowledge/` directory. They are mounted into `/knowledge`, indexed by the common knowledge service, and exposed through `search_knowledge`.
 
-The production images package a local FastEmbed/ONNX `all-MiniLM-L6-v2` embedding model, so mounted knowledge does not require a separate paid embedding API.
+The production images package the local FastEmbed/ONNX `all-MiniLM-L6-v2` embedding model, so mounted knowledge does not require a separate paid embedding API.
 
-You can reload knowledge manually with:
+Reload manually with:
 
 ```bash
 curl -X POST http://localhost:8080/v1/admin/knowledge/reload
 ```
 
-## Use a real LLM provider
+## Real LLM providers
 
-The core runtime supports LiteLLM through the optional `model` dependency. Provider credentials should be supplied through deployment secrets/environment variables, not placed directly in workflow files.
+The runtime supports LiteLLM through the optional `model` dependency. Provider credentials belong in deployment secrets/environment variables, not workflow files.
 
-The current repository Dockerfiles are optimized for the default deterministic model and do not install the optional `model` extra. To use LiteLLM in a container, build an image that includes `open-workflow-agent[model]` (or add the equivalent locked dependency to the selected engine image).
+The current base engine images do not install the optional LiteLLM `model` extra. The published images are therefore directly usable with the built-in deterministic model and all non-LiteLLM runtime capabilities. A model-enabled image variant is required before a real LiteLLM provider can be used without rebuilding. See [configuration](docs/configuration.md) and [deployment](docs/deployment.md) for this current limitation.
 
 ## Main API
-
-The runtime exposes:
 
 ```text
 GET  /health/live
@@ -199,15 +217,15 @@ GET  /v1/schedules/{id}
 POST /v1/schedules/{id}/cancel
 ```
 
-Use `/v1/capabilities` to discover what the selected engine/runtime version supports rather than assuming every optional capability is portable.
+Use `/v1/capabilities` to discover the capabilities of the selected engine/runtime version.
 
 ## Documentation
 
-- [Getting started](docs/getting-started.md) — run the project and invoke your first agent.
-- [Configuration](docs/configuration.md) — complete runtime configuration reference.
+- [Getting started](docs/getting-started.md) — run a published image and invoke your first agent.
+- [Configuration](docs/configuration.md) — runtime configuration reference.
 - [API guide](docs/api.md) — HTTP endpoints and request/response examples.
-- [Deployment guide](docs/deployment.md) — Docker, GHCR releases, persistence, Kubernetes/OpenShift considerations.
-- [Developer guide](docs/development.md) — repository structure, tests, engine boundaries, and contribution workflow.
+- [Deployment guide](docs/deployment.md) — GHCR images, persistence, Docker, Kubernetes, and OpenShift.
+- [Developer guide](docs/development.md) — source checkout, repository structure, tests, and contribution workflow.
 - [Project Definition](Project%20Definition.md) — authoritative architecture and product contract.
 - [PROJECT.md](PROJECT.md) — verified implementation status.
 - [TODO.md](TODO.md) — active backlog.
@@ -226,21 +244,8 @@ Configuration + Open Workflow + Knowledge + Memory + Tools
              ADK                 LangGraph
 ```
 
-ADK and LangGraph are implementation engines, not public application contracts. The same public configuration and workflow are intended to remain portable when they use capabilities in the common profile.
-
-## Current scope
-
-The runtime currently supports the common workflow/core capabilities already verified by the shared contract and CI suites, including deterministic workflow execution, agent/LLM catalog calls, knowledge, memory, persistence, HTTP/MCP/A2A/OpenAPI protocol adapters, lifecycle events, bounded scheduling, local sub-workflows, cancellation, and resume where supported.
-
-The project does not claim full Open Workflow, MCP, A2A, or OpenAPI ecosystem conformance. Shell/script execution and external remote catalogs are disabled by default.
+ADK and LangGraph are implementation engines, not public application contracts. The same mounted configuration and workflow should remain portable when they use capabilities in the common profile.
 
 ## Development
 
-For local development:
-
-```bash
-uv sync --locked
-uv run pytest -q
-```
-
-See [docs/development.md](docs/development.md) for the full validation matrix and engine-specific commands.
+Source checkout is only needed when contributing to or customizing the runtime. See [docs/development.md](docs/development.md) for local development, tests, and image builds.
