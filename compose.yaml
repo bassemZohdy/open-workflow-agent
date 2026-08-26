@@ -30,12 +30,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
     environment:
       OWA__MODEL__PROVIDER: ${MODEL_PROVIDER:-fake}
       OWA__MODEL__NAME: ${MODEL_NAME:-fake/default}
       OWA__PERSISTENCE__DATASOURCE: postgresql://${POSTGRES_USER:-owa}:${POSTGRES_PASSWORD:-owa-local-only}@postgres:5432/${POSTGRES_DB:-owa}
       OWA__KNOWLEDGE__PATH: /knowledge
       OWA__SERVER__HOST: 0.0.0.0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${ADK_PORT:-8080}:8080"
     volumes:
@@ -59,12 +64,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
     environment:
       OWA__MODEL__PROVIDER: ${MODEL_PROVIDER:-fake}
       OWA__MODEL__NAME: ${MODEL_NAME:-fake/default}
       OWA__PERSISTENCE__DATASOURCE: postgresql://${POSTGRES_USER:-owa}:${POSTGRES_PASSWORD:-owa-local-only}@postgres:5432/${POSTGRES_DB:-owa}
       OWA__KNOWLEDGE__PATH: /knowledge
       OWA__SERVER__HOST: 0.0.0.0
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${LANGGRAPH_PORT:-8081}:8080"
     volumes:
