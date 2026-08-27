@@ -46,11 +46,10 @@ class AgentFrameworkNativeAdapter:
 
         executor_base = Executor
         workflow_builder = WorkflowBuilder
-        workflow_context = WorkflowContext
         handler_decorator = handler
         assert executor_base is not None
         assert workflow_builder is not None
-        assert workflow_context is not None
+        assert WorkflowContext is not None
         assert handler_decorator is not None
 
         class OpenWorkflowExecutor(executor_base):  # type: ignore[misc,valid-type]
@@ -58,7 +57,7 @@ class AgentFrameworkNativeAdapter:
                 super().__init__(id="open-workflow-agent-portable-executor")
 
             @handler_decorator
-            async def process(self, value: Any, ctx: workflow_context[Any]) -> None:
+            async def process(self, value: Any, ctx: WorkflowContext[Any]) -> None:
                 await ctx.yield_output(await runner(value))
 
         executor = OpenWorkflowExecutor()
