@@ -38,7 +38,12 @@ build-backend = "hatchling.build"
 packages = ["core/src/open_workflow_agent"]
 
 [tool.pytest.ini_options]
-pythonpath = ["core/src", "engines/adk/src", "engines/langgraph/src"]
+pythonpath = [
+  "core/src",
+  "engines/adk/src",
+  "engines/langgraph/src",
+  "engines/agent-framework/src",
+]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 
