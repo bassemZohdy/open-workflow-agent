@@ -414,11 +414,13 @@ class SandboxConfig(StrictModel):
                 )
             if self.kubernetes.network == "denied" and not self.kubernetes.network_policy_enforced:
                 raise ValueError(
-                    "enabled Kubernetes sandbox requires network_policy_enforced=true for denied networking"
+                    "enabled Kubernetes sandbox requires network_policy_enforced=true "
+                    "for denied networking"
                 )
             if self.process_count is not None and not self.kubernetes.process_limit_enforced:
                 raise ValueError(
-                    "enabled Kubernetes sandbox requires process_limit_enforced=true when process_count is set"
+                    "enabled Kubernetes sandbox requires process_limit_enforced=true "
+                    "when process_count is set"
                 )
         return self
 
