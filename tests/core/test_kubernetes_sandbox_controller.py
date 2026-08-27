@@ -125,9 +125,7 @@ def test_controller_rejects_policy_downgrade() -> None:
         token="test",
         transport=httpx.MockTransport(lambda _request: httpx.Response(200)),
     )
-    request = _request(
-        isolation={**_request().isolation.model_dump(), "read_only_root": False}
-    )
+    request = _request(isolation={**_request().isolation.model_dump(), "read_only_root": False})
     with pytest.raises(ControllerFailure, match="read_only_root"):
         runner._validate_request(request)
 
@@ -152,9 +150,7 @@ async def test_api_runner_creates_waits_reads_logs_and_deletes() -> None:
             return httpx.Response(200, json={})
         return httpx.Response(404)
 
-    runner = KubernetesApiRunner(
-        _config(), token="test", transport=httpx.MockTransport(handler)
-    )
+    runner = KubernetesApiRunner(_config(), token="test", transport=httpx.MockTransport(handler))
     try:
         result = await runner.execute(_request())
     finally:
@@ -176,9 +172,7 @@ async def test_controller_cancel_is_idempotent_and_uses_derived_name() -> None:
         paths.append(request.url.path)
         return httpx.Response(404)
 
-    runner = KubernetesApiRunner(
-        _config(), token="test", transport=httpx.MockTransport(handler)
-    )
+    runner = KubernetesApiRunner(_config(), token="test", transport=httpx.MockTransport(handler))
     try:
         await runner.cancel("execution-1")
     finally:

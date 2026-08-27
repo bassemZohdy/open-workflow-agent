@@ -267,9 +267,13 @@ class KubernetesSandboxConfig(StrictModel):
             "localhost",
             "::1",
         }:
-            raise ValueError("sandbox kubernetes controller_url must use a loopback HTTP(S) endpoint")
+            raise ValueError(
+                "sandbox kubernetes controller_url must use a loopback HTTP(S) endpoint"
+            )
         if parsed.username or parsed.password or parsed.query or parsed.fragment:
-            raise ValueError("sandbox kubernetes controller_url cannot contain credentials or query data")
+            raise ValueError(
+                "sandbox kubernetes controller_url cannot contain credentials or query data"
+            )
         return selected
 
     @field_validator("allowed_images")

@@ -71,9 +71,7 @@ def test_sandbox_workload_network_is_default_deny(path: str) -> None:
 )
 def test_controller_and_workload_service_accounts_do_not_auto_mount_tokens(path: str) -> None:
     accounts = [
-        document
-        for document in _documents(path)
-        if document.get("kind") == "ServiceAccount"
+        document for document in _documents(path) if document.get("kind") == "ServiceAccount"
     ]
     assert {account["metadata"]["name"] for account in accounts} == {
         "owa-sandbox-controller",

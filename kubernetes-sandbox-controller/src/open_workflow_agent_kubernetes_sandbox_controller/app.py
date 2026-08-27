@@ -59,9 +59,7 @@ class ControllerConfig(StrictModel):
         allowed = _csv("OWA_K8S_CONTROLLER_ALLOWED_IMAGES")
         secret_keys = _csv("OWA_K8S_CONTROLLER_SECRET_KEYS")
         return cls(
-            api_server=os.getenv(
-                "OWA_K8S_CONTROLLER_API_SERVER", "https://kubernetes.default.svc"
-            ),
+            api_server=os.getenv("OWA_K8S_CONTROLLER_API_SERVER", "https://kubernetes.default.svc"),
             token_file=os.getenv(
                 "OWA_K8S_CONTROLLER_TOKEN_FILE",
                 "/var/run/secrets/owa-controller/token",
@@ -79,34 +77,18 @@ class ControllerConfig(StrictModel):
             secret_name=os.getenv("OWA_K8S_CONTROLLER_SECRET_NAME") or None,
             secret_keys=secret_keys,
             platform=os.getenv("OWA_K8S_CONTROLLER_PLATFORM", "kubernetes"),
-            network_policy_enforced=_env_bool(
-                "OWA_K8S_CONTROLLER_NETWORK_POLICY_ENFORCED", False
-            ),
-            process_limit_enforced=_env_bool(
-                "OWA_K8S_CONTROLLER_PROCESS_LIMIT_ENFORCED", False
-            ),
-            max_timeout_seconds=float(
-                os.getenv("OWA_K8S_CONTROLLER_MAX_TIMEOUT_SECONDS", "60")
-            ),
-            max_input_bytes=int(
-                os.getenv("OWA_K8S_CONTROLLER_MAX_INPUT_BYTES", "1048576")
-            ),
-            max_output_bytes=int(
-                os.getenv("OWA_K8S_CONTROLLER_MAX_OUTPUT_BYTES", "1048576")
-            ),
+            network_policy_enforced=_env_bool("OWA_K8S_CONTROLLER_NETWORK_POLICY_ENFORCED", False),
+            process_limit_enforced=_env_bool("OWA_K8S_CONTROLLER_PROCESS_LIMIT_ENFORCED", False),
+            max_timeout_seconds=float(os.getenv("OWA_K8S_CONTROLLER_MAX_TIMEOUT_SECONDS", "60")),
+            max_input_bytes=int(os.getenv("OWA_K8S_CONTROLLER_MAX_INPUT_BYTES", "1048576")),
+            max_output_bytes=int(os.getenv("OWA_K8S_CONTROLLER_MAX_OUTPUT_BYTES", "1048576")),
             max_workspace_bytes=int(
                 os.getenv("OWA_K8S_CONTROLLER_MAX_WORKSPACE_BYTES", "33554432")
             ),
-            max_memory_bytes=int(
-                os.getenv("OWA_K8S_CONTROLLER_MAX_MEMORY_BYTES", "536870912")
-            ),
-            max_process_count=int(
-                os.getenv("OWA_K8S_CONTROLLER_MAX_PROCESS_COUNT", "64")
-            ),
+            max_memory_bytes=int(os.getenv("OWA_K8S_CONTROLLER_MAX_MEMORY_BYTES", "536870912")),
+            max_process_count=int(os.getenv("OWA_K8S_CONTROLLER_MAX_PROCESS_COUNT", "64")),
             cpu_limit=os.getenv("OWA_K8S_CONTROLLER_CPU_LIMIT", "500m"),
-            ttl_seconds_after_finished=int(
-                os.getenv("OWA_K8S_CONTROLLER_TTL_SECONDS", "60")
-            ),
+            ttl_seconds_after_finished=int(os.getenv("OWA_K8S_CONTROLLER_TTL_SECONDS", "60")),
             poll_interval_seconds=float(
                 os.getenv("OWA_K8S_CONTROLLER_POLL_INTERVAL_SECONDS", "0.25")
             ),
@@ -286,7 +268,9 @@ class KubernetesApiRunner:
         if not token:
             raise ValueError("Kubernetes controller token is empty")
         verify: ssl.SSLContext | bool
-        verify = False if transport is not None else ssl.create_default_context(cafile=config.ca_file)
+        verify = (
+            False if transport is not None else ssl.create_default_context(cafile=config.ca_file)
+        )
         self._client = httpx.AsyncClient(
             base_url=config.api_server,
             headers={"Authorization": f"Bearer {token}"},
@@ -327,9 +311,7 @@ class KubernetesApiRunner:
                     phase = await self._wait_for_terminal(job_name)
             except TimeoutError as exc:
                 await self._delete_job(job_name)
-                raise ControllerFailure(
-                    "sandbox_timeout", "sandbox execution timed out"
-                ) from exc
+                raise ControllerFailure("sandbox_timeout", "sandbox execution timed out") from exc
 
             stdout = await self._read_logs(job_name, request.limits.max_output_bytes)
             if phase != "succeeded":
@@ -383,10 +365,7 @@ class KubernetesApiRunner:
         if limits.process_count is not None:
             if not self.config.process_limit_enforced:
                 self._policy_error("process_limit_enforced")
-            if (
-                limits.process_count <= 0
-                or limits.process_count > self.config.max_process_count
-            ):
+            if limits.process_count <= 0 or limits.process_count > self.config.max_process_count:
                 self._limit_error("process_count")
 
         isolation = request.isolation
@@ -414,10 +393,7 @@ class KubernetesApiRunner:
 
         for value in request.environment.values():
             if isinstance(value, SecretReference):
-                if (
-                    not self.config.secret_name
-                    or value.secret_ref not in self.config.secret_keys
-                ):
+                if not self.config.secret_name or value.secret_ref not in self.config.secret_keys:
                     self._policy_error("secret_ref")
 
     async def _wait_for_terminal(self, job_name: str) -> str:
@@ -463,9 +439,7 @@ class KubernetesApiRunner:
             async for chunk in log_response.aiter_bytes():
                 used += len(chunk)
                 if used > limit:
-                    raise ControllerFailure(
-                        "sandbox_output_limit", "sandbox output limit exceeded"
-                    )
+                    raise ControllerFailure("sandbox_output_limit", "sandbox output limit exceeded")
                 chunks.append(chunk)
         return b"".join(chunks).decode("utf-8", errors="replace")
 
