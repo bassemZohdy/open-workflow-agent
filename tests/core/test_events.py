@@ -14,7 +14,6 @@ async def test_event_bus_delivers_only_matching_one_strategy() -> None:
     receiving = asyncio.create_task(
         bus.receive({"one": {"with": {"type": "approval.granted", "subject": "case-1"}}})
     )
-    await asyncio.sleep(0)
     await bus.publish(
         {"id": "ignored", "type": "approval.denied", "subject": "case-1", "data": {}},
         default_source="urn:test",
@@ -38,6 +37,21 @@ async def test_event_bus_delivers_only_matching_one_strategy() -> None:
         "subject": "case-1",
         "data": {"approved": True},
     }
+
+
+@pytest.mark.asyncio
+async def test_event_bus_subscription_is_active_when_receive_returns() -> None:
+    bus = InMemoryEventBus()
+    receiving = bus.receive({"one": {"with": {"type": "case.ready"}}})
+
+    await bus.publish(
+        {"id": "ready-1", "type": "case.ready", "data": {"ready": True}},
+        default_source="urn:test",
+    )
+
+    event = await asyncio.wait_for(receiving, timeout=0.5)
+    assert event.id == "ready-1"
+    assert event.data == {"ready": True}
 
 
 def test_listen_rejects_unimplemented_strategies() -> None:
