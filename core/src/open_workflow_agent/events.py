@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import Mapping
+from collections.abc import Awaitable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
@@ -55,7 +55,7 @@ class EventBus(Protocol):
         self, properties: Mapping[str, Any], *, default_source: str
     ) -> EventEnvelope: ...
 
-    async def receive(self, strategy: Mapping[str, Any]) -> EventEnvelope: ...
+    def receive(self, strategy: Mapping[str, Any]) -> Awaitable[EventEnvelope]: ...
 
 
 class InMemoryEventBus:
@@ -64,6 +64,11 @@ class InMemoryEventBus:
     Delivery is broadcast to active matching listeners. It intentionally has no
     replay or durability semantics; deployments requiring those remain outside
     this milestone and must advertise a different capability.
+
+    Calling ``receive`` registers the listener synchronously before returning
+    its awaitable. This guarantees that a workflow may expose ``waiting`` only
+    after the matching in-process subscription exists, avoiding a lost-event
+    race between status observation and the first await of the receiver.
     """
 
     durable = False
@@ -84,17 +89,20 @@ class InMemoryEventBus:
                 queue.put_nowait(envelope)
         return envelope
 
-    async def receive(self, strategy: Mapping[str, Any]) -> EventEnvelope:
+    def receive(self, strategy: Mapping[str, Any]) -> Awaitable[EventEnvelope]:
         queue: asyncio.Queue[EventEnvelope] = asyncio.Queue()
-        async with self._lock:
-            subscriber_id = self._next_subscriber
-            self._next_subscriber += 1
-            self._subscribers[subscriber_id] = (strategy, queue)
-        try:
-            return await queue.get()
-        finally:
-            async with self._lock:
-                self._subscribers.pop(subscriber_id, None)
+        subscriber_id = self._next_subscriber
+        self._next_subscriber += 1
+        self._subscribers[subscriber_id] = (strategy, queue)
+
+        async def wait_for_event() -> EventEnvelope:
+            try:
+                return await queue.get()
+            finally:
+                async with self._lock:
+                    self._subscribers.pop(subscriber_id, None)
+
+        return wait_for_event()
 
 
 def _make_envelope(properties: Mapping[str, Any], *, default_source: str) -> EventEnvelope:
