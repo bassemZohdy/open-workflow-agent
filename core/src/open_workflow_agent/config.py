@@ -244,11 +244,77 @@ class DockerSandboxConfig(StrictModel):
         return self
 
 
+class KubernetesSandboxConfig(StrictModel):
+    """Deployment policy for a restricted Kubernetes/OpenShift controller sidecar."""
+
+    controller_url: str = "http://127.0.0.1:8090"
+    allowed_images: list[str] = Field(default_factory=list)
+    require_digest: bool = True
+    platform: Literal["kubernetes", "openshift"] = "kubernetes"
+    network: Literal["denied"] = "denied"
+    network_policy_enforced: bool = False
+    process_limit_enforced: bool = False
+    secret_name: str | None = None
+    secret_keys: list[str] = Field(default_factory=list)
+
+    @field_validator("controller_url")
+    @classmethod
+    def validate_controller_url(cls, value: str) -> str:
+        selected = value.strip().rstrip("/")
+        parsed = urlparse(selected)
+        if parsed.scheme not in {"http", "https"} or parsed.hostname not in {
+            "127.0.0.1",
+            "localhost",
+            "::1",
+        }:
+            raise ValueError(
+                "sandbox kubernetes controller_url must use a loopback HTTP(S) endpoint"
+            )
+        if parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise ValueError(
+                "sandbox kubernetes controller_url cannot contain credentials or query data"
+            )
+        return selected
+
+    @field_validator("allowed_images")
+    @classmethod
+    def validate_allowed_images(cls, value: list[str]) -> list[str]:
+        images = [image.strip() for image in value]
+        if any(not image for image in images):
+            raise ValueError("sandbox kubernetes allowed_images cannot contain empty values")
+        if len(set(images)) != len(images):
+            raise ValueError("sandbox kubernetes allowed_images must not contain duplicates")
+        return images
+
+    @field_validator("secret_keys")
+    @classmethod
+    def validate_secret_keys(cls, value: list[str]) -> list[str]:
+        keys = [key.strip() for key in value]
+        if any(not _ENVIRONMENT_NAME.fullmatch(key) for key in keys):
+            raise ValueError("sandbox kubernetes secret_keys must be valid environment-style names")
+        if len(set(keys)) != len(keys):
+            raise ValueError("sandbox kubernetes secret_keys must not contain duplicates")
+        return keys
+
+    @model_validator(mode="after")
+    def validate_policy(self) -> KubernetesSandboxConfig:
+        if self.require_digest:
+            invalid = [image for image in self.allowed_images if not _IMAGE_DIGEST.fullmatch(image)]
+            if invalid:
+                raise ValueError(
+                    "sandbox kubernetes allowed_images must use immutable sha256 digests when "
+                    "require_digest=true"
+                )
+        if self.secret_keys and not self.secret_name:
+            raise ValueError("sandbox kubernetes secret_name is required when secret_keys are set")
+        return self
+
+
 class SandboxConfig(StrictModel):
     """Deployment policy for the selected framework-neutral sandbox backend."""
 
     enabled: bool = False
-    backend: Literal["internal", "docker"] = "internal"
+    backend: Literal["internal", "docker", "kubernetes"] = "internal"
     allow_shell: bool = False
     script_runtimes: list[str] = Field(default_factory=lambda: ["python"])
     timeout_seconds: float = 30.0
@@ -264,6 +330,7 @@ class SandboxConfig(StrictModel):
     file_size_bytes: int | None = 33_554_432
     process_count: int | None = 64
     docker: DockerSandboxConfig = Field(default_factory=DockerSandboxConfig)
+    kubernetes: KubernetesSandboxConfig = Field(default_factory=KubernetesSandboxConfig)
 
     @field_validator("script_runtimes")
     @classmethod
@@ -340,6 +407,21 @@ class SandboxConfig(StrictModel):
             raise ValueError(
                 "enabled Docker sandbox requires at least one deployment-approved image"
             )
+        if self.enabled and self.backend == "kubernetes":
+            if not self.kubernetes.allowed_images:
+                raise ValueError(
+                    "enabled Kubernetes sandbox requires at least one deployment-approved image"
+                )
+            if self.kubernetes.network == "denied" and not self.kubernetes.network_policy_enforced:
+                raise ValueError(
+                    "enabled Kubernetes sandbox requires network_policy_enforced=true "
+                    "for denied networking"
+                )
+            if self.process_count is not None and not self.kubernetes.process_limit_enforced:
+                raise ValueError(
+                    "enabled Kubernetes sandbox requires process_limit_enforced=true "
+                    "when process_count is set"
+                )
         return self
 
 

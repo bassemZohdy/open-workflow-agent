@@ -98,6 +98,7 @@ async def test_docker_backend_sends_only_bounded_controller_contract(
 
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/v1/executions"
+        assert request.headers["content-type"] == "application/json"
         captured.update(json.loads(request.content))
         return httpx.Response(
             200,

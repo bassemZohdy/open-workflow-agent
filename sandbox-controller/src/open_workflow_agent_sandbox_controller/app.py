@@ -421,6 +421,10 @@ class DockerCliRunner:
     ) -> tuple[str, ...]:
         temporary_bytes = max(1, request.limits.max_workspace_bytes // 4)
         workspace_bytes = max(1, request.limits.max_workspace_bytes - temporary_bytes)
+        uid, separator, gid = self.config.run_as_user.partition(":")
+        if not separator:
+            gid = uid
+        tmpfs_owner = f"mode=0700,uid={uid},gid={gid}"
         argv = [
             self.config.docker_binary,
             "run",
@@ -442,9 +446,9 @@ class DockerCliRunner:
             "--workdir",
             "/workspace",
             "--tmpfs",
-            f"/tmp:rw,noexec,nosuid,nodev,size={temporary_bytes}",
+            f"/tmp:rw,noexec,nosuid,nodev,{tmpfs_owner},size={temporary_bytes}",
             "--tmpfs",
-            f"/workspace:rw,noexec,nosuid,nodev,size={workspace_bytes}",
+            f"/workspace:rw,noexec,nosuid,nodev,{tmpfs_owner},size={workspace_bytes}",
             "--ulimit",
             "nofile=1024:1024",
             "--env-file",

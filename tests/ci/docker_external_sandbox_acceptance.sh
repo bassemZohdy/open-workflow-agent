@@ -189,7 +189,7 @@ python - "$capabilities" <<'PY'
 import json
 import sys
 
-value = json.loads(sys.argv[1])["sandbox"]
+value = json.loads(sys.argv[1])["features"]["sandbox"]
 assert value["backend"] == "docker"
 assert value["container"]["enabled"] is True
 assert value["container"]["ports"] is False
@@ -200,27 +200,35 @@ assert value["hardIsolation"] is True
 assert value["controllerTransport"] == "unix_socket"
 PY
 
-invocation="$(curl --fail --silent \
+invocation_response="$workdir/invocation.json"
+invocation_status="$(curl --silent --output "$invocation_response" --write-out '%{http_code}' \
   --request POST \
   --header 'content-type: application/json' \
   --data '{"input":{}}' \
   "http://127.0.0.1:${port}/v1/invoke")"
-python - "$invocation" <<'PY'
+if test "$invocation_status" != "200"; then
+  echo "external sandbox invocation returned HTTP ${invocation_status}" >&2
+  cat "$invocation_response" >&2
+  exit 1
+fi
+python - "$invocation_response" <<'PY'
 import json
 import sys
+from pathlib import Path
 
-value = json.loads(sys.argv[1])
+value = json.loads(Path(sys.argv[1]).read_text())
 assert value["status"] == "completed"
 output = value["output"]
 assert output["exitCode"] == 0
 assert output["stderr"] == ""
 probe = json.loads(output["stdout"])
-assert probe == {
+expected = {
     "network_denied": True,
     "root_read_only": True,
     "secret_resolved": True,
     "workspace_ok": True,
 }
+assert probe == expected, f"unexpected external sandbox isolation probe: {probe!r}"
 PY
 
 make_payload() {

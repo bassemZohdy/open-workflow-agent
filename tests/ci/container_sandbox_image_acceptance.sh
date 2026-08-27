@@ -16,6 +16,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
+wait_for_empty_workspace() {
+  for attempt in $(seq 1 100); do
+    if docker exec "$name" sh -eu -c \
+      'test -d /tmp/owa-sandbox; test -z "$(find /tmp/owa-sandbox -mindepth 1 -maxdepth 1 -print -quit)"'; then
+      return 0
+    fi
+    sleep 0.05
+  done
+  docker exec "$name" sh -eu -c \
+    'test -d /tmp/owa-sandbox; test -z "$(find /tmp/owa-sandbox -mindepth 1 -maxdepth 1 -print -quit)"'
+}
+
 mkdir -p "$workdir/config" "$workdir/knowledge" "$workdir/data"
 chmod 0777 "$workdir/data"
 cat > "$workdir/config/agent.yaml" <<'YAML'
@@ -118,7 +130,7 @@ assert result["status"] == "completed"
 assert result["output"] == {"exitCode": 0, "stdout": "shell-ok", "stderr": ""}
 PY
 
-docker exec "$name" sh -eu -c 'test -d /tmp/owa-sandbox; test -z "$(find /tmp/owa-sandbox -mindepth 1 -maxdepth 1 -print -quit)"'
+wait_for_empty_workspace
 
 curl --fail --silent --request POST --header 'content-type: application/json' \
   --data '{"input":{"delay":"30"}}' "http://127.0.0.1:${port}/v1/invoke" \
@@ -157,7 +169,7 @@ if path.exists() and path.stat().st_size:
     assert json.loads(path.read_text())["status"] == "cancelled"
 PY
 
-docker exec "$name" sh -eu -c 'test -z "$(find /tmp/owa-sandbox -mindepth 1 -maxdepth 1 -print -quit)"'
+wait_for_empty_workspace
 
 timeout_status="$(curl --silent --output "$workdir/timed-out.json" --write-out '%{http_code}' \
   --request POST --header 'content-type: application/json' \
@@ -172,7 +184,7 @@ result = json.loads(Path(sys.argv[1]).read_text())
 assert result["error"]["code"] == "sandbox_timeout"
 PY
 
-docker exec "$name" sh -eu -c 'test -z "$(find /tmp/owa-sandbox -mindepth 1 -maxdepth 1 -print -quit)"'
+wait_for_empty_workspace
 
 lifecycle="$(curl --fail --silent "http://127.0.0.1:${port}/v1/events/lifecycle?limit=50")"
 python - "$lifecycle" <<'PY'
