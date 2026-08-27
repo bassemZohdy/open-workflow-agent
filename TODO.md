@@ -12,19 +12,18 @@ Kubernetes/OpenShift sandbox execution remains unimplemented. Inbound A2A exposu
 
 ### Current integration head
 
-- PR #13 merged to `main` as `5ff07363887505da7017c872289cb7c2dc6ecfdc`.
-- PostgreSQL CI run `33039622426` started for the merged head; the common-store integration job passed and the remaining workflow state must be verified before closure.
-- Main CI run `33039622437` started for the merged head; root gates and ADK engine/CTK checks are green at the time this backlog was refreshed, while the remaining jobs must be verified before closure.
-- External Sandbox CI run `33039622427` started for the merged head; common external-sandbox contracts passed and the ADK/LangGraph Docker acceptance jobs still require a green self-hosted-runner result before Docker external sandbox production acceptance is recorded.
-- The Release workflow must be verified after the successful `main` CI completion. Untagged green `main` commits are expected to publish `latest` and `sha-*` images to GHCR and Docker Hub. A GitHub Release and semantic-version image tags are created only when a matching `vX.Y.Z` tag points at the verified commit.
+- PR #13 merged to `main` as code integration commit `5ff07363887505da7017c872289cb7c2dc6ecfdc`.
+- PostgreSQL CI run `33039622426` is green: common-store integration and ADK/LangGraph PostgreSQL container persistence/restart acceptance all passed.
+- Main CI run `33039622437` is still active for the merged code head. Root gates and ADK native/shared-contract/CTK checks are green; remaining engine/container jobs must complete before closure.
+- External Sandbox CI run `33039622427` has green common contract/security checks. ADK/LangGraph Docker external-sandbox acceptance remains queued on the self-hosted Linux/x64/Docker runner and must pass before Docker external sandbox production acceptance is recorded.
+- The Release workflow must be verified after successful `main` CI completion. Untagged green `main` code commits are expected to publish `latest` and `sha-*` images to GHCR and Docker Hub. A GitHub Release and semantic-version image tags are created only when a matching `vX.Y.Z` tag points at the verified commit.
 
 ## Active Backlog — Ordered
 
 ### B-006.5 — Close merged-head CI and release verification (P1)
 
-- [ ] Verify CI run `33039622437` completes green for root quality gates, both engine-native/shared contract suites, applicable CTK scenarios/provenance, hardened Docker-image acceptance, knowledge, external-catalog image acceptance, internal-sandbox image acceptance, and genuine stop/restart/resume behavior.
-- [ ] Verify PostgreSQL CI run `33039622426` completes green for isolated common stores and both engine persistence/restart paths.
-- [ ] Verify External Sandbox CI run `33039622427` completes green for both ADK and LangGraph Docker external-sandbox acceptance on the self-hosted Docker runner.
+- [ ] Verify CI run `33039622437` completes green for both engine-native/shared contract suites, applicable CTK scenarios/provenance, hardened Docker-image acceptance, knowledge, external-catalog image acceptance, internal-sandbox image acceptance, and genuine stop/restart/resume behavior. Root gates and ADK are already green.
+- [ ] Verify External Sandbox CI run `33039622427` completes green for both ADK and LangGraph Docker external-sandbox acceptance on the self-hosted Docker runner; both Docker jobs are currently queued.
 - [ ] Verify the Release workflow triggered by the successful `main` CI publishes both engine images to GHCR and Docker Hub with `latest` and `sha-5ff073638875` tags, correct OCI metadata, SBOM/provenance, and GHCR build provenance attestations.
 - [ ] Record the final CI/External Sandbox/PostgreSQL/Release run IDs, image digests, and acceptance status in `PROJECT.md`; remove these verification items from this file after they are proven green.
 
