@@ -4,7 +4,11 @@ import asyncio
 import json
 
 import pytest
-from open_workflow_agent.observability import InMemoryEventSink, LifecycleCloudEventSink, WorkflowEvent
+from open_workflow_agent.observability import (
+    InMemoryEventSink,
+    LifecycleCloudEventSink,
+    WorkflowEvent,
+)
 from open_workflow_agent.streaming import StreamLimits, lifecycle_sse_stream
 
 
@@ -70,9 +74,8 @@ def test_unknown_last_event_id_fails_closed() -> None:
     sink = _sink()
     sink.emit(_event("event-1"))
 
-    stream = lifecycle_sse_stream(sink, last_event_id="expired-event")
     with pytest.raises(LookupError, match="bounded replay window"):
-        asyncio.run(anext(stream))
+        lifecycle_sse_stream(sink, last_event_id="expired-event")
 
 
 @pytest.mark.asyncio
