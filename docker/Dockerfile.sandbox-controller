@@ -11,7 +11,6 @@ ENV PATH="/opt/venv/bin:/usr/local/bin:/usr/bin:/bin" \
 WORKDIR /app
 COPY sandbox-controller /app/sandbox-controller
 RUN pip install --no-cache-dir /app/sandbox-controller \
-    && adduser -D -H -u 65532 -G root owa-sandbox \
     && mkdir -p /run/owa-sandbox \
     && chown 65532:0 /run/owa-sandbox \
     && chmod 0770 /run/owa-sandbox
