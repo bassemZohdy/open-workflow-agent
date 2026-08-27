@@ -12,19 +12,24 @@ Kubernetes/OpenShift sandbox execution remains unimplemented. Inbound A2A exposu
 
 ### Current integration head
 
-- PR #13 merged to `main` as code integration commit `5ff07363887505da7017c872289cb7c2dc6ecfdc`.
+- `main` is currently at `2855e0deadc7ee9b9072f46b3f3847d54eb600fe`; there are no open pull requests.
+- PR #13 merged the external-sandbox baseline to `main` as code integration commit `5ff07363887505da7017c872289cb7c2dc6ecfdc`.
+- The historical `work/durable-hitl` branch still appears diverged because its seven implementation commits were squash-merged to `main` as commit `70e30d5c49a24a8549af41539ce20d0b3414f719`; the squash commit tree matches that branch head, so it does not represent missing HITL code.
 - PostgreSQL CI run `33039622426` is green: common-store integration and ADK/LangGraph PostgreSQL container persistence/restart acceptance all passed.
-- Main CI run `33039622437` is still active for the merged code head. Root gates and ADK native/shared-contract/CTK checks are green; remaining engine/container jobs must complete before closure.
+- Main CI run `33039622437` exposed a real LangGraph event-delivery race: a listener could advertise `waiting` before the in-memory event bus had registered its subscriber. The common event bus now registers synchronously before returning the awaitable, regression coverage was added, and the shared eventing contract now fails fast instead of consuming the full workflow timeout (`0818f832684424877b79a62c7ab8d5d8aba15196`, `531c3c9299de3785ab3867d7d7cd56937b0d8f7b`, `2855e0deadc7ee9b9072f46b3f3847d54eb600fe`).
+- Latest main CI run `33040262632` targets `2855e0deadc7ee9b9072f46b3f3847d54eb600fe` but is currently pending with zero jobs allocated. This must be resolved/verified before the eventing fix and merged head can be closed as green.
 - External Sandbox CI run `33039622427` has green common contract/security checks. ADK/LangGraph Docker external-sandbox acceptance remains queued on the self-hosted Linux/x64/Docker runner and must pass before Docker external sandbox production acceptance is recorded.
 - The Release workflow must be verified after successful `main` CI completion. Untagged green `main` code commits are expected to publish `latest` and `sha-*` images to GHCR and Docker Hub. A GitHub Release and semantic-version image tags are created only when a matching `vX.Y.Z` tag points at the verified commit.
 
 ## Active Backlog — Ordered
 
-### B-006.5 — Close merged-head CI and release verification (P1)
+### B-006.5 — Close current-head CI and release verification (P1)
 
-- [ ] Verify CI run `33039622437` completes green for both engine-native/shared contract suites, applicable CTK scenarios/provenance, hardened Docker-image acceptance, knowledge, external-catalog image acceptance, internal-sandbox image acceptance, and genuine stop/restart/resume behavior. Root gates and ADK are already green.
+- [ ] Investigate and resolve GitHub Actions scheduling for CI run `33040262632` if it remains pending with zero jobs allocated; distinguish GitHub-hosted scheduling/capacity issues from repository workflow configuration before changing CI logic.
+- [ ] Verify CI run `33040262632` (or a clean replacement run for the same/following accepted `main` head) completes green for root quality gates, both engine-native/shared contract suites, applicable CTK scenarios/provenance, hardened Docker-image acceptance, knowledge, external-catalog image acceptance, internal-sandbox image acceptance, and genuine stop/restart/resume behavior.
+- [ ] Confirm the LangGraph eventing regression is closed by proving the previously hanging `test_emit_and_listen_have_equivalent_common_results` path completes for both engines without relying on the outer eight-minute process timeout.
 - [ ] Verify External Sandbox CI run `33039622427` completes green for both ADK and LangGraph Docker external-sandbox acceptance on the self-hosted Docker runner; both Docker jobs are currently queued.
-- [ ] Verify the Release workflow triggered by the successful `main` CI publishes both engine images to GHCR and Docker Hub with `latest` and `sha-5ff073638875` tags, correct OCI metadata, SBOM/provenance, and GHCR build provenance attestations.
+- [ ] Verify the Release workflow triggered by a successful accepted `main` CI publishes both engine images to GHCR and Docker Hub with `latest` and the matching `sha-*` tags, correct OCI metadata, SBOM/provenance, and GHCR build provenance attestations.
 - [ ] Record the final CI/External Sandbox/PostgreSQL/Release run IDs, image digests, and acceptance status in `PROJECT.md`; remove these verification items from this file after they are proven green.
 
 ### B-006.3 — Kubernetes/OpenShift external sandbox backend (P1)
@@ -41,6 +46,22 @@ The common external-sandbox contract and Docker backend must remain the model. D
 - [ ] Advertise Kubernetes/OpenShift container execution through `/v1/capabilities` only after the relevant deterministic and deployment acceptance gates are green.
 
 **B-006 acceptance:** at least one stronger external backend is production-accepted and every advertised backend reuses the common sandbox contract, enforces its stated isolation guarantees, keeps infrastructure-native state private, and exposes `run.container` only when the selected backend safely supports it. Docker acceptance must be recorded green before the Docker backend is treated as production-accepted; Kubernetes/OpenShift remains a separate acceptance target.
+
+### D-001 — Reconcile authoritative documentation with implemented capabilities (P1)
+
+`Project Definition.md` is authoritative, but parts of its Future Portable Profile still describe durable HITL and external catalog support as deferred/disabled even though bounded implementations have since been merged. The authoritative description must not lag the runtime.
+
+- [ ] Reconcile `Project Definition.md` with the implemented durable approval/HITL behavior and the merged external-catalog profile, using current code, contract tests, `/v1/capabilities`, and `PROJECT.md` as evidence; remove only statements that are actually superseded.
+- [ ] Clearly distinguish process-local generic eventing from durable approval state/replay and document the exact operator authorization, expiry/idempotency, persistence, and portability boundaries that are implemented.
+- [ ] Document the exact accepted external-catalog trust/allowlist/pinning/cache/failure boundaries and keep unsupported remote behaviors explicitly fail-closed.
+- [ ] Recheck README/end-user/API/configuration/deployment documentation so advertised capabilities, examples, environment variables, and limitations match the authoritative definition and current runtime behavior.
+
+### OPS-001 — CI runner and repository governance hardening (P2, before formal release)
+
+- [ ] Ensure a maintained self-hosted runner with labels `[self-hosted, linux, x64, docker]` is online for Docker/container acceptance and external-sandbox workflows; document runner bootstrap, required Docker access, isolation expectations, patching, cleanup, and failure recovery.
+- [ ] Confirm GitHub-hosted CI jobs start reliably after the current pending-zero-jobs incident; if repository settings or workflow concurrency are contributing, correct them and add a small operational note to `PROJECT.md`/developer documentation.
+- [ ] Add a `main` branch protection rule or repository ruleset before the first formal release: require the stable CI status checks, prevent force-push/deletion, and define the controlled maintainer/admin exception path without blocking release automation.
+- [ ] Audit and prune stale merged/superseded branches after verifying their content is present on `main`, including old feature/CI/docs branches and scratch/tmp branches; retain a branch only when it still represents intentional unmerged work.
 
 ### B-007 — Optional inbound A2A exposure and portable streaming (P2, deferred)
 
