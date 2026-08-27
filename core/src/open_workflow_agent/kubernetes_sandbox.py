@@ -65,9 +65,7 @@ class KubernetesSandboxBackend:
             "container": {
                 "enabled": enabled,
                 "imagePolicy": (
-                    "exact_digest_allowlist"
-                    if selected.require_digest
-                    else "exact_allowlist"
+                    "exact_digest_allowlist" if selected.require_digest else "exact_allowlist"
                 ),
                 "ports": False,
                 "volumes": False,
@@ -106,9 +104,7 @@ class KubernetesSandboxBackend:
         if not image or image not in selected.allowed_images:
             raise SandboxPolicyError("container image is not deployment-approved")
         if request.stdin is not None:
-            raise SandboxPolicyError(
-                "Kubernetes sandbox backend does not support container stdin"
-            )
+            raise SandboxPolicyError("Kubernetes sandbox backend does not support container stdin")
         if selected.network == "denied" and not selected.network_policy_enforced:
             raise SandboxPolicyError(
                 "Kubernetes sandbox network isolation cannot be guaranteed by this deployment"
@@ -163,13 +159,9 @@ class KubernetesSandboxBackend:
             raise
         except httpx.TimeoutException as exc:
             await self._best_effort_cancel(request.execution_id)
-            raise SandboxTimeoutError(
-                "Kubernetes sandbox controller request timed out"
-            ) from exc
+            raise SandboxTimeoutError("Kubernetes sandbox controller request timed out") from exc
         except httpx.HTTPError as exc:
-            raise SandboxProcessError(
-                "Kubernetes sandbox controller is unavailable"
-            ) from exc
+            raise SandboxProcessError("Kubernetes sandbox controller is unavailable") from exc
         finally:
             self._active.discard(request.execution_id)
 
@@ -214,9 +206,7 @@ class KubernetesSandboxBackend:
                         details={"name": configured_value.name},
                     )
                 if not selected.secret_name:
-                    raise SandboxPolicyError(
-                        "Kubernetes sandbox secret store is not configured"
-                    )
+                    raise SandboxPolicyError("Kubernetes sandbox secret store is not configured")
                 environment[name] = {"secret_ref": configured_value.name}
             else:
                 environment[name] = configured_value
@@ -232,9 +222,7 @@ class KubernetesSandboxBackend:
         try:
             response = await self._client.delete(f"/v1/executions/{execution_id}")
         except httpx.HTTPError as exc:
-            raise SandboxProcessError(
-                "Kubernetes sandbox cancellation request failed"
-            ) from exc
+            raise SandboxProcessError("Kubernetes sandbox cancellation request failed") from exc
         if response.status_code not in {200, 202, 204, 404}:
             raise self._controller_error(response)
 
