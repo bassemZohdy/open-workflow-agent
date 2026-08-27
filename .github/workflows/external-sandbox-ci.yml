@@ -9,15 +9,21 @@ on:
       - ".github/workflows/external-sandbox-ci.yml"
       - "core/src/open_workflow_agent/config.py"
       - "core/src/open_workflow_agent/docker_sandbox.py"
+      - "core/src/open_workflow_agent/kubernetes_sandbox.py"
       - "core/src/open_workflow_agent/sandbox.py"
       - "core/src/open_workflow_agent/sandbox_contract.py"
       - "core/src/open_workflow_agent/services.py"
       - "sandbox-controller/**"
+      - "kubernetes-sandbox-controller/**"
+      - "deploy/kubernetes/**"
+      - "deploy/openshift/**"
       - "docker/Dockerfile.sandbox-controller"
+      - "docker/Dockerfile.kubernetes-sandbox-controller"
       - "docker/Dockerfile.adk"
       - "docker/Dockerfile.langgraph"
       - "docker/entrypoint.sh"
       - "tests/core/test_docker_sandbox_*.py"
+      - "tests/core/test_kubernetes_sandbox_*.py"
       - "tests/core/test_sandbox_backend_contract.py"
       - "tests/contract/test_container_sandbox_contract.py"
       - "tests/ci/docker_external_sandbox_acceptance.sh"
@@ -26,15 +32,21 @@ on:
       - ".github/workflows/external-sandbox-ci.yml"
       - "core/src/open_workflow_agent/config.py"
       - "core/src/open_workflow_agent/docker_sandbox.py"
+      - "core/src/open_workflow_agent/kubernetes_sandbox.py"
       - "core/src/open_workflow_agent/sandbox.py"
       - "core/src/open_workflow_agent/sandbox_contract.py"
       - "core/src/open_workflow_agent/services.py"
       - "sandbox-controller/**"
+      - "kubernetes-sandbox-controller/**"
+      - "deploy/kubernetes/**"
+      - "deploy/openshift/**"
       - "docker/Dockerfile.sandbox-controller"
+      - "docker/Dockerfile.kubernetes-sandbox-controller"
       - "docker/Dockerfile.adk"
       - "docker/Dockerfile.langgraph"
       - "docker/entrypoint.sh"
       - "tests/core/test_docker_sandbox_*.py"
+      - "tests/core/test_kubernetes_sandbox_*.py"
       - "tests/core/test_sandbox_backend_contract.py"
       - "tests/contract/test_container_sandbox_contract.py"
       - "tests/ci/docker_external_sandbox_acceptance.sh"
@@ -68,25 +80,35 @@ jobs:
           uv run --locked ruff format --check \
             core/src/open_workflow_agent/config.py \
             core/src/open_workflow_agent/docker_sandbox.py \
+            core/src/open_workflow_agent/kubernetes_sandbox.py \
             core/src/open_workflow_agent/sandbox.py \
             core/src/open_workflow_agent/sandbox_contract.py \
             core/src/open_workflow_agent/services.py \
             sandbox-controller/src \
+            kubernetes-sandbox-controller/src \
             tests/core/test_docker_sandbox_backend.py \
             tests/core/test_docker_sandbox_cancellation.py \
             tests/core/test_docker_sandbox_controller.py \
+            tests/core/test_kubernetes_sandbox_backend.py \
+            tests/core/test_kubernetes_sandbox_controller.py \
+            tests/core/test_kubernetes_sandbox_manifests.py \
             tests/core/test_sandbox_backend_contract.py \
             tests/contract/test_container_sandbox_contract.py
           uv run --locked ruff check \
             core/src/open_workflow_agent/config.py \
             core/src/open_workflow_agent/docker_sandbox.py \
+            core/src/open_workflow_agent/kubernetes_sandbox.py \
             core/src/open_workflow_agent/sandbox.py \
             core/src/open_workflow_agent/sandbox_contract.py \
             core/src/open_workflow_agent/services.py \
             sandbox-controller/src \
+            kubernetes-sandbox-controller/src \
             tests/core/test_docker_sandbox_backend.py \
             tests/core/test_docker_sandbox_cancellation.py \
             tests/core/test_docker_sandbox_controller.py \
+            tests/core/test_kubernetes_sandbox_backend.py \
+            tests/core/test_kubernetes_sandbox_controller.py \
+            tests/core/test_kubernetes_sandbox_manifests.py \
             tests/core/test_sandbox_backend_contract.py \
             tests/contract/test_container_sandbox_contract.py
       - name: Type check common runtime
@@ -100,12 +122,39 @@ jobs:
               tests/core/test_docker_sandbox_backend.py \
               tests/core/test_docker_sandbox_cancellation.py \
               tests/core/test_docker_sandbox_controller.py \
+              tests/core/test_kubernetes_sandbox_backend.py \
+              tests/core/test_kubernetes_sandbox_controller.py \
+              tests/core/test_kubernetes_sandbox_manifests.py \
               tests/core/test_sandbox_backend_contract.py \
               tests/contract/test_container_sandbox_contract.py
 
+  kubernetes-controller-image:
+    name: Kubernetes sandbox controller image
+    runs-on: ubuntu-latest
+    needs: contract
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build restricted controller image
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 8m \
+            docker build \
+              --file docker/Dockerfile.kubernetes-sandbox-controller \
+              --tag owa-kubernetes-sandbox-controller:${{ github.sha }} \
+              .
+      - name: Verify controller image defaults
+        shell: bash
+        run: |
+          set -euo pipefail
+          user="$(docker image inspect --format '{{.Config.User}}' owa-kubernetes-sandbox-controller:${{ github.sha }})"
+          test "$user" = "65532:65532"
+
   docker:
     name: Docker external sandbox ${{ matrix.engine }} acceptance
-    runs-on: [self-hosted, linux, x64, docker]
+    runs-on: ubuntu-latest
     needs: contract
     timeout-minutes: 30
     strategy:
@@ -118,6 +167,12 @@ jobs:
             port: 21081
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Reclaim hosted-runner disk
+        shell: bash
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
+          docker system prune --all --force || true
       - name: Build runtime image
         shell: bash
         run: |
