@@ -1,0 +1,49 @@
+name: Agent Framework CI
+
+on:
+  push:
+    branches:
+      - feat/b008-agent-framework
+    paths:
+      - "engines/agent-framework/**"
+      - "tests/agent_framework/**"
+      - ".github/workflows/agent-framework-ci.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "engines/agent-framework/**"
+      - "tests/agent_framework/**"
+      - ".github/workflows/agent-framework-ci.yml"
+      - "pyproject.toml"
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: engines/agent-framework
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install Python
+        run: uv python install 3.12
+      - name: Resolve exact engine lock
+        run: uv lock
+      - name: Run native adapter tests
+        run: >-
+          uv run --locked --extra native --with pytest --with pytest-asyncio
+          pytest ../../tests/agent_framework -vv
+      - name: Build adapter wheel
+        run: uv build
+      - name: Upload resolved lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-framework-uv-lock
+          path: engines/agent-framework/uv.lock
+          if-no-files-found: error
