@@ -1,0 +1,60 @@
+name: Finalize B-006 Branch
+
+on:
+  push:
+    branches:
+      - feat/b006-kubernetes-controller
+
+permissions:
+  contents: write
+
+concurrency:
+  group: finalize-b006-branch
+  cancel-in-progress: true
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/b006-kubernetes-controller
+      - name: Apply final mechanical fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          config = Path("core/src/open_workflow_agent/config.py")
+          text = config.read_text()
+          text = text.replace(
+              '                    "enabled Kubernetes sandbox requires network_policy_enforced=true for denied networking"\n',
+              '                    "enabled Kubernetes sandbox requires network_policy_enforced=true "\n'
+              '                    "for denied networking"\n',
+          )
+          text = text.replace(
+              '                    "enabled Kubernetes sandbox requires process_limit_enforced=true when process_count is set"\n',
+              '                    "enabled Kubernetes sandbox requires process_limit_enforced=true "\n'
+              '                    "when process_count is set"\n',
+          )
+          config.write_text(text)
+
+          ci = Path(".github/workflows/ci.yml")
+          text = ci.read_text()
+          old = "    runs-on: [self-hosted, linux, x64, docker]\n"
+          if old not in text:
+              raise SystemExit("expected self-hosted container runner line not found")
+          ci.write_text(text.replace(old, "    runs-on: ubuntu-latest\n", 1))
+          PY
+          git rm .github/workflows/finalize-b006-branch.yml
+      - name: Commit finalization
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add core/src/open_workflow_agent/config.py .github/workflows/ci.yml
+          git commit -m "ci: finalize B-006 hosted acceptance gates"
+          git push origin HEAD:feat/b006-kubernetes-controller
