@@ -1,0 +1,64 @@
+apiVersion: project.openshift.io/v1
+kind: Project
+metadata:
+  name: owa-sandbox
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: owa-sandbox-controller
+  namespace: owa-sandbox
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: owa-sandbox-workload
+  namespace: owa-sandbox
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: owa-sandbox-controller
+  namespace: owa-sandbox
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: owa-sandbox-controller
+  namespace: owa-sandbox
+subjects:
+  - kind: ServiceAccount
+    name: owa-sandbox-controller
+    namespace: owa-sandbox
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: owa-sandbox-controller
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: owa-sandbox-default-deny
+  namespace: owa-sandbox
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: open-workflow-agent-sandbox
+  policyTypes:
+    - Ingress
+    - Egress
