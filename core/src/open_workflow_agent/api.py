@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from .config import RuntimeConfig
@@ -23,6 +23,7 @@ from .errors import (
 from .sandbox import compile_sandbox_workflow, resolve_and_compile_sandbox_workflow
 from .scheduling import WorkflowScheduler
 from .services import RuntimeServices
+from .streaming import StreamLimits, lifecycle_sse_stream, streaming_capabilities
 
 
 class RequestSizeLimitMiddleware:
@@ -226,6 +227,7 @@ def create_app(
             runtime_services.external_catalogs.capabilities()
         )
         value.setdefault("features", {})["sandbox"] = runtime_services.sandbox.capabilities()
+        value.setdefault("features", {})["lifecycleStreaming"] = streaming_capabilities()
         return value
 
     @app.post("/v1/events")
@@ -248,6 +250,54 @@ def create_app(
                 event.as_dict() for event in runtime_services.lifecycle_events.snapshot(limit)
             ],
             media_type="application/cloudevents-batch+json",
+        )
+
+    @app.get("/v1/events/lifecycle/stream")
+    async def lifecycle_event_stream(
+        max_events: int = Query(default=100, ge=1, le=1000),
+        max_bytes: int = Query(default=1_048_576, ge=256, le=16_777_216),
+        timeout_seconds: float = Query(default=30.0, gt=0, le=300),
+        queue_size: int = Query(default=64, ge=1, le=1000),
+        last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
+    ) -> Any:
+        limits = StreamLimits(
+            max_events=max_events,
+            max_bytes=max_bytes,
+            timeout_seconds=timeout_seconds,
+            queue_size=queue_size,
+        )
+        try:
+            stream = lifecycle_sse_stream(
+                runtime_services.lifecycle_events,
+                last_event_id=last_event_id,
+                limits=limits,
+            )
+        except LookupError as exc:
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "error": {
+                        "code": "stream_replay_unavailable",
+                        "message": str(exc),
+                        "details": {},
+                    }
+                },
+            )
+        except RuntimeError as exc:
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "error": {
+                        "code": "stream_capacity_exceeded",
+                        "message": str(exc),
+                        "details": {},
+                    }
+                },
+            )
+        return StreamingResponse(
+            stream,
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
 
     @app.get("/v1/approvals")

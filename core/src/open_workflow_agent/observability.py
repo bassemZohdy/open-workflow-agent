@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from dataclasses import asdict, dataclass, field, replace
@@ -12,6 +13,7 @@ from uuid import uuid4
 CLOUD_EVENTS_SPECVERSION = "1.0"
 LIFECYCLE_CLOUD_EVENT_SCHEMA = "urn:open-workflow-agent:schema:lifecycle:1"
 _SAFE_PROGRESS_FIELDS = frozenset({"phase", "completed", "total"})
+_STREAM_OVERFLOW = object()
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,13 +152,49 @@ class InMemoryEventSink:
         self.events.append(event)
 
 
+class LifecycleSubscription:
+    """One bounded live subscription owned by a lifecycle event sink."""
+
+    def __init__(
+        self,
+        queue: asyncio.Queue[CloudEvent | object],
+        close_callback: Any,
+    ) -> None:
+        self._queue = queue
+        self._close_callback = close_callback
+        self._closed = False
+
+    async def receive(self, *, timeout: float) -> CloudEvent:
+        item = await asyncio.wait_for(self._queue.get(), timeout=timeout)
+        if item is _STREAM_OVERFLOW:
+            raise BufferError("lifecycle stream subscriber exceeded its bounded queue")
+        if not isinstance(item, CloudEvent):
+            raise RuntimeError("invalid lifecycle stream item")
+        return item
+
+    def close(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        self._close_callback()
+
+
 class LifecycleCloudEventSink:
     """Forward common events and retain a bounded CloudEvents snapshot."""
 
-    def __init__(self, downstream: EventSink, *, max_events: int = 1000) -> None:
+    def __init__(
+        self,
+        downstream: EventSink,
+        *,
+        max_events: int = 1000,
+        max_subscribers: int = 32,
+    ) -> None:
         self.downstream = downstream
         self.max_events = max_events
+        self.max_subscribers = max_subscribers
         self.events: list[CloudEvent] = []
+        self._subscribers: dict[int, asyncio.Queue[CloudEvent | object]] = {}
+        self._next_subscriber_id = 1
 
     def emit(self, event: WorkflowEvent) -> None:
         if (
@@ -171,9 +209,58 @@ class LifecycleCloudEventSink:
                 reason="cancelled",
             )
         self.downstream.emit(event)
-        self.events.append(event.to_cloud_event())
+        cloud_event = event.to_cloud_event()
+        self.events.append(cloud_event)
         if len(self.events) > self.max_events:
             del self.events[: len(self.events) - self.max_events]
+        for subscriber_id, queue in tuple(self._subscribers.items()):
+            try:
+                queue.put_nowait(cloud_event)
+            except asyncio.QueueFull:
+                self._subscribers.pop(subscriber_id, None)
+                try:
+                    queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    pass
+                try:
+                    queue.put_nowait(_STREAM_OVERFLOW)
+                except asyncio.QueueFull:
+                    pass
 
     def snapshot(self, limit: int = 100) -> list[CloudEvent]:
         return list(self.events[-limit:])
+
+    def subscribe(
+        self,
+        *,
+        last_event_id: str | None = None,
+        queue_size: int = 64,
+    ) -> tuple[list[CloudEvent], LifecycleSubscription]:
+        """Atomically capture bounded replay state and register for live events."""
+
+        if queue_size < 1:
+            raise ValueError("lifecycle stream queue_size must be greater than zero")
+        if len(self._subscribers) >= self.max_subscribers:
+            raise RuntimeError("maximum lifecycle stream subscribers reached")
+
+        backlog: list[CloudEvent]
+        if last_event_id is None:
+            backlog = []
+        else:
+            index = next(
+                (index for index, event in enumerate(self.events) if event.id == last_event_id),
+                None,
+            )
+            if index is None:
+                raise LookupError("last lifecycle event id is outside the bounded replay window")
+            backlog = list(self.events[index + 1 :])
+
+        subscriber_id = self._next_subscriber_id
+        self._next_subscriber_id += 1
+        queue: asyncio.Queue[CloudEvent | object] = asyncio.Queue(maxsize=queue_size)
+        self._subscribers[subscriber_id] = queue
+
+        def close() -> None:
+            self._subscribers.pop(subscriber_id, None)
+
+        return backlog, LifecycleSubscription(queue, close)
