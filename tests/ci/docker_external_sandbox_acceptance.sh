@@ -222,12 +222,13 @@ output = value["output"]
 assert output["exitCode"] == 0
 assert output["stderr"] == ""
 probe = json.loads(output["stdout"])
-assert probe == {
+expected = {
     "network_denied": True,
     "root_read_only": True,
     "secret_resolved": True,
     "workspace_ok": True,
 }
+assert probe == expected, f"unexpected external sandbox isolation probe: {probe!r}"
 PY
 
 make_payload() {
