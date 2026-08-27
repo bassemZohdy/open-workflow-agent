@@ -1,0 +1,146 @@
+name: External Sandbox CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/external-sandbox-ci.yml"
+      - "core/src/open_workflow_agent/config.py"
+      - "core/src/open_workflow_agent/docker_sandbox.py"
+      - "core/src/open_workflow_agent/sandbox.py"
+      - "core/src/open_workflow_agent/sandbox_contract.py"
+      - "core/src/open_workflow_agent/services.py"
+      - "sandbox-controller/**"
+      - "docker/Dockerfile.sandbox-controller"
+      - "docker/Dockerfile.adk"
+      - "docker/Dockerfile.langgraph"
+      - "docker/entrypoint.sh"
+      - "tests/core/test_docker_sandbox_*.py"
+      - "tests/core/test_sandbox_backend_contract.py"
+      - "tests/contract/test_container_sandbox_contract.py"
+      - "tests/ci/docker_external_sandbox_acceptance.sh"
+  pull_request:
+    paths:
+      - ".github/workflows/external-sandbox-ci.yml"
+      - "core/src/open_workflow_agent/config.py"
+      - "core/src/open_workflow_agent/docker_sandbox.py"
+      - "core/src/open_workflow_agent/sandbox.py"
+      - "core/src/open_workflow_agent/sandbox_contract.py"
+      - "core/src/open_workflow_agent/services.py"
+      - "sandbox-controller/**"
+      - "docker/Dockerfile.sandbox-controller"
+      - "docker/Dockerfile.adk"
+      - "docker/Dockerfile.langgraph"
+      - "docker/entrypoint.sh"
+      - "tests/core/test_docker_sandbox_*.py"
+      - "tests/core/test_sandbox_backend_contract.py"
+      - "tests/contract/test_container_sandbox_contract.py"
+      - "tests/ci/docker_external_sandbox_acceptance.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: external-sandbox-${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  contract:
+    name: External sandbox contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Sync locked environment
+        run: uv sync --locked
+      - name: Format and lint external sandbox slice
+        run: |
+          uv run --locked ruff format --check \
+            core/src/open_workflow_agent/config.py \
+            core/src/open_workflow_agent/docker_sandbox.py \
+            core/src/open_workflow_agent/sandbox.py \
+            core/src/open_workflow_agent/sandbox_contract.py \
+            core/src/open_workflow_agent/services.py \
+            sandbox-controller/src \
+            tests/core/test_docker_sandbox_backend.py \
+            tests/core/test_docker_sandbox_cancellation.py \
+            tests/core/test_docker_sandbox_controller.py \
+            tests/core/test_sandbox_backend_contract.py \
+            tests/contract/test_container_sandbox_contract.py
+          uv run --locked ruff check \
+            core/src/open_workflow_agent/config.py \
+            core/src/open_workflow_agent/docker_sandbox.py \
+            core/src/open_workflow_agent/sandbox.py \
+            core/src/open_workflow_agent/sandbox_contract.py \
+            core/src/open_workflow_agent/services.py \
+            sandbox-controller/src \
+            tests/core/test_docker_sandbox_backend.py \
+            tests/core/test_docker_sandbox_cancellation.py \
+            tests/core/test_docker_sandbox_controller.py \
+            tests/core/test_sandbox_backend_contract.py \
+            tests/contract/test_container_sandbox_contract.py
+      - name: Type check common runtime
+        run: uv run --locked mypy core/src
+      - name: Run external sandbox contract tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 8m \
+            uv run --locked pytest -vv --durations=20 \
+              tests/core/test_docker_sandbox_backend.py \
+              tests/core/test_docker_sandbox_cancellation.py \
+              tests/core/test_docker_sandbox_controller.py \
+              tests/core/test_sandbox_backend_contract.py \
+              tests/contract/test_container_sandbox_contract.py
+
+  docker:
+    name: Docker external sandbox ${{ matrix.engine }} acceptance
+    runs-on: [self-hosted, linux, x64, docker]
+    needs: contract
+    timeout-minutes: 30
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - engine: adk
+            port: 21080
+          - engine: langgraph
+            port: 21081
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build runtime image
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 12m \
+            docker build \
+              --build-arg OWA_VERSION=0.1.0 \
+              --build-arg VCS_REF=${{ github.sha }} \
+              --file docker/Dockerfile.${{ matrix.engine }} \
+              --tag owa-${{ matrix.engine }}:${{ github.sha }} \
+              .
+      - name: Run restricted Docker controller acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 12m \
+            bash tests/ci/docker_external_sandbox_acceptance.sh \
+              "${{ matrix.engine }}" \
+              "owa-${{ matrix.engine }}:${{ github.sha }}" \
+              "${{ matrix.port }}"
+      - name: Capture Docker diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          docker ps --all || true
+          docker images || true

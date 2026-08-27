@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from .errors import ConfigurationError
 
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_IMAGE_DIGEST = re.compile(r"^.+@sha256:[0-9a-fA-F]{64}$")
 
 
 class StrictModel(BaseModel):
@@ -196,11 +197,58 @@ class ApprovalConfig(StrictModel):
     operator_token: str | None = None
 
 
+class DockerSandboxConfig(StrictModel):
+    """Deployment-owned policy for the restricted Docker sandbox controller."""
+
+    controller_socket: str = "/run/owa-sandbox/controller.sock"
+    allowed_images: list[str] = Field(default_factory=list)
+    require_digest: bool = True
+    run_as_user: str = "65532:65532"
+    network: Literal["denied"] = "denied"
+
+    @field_validator("controller_socket")
+    @classmethod
+    def validate_controller_socket(cls, value: str) -> str:
+        path = Path(value)
+        if not path.is_absolute():
+            raise ValueError("sandbox docker controller_socket must be an absolute path")
+        return str(path)
+
+    @field_validator("allowed_images")
+    @classmethod
+    def validate_allowed_images(cls, value: list[str]) -> list[str]:
+        images = [image.strip() for image in value]
+        if any(not image for image in images):
+            raise ValueError("sandbox docker allowed_images cannot contain empty values")
+        if len(set(images)) != len(images):
+            raise ValueError("sandbox docker allowed_images must not contain duplicates")
+        return images
+
+    @field_validator("run_as_user")
+    @classmethod
+    def validate_run_as_user(cls, value: str) -> str:
+        user = value.strip()
+        if not re.fullmatch(r"[1-9][0-9]*(?::[0-9]+)?", user):
+            raise ValueError("sandbox docker run_as_user must be a non-root numeric uid[:gid]")
+        return user
+
+    @model_validator(mode="after")
+    def validate_digest_policy(self) -> DockerSandboxConfig:
+        if self.require_digest:
+            invalid = [image for image in self.allowed_images if not _IMAGE_DIGEST.fullmatch(image)]
+            if invalid:
+                raise ValueError(
+                    "sandbox docker allowed_images must use immutable sha256 digests when "
+                    "require_digest=true"
+                )
+        return self
+
+
 class SandboxConfig(StrictModel):
-    """Deployment policy for the bounded in-process child-process sandbox backend."""
+    """Deployment policy for the selected framework-neutral sandbox backend."""
 
     enabled: bool = False
-    backend: Literal["internal"] = "internal"
+    backend: Literal["internal", "docker"] = "internal"
     allow_shell: bool = False
     script_runtimes: list[str] = Field(default_factory=lambda: ["python"])
     timeout_seconds: float = 30.0
@@ -215,6 +263,7 @@ class SandboxConfig(StrictModel):
     memory_bytes: int | None = 536_870_912
     file_size_bytes: int | None = 33_554_432
     process_count: int | None = 64
+    docker: DockerSandboxConfig = Field(default_factory=DockerSandboxConfig)
 
     @field_validator("script_runtimes")
     @classmethod
@@ -286,6 +335,10 @@ class SandboxConfig(StrictModel):
         if overlap:
             raise ValueError(
                 f"sandbox inherited_environment and secret_environment must not overlap: {overlap}"
+            )
+        if self.enabled and self.backend == "docker" and not self.docker.allowed_images:
+            raise ValueError(
+                "enabled Docker sandbox requires at least one deployment-approved image"
             )
         return self
 

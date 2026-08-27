@@ -1,4 +1,4 @@
-"""Framework-neutral bounded internal sandbox execution."""
+"""Framework-neutral bounded sandbox execution."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ from .workflow import (
     validate_schema,
 )
 
-SandboxKind = Literal["script", "shell"]
+SandboxKind = Literal["script", "shell", "container"]
 SandboxStatus = Literal["completed"]
 _RESERVED_ENVIRONMENT = frozenset({"PATH", "HOME", "TMPDIR"})
 
@@ -61,6 +61,7 @@ class SandboxExecutionRequest:
     environment: tuple[tuple[str, str | SandboxSecretReference], ...] = ()
     script_language: str | None = None
     script_code: str | None = None
+    image: str | None = None
     invocation_id: str | None = None
     task_reference: str | None = None
 
@@ -115,16 +116,17 @@ class InternalSandboxBackend:
 
     def capabilities(self) -> dict[str, Any]:
         posix = os.name == "posix"
+        enabled = self.config.enabled and self.config.backend == "internal"
         return {
-            "enabled": self.config.enabled,
+            "enabled": enabled,
             "backend": "internal",
-            "internalProcess": self.config.enabled,
+            "internalProcess": enabled,
             "script": {
-                "enabled": self.config.enabled,
+                "enabled": enabled,
                 "runtimes": list(self.config.script_runtimes),
                 "externalSource": False,
             },
-            "shell": {"enabled": self.config.enabled and self.config.allow_shell},
+            "shell": {"enabled": enabled and self.config.allow_shell},
             "container": {"enabled": False},
             "cancellation": True,
             "resourceLimits": {
@@ -139,7 +141,7 @@ class InternalSandboxBackend:
         }
 
     async def execute(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
-        if not self.config.enabled:
+        if not self.config.enabled or self.config.backend != "internal":
             raise SandboxPolicyError("internal sandbox execution is disabled")
         self._validate_request_size(request)
         root = Path(self.config.workspace_root)
@@ -233,7 +235,12 @@ class InternalSandboxBackend:
         self._active.clear()
 
     def _validate_request_size(self, request: SandboxExecutionRequest) -> None:
-        values = [request.script_code or "", request.stdin or "", request.command or ""]
+        values = [
+            request.script_code or "",
+            request.stdin or "",
+            request.command or "",
+            request.image or "",
+        ]
         values.extend(request.arguments)
         for key, value in request.environment:
             values.append(key)
@@ -249,6 +256,8 @@ class InternalSandboxBackend:
     def _prepare_command(
         self, request: SandboxExecutionRequest, workspace: Path
     ) -> tuple[str, tuple[str, ...]]:
+        if request.kind == "container":
+            raise SandboxPolicyError("internal sandbox backend does not support containers")
         if request.kind == "script":
             if request.script_language not in self.config.script_runtimes:
                 raise SandboxPolicyError(
@@ -470,7 +479,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
         if "shell" in definition:
             return await self._run_shell(definition["shell"], state)
         if "container" in definition:
-            raise UnsupportedWorkflowFeature("run.container requires an external sandbox backend")
+            return await self._run_container(definition["container"], state)
         return await super()._run_subworkflow(definition, state)
 
     async def _run_script(self, definition: Any, state: ExecutionState) -> Any:
@@ -496,6 +505,22 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             execution_id=self._execution_id(state),
             kind="shell",
             command=str(definition.get("command", "")),
+            arguments=tuple(str(value) for value in definition.get("arguments", [])),
+            stdin=self._stdin(definition, state),
+            environment=self._environment(definition, state),
+            invocation_id=cast(str | None, state.context.get("invocation_id")),
+            task_reference=cast(str | None, state.variables.get("_task_reference")),
+        )
+        return await self._execute_sandbox(request, state)
+
+    async def _run_container(self, definition: Any, state: ExecutionState) -> Any:
+        if not isinstance(definition, Mapping):
+            raise WorkflowSemanticError("run.container must be an object")
+        request = SandboxExecutionRequest(
+            execution_id=self._execution_id(state),
+            kind="container",
+            image=str(definition.get("image", "")),
+            command=(str(definition["command"]) if definition.get("command") else None),
             arguments=tuple(str(value) for value in definition.get("arguments", [])),
             stdin=self._stdin(definition, state),
             environment=self._environment(definition, state),
@@ -662,12 +687,52 @@ def _validate_executable_run(
     run: Mapping[str, Any], *, sandbox: SandboxConfig, reference: str
 ) -> dict[str, Any] | None:
     if "container" in run:
-        raise UnsupportedWorkflowFeature(
-            "run.container requires an external sandbox backend",
-            details={"reference": reference},
-        )
+        if not sandbox.enabled or sandbox.backend != "docker":
+            raise UnsupportedWorkflowFeature(
+                "run.container requires the deployment-enabled Docker sandbox backend",
+                details={"reference": reference},
+            )
+        container = run["container"]
+        if not isinstance(container, Mapping):
+            raise WorkflowSemanticError(f"run.container must be an object at {reference}")
+        image = container.get("image")
+        if not isinstance(image, str) or not image.strip():
+            raise WorkflowSemanticError(f"run.container requires image at {reference}")
+        if "${" in image:
+            raise UnsupportedWorkflowFeature(
+                "dynamic container image selection is not enabled",
+                details={"reference": reference},
+            )
+        if image not in sandbox.docker.allowed_images:
+            raise UnsupportedWorkflowFeature(
+                "container image is not deployment-approved",
+                details={"reference": reference},
+            )
+        if container.get("ports"):
+            raise UnsupportedWorkflowFeature(
+                "run.container port mappings are not enabled",
+                details={"reference": reference},
+            )
+        if container.get("volumes"):
+            raise UnsupportedWorkflowFeature(
+                "run.container host volume mappings are not enabled",
+                details={"reference": reference},
+            )
+        if container.get("name"):
+            raise UnsupportedWorkflowFeature(
+                "run.container names are controller-owned",
+                details={"reference": reference},
+            )
+        command = container.get("command")
+        if command is not None and (not isinstance(command, str) or "${" in command):
+            raise UnsupportedWorkflowFeature(
+                "dynamic container commands are not enabled",
+                details={"reference": reference},
+            )
+        _validate_environment(container.get("environment"), sandbox, reference)
+        return _placeholder_workflow_run()
     if "script" in run:
-        if not sandbox.enabled:
+        if not sandbox.enabled or sandbox.backend != "internal":
             raise UnsupportedWorkflowFeature(
                 "run.script requires the deployment-enabled internal sandbox",
                 details={"reference": reference},
@@ -691,9 +756,9 @@ def _validate_executable_run(
         _validate_environment(script.get("environment"), sandbox, reference)
         return _placeholder_workflow_run()
     if "shell" in run:
-        if not sandbox.enabled or not sandbox.allow_shell:
+        if not sandbox.enabled or sandbox.backend != "internal" or not sandbox.allow_shell:
             raise UnsupportedWorkflowFeature(
-                "run.shell requires deployment-enabled shell execution",
+                "run.shell requires deployment-enabled internal shell execution",
                 details={"reference": reference},
             )
         shell = run["shell"]
