@@ -31,7 +31,9 @@ async def test_native_bridge_falls_back_without_optional_dependency(monkeypatch)
 
 
 @pytest.mark.asyncio
-async def test_native_bridge_uses_agent_framework_workflow_without_leaking_state(monkeypatch) -> None:
+async def test_native_bridge_uses_agent_framework_workflow_without_leaking_state(
+    monkeypatch,
+) -> None:
     outputs: list[Any] = []
 
     class FakeExecutor:
@@ -42,6 +44,10 @@ async def test_native_bridge_uses_agent_framework_workflow_without_leaking_state
         return function
 
     class FakeContext:
+        @classmethod
+        def __class_getitem__(cls, _item: Any) -> type[FakeContext]:
+            return cls
+
         async def yield_output(self, value: Any) -> None:
             outputs.append(value)
 
@@ -68,6 +74,7 @@ async def test_native_bridge_uses_agent_framework_workflow_without_leaking_state
     monkeypatch.setattr(native_module, "AGENT_FRAMEWORK_AVAILABLE", True)
     monkeypatch.setattr(native_module, "Executor", FakeExecutor)
     monkeypatch.setattr(native_module, "WorkflowBuilder", FakeWorkflowBuilder)
+    monkeypatch.setattr(native_module, "WorkflowContext", FakeContext)
     monkeypatch.setattr(native_module, "handler", fake_handler)
 
     async def runner(value: Any) -> Any:
@@ -79,7 +86,9 @@ async def test_native_bridge_uses_agent_framework_workflow_without_leaking_state
 
 
 @pytest.mark.asyncio
-async def test_engine_fallback_executes_common_open_workflow_contract(tmp_path, monkeypatch) -> None:
+async def test_engine_fallback_executes_common_open_workflow_contract(
+    tmp_path, monkeypatch
+) -> None:
     monkeypatch.setattr(native_module, "AGENT_FRAMEWORK_AVAILABLE", False)
     config = RuntimeConfig.model_validate({"model": {"provider": "fake"}})
     services = RuntimeServices(
