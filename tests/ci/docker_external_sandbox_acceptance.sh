@@ -189,7 +189,7 @@ python - "$capabilities" <<'PY'
 import json
 import sys
 
-value = json.loads(sys.argv[1])["sandbox"]
+value = json.loads(sys.argv[1])["features"]["sandbox"]
 assert value["backend"] == "docker"
 assert value["container"]["enabled"] is True
 assert value["container"]["ports"] is False
