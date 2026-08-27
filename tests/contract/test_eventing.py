@@ -50,74 +50,77 @@ async def test_emit_and_listen_have_equivalent_common_results(tmp_path, engine_n
     services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
     engine = engine_type()
     await engine.initialize(services)
-    listen_plan = compile_workflow(
-        _workflow(
-            [
-                {
-                    "approval": {
-                        "listen": {
-                            "to": {
-                                "one": {
-                                    "with": {
-                                        "type": "approval.granted",
-                                        "subject": "case-1",
+    try:
+        listen_plan = compile_workflow(
+            _workflow(
+                [
+                    {
+                        "approval": {
+                            "listen": {
+                                "to": {
+                                    "one": {
+                                        "with": {
+                                            "type": "approval.granted",
+                                            "subject": "case-1",
+                                        }
                                     }
-                                }
-                            },
-                            "read": "data",
+                                },
+                                "read": "data",
+                            }
                         }
-                    }
-                },
-                {"finish": {"set": {"approved": "${ .approved }"}}},
-            ]
+                    },
+                    {"finish": {"set": {"approved": "${ .approved }"}}},
+                ]
+            )
         )
-    )
-    handle = _handle(services, engine_name, listen_plan)
-    invocation = asyncio.create_task(engine.invoke(listen_plan, handle, {}))
-    await _until(lambda: handle.status == "waiting")
-    published = await services.event_bus.publish(
-        {
-            "id": "approval-1",
-            "type": "approval.granted",
-            "subject": "case-1",
-            "data": {"approved": True},
-        },
-        default_source="urn:operator",
-    )
-    result = await invocation
-    assert result.status == "completed"
-    assert result.output == {"approved": True}
-    assert published.id == "approval-1"
-    assert any(event.event_type == "EventReceived" for event in services.events.events)
-    assert any(event.event_type == "WorkflowResumed" for event in services.events.events)
+        handle = _handle(services, engine_name, listen_plan)
+        invocation = asyncio.create_task(engine.invoke(listen_plan, handle, {}))
+        await _until(lambda: handle.status == "waiting")
+        published = await services.event_bus.publish(
+            {
+                "id": "approval-1",
+                "type": "approval.granted",
+                "subject": "case-1",
+                "data": {"approved": True},
+            },
+            default_source="urn:operator",
+        )
+        result = await asyncio.wait_for(invocation, timeout=2.0)
+        assert result.status == "completed"
+        assert result.output == {"approved": True}
+        assert published.id == "approval-1"
+        assert any(event.event_type == "EventReceived" for event in services.events.events)
+        assert any(event.event_type == "WorkflowResumed" for event in services.events.events)
 
-    emit_plan = compile_workflow(
-        _workflow(
-            [
-                {
-                    "created": {
-                        "emit": {
-                            "event": {
-                                "with": {
-                                    "id": "created-1",
-                                    "type": "case.created",
-                                    "data": {"case": "${ .case }"},
+        emit_plan = compile_workflow(
+            _workflow(
+                [
+                    {
+                        "created": {
+                            "emit": {
+                                "event": {
+                                    "with": {
+                                        "id": "created-1",
+                                        "type": "case.created",
+                                        "data": {"case": "${ .case }"},
+                                    }
                                 }
                             }
                         }
-                    }
-                },
-                {"finish": {"set": {"done": True}}},
-            ]
+                    },
+                    {"finish": {"set": {"done": True}}},
+                ]
+            )
         )
-    )
-    emit_handle = _handle(services, engine_name, emit_plan)
-    emit_result = await engine.invoke(emit_plan, emit_handle, {"case": "case-1"})
-    assert emit_result.status == "completed"
-    assert emit_result.output == {"done": True}
-    assert services.event_bus.published[-1].as_dict()["data"] == {"case": "case-1"}
-    assert any(event.event_type == "EventEmitted" for event in services.events.events)
-    services.close()
+        emit_handle = _handle(services, engine_name, emit_plan)
+        emit_result = await engine.invoke(emit_plan, emit_handle, {"case": "case-1"})
+        assert emit_result.status == "completed"
+        assert emit_result.output == {"done": True}
+        assert services.event_bus.published[-1].as_dict()["data"] == {"case": "case-1"}
+        assert any(event.event_type == "EventEmitted" for event in services.events.events)
+    finally:
+        await engine.shutdown()
+        services.close()
 
 
 @pytest.mark.asyncio
@@ -129,36 +132,39 @@ async def test_eventing_common_lifecycle_signature_matches_engines(tmp_path):
         )
         engine = engine_type()
         await engine.initialize(services)
-        plan = compile_workflow(
-            _workflow(
-                [
-                    {
-                        "created": {
-                            "emit": {
-                                "event": {
-                                    "with": {
-                                        "id": "shared-event",
-                                        "type": "case.created",
-                                        "data": {"ok": True},
+        try:
+            plan = compile_workflow(
+                _workflow(
+                    [
+                        {
+                            "created": {
+                                "emit": {
+                                    "event": {
+                                        "with": {
+                                            "id": "shared-event",
+                                            "type": "case.created",
+                                            "data": {"ok": True},
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                ]
+                    ]
+                )
             )
-        )
-        result = await engine.invoke(plan, _handle(services, engine_name, plan), {})
-        signatures.append(
-            (
-                result.status,
-                result.output,
-                [
-                    (event.event_type, event.status, event.task_reference, event.event_name)
-                    for event in services.events.events
-                    if event.event_type in {"EventEmitted", "TaskStarted", "TaskCompleted"}
-                ],
+            result = await engine.invoke(plan, _handle(services, engine_name, plan), {})
+            signatures.append(
+                (
+                    result.status,
+                    result.output,
+                    [
+                        (event.event_type, event.status, event.task_reference, event.event_name)
+                        for event in services.events.events
+                        if event.event_type in {"EventEmitted", "TaskStarted", "TaskCompleted"}
+                    ],
+                )
             )
-        )
-        services.close()
+        finally:
+            await engine.shutdown()
+            services.close()
     assert signatures[0] == signatures[1]
