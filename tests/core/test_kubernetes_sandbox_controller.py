@@ -140,7 +140,8 @@ async def test_api_runner_creates_waits_reads_logs_and_deletes() -> None:
         if request.method == "POST":
             created.update(__import__("json").loads(request.content))
             return httpx.Response(201, json={"metadata": {"name": "hidden"}})
-        if request.method == "GET" and request.url.path.endswith("/jobs/owa-bd841a455f7e21c88bca"):
+        if request.method == "GET" and "/jobs/" in request.url.path:
+            assert request.url.path.endswith(f"/jobs/{created['metadata']['name']}")
             return httpx.Response(200, json={"status": {"succeeded": 1}})
         if request.method == "GET" and request.url.path.endswith("/pods"):
             return httpx.Response(200, json={"items": [{"metadata": {"name": "pod-native-id"}}]})
