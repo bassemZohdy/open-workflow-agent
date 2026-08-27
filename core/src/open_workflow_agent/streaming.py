@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from time import monotonic
 from typing import Any
 
-from .observability import CloudEvent, LifecycleCloudEventSink, LifecycleSubscription
+from .observability import CloudEvent, LifecycleCloudEventSink
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,19 +42,19 @@ def encode_terminal(*, reason: str) -> bytes:
     return f"event: stream.end\ndata: {payload}\n\n".encode()
 
 
-async def lifecycle_sse_stream(
+def lifecycle_sse_stream(
     sink: LifecycleCloudEventSink,
     *,
     last_event_id: str | None = None,
     limits: StreamLimits | None = None,
 ) -> AsyncIterator[bytes]:
-    """Yield an ordered bounded snapshot+live lifecycle stream.
+    """Create an ordered bounded snapshot+live lifecycle stream.
 
-    Subscription registration and backlog capture happen synchronously in the
-    sink so events cannot fall into a snapshot-to-subscribe race. A slow
-    consumer is terminated fail-closed on queue overflow rather than allowing
-    unbounded buffering. Disconnecting this observation stream does not cancel
-    the associated workflow invocation.
+    Registration happens before this function returns, so an HTTP endpoint can
+    validate replay state and establish the subscriber before yielding response
+    control. A slow consumer is terminated fail-closed on queue overflow rather
+    than allowing unbounded buffering. Disconnecting this observation stream
+    does not cancel the associated workflow invocation.
     """
 
     selected = limits or StreamLimits()
@@ -62,36 +62,17 @@ async def lifecycle_sse_stream(
         last_event_id=last_event_id,
         queue_size=selected.queue_size,
     )
-    started = monotonic()
-    sent_events = 0
-    sent_bytes = 0
-    terminal_reason = "timeout"
 
-    try:
-        for event in backlog:
-            if sent_events >= selected.max_events:
-                terminal_reason = "event_limit"
-                break
-            frame = encode_sse(event)
-            if sent_bytes + len(frame) > selected.max_bytes:
-                terminal_reason = "byte_limit"
-                break
-            yield frame
-            sent_events += 1
-            sent_bytes += len(frame)
-        else:
-            while sent_events < selected.max_events:
-                remaining = selected.timeout_seconds - (monotonic() - started)
-                if remaining <= 0:
-                    terminal_reason = "timeout"
-                    break
-                try:
-                    event = await subscription.receive(timeout=remaining)
-                except TimeoutError:
-                    terminal_reason = "timeout"
-                    break
-                except BufferError:
-                    terminal_reason = "backpressure"
+    async def stream() -> AsyncIterator[bytes]:
+        started = monotonic()
+        sent_events = 0
+        sent_bytes = 0
+        terminal_reason = "timeout"
+
+        try:
+            for event in backlog:
+                if sent_events >= selected.max_events:
+                    terminal_reason = "event_limit"
                     break
                 frame = encode_sse(event)
                 if sent_bytes + len(frame) > selected.max_bytes:
@@ -101,15 +82,38 @@ async def lifecycle_sse_stream(
                 sent_events += 1
                 sent_bytes += len(frame)
             else:
-                terminal_reason = "event_limit"
+                while sent_events < selected.max_events:
+                    remaining = selected.timeout_seconds - (monotonic() - started)
+                    if remaining <= 0:
+                        terminal_reason = "timeout"
+                        break
+                    try:
+                        event = await subscription.receive(timeout=remaining)
+                    except TimeoutError:
+                        terminal_reason = "timeout"
+                        break
+                    except BufferError:
+                        terminal_reason = "backpressure"
+                        break
+                    frame = encode_sse(event)
+                    if sent_bytes + len(frame) > selected.max_bytes:
+                        terminal_reason = "byte_limit"
+                        break
+                    yield frame
+                    sent_events += 1
+                    sent_bytes += len(frame)
+                else:
+                    terminal_reason = "event_limit"
 
-        terminal = encode_terminal(reason=terminal_reason)
-        if sent_bytes + len(terminal) <= selected.max_bytes:
-            yield terminal
-    except asyncio.CancelledError:
-        raise
-    finally:
-        subscription.close()
+            terminal = encode_terminal(reason=terminal_reason)
+            if sent_bytes + len(terminal) <= selected.max_bytes:
+                yield terminal
+        except asyncio.CancelledError:
+            raise
+        finally:
+            subscription.close()
+
+    return stream()
 
 
 def streaming_capabilities() -> dict[str, Any]:
