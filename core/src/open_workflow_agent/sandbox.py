@@ -361,7 +361,10 @@ class InternalSandboxBackend:
                 break
             budget.add(len(chunk))
             chunks.append(chunk)
-        return b"".join(chunks).decode("utf-8", errors="replace")
+        # Keep the observable sandbox contract independent of the host's text
+        # mode: Windows child processes commonly emit CRLF while POSIX
+        # processes emit LF.
+        return b"".join(chunks).decode("utf-8", errors="replace").replace("\r\n", "\n")
 
     async def _monitor_workspace(
         self, process: asyncio.subprocess.Process, workspace: Path
@@ -395,27 +398,36 @@ class InternalSandboxBackend:
         def apply_limits() -> None:
             import resource
 
-            limits: list[tuple[int, int | None]] = [
-                (resource.RLIMIT_CPU, self.config.cpu_seconds),
-                (resource.RLIMIT_AS, self.config.memory_bytes),
-                (resource.RLIMIT_FSIZE, self.config.file_size_bytes),
-            ]
-            process_limit = getattr(resource, "RLIMIT_NPROC", None)
-            if process_limit is not None:
-                limits.append((process_limit, self.config.process_count))
+            setrlimit = getattr(resource, "setrlimit", None)
+            if not callable(setrlimit):
+                return
+            limits: list[tuple[Any, int | None]] = []
+            for name, value in (
+                ("RLIMIT_CPU", self.config.cpu_seconds),
+                ("RLIMIT_AS", self.config.memory_bytes),
+                ("RLIMIT_FSIZE", self.config.file_size_bytes),
+                ("RLIMIT_NPROC", self.config.process_count),
+            ):
+                resource_id = getattr(resource, name, None)
+                if resource_id is not None:
+                    limits.append((resource_id, value))
             for resource_id, value in limits:
                 if value is not None:
-                    resource.setrlimit(resource_id, (value, value))
+                    setrlimit(resource_id, (value, value))
 
         return apply_limits
 
     @staticmethod
     def _resource_signal(number: int) -> bool:
-        names = {signal.SIGKILL}
-        if hasattr(signal, "SIGXCPU"):
-            names.add(signal.SIGXCPU)
-        if hasattr(signal, "SIGXFSZ"):
-            names.add(signal.SIGXFSZ)
+        names = {
+            value
+            for value in (
+                getattr(signal, "SIGKILL", None),
+                getattr(signal, "SIGXCPU", None),
+                getattr(signal, "SIGXFSZ", None),
+            )
+            if value is not None
+        }
         return number in names
 
     @staticmethod
@@ -430,8 +442,10 @@ class InternalSandboxBackend:
         if process.returncode is not None:
             return
         try:
-            if os.name == "posix":
-                os.killpg(process.pid, signal.SIGTERM)
+            killpg = getattr(os, "killpg", None)
+            sigterm = getattr(signal, "SIGTERM", None)
+            if os.name == "posix" and callable(killpg) and sigterm is not None:
+                killpg(process.pid, sigterm)
             else:
                 process.terminate()
         except ProcessLookupError:
@@ -442,8 +456,10 @@ class InternalSandboxBackend:
         except TimeoutError:
             pass
         try:
-            if os.name == "posix":
-                os.killpg(process.pid, signal.SIGKILL)
+            killpg = getattr(os, "killpg", None)
+            sigkill = getattr(signal, "SIGKILL", None)
+            if os.name == "posix" and callable(killpg) and sigkill is not None:
+                killpg(process.pid, sigkill)
             else:
                 process.kill()
         except ProcessLookupError:

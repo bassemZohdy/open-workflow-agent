@@ -43,7 +43,14 @@ def datasource_kind(datasource: str | Path | None) -> DatasourceKind:
 
     if datasource is None or str(datasource) in {":memory:", ""}:
         return "sqlite"
-    scheme = urlparse(str(datasource)).scheme.lower()
+    value = str(datasource)
+    # ``urlparse`` treats a Windows drive prefix (for example ``C:\\...``)
+    # as a URI scheme when this code runs on a non-Windows host.  Datasource
+    # paths are deployment-local values, so recognize that form before URI
+    # scheme dispatch.
+    if len(value) >= 3 and value[0].isalpha() and value[1] == ":" and value[2] in "\\/":
+        return "sqlite"
+    scheme = urlparse(value).scheme.lower()
     if scheme in {"", "sqlite"}:
         return "sqlite"
     if scheme in {"postgres", "postgresql"}:

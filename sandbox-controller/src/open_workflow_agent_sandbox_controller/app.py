@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import ntpath
 import os
+import posixpath
 import re
 import tempfile
 import time
@@ -71,9 +73,13 @@ class ControllerConfig(StrictModel):
     @classmethod
     def validate_absolute_path(cls, value: str) -> str:
         path = Path(value)
-        if not path.is_absolute():
+        # The controller runs on Linux, but importing and validating its
+        # configuration is also part of the cross-platform development suite.
+        # Accept absolute path syntax from either platform without weakening
+        # the deployment contract to accept relative paths.
+        if not (path.is_absolute() or posixpath.isabs(value) or ntpath.isabs(value)):
             raise ValueError("Docker controller paths must be absolute")
-        return str(path)
+        return value
 
     @field_validator("allowed_images")
     @classmethod

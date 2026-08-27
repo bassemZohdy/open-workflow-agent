@@ -196,3 +196,11 @@ def test_sqlite_absolute_url_normalizes_posix_root():
     from open_workflow_agent.storage import resolve_datasource
 
     assert resolve_datasource("sqlite:////tmp/owa-runtime.sqlite3") == "/tmp/owa-runtime.sqlite3"
+
+
+def test_windows_path_is_treated_as_local_sqlite_datasource():
+    from open_workflow_agent.storage import datasource_kind, resolve_datasource
+
+    datasource = r"C:\owa\runtime.sqlite3"
+    assert datasource_kind(datasource) == "sqlite"
+    assert resolve_datasource(datasource) == datasource

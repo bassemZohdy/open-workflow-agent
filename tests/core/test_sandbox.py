@@ -142,7 +142,8 @@ async def test_runtime_generated_errors_do_not_echo_approved_secret(
             SandboxExecutionRequest(
                 execution_id="secret-error",
                 kind="shell",
-                command="false",
+                command="python",
+                arguments=("-c", "raise SystemExit(1)"),
                 environment=(("TOKEN", SandboxSecretReference("SANDBOX_TEST_SECRET")),),
             )
         )
