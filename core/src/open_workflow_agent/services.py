@@ -12,6 +12,7 @@ from .docker_sandbox import DockerSandboxBackend
 from .events import EventBus, InMemoryEventBus
 from .external_catalog import ExternalCatalogResolver
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
+from .kubernetes_sandbox import KubernetesSandboxBackend
 from .memory import MemoryService
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
 from .persistence import InvocationStore
@@ -59,6 +60,8 @@ class RuntimeServices:
         sandbox_backend: SandboxBackend
         if config.sandbox.backend == "docker":
             sandbox_backend = DockerSandboxBackend(config.sandbox)
+        elif config.sandbox.backend == "kubernetes":
+            sandbox_backend = KubernetesSandboxBackend(config.sandbox)
         else:
             sandbox_backend = InternalSandboxBackend(config.sandbox)
         self.sandbox = SandboxManager(sandbox_backend)
