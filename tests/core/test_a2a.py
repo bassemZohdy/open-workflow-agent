@@ -198,9 +198,7 @@ async def test_oversized_message_is_rejected(tmp_path) -> None:
                     "jsonrpc": "2.0",
                     "id": 3,
                     "method": "SendMessage",
-                    "params": {
-                        "message": {"role": "ROLE_USER", "parts": [{"text": "x" * 11}]}
-                    },
+                    "params": {"message": {"role": "ROLE_USER", "parts": [{"text": "x" * 11}]}},
                 },
             )
             assert response.status_code == 200
