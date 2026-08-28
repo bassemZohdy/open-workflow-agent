@@ -4,59 +4,63 @@
 
 ## Current Phase
 
-**v0.1.0 released; protocol/security decisions resolved; latest-stable protocol migration and security-model implementation in progress (2026-08-28).**
+**v0.1.0 released; latest-stable protocol migration and shared security-model implementation are the active pre-stable work (2026-08-28).**
 
-The full backlog sweep is green, v0.1.0 is released, Kubernetes sandbox acceptance passed on kind, and inbound A2A has now been migrated from the legacy v0.3 assumptions to the stable A2A 1.0 line. The next work is no longer decision-blocked.
+The runtime has no backward-compatibility commitment while the public product contract is still stabilizing. Legacy protocol aliases should be removed during migrations rather than preserved automatically.
 
-### Current integration head
+### Current implementation state
 
-- A2A v1 code verification: CI run `33171216121` is green for commit `cb529e1` (root quality/tests/contracts, ADK/LangGraph native+CTK, and Docker acceptance).
-- The A2A v1 migration is documented in README/API plus the protocol baseline/security decision records; subsequent documentation-only commits do not change runtime behavior.
-- The current formal release remains **v0.1.0** (`c47cb86`); current `main` work is unreleased.
+- Stable protocol baselines are pinned in `docs/protocol-baselines.md`.
+- Inbound A2A is migrated from the legacy v0.3 assumptions to the stable A2A 1.0 line (`1.0.1` release, protocol version `1.0`).
+- The common outbound MCP/A2A client migration is on `main`; final protocol-wide verification remains part of `PROTOCOL-2/3`.
+- The sandbox capability SPI rename is complete: `sandbox_capabilities.py` is separate from backend `sandbox/contract.py`.
+- Shared named security profiles are **designed/documented but not yet implemented**; temporary protocol-specific credential fields are not future compatibility contracts.
+- The formal release remains **v0.1.0**; current `main` work is unreleased.
 
 ## Active Backlog
 
 ### Protocol baselines
 
-- [x] PROTOCOL-1: inventory the external protocols/specifications implemented or planned by OWA and verify the latest stable released baseline from authoritative sources. Recorded in `docs/protocol-baselines.md`.
+- [x] PROTOCOL-1: inventory external protocols/specifications and verify latest stable released baselines from authoritative sources.
   - Open Workflow Specification: `1.0.3`
   - A2A Protocol: `1.0.1`
   - Model Context Protocol: `2026-07-28`
   - OpenAPI Specification: `3.2.0`
   - CloudEvents: `1.0.2`
   - AsyncAPI Specification: `3.1.0`
-  - gRPC: no independent OWA application-protocol version is pinned; use the stable protocol/tooling required by the binding being implemented.
-- [ ] PROTOCOL-2: update existing implementations that lag the verified stable baseline. A2A migration is complete; audit/migrate existing MCP, OpenAPI, and CloudEvents behavior next where required.
-- [ ] PROTOCOL-3: add deterministic compatibility/conformance tests for every pinned baseline and advertise protocol/version only after the applicable gates are green.
-- [x] PROTOCOL-4: **no backward-compatibility commitment before the product contract stabilizes.** Remove legacy protocol aliases/behavior during migrations unless explicitly required later by a new product decision. A2A v0.3 compatibility was removed during the v1 migration.
-- [ ] PROTOCOL-5: add a release/CI check preventing an unreviewed protocol-baseline change from being advertised as supported.
+  - gRPC: no independent OWA application-protocol version is pinned unless a concrete OWA binding requires one.
+- [ ] PROTOCOL-2: finish auditing/migrating implemented protocol behavior to the pinned stable baselines. A2A migration is complete; MCP common-client migration is on `main`; OpenAPI remains a bounded operation adapter rather than a full OAS 3.2 parser/conformance claim; CloudEvents structured lifecycle behavior remains bounded to the supported 1.0 semantics.
+- [ ] PROTOCOL-3: add deterministic compatibility/conformance tests for every pinned baseline and advertise protocol/version only after applicable gates are green.
+- [x] PROTOCOL-4: no backward-compatibility commitment before product-contract stabilization. A2A v0.3 compatibility was removed during the v1 migration.
+- [ ] PROTOCOL-5: add a release/CI guard preventing an unreviewed protocol-baseline change from being advertised as supported.
 
 ### Security configuration model
 
-- [ ] SECURITY-1: introduce shared named security profiles used by inbound and outbound protocol adapters. Initial profile types are intentionally limited to the most common interoperable mechanisms: `bearer`, `api_key`, `oauth2_client_credentials`, and `mtls`. Do not build uncommon/legacy mechanisms without a concrete requirement.
-- [ ] SECURITY-2: expose security configuration through strict YAML plus `OWA__...` environment-variable overrides. Workflow definitions/tools may reference configured profiles but must not contain raw credentials.
-- [ ] SECURITY-3: support environment/secret references for sensitive values and keep secrets out of logs, plans, capability responses, Agent Cards, lifecycle events, tasks/artifacts, and persisted invocation metadata.
-- [ ] SECURITY-4: use standard authorization vocabulary in configuration and documentation: **principal/identity**, **role**, **scope**, **permission/action**, **resource**, and **audience**. Protocol-specific action identifiers should follow their protocol naming where available, for example `message.send`, `tasks.get`, and `tasks.cancel`.
-- [ ] SECURITY-5: enterprise OAuth2/OIDC federation, token exchange, delegated-user identity, and consent remain deployment/identity-platform concerns. OWA must not become an identity provider; delegated-user support is deferred until a concrete use case exists.
+- [ ] SECURITY-1: introduce shared named security profiles for inbound and outbound protocol adapters. Initial types: `bearer`, `api_key`, `oauth2_client_credentials`, `mtls` only.
+- [ ] SECURITY-2: expose profiles through strict YAML plus `OWA__...` overrides. Protocol/tool configuration may reference profiles; workflow definitions must never contain raw credentials.
+- [ ] SECURITY-3: resolve sensitive values from deployment secret/environment references and keep secrets out of logs, plans, capability responses, Agent Cards, lifecycle events, Tasks/artifacts, sandbox output, and persisted invocation metadata.
+- [ ] SECURITY-4: implement standard authorization vocabulary: **principal/identity**, **role**, **scope**, **permission/action**, **resource**, **audience**. Keep roles and scopes semantically distinct. Use protocol-native action identifiers where applicable (`message.send`, `tasks.get`, `tasks.cancel`).
+- [ ] SECURITY-5: keep enterprise OAuth2/OIDC federation, token exchange, delegated-user identity, and consent outside OWA. Delegated-user support stays deferred until a concrete requirement exists.
+- [ ] SECURITY-6: remove temporary protocol-specific authentication fields as shared profiles replace them. Do not retain aliases merely for backward compatibility.
 
 ### Traffic policy
 
-- [ ] TRAFFIC-1: introduce a separate deployment-controlled `traffic_policy` configuration model for inbound rate limits, concurrency limits, request/body bounds where not already protocol-specific, and future circuit/burst policies. Authentication/authorization profiles must not own traffic management.
+- [ ] TRAFFIC-1: introduce a separate deployment-controlled `traffic_policy` model for rate limits, concurrency limits, burst/admission control, and future circuit policies. Authentication/authorization profiles must not own traffic management.
 
 ### A2A next bounded profile
 
-- [x] A2A-1: migrated Agent Card/discovery/transport metadata and bounded SendMessage behavior to stable A2A `1.0.1`; runtime advertises protocol version `1.0`, uses `/.well-known/agent-card.json`, `supportedInterfaces`, JSON-RPC `SendMessage`, HTTP+JSON `/message:send`, v1 Part shape, and no v0.3 compatibility aliases. CI run `33171216121` green.
-- [ ] A2A-2: replace the single shared bearer-only model with named security profiles and per-principal skill/action authorization.
+- [x] A2A-1: migrate Agent Card/discovery/transport metadata and bounded `SendMessage` behavior to A2A `1.0.1`; advertise protocol version `1.0`, use `/.well-known/agent-card.json`, `supportedInterfaces`, JSON-RPC `SendMessage`, HTTP+JSON `/message:send`, v1 Part shape, and no v0.3 compatibility aliases.
+- [ ] A2A-2: replace the temporary shared bearer-only model with named security profiles and per-principal skill/action authorization.
 - [ ] A2A-3: support multiple config-declared A2A skills mapped to explicitly registered workflows. Clients must not choose arbitrary workflow paths/files/catalog entries.
-- [ ] A2A-4: implement the A2A Task model as a projection over common OWA invocation state, not a second execution engine. Prefer `task_id == invocation_id`; validate exact TaskStatus mapping against A2A `1.0.1`.
+- [ ] A2A-4: implement A2A Tasks as a projection over common OWA invocation state, not a second execution engine. Prefer `task_id == invocation_id`; validate exact TaskStatus mapping against A2A `1.0.1`.
 - [ ] A2A-5: add Task retrieval and cancellation using common invocation/ExecutionHandle APIs. Durable waiting/approval state stays owned by existing common stores.
 - [ ] A2A-6: add asynchronous Task-returning send behavior only as defined by A2A `1.0.1`; no OWA-specific async flag.
-- [ ] A2A-7: after the Task model is green, implement streaming/resubscription by mapping A2A events onto the existing bounded common lifecycle/event infrastructure. Never expose engine-native checkpoint/stream objects.
-- [ ] A2A-8: add A2A interoperability/conformance coverage for the bounded profile before expanding capability advertisement.
+- [ ] A2A-7: after Task state is green, implement streaming/resubscription using the bounded common lifecycle/event infrastructure. Never expose engine-native checkpoint/stream objects.
+- [ ] A2A-8: add A2A interoperability/conformance coverage before expanding capability advertisement.
 
 ### Architecture cleanup
 
-- [ ] ARCH-3: rename portable sandbox requirements module `sandbox_contract.py` to `sandbox_capabilities.py` (or equivalent capability-oriented name). Keep `sandbox/contract.py` as the backend request/result/interface contract; do not merge the concepts.
+- [x] ARCH-3: portable sandbox requirements/capability SPI renamed to `sandbox_capabilities.py`; backend request/result/interface contract remains `sandbox/contract.py`. The concepts stay separate.
 
 ## Intentionally Deferred
 
@@ -66,7 +70,7 @@ Kubernetes acceptance is green. OpenShift-specific SCC/security-context/arbitrar
 
 ### A2A push notifications and full conformance
 
-Push notifications remain deferred because they introduce an outbound callback trust boundary requiring callback allowlisting, TLS/server identity verification, SSRF controls, callback authentication, replay/idempotency protection, bounded retries/dead-letter behavior, and secret-safe observability.
+Push notifications remain deferred because they create an outbound callback trust boundary requiring callback allowlisting, TLS/server identity verification, SSRF controls, callback authentication, replay/idempotency protection, bounded retries/dead-letter behavior, and secret-safe observability.
 
 A full A2A conformance claim remains deferred until the bounded Task/streaming profile and applicable interoperability/conformance gates are complete.
 
@@ -85,16 +89,16 @@ User delegation/token exchange/consent is deferred until a concrete enterprise A
 ## Decisions Resolved — 2026-08-28
 
 - [x] Latest stable released protocol/specification is the target baseline; baselines are explicitly pinned and reviewed.
-- [x] No backward compatibility is required at this stage; the product contract is not yet mature enough to justify carrying legacy protocol generations.
+- [x] No backward compatibility is required at this stage.
 - [x] Security configuration is externalized through YAML/environment variables and reusable named profiles.
-- [x] Initial security mechanisms are limited to bearer token, API key, OAuth2 client credentials, and mTLS.
-- [x] Authorization vocabulary uses standard identity/role/scope/permission(action)/resource/audience terms.
+- [x] Initial security mechanisms are limited to bearer, API key, OAuth2 client credentials, and mTLS.
+- [x] Authorization vocabulary uses standard principal/identity, role, scope, permission/action, resource, and audience terms.
 - [x] Traffic/rate/concurrency policy is separate from authentication/authorization.
-- [x] A2A supports multiple deployment-configured skills mapped to registered workflows.
-- [x] A2A Tasks project common OWA invocation state.
+- [x] A2A supports multiple deployment-configured skills mapped to registered workflows as the target model.
+- [x] A2A Tasks project common OWA invocation state as the target model.
 - [x] Multi-tenancy remains out of scope.
 - [x] Delegated-user identity remains deferred.
-- [x] Sandbox capability SPI and backend contract remain separate; rename the former rather than merging them.
+- [x] Sandbox capability SPI and backend contract remain separate; the capability module rename is complete.
 
 Detailed decisions: `docs/protocol-security-decisions.md`.
 Protocol baseline record: `docs/protocol-baselines.md`.
@@ -107,5 +111,5 @@ Protocol baseline record: `docs/protocol-baselines.md`.
 - Preserve separate knowledge, memory, session, checkpoint, invocation, approval, schedule, sandbox, and engine-native state lifecycles.
 - Production capabilities remain fail-closed until deterministic tests and required acceptance gates are green.
 - Protocol baseline changes are reviewed compatibility changes, not dependency bumps.
-- Authentication and authorization remain strict deployment/runtime configuration; workflow definitions never contain raw credentials.
+- Authentication and authorization remain deployment/runtime configuration; workflows never contain raw credentials.
 - Traffic policy remains separate from security profiles.
