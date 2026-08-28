@@ -3,11 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-
 from open_workflow_agent.a2a import (
     A2A_PROTOCOL_VERSION as INBOUND_A2A_PROTOCOL_VERSION,
-    A2A_SPEC_RELEASE,
 )
+from open_workflow_agent.a2a import A2A_SPEC_RELEASE
 from open_workflow_agent.protocols import (
     A2A_METHODS,
     A2A_PROTOCOL_VERSION,
