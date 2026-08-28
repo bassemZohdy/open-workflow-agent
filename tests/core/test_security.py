@@ -52,9 +52,7 @@ def test_named_profiles_are_strict_and_discriminated() -> None:
 
     assert isinstance(config.profile("agent-client"), BearerSecurityProfile)
     assert isinstance(config.profile("partner"), ApiKeySecurityProfile)
-    assert isinstance(
-        config.profile("service-oauth"), OAuth2ClientCredentialsSecurityProfile
-    )
+    assert isinstance(config.profile("service-oauth"), OAuth2ClientCredentialsSecurityProfile)
     assert config.profile("service-mtls").type == "mtls"
 
 
