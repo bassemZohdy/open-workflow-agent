@@ -42,17 +42,11 @@ Not ready returns HTTP `503`:
 GET /v1/capabilities
 ```
 
-Use this endpoint to discover the selected engine and supported portable/optional features.
+Use this endpoint to discover the selected engine and supported portable/optional features. Do not assume that every engine exposes identical optional features.
 
-Do not assume that every engine exposes identical optional features.
+When enabled, `features.catalogs` reports the external-catalog trust mode and resolved function references without returning catalog endpoints, credentials, or remote definitions. Readiness is not reported until configured catalog functions have been fetched and verified.
 
-When enabled, `features.catalogs` reports the external-catalog trust mode and
-resolved function references without returning catalog endpoints, credentials,
-or remote definitions. Readiness is not reported until configured catalog
-functions have been fetched and verified.
-
-When the sandbox is enabled, `features.sandbox` reports the selected backend and
-only the controls that backend actually enforces, for example:
+When the sandbox is enabled, `features.sandbox` reports the selected backend and only the controls that backend actually enforces, for example:
 
 ```json
 {
@@ -73,9 +67,7 @@ only the controls that backend actually enforces, for example:
 }
 ```
 
-`sandbox.enabled: false` (the default) means `run.shell`, `run.script`, and
-`run.container` are rejected. See [sandbox-execution.md](sandbox-execution.md)
-for the per-backend capability model.
+`sandbox.enabled: false` (the default) means `run.shell`, `run.script`, and `run.container` are rejected. See [sandbox-execution.md](sandbox-execution.md) for the per-backend capability model.
 
 ## Invoke a workflow
 
@@ -193,13 +185,13 @@ Current generic event delivery is process-local and non-durable. It should not b
 GET /v1/events/lifecycle?limit=100
 ```
 
-The endpoint returns a bounded CloudEvents 1.0 JSON batch snapshot with media type:
+The endpoint returns a bounded CloudEvents JSON batch snapshot with media type:
 
 ```text
 application/cloudevents-batch+json
 ```
 
-It is a snapshot, not a stream and not a durable event broker.
+The current CloudEvents baseline is pinned in [protocol-baselines.md](protocol-baselines.md). This endpoint is a snapshot, not a stream and not a durable event broker.
 
 ### Lifecycle SSE stream
 
@@ -207,9 +199,7 @@ It is a snapshot, not a stream and not a durable event broker.
 GET /v1/events/lifecycle/stream
 ```
 
-A bounded Server-Sent Events stream of the same lifecycle CloudEvents, advertised
-through `features.lifecycleStreaming`. It is a bounded transport, not a durable
-streaming contract:
+A bounded Server-Sent Events stream of the same lifecycle CloudEvents, advertised through `features.lifecycleStreaming`. It is a bounded transport, not a durable streaming contract:
 
 ```text
 max_events       default 100 (1-1000)     stream terminates after this many events
@@ -219,15 +209,11 @@ queue_size       default 64 (1-1000)      bounded buffer; overflow terminates th
 Last-Event-ID    optional header          resume from that event; unknown IDs return 409
 ```
 
-The stream always terminates (terminal event, bound reached, or timeout) and
-carries lifecycle events only — it is not general output/token streaming.
-Concurrent streams are capacity-limited; over capacity returns HTTP `429`
-(`stream_capacity_exceeded`).
+The stream always terminates and carries lifecycle events only — it is not general output/token streaming. Concurrent streams are capacity-limited; over capacity returns HTTP `429` (`stream_capacity_exceeded`).
 
 ## Approvals (human-in-the-loop)
 
-Durable approval state is a bounded HITL mechanism layered on the standard
-event contract. It is disabled until the deployment sets:
+Durable approval state is a bounded HITL mechanism layered on the standard event contract. It is disabled until the deployment sets:
 
 ```yaml
 approvals:
@@ -235,25 +221,22 @@ approvals:
   operator_token: <deployment-provided bearer token>
 ```
 
+The existing approval-specific bearer field remains a bounded pre-security-profile implementation. The shared security-profile backlog will externalize common auth/authz policy without changing the rule that credentials are deployment configuration.
+
 ### Workflow side
 
-A workflow requests approval with a standard `emit` task and waits with a
-standard `listen` task using a deterministic `one.with` filter. The request
-event's CloudEvents extension `approvalexpiresat` (optional) sets decision
-expiry. Event `data` is untrusted input: the workflow's input/output schema must
-validate a decision before it affects a side effect.
+A workflow requests approval with a standard `emit` task and waits with the standard `listen` task using a deterministic `one.with` filter. The request event's CloudEvents extension `approvalexpiresat` (optional) sets decision expiry. Event `data` is untrusted input: the workflow's input/output schema must validate a decision before it affects a side effect.
 
 ### Operator endpoints
 
-All approval endpoints require the configured bearer token **and** an operator
-identity:
+All approval endpoints require the configured bearer token **and** an operator identity:
 
 ```text
 Authorization: Bearer <approvals.operator_token>
 X-Operator-Id: <operator identity>
 ```
 
-List the inbox (optionally filtered by `status=pending|approved|rejected|expired`):
+List the inbox:
 
 ```http
 GET /v1/approvals?status=pending&limit=100
@@ -265,8 +248,7 @@ Read one record:
 GET /v1/approvals/{approval_id}
 ```
 
-Respond (idempotent per `Idempotency-Key`; repeated decisions on a terminal
-approval are rejected):
+Respond:
 
 ```http
 POST /v1/approvals/{approval_id}/decision
@@ -281,57 +263,117 @@ Content-Type: application/json
 }
 ```
 
-Records persist across restarts. Once a decision is terminal, it replays
-through the normal `listen` path, so a waiting invocation resumes with the
-decision after a restart.
-
-The bearer/operator guard is a bounded deployment authorization boundary, not a
-replacement for an enterprise identity provider.
+Records persist across restarts. Once a decision is terminal, it replays through the normal `listen` path, so a waiting invocation resumes with the decision after a restart.
 
 ## Inbound A2A (optional, bounded)
 
-The runtime can expose itself as an A2A agent. This is disabled by default and
-gated by deployment configuration:
+The runtime can expose itself as an A2A agent. The current implementation targets stable A2A release **1.0.1** and advertises protocol version **1.0**. It is disabled by default.
+
+Current deployment configuration remains:
 
 ```yaml
 a2a:
   enabled: true
-  transport: jsonrpc        # jsonrpc (default, most deployed) | http_json
+  transport: jsonrpc        # jsonrpc | http_json
   path: /a2a
   agent_name: Open Workflow Agent
-  public_base_url: https://agents.example.com   # card url behind proxies
-  auth_token: set-via-deployment-secret   # optional bearer
+  public_base_url: https://agents.example.com
+  auth_token: set-via-deployment-secret   # temporary bounded bearer field
   max_message_chars: 100000
 ```
 
-Two transport implementations are selectable through `a2a.transport`:
+`auth_token` will be replaced by the shared named security-profile model tracked in `TODO.md`. Authentication/authorization remains deployment configuration; raw credentials must not be placed in workflow definitions.
 
-- `jsonrpc` (default) — JSON-RPC 2.0 over HTTP, the most widely deployed A2A
-  transport. `message/send` only; JSON-RPC error objects carry sanitized codes.
-- `http_json` — the A2A HTTP+JSON transport: the body is a plain A2A message
-  object and the reply is an agent message object.
+### Discovery
 
-Discovery:
+A2A v1 Agent Card discovery:
 
 ```http
-GET /a2a/agent.json          (also at /.well-known/agent.json)
+GET /.well-known/agent-card.json
 ```
 
-returns the bounded Agent Card (`preferredTransport`, capabilities without
-streaming or push notifications, one skill bound to the configured workflow).
+The card uses `supportedInterfaces[]`; each active interface declares:
 
-`message/send` is synchronous: the first text part becomes the workflow input
-(`question`), and the workflow output text becomes the reply's text part. When
-the workflow is waiting, cancelled, or faults, the transport returns a
-sanitized error (`workflow_waiting`, `invocation_cancelled`, or the common
-error code) — there is no long-lived task object in this profile.
+```json
+{
+  "url": "https://agents.example.com/a2a",
+  "protocolBinding": "JSONRPC",
+  "protocolVersion": "1.0"
+}
+```
 
-When `auth_token` is set, every A2A request requires
-`Authorization: Bearer <token>` (HTTP 401 otherwise). `/v1/capabilities`
-reports the active block under `features.a2a`. Behind a reverse proxy, set
-`a2a.public_base_url` so the card publishes the externally reachable URL. Streaming (`message/stream`),
-push notifications, and persistent tasks are intentionally not part of this
-profile; see [a2a-streaming-evaluation.md](a2a-streaming-evaluation.md).
+OWA intentionally does **not** retain the legacy v0.3 discovery paths `/a2a/agent.json` or `/.well-known/agent.json`.
+
+### JSON-RPC binding
+
+With `a2a.transport: jsonrpc`:
+
+```http
+POST /a2a
+Content-Type: application/json
+```
+
+Bounded request example:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "m-1",
+      "parts": [
+        {"text": "hello"}
+      ]
+    }
+  }
+}
+```
+
+The bounded profile supports `SendMessage` only. Legacy v0.3 `message/send` and `part.kind` forms are rejected rather than maintained as compatibility aliases.
+
+### HTTP+JSON binding
+
+With `a2a.transport: http_json`:
+
+```http
+POST /a2a/message:send
+Content-Type: application/a2a+json
+```
+
+Request:
+
+```json
+{
+  "message": {
+    "role": "ROLE_USER",
+    "messageId": "m-1",
+    "parts": [
+      {"text": "hello"}
+    ]
+  }
+}
+```
+
+The response uses `application/a2a+json` and returns the bounded SendMessage response shape containing an agent message.
+
+### Current A2A capability boundary
+
+`/v1/capabilities` reports the pinned spec release/protocol version and exact bounded features. Current status:
+
+```text
+Agent Card discovery        implemented
+SendMessage                 implemented
+persistent A2A Tasks        not yet implemented
+Task get/cancel             not yet implemented
+streaming/resubscription    not yet implemented
+push notifications          deferred
+full conformance claim      not claimed
+```
+
+The next A2A work maps A2A Tasks onto common OWA invocation/ExecutionHandle state instead of introducing a second persistence or execution engine. See [protocol-security-decisions.md](protocol-security-decisions.md), [protocol-baselines.md](protocol-baselines.md), and [a2a-streaming-evaluation.md](a2a-streaming-evaluation.md).
 
 ## Schedules
 
@@ -408,6 +450,17 @@ Oversized bounded requests return HTTP `413`:
 
 ## Security notes
 
-The current HTTP layer does not make `user_id` an authenticated principal. Authentication/authorization should be enforced by the deployment boundary or an appropriate future runtime security layer.
+`user_id` is not an authenticated principal. Authentication and authorization are deployment/runtime configuration and are being consolidated into reusable named security profiles.
 
-Treat workflow files as trusted deployment artifacts and invocation/event input as untrusted data.
+The initial shared security profile types are intentionally limited to the common mechanisms:
+
+```text
+bearer
+api_key
+oauth2_client_credentials
+mtls
+```
+
+Authorization terminology is standardized as principal/identity, role, scope, permission/action, resource, and audience. Traffic limits are a separate `traffic_policy` concern rather than part of the security profile.
+
+Treat workflow files as trusted deployment artifacts and invocation/event input as untrusted data. Workflows must not contain raw credentials.
