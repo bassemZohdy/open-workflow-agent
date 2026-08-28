@@ -1,32 +1,32 @@
 # External Protocol Baselines
 
-Verified: 2026-08-28
+Verified: 2026-08-29
 
-Open Workflow Agent targets the latest stable released version of each external protocol/specification it implements or advertises. The baseline is pinned per project release; it does not float automatically at runtime.
+Open Workflow Agent targets the latest stable released version of each external protocol/specification it implements or advertises. Baselines are pinned per project release or reviewed `main` state; they never float automatically at runtime.
 
-## Current baselines
+## Current Baselines
 
 | Protocol / specification | Pinned stable baseline | OWA status |
 | --- | --- | --- |
 | Open Workflow Specification | `1.0.3` | Implemented subset / OWA Portable Profile |
-| A2A Protocol | `1.0.1` | Migration required from legacy `0.3.0` assumptions before further expansion |
-| Model Context Protocol | `2026-07-28` | Existing MCP client/tool behavior requires audit against this baseline |
-| OpenAPI Specification | `3.2.0` | Planned/implemented bounded adapter behavior must validate against this baseline |
-| CloudEvents | `1.0.2` | Existing lifecycle event boundary requires compatibility verification |
+| A2A Protocol | `1.0.1` | Bounded inbound v1 profile implemented; Task/streaming/conformance expansion remains backlog |
+| Model Context Protocol | `2026-07-28` | Common client migration implemented on `main`; final compatibility/advertisement audit remains active |
+| OpenAPI Specification | `3.2.0` | Bounded operation adapter only; no full parser/conformance claim |
+| CloudEvents | `1.0.2` | Bounded lifecycle snapshot/SSE behavior implemented; exact compatibility verification remains active |
 | AsyncAPI Specification | `3.1.0` | Future binding baseline |
-| gRPC | current stable protocol/toolchain | No independent OWA application-protocol version is currently advertised |
+| gRPC | current stable protocol/toolchain | No independent OWA application-protocol version is advertised unless a concrete binding is implemented |
 
-## Authoritative verification
+## Authoritative Verification
 
 ### Open Workflow Specification — 1.0.3
 
-The official specification repository's current workflow schema identifies itself as:
+The official workflow schema used by OWA identifies itself as:
 
 ```text
 https://open-workflow-specification.org/schemas/1.0.3/workflow.yaml
 ```
 
-OWA already bundles and validates against this exact schema revision. No migration is required by PROTOCOL-1.
+OWA bundles and validates against this exact schema revision.
 
 Authoritative source:
 
@@ -34,9 +34,26 @@ Authoritative source:
 https://github.com/open-workflow-specification/specification
 ```
 
+OWA intentionally advertises only its tested Portable Profile rather than claiming full Open Workflow conformance.
+
 ### A2A Protocol — 1.0.1
 
-The official A2A specification repository lists `v1.0.1` as the latest protocol specification release (2026-05-26). OWA's current bounded inbound profile still contains legacy `0.3.0` metadata/discovery assumptions and therefore requires migration.
+The official A2A project lists `v1.0.1` as the stable maintenance release used by this project. OWA has migrated the bounded inbound profile away from legacy `0.3.0` assumptions.
+
+Implemented v1 boundary includes:
+
+```text
+GET  /.well-known/agent-card.json
+JSON-RPC SendMessage
+HTTP+JSON /message:send
+supportedInterfaces
+protocolVersion: 1.0
+v1 message/Part shapes
+```
+
+Legacy v0.3 discovery paths, method names, and Part compatibility aliases are intentionally not retained.
+
+Persistent A2A Tasks, task retrieval/cancellation, protocol-native async Task behavior, streaming/resubscription, push notifications, and broad conformance remain outside the currently advertised bounded profile.
 
 Authoritative sources:
 
@@ -45,24 +62,24 @@ https://github.com/a2aproject/A2A/releases
 https://a2a-protocol.org/latest/
 ```
 
-OWA will not retain A2A v0.3 compatibility after migration unless a future explicit product decision requires it.
-
 ### Model Context Protocol — 2026-07-28
 
-The MCP project released specification revision `2026-07-28`, including the stateless protocol core, multi-round-trip requests, header-based routing, authorization hardening, extensions, and updated task semantics.
+The MCP project released specification revision `2026-07-28`, including the stateless protocol core and the current authorization/task semantics.
 
-Authoritative source:
+The common OWA MCP client migration is implemented on `main`; final protocol-wide audit and compatibility/advertisement gates remain active work before making a broader support claim.
+
+Authoritative sources:
 
 ```text
 https://modelcontextprotocol.io/
 https://blog.modelcontextprotocol.io/posts/2026-07-28/
 ```
 
-Existing OWA MCP behavior must be audited before the runtime claims this baseline.
-
 ### OpenAPI Specification — 3.2.0
 
-The OpenAPI Initiative identifies `3.2.0` (2025-09-19) as the latest stable OpenAPI Specification.
+The OpenAPI Initiative identifies `3.2.0` as the current stable OpenAPI Specification baseline used for OWA review.
+
+OWA currently exposes a bounded operation adapter. It does not claim a complete OAS 3.2 parser or conformance implementation.
 
 Authoritative source:
 
@@ -72,7 +89,9 @@ https://spec.openapis.org/oas/latest.html
 
 ### CloudEvents — 1.0.2
 
-The CloudEvents specification repository identifies `ce@v1.0.2` as the latest stable core specification and stable protocol/event-format family release.
+The CloudEvents specification repository identifies `ce@v1.0.2` as the stable core/event-format family baseline used by OWA.
+
+OWA exposes bounded lifecycle CloudEvents snapshots and lifecycle SSE. Exact compatibility verification remains part of the active protocol gate before broadening any conformance wording.
 
 Authoritative source:
 
@@ -80,11 +99,9 @@ Authoritative source:
 https://github.com/cloudevents/spec
 ```
 
-OWA currently emits CloudEvents-compatible lifecycle events; PROTOCOL-3 must verify exact compatibility before broadening any conformance wording.
-
 ### AsyncAPI Specification — 3.1.0
 
-The AsyncAPI Initiative released specification `3.1.0` on 2026-01-31. It is the target baseline when AsyncAPI support is implemented.
+AsyncAPI `3.1.0` is the target baseline if/when an AsyncAPI binding is implemented.
 
 Authoritative source:
 
@@ -94,9 +111,9 @@ https://www.asyncapi.com/docs/reference/specification/v3.1.0
 
 ### gRPC
 
-gRPC does not define an OWA-level application schema version analogous to A2A, MCP, OpenAPI, or AsyncAPI. When OWA introduces a gRPC binding, the project must pin the relevant protobuf definitions and stable library/toolchain versions used by that binding and advertise only the application protocol version actually implemented.
+gRPC does not define an OWA-level application schema version analogous to A2A, MCP, OpenAPI, or AsyncAPI. If OWA introduces a gRPC binding, the project must pin the relevant protobuf definitions and stable library/toolchain versions and advertise only the application contract actually implemented.
 
-## Upgrade policy
+## Upgrade Policy
 
 A new upstream stable release triggers review, not an automatic runtime change:
 
@@ -105,7 +122,9 @@ new stable release
      ↓
 compatibility/security review
      ↓
-implementation + tests
+implementation/migration
+     ↓
+deterministic tests
      ↓
 capability metadata update
      ↓
@@ -114,4 +133,10 @@ OWA release
 
 Draft, preview, RC, and editor-draft specifications must not become the default production baseline.
 
-Because the OWA public contract is still stabilizing, legacy protocol generations are removed during migration rather than maintained as compatibility layers.
+Because the OWA public contract is still stabilizing, legacy protocol generations are removed during migration rather than maintained automatically as compatibility layers.
+
+## Advertisement Rule
+
+`/v1/capabilities`, Agent Cards, protocol metadata, and release documentation may advertise only behavior that is both implemented and covered by the applicable deterministic/acceptance gates.
+
+A pinned baseline is therefore a review target, not by itself a conformance claim.
