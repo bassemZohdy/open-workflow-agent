@@ -1,12 +1,17 @@
-"""Bounded inbound A2A exposure behind a deployment-selected transport.
+"""Bounded inbound A2A 1.0 profile behind a deployment-selected binding.
 
-Disabled by default. When enabled, the runtime exposes an Agent Card and a
-synchronous `message/send` endpoint so external A2A clients can drive the
-configured workflow. Two transport implementations are selectable through
-configuration: `jsonrpc` (JSON-RPC 2.0 over HTTP, the most widely deployed
-A2A transport, the default) and `http_json` (A2A HTTP+JSON, messages posted
-as plain A2A objects). Streaming (`message/stream`), push notifications,
-and persistent task objects are intentionally out of this bounded profile.
+The runtime targets A2A protocol release 1.0.1 and advertises protocol version
+1.0 on each AgentInterface. Disabled by default. When enabled, the runtime
+exposes the standard Agent Card discovery URI and a synchronous SendMessage
+operation so external A2A clients can drive the configured workflow.
+
+Two bindings are selectable through deployment configuration:
+
+- ``jsonrpc``: JSON-RPC 2.0 over HTTP using A2A v1 PascalCase methods.
+- ``http_json``: A2A HTTP+JSON using the standard REST endpoint/media type.
+
+Task persistence, streaming, resubscription, push notifications, and extended
+Agent Cards are intentionally outside this bounded slice.
 """
 
 from __future__ import annotations
@@ -21,41 +26,45 @@ from fastapi.responses import JSONResponse
 
 from .config import A2AConfig
 
+A2A_SPEC_RELEASE = "1.0.1"
+A2A_PROTOCOL_VERSION = "1.0"
+A2A_AGENT_CARD_PATH = "/.well-known/agent-card.json"
+A2A_HTTP_JSON_MEDIA_TYPE = "application/a2a+json"
+
 _MAX_TEXT_PARTS = 64
-
-
-# Well-known transport labels from the A2A agent-card specification.
 _TRANSPORT_LABELS = {"jsonrpc": "JSONRPC", "http_json": "HTTP+JSON"}
 
 
 def a2a_capabilities(config: A2AConfig) -> dict[str, Any]:
-    """Sanitized `features.a2a` capability block."""
+    """Return the sanitized ``features.a2a`` capability block."""
 
     return {
         "enabled": config.enabled,
+        "specRelease": A2A_SPEC_RELEASE if config.enabled else None,
+        "protocolVersion": A2A_PROTOCOL_VERSION if config.enabled else None,
         "transport": config.transport,
-        "card": f"{config.path}/agent.json" if config.enabled else None,
+        "card": A2A_AGENT_CARD_PATH if config.enabled else None,
         "streaming": False,
         "pushNotifications": False,
+        "tasks": False,
         "auth": "bearer" if config.enabled and config.auth_token else None,
     }
 
 
 def build_agent_card(config: A2AConfig, *, url: str, workflow_name: str) -> dict[str, Any]:
-    """Build the bounded Agent Card for the configured workflow."""
+    """Build the bounded A2A v1 Agent Card for the configured workflow."""
 
-    transport_label = _TRANSPORT_LABELS[config.transport]
     return {
         "name": config.agent_name,
         "description": config.agent_description,
-        "url": url,
-        "version": config.agent_version,
-        "protocolVersion": "0.3.0",
-        "preferredTransport": transport_label,
-        "additionalInterfaces": [
-            {"transport": label, "path": config.path if label == transport_label else None}
-            for label in _TRANSPORT_LABELS.values()
+        "supportedInterfaces": [
+            {
+                "url": url,
+                "protocolBinding": _TRANSPORT_LABELS[config.transport],
+                "protocolVersion": A2A_PROTOCOL_VERSION,
+            }
         ],
+        "version": config.agent_version,
         "capabilities": {"streaming": False, "pushNotifications": False},
         "defaultInputModes": ["text/plain"],
         "defaultOutputModes": ["text/plain"],
@@ -73,21 +82,22 @@ def build_agent_card(config: A2AConfig, *, url: str, workflow_name: str) -> dict
 
 
 def extract_message_text(parts: Any) -> str:
-    """Join A2A text parts into the single input text of the bounded profile."""
+    """Join A2A v1 text Parts into the bounded profile's workflow input."""
 
     if not isinstance(parts, list) or not parts:
         raise ValueError("message.parts must be a non-empty array")
     if len(parts) > _MAX_TEXT_PARTS:
         raise ValueError(f"message.parts exceeds {_MAX_TEXT_PARTS} parts")
+
     chunks: list[str] = []
     for part in parts:
         if not isinstance(part, dict):
             raise ValueError("message.parts entries must be objects")
-        if part.get("kind") not in {None, "text"}:
-            raise ValueError("only text parts are supported in the bounded A2A profile")
+        if "kind" in part:
+            raise ValueError("legacy A2A part.kind is not supported by the v1 profile")
         text = part.get("text")
         if not isinstance(text, str) or not text:
-            raise ValueError("text parts require a non-empty text string")
+            raise ValueError("only A2A v1 text parts with a non-empty text field are supported")
         chunks.append(text)
     return "\n".join(chunks)
 
@@ -152,6 +162,14 @@ def _jsonrpc_error(request_id: Any, error: JsonRpcError) -> JSONResponse:
     return JSONResponse(status_code=error.http_status, content=content)
 
 
+def _http_json_response(content: dict[str, Any], *, status_code: int = 200) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content=content,
+        media_type=A2A_HTTP_JSON_MEDIA_TYPE,
+    )
+
+
 def _authorize(config: A2AConfig, request: Request) -> bool:
     if not config.auth_token:
         return True
@@ -161,41 +179,49 @@ def _authorize(config: A2AConfig, request: Request) -> bool:
     return hmac.compare_digest(authorization.removeprefix("Bearer ").strip(), config.auth_token)
 
 
+def _reply_message(source_message: dict[str, Any], reply: str) -> dict[str, Any]:
+    source_id = source_message.get("messageId")
+    return {
+        "messageId": f"a2a-{source_id}-reply" if isinstance(source_id, str) else "a2a-reply",
+        "role": "ROLE_AGENT",
+        "parts": [{"text": reply}],
+    }
+
+
 def mount_a2a(
     app: FastAPI,
     config: A2AConfig,
     *,
     invoke_message: Callable[[str], Awaitable[tuple[str, str]]],
 ) -> None:
-    """Mount the selected A2A transport implementation on the application.
+    """Mount the selected bounded A2A v1 binding on the application.
 
-    `invoke_message(text) -> tuple[str, str]` executes the configured workflow
-    with the message text and returns `(reply_text, error)` where `error` is a
-    sanitized common-contract error code or an empty string.
+    ``invoke_message(text) -> tuple[str, str]`` executes the configured
+    workflow and returns ``(reply_text, error_code)``. Error codes are the
+    sanitized common-runtime contract, not engine exceptions.
     """
 
     if not config.enabled:
         return
 
     def authorized(request: Request) -> JSONResponse | None:
-        if not _authorize(config, request):
-            if config.transport == "jsonrpc":
-                return _jsonrpc_error(
-                    None,
-                    JsonRpcError(
-                        JsonRpcError.APPLICATION_ERROR,
-                        "unauthorized",
-                        http_status=401,
-                    ),
-                )
-            return JSONResponse(
-                status_code=401,
-                content={"error": {"code": "unauthorized", "message": "a2a authorization failed"}},
+        if _authorize(config, request):
+            return None
+        if config.transport == "jsonrpc":
+            return _jsonrpc_error(
+                None,
+                JsonRpcError(
+                    JsonRpcError.APPLICATION_ERROR,
+                    "unauthorized",
+                    http_status=401,
+                ),
             )
-        return None
+        return _http_json_response(
+            {"error": {"code": "unauthorized", "message": "a2a authorization failed"}},
+            status_code=401,
+        )
 
-    @app.get(f"{config.path}/agent.json", response_model=None)
-    @app.get("/.well-known/agent.json", response_model=None)
+    @app.get(A2A_AGENT_CARD_PATH, response_model=None)
     async def agent_card(request: Request) -> JSONResponse | dict[str, Any]:
         if unauthorized := authorized(request):
             return unauthorized
@@ -220,16 +246,14 @@ def mount_a2a(
                 raise JsonRpcError(JsonRpcError.INVALID_REQUEST, "not a JSON-RPC 2.0 request")
             request_id = envelope.get("id")
             method = envelope.get("method")
-            if method != "message/send":
+            if method != "SendMessage":
                 raise JsonRpcError(
                     JsonRpcError.METHOD_NOT_FOUND,
-                    "only message/send is supported in the bounded A2A profile",
+                    "only SendMessage is supported in the bounded A2A profile",
                 )
             params = envelope.get("params")
             if not isinstance(params, dict) or not isinstance(params.get("message"), dict):
-                raise JsonRpcError(
-                    JsonRpcError.INVALID_PARAMS, "message/send requires params.message"
-                )
+                raise JsonRpcError(JsonRpcError.INVALID_PARAMS, "SendMessage requires params.message")
             message = params["message"]
             try:
                 text = extract_message_text(message.get("parts"))
@@ -247,84 +271,68 @@ def mount_a2a(
                     "workflow execution failed",
                     details={"code": error_code},
                 )
-            result = {
-                "kind": "message",
-                "messageId": f"a2a-{message.get('messageId', 'reply')}-reply"
-                if isinstance(message.get("messageId"), str)
-                else "a2a-reply",
-                "role": "agent",
-                "parts": [{"kind": "text", "text": reply}],
-            }
-            return _jsonrpc_response(request_id, result)
+            return _jsonrpc_response(request_id, {"message": _reply_message(message, reply)})
 
         @app.exception_handler(JsonRpcError)
         async def jsonrpc_error(_request: Request, error: JsonRpcError) -> JSONResponse:
             return _jsonrpc_error(None, error)
 
     else:
+        send_path = f"{config.path}/message:send"
 
-        @app.post(config.path, response_model=None)
-        async def http_json_entry(request: Request) -> JSONResponse | dict[str, Any]:
+        @app.post(send_path, response_model=None)
+        async def http_json_entry(request: Request) -> JSONResponse:
             if unauthorized := authorized(request):
                 return unauthorized
             try:
-                message = await request.json()
+                payload = await request.json()
             except ValueError:
-                return JSONResponse(
+                return _http_json_response(
+                    {"error": {"code": "invalid_request", "message": "invalid JSON payload"}},
                     status_code=422,
-                    content={
-                        "error": {"code": "invalid_request", "message": "invalid JSON payload"}
-                    },
                 )
-            if not isinstance(message, dict):
-                return JSONResponse(
-                    status_code=422,
-                    content={
+            if not isinstance(payload, dict) or not isinstance(payload.get("message"), dict):
+                return _http_json_response(
+                    {
                         "error": {
                             "code": "invalid_request",
-                            "message": "body must be an A2A message object",
+                            "message": "body must be an A2A SendMessageRequest object",
                         }
                     },
+                    status_code=422,
                 )
+            message = payload["message"]
             try:
                 text = extract_message_text(message.get("parts"))
             except ValueError as exc:
-                return JSONResponse(
+                return _http_json_response(
+                    {"error": {"code": "invalid_request", "message": str(exc)}},
                     status_code=422,
-                    content={"error": {"code": "invalid_request", "message": str(exc)}},
                 )
             if len(text) > config.max_message_chars:
-                return JSONResponse(
-                    status_code=413,
-                    content={
+                return _http_json_response(
+                    {
                         "error": {
                             "code": "message_too_large",
-                            "message": (
-                                f"message text exceeds {config.max_message_chars} characters"
-                            ),
+                            "message": f"message text exceeds {config.max_message_chars} characters",
                         }
                     },
+                    status_code=413,
                 )
             reply, error_code = await invoke_message(text)
             if error_code:
-                return JSONResponse(
+                return _http_json_response(
+                    {"error": {"code": error_code, "message": "workflow execution failed"}},
                     status_code=500,
-                    content={
-                        "error": {
-                            "code": error_code,
-                            "message": "workflow execution failed",
-                        }
-                    },
                 )
-            return {
-                "kind": "message",
-                "messageId": message.get("messageId", "a2a-reply"),
-                "role": "agent",
-                "parts": [{"kind": "text", "text": reply}],
-            }
+            return _http_json_response({"message": _reply_message(message, reply)})
 
 
 __all__ = [
+    "A2A_AGENT_CARD_PATH",
+    "A2A_HTTP_JSON_MEDIA_TYPE",
+    "A2A_PROTOCOL_VERSION",
+    "A2A_SPEC_RELEASE",
     "A2AConfig",
     "JsonRpcError",
     "a2a_capabilities",
