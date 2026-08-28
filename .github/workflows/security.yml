@@ -55,8 +55,8 @@ jobs:
             id: kubernetes-sandbox-controller
             extras: ""
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6.8.0
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "0.11.26"
           enable-cache: true
@@ -117,7 +117,7 @@ jobs:
           PY
       - name: Upload audit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dependency-audit-${{ matrix.id }}
           path: ${{ runner.temp }}/audit.json
