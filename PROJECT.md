@@ -66,6 +66,16 @@ docker.io/bzohdy/open-workflow-agent-langgraph                     sha256:add38f
 
 At v0.1.0 the sandbox-controller images are published to GHCR only; Docker Hub mirroring for controllers was added to the workflow for future releases. OCI SBOM/provenance metadata covers every published image and GHCR build-provenance attestations are published for the canonical GHCR manifests. Dependabot is active (weekly uv/Actions/base-image update PRs; the first update PRs arrived on release day).
 
+### Kubernetes sandbox acceptance (kind, 2026-08-28)
+
+B-006.3 Kubernetes acceptance executed on a local kind cluster (kind v0.33.0, Kubernetes 1.37, Calico 3.29 for NetworkPolicy enforcement) using the published `0.1.0` controller image and an acceptance runtime image built from the fixes below. Deployed topology: runtime pod with the controller as a loopback sidecar holding the projected `owa-sandbox-controller` service-account token; sandbox Jobs run in the `owa-sandbox` namespace under the Pod Security `restricted` profile with default-deny ingress/egress NetworkPolicy.
+
+Verified: end-to-end `run.container` execution (Job -> pod as uid 65532 -> streamed logs -> cleanup); timeout enforced with `sandbox_timeout` surfaced and Job deleted; cancellation returned `cancelled` with Job deleted; ambiguous failure (controller killed mid-execution) bounded by `activeDeadlineSeconds` and removed by TTL with zero residue; secret delivered to the workload only via `secretKeyRef` and never present in responses or retained logs; RBAC verified with the controller token (allowed: namespace jobs/pods/pods-log; forbidden: secrets, pod creation, cross-namespace jobs, cluster-scope access); egress denial enforced by NetworkPolicy.
+
+Acceptance exposed and fixed (commit `b52da67`): the workflow gate now admits `run.container` for the deployment-enabled Kubernetes backend with its own digest allowlist; sandbox Job containers run as numeric non-root 65532:65532; deadline-exceeded Jobs map to `sandbox_timeout`; controller log reads on failed Jobs are best-effort; the runtime posts the execution payload with `application/json`.
+
+OpenShift acceptance (SCC/security-context/arbitrary-UID) remains the outstanding B-006.3 item.
+
 ### Prior acceptance record (`main` at `80bfa2b`, pre-sweep)
 
 All acceptance gates for the current integration head are verified green (2026-08-27):
@@ -126,7 +136,7 @@ The release pipeline adds exact-version, minor-series, `latest`, and immutable s
 
 The first formal release **v0.1.0** is published (2026-08-28) from the verified head `c47cb86`. Remaining work is acceptance- and decision-gated:
 
-1. B-006.3 — Kubernetes/OpenShift real-cluster acceptance (timeout/cancellation/restart cleanup, retained-log secret safety, namespace/RBAC enforcement, OpenShift SCC/security-context/arbitrary-UID behavior) before advertising `run.container` for those backends through `/v1/capabilities`. No cluster is available in the current development environment; Docker external sandbox production acceptance is recorded green.
+1. B-006.3 — Kubernetes acceptance is complete (kind, 2026-08-28, see the record above); OpenShift acceptance (SCC/security-context/arbitrary-UID behavior) remains the only outstanding sandbox gate before OpenShift-specific advertisement.
 2. B-007 — decide the next bounded slice: inbound A2A, general portable streaming, or continued deferral.
 3. B-008 — decide whether the Microsoft Agent Framework adapter becomes a production engine. Progress: the adapter now passes the full shared contract surface and CTK subset natively (139 tests) and CI enforces those suites; an independent runtime image, persistence/resume coverage, and hardened-image acceptance remain before any third-engine advertisement.
 

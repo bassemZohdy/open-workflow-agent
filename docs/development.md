@@ -277,6 +277,17 @@ All runtime and controller Dockerfiles pin their base images by digest (`python:
 2. Update the `ARG PYTHON_IMAGE` value in `docker/Dockerfile.adk` and `docker/Dockerfile.langgraph`, and the `FROM` lines in `docker/Dockerfile.sandbox-controller` and `docker/Dockerfile.kubernetes-sandbox-controller`.
 3. Run the local image acceptance steps and the CI Docker jobs; the Security workflow and the Trivy release gate must also pass on the rebuilt image.
 
+### Kubernetes sandbox acceptance with kind
+
+To reproduce the B-006.3 Kubernetes acceptance locally:
+
+1. Create a cluster with a NetworkPolicy-enforcing CNI (kindnet does not enforce policy):
+   `kind create cluster --name owa-acceptance`, then install Calico (patch `CALICO_IPV4POOL_CIDR` to the kind pod CIDR `10.244.0.0/16`).
+2. Apply the boundary: `kubectl apply -f deploy/kubernetes/sandbox-boundary.yaml`.
+3. Deploy a runtime pod with the Kubernetes sandbox controller as a loopback sidecar: the controller container uses the `owa-sandbox-controller` service account with a projected service-account token at `/var/run/secrets/owa-controller` plus the `kube-root-ca.crt` ConfigMap; the runtime sets `sandbox.backend: kubernetes` with digest-pinned `allowed_images`, `network_policy_enforced: true`, and a `workflow.definition` exercising `run.container`.
+4. `kubectl port-forward` the runtime port and drive `POST /v1/invoke`; verify execution, timeout (`sandbox_timeout`), cancellation, restart/ambiguous-failure cleanup (`activeDeadlineSeconds` + TTL), secret safety (`secretKeyRef`, no value in logs/responses), RBAC (controller token forbidden on secrets/pods/cross-namespace/cluster scope), and egress denial.
+5. Teardown: `kind delete cluster --name owa-acceptance`.
+
 Dependabot opens weekly update PRs for GitHub Actions versions, every `uv.lock`, and the base images in `docker/`; the Security workflow (pip-audit over every locked environment) and the release Trivy gate block publication on known fixable `CRITICAL`/`HIGH` image advisories. When a base bump does not clear an advisory because the upstream image has not been rebuilt yet, the finding is recorded with a dated rationale in `.trivyignore` and must be re-checked on every base refresh; findings in our own code or Python dependencies are never suppressed.
 
 ## Documentation rule
