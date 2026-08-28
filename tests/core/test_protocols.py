@@ -7,6 +7,8 @@ import httpx
 import pytest
 from open_workflow_agent.errors import ToolError, UnsupportedWorkflowFeature
 from open_workflow_agent.protocols import (
+    A2A_PROTOCOL_VERSION,
+    MCP_PROTOCOL_VERSION,
     EnvironmentAuthentication,
     HttpClient,
     ProtocolServices,
@@ -19,9 +21,11 @@ from open_workflow_agent.workflow import compile_workflow
 @pytest.mark.asyncio
 async def test_protocol_services_build_mcp_json_rpc_request():
     seen: dict[str, object] = {}
+    headers: dict[str, str] = {}
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.update(json.loads(request.content))
+        headers.update(request.headers)
         return httpx.Response(200, json={"result": {"ok": True}})
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
@@ -30,6 +34,9 @@ async def test_protocol_services_build_mcp_json_rpc_request():
     )
     assert result["result"]["ok"] is True
     assert seen["method"] == "tools/call"
+    assert headers["mcp-protocol-version"] == MCP_PROTOCOL_VERSION
+    assert headers["mcp-method"] == "tools/call"
+    assert headers["mcp-name"] == "lookup"
 
 
 @pytest.mark.asyncio
@@ -59,7 +66,56 @@ async def test_official_protocol_shapes_and_operation_headers(monkeypatch):
     request = seen[0]
     assert request.headers["Authorization"] == "Bearer secret"
     assert request.headers["Idempotency-Key"] == "mcp-1"
+    assert request.headers["Mcp-Protocol-Version"] == MCP_PROTOCOL_VERSION
+    assert request.headers["Mcp-Method"] == "tools/call"
+    assert request.headers["Mcp-Name"] == "lookup"
     assert json.loads(request.content)["params"]["name"] == "lookup"
+
+
+@pytest.mark.asyncio
+async def test_protocol_baselines_reject_legacy_versions_and_streaming_aliases():
+    services = ProtocolServices(
+        HttpClient(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"ok": True}))
+        )
+    )
+    with pytest.raises(ToolError, match="unsupported MCP protocol version"):
+        await services.call(
+            "mcp",
+            {
+                "endpoint": "https://mcp.test",
+                "protocolVersion": "2025-11-25",
+                "method": "tools/list",
+            },
+        )
+    with pytest.raises(ToolError, match="unsupported A2A protocol version"):
+        await services.call(
+            "a2a",
+            {
+                "server": "https://agent.test/a2a",
+                "protocolVersion": "0.3",
+                "method": "SendMessage",
+                "message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]},
+            },
+        )
+    with pytest.raises(ToolError, match="unsupported A2A method"):
+        await services.call(
+            "a2a",
+            {
+                "server": "https://agent.test/a2a",
+                "method": "message/send",
+                "message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]},
+            },
+        )
+    with pytest.raises(ToolError, match="unsupported A2A method"):
+        await services.call(
+            "a2a",
+            {
+                "server": "https://agent.test/a2a",
+                "method": "SendStreamingMessage",
+                "message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]},
+            },
+        )
 
 
 @pytest.mark.asyncio
@@ -135,8 +191,8 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
         "a2a",
         {
             "server": "https://service.test/a2a",
-            "method": "message/send",
-            "parameters": {"message": "hello"},
+            "method": "SendMessage",
+            "message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]},
         },
     ) == {"path": "/a2a"}
     assert await services.call(
@@ -148,6 +204,16 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
         },
     ) == {"path": "/openapi"}
     assert [request.url.path for request in seen] == ["/http", "/mcp", "/a2a", "/openapi"]
+
+    mcp_request = seen[1]
+    assert mcp_request.headers["Mcp-Protocol-Version"] == MCP_PROTOCOL_VERSION
+    assert mcp_request.headers["Mcp-Method"] == "tools/list"
+
+    a2a_request = seen[2]
+    assert a2a_request.headers["A2A-Version"] == A2A_PROTOCOL_VERSION
+    a2a_body = json.loads(a2a_request.content)
+    assert a2a_body["method"] == "SendMessage"
+    assert a2a_body["params"]["message"]["role"] == "ROLE_USER"
 
 
 @pytest.mark.asyncio
