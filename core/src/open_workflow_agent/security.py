@@ -123,7 +123,9 @@ class SecurityConfig(_StrictSecurityModel):
 
     @field_validator("profiles")
     @classmethod
-    def validate_profile_names(cls, value: dict[str, SecurityProfile]) -> dict[str, SecurityProfile]:
+    def validate_profile_names(
+        cls, value: dict[str, SecurityProfile]
+    ) -> dict[str, SecurityProfile]:
         normalized: dict[str, SecurityProfile] = {}
         for name, profile in value.items():
             selected = name.strip()
