@@ -6,35 +6,12 @@ Examples below use `http://localhost:8080`.
 
 ## Health
 
-### Liveness
-
 ```http
 GET /health/live
-```
-
-Response:
-
-```json
-{"status":"ok"}
-```
-
-### Readiness
-
-```http
 GET /health/ready
 ```
 
-Ready:
-
-```json
-{"status":"ok"}
-```
-
-Not ready returns HTTP `503`:
-
-```json
-{"status":"not_ready"}
-```
+Liveness returns `{"status":"ok"}`. Readiness returns HTTP `503` with `{"status":"not_ready"}` until runtime initialization is complete.
 
 ## Capabilities
 
@@ -42,32 +19,17 @@ Not ready returns HTTP `503`:
 GET /v1/capabilities
 ```
 
-Use this endpoint to discover the selected engine and supported portable/optional features. Do not assume that every engine exposes identical optional features.
+Use this endpoint to discover the selected engine and supported portable/optional features. Optional capabilities are fail-closed and must not be assumed across engines or deployments.
 
-When enabled, `features.catalogs` reports the external-catalog trust mode and resolved function references without returning catalog endpoints, credentials, or remote definitions. Readiness is not reported until configured catalog functions have been fetched and verified.
+Relevant common blocks include:
 
-When the sandbox is enabled, `features.sandbox` reports the selected backend and only the controls that backend actually enforces, for example:
+- `features.approvals`
+- `features.catalogs`
+- `features.sandbox`
+- `features.lifecycleStreaming`
+- `features.a2a`
 
-```json
-{
-  "features": {
-    "sandbox": {
-      "enabled": true,
-      "backend": "internal",
-      "internalProcess": {"enabled": true, "shell": {"enabled": false}}
-    },
-    "approvals": {
-      "approval": true,
-      "durable": true,
-      "replay": true,
-      "operatorAuthorization": "bearer"
-    },
-    "lifecycleStreaming": {"enabled": true, "transport": "sse", "durable": false}
-  }
-}
-```
-
-`sandbox.enabled: false` (the default) means `run.shell`, `run.script`, and `run.container` are rejected. See [sandbox-execution.md](sandbox-execution.md) for the per-backend capability model.
+When A2A is enabled with the current bounded Task profile, the A2A block includes the pinned release/protocol version and advertises only `GetTask`/`CancelTask` as Task operations. Streaming and push notifications remain false.
 
 ## Invoke a workflow
 
@@ -76,21 +38,15 @@ POST /v1/invoke
 Content-Type: application/json
 ```
 
-Request:
-
 ```json
 {
   "user_id": "u123",
   "session_id": "s456",
-  "input": {
-    "question": "How can I renew my license?"
-  }
+  "input": {"question": "How can I renew my license?"}
 }
 ```
 
-Only `input` is normally needed. `user_id` and `session_id` are optional.
-
-`user_id` is correlation/application identity data. Supplying it does not itself authenticate the request.
+Only `input` is normally needed. `user_id` and `session_id` are optional correlation/application identifiers; `user_id` does not authenticate a caller.
 
 Successful response shape:
 
@@ -103,18 +59,7 @@ Successful response shape:
 }
 ```
 
-Possible lifecycle states may include:
-
-```text
-running
-waiting
-suspended
-completed
-faulted
-cancelled
-```
-
-A faulted invocation returns an engine-neutral error payload.
+Common lifecycle states are `running`, `waiting`, `completed`, `faulted`, and `cancelled`.
 
 ## Resume an invocation
 
@@ -123,31 +68,20 @@ POST /v1/invocations/{invocation_id}/resume
 Content-Type: application/json
 ```
 
-Request:
-
 ```json
-{
-  "input": {
-    "approved": true
-  }
-}
+{"input": {"approved": true}}
 ```
 
-The runtime resolves the engine-specific durable state internally.
-
-Resume verifies that the current workflow definition still matches the fingerprint stored with the invocation. A changed workflow cannot be silently resumed against old state.
+The runtime resolves engine-native durable state internally. Resume verifies the stored workflow fingerprint before continuing.
 
 ## Cancel an invocation
 
 ```http
 POST /v1/invocations/{invocation_id}/cancel
-```
-
-For idempotent cancellation, optionally send:
-
-```http
 Idempotency-Key: operation-123
 ```
+
+The idempotency header is optional.
 
 ## Knowledge reload
 
@@ -155,65 +89,59 @@ Idempotency-Key: operation-123
 POST /v1/admin/knowledge/reload
 ```
 
-Use this when knowledge reload mode is `manual`, or when you want to trigger reconciliation explicitly.
+## Events
 
-## Publish an event
+Publish:
 
 ```http
 POST /v1/events
 Content-Type: application/json
 ```
 
-Request:
-
 ```json
 {
   "event": {
     "type": "example.event",
-    "data": {
-      "value": 1
-    }
+    "data": {"value": 1}
   }
 }
 ```
 
-Current generic event delivery is process-local and non-durable. It should not be treated as a durable broker or approval queue.
+Generic event delivery is process-local/non-durable and is not a durable broker or approval queue.
 
-## Lifecycle events
+Lifecycle snapshot:
 
 ```http
 GET /v1/events/lifecycle?limit=100
 ```
 
-The endpoint returns a bounded CloudEvents JSON batch snapshot with media type:
+Media type:
 
 ```text
 application/cloudevents-batch+json
 ```
 
-The current CloudEvents baseline is pinned in [protocol-baselines.md](protocol-baselines.md). This endpoint is a snapshot, not a stream and not a durable event broker.
-
-### Lifecycle SSE stream
+Lifecycle SSE:
 
 ```http
 GET /v1/events/lifecycle/stream
 ```
 
-A bounded Server-Sent Events stream of the same lifecycle CloudEvents, advertised through `features.lifecycleStreaming`. It is a bounded transport, not a durable streaming contract:
+Supported bounded controls:
 
 ```text
-max_events       default 100 (1-1000)     stream terminates after this many events
-max_bytes        default 1048576 bytes    stream terminates after this many bytes
-timeout_seconds  default 30 (0-300]       stream terminates after this long
-queue_size       default 64 (1-1000)      bounded buffer; overflow terminates the stream
-Last-Event-ID    optional header          resume from that event; unknown IDs return 409
+max_events       default 100 (1-1000)
+max_bytes        default 1048576
+ timeout_seconds default 30 (0-300]
+queue_size       default 64 (1-1000)
+Last-Event-ID    optional replay cursor
 ```
 
-The stream always terminates and carries lifecycle events only — it is not general output/token streaming. Concurrent streams are capacity-limited; over capacity returns HTTP `429` (`stream_capacity_exceeded`).
+This stream carries common lifecycle events only. It is not general output/token streaming and is not itself an A2A binding.
 
 ## Approvals (human-in-the-loop)
 
-Durable approval state is a bounded HITL mechanism layered on the standard event contract. It is disabled until the deployment sets:
+Durable approval state is disabled until configured:
 
 ```yaml
 approvals:
@@ -221,55 +149,32 @@ approvals:
   operator_token: <deployment-provided bearer token>
 ```
 
-The existing approval-specific bearer field remains a bounded pre-security-profile implementation. The shared security-profile backlog will externalize common auth/authz policy without changing the rule that credentials are deployment configuration.
+The approval-specific bearer field remains a bounded pre-shared-security implementation.
 
-### Workflow side
+Operator endpoints:
 
-A workflow requests approval with a standard `emit` task and waits with the standard `listen` task using a deterministic `one.with` filter. The request event's CloudEvents extension `approvalexpiresat` (optional) sets decision expiry. Event `data` is untrusted input: the workflow's input/output schema must validate a decision before it affects a side effect.
+```http
+GET  /v1/approvals?status=pending&limit=100
+GET  /v1/approvals/{approval_id}
+POST /v1/approvals/{approval_id}/decision
+```
 
-### Operator endpoints
-
-All approval endpoints require the configured bearer token **and** an operator identity:
+Authorization requires:
 
 ```text
 Authorization: Bearer <approvals.operator_token>
 X-Operator-Id: <operator identity>
 ```
 
-List the inbox:
-
-```http
-GET /v1/approvals?status=pending&limit=100
-```
-
-Read one record:
-
-```http
-GET /v1/approvals/{approval_id}
-```
-
-Respond:
-
-```http
-POST /v1/approvals/{approval_id}/decision
-Authorization: Bearer <token>
-X-Operator-Id: alice
-Idempotency-Key: decision-123
-Content-Type: application/json
-
-{
-  "decision": "approved",
-  "value": {"comment": "looks good"}
-}
-```
-
-Records persist across restarts. Once a decision is terminal, it replays through the normal `listen` path, so a waiting invocation resumes with the decision after a restart.
+A terminal decision persists and replays through the normal workflow `listen` path after restart.
 
 ## Inbound A2A (optional, bounded)
 
-The runtime can expose itself as an A2A agent. The current implementation targets stable A2A release **1.0.1** and advertises protocol version **1.0**. It is disabled by default.
+OWA can expose itself as an A2A server. The current implementation pins A2A maintenance release **1.0.1** and advertises protocol version **1.0**. Wire behavior follows the official A2A Project definitions at `a2a-protocol.org`.
 
-Current deployment configuration remains:
+A2A is disabled by default.
+
+Current deployment configuration still uses the temporary bearer field:
 
 ```yaml
 a2a:
@@ -278,21 +183,19 @@ a2a:
   path: /a2a
   agent_name: Open Workflow Agent
   public_base_url: https://agents.example.com
-  auth_token: set-via-deployment-secret   # temporary bounded bearer field
+  auth_token: set-via-deployment-secret   # temporary pre-shared-security field
   max_message_chars: 100000
 ```
 
-`auth_token` will be replaced by the shared named security-profile model tracked in `TODO.md`. Authentication/authorization remains deployment configuration; raw credentials must not be placed in workflow definitions.
+Shared named security primitives now exist in core, but `auth_token` is not removed until the profiles are wired into `RuntimeConfig` and the A2A adapter.
 
 ### Discovery
-
-A2A v1 Agent Card discovery:
 
 ```http
 GET /.well-known/agent-card.json
 ```
 
-The card uses `supportedInterfaces[]`; each active interface declares:
+The card uses `supportedInterfaces[]` and advertises protocol version `1.0`:
 
 ```json
 {
@@ -302,18 +205,19 @@ The card uses `supportedInterfaces[]`; each active interface declares:
 }
 ```
 
-OWA intentionally does **not** retain the legacy v0.3 discovery paths `/a2a/agent.json` or `/.well-known/agent.json`.
+OWA does not expose the old A2A wire discovery paths `/a2a/agent.json` or `/.well-known/agent.json`.
 
 ### JSON-RPC binding
 
-With `a2a.transport: jsonrpc`:
+With `a2a.transport: jsonrpc`, all operations use:
 
 ```http
 POST /a2a
 Content-Type: application/json
+A2A-Version: 1.0
 ```
 
-Bounded request example:
+#### SendMessage
 
 ```json
 {
@@ -324,103 +228,151 @@ Bounded request example:
     "message": {
       "role": "ROLE_USER",
       "messageId": "m-1",
-      "parts": [
-        {"text": "hello"}
-      ]
+      "parts": [{"text": "hello"}]
     }
   }
 }
 ```
 
-The bounded profile supports `SendMessage` only. Legacy v0.3 `message/send` and `part.kind` forms are rejected rather than maintained as compatibility aliases.
+The current SendMessage path is bounded/synchronous. A2A v1 `SendMessageConfiguration.returnImmediately` is not yet implemented.
 
-### HTTP+JSON binding
-
-With `a2a.transport: http_json`:
-
-```http
-POST /a2a/message:send
-Content-Type: application/a2a+json
-```
-
-Request:
+#### GetTask
 
 ```json
 {
-  "message": {
-    "role": "ROLE_USER",
-    "messageId": "m-1",
-    "parts": [
-      {"text": "hello"}
-    ]
-  }
+  "jsonrpc": "2.0",
+  "id": "task-read-1",
+  "method": "GetTask",
+  "params": {"id": "<invocation-id>"}
 }
 ```
 
-The response uses `application/a2a+json` and returns the bounded SendMessage response shape containing an agent message.
+The A2A Task id is the OWA `invocation_id`; `contextId` is the common `session_id`. Engine-native references are never returned.
+
+#### CancelTask
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "task-cancel-1",
+  "method": "CancelTask",
+  "params": {"id": "<invocation-id>"}
+}
+```
+
+Cancellation is routed through the common engine cancellation API. A terminal completed/faulted/cancelled invocation is not cancelable.
+
+Official bounded JSON-RPC mappings used by OWA:
+
+```text
+Task not found       -32001
+Task not cancelable  -32002
+```
+
+### HTTP+JSON binding
+
+With `a2a.transport: http_json`, use media type:
+
+```text
+application/a2a+json
+```
+
+Send:
+
+```http
+POST /a2a/message:send
+A2A-Version: 1.0
+Content-Type: application/a2a+json
+```
+
+Get a Task:
+
+```http
+GET /a2a/tasks/{task_id}
+A2A-Version: 1.0
+```
+
+Cancel a Task:
+
+```http
+POST /a2a/tasks/{task_id}:cancel
+A2A-Version: 1.0
+```
+
+Missing Tasks return HTTP `404`; non-cancelable Tasks return HTTP `400`.
+
+### Task projection
+
+OWA does not maintain a second A2A persistence engine. Task state is projected from common invocation state:
+
+| Common invocation | A2A Task state |
+| --- | --- |
+| `running` | `TASK_STATE_WORKING` |
+| `waiting` | `TASK_STATE_INPUT_REQUIRED` |
+| `completed` | `TASK_STATE_COMPLETED` |
+| `faulted` | `TASK_STATE_FAILED` |
+| `cancelled` | `TASK_STATE_CANCELED` |
+
+Completed output becomes a bounded Task Artifact:
+
+- strings -> `text` Part;
+- JSON-compatible objects -> `data` Part;
+- bytes -> base64 `raw` Part.
+
+Waiting/failure status messages include Task/context identifiers. Failure output exposes only a sanitized common error code.
+
+### Open Workflow calls vs A2A wire methods
+
+Open Workflow 1.0.3 defines schema-level A2A call values such as `message/send`, `tasks/get`, and `tasks/cancel`. OWA preserves that official workflow schema and translates those values at the runtime protocol boundary to `SendMessage`, `GetTask`, and `CancelTask`.
+
+Therefore `message/send` may validly appear in an **Open Workflow document**, while the external A2A JSON-RPC endpoint still rejects it as a wire method.
 
 ### Current A2A capability boundary
 
-`/v1/capabilities` reports the pinned spec release/protocol version and exact bounded features. Current status:
-
 ```text
-Agent Card discovery        implemented
-SendMessage                 implemented
-persistent A2A Tasks        not yet implemented
-Task get/cancel             not yet implemented
-streaming/resubscription    not yet implemented
-push notifications          deferred
-full conformance claim      not claimed
+Agent Card discovery          implemented
+SendMessage                   implemented
+Task projection               implemented
+GetTask                       implemented
+CancelTask                    implemented
+shared security primitives    implemented; adapter integration pending
+multi-skill routing           pending
+waiting/resume A2A mapping    pending
+returnImmediately async       pending
+streaming/resubscription      pending
+push notifications            deferred
+full conformance claim        not claimed
 ```
 
-The next A2A work maps A2A Tasks onto common OWA invocation/ExecutionHandle state instead of introducing a second persistence or execution engine. See [protocol-security-decisions.md](protocol-security-decisions.md), [protocol-baselines.md](protocol-baselines.md), and [a2a-streaming-evaluation.md](a2a-streaming-evaluation.md).
+See [a2a-streaming-evaluation.md](a2a-streaming-evaluation.md), [protocol-baselines.md](protocol-baselines.md), and [protocol-security-decisions.md](protocol-security-decisions.md).
 
 ## Schedules
 
-### Create
+Create:
 
 ```http
 POST /v1/schedules
 Content-Type: application/json
 ```
 
-Request:
-
-```json
-{
-  "input": {
-    "job": "example"
-  }
-}
-```
-
-Optionally use:
-
-```http
-Idempotency-Key: schedule-operation-123
-```
-
-The workflow itself defines the supported scheduling semantics.
-
-### Get
+Get:
 
 ```http
 GET /v1/schedules/{schedule_id}
 ```
 
-### Cancel
+Cancel:
 
 ```http
 POST /v1/schedules/{schedule_id}/cancel
+Idempotency-Key: schedule-operation-123
 ```
 
-An `Idempotency-Key` header is also supported for schedule cancellation.
-
-Current scheduling is intentionally bounded. Durable `after` and `every` starts are supported; cron, distributed scheduler ownership, and event-triggered scheduling are not currently claimed.
+Durable `after` and `every` starts are supported. Cron, distributed scheduler ownership, and event-triggered scheduling are not claimed.
 
 ## Error format
 
-Runtime errors use a common envelope:
+Common runtime errors use:
 
 ```json
 {
@@ -432,27 +384,15 @@ Runtime errors use a common envelope:
 }
 ```
 
-Validation errors return HTTP `422` with the same top-level `error` shape.
+Validation errors return `422`. Oversized bounded requests return `413` with `request_too_large`.
 
-Oversized bounded requests return HTTP `413`:
-
-```json
-{
-  "error": {
-    "code": "request_too_large",
-    "message": "request body exceeds 1048576 bytes",
-    "details": {
-      "max_request_bytes": 1048576
-    }
-  }
-}
-```
+A2A transport errors follow the bounded A2A binding-specific response/error shape rather than the ordinary OWA `/v1/*` envelope.
 
 ## Security notes
 
-`user_id` is not an authenticated principal. Authentication and authorization are deployment/runtime configuration and are being consolidated into reusable named security profiles.
+`user_id` is correlation data, not an authenticated principal.
 
-The initial shared security profile types are intentionally limited to the common mechanisms:
+Framework-neutral named-security primitives now exist for:
 
 ```text
 bearer
@@ -461,6 +401,8 @@ oauth2_client_credentials
 mtls
 ```
 
-Authorization terminology is standardized as principal/identity, role, scope, permission/action, resource, and audience. Traffic limits are a separate `traffic_policy` concern rather than part of the security profile.
+They use deployment environment references for sensitive values and hide rejected validation inputs. Runtime configuration/protocol adapter integration remains active work.
+
+Authorization vocabulary is standardized as principal/identity, role, scope, permission/action, resource, and audience. Traffic rate/concurrency policy remains a separate concern.
 
 Treat workflow files as trusted deployment artifacts and invocation/event input as untrusted data. Workflows must not contain raw credentials.
