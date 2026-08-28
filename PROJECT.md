@@ -140,7 +140,7 @@ All decided work is shipped: v0.1.0 released, Kubernetes sandbox acceptance gree
 2. A2A conformance, `message/stream`/general streaming, and push notifications — deferred; the bounded profile is the current contract.
 3. Microsoft Agent Framework production status — deferred; the adapter stays optional with CI-enforced shared-gate coverage.
 
-The immediate follow-up for the A2A slice is its remote CI verification (the code ships with this documentation) and recording those run IDs here.
+The bounded inbound A2A slice is verified remotely: for commit `a20ef51`, CI run `33156173321`, External Sandbox run `33156173327`, and PostgreSQL run `33156173308` are green, and Release run `33156335003` published the refreshed `latest`/`sha-a20ef51` images (the `v0.1.0` release remains pinned to `c47cb86`).
 
 Full MCP, A2A, OpenAPI, external-catalog, streaming, or Open Workflow ecosystem conformance remains unclaimed beyond the tested Portable Profile/capabilities.
 
