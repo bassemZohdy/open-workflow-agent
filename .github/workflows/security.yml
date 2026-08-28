@@ -29,7 +29,7 @@ env:
 
 jobs:
   dependencies:
-    name: Audit ${{ matrix.project }} dependencies
+    name: Audit ${{ matrix.id }} dependencies
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -37,16 +37,22 @@ jobs:
       matrix:
         include:
           - project: .
+            id: root
             extras: --extra model --extra knowledge
           - project: engines/adk
+            id: adk
             extras: --extra native --extra postgres
           - project: engines/langgraph
+            id: langgraph
             extras: --extra sqlite --extra postgres
           - project: engines/agent-framework
+            id: agent-framework
             extras: --extra native
           - project: sandbox-controller
+            id: sandbox-controller
             extras: ""
           - project: kubernetes-sandbox-controller
+            id: kubernetes-sandbox-controller
             extras: ""
     steps:
       - uses: actions/checkout@v4
@@ -113,6 +119,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: dependency-audit-${{ matrix.project }}
+          name: dependency-audit-${{ matrix.id }}
           path: ${{ runner.temp }}/audit.json
           if-no-files-found: ignore

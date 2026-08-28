@@ -122,7 +122,8 @@ jobs:
           set -euo pipefail
           ok=true
           gate() {
-            local workflow line conclusion run_sha
+            local line conclusion run_sha
+            workflow="$1"
             line="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" \
               --branch main --status completed --limit 1 \
               --json conclusion,headSha --jq '.[0] | "\(.conclusion) \(.headSha)"')"
