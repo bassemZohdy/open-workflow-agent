@@ -316,7 +316,9 @@ def mount_a2a(
                     {
                         "error": {
                             "code": "message_too_large",
-                            "message": f"message text exceeds {config.max_message_chars} characters",
+                            "message": (
+                                f"message text exceeds {config.max_message_chars} characters"
+                            ),
                         }
                     },
                     status_code=413,
