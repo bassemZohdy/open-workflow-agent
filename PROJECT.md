@@ -1,148 +1,365 @@
 # Project Context
 
-## Source of Truth and Current Phase
+## Source of Truth
 
-`Project Definition.md` is authoritative; `AGENTS.md` contains mandatory contributor rules and `TODO.md` is the active backlog. Core implementation, local acceptance, remote CI/release verification, the applicable CTK gate, configured PostgreSQL persistence acceptance, B-001, B-002, B-003 (bounded eventing/CloudEvents/scheduling/sub-workflow/HITL), B-004 (secure external catalog), B-005 (internal sandbox), and the current B-006 external-sandbox baseline are complete. PRs #14 (Kubernetes/OpenShift sandbox boundary plus hosted Docker acceptance), #15 (bounded lifecycle SSE), and #16 (Microsoft Agent Framework native adapter) are merged to `main`.
+- `Project Definition.md` — architecture/product contract.
+- `PROJECT.md` — verified implementation and release state.
+- `TODO.md` — active and intentionally deferred backlog.
+- `AGENTS.md` — mandatory repository/contributor rules.
 
-The Kubernetes/OpenShift deployment boundary still needs real-cluster acceptance. Lifecycle SSE is intentionally bounded to lifecycle events; general portable output streaming and inbound A2A remain deferred. The Agent Framework adapter is available as an optional native package but is not yet a production image/release target.
+## Current Phase — 2026-08-29
+
+`v0.1.0` is the current formal release. `main` contains additional unreleased pre-stable work.
+
+The project has moved beyond the original “bounded A2A deferred” state: a bounded inbound A2A 1.0 profile is implemented and verified. The active work is now protocol-baseline completion, reusable security policy, and the next bounded A2A profile built around A2A Tasks.
+
+No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engine conformance claim is made beyond the exact tested capability/profile boundaries.
 
 ## Architecture
 
-The runtime is `load -> official schema validation -> Portable Profile gate -> normalize -> immutable internal plan -> engine execution`. Core is framework-neutral. `engines/adk` and `engines/langgraph` are separate packages with exact locks, native agent/tool adapters, and engine-owned state; `engines/agent-framework` is an optional third adapter with its own exact lock (not a release target). Every request executes a workflow, with a generated default workflow when none is supplied.
+The runtime pipeline is:
 
-Standard runtime images bundle the common LiteLLM model adapter/runtime for configured external model providers and FastEmbed 0.8.0/ONNX with the 384-dimensional `sentence-transformers/all-MiniLM-L6-v2` model identity for local knowledge embeddings. Deterministic `FakeModel`/hash embeddings remain available for tests so CI never requires paid model access.
+```text
+load
+  -> official Open Workflow schema validation
+  -> Portable Profile capability gate
+  -> normalize
+  -> immutable canonical execution plan
+  -> selected engine
+```
 
-`sandbox-controller/` and `kubernetes-sandbox-controller/` are restricted external-sandbox controller packages with digest-pinned images published by the release pipeline. Supply-chain gates: a scheduled/lockfile-triggered Security workflow audits every locked environment with pip-audit, the release pipeline scans every published image with Trivy before push, base images are pinned by digest, and Dependabot updates all `uv.lock` files, GitHub Actions versions, and Docker base images.
+Core is framework-neutral. Engine adapters own framework-native construction, execution, checkpoints, and resume behavior.
 
-## Repository Structure and Conventions
+Production runtime engines:
 
-- `core/`: common configuration, schema, workflow semantics, catalogs, services, API, persistence metadata, approval/schedule state, and errors.
-- `engines/adk/`, `engines/langgraph/`: independent adapters, native persistence, locks, and package metadata.
-- `resources/`, `runtime-catalog/`: official resources and built-in catalog.
-- `docker/`: independent multi-stage runtime images; `.github/workflows/ci.yml`: Ubuntu quality/container gates; `.github/workflows/release.yml`: verified GHCR release publication.
-- `tests/core`, `tests/contract`, `tests/adk`, `tests/langgraph`, `tests/ctk`, `tests/e2e`: layered deterministic coverage.
-- `core/src/open_workflow_agent/protocols.py`: bounded common HTTP/MCP/A2A/OpenAPI clients used by workflow calls and configured agent tools.
-- `core/src/open_workflow_agent/approvals.py`: bounded durable approval state and replay layered on standard event/listen semantics.
+```text
+ADK
+LangGraph
+```
 
-Use strict typed Python, four-space indentation, exact dependency locks, shared contract fixtures, and `FakeModel`; tests must not require paid APIs. Do not install packages at container startup.
+Optional evaluation adapter:
 
-## Verified Status
+```text
+Microsoft Agent Framework
+```
 
-Root format/lint/mypy/tests/contracts, ADK/LangGraph native suites, selected CTK, Docker image/health/knowledge/restart-resume gates, and PostgreSQL persistence acceptance remain green. SQLite remains the reference datasource. PostgreSQL common stores and ADK/LangGraph native PostgreSQL adapters are implemented behind locked `postgres` extras with isolated namespaces. Real model providers are selected through configuration and provider-specific secrets; no source checkout or image rebuild is required for the standard LiteLLM path.
+The Agent Framework adapter is CI-covered but is not a production image/release target.
 
-### Local verification after the 2026-08-27 backlog sweep
+Every request executes a workflow. If no workflow is supplied, the runtime generates the default one-task workflow.
 
-- Root quality gates: `270 passed, 11 skipped` with pytest-cov at `82.75%` (CI gate `--cov-fail-under=80`), ruff format/lint clean, mypy strict clean over `core/src`.
-- ADK contracts/CTK `104 passed` (new shared `fork`/`wait` CTK scenarios and the `try` contract fixture); LangGraph contracts/CTK `104 passed`; Agent Framework native `5 passed`.
-- All seven packages build; every `uv.lock` passes `uv lock --check`.
-- Python floor aligned to `>=3.12` for all packages (numpy fork removed); LiteLLM bumped 1.80.5 → 1.98.0 after the new pip-audit gate flagged fixable advisories (GHSA-69x8-hrgq-fjj8, PYSEC-2026-3476); all six locked dependency environments are advisory-clean.
-- The knowledge manifest now records an `indexed_at` timestamp plus real parser identities (`pypdf@<version>`, `pyyaml@<version>`, `stdlib-json`, `text`) and the `whitespace-window:<size>+<overlap>` chunking identity, with a migration for existing SQLite/PostgreSQL databases.
-- Docker builds re-validated locally for all four images: package metadata files (per-package README/LICENSE) are copied into the build stages, `*.sh` is forced to LF via `.gitattributes` so Windows checkouts build, and the rebuilt runtime images pass the litellm import check plus a live readiness/capabilities/invocation check under arbitrary-UID/read-only-root.
+Common protocol/runtime services remain in core where practical:
 
-### Release v0.1.0 (2026-08-28)
+```text
+HTTP
+MCP
+A2A
+OpenAPI
+knowledge
+memory
+invocation metadata
+approvals
+scheduling
+sandbox policy
+lifecycle events
+```
 
-The first formal release was cut from the verified head `c47cb86` (`v0.1.0`). The Release run `33136714445` passed the companion-acceptance gate, scanned all four images with Trivy before push, published to both registries, and created the GitHub Release with generated notes and pull commands.
+Engine-native state never becomes the public API contract.
 
-Acceptance runs for the release head (2026-08-28):
+## Runtime and Image State
+
+Standard ADK and LangGraph images include:
+
+- LiteLLM for configured real model providers;
+- deterministic `fake/default` for tests and no-key validation;
+- FastEmbed/ONNX local knowledge embeddings using `sentence-transformers/all-MiniLM-L6-v2`;
+- SQLite reference persistence;
+- PostgreSQL support behind locked extras;
+- health/readiness endpoints;
+- arbitrary-UID/read-only-root-compatible runtime behavior.
+
+Verified image sizes after the 2026-08-27 dependency refresh:
+
+```text
+ADK        ~266 MB decimal
+LangGraph  ~248 MB decimal
+```
+
+The multi-gigabyte Torch/CUDA dependency path is not used by the standard images.
+
+## Formal Release v0.1.0 — 2026-08-28
+
+Release commit:
+
+```text
+c47cb86
+```
+
+Release workflow:
+
+```text
+33136714445
+```
+
+Companion acceptance for the release head:
 
 | Workflow | Run | Result |
 | --- | --- | --- |
-| CI (quality, contracts, CTK, kubeconform manifests, Docker acceptance) | `33136592588` | green |
-| Security (pip-audit over all six locked environments) | `33136597832` | green |
-| External Sandbox CI (Docker acceptance, controller image checks) | `33136592592` | green |
+| CI | `33136592588` | green |
+| Security | `33136597832` | green |
+| External Sandbox CI | `33136592592` | green |
 | PostgreSQL CI | `33136592632` | green |
-| Release (four images, Trivy gate, attestations, GitHub Release) | `33136714445` | success |
+| Release | `33136714445` | success |
 
-Published `0.1.0` images (identical manifests under `latest`, `0.1`, and `sha-c47cb86`):
+Published runtime image digests for `0.1.0`:
 
 ```text
-ghcr.io/bassemzohdy/open-workflow-agent-adk                        sha256:4d89ffaa88207488fec4b128e1e728282cca701f0e31330c7314c1606235cf36
-ghcr.io/bassemzohdy/open-workflow-agent-langgraph                  sha256:add38f52c062a01ab81c61962ab609a728e62a367818cc77bff19a6a720d2a89
-ghcr.io/bassemzohdy/open-workflow-agent-sandbox-controller         sha256:d00394b821136a50fd73f2ac16217632f0d09844d837141f316d93fa2e00cb05
-ghcr.io/bassemzohdy/open-workflow-agent-kubernetes-sandbox-controller sha256:97c31c39a5a769b5e248b5e7b0b94455102be6bd757efbbec1f5329c5da2e520
-docker.io/bzohdy/open-workflow-agent-adk                           sha256:4d89ffaa88207488fec4b128e1e728282cca701f0e31330c7314c1606235cf36
-docker.io/bzohdy/open-workflow-agent-langgraph                     sha256:add38f52c062a01ab81c61962ab609a728e62a367818cc77bff19a6a720d2a89
+ghcr.io/bassemzohdy/open-workflow-agent-adk
+sha256:4d89ffaa88207488fec4b128e1e728282cca701f0e31330c7314c1606235cf36
+
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph
+sha256:add38f52c062a01ab81c61962ab609a728e62a367818cc77bff19a6a720d2a89
+
+docker.io/bzohdy/open-workflow-agent-adk
+sha256:4d89ffaa88207488fec4b128e1e728282cca701f0e31330c7314c1606235cf36
+
+docker.io/bzohdy/open-workflow-agent-langgraph
+sha256:add38f52c062a01ab81c61962ab609a728e62a367818cc77bff19a6a720d2a89
 ```
 
-At v0.1.0 the sandbox-controller images are published to GHCR only; Docker Hub mirroring for controllers was added to the workflow for future releases. OCI SBOM/provenance metadata covers every published image and GHCR build-provenance attestations are published for the canonical GHCR manifests. Dependabot is active (weekly uv/Actions/base-image update PRs; the first update PRs arrived on release day).
+Sandbox-controller images are published to GHCR. Docker Hub mirroring for controller images is wired for future releases.
 
-### Kubernetes sandbox acceptance (kind, 2026-08-28)
+The release pipeline includes Trivy image scanning, OCI SBOM/provenance metadata, and GHCR build provenance attestations.
 
-B-006.3 Kubernetes acceptance executed on a local kind cluster (kind v0.33.0, Kubernetes 1.37, Calico 3.29 for NetworkPolicy enforcement) using the published `0.1.0` controller image and an acceptance runtime image built from the fixes below. Deployed topology: runtime pod with the controller as a loopback sidecar holding the projected `owa-sandbox-controller` service-account token; sandbox Jobs run in the `owa-sandbox` namespace under the Pod Security `restricted` profile with default-deny ingress/egress NetworkPolicy.
+## Verified Kubernetes Sandbox Acceptance — 2026-08-28
 
-Verified: end-to-end `run.container` execution (Job -> pod as uid 65532 -> streamed logs -> cleanup); timeout enforced with `sandbox_timeout` surfaced and Job deleted; cancellation returned `cancelled` with Job deleted; ambiguous failure (controller killed mid-execution) bounded by `activeDeadlineSeconds` and removed by TTL with zero residue; secret delivered to the workload only via `secretKeyRef` and never present in responses or retained logs; RBAC verified with the controller token (allowed: namespace jobs/pods/pods-log; forbidden: secrets, pod creation, cross-namespace jobs, cluster-scope access); egress denial enforced by NetworkPolicy.
+Kubernetes real-cluster acceptance is green on kind with Kubernetes 1.37 and Calico NetworkPolicy enforcement.
 
-Acceptance exposed and fixed (commit `b52da67`): the workflow gate now admits `run.container` for the deployment-enabled Kubernetes backend with its own digest allowlist; sandbox Job containers run as numeric non-root 65532:65532; deadline-exceeded Jobs map to `sandbox_timeout`; controller log reads on failed Jobs are best-effort; the runtime posts the execution payload with `application/json`.
+Verified behavior includes:
 
-OpenShift acceptance (SCC/security-context/arbitrary-UID) remains the outstanding B-006.3 item.
+- end-to-end `run.container` execution;
+- sandbox workload runs as numeric non-root `65532:65532`;
+- timeout maps to `sandbox_timeout` and cleans the Job;
+- cancellation returns `cancelled` and cleans the Job;
+- ambiguous controller failure remains bounded by deadline/TTL cleanup;
+- workload secrets are injected by `secretKeyRef` and do not appear in responses/logs;
+- controller RBAC is namespace-bounded and forbids secret reads, pod creation, cross-namespace Jobs, and cluster-scope operations;
+- default-deny NetworkPolicy egress is enforced.
 
-### Prior acceptance record (`main` at `80bfa2b`, pre-sweep)
+OpenShift-specific SCC/security-context/arbitrary-UID acceptance remains deferred until an OpenShift cluster is available.
 
-All acceptance gates for the current integration head are verified green (2026-08-27):
+## Bounded Lifecycle Streaming
+
+Common lifecycle SSE is implemented at:
+
+```text
+GET /v1/events/lifecycle/stream
+```
+
+It is a bounded engine-neutral observation stream over common lifecycle CloudEvents. It is not token/output streaming and it is not itself an A2A protocol binding.
+
+Implemented guarantees include:
+
+- Server-Sent Events;
+- bounded replay with `Last-Event-ID`;
+- explicit failure when a replay cursor is no longer retained;
+- bounded subscriber queues and subscriber count;
+- event, byte, queue, and lifetime limits;
+- sanitized common lifecycle payloads;
+- no engine checkpoint or native stream objects;
+- disconnecting an observer does not cancel the invocation.
+
+## Current A2A State
+
+Pinned baseline:
+
+```text
+A2A release:   1.0.1
+protocol:      1.0
+```
+
+The bounded inbound A2A profile is implemented, disabled by default, and deployment-controlled.
+
+Implemented boundary:
+
+```text
+GET  /.well-known/agent-card.json
+POST <configured A2A path>                 JSON-RPC SendMessage
+POST <configured A2A path>/message:send    HTTP+JSON
+```
+
+Selectable transports:
+
+```text
+jsonrpc    default
+http_json
+```
+
+Implemented behavior:
+
+- stable A2A v1 Agent Card metadata with `supportedInterfaces`;
+- synchronous bounded `SendMessage`;
+- v1 Part/message shapes;
+- deployment-configured public base URL;
+- optional temporary bearer authentication;
+- bounded request/message sizes;
+- sanitized transport-specific error mapping;
+- `features.a2a` capability advertisement limited to implemented behavior;
+- no legacy A2A v0.3 aliases.
+
+Remote verification for the bounded A2A slice at commit `a20ef51`:
 
 | Workflow | Run | Result |
 | --- | --- | --- |
-| CI (quality, contracts, CTK, image acceptance, knowledge, catalog, internal sandbox, lifecycle/restart) | `33105068629` | green |
-| PostgreSQL CI (common stores plus ADK/LangGraph persistence/restart) | `33105068561` | green |
-| External Sandbox CI (ADK/LangGraph Docker acceptance, Kubernetes controller image checks) | `33105068565` | green |
-| Release (ADK/LangGraph publication) | `33105399880` | success |
+| CI | `33156173321` | green |
+| External Sandbox | `33156173327` | green |
+| PostgreSQL | `33156173308` | green |
+| Release/latest refresh | `33156335003` | success |
 
-Published images for this head (`latest` and `sha-80bfa2b7887a` tags on both registries, same digests):
+The formal `v0.1.0` release remains pinned to `c47cb86`; the A2A work above is part of later unreleased `main` state.
 
-```text
-ghcr.io/bassemzohdy/open-workflow-agent-adk       sha256:298e0dca885813b2bc1eb5449be2968ca466f5853215d1024f80442d1c067380
-ghcr.io/bassemzohdy/open-workflow-agent-langgraph sha256:f65c01524cfff0acbc8aa3a3396fd1d93738e0f3382cfe4df4d2f4c238ee32c0
-docker.io/bzohdy/open-workflow-agent-adk          sha256:298e0dca885813b2bc1eb5449be2968ca466f5853215d1024f80442d1c067380
-docker.io/bzohdy/open-workflow-agent-langgraph    sha256:f65c01524cfff0acbc8aa3a3396fd1d93738e0f3382cfe4df4d2f4c238ee32c0
-```
+## A2A Work That Is Not Complete
 
-The release build carries OCI SBOM/provenance metadata and GHCR build-provenance attestations for both images. Local verification at this head: root `247 passed, 11 skipped`, ADK contracts/CTK `98 passed`, LangGraph contracts/CTK `98 passed`, Agent Framework native tests `5 passed`, plus formatting, lint, mypy, lock checks, package builds, and shell syntax checks.
+The next bounded profile is intentionally built on common OWA invocation state rather than a separate A2A execution engine.
 
-### Prior verification history
-
-CI run `32915495802` verified the standard images after adding locked LiteLLM 1.80.5 to both independent engine dependency graphs, and run `32930787715` passed every root, engine, CTK, Docker, and PostgreSQL job for commit `75be75603620a4155fd49e8e4f89d721bb437dec`. The external-catalog hardening slice (one-shot DNS resolution with public-address validation and a pinned HTTP transport that connects only to approved addresses while preserving hostname-based TLS verification) passed GitHub Actions run `32945536005` for commit `9c9dfa0edbb201a68947dc95fbd8860791cb6a49`.
-
-Verified standard image sizes after the 2026-08-27 dependency refresh (LiteLLM 1.98.0, Python 3.12-only numpy, digest-pinned `python:3.12-slim` base), with local FastEmbed/ONNX knowledge embeddings, PostgreSQL support, and native engine dependencies:
+Target relationship:
 
 ```text
-ADK        266,258,126 bytes (~266 MB decimal)
-LangGraph  247,867,843 bytes (~248 MB decimal)
+A2A Task
+   |
+   v
+OWA invocation_id / ExecutionHandle
+   |
+   v
+selected engine native execution state
 ```
 
-Both builds were validated locally: the LiteLLM import check passes, a runtime container starts under an arbitrary UID (`12345:0`) with a read-only root filesystem, readiness/capabilities/invocation all succeed, and the new HEALTHCHECK/STOPSIGNAL metadata is present. The images remain far below the 2 GiB gate and avoid the multi-gigabyte Torch/CUDA dependency path. The Docker build performs an explicit LiteLLM import check, and package metadata files (per-package README/LICENSE) are copied into the build stages so wheel builds succeed inside the image.
-
-## Completed B-003 Behavior
-
-- Generic `emit`/`listen(one)` event delivery is process-local and non-durable.
-- Lifecycle events are available as bounded CloudEvents 1.0 JSON snapshots.
-- `schedule.after` and `schedule.every` persist scheduler state with restart reclaim and at-least-once semantics.
-- Local sub-workflows use the standard `run` task against deployment-configured `workflow.catalog` definitions.
-- Durable HITL approvals use standard event composition rather than a proprietary task: approval request/decision state is persisted separately, operator decisions are bearer-authorized and idempotent, inbox reads are protected, and terminal decisions replay through the normal `listen` path after restart. ADK and LangGraph share the same observable contract. The bearer/operator-header guard is deliberately a bounded deployment authorization boundary, not a replacement for an enterprise identity provider.
-
-## Release Images
-
-Verified stable tags are published by `.github/workflows/release.yml` only after CI succeeds for the tagged commit, the companion External Sandbox/PostgreSQL acceptance gate passes, and the Trivy image scan is clean:
+Planned order:
 
 ```text
-ghcr.io/bassemzohdy/open-workflow-agent-adk:<version>
-ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<version>
-ghcr.io/bassemzohdy/open-workflow-agent-sandbox-controller:<version>
-ghcr.io/bassemzohdy/open-workflow-agent-kubernetes-sandbox-controller:<version>
+shared named security profiles
+  -> deployment-declared skills
+  -> A2A Task projection
+  -> task retrieval/cancellation
+  -> waiting/input-required/resume mapping
+  -> spec-native async behavior
+  -> A2A streaming/resubscription
+  -> interoperability/conformance gates
 ```
 
-The release pipeline adds exact-version, minor-series, `latest`, and immutable source-SHA tags plus SBOM/provenance metadata and GitHub build provenance attestations. Publication runs inside the protected `release` GitHub environment.
+The remaining streaming dependency is therefore the portable A2A Task/message/artifact lifecycle contract, not direct ADK/LangGraph stream support.
 
-## Current Next Step
+Push notifications remain separately deferred because they create an outbound callback trust boundary requiring allowlisting, TLS identity verification, callback authentication, SSRF protection, replay/idempotency controls, bounded retries/dead-letter handling, and secret-safe observability.
 
-All decided work is shipped: v0.1.0 released, Kubernetes sandbox acceptance green (kind), and a bounded inbound A2A profile delivered behind `a2a.enabled` with selectable transports (`jsonrpc` default, `http_json`). Per the 2026-08-28 product decisions, the following are intentionally deferred and tracked in `TODO.md`:
+Delegated-user identity, token exchange, and consent remain deployment/identity-platform concerns and do not block Task support.
 
-1. OpenShift sandbox acceptance (SCC/security-context/arbitrary-UID) — deferred until an OpenShift cluster is available; Kubernetes acceptance is recorded green above.
-2. A2A conformance, `message/stream`/general streaming, and push notifications — deferred; the bounded profile is the current contract.
-3. Microsoft Agent Framework production status — deferred; the adapter stays optional with CI-enforced shared-gate coverage.
+## Protocol Baseline Work
 
-The bounded inbound A2A slice is verified remotely: for commit `a20ef51`, CI run `33156173321`, External Sandbox run `33156173327`, and PostgreSQL run `33156173308` are green, and Release run `33156335003` published the refreshed `latest`/`sha-a20ef51` images (the `v0.1.0` release remains pinned to `c47cb86`).
+Pinned stable baselines:
 
-Full MCP, A2A, OpenAPI, external-catalog, streaming, or Open Workflow ecosystem conformance remains unclaimed beyond the tested Portable Profile/capabilities.
+| Protocol/specification | Baseline | Current position |
+| --- | --- | --- |
+| Open Workflow Specification | `1.0.3` | implemented subset / Portable Profile |
+| A2A Protocol | `1.0.1` | bounded inbound v1 profile implemented; Task/conformance expansion active backlog |
+| Model Context Protocol | `2026-07-28` | common client migrated; final audit/compatibility verification active |
+| OpenAPI Specification | `3.2.0` | bounded operation adapter; no full-parser/conformance claim |
+| CloudEvents | `1.0.2` | bounded lifecycle behavior; compatibility verification active |
+| AsyncAPI | `3.1.0` | future binding baseline |
+
+Protocol versions are reviewed and pinned; upstream stable releases do not automatically change runtime support or capability advertisement.
+
+## Security Architecture State
+
+Target common security profile types:
+
+```text
+bearer
+api_key
+oauth2_client_credentials
+mtls
+```
+
+The model is documented but not yet implemented as the shared runtime configuration layer.
+
+Current protocol-specific bearer fields are temporary pre-stable implementation details and are not compatibility contracts.
+
+Authorization terminology is standardized as:
+
+```text
+principal / identity
+role
+scope
+permission / action
+resource
+audience
+```
+
+Traffic/rate/concurrency policy remains a separate deployment concern from authentication/authorization.
+
+OWA does not become an identity provider. OAuth2/OIDC federation, user delegation, token exchange, and consent remain external identity-platform responsibilities.
+
+## Persistence and State Boundaries
+
+The runtime preserves distinct lifecycles for:
+
+```text
+knowledge
+memory
+session
+common invocation metadata
+approvals
+schedules
+sandbox executions
+engine-native checkpoints/state
+```
+
+SQLite remains the reference datasource. PostgreSQL common stores and ADK/LangGraph native PostgreSQL adapters are implemented with isolated namespaces.
+
+Engine-native checkpoint state is never exposed as a public resume contract.
+
+## Sandbox State
+
+Executable operations are disabled by default and must pass common capability/policy gates.
+
+Backends:
+
+```text
+internal process sandbox
+restricted Docker controller
+restricted Kubernetes/OpenShift controller
+```
+
+All engines route executable workflow operations through the common `SandboxManager` contract.
+
+The internal sandbox is a controlled execution boundary, not a hard isolation boundary. Stronger isolation uses external Docker/Kubernetes backends.
+
+## Current Active Backlog
+
+The authoritative ordered backlog is `TODO.md`. Current priorities are:
+
+1. complete pinned protocol compatibility/advertisement gates;
+2. implement reusable named security profiles and authorization checks;
+3. keep traffic policy separate from security policy;
+4. implement deployment-declared A2A skills;
+5. implement A2A Task projection, retrieval/cancellation, and waiting/resume mapping;
+6. implement A2A streaming/resubscription only after Task state is stable;
+7. add interoperability/conformance coverage before broadening A2A claims.
+
+## Intentionally Deferred
+
+- OpenShift-specific sandbox acceptance until an OpenShift cluster is available.
+- A2A push notifications.
+- Broad/full A2A conformance claim until Task/streaming/interoperability gates are green.
+- Microsoft Agent Framework production image/release status.
+- Multi-tenancy.
+- Delegated-user identity/token exchange/consent inside OWA.
+
+## Verification Rules
+
+A capability is considered shipped only when applicable deterministic tests and required acceptance gates are green.
+
+Core must remain framework-neutral. Shared contract tests are the portability proof.
+
+Protocol baseline changes are compatibility/security changes and must not be treated as ordinary dependency bumps.
 
 ## Key Commands
 
@@ -157,7 +374,4 @@ uv build --directory core
 uv run --directory engines/adk --locked --extra native --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract ../../tests/ctk -q
 uv run --directory engines/langgraph --locked --extra sqlite --with pytest --with pytest-asyncio pytest ../../tests/langgraph ../../tests/contract ../../tests/ctk -q
 uv run --directory engines/agent-framework --locked --extra native --with pytest --with pytest-asyncio pytest ../../tests/agent_framework -q
-uv run --locked pytest tests/core/test_protocols.py tests/contract/test_contract.py tests/contract/test_tools.py -q
-docker build -f docker/Dockerfile.adk .
-docker build -f docker/Dockerfile.langgraph .
 ```
