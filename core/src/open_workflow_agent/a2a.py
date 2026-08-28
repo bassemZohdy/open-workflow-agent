@@ -2,16 +2,16 @@
 
 The runtime targets A2A protocol release 1.0.1 and advertises protocol version
 1.0 on each AgentInterface. Disabled by default. When enabled, the runtime
-exposes the standard Agent Card discovery URI and a synchronous SendMessage
-operation so external A2A clients can drive the configured workflow.
+exposes standard Agent Card discovery, synchronous SendMessage, and a bounded
+Task projection over common OWA invocation state.
 
 Two bindings are selectable through deployment configuration:
 
 - ``jsonrpc``: JSON-RPC 2.0 over HTTP using A2A v1 PascalCase methods.
 - ``http_json``: A2A HTTP+JSON using the standard REST endpoint/media type.
 
-Task persistence, streaming, resubscription, push notifications, and extended
-Agent Cards are intentionally outside this bounded slice.
+Streaming, resubscription, push notifications, and extended Agent Cards remain
+outside this bounded slice.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from .a2a_tasks import project_a2a_task
 from .config import A2AConfig
 
 A2A_SPEC_RELEASE = "1.0.1"
@@ -33,6 +34,7 @@ A2A_HTTP_JSON_MEDIA_TYPE = "application/a2a+json"
 
 _MAX_TEXT_PARTS = 64
 _TRANSPORT_LABELS = {"jsonrpc": "JSONRPC", "http_json": "HTTP+JSON"}
+_TERMINAL_TASK_STATUSES = frozenset({"completed", "faulted", "cancelled"})
 
 
 def a2a_capabilities(config: A2AConfig) -> dict[str, Any]:
@@ -46,7 +48,8 @@ def a2a_capabilities(config: A2AConfig) -> dict[str, Any]:
         "card": A2A_AGENT_CARD_PATH if config.enabled else None,
         "streaming": False,
         "pushNotifications": False,
-        "tasks": False,
+        "tasks": config.enabled,
+        "taskOperations": ["GetTask", "CancelTask"] if config.enabled else [],
         "auth": "bearer" if config.enabled and config.auth_token else None,
     }
 
@@ -131,6 +134,8 @@ class JsonRpcError(Exception):
     INVALID_PARAMS = -32602
     INTERNAL_ERROR = -32603
     APPLICATION_ERROR = -32000
+    TASK_NOT_FOUND = -32001
+    TASK_NOT_CANCELABLE = -32002
     VERSION_NOT_SUPPORTED = -32009
 
     def __init__(
@@ -191,6 +196,32 @@ def _reply_message(source_message: dict[str, Any], reply: str) -> dict[str, Any]
         "role": "ROLE_AGENT",
         "parts": [{"text": reply}],
     }
+
+
+def _task_id(params: Any) -> str:
+    if not isinstance(params, dict) or not isinstance(params.get("id"), str) or not params["id"]:
+        raise JsonRpcError(JsonRpcError.INVALID_PARAMS, "task operation requires params.id")
+    return str(params["id"])
+
+
+def _get_task(app: FastAPI, task_id: str) -> dict[str, Any]:
+    handle = app.state.services.invocations.get(task_id)
+    if handle is None:
+        raise JsonRpcError(JsonRpcError.TASK_NOT_FOUND, "task not found")
+    return project_a2a_task(handle)
+
+
+async def _cancel_task(app: FastAPI, task_id: str) -> dict[str, Any]:
+    handle = app.state.services.invocations.get(task_id)
+    if handle is None:
+        raise JsonRpcError(JsonRpcError.TASK_NOT_FOUND, "task not found")
+    if handle.status in _TERMINAL_TASK_STATUSES:
+        raise JsonRpcError(JsonRpcError.TASK_NOT_CANCELABLE, "task cannot be canceled")
+    result = await app.state.engine.cancel(handle, operation_id=f"a2a:cancel:{task_id}")
+    refreshed = app.state.services.invocations.get(result.invocation_id)
+    if refreshed is None:
+        raise JsonRpcError(JsonRpcError.TASK_NOT_FOUND, "task not found")
+    return project_a2a_task(refreshed)
 
 
 def mount_a2a(
@@ -269,49 +300,58 @@ def mount_a2a(
                 return unauthorized
             if unsupported := version_supported(request):
                 return unsupported
+            request_id: Any = None
             try:
-                envelope = await request.json()
-            except ValueError as exc:
-                raise JsonRpcError(JsonRpcError.PARSE_ERROR, "invalid JSON payload") from exc
-            if not isinstance(envelope, dict) or envelope.get("jsonrpc") != "2.0":
-                raise JsonRpcError(JsonRpcError.INVALID_REQUEST, "not a JSON-RPC 2.0 request")
-            request_id = envelope.get("id")
-            method = envelope.get("method")
-            if method != "SendMessage":
-                raise JsonRpcError(
-                    JsonRpcError.METHOD_NOT_FOUND,
-                    "only SendMessage is supported in the bounded A2A profile",
-                )
-            params = envelope.get("params")
-            if not isinstance(params, dict) or not isinstance(params.get("message"), dict):
-                raise JsonRpcError(
-                    JsonRpcError.INVALID_PARAMS, "SendMessage requires params.message"
-                )
-            message = params["message"]
-            try:
-                text = extract_message_text(message.get("parts"))
-            except ValueError as exc:
-                raise JsonRpcError(JsonRpcError.INVALID_PARAMS, str(exc)) from exc
-            if len(text) > config.max_message_chars:
-                raise JsonRpcError(
-                    JsonRpcError.INVALID_PARAMS,
-                    f"message text exceeds {config.max_message_chars} characters",
-                )
-            reply, error_code = await invoke_message(text)
-            if error_code:
-                raise JsonRpcError(
-                    JsonRpcError.APPLICATION_ERROR,
-                    "workflow execution failed",
-                    details={"code": error_code},
-                )
-            return _jsonrpc_response(request_id, {"message": _reply_message(message, reply)})
-
-        @app.exception_handler(JsonRpcError)
-        async def jsonrpc_error(_request: Request, error: JsonRpcError) -> JSONResponse:
-            return _jsonrpc_error(None, error)
+                try:
+                    envelope = await request.json()
+                except ValueError as exc:
+                    raise JsonRpcError(JsonRpcError.PARSE_ERROR, "invalid JSON payload") from exc
+                if not isinstance(envelope, dict) or envelope.get("jsonrpc") != "2.0":
+                    raise JsonRpcError(JsonRpcError.INVALID_REQUEST, "not a JSON-RPC 2.0 request")
+                request_id = envelope.get("id")
+                method = envelope.get("method")
+                params = envelope.get("params")
+                if method == "GetTask":
+                    return _jsonrpc_response(request_id, _get_task(app, _task_id(params)))
+                if method == "CancelTask":
+                    return _jsonrpc_response(
+                        request_id,
+                        await _cancel_task(app, _task_id(params)),
+                    )
+                if method != "SendMessage":
+                    raise JsonRpcError(
+                        JsonRpcError.METHOD_NOT_FOUND,
+                        "A2A method is not supported in the bounded profile",
+                    )
+                if not isinstance(params, dict) or not isinstance(params.get("message"), dict):
+                    raise JsonRpcError(
+                        JsonRpcError.INVALID_PARAMS, "SendMessage requires params.message"
+                    )
+                message = params["message"]
+                try:
+                    text = extract_message_text(message.get("parts"))
+                except ValueError as exc:
+                    raise JsonRpcError(JsonRpcError.INVALID_PARAMS, str(exc)) from exc
+                if len(text) > config.max_message_chars:
+                    raise JsonRpcError(
+                        JsonRpcError.INVALID_PARAMS,
+                        f"message text exceeds {config.max_message_chars} characters",
+                    )
+                reply, error_code = await invoke_message(text)
+                if error_code:
+                    raise JsonRpcError(
+                        JsonRpcError.APPLICATION_ERROR,
+                        "workflow execution failed",
+                        details={"code": error_code},
+                    )
+                return _jsonrpc_response(request_id, {"message": _reply_message(message, reply)})
+            except JsonRpcError as error:
+                return _jsonrpc_error(request_id, error)
 
     else:
         send_path = f"{config.path}/message:send"
+        task_path = f"{config.path}/tasks/{{task_id}}"
+        cancel_task_path = f"{config.path}/tasks/{{task_id}}:cancel"
 
         @app.post(send_path, response_model=None)
         async def http_json_entry(request: Request) -> JSONResponse:
@@ -363,6 +403,40 @@ def mount_a2a(
                     status_code=500,
                 )
             return _http_json_response({"message": _reply_message(message, reply)})
+
+        @app.get(task_path, response_model=None)
+        async def http_json_get_task(task_id: str, request: Request) -> JSONResponse:
+            if unauthorized := authorized(request):
+                return unauthorized
+            if unsupported := version_supported(request):
+                return unsupported
+            try:
+                return _http_json_response(_get_task(app, task_id))
+            except JsonRpcError as error:
+                return _http_json_response(
+                    {"error": {"code": "task_not_found", "message": error.message}},
+                    status_code=404,
+                )
+
+        @app.post(cancel_task_path, response_model=None)
+        async def http_json_cancel_task(task_id: str, request: Request) -> JSONResponse:
+            if unauthorized := authorized(request):
+                return unauthorized
+            if unsupported := version_supported(request):
+                return unsupported
+            try:
+                return _http_json_response(await _cancel_task(app, task_id))
+            except JsonRpcError as error:
+                if error.code == JsonRpcError.TASK_NOT_FOUND:
+                    code = "task_not_found"
+                    status_code = 404
+                else:
+                    code = "task_not_cancelable"
+                    status_code = 400
+                return _http_json_response(
+                    {"error": {"code": code, "message": error.message}},
+                    status_code=status_code,
+                )
 
 
 __all__ = [
