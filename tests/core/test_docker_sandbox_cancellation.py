@@ -5,8 +5,8 @@ import asyncio
 import httpx
 import pytest
 from open_workflow_agent.config import SandboxConfig
-from open_workflow_agent.docker_sandbox import DockerSandboxBackend
 from open_workflow_agent.sandbox import SandboxExecutionRequest
+from open_workflow_agent.sandbox.backends.docker import DockerSandboxBackend
 
 _IMAGE = "registry.example/worker@sha256:" + ("a" * 64)
 

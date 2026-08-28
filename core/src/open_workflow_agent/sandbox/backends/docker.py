@@ -9,23 +9,14 @@ from typing import Any
 
 import httpx
 
-from .config import SandboxConfig
-from .errors import (
-    SandboxOutputLimitError,
+from ...config import SandboxConfig
+from ...errors import (
     SandboxPolicyError,
     SandboxProcessError,
-    SandboxResourceLimitError,
     SandboxTimeoutError,
 )
-from .sandbox import SandboxExecutionRequest, SandboxExecutionResult, SandboxSecretReference
-
-_ERROR_TYPES = {
-    "sandbox_policy_error": SandboxPolicyError,
-    "sandbox_timeout": SandboxTimeoutError,
-    "sandbox_output_limit": SandboxOutputLimitError,
-    "sandbox_resource_limit": SandboxResourceLimitError,
-    "sandbox_process_error": SandboxProcessError,
-}
+from ..contract import SandboxExecutionRequest, SandboxExecutionResult, SandboxSecretReference
+from .controller import cancel_controller_execution, controller_error
 
 
 class DockerSandboxBackend:
@@ -185,12 +176,9 @@ class DockerSandboxBackend:
             return
 
     async def _cancel_controller_execution(self, execution_id: str) -> None:
-        try:
-            response = await self._client.delete(f"/v1/executions/{execution_id}")
-        except httpx.HTTPError as exc:
-            raise SandboxProcessError("Docker sandbox cancellation request failed") from exc
-        if response.status_code not in {200, 202, 204, 404}:
-            raise self._controller_error(response)
+        await cancel_controller_execution(
+            self._client, backend_label="Docker", execution_id=execution_id
+        )
 
     def _resolve_environment(self, request: SandboxExecutionRequest) -> dict[str, str]:
         environment: dict[str, str] = {}
@@ -214,19 +202,7 @@ class DockerSandboxBackend:
 
     @staticmethod
     def _controller_error(response: httpx.Response) -> Exception:
-        code = "sandbox_process_error"
-        try:
-            body = response.json()
-            error = body.get("error", {}) if isinstance(body, dict) else {}
-            if isinstance(error, dict) and isinstance(error.get("code"), str):
-                code = error["code"]
-        except ValueError:
-            pass
-        error_type = _ERROR_TYPES.get(code, SandboxProcessError)
-        return error_type(
-            "Docker sandbox controller rejected execution",
-            details={"controller_code": code, "status": response.status_code},
-        )
+        return controller_error(response, backend_label="Docker")
 
 
 __all__ = ["DockerSandboxBackend"]

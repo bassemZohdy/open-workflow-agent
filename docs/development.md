@@ -75,7 +75,7 @@ deploy/                   Kubernetes/OpenShift deployment manifests
 docs/                     user/operator/developer documentation
 ```
 
-The sandbox implementation lives under framework-neutral core services (`core/src/open_workflow_agent/sandbox.py`, `sandbox_contract.py`, `docker_sandbox.py`, `kubernetes_sandbox.py`), never inside an engine package.
+The sandbox implementation is a framework-neutral core package (`core/src/open_workflow_agent/sandbox/`) layered as: `contract.py` (the abstract interface), `manager.py` (backend selection), `validation.py` (the workflow-level capability gate), `executor.py` (workflow-facing routing), and `backends/` (the shared reusable utilities — internal process machinery plus the restricted-controller clients in `docker.py`/`kubernetes.py`; `sandbox_contract.py` holds the portable requirements contract). It never lives inside an engine package.
 
 ## Local setup
 

@@ -8,16 +8,16 @@ from typing import Any
 from .approvals import ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
-from .docker_sandbox import DockerSandboxBackend
 from .events import EventBus, InMemoryEventBus
 from .external_catalog import ExternalCatalogResolver
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
-from .kubernetes_sandbox import KubernetesSandboxBackend
 from .memory import MemoryService
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
 from .persistence import InvocationStore
 from .protocols import ProtocolServices
 from .sandbox import InternalSandboxBackend, SandboxBackend, SandboxManager
+from .sandbox.backends.docker import DockerSandboxBackend
+from .sandbox.backends.kubernetes import KubernetesSandboxBackend
 from .scheduling import ScheduleStore
 from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
 from .tools import AgentToolBinding, ToolRegistry

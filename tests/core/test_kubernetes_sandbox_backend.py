@@ -7,8 +7,8 @@ import httpx
 import pytest
 from open_workflow_agent.config import SandboxConfig
 from open_workflow_agent.errors import SandboxPolicyError, SandboxTimeoutError
-from open_workflow_agent.kubernetes_sandbox import KubernetesSandboxBackend
 from open_workflow_agent.sandbox import SandboxExecutionRequest, SandboxSecretReference
+from open_workflow_agent.sandbox.backends.kubernetes import KubernetesSandboxBackend
 from pydantic import ValidationError
 
 _IMAGE = "registry.example/worker@sha256:" + ("a" * 64)
