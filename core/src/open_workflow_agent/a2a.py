@@ -253,7 +253,9 @@ def mount_a2a(
                 )
             params = envelope.get("params")
             if not isinstance(params, dict) or not isinstance(params.get("message"), dict):
-                raise JsonRpcError(JsonRpcError.INVALID_PARAMS, "SendMessage requires params.message")
+                raise JsonRpcError(
+                    JsonRpcError.INVALID_PARAMS, "SendMessage requires params.message"
+                )
             message = params["message"]
             try:
                 text = extract_message_text(message.get("parts"))
