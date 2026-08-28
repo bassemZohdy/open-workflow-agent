@@ -92,4 +92,4 @@ def test_protocol_documentation_cannot_drift_from_the_pinned_manifest() -> None:
         assert f"| {label} | `{release}` |" in documentation
 
     assert "latest stable released version" in documentation
-    assert "does not float automatically at runtime" in documentation
+    assert "never float automatically at runtime" in documentation
