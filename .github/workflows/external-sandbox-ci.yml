@@ -8,9 +8,7 @@ on:
     paths:
       - ".github/workflows/external-sandbox-ci.yml"
       - "core/src/open_workflow_agent/config.py"
-      - "core/src/open_workflow_agent/docker_sandbox.py"
-      - "core/src/open_workflow_agent/kubernetes_sandbox.py"
-      - "core/src/open_workflow_agent/sandbox.py"
+      - "core/src/open_workflow_agent/sandbox/**"
       - "core/src/open_workflow_agent/sandbox_contract.py"
       - "core/src/open_workflow_agent/services.py"
       - "sandbox-controller/**"
@@ -31,9 +29,7 @@ on:
     paths:
       - ".github/workflows/external-sandbox-ci.yml"
       - "core/src/open_workflow_agent/config.py"
-      - "core/src/open_workflow_agent/docker_sandbox.py"
-      - "core/src/open_workflow_agent/kubernetes_sandbox.py"
-      - "core/src/open_workflow_agent/sandbox.py"
+      - "core/src/open_workflow_agent/sandbox/**"
       - "core/src/open_workflow_agent/sandbox_contract.py"
       - "core/src/open_workflow_agent/services.py"
       - "sandbox-controller/**"
@@ -80,9 +76,7 @@ jobs:
         run: |
           uv run --locked ruff format --check \
             core/src/open_workflow_agent/config.py \
-            core/src/open_workflow_agent/docker_sandbox.py \
-            core/src/open_workflow_agent/kubernetes_sandbox.py \
-            core/src/open_workflow_agent/sandbox.py \
+            core/src/open_workflow_agent/sandbox/ \
             core/src/open_workflow_agent/sandbox_contract.py \
             core/src/open_workflow_agent/services.py \
             sandbox-controller/src \
@@ -97,9 +91,7 @@ jobs:
             tests/contract/test_container_sandbox_contract.py
           uv run --locked ruff check \
             core/src/open_workflow_agent/config.py \
-            core/src/open_workflow_agent/docker_sandbox.py \
-            core/src/open_workflow_agent/kubernetes_sandbox.py \
-            core/src/open_workflow_agent/sandbox.py \
+            core/src/open_workflow_agent/sandbox/ \
             core/src/open_workflow_agent/sandbox_contract.py \
             core/src/open_workflow_agent/services.py \
             sandbox-controller/src \
