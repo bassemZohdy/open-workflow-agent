@@ -4,26 +4,26 @@
 
 ## Current Phase
 
-**Backlog sweep complete (2026-08-27) -- remaining work is verification-, acceptance-, and decision-gated.**
+**v0.1.0 released (2026-08-28) -- remaining work is acceptance- and decision-gated.**
 
-The 2026-08-27 sweep closed the B-006.5 release bookkeeping plus the D-001, D-002, D-003, SEC-001, SEC-002, OPS-001, OPS-002, Q-001, and CORE-001 sections and the B-008 CI slice; completed detail lives in `PROJECT.md`, `CHANGELOG.md`, and git history. What remains: prove the new CI gates once the sweep lands on `main` (below), Kubernetes/OpenShift real-cluster acceptance (B-006.3), the B-007 inbound-A2A/streaming decision, the B-008 third-engine production decision, and R-001 (first formal release once acceptance is ready).
+The 2026-08-27/28 sweep landed on `main`, every new gate proved green in CI (CI, Security, External Sandbox, PostgreSQL, kubeconform), and the first formal release **v0.1.0** was cut from the verified head `c47cb86` with all four images published through the Trivy gate. Completed detail lives in `PROJECT.md`, `CHANGELOG.md`, and git history. What remains: Kubernetes/OpenShift real-cluster acceptance (B-006.3, needs a cluster), the B-007 inbound-A2A/streaming decision, and the B-008 third-engine production decision (contract/CTK gates already pass).
 
 ### Current integration head
 
-- `main` is at `80bfa2b` and aligned with `origin/main`; there are no open pull requests. PRs #14 (Kubernetes sandbox boundary + hosted Docker acceptance), #15 (bounded lifecycle SSE), and #16 (Microsoft Agent Framework adapter) are merged.
-- Local verification after the sweep: root `270 passed, 11 skipped` at `82.75%` coverage, ADK `104 passed`, LangGraph `104 passed`, Agent Framework `5 passed`, all six locks checked, all seven packages built, both runtime images and both controller images built and smoke-validated.
-- Remote acceptance for `80bfa2b` (before the sweep): CI `33105068629`, PostgreSQL `33105068561`, and External Sandbox `33105068565` green; Release `33105399880` published the ADK/LangGraph `latest` and `sha-80bfa2b7887a` images. Run IDs and digests are recorded in `PROJECT.md`.
+- `main` is at `c47cb86` (tagged `v0.1.0`) and aligned with `origin/main`. Dependabot is active (PRs #18 and #20 rebasing onto the fixed gates; #21 declined -- the runtime intentionally tracks Python 3.12).
+- Local verification: root `270 passed, 11 skipped` at `82.75%` coverage, ADK `104 passed`, LangGraph `104 passed`, Agent Framework `139 passed` across the shared contract + CTK surface, all six locks checked, all seven packages built, all four images built and Trivy-scanned locally.
+- Remote acceptance for `c47cb86`: CI `33136592588`, Security `33136597832`, External Sandbox `33136592592`, and PostgreSQL `33136592632` are green; Release `33136714445` published all four `0.1.0` images through the Trivy gate and created the GitHub Release. Run IDs and digests are recorded in `PROJECT.md`.
 - Untagged green `main` commits publish `latest` and `sha-*` images to GHCR and Docker Hub; a GitHub Release and semantic-version tags appear only when a matching `vX.Y.Z` tag points at the verified commit.
 
 ## Active Backlog — Ordered
 
-### SWEEP-VERIFY -- Prove the new CI gates after the sweep commit (P1)
+### SWEEP-VERIFY -- Prove the new CI gates after the sweep commit (P1) -- CLOSED 2026-08-28
 
 The sweep added the Security workflow (pip-audit over all six locked environments), the Trivy publication gate, the kubeconform manifest job, the companion-acceptance publication precondition, controller-image publication, and committed controller locks. None of these has run in CI yet.
 
-- [ ] Commit and push the backlog-sweep changes to `main`; confirm the CI, Security, External Sandbox, PostgreSQL, and kubeconform manifest jobs all pass.
-- [ ] Confirm the Release workflow publishes both engine images and both sandbox-controller images through the Trivy gate and the companion-acceptance precondition; record the new run IDs and image digests in `PROJECT.md`.
-- [ ] Confirm Dependabot registers and opens its first update set, and the weekly Security schedule is active.
+- [x] Commit and push the backlog-sweep changes to `main`; confirm the CI, Security, External Sandbox, PostgreSQL, and kubeconform manifest jobs all pass. (Head `c47cb86`: CI `33136592588`, Security `33136597832`, External Sandbox `33136592592`, PostgreSQL `33136592632` all green. Verification caught and fixed three gate bugs: kubeconform needed an explicit skip for the OpenShift-only `Project` kind, the Security audit script had a stderr syntax error, and the companion gate had an unbound variable.)
+- [x] Confirm the Release workflow publishes both engine images and both sandbox-controller images through the Trivy gate and the companion-acceptance precondition; record the new run IDs and image digests in `PROJECT.md`. (Release `33136714445`; the Trivy gate correctly blocked two intermediate pushes until base images were refreshed and upstream-owned findings were documented in `.trivyignore`.)
+- [x] Confirm Dependabot registers and opens its first update set, and the weekly Security schedule is active. (PRs #18/#20 open with rebase requested; #21 declined -- Python 3.12 is intentional.)
 
 ### B-006.3 -- Kubernetes/OpenShift external sandbox production acceptance (P1)
 
@@ -49,19 +49,17 @@ The evaluation baseline is documented in `docs/a2a-streaming-evaluation.md`. Bou
 
 ### B-008 -- Additional engine adapter (P3, deferred)
 
-`docs/engine-adapter-evaluation.md` selected **Microsoft Agent Framework** as the preferred third-engine candidate. PR #16 merged an optional native adapter and exact `uv.lock`; CI runs it on `main` with a committed-lock check. It remains deferred as a production image/release target until the shared gates are complete.
+`docs/engine-adapter-evaluation.md` selected **Microsoft Agent Framework** as the preferred third-engine candidate. PR #16 merged an optional native adapter and exact `uv.lock`; CI runs it on `main` with a committed-lock check and now also enforces the shared contract and CTK suites natively. It remains deferred as a production image/release target until the production decision and remaining gates are complete.
 
 - [ ] Decide whether Agent Framework is experimental or a production engine; if production, add an independent runtime image, image acceptance, shared contract/CTK coverage, persistence/resume coverage, capability reporting, and release metadata.
-- [ ] Pass the shared contract fixtures, applicable CTK/provenance, persistence/resume boundaries, hardened-image acceptance, and release gates before advertising the third engine.
+- [ ] Pass the shared contract fixtures, applicable CTK/provenance, persistence/resume boundaries, hardened-image acceptance, and release gates before advertising the third engine. (Progress 2026-08-28: the shared contract modules and CTK harness now include the Agent Framework engine wherever its native dependency is installed, and it passes natively -- 139 tests in its CI job, which enforces the shared suites. Remaining: independent runtime image with hardened-image acceptance, persistence/resume coverage, and release metadata, all pending the production decision above.)
 
-### R-001 -- First formal semantic-version release (P3, when product acceptance is ready)
+### R-001 -- First formal semantic-version release (P3) -- RELEASED 2026-08-28
 
-The release workflow already supports continuous verified `latest`/`sha-*` image publication from green `main`. The repository currently has no GitHub Release; a formal release should be cut only from a fully accepted commit.
-
-- [ ] After the required production acceptance gates are green, confirm all package versions match the intended release version and create the matching `vX.Y.Z` tag on the verified commit.
-- [ ] Verify the Release workflow publishes both engines to GHCR and Docker Hub with exact-version, minor-series, `latest`, and source-SHA tags from one build per engine.
-- [ ] Verify GitHub Release creation, release notes, OCI version/revision/source labels, SBOM/provenance, and GHCR provenance attestations.
-- [ ] Record the release tag, GitHub Actions run, image digests, and pull commands in `PROJECT.md`/end-user documentation.
+- [x] After the required production acceptance gates are green, confirm all package versions match the intended release version and create the matching `vX.Y.Z` tag on the verified commit. (`v0.1.0` tagged on `c47cb86`; all packages at 0.1.0, verified by the release prepare job.)
+- [x] Verify the Release workflow publishes both engines to GHCR and Docker Hub with exact-version, minor-series, `latest`, and source-SHA tags from one build per engine. (Controllers are GHCR-only at v0.1.0; Docker Hub mirroring for controllers was added for future releases.)
+- [x] Verify GitHub Release creation, release notes, OCI version/revision/source labels, SBOM/provenance, and GHCR provenance attestations. (GitHub Release `v0.1.0` created by run `33136714445` after the Trivy gate passed on all four images.)
+- [x] Record the release tag, GitHub Actions run, image digests, and pull commands in `PROJECT.md`/end-user documentation. (Digests and run IDs recorded in `PROJECT.md`; pull commands are in the GitHub Release notes and README registry patterns.)
 
 ## Working Rules
 

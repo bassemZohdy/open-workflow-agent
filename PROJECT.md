@@ -39,7 +39,34 @@ Root format/lint/mypy/tests/contracts, ADK/LangGraph native suites, selected CTK
 - The knowledge manifest now records an `indexed_at` timestamp plus real parser identities (`pypdf@<version>`, `pyyaml@<version>`, `stdlib-json`, `text`) and the `whitespace-window:<size>+<overlap>` chunking identity, with a migration for existing SQLite/PostgreSQL databases.
 - Docker builds re-validated locally for all four images: package metadata files (per-package README/LICENSE) are copied into the build stages, `*.sh` is forced to LF via `.gitattributes` so Windows checkouts build, and the rebuilt runtime images pass the litellm import check plus a live readiness/capabilities/invocation check under arbitrary-UID/read-only-root.
 
-### Current-head acceptance record (`main` at `80bfa2b7887abc68c2d964caf45cbc912af71be8`)
+### Release v0.1.0 (2026-08-28)
+
+The first formal release was cut from the verified head `c47cb86` (`v0.1.0`). The Release run `33136714445` passed the companion-acceptance gate, scanned all four images with Trivy before push, published to both registries, and created the GitHub Release with generated notes and pull commands.
+
+Acceptance runs for the release head (2026-08-28):
+
+| Workflow | Run | Result |
+| --- | --- | --- |
+| CI (quality, contracts, CTK, kubeconform manifests, Docker acceptance) | `33136592588` | green |
+| Security (pip-audit over all six locked environments) | `33136597832` | green |
+| External Sandbox CI (Docker acceptance, controller image checks) | `33136592592` | green |
+| PostgreSQL CI | `33136592632` | green |
+| Release (four images, Trivy gate, attestations, GitHub Release) | `33136714445` | success |
+
+Published `0.1.0` images (identical manifests under `latest`, `0.1`, and `sha-c47cb86`):
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk                        sha256:4d89ffaa88207488fec4b128e1e728282cca701f0e31330c7314c1606235cf36
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph                  sha256:add38f52c062a01ab81c61962ab609a728e62a367818cc77bff19a6a720d2a89
+ghcr.io/bassemzohdy/open-workflow-agent-sandbox-controller         sha256:d00394b821136a50fd73f2ac16217632f0d09844d837141f316d93fa2e00cb05
+ghcr.io/bassemzohdy/open-workflow-agent-kubernetes-sandbox-controller sha256:97c31c39a5a769b5e248b5e7b0b94455102be6bd757efbbec1f5329c5da2e520
+docker.io/bzohdy/open-workflow-agent-adk                           sha256:4d89ffaa88207488fec4b128e1e728282cca701f0e31330c7314c1606235cf36
+docker.io/bzohdy/open-workflow-agent-langgraph                     sha256:add38f52c062a01ab81c61962ab609a728e62a367818cc77bff19a6a720d2a89
+```
+
+At v0.1.0 the sandbox-controller images are published to GHCR only; Docker Hub mirroring for controllers was added to the workflow for future releases. OCI SBOM/provenance metadata covers every published image and GHCR build-provenance attestations are published for the canonical GHCR manifests. Dependabot is active (weekly uv/Actions/base-image update PRs; the first update PRs arrived on release day).
+
+### Prior acceptance record (`main` at `80bfa2b`, pre-sweep)
 
 All acceptance gates for the current integration head are verified green (2026-08-27):
 
@@ -97,14 +124,11 @@ The release pipeline adds exact-version, minor-series, `latest`, and immutable s
 
 ## Current Next Step
 
-All documentation/repo-governance backlog items (D-001, D-002, D-003), supply-chain and pipeline hardening (SEC-001, SEC-002, OPS-002), CI/runner governance (OPS-001), quality/test expansion (Q-001), and knowledge-manifest conformance (CORE-001) are closed as of 2026-08-27; a follow-up commit to `main` must re-verify CI, External Sandbox, PostgreSQL, Security, and Release runs with the new gates (Security workflow, Trivy publication gate, kubeconform manifests job, companion-acceptance publication precondition) and record those run IDs here.
+The first formal release **v0.1.0** is published (2026-08-28) from the verified head `c47cb86`. Remaining work is acceptance- and decision-gated:
 
-Remaining acceptance/decision work, in order:
-
-1. B-006.3 — Kubernetes/OpenShift real-cluster acceptance (timeout/cancellation/restart cleanup, retained-log secret safety, namespace/RBAC enforcement, OpenShift SCC/security-context/arbitrary-UID behavior) before advertising `run.container` for those backends through `/v1/capabilities`. Docker external sandbox production acceptance is recorded green.
+1. B-006.3 — Kubernetes/OpenShift real-cluster acceptance (timeout/cancellation/restart cleanup, retained-log secret safety, namespace/RBAC enforcement, OpenShift SCC/security-context/arbitrary-UID behavior) before advertising `run.container` for those backends through `/v1/capabilities`. No cluster is available in the current development environment; Docker external sandbox production acceptance is recorded green.
 2. B-007 — decide the next bounded slice: inbound A2A, general portable streaming, or continued deferral.
-3. B-008 — decide whether the Microsoft Agent Framework adapter becomes a production engine (image, shared gates, release metadata) or stays experimental.
-4. R-001 — cut the first formal `vX.Y.Z` release only after the relevant gates are green.
+3. B-008 — decide whether the Microsoft Agent Framework adapter becomes a production engine. Progress: the adapter now passes the full shared contract surface and CTK subset natively (139 tests) and CI enforces those suites; an independent runtime image, persistence/resume coverage, and hardened-image acceptance remain before any third-engine advertisement.
 
 Full MCP, A2A, OpenAPI, external-catalog, streaming, or Open Workflow ecosystem conformance remains unclaimed beyond the tested Portable Profile/capabilities.
 

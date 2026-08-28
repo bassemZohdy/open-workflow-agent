@@ -307,6 +307,16 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      - name: Validate Docker Hub publishing configuration
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$DOCKERHUB_USERNAME" || { echo "DOCKERHUB_USERNAME repository variable is required." >&2; exit 1; }
+          test -n "$DOCKERHUB_TOKEN" || { echo "DOCKERHUB_TOKEN repository secret is required." >&2; exit 1; }
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -314,11 +324,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Generate controller image metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ matrix.image }}
+          images: |
+            ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ matrix.image }}
+            docker.io/${{ vars.DOCKERHUB_USERNAME }}/${{ matrix.image }}
           tags: |
             type=raw,value=latest
             type=raw,value=sha-${{ needs.prepare.outputs.short_sha }}
@@ -404,6 +422,8 @@ jobs:
           \`\`\`bash
           docker pull ghcr.io/bassemzohdy/open-workflow-agent-adk:${RELEASE_VERSION}
           docker pull ghcr.io/bassemzohdy/open-workflow-agent-langgraph:${RELEASE_VERSION}
+          docker pull ghcr.io/bassemzohdy/open-workflow-agent-sandbox-controller:${RELEASE_VERSION}
+          docker pull ghcr.io/bassemzohdy/open-workflow-agent-kubernetes-sandbox-controller:${RELEASE_VERSION}
           \`\`\`
 
           Both registries receive the same release build and tags: \`${RELEASE_VERSION}\`, \`${RELEASE_VERSION%.*}\`, \`latest\`, and the verified commit SHA. Release builds include OCI SBOM/provenance metadata; GitHub build provenance attestations are published with the canonical GHCR image.
