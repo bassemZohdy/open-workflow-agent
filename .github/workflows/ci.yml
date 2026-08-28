@@ -40,7 +40,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          kubeconform -strict -summary -kubernetes-version 1.31.0 deploy/
+          # Project is the OpenShift-only namespace kind; vanilla Kubernetes
+          # schemas do not carry it, so it is skipped explicitly rather than
+          # silently ignoring unknown kinds.
+          kubeconform -strict -summary -kubernetes-version 1.31.0 -skip Project deploy/
 
   root:
     name: Root quality gates

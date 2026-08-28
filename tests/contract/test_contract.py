@@ -5,19 +5,18 @@ from pathlib import Path
 import httpx
 import pytest
 import yaml
+from engine_cases import engine_cases
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
-from open_workflow_agent_adk import AdkWorkflowEngine
-from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("engine_name", "engine_type"),
-    [("adk", AdkWorkflowEngine), ("langgraph", LangGraphWorkflowEngine)],
+    engine_cases(),
 )
 @pytest.mark.parametrize(
     "fixture_name",

@@ -103,7 +103,7 @@ jobs:
               print(f"{entry['dependency']}: {entry['id']} fix={entry['fix_versions'] or 'none'}")
 
           if fixable:
-              print(f"FAIL: {len(fixable)} fixable advisories found" >&2)
+              print(f"FAIL: {len(fixable)} fixable advisories found", file=sys.stderr)
               sys.exit(1)
           if unfixable:
               print(f"WARNING: {len(unfixable)} advisories have no fix available yet")

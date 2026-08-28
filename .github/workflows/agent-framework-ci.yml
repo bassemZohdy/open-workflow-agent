@@ -40,9 +40,9 @@ jobs:
         run: uv python install 3.12
       - name: Check committed engine lock
         run: uv lock --check
-      - name: Run native adapter tests
+      - name: Run native, shared contract, and CTK suites
         run: >-
           uv run --locked --extra native --with pytest --with pytest-asyncio
-          pytest ../../tests/agent_framework -vv
+          pytest ../../tests/agent_framework ../../tests/contract ../../tests/ctk -vv
       - name: Build adapter wheel
         run: uv build

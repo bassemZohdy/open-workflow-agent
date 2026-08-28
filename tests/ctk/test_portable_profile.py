@@ -6,12 +6,11 @@ from typing import Any
 
 import pytest
 import yaml
+from engine_cases import engine_cases
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
-from open_workflow_agent_adk import AdkWorkflowEngine
-from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 
 FEATURE_ROOT = Path(__file__).parent / "features"
 
@@ -69,11 +68,19 @@ def _load_scenarios() -> list[dict[str, Any]]:
 
 SCENARIOS = _load_scenarios()
 
+ENGINE_CASES = engine_cases()
+
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("engine_type", [AdkWorkflowEngine, LangGraphWorkflowEngine])
+@pytest.mark.parametrize(
+    ("engine_name", "engine_type"),
+    ENGINE_CASES,
+    ids=[name for name, _ in ENGINE_CASES],
+)
 @pytest.mark.parametrize("scenario", [pytest.param(item, id=item["name"]) for item in SCENARIOS])
-async def test_upstream_ctk_portable_profile_scenarios(engine_type, scenario, tmp_path):
+async def test_upstream_ctk_portable_profile_scenarios(
+    engine_name, engine_type, scenario, tmp_path
+):
     """Execute the selected upstream Gherkin scenarios through both adapters."""
 
     config = RuntimeConfig.model_validate({"model": {"provider": "fake"}})
