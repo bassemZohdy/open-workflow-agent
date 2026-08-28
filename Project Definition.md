@@ -1,123 +1,99 @@
-# Open Workflow Agent
+# Open Workflow Agent — Project Definition
 
-## Project Definition
-
-Working repository name:
+Working repository:
 
 ```text
-open-workflow-agent
+bassemZohdy/open-workflow-agent
 ```
 
-Primary Docker images:
+Primary production runtime images:
 
 ```text
-<org>/open-workflow-agent-adk
-<org>/open-workflow-agent-langgraph
+open-workflow-agent-adk
+open-workflow-agent-langgraph
 ```
 
-The project name is intentionally independent of ADK and LangGraph.
+The project name and public application contract are intentionally independent of ADK, LangGraph, or any future execution framework.
 
 ---
 
-# 1. Project Definition
+# 1. Definition
 
-Open Workflow Agent is a lightweight, configuration-driven platform for running AI agents and deterministic/agentic workflows from the same declarative definition.
+Open Workflow Agent (OWA) is a lightweight, configuration-driven, model-agnostic agent and workflow runtime that executes Open Workflow definitions through interchangeable agent-runtime engines.
 
-The platform uses:
+The external application definition is composed from:
 
 ```text
 Open Workflow Specification
-          +
-Agent configuration
-          +
-Model configuration
-          +
-Knowledge
-          +
-Memory
-          +
-Tools
++ agent configuration
++ model configuration
++ knowledge
++ memory
++ tools
++ deployment/runtime policy
 ```
 
-and executes them using interchangeable runtime engines.
-
-Initial engines:
+Initial production engines:
 
 ```text
 ADK
 LangGraph
 ```
 
-The same external configuration and workflow should execute with equivalent observable behavior on either engine, subject to explicitly advertised engine capabilities.
-
-The central abstraction is therefore:
+Optional evaluation engine:
 
 ```text
-                 Open Workflow Agent
-                         │
-                 Stable Contracts
-                         │
-          ┌──────────────┴──────────────┐
-          │                             │
-      ADK Engine                  LangGraph Engine
+Microsoft Agent Framework
 ```
 
-ADK and LangGraph are implementation technologies.
+The same external configuration and workflow should produce equivalent observable behavior on every engine that advertises the required portable capabilities.
 
-They are not part of the public application contract.
+Frameworks are implementation technologies. They are not the public application contract.
 
 ---
 
 # 2. Product Goal
 
-A user should be able to run a useful agent using only:
+A useful runtime should start with minimal configuration:
 
 ```yaml
 model:
   name: provider/model-name
 ```
 
-The runtime provides defaults for everything else.
-
-The same image can become more capable by mounting or configuring additional features.
-
-For example:
+The same packaged runtime becomes more capable by adding configuration or mounted resources rather than application-specific orchestration code.
 
 ```text
 model only
-    ↓
-simple agent
+  -> simple agent
 
-model + knowledge folder
-    ↓
-RAG agent
+model + knowledge
+  -> RAG agent
 
-model + persistent datasource
-    ↓
-persistent agent with memory
+model + persistence/memory
+  -> durable conversational agent
 
 model + tools
-    ↓
-tool-using agent
+  -> tool-using agent
 
 model + workflow
-    ↓
-deterministic/agentic workflow
+  -> deterministic/agentic workflow
 
-workflow + agent + llm + HTTP + MCP + A2A
-    ↓
-complex agentic orchestration
+workflow + agent + llm + HTTP/MCP/A2A/OpenAPI
+  -> complex portable agentic orchestration
 ```
 
 No application code should need to change between these scenarios.
 
 ---
 
-# 3. Fundamental Principle
+# 3. Fundamental Runtime Rule
 
 ## Every invocation is a workflow invocation.
 
-There must never be:
+There is no separate “simple agent” execution path.
+
+Bad:
 
 ```python
 if workflow_exists:
@@ -126,11 +102,10 @@ else:
     execute_agent()
 ```
 
-Instead:
+Required:
 
 ```python
 workflow = configured_workflow or generate_default_workflow()
-
 execute(workflow)
 ```
 
@@ -138,959 +113,218 @@ Therefore:
 
 > Workflow is mandatory internally and optional externally.
 
-This is one of the most important architectural rules in the project.
-
----
-
-# 4. Default Workflow
-
-If no workflow is supplied, the runtime generates an implicit Open Workflow definition.
-
-Conceptually:
-
-```yaml
-document:
-  dsl: '1.0.3'
-  namespace: open-workflow-agent
-  name: default-agent
-  version: '1.0.0'
-
-do:
-  - respond:
-      call: agent:1.0.0@default
-```
-
-Therefore even the simplest chatbot executes as:
+If a workflow is not supplied, OWA generates the default one-task Open Workflow definition that calls:
 
 ```text
-Request
-   ↓
-Workflow invocation
-   ↓
-Default Open Workflow
-   ↓
 agent:1.0.0@default
-   ↓
-Configured Agent
-   ↓
-Response
 ```
-
-There is no special "simple-agent runtime path."
 
 ---
 
-# 5. Stable External Contracts
+# 4. Stable Public Contracts
 
-The following are public contracts and must remain independent from a specific execution engine.
-
-## 5.1 Agent configuration
-
-Defines:
+The following are public engine-neutral contracts:
 
 ```text
-agent
-models
-knowledge
-memory
-tools
-persistence
-workflow location
-server options
+agent/model/runtime configuration
+Open Workflow definition
+runtime catalog functions
+HTTP API
+invocation identity
+resume/cancellation semantics
+portable workflow behavior
+capability advertisement
+common runtime errors
+common lifecycle events
+protocol boundaries exposed by OWA
 ```
 
----
-
-## 5.2 Workflow definition
-
-Open Workflow Specification 1.x.
-
-Initial implementation targets:
+Public clients must never need:
 
 ```text
-1.0.3
+ADK run/node identifiers
+LangGraph thread/checkpoint identifiers
+framework checkpoint payloads
+engine-native stream objects
 ```
 
 ---
 
-## 5.3 Runtime catalog
+# 5. Open Workflow Baseline
 
-Initially:
+OWA currently targets:
+
+```text
+Open Workflow Specification 1.0.3
+```
+
+The official schema is used unchanged.
+
+Do not fork the Open Workflow schema and do not create proprietary authoring syntax for AI operations.
+
+AI-native operations are represented through standard catalog/custom-function mechanisms such as:
 
 ```text
 agent:1.0.0@default
 llm:1.0.0@default
 ```
 
----
+OWA must not claim full Open Workflow conformance until the applicable CTK/compatibility gates prove it.
 
-## 5.4 HTTP API
-
-Examples:
+Use wording such as:
 
 ```text
-POST /v1/invoke
-POST /v1/invocations/{id}/resume
-POST /v1/invocations/{id}/cancel
-GET  /v1/capabilities
-GET  /health/live
-GET  /health/ready
-POST /v1/admin/knowledge/reload
+Open Workflow 1.0.3 based runtime
+OWA Portable Profile v1
 ```
+
+when broader conformance has not been established.
 
 ---
 
-## 5.5 Runtime semantics
+# 6. Canonical Execution Plan
 
-The following should behave consistently across engines:
-
-```text
-workflow input
-task input
-task output
-context
-expressions
-branching
-loops
-parallelism
-catalog calls
-errors
-workflow result
-```
-
----
-
-# 6. Runtime Implementations
-
-The project initially contains two implementations.
-
-```text
-Open Workflow Agent
-│
-├── Core
-│
-├── ADK Engine
-│
-└── LangGraph Engine
-```
-
-These are built from one source repository but packaged into separate Docker images.
-
----
-
-# 7. Why Separate Docker Images
-
-Do not create one image containing:
-
-```text
-ADK
-LangGraph
-LangChain
-all engine dependencies
-```
-
-and select the engine using configuration.
-
-Instead create:
-
-```text
-open-workflow-agent-adk
-
-open-workflow-agent-langgraph
-```
-
-Reasons:
-
-```text
-smaller containers
-smaller dependency graph
-less attack surface
-fewer dependency conflicts
-clear troubleshooting
-clear runtime identity
-independent framework upgrades
-```
-
-The application configuration remains identical.
-
-The selected Docker image determines the execution engine.
-
-Therefore configuration does not require:
-
-```yaml
-engine: adk
-```
-
----
-
-# 8. Overall Architecture
-
-```text
-                       HTTP API
-                          │
-                          ▼
-                  Invocation Service
-                          │
-                          ▼
-                 Configuration Model
-                          │
-                          ▼
-               Workflow Resolution
-                   /             \
-             supplied          generated
-             workflow          default
-                   \             /
-                    ▼           ▼
-                Open Workflow 1.0.3
-                         │
-                         ▼
-                 Schema Validation
-                         │
-                         ▼
-                Semantic Validation
-                         │
-                         ▼
-                    Normalizer
-                         │
-                         ▼
-               Canonical Execution Plan
-                         │
-               ┌─────────┴─────────┐
-               │                   │
-               ▼                   ▼
-         ADK Compiler       LangGraph Compiler
-               │                   │
-               ▼                   ▼
-        ADK Workflow         LangGraph Workflow
-               │                   │
-               └─────────┬─────────┘
-                         ▼
-                  Runtime Services
-                         │
-          ┌──────────────┼──────────────┐
-          │              │              │
-        Models        Knowledge       Memory
-          │              │              │
-        Tools         Vector Store    Persistence
-          │
-   HTTP/MCP/A2A/etc.
-```
-
----
-
-# 9. Revised Decision: Internal Canonical Execution Plan
-
-For the original ADK-only design, introducing another workflow representation was unnecessary.
-
-That changes when multiple engines are supported.
-
-Without a neutral internal representation we would have:
+The runtime uses one internal, immutable, typed execution representation so multiple engines do not independently reinterpret Open Workflow semantics.
 
 ```text
 Open Workflow
-    │
-    ├── parse again → ADK
-    │
-    └── parse again → LangGraph
-```
-
-which would eventually cause semantic differences.
-
-Instead:
-
-```text
-Open Workflow
-       │
-       ▼
+    |
+    v
+validate + normalize
+    |
+    v
 Canonical Execution Plan
-       │
-       ├── ADK
-       └── LangGraph
+    |
+    +----> ADK compiler/runtime
+    |
+    +----> LangGraph compiler/runtime
 ```
 
----
-
-# 10. The Execution Plan Is NOT Another Workflow Language
-
-This distinction is critical.
-
-Do not expose:
-
-```text
-our-workflow.yaml
-execution-plan.yaml
-internal-workflow.json
-```
-
-to users.
-
-The plan is:
+The Execution Plan is:
 
 ```text
 internal
 immutable
 typed
 derived
-not persisted as an authoring format
+not a user-authored format
+not a second workflow DSL
 ```
 
-Open Workflow remains the only workflow DSL.
+Open Workflow remains the only workflow authoring language.
 
-The plan only normalizes Open Workflow into structures that are easier for runtime engines to consume.
+The plan preserves canonical Open Workflow task references and source locations for diagnostics, lifecycle events, and contract tests.
 
 ---
 
-# 11. What the Execution Plan Contains
-
-Conceptually:
-
-```text
-WorkflowPlan
-├── metadata
-├── input transformation
-├── output transformation
-├── context definition
-└── tasks
-```
-
-Each task becomes something like:
-
-```text
-TaskPlan
-├── id/reference
-├── source JSON pointer
-├── type
-├── input transformation
-├── condition
-├── output transformation
-├── export transformation
-├── timeout
-├── error behavior
-└── task-specific definition
-```
-
-Specific plan types may include:
-
-```text
-SequencePlan
-CallPlan
-SetPlan
-SwitchPlan
-ForPlan
-ForkPlan
-TryPlan
-WaitPlan
-```
-
-Use typed Python models.
-
-Prefer:
-
-```text
-frozen dataclasses
-```
-
-or equivalent immutable models.
-
----
-
-# 12. The Plan Must Not Redefine Open Workflow Semantics
-
-For example:
-
-```yaml
-input:
-  from: ${ .customer }
-```
-
-must not become some proprietary transformation semantics.
-
-The plan merely stores:
-
-```text
-expression = ".customer"
-expressionLanguage = jq
-```
-
-The common runtime expression service evaluates it according to Open Workflow rules.
-
-Similarly:
-
-```yaml
-switch:
-```
-
-remains an Open Workflow switch semantically.
-
----
-
-# 13. Compilation Pipeline
-
-Implement the workflow pipeline as distinct stages.
+# 7. Compilation Pipeline
 
 ```text
 WorkflowSource
-     ↓
-WorkflowLoader
-     ↓
-SchemaValidator
-     ↓
-CapabilityValidator
-     ↓
-SemanticNormalizer
-     ↓
-PlanBuilder
-     ↓
-ExecutionPlan
-     ↓
-EngineCompiler
+  -> WorkflowLoader
+  -> official SchemaValidator
+  -> CapabilityValidator
+  -> SemanticNormalizer
+  -> PlanBuilder
+  -> immutable ExecutionPlan
+  -> EngineCompiler
+  -> Engine execution
 ```
 
-Each component has one responsibility.
+A valid Open Workflow document is not automatically supported by the current OWA Portable Profile.
+
+Unsupported-but-valid Open Workflow behavior must fail explicitly with an engine-neutral unsupported-feature error. It must never be silently ignored.
 
 ---
 
-# 14. Schema Validation
+# 8. Portable Profile and Engine Capabilities
 
-Validate workflow definitions against the official Open Workflow 1.0.3 JSON Schema.
+Portable behavior is proven through shared contract tests, not documentation claims.
 
-Do not create a modified schema.
+The common profile includes the Open Workflow/data semantics implemented equivalently by production engines. Optional engine capabilities may differ and must be advertised explicitly through:
 
-Do not add proprietary:
-
-```yaml
-call: llm
+```text
+GET /v1/capabilities
 ```
 
-schema definitions.
+Do not reduce all engines to the lowest common denominator. Engine-specific capabilities are allowed as long as workflows that depend on them are correctly identified as less portable.
 
-Runtime AI operations use standard Open Workflow custom functions.
+A capability is considered portable only when the same fixture and inputs produce the expected equivalent observable result across the applicable production engines.
 
 ---
 
-# 15. Runtime Capability Validation
+# 9. Engine SPI
 
-A valid Open Workflow document is not necessarily supported by the current runtime version.
-
-For example:
-
-```yaml
-run:
-  shell:
-```
-
-may be valid Open Workflow but intentionally disabled by Open Workflow Agent.
-
-Therefore:
-
-```text
-SchemaValidator
-        ↓
-CapabilityValidator
-```
-
-must exist separately.
-
-Unsupported functionality must produce:
-
-```text
-UnsupportedWorkflowFeature
-```
-
-rather than being silently ignored.
-
----
-
-# 16. Open Workflow Runtime Profile
-
-Initial versions must NOT claim full Open Workflow conformance.
-
-Define:
-
-```text
-OWA Portable Profile v1
-```
-
-Initial required tasks:
-
-```text
-do
-call
-set
-switch
-for
-fork
-```
-
-Initial required standard calls:
-
-```text
-http
-```
-
-Initial custom calls:
-
-```text
-agent:1.0.0@default
-llm:1.0.0@default
-```
-
-Both engines must implement the complete Portable Profile.
-
----
-
-# 17. Future Portable Profile
-
-Incrementally add:
-
-```text
-try
-retry
-timeout
-wait
-raise
-run workflow
-MCP
-A2A
-OpenAPI
-gRPC
-AsyncAPI
-```
-
-Only after both engines pass the relevant contract tests should a capability become part of the portable profile.
-
-The bounded eventing slice is now supported by both engines:
-
-```text
-emit: publish one event envelope to the process-local event bus
-listen: await one matching event and read data, envelope, or raw JSON
-```
-
-The bus is non-durable and has no replay, broker, `all`/`any` strategy, or
-subscription iterator semantics. Those features remain unsupported until a
-later milestone proves their contracts.
-
-The optional lifecycle CloudEvents boundary is supported by both engines:
-
-```text
-GET /v1/events/lifecycle?limit=100
-Content-Type: application/cloudevents-batch+json
-```
-
-It returns a bounded in-memory snapshot of CloudEvents 1.0 structured JSON.
-The boundary is non-streaming and non-durable; it exposes only common lifecycle
-identifiers and sanitized error codes, never engine-native checkpoint state.
-
-The bounded scheduling profile is also supported by both engines:
-
-```text
-POST /v1/schedules
-GET  /v1/schedules/{schedule_id}
-POST /v1/schedules/{schedule_id}/cancel
-```
-
-The configured workflow may declare exactly one of `schedule.after` or
-`schedule.every`. `after` creates one delayed start; `every` creates recurring
-starts after successful completion. Schedule metadata is durable in the common
-runtime store, dispatch is owned by one runtime process, and leases allow a
-restart to reclaim an interrupted dispatch. Execution remains at-least-once.
-`cron`, event-triggered `on`, distributed scheduler ownership, and streaming are
-not part of the bounded profile.
-
-The bounded sub-workflow profile supports the standard `run.workflow` task for
-workflow definitions explicitly registered in local configuration:
-
-```yaml
-workflow:
-  catalog:
-    - document: { dsl: "1.0.3", namespace: "example", name: "child", version: "1.0.0" }
-      do:
-        - finish:
-            set:
-              done: true
-```
-
-The child gets a new common invocation and session identity and uses the
-selected engine's native execution/checkpoint path. Common lifecycle events
-retain `parent_invocation_id` and `parent_task_reference`. Shell/script `run`
-variants and remote or external catalog resolution remain unsupported.
-
-### Bounded durable HITL and external-catalog profile
-
-Open Workflow 1.0.3 has no separate `approval` task, so durable HITL composes
-the existing event contract rather than introducing a proprietary task. This
-slice is now implemented and portable across both engines, behind explicit
-deployment configuration.
-
-Two distinct mechanisms must not be conflated:
-
-- Generic `emit`/`listen` eventing remains process-local and non-durable. It
-  has no approval inbox, replay, durable delivery, or operator identity, and a
-  pending generic event is not guaranteed to survive process restart.
-- Durable approval state is a separate persisted layer: approval request and
-  decision records live in the common runtime store, and a terminal decision
-  replays through the normal `listen` path after restart.
-
-Implemented approval behavior:
-
-```text
-GET  /v1/approvals                      operator-protected inbox listing
-GET  /v1/approvals/{approval_id}        operator-protected record read
-POST /v1/approvals/{approval_id}/decision  bearer-authorized, idempotent decision
-```
-
-- A workflow requests approval with a standard `emit` task and waits with the
-  standard `listen` task using a deterministic `one.with` filter. Event `data`
-  is untrusted workflow input and must be validated by the workflow's
-  input/output schemas before it affects a side effect.
-- Operator decisions require bearer authorization (deployment-provided
-  `approvals.operator_token`) plus an explicit operator identity header, and
-  are idempotent: repeated decisions on a terminal approval are rejected.
-- Approval request/decision state survives process restart; terminal decisions
-  replay through `listen` so a resumed invocation observes the decision.
-- `approvals.enabled` gates the feature (disabled by default). When enabled,
-  `/v1/capabilities` reports `features.approvals` with `approval`, `durable`,
-  `replay`, and `operatorAuthorization: "bearer"`.
-- The bearer/operator-header guard is deliberately a bounded deployment
-  authorization boundary, not a replacement for an enterprise identity
-  provider. Expiry and idempotency apply to approval records; deployment
-  authentication and authorization remain outside the portable core.
-
-Implemented external-catalog profile (fail-closed, disabled unless a
-deployment configures catalog trust):
-
-- An Open Workflow `use.catalogs` resource requires an explicitly configured
-  external-catalog policy; without one it is rejected with
-  `unsupported_workflow_feature` rather than fetched or silently ignored.
-- Trust boundaries are deployment-controlled: alias allowlists with
-  host/endpoint policy, HTTPS/TLS enforcement, no redirects, bounded streaming
-  responses, and environment-only authentication. Credentials never appear in
-  workflow files or catalog references.
-- References use exact semantic versions with optional or required SHA-256
-  digest pins. Failed or missing pins fail closed.
-- Fetching uses one-shot DNS resolution with public-address validation and a
-  pinned HTTP transport, so connections reach only the approved addresses while
-  hostname-based TLS verification is preserved (connection-level DNS-rebinding
-  resistance).
-- Catalog content is cached in an isolated store with bounded revalidation;
-  after a failed revalidation the runtime refuses stale or unverified content.
-- Resolution happens before plan derivation across startup, child workflows,
-  and schedules (resolve-before-plan ordering). `/v1/capabilities` reports the
-  sanitized `features.catalogs` policy/state.
-- Unsupported remote behaviors remain explicitly fail-closed; remote scripts
-  and remote catalog-supplied code are never executed.
-
-Bounded inbound A2A exposure (deployment-selected, disabled by default):
-
-- The runtime exposes an Agent Card (`/a2a/agent.json` and
-  `/.well-known/agent.json`) and a synchronous `message/send` endpoint so A2A
-  clients can drive the configured workflow. Streaming (`message/stream`),
-  push notifications, and persistent task objects are outside the profile.
-- Two transport implementations are selectable through configuration:
-  `jsonrpc` (JSON-RPC 2.0 over HTTP — the most widely deployed A2A transport,
-  the default) and `http_json` (A2A HTTP+JSON). New transports may be added
-  behind the same flag without workflow changes.
-- The first message text part becomes the workflow input (`question`);
-  the workflow output text becomes the reply's text part. Waiting, cancelled,
-  and faulted workflows surface sanitized transport-specific errors.
-- An optional deployment-provided bearer token guards every A2A request;
-  `/v1/capabilities` reports the active `features.a2a` block.
-
----
-
-# 18. Engine-Specific Capabilities Are Allowed
-
-Do not reduce both engines to their lowest common denominator.
-
-Example:
-
-```json
-{
-  "engine": "langgraph",
-  "portableProfile": "1",
-  "features": {
-    "streaming": true,
-    "interrupt": true
-  }
-}
-```
-
-versus:
-
-```json
-{
-  "engine": "adk",
-  "portableProfile": "1",
-  "features": {
-    "streaming": false,
-    "resume": true
-  }
-}
-```
-
-A workflow relying on an engine-specific capability is less portable, but it may still be valid.
-
----
-
-# 19. Engine SPI
-
-Define a small engine abstraction.
+The common engine interface must expose only portable concepts.
 
 Conceptually:
 
 ```python
 class WorkflowEngine:
-
-    async def initialize(self, services):
-        ...
-
-    async def compile(
-        self,
-        plan: WorkflowPlan
-    ) -> ExecutableWorkflow:
-        ...
-
-    async def invoke(
-        self,
-        workflow: ExecutableWorkflow,
-        invocation: InvocationContext
-    ) -> InvocationResult:
-        ...
-
-    async def resume(
-        self,
-        handle: ExecutionHandle,
-        resume_input
-    ) -> InvocationResult:
-        ...
-
-    def capabilities(self) -> EngineCapabilities:
-        ...
-
-    async def shutdown(self):
-        ...
+    async def initialize(self, services): ...
+    async def compile(self, plan): ...
+    async def invoke(self, workflow, invocation): ...
+    async def resume(self, handle, resume_input): ...
+    async def cancel(self, handle): ...
+    def capabilities(self): ...
+    async def shutdown(self): ...
 ```
 
-Do not expose ADK or LangGraph objects through this interface.
+Core must never import ADK or LangGraph.
 
----
+Engine packages depend on core, not the reverse.
 
-# 20. Engine Responsibilities
-
-The engine owns:
+Engine-owned responsibilities include:
 
 ```text
-workflow construction
-node/task lifecycle
-framework execution
-checkpoint integration
-resume integration
+framework-native workflow construction
+node/task lifecycle integration
+native checkpoint/session integration
+resume/cancellation integration
 framework callbacks
-framework-specific agent creation
-framework-specific tool registration
+framework-native agent construction
+tool wrapping
 ```
 
-The engine does NOT own:
+Core-owned responsibilities include:
 
 ```text
-configuration parsing
-Open Workflow parsing
-Open Workflow validation
-jq semantics
-knowledge ingestion
-catalog resolution
-HTTP API
-runtime error contract
-capability API
+configuration
+Open Workflow loading/validation/normalization
+jq/data semantics
+portable execution plan
+runtime catalog
+knowledge
+memory interface
+common protocols
+public API
+common lifecycle/error contract
+common capability model
 ```
 
 ---
 
-# 21. ADK Engine
+# 10. Engine-Native Durability
 
-Implementation:
-
-```text
-AdkWorkflowEngine
-```
-
-Primary orchestration mechanism:
+Do not build a second checkpoint engine in core.
 
 ```text
-ADK 2.x Dynamic Workflows
+ADK
+  -> ADK-native durable/session mechanisms
+
+LangGraph
+  -> LangGraph-native checkpointer/store mechanisms
 ```
 
-Use:
+The common runtime owns public invocation identity, workflow fingerprint, status, and portable metadata.
 
-```text
-ctx.run_node(...)
-```
-
-for dynamically executed durable child operations.
-
-For simple static segments, ADK graph workflows may also be used when appropriate.
-
-Do not build the system primarily around:
-
-```text
-SequentialAgent
-ParallelAgent
-LoopAgent
-```
-
-These may remain useful internally in exceptional cases, but are not the architecture.
+Engine-specific checkpoint state remains private to the engine adapter.
 
 ---
 
-# 22. ADK Mapping
+# 11. Invocation Identity
 
-Conceptually:
-
-```text
-CallPlan
-    ↓
-ADK FunctionNode / AgentNode
-
-ForPlan
-    ↓
-Dynamic workflow loop
-
-SwitchPlan
-    ↓
-Dynamic condition/router
-
-ForkPlan
-    ↓
-supervised concurrent child nodes
-
-Agent call
-    ↓
-ADK LlmAgent
-
-LLM call
-    ↓
-Model service/function node
-```
-
-Preserve ADK checkpoint and resume semantics rather than implementing a second checkpoint engine.
-
----
-
-# 23. ADK IDs
-
-Use framework-generated deterministic execution IDs by default.
-
-Only supply custom identifiers where required for stable identity, such as dynamic collections whose order may change.
-
-Do not manually invent IDs for every Open Workflow task.
-
-The Execution Plan must retain the original Open Workflow task reference so logs can always map:
-
-```text
-Open Workflow Task
-        ↕
-Execution Plan Task
-        ↕
-ADK Node/Run
-```
-
----
-
-# 24. LangGraph Engine
-
-Implementation:
-
-```text
-LangGraphWorkflowEngine
-```
-
-Initial preferred implementation:
-
-```text
-LangGraph Functional API
-```
-
-rather than forcing every Open Workflow construct into a static `StateGraph`.
-
-Open Workflow itself is largely imperative:
-
-```text
-do
-for
-switch
-fork
-try
-```
-
-and LangGraph's Functional API naturally supports:
-
-```text
-entrypoints
-tasks
-normal Python branching
-loops
-parallel futures
-retry
-timeouts
-persistence
-resume
-interrupts
-```
-
-Therefore it is conceptually close to ADK Dynamic Workflows.
-
----
-
-# 25. LangGraph Graph API Still Has a Role
-
-Do not prohibit `StateGraph`.
-
-The LangGraph engine may use:
-
-```text
-Functional API
-       +
-StateGraph
-```
-
-where useful.
-
-For example:
-
-```text
-complex explicit routing
-subgraphs
-graph visualization
-specialized agent networks
-```
-
-But the initial generic Open Workflow executor should favor the Functional API because it requires less artificial conversion of imperative workflow semantics.
-
----
-
-# 26. LangGraph Persistence
-
-LangGraph execution durability should use native:
-
-```text
-checkpointers
-```
-
-and long-term application state can use:
-
-```text
-stores
-```
-
-Do not recreate them in the core runtime.
-
-The LangGraph adapter maps the common runtime IDs onto appropriate LangGraph execution identifiers.
-
----
-
-# 27. Engine-Neutral Invocation Identity
-
-Expose common concepts:
+Public identity:
 
 ```text
 invocation_id
@@ -1098,740 +332,112 @@ session_id
 user_id
 ```
 
-Internally maintain an engine execution handle.
+`user_id` is application/correlation information unless authenticated identity is established by deployment security. It must not be treated automatically as a security principal.
 
-Conceptually:
+Internally, OWA maintains an engine-neutral execution handle:
 
 ```text
 ExecutionHandle
-├── invocation_id
-├── engine
-├── engine_execution_reference
-├── user_id
-├── session_id
-├── workflow_name
-├── workflow_version
-├── workflow_fingerprint
-└── status
+  invocation_id
+  engine
+  engine_execution_reference
+  user_id
+  session_id
+  workflow_name
+  workflow_version
+  workflow_fingerprint
+  status
 ```
 
-ADK may map this to an ADK invocation.
-
-LangGraph may map it to:
-
-```text
-thread/checkpoint information
-```
-
-The public API must never require users to understand these framework-specific identifiers.
+Public resume/cancel APIs use `invocation_id`, never engine-specific identifiers.
 
 ---
 
-# 28. Workflow Mutation and Resume
+# 12. Workflow Mutation and Resume
 
-Never resume a persisted workflow execution against a silently changed workflow definition.
-
-Calculate:
-
-```text
-workflow_fingerprint
-```
-
-using the normalized workflow definition.
-
-Persist it with the invocation.
+Persist a fingerprint of the normalized workflow definition with durable invocation metadata.
 
 Resume must verify:
 
 ```text
-stored fingerprint == currently loaded fingerprint
+stored workflow fingerprint == currently loaded workflow fingerprint
 ```
 
-Otherwise return:
-
-```text
-WorkflowDefinitionChanged
-```
-
-unless an explicit future migration mechanism exists.
-
-This protects both ADK and LangGraph durable execution.
+If the definition changed unexpectedly, fail with an engine-neutral workflow-definition-changed error unless a future explicit migration mechanism exists.
 
 ---
 
-# 29. Default Runtime Catalog
+# 13. Models and Agents
 
-Open Workflow Agent provides a built-in default catalog.
+Model configuration is common; framework-specific model objects are not.
 
-Initial functions:
+The first generic provider abstraction is LiteLLM so one packaged runtime can support multiple providers through external configuration.
+
+Keep direct LLM calls separate from agent calls:
 
 ```text
-agent:1.0.0@default
 llm:1.0.0@default
+  -> direct model invocation
+
+agent:1.0.0@default
+  -> configured autonomous/tool-using agent
 ```
 
-Do not modify Open Workflow to support them.
-
-They are standard Open Workflow custom functions.
+This allows workflows to combine deterministic orchestration, cheap model reasoning, external calls, and autonomous agents without forcing every AI operation through an agent loop.
 
 ---
 
-# 30. Agent Function
+# 14. Knowledge, Memory, Session, and Checkpoints
 
-```yaml
-- answer:
-    call: agent:1.0.0@default
-```
-
-means:
-
-> Invoke an agent configured by Open Workflow Agent.
-
-The configured agent may use:
-
-```text
-model
-instruction
-tools
-knowledge
-memory
-callbacks
-agent reasoning/tool loop
-```
-
-Explicit input:
-
-```yaml
-- answer:
-    call: agent:1.0.0@default
-    with:
-      input: ${ .question }
-```
-
-If omitted, transformed task input is used.
-
----
-
-# 31. LLM Function
-
-```yaml
-- classify:
-    call: llm:1.0.0@default
-```
-
-means:
-
-> Invoke a model directly without invoking the autonomous agent layer.
-
-Example:
-
-```yaml
-- classify:
-    call: llm:1.0.0@default
-    with:
-      prompt: |
-        Classify:
-        ${ .request }
-```
-
-It bypasses:
-
-```text
-agent tools
-knowledge tool
-memory tool
-agent tool-selection loop
-```
-
-unless explicitly requested by the call contract.
-
----
-
-# 32. Why Agent and LLM Must Stay Separate
-
-Example:
-
-```text
-Workflow
-│
-├── llm classify
-│
-├── deterministic switch
-│
-├── HTTP lookup
-│
-└── agent resolve
-```
-
-This allows workflows to combine:
-
-```text
-cheap LLM reasoning
-deterministic orchestration
-external systems
-autonomous agents
-```
-
-without forcing every AI operation to become an autonomous agent.
-
----
-
-# 33. Future Model Aliases
-
-Support minimal configuration:
-
-```yaml
-model:
-  provider: litellm
-  name: provider/model
-```
-
-Internally normalize this to:
-
-```text
-models.default
-```
-
-Later allow:
-
-```yaml
-models:
-
-  default:
-    provider: litellm
-    name: provider/model-a
-
-  fast:
-    provider: litellm
-    name: provider/model-b
-
-  reasoning:
-    provider: litellm
-    name: provider/model-c
-```
-
-Then:
-
-```yaml
-call: llm:1.0.0@default
-with:
-  model: fast
-```
-
-uses a configured alias.
-
-Do NOT initially allow arbitrary workflow definitions to supply API endpoints or credentials.
-
-Models should reference trusted runtime configuration.
-
----
-
-# 34. Configuration Philosophy
-
-Configuration precedence:
-
-```text
-Built-in Defaults
-        ↓
-YAML
-        ↓
-Environment Variables
-```
-
-Environment variables must override YAML.
-
-Suggested configuration location:
-
-```text
-/config/agent.yaml
-```
-
-Override:
-
-```text
-OWA_CONFIG_FILE
-```
-
-Suggested environment convention:
-
-```text
-OWA__MODEL__NAME
-OWA__KNOWLEDGE__PATH
-OWA__MEMORY__ENABLED
-```
-
----
-
-# 35. Minimal Configuration
-
-```yaml
-model:
-  name: provider/model
-```
-
-This produces:
-
-```text
-default agent
-+
-default one-task workflow
-+
-in-memory runtime state
-```
-
----
-
-# 36. Typical Configuration
-
-```yaml
-agent:
-  name: support
-  instruction: |
-    Answer questions using available knowledge and tools.
-
-model:
-  provider: litellm
-  name: provider/model
-
-workflow:
-  path: /config/workflow.yaml
-
-knowledge:
-  path: /knowledge
-  reload:
-    mode: watch
-
-persistence:
-  datasource: ${DATABASE_URL}
-
-memory:
-  enabled: auto
-```
-
----
-
-# 37. Typed Configuration
-
-Use strict Pydantic models.
-
-Conceptually:
-
-```text
-RuntimeConfig
-├── AgentConfig
-├── ModelConfig / ModelsConfig
-├── WorkflowConfig
-├── KnowledgeConfig
-├── EmbeddingConfig
-├── MemoryConfig
-├── PersistenceConfig
-├── ToolsConfig
-├── ServerConfig
-└── ObservabilityConfig
-```
-
-Unknown properties should fail.
-
-Example:
-
-```yaml
-modle:
-```
-
-must produce a configuration error rather than being ignored.
-
----
-
-# 38. Model Abstraction
-
-The external model contract is common.
-
-Framework-specific model objects are not.
-
-Therefore:
-
-```text
-ModelConfig
-     │
-     ├── ADK ModelAdapter
-     │
-     └── LangGraph ModelAdapter
-```
-
-The first generic provider should be:
-
-```text
-LiteLLM
-```
-
-because it allows broad provider coverage.
-
-Native engine/model integrations may later be added.
-
-Do not scatter provider conditionals throughout the code.
-
----
-
-# 39. Knowledge
-
-Knowledge means externally supplied information.
-
-Examples:
-
-```text
-documents
-manuals
-policies
-Markdown
-PDF
-JSON
-YAML
-```
-
-It is not memory.
-
----
-
-# 40. Session, Memory and Knowledge
-
-Maintain these concepts separately.
+These are separate concepts with separate lifecycles.
 
 ```text
 Knowledge
-    externally supplied information
+  externally supplied information
 
 Session
-    current conversation/execution state
+  current interaction/execution state
 
 Memory
-    information carried across interactions
+  information carried across interactions
+
+Engine checkpoint state
+  durable execution-resume state owned by the selected engine
 ```
 
-Never collapse them into one generic "RAG storage" abstraction.
+Never collapse these into a single generic RAG/state abstraction.
+
+Knowledge remains common core functionality. Engine adapters expose the same knowledge retriever as native tools.
+
+Mounted `/knowledge` content should work without requiring another paid embedding API; the standard images package a local embedding path.
 
 ---
 
-# 41. Automatic Knowledge Activation
+# 15. Persistence
 
-If:
-
-```text
-/knowledge
-```
-
-exists and contains supported documents:
+A configured datasource may provide storage for:
 
 ```text
-KnowledgeService = enabled
-```
-
-If it does not exist and no sources are configured:
-
-```text
-KnowledgeService = disabled
-```
-
-The user should not need:
-
-```yaml
-knowledge:
-  enabled: true
-```
-
-for the common mounted-folder case.
-
----
-
-# 42. Knowledge Startup Lifecycle
-
-```text
-Discover
-   ↓
-Hash
-   ↓
-Compare Manifest
-   ↓
-Parse Changed Documents
-   ↓
-Chunk
-   ↓
-Embed
-   ↓
-Index
-```
-
-Do not embed unchanged documents after every restart.
-
-Persist:
-
-```text
-file path
-file hash
-parser version
-chunking version
-embedding model/version
-index timestamp
-```
-
-Deleted files must delete their indexed chunks.
-
----
-
-# 43. Knowledge Reload
-
-Support:
-
-```text
-startup
-manual
-watch
-```
-
-Default:
-
-```text
-startup
-```
-
-Manual:
-
-```text
-POST /v1/admin/knowledge/reload
-```
-
-Watch mode should use periodic fingerprint reconciliation as the reliable baseline because mounted/container filesystems may not deliver filesystem events consistently.
-
-A filesystem watcher may optimize this but must not be the only mechanism.
-
----
-
-# 44. Embedding Abstraction
-
-Define:
-
-```text
-EmbeddingProvider
-```
-
-The knowledge implementation must not know which embedding model is used.
-
-Resolution strategy:
-
-```text
-explicit embedding config
-        ↓
-configured embedding provider
-        ↓
-packaged local default
-```
-
-The goal is ultimately:
-
-> Mounting `/knowledge` should work without requiring another paid service.
-
-Before Milestone Knowledge is considered complete, select and pin a small permissively licensed local embedding model suitable for CPU execution.
-
-Do not make the model choice part of the KnowledgeService API.
-
----
-
-# 45. Vector Store
-
-Define:
-
-```text
-VectorStore
-```
-
-For the first implementation use an embedded persistent implementation.
-
-Do not require:
-
-```text
-Qdrant
-Milvus
-OpenSearch
-```
-
-to run a simple container.
-
-Possible first implementation:
-
-```text
-SQLite metadata
-+
-local vectors
-+
-NumPy similarity
-```
-
-Later:
-
-```text
-pgvector
-Qdrant
-OpenSearch
-Milvus
-```
-
-can implement the same contract.
-
----
-
-# 46. Knowledge as Agent Tool
-
-When knowledge is enabled, automatically register:
-
-```text
-search_knowledge
-```
-
-with the configured agent.
-
-The ADK engine wraps it as an ADK tool.
-
-The LangGraph engine wraps the same underlying service as an appropriate LangGraph/LangChain tool.
-
-The retrieval implementation itself remains common.
-
----
-
-# 47. Persistence
-
-A configured datasource activates persistent runtime behavior.
-
-Example:
-
-```yaml
-persistence:
-  datasource: postgresql://...
-```
-
-This datasource can provide storage for:
-
-```text
-runtime invocation metadata
+common invocation metadata
 memory
 knowledge metadata
-engine persistence
+approvals
+schedules
+sandbox metadata
+engine-native persistence
 ```
 
-but each subsystem must use separate tables/namespaces.
+Each subsystem uses isolated tables/namespaces and lifecycle ownership.
 
-Do not make one engine read another engine's checkpoint representation.
+SQLite is the reference datasource. PostgreSQL support is provided through locked optional dependencies with isolated engine/common namespaces.
+
+One engine must never read another engine's checkpoint format.
 
 ---
 
-# 48. Engine-Owned Durable State
+# 16. Common Protocol Services
 
-This is an explicit rule.
-
-```text
-ADK
- └── ADK resumability/session mechanisms
-
-LangGraph
- └── LangGraph checkpointer/store mechanisms
-```
-
-The common runtime owns:
-
-```text
-public invocation identity
-workflow fingerprint
-status
-metadata
-```
-
-but does not replace framework checkpoint functionality.
-
----
-
-# 49. Memory
-
-Memory is a common semantic capability implemented through a common interface:
-
-```text
-MemoryService
-├── add
-├── search
-└── delete
-```
-
-Initial behavior:
-
-```text
-No datasource
-    ↓
-in-memory
-
-Datasource
-    ↓
-persistent
-```
-
-Both engines expose the memory service to their configured agents.
-
----
-
-# 50. Memory Is Not Engine Checkpointing
-
-Do not confuse:
-
-```text
-LangGraph Checkpointer
-ADK workflow events/session
-```
-
-with:
-
-```text
-Agent long-term memory
-```
-
-Checkpointing exists to resume execution.
-
-Memory exists so the agent can retrieve prior information.
-
-They have different lifecycles and retention policies.
-
----
-
-# 51. Tools
-
-There are two different meanings of "tool."
-
-## Agent tool
-
-Configured:
-
-```yaml
-tools:
-  - type: mcp
-```
-
-means:
-
-> The autonomous agent may decide whether to use the tool.
-
-## Workflow call
-
-```yaml
-- lookup:
-    call: mcp
-```
-
-means:
-
-> The workflow explicitly performs an MCP operation.
-
-These must remain separate.
-
----
-
-# 52. Common Protocol Services
-
-Where practical, implement protocol behavior in the common core:
+Where practical, protocol behavior belongs in core:
 
 ```text
 HTTP
@@ -1840,295 +446,305 @@ A2A
 OpenAPI
 ```
 
-Then expose wrappers to:
+The same common protocol client/service can then be exposed to:
 
 ```text
-ADK agents
-LangGraph agents
 Open Workflow calls
+ADK agent tools
+LangGraph agent tools
 ```
 
-Example:
+This avoids implementing a protocol separately in every engine adapter.
 
-```text
-                 McpClient
-                    │
-        ┌───────────┼───────────┐
-        │           │           │
-      OWS call    ADK tool   LangGraph tool
-```
+Protocol baseline and capability advertisement remain explicit. A pinned baseline is a compatibility target, not by itself a conformance claim.
 
-This avoids implementing MCP three times.
+Current reviewed stable baselines are maintained in `docs/protocol-baselines.md`.
 
 ---
 
-# 53. Agent Construction
+# 17. A2A Architecture and Current Boundary
 
-Each engine owns its agent adapter.
+OWA targets stable A2A release:
+
+```text
+1.0.1
+```
+
+and advertises protocol version:
+
+```text
+1.0
+```
+
+only for the implemented bounded profile.
+
+Inbound A2A is optional, deployment-controlled, and disabled by default.
+
+Current bounded server boundary:
+
+```text
+GET  /.well-known/agent-card.json
+POST <configured A2A path>                 JSON-RPC SendMessage
+POST <configured A2A path>/message:send    HTTP+JSON
+```
+
+Supported transports:
+
+```text
+jsonrpc    default
+http_json
+```
+
+The Agent Card uses stable-v1 `supportedInterfaces` metadata and a deployment-configured public base URL.
+
+Legacy A2A v0.3 discovery paths, method aliases, and Part shapes are intentionally not preserved.
+
+Current bounded behavior includes:
+
+```text
+Agent Card discovery
+synchronous SendMessage
+v1 message/Part shapes
+request/message size bounds
+sanitized transport errors
+optional temporary bearer guard
+exact features.a2a capability advertisement
+```
+
+Not yet part of the implemented bounded profile:
+
+```text
+persistent A2A Tasks
+Task get/cancel
+input-required/resume mapping
+protocol-native async Task-returning behavior
+A2A streaming/resubscription
+push notifications
+broad/full conformance claim
+```
+
+---
+
+# 18. A2A Tasks Are Projections, Not Another Engine
+
+A2A Task state must project common OWA invocation state.
 
 Conceptually:
 
 ```text
-AgentFactory
-    │
-    ├── AdkAgentFactory
-    │
-    └── LangGraphAgentFactory
+A2A Task
+  task_id
+  context_id
+  status
+  messages
+  artifacts
+      |
+      v
+OWA invocation_id / ExecutionHandle
+      |
+      v
+selected engine native state
 ```
 
-Both receive the same:
+Prefer:
 
 ```text
-AgentSpec
-ModelSpec
-Tools
-Knowledge Retriever
-Memory
+A2A task_id == OWA invocation_id
 ```
 
-and produce framework-native agent objects.
+unless the pinned A2A specification requires a distinct external identity.
 
----
+Common invocation, persistence, resume, cancellation, approval, schedule, and lifecycle services remain authoritative.
 
-# 54. HTTP Invocation API
+Do not create a separate A2A workflow runtime or checkpoint store.
 
-Primary endpoint:
+Recommended expansion order:
 
 ```text
-POST /v1/invoke
-```
-
-Example:
-
-```json
-{
-  "user_id": "u123",
-  "session_id": "s456",
-  "input": "How can I renew my license?"
-}
-```
-
-`input` may be arbitrary JSON.
-
-If `session_id` is omitted, generate one and return it.
-
-`user_id` is application identity/correlation information.
-
-It must not automatically be treated as authenticated security identity.
-
----
-
-# 55. Invocation Response
-
-```json
-{
-  "invocation_id": "...",
-  "session_id": "...",
-  "status": "completed",
-  "output": {}
-}
-```
-
-The portable lifecycle state set includes:
-
-```text
-running
-waiting
-completed
-faulted
-cancelled
-```
-
-Keep these aligned with Open Workflow lifecycle concepts where practical.
-
----
-
-# 56. Resume API
-
-```text
-POST /v1/invocations/{invocation_id}/resume
-```
-
-The common API retrieves the:
-
-```text
-ExecutionHandle
-```
-
-and delegates resume to the selected engine.
-
-The caller never provides:
-
-```text
-ADK run IDs
-LangGraph thread IDs
-checkpoint IDs
-```
-
-directly.
-
-Cancellation is exposed as the minimal engine-neutral operation:
-
-```text
-POST /v1/invocations/{invocation_id}/cancel
-```
-
-Cancellation is idempotent for terminal invocations and is valid while an invocation is
-`running` or `waiting`. The public operation accepts only the common invocation identity;
-native ADK run identifiers, LangGraph thread/checkpoint data, and checkpoint payloads are
-never required or returned.
-
----
-
-# 57. Streaming
-
-Streaming is NOT part of the mandatory portable v1 profile.
-
-Reason:
-
-Framework capabilities currently differ.
-
-Provide:
-
-```text
-streaming: true|false
-```
-
-through `/v1/capabilities`.
-
-A future streaming endpoint can be optional.
-
-Do not compromise the basic portable API by forcing all engines to mimic streaming semantics they do not naturally provide.
-
----
-
-# 58. Capabilities Endpoint
-
-```text
-GET /v1/capabilities
-```
-
-Example:
-
-```json
-{
-  "runtime": "open-workflow-agent",
-  "runtimeVersion": "0.1.0",
-  "engine": "adk",
-  "workflowDsl": "1.0.3",
-  "portableProfile": "1",
-  "tasks": [
-    "do",
-    "call",
-    "set",
-    "switch",
-    "for",
-    "fork",
-    "try",
-    "wait",
-    "listen",
-    "emit",
-    "raise"
-  ],
-  "functions": [
-    "agent:1.0.0@default",
-    "llm:1.0.0@default"
-  ],
-  "features": {
-    "resume": true,
-    "cancellation": true,
-    "waiting": true,
-    "events": {
-      "emit": true,
-      "listen": true,
-      "durable": false
-    },
-    "cloudEvents": {
-      "lifecycle": true,
-      "specversion": "1.0",
-      "delivery": "bounded_snapshot",
-      "durable": false
-    },
-    "scheduling": {
-      "after": true,
-      "every": true,
-      "cron": false,
-      "on": false,
-      "durable": true,
-      "owner": "single_runtime"
-    },
-    "streaming": false
-  }
-}
+shared security profiles
+  -> deployment-declared A2A skills
+  -> Task projection
+  -> Task retrieval/cancellation
+  -> waiting/input-required/resume mapping
+  -> protocol-native async behavior
+  -> A2A streaming/resubscription
+  -> interoperability/conformance gates
 ```
 
 ---
 
-# 59. Expression Language
+# 19. A2A Skills
 
-Open Workflow's default runtime expression language is `jq`.
+A2A skills are deployment-owned and map only to explicitly registered workflows.
 
-Implement:
+Conceptual configuration:
 
-```text
-ExpressionEvaluator
-└── JqExpressionEvaluator
+```yaml
+a2a:
+  skills:
+    - id: residence-renewal
+      name: Residence Renewal
+      workflow: residence-renewal
 ```
 
-Do not replace it with:
-
-```text
-JMESPath
-Python eval
-custom syntax
-```
-
-for the portable profile.
-
-Only expressions defined in trusted workflow definitions may be evaluated.
-
-Never evaluate apparent expression syntax arriving through user/workflow input data.
+An A2A client must never choose an arbitrary workflow path, file, catalog entry, sandbox backend, or engine-native execution target.
 
 ---
 
-# 60. Open Workflow Data Semantics
+# 20. Streaming
 
-The common core owns:
+General portable token/output streaming is not required by the Portable Profile.
+
+OWA does provide a bounded common lifecycle SSE observation boundary:
 
 ```text
-workflow input validation
-workflow input.from
-task input validation
-task input.from
-task execution
-task output.as
-task export.as
-workflow context
-workflow output.as
+GET /v1/events/lifecycle/stream
 ```
 
-These semantics must not be delegated independently to each engine.
+That stream is engine-neutral and includes bounded replay/backpressure/lifetime controls. It is not itself an A2A protocol binding and it does not expose engine-native checkpoints or stream objects.
 
-The Execution Plan and common data services ensure identical behavior.
+A2A streaming must be added only after the A2A Task/message/artifact lifecycle contract is stable. It may reuse common stream mechanics but must emit protocol-native A2A updates rather than raw runtime lifecycle events.
+
+Disconnecting an observation stream must not implicitly cancel an invocation unless the relevant protocol contract explicitly requires cancellation.
 
 ---
 
-# 61. Side Effects and Resume
+# 21. Push Notifications
 
-Any operation with side effects must be treated as potentially retryable/re-executable.
+A2A push notifications remain deferred because they create an outbound callback trust boundary.
+
+Do not implement them until deployment policy covers:
+
+```text
+callback allowlisting
+TLS/server identity verification
+callback authentication
+SSRF protection
+replay/idempotency protection
+bounded retry/dead-letter behavior
+secret-safe logging/observability
+```
+
+Push notification support is not required to complete the next bounded Task/streaming profile.
+
+---
+
+# 22. Security Model
+
+Workflow files are trusted deployment artifacts. Invocation/event/tool input is untrusted data.
+
+Authentication and authorization are runtime/deployment configuration and must not be encoded as raw credentials inside workflows.
+
+The target shared named security profile mechanisms are intentionally limited initially to:
+
+```text
+bearer
+api_key
+oauth2_client_credentials
+mtls
+```
+
+Protocol/tool configuration references named profiles. Sensitive values are resolved from deployment secret/environment mechanisms.
+
+Secrets must never appear in:
+
+```text
+workflow definitions
+execution plans
+capability responses
+Agent Cards
+lifecycle events
+A2A Tasks/artifacts
+logs
+sandbox output
+persisted invocation metadata
+```
+
+Current protocol-specific bearer fields are temporary pre-stable implementation details, not long-term compatibility contracts.
+
+---
+
+# 23. Authorization Vocabulary
+
+Use these terms consistently:
+
+```text
+principal / identity
+role
+scope
+permission / action
+resource
+audience
+```
+
+Roles and scopes are not synonyms.
+
+Use protocol-native actions where practical, for example:
+
+```text
+message.send
+tasks.get
+tasks.cancel
+```
+
+Authorization should support least-privilege decisions per principal/action/resource.
+
+---
+
+# 24. Enterprise Identity Boundary
+
+OWA must not become an identity provider.
+
+These remain deployment/identity-platform responsibilities:
+
+```text
+OAuth2/OIDC federation
+token exchange
+delegated user identity
+consent
+cross-domain identity trust
+```
+
+Delegated-user identity does not block the basic A2A Task projection and should be introduced only when a concrete enterprise requirement exists.
+
+---
+
+# 25. Traffic Policy Is Separate from Security Policy
+
+Authentication/authorization answers:
+
+```text
+who is the caller?
+what may the caller do?
+```
+
+Traffic policy answers:
+
+```text
+how much traffic may be admitted?
+```
+
+Rate limits, concurrency, burst/admission control, and future circuit policies belong to a separate deployment-controlled traffic policy model. Do not fold them into security profiles.
+
+---
+
+# 26. Side Effects, Retry, and Idempotency
+
+Any side-effecting operation may be retried or re-executed around failures/resume.
 
 Examples:
 
 ```text
 payment
 email
-database update
+database mutation
 external API command
 A2A action
 MCP write tool
+sandbox execution
 ```
 
-Whenever possible support:
+Whenever practical support:
 
 ```text
 idempotency keys
@@ -2136,147 +752,85 @@ deduplication
 operation identifiers
 ```
 
-Do not assume "checkpointed" means "exactly once."
+Do not assume a checkpoint implies exactly-once side effects.
 
 ---
 
-# 62. Workflow Security Model
+# 27. Sandbox Execution
 
-Workflow files are trusted deployment artifacts.
+Executable workflow operations are disabled by default and cannot be enabled by workflow content alone.
 
-User input is not trusted.
+All engines route execution through one common `SandboxManager` policy/contract.
 
-Executable operations remain disabled by default and are enabled only through
-the deployment security profile:
-
-```text
-run.shell       sandbox.enabled + sandbox.allow_shell
-run.script      sandbox.enabled + sandbox.script_runtimes
-run.container   sandbox.enabled + sandbox.backend = docker | kubernetes
-```
-
-External catalogs are also disabled by default and require an explicitly
-configured deployment trust policy (see the bounded external-catalog profile in
-section 17).
-
-Default catalog:
+Backends:
 
 ```text
-local runtime-provided functions only
+internal process sandbox
+restricted Docker controller
+restricted Kubernetes/OpenShift controller
 ```
 
-This prevents arbitrary remote catalogs from becoming an uncontrolled code/integration mechanism.
+The internal process sandbox is a controlled execution boundary, not a hard isolation boundary.
+
+External backends provide stronger isolation and deployment-owned image/resource/network/secret policy.
+
+The main runtime must not receive an unrestricted Docker socket or cluster-wide Kubernetes permissions.
+
+Kubernetes real-cluster acceptance is green. OpenShift-specific SCC/security-context/arbitrary-UID acceptance remains deferred until an OpenShift cluster is available.
 
 ---
 
-# 63. Network Security
+# 28. External Catalogs and HITL
 
-All protocol clients must support:
+External catalogs are disabled by default and require deployment-controlled trust policy, including endpoint/host constraints, TLS, bounded responses, digest/version checks where required, and safe caching/revalidation.
 
-```text
-timeouts
-TLS verification
-maximum response size
-redirect policy
-authentication abstraction
-```
+Durable HITL approvals are implemented as a common persisted layer composed with standard event/listen semantics rather than a proprietary workflow task.
 
-Later add configurable:
-
-```text
-host allowlists
-network policies
-egress restrictions
-```
-
-Avoid accepting arbitrary credentials directly inside ordinary workflow files when deployment secrets can be referenced instead.
+Generic eventing remains conceptually separate from durable approval state.
 
 ---
 
-# 64. Observability
+# 29. Lifecycle Events and Observability
 
-Every workflow task should be traceable through:
+Create and preserve a common engine-neutral lifecycle model such as:
+
+```text
+WorkflowStarted
+WorkflowWaiting
+WorkflowResumed
+WorkflowCompleted
+WorkflowFaulted
+WorkflowCancelled
+
+TaskStarted
+TaskWaiting
+TaskCompleted
+TaskFaulted
+TaskRetried
+TaskCancelled
+```
+
+Events and logs should correlate through stable common identifiers such as:
 
 ```text
 invocation_id
 session_id
-workflow name
-workflow version
-task name
-task reference
+workflow name/version
+Open Workflow task reference
 engine
-engine node/run identifier
 duration
 status
 ```
 
-The canonical task reference is the Open Workflow task reference.
-
-Example:
-
-```text
-/do/2/classify
-```
-
-This gives a stable identifier independent of execution engine.
+Framework-native identifiers may be retained internally for diagnostics but must not become the public application contract.
 
 ---
 
-# 65. Lifecycle Events
+# 30. Error Contract
 
-Create a common internal event model:
+Framework exceptions are translated at the engine/protocol boundary into sanitized engine-neutral runtime errors.
 
-```text
-WorkflowStarted
-WorkflowCompleted
-WorkflowFaulted
-WorkflowWaiting
-WorkflowResumed
-WorkflowCancelled
-
-TaskStarted
-TaskCompleted
-TaskFaulted
-TaskRetried
-TaskProgress
-TaskWaiting
-TaskCancelled
-EventEmitted
-EventReceived
-```
-
-Initially these events can drive:
-
-```text
-structured logging
-metrics
-tests
-```
-
-The optional lifecycle CloudEvents boundary exposes these events as CloudEvents
-1.0 JSON batches through `GET /v1/events/lifecycle`. It is bounded, in-memory,
-non-streaming, and non-durable.
-
-This provides observability independent of ADK/LangGraph's different event formats.
-
-Portable workflow eventing uses the official event properties (`id`, `source`,
-`type`, `time`, `subject`, content metadata, and `data`) in a common envelope.
-External injection is available through:
-
-```text
-POST /v1/events
-{ "event": { "type": "...", "data": {} } }
-```
-
-The endpoint and `emit` task publish to the selected process-local runtime; a
-`listen` task consumes one matching event. The API does not expose broker,
-checkpoint, or engine-native identifiers.
-
----
-
-# 66. Error Contract
-
-Create engine-neutral errors:
+Representative categories:
 
 ```text
 ConfigurationError
@@ -2293,113 +847,27 @@ WorkflowExecutionError
 WorkflowDefinitionChanged
 ```
 
-Framework exceptions must be translated to this contract at the engine boundary.
-
-Preserve the original error internally for diagnostics.
+Preserve original framework errors internally for diagnostics without leaking secrets or framework-native state publicly.
 
 ---
 
-# 67. Repository Structure
+# 31. Docker and Deployment Principles
 
-Recommended monorepo:
+Production engines are packaged independently.
 
-```text
-open-workflow-agent/
-│
-├── README.md
-├── docs/
-│
-├── core/
-│   ├── pyproject.toml
-│   └── src/open_workflow_agent/
-│       ├── config/
-│       ├── workflow/
-│       │   ├── loading/
-│       │   ├── validation/
-│       │   ├── normalization/
-│       │   ├── plan/
-│       │   ├── expressions/
-│       │   └── lifecycle/
-│       ├── catalog/
-│       ├── models/
-│       ├── knowledge/
-│       ├── memory/
-│       ├── protocols/
-│       ├── invocation/
-│       ├── api/
-│       └── engine/
-│
-├── engines/
-│   ├── adk/
-│   │   ├── pyproject.toml
-│   │   ├── uv.lock
-│   │   └── src/
-│   │
-│   └── langgraph/
-│       ├── pyproject.toml
-│       ├── uv.lock
-│       └── src/
-│
-├── runtime-catalog/
-│   └── functions/
-│       ├── agent/
-│       │   └── 1.0.0/
-│       │       └── function.yaml
-│       └── llm/
-│           └── 1.0.0/
-│               └── function.yaml
-│
-├── resources/
-│   └── open-workflow/
-│       └── 1.0.3/
-│           └── workflow.yaml
-│
-├── docker/
-│   ├── Dockerfile.adk
-│   └── Dockerfile.langgraph
-│
-├── examples/
-│
-└── tests/
-    ├── contract/
-    ├── core/
-    ├── adk/
-    ├── langgraph/
-    └── e2e/
-```
+Do not build one image containing every engine framework and select the engine at runtime.
 
----
-
-# 68. Separate Dependency Locks
-
-ADK and LangGraph dependencies must be independently lockable.
-
-Do not require both dependency graphs to resolve in the same runtime environment.
-
-Therefore:
+Benefits:
 
 ```text
-engines/adk/uv.lock
-engines/langgraph/uv.lock
+smaller dependency graph
+smaller attack surface
+fewer dependency conflicts
+clear runtime identity
+independent engine upgrades
 ```
 
-This prevents an upgrade in LangGraph from blocking the ADK image or vice versa.
-
-The core package should maintain minimal framework-independent dependencies.
-
----
-
-# 69. Docker Images
-
-Build:
-
-```text
-<org>/open-workflow-agent-adk:<project-version>
-
-<org>/open-workflow-agent-langgraph:<project-version>
-```
-
-Both expose:
+Runtime images expose the same public configuration and standard paths:
 
 ```text
 /config
@@ -2408,837 +876,322 @@ Both expose:
 port 8080
 ```
 
-Both accept exactly the same public configuration.
+Containers must run non-root, avoid requiring a fixed UID, support read-only-root deployments where practical, expose readiness/liveness, handle SIGTERM gracefully, and externalize state.
+
+Do not install dependencies dynamically at container startup.
 
 ---
 
-# 70. OpenShift/Kubernetes Compatibility
+# 32. Dependency Isolation
 
-Containers must:
+ADK and LangGraph dependencies remain independently lockable.
 
 ```text
-run non-root
-not require fixed UID
-write only to configured writable paths
-support read-only root filesystem where practical
-expose readiness/liveness
-handle SIGTERM gracefully
-externalize all state
+engines/adk/uv.lock
+engines/langgraph/uv.lock
 ```
 
-No runtime package installation during startup.
+Core remains framework-neutral and should keep only dependencies required by shared contracts/services.
+
+An engine upgrade must not unnecessarily block another engine's image.
 
 ---
 
-# 71. Shared Contract Test Suite
+# 33. Testing Strategy
 
-This is one of the most important parts of the project.
+No deterministic CI test requires a paid model API.
 
-Create:
+Use a shared deterministic `FakeModel` capable of representative response/tool/failure behavior.
 
-```text
-tests/contract
-```
-
-containing workflow fixtures independent of execution engine.
-
-For example:
+Testing layers:
 
 ```text
-minimal-agent.yaml
-llm-call.yaml
-sequence.yaml
-set.yaml
-switch.yaml
-for.yaml
-fork.yaml
-data-transform.yaml
-error.yaml
+core tests
+engine-native tests
+shared contract tests
+Open Workflow CTK subsets
+protocol compatibility/interoperability tests
+persistence/restart tests
+container E2E tests
+sandbox acceptance
+release/supply-chain gates
 ```
 
-Each engine executes the same fixtures.
+Shared contract tests are the proof of portability.
 
-Expected output must be identical unless an engine-specific capability is explicitly being tested.
+A feature must not be marked shipped merely because two adapters contain code for it.
 
 ---
 
-# 72. Example Contract Test
+# 34. Protocol Version Policy
 
-Conceptually:
+OWA targets the latest stable released version of protocols/specifications it implements or advertises, but version changes are explicit compatibility/security reviews.
 
-```python
-@pytest.mark.parametrize(
-    "engine",
-    ["adk", "langgraph"]
-)
-async def test_switch_workflow(engine):
-    result = await run_fixture(
-        engine,
-        "switch.yaml"
-    )
-
-    assert result == expected
+```text
+upstream stable release
+  -> review
+  -> pin baseline
+  -> migrate implementation
+  -> deterministic tests
+  -> capability metadata update
+  -> OWA release
 ```
 
-This is how portability is proved.
+Draft/preview/RC/editor-draft revisions do not become production defaults.
 
-Not through documentation claims.
+Before the OWA public contract stabilizes, legacy protocol generations may be removed rather than automatically maintained as compatibility layers.
 
 ---
 
-# 73. Deterministic Test Model
+# 35. Current Protocol Baselines
 
-No CI test should require a paid API.
+The detailed verified record lives in `docs/protocol-baselines.md`.
 
-Create:
-
-```text
-FakeModel
-```
-
-with deterministic responses.
-
-It must support enough functionality to test:
+Current reviewed baselines:
 
 ```text
-simple response
-structured response
-tool request
-controlled failure
-controlled retry
+Open Workflow Specification  1.0.3
+A2A Protocol                 1.0.1
+Model Context Protocol       2026-07-28
+OpenAPI Specification        3.2.0
+CloudEvents                  1.0.2
+AsyncAPI Specification       3.1.0
 ```
 
-Provide engine adapters for the same fake model semantics.
+`/v1/capabilities`, Agent Cards, protocol metadata, and release documentation may advertise only implemented and tested behavior.
 
 ---
 
-# 74. Test Layers
+# 36. Current Release and Project State
 
-## Core tests
-
-Test:
+Current formal release:
 
 ```text
-configuration
-schema validation
-normalization
-execution plan
-jq expressions
-catalog resolution
-knowledge
+v0.1.0
+```
+
+Current `main` includes unreleased post-v0.1.0 protocol/A2A work.
+
+Verified major delivered areas include:
+
+```text
+ADK + LangGraph runtime parity for the current Portable Profile
+SQLite/PostgreSQL persistence boundaries
+knowledge + local embeddings
 memory
-protocols
+resume/cancellation
+bounded lifecycle events/SSE
+scheduling
+local sub-workflows
+durable HITL approvals
+secure external catalogs
+internal sandbox
+restricted Docker sandbox backend
+restricted Kubernetes sandbox backend + real-cluster acceptance
+bounded inbound A2A stable-v1 profile
+optional Microsoft Agent Framework adapter (not a production target)
 ```
 
-## Engine tests
-
-Test:
-
-```text
-plan compilation
-agent invocation
-checkpointing
-resume
-framework errors
-```
-
-## Contract tests
-
-Test equivalent semantics on every engine.
-
-## E2E tests
-
-Build and run actual containers.
+The active ordered backlog is maintained only in `TODO.md`.
 
 ---
 
-# 75. Open Workflow CTK
+# 37. Current A2A Completion Path
 
-The Open Workflow CTK should eventually become a major compatibility gate.
+The current A2A transport/server blocker has been removed. The remaining architecture work is the protocol-level lifecycle and security projection.
 
-However:
-
-```text
-Portable Profile v1
-```
-
-is intentionally a subset.
-
-Do not advertise:
+Current completion path:
 
 ```text
-"Open Workflow 1.0.3 compliant runtime"
+shared named security profiles
+  -> A2A skill authorization/routing
+  -> persistent A2A Task projection
+  -> tasks get/cancel
+  -> waiting/input-required/resume mapping
+  -> protocol-native async behavior
+  -> streaming/resubscription
+  -> interoperability/conformance gates
 ```
 
-until the appropriate CTK scenarios pass.
+Push notifications remain separate/deferred.
 
-Until then use wording such as:
-
-```text
-Open Workflow 1.0.3 based runtime
-```
-
-or:
-
-```text
-supports OWA Portable Profile v1
-```
+This sequence keeps A2A in core and reuses common invocation/durability semantics rather than implementing engine-specific A2A code.
 
 ---
 
-# 76. Implementation Strategy
+# 38. Non-Goals
 
-Do not implement ADK and LangGraph simultaneously from day one.
-
-The safest sequence is:
+Do not turn OWA into:
 
 ```text
-Core contract
-    ↓
-ADK vertical slice
-    ↓
-Portable workflow semantics
-    ↓
-LangGraph implementation
-    ↓
-Cross-engine parity
+a custom workflow language
+a BPMN engine
+a custom LLM framework
+a custom MCP/A2A protocol
+a general identity provider
+a multi-tenant management platform
+a visual workflow designer
+a distributed scheduler by default
+an unrestricted remote-code execution platform
 ```
 
-This avoids prematurely abstracting hypothetical framework differences.
+New capability should be added only when it preserves the engine-neutral public contract and has a demonstrated requirement.
 
 ---
 
-# 77. Milestone 0 — Core Contracts
-
-Implement only:
-
-```text
-configuration models
-Open Workflow loader
-official schema validation
-default workflow generation
-catalog definitions
-execution plan models
-normalizer
-engine SPI
-runtime result/error models
-contract test fixtures
-```
-
-No real engine execution yet.
-
-Acceptance:
-
-```text
-workflow.yaml
-   ↓
-validated WorkflowPlan
-```
-
-and default configuration produces an equivalent generated plan.
-
----
-
-# 78. Milestone 1 — ADK Vertical Slice
-
-Implement:
-
-```text
-ADK engine package
-model adapter
-agent factory
-agent catalog function
-ADK dynamic execution
-/v1/invoke
-health
-FakeModel
-Dockerfile.adk
-E2E test
-```
-
-Only one task needs to work initially:
-
-```text
-agent:1.0.0@default
-```
-
-Acceptance:
-
-```text
-model configuration
-       ↓
-default workflow
-       ↓
-ADK runtime
-       ↓
-FakeModel
-       ↓
-deterministic response
-```
-
----
-
-# 79. Milestone 2 — Portable Workflow Profile
-
-Implement common semantics:
-
-```text
-do
-call
-set
-switch
-for
-fork
-jq
-input/from
-output/as
-export/as
-http
-llm
-```
-
-ADK must pass all portable contract tests.
-
----
-
-# 80. Milestone 3 — LangGraph Engine
-
-Implement:
-
-```text
-LangGraph engine package
-Functional API executor
-model adapter
-agent adapter
-checkpoint integration
-Dockerfile.langgraph
-```
-
-Run the exact contract fixtures already passing on ADK.
-
-Acceptance:
-
-```text
-ADK result == LangGraph result
-```
-
-for all Portable Profile v1 workflows.
-
----
-
-# 81. Milestone 4 — Knowledge
-
-Implement:
-
-```text
-folder discovery
-parsers
-manifest
-chunking
-embedding provider
-embedded vector store
-search_knowledge
-reload endpoint
-watch/reconciliation
-```
-
-Test against both images.
-
-Knowledge implementation itself must remain in core.
-
-Only tool wrapping is engine-specific.
-
----
-
-# 82. Milestone 5 — Persistence and Memory
-
-Implement:
-
-```text
-InvocationStore
-ExecutionHandle
-workflow fingerprints
-persistent memory
-ADK durable adapter
-LangGraph persistent checkpointer
-resume API
-```
-
-Acceptance includes:
-
-```text
-execute
-stop container
-restart
-resume
-complete
-```
-
-for both engines where supported.
-
----
-
-# 83. Milestone 6 — Agent Tools
-
-Implement:
-
-```text
-MCP
-OpenAPI
-```
-
-as agent tools.
-
-Configure them externally.
-
-No image rebuild is required when adding/removing configured tools.
-
----
-
-# 84. Milestone 7 — Extended Workflow Calls
-
-Implement common protocol execution for:
-
-```text
-MCP
-A2A
-OpenAPI
-```
-
-Then expand Open Workflow support:
-
-```text
-try
-retry
-timeout
-wait
-raise
-```
-
----
-
-# 85. Later Milestones
-
-Already delivered from this list (see section 17 and `PROJECT.md`):
-
-```text
-external catalogs   bounded deployment-trusted profile implemented
-HITL                bounded durable approval state/replay implemented
-additional engines  Microsoft Agent Framework native adapter merged as an
-                    optional package; production status still deferred
-```
-
-Delivered as a bounded slice (see section 17):
-
-```text
-A2A exposure        inbound bounded profile: Agent Card + synchronous
-                    message/send with selectable transports (jsonrpc
-                    default, http_json), behind deployment configuration
-```
-
-Still deferred:
-
-```text
-A2A conformance     message/stream, push notifications, task objects,
-                    full Agent Card conformance
-streaming           general portable output streaming beyond bounded
-                    lifecycle SSE
-```
-
-Remaining deferred-engine work:
-
-```text
-OpenAI Agents SDK
-other graph/workflow frameworks
-```
-
-No architectural redesign should be needed to introduce another engine if the SPI is correctly maintained.
-
----
-
-# 86. Non-Goals
-
-Do not build initially:
-
-```text
-visual workflow designer
-custom workflow DSL
-BPMN engine
-distributed scheduler
-custom LLM framework
-custom MCP protocol
-custom A2A protocol
-enterprise vector database
-multi-tenant management UI
-arbitrary Python plugins
-arbitrary shell execution
-```
-
----
-
-# 87. Core Architectural Boundaries
-
-The following dependency direction must be enforced:
-
-```text
-API
- ↓
-Core
- ↓
-Engine SPI
- ↑
-ADK / LangGraph
-```
-
-Never:
-
-```text
-Core imports ADK
-Core imports LangGraph
-```
-
-Engine packages depend on core.
-
-Core never depends on engines.
-
----
-
-# 88. Most Important Portability Rule
-
-Framework-native state must never become the application contract.
-
-Bad:
-
-```yaml
-langgraph:
-  thread_state: ...
-```
-
-Bad:
-
-```yaml
-adk:
-  agent_run_id: ...
-```
-
-Good:
-
-```yaml
-agent:
-model:
-workflow:
-knowledge:
-memory:
-tools:
-```
-
-This allows the same deployment configuration to move between runtime engines.
-
----
-
-# 89. Most Important Workflow Rule
-
-Open Workflow is the authoring model.
-
-The internal Execution Plan exists only to ensure:
-
-```text
-consistent normalization
-consistent semantics
-multiple engine compilation
-better testing
-better diagnostics
-```
-
-It must never evolve into a competing workflow specification.
-
----
-
-# 90. Most Important Runtime Rule
-
-Use framework capabilities instead of rebuilding them.
-
-For ADK:
-
-```text
-workflow runtime
-dynamic nodes
-agents
-resume
-sessions
-```
-
-For LangGraph:
-
-```text
-tasks
-entrypoints
-checkpointers
-stores
-interrupts
-```
-
-Open Workflow Agent provides portability and composition.
-
-It should not become another full durable workflow engine underneath those frameworks.
-
----
-
-# 91. Most Important Testing Rule
-
-A feature is not portable because two adapters claim to support it.
-
-A feature is portable only when:
-
-```text
-same workflow fixture
-       +
-same inputs
-       ↓
-ADK
-       ↓
-expected output
-
-same workflow fixture
-       +
-same inputs
-       ↓
-LangGraph
-       ↓
-same expected output
-```
-
-Contract tests define actual runtime portability.
-
----
-
-# 92. Instructions for AI Development Agents
-
-Every coding task must include this project definition as architectural context.
-
-Coding agents must follow these rules:
-
-1. Do not redesign public contracts without explicit instruction.
-
-2. Do not introduce another workflow DSL.
-
-3. Do not modify the Open Workflow schema.
-
+# 39. Mandatory Architectural Rules for Development Agents
+
+1. Every invocation executes through a workflow.
+2. Open Workflow is the external authoring language.
+3. Do not fork the Open Workflow schema.
 4. Do not expose the internal Execution Plan publicly.
-
-5. Core must not import ADK or LangGraph.
-
-6. Framework-specific code belongs under its engine package.
-
-7. Do not implement framework checkpointing in core.
-
-8. Open Workflow data semantics belong in core.
-
-9. `jq` is the default expression language.
-
-10. Missing workflow means generate the default one-task workflow.
-
-11. All invocations execute through workflow execution.
-
-12. `agent` and `llm` are different catalog functions.
-
-13. Keep Knowledge, Memory, Session and Checkpointing separate.
-
-14. Do not require a paid model in tests.
-
-15. Add tests before marking a feature complete.
-
-16. Run the existing contract suite after every engine change.
-
-17. Do not silently ignore unsupported Open Workflow features.
-
-18. Do not add dependencies without a demonstrated requirement.
-
-19. Do not install dependencies dynamically during container startup.
-
-20. Keep ADK and LangGraph dependency locks separate.
-
-21. Update capabilities when runtime support changes.
-
-22. Never log credentials or secrets.
-
-23. Preserve Open Workflow task references through every runtime layer.
-
-24. Verify framework API usage against the pinned framework version before implementation.
-
-25. Complete only the requested milestone. Do not proactively implement later milestones.
+5. Core must not import engine frameworks.
+6. Framework-specific behavior belongs in the engine package.
+7. Use framework-native checkpoint/resume mechanisms.
+8. Keep Open Workflow data/expression semantics in core.
+9. `jq` remains the portable default expression language.
+10. Keep `agent` and `llm` catalog functions semantically separate.
+11. Keep Knowledge, Memory, Session, approvals, schedules, sandbox state, common invocation metadata, and engine checkpoints separate.
+12. Do not require paid APIs in deterministic tests.
+13. Add/update tests before marking work complete.
+14. Run shared contract tests after engine changes.
+15. Do not silently ignore unsupported workflow/protocol behavior.
+16. Do not add dependencies without demonstrated need.
+17. Do not install dependencies at container startup.
+18. Keep engine dependency locks independent.
+19. Update capability metadata whenever public support changes.
+20. Never log or serialize credentials/secrets.
+21. Preserve Open Workflow task references through runtime layers.
+22. Verify framework/protocol API usage against the pinned version.
+23. Protocol changes are compatibility/security changes, not ordinary dependency bumps.
+24. A2A Tasks project OWA invocation state; they do not create another execution engine.
+25. Workflow definitions never choose arbitrary deployment workflows, credentials, sandbox backends, or engine-native state.
+26. Authentication/authorization and traffic policy remain separate deployment concerns.
+27. OWA does not own enterprise federation, user delegation, token exchange, or consent.
+28. Advertise only implemented and verified protocol/capability behavior.
 
 ---
 
-# 93. Architectural Decisions Summary
+# 40. Core Architectural Decisions
 
-## ADR-001
-
-**Every invocation is a workflow.**
+## ADR-001 — Every invocation is a workflow
 
 No separate agent execution path.
 
-## ADR-002
-
-**Open Workflow Specification is the external workflow language.**
+## ADR-002 — Open Workflow is the external workflow language
 
 No proprietary workflow DSL.
 
-## ADR-003
+## ADR-003 — Missing workflow generates the default one-task workflow
 
-**Missing workflow generates an implicit one-task workflow.**
+The generated workflow calls `agent:1.0.0@default`.
 
-The generated workflow calls:
+## ADR-004 — AI-native operations use runtime catalog functions
 
-```text
-agent:1.0.0@default
-```
+No schema fork for agent/LLM operations.
 
-## ADR-004
+## ADR-005 — OWA is framework-neutral
 
-**AI-native Open Workflow operations use the default catalog.**
+ADK, LangGraph, and future frameworks are execution engines.
 
-Initial:
+## ADR-006 — One repository, separate engine packages/images
 
-```text
-agent
-llm
-```
+Avoid duplicated projects and dependency pollution.
 
-No Open Workflow schema fork.
+## ADR-007 — Use a canonical internal Execution Plan
 
-## ADR-005
+One normalized semantic representation feeds all engines.
 
-**The project is framework-neutral.**
-
-ADK and LangGraph are runtime engines.
-
-## ADR-006
-
-**One repository, multiple engine implementations.**
-
-Avoid duplicated projects.
-
-## ADR-007
-
-**Separate Docker images per engine.**
-
-Avoid dependency pollution.
-
-## ADR-008
-
-**A canonical internal Execution Plan is used.**
-
-This becomes justified by multiple engine implementations.
-
-## ADR-009
-
-**The Execution Plan is not an external DSL.**
+## ADR-008 — Execution Plan is not an external DSL
 
 Open Workflow remains authoritative.
 
-## ADR-010
+## ADR-009 — Open Workflow semantics live in core
 
-**Open Workflow semantics live in core.**
+Engines execute plans rather than redefine workflow meaning.
 
-Framework-specific execution lives in engine adapters.
+## ADR-010 — Durability remains engine-native
 
-## ADR-011
+Core owns portable invocation metadata, not framework checkpoint internals.
 
-**Durability remains engine-native.**
+## ADR-011 — Portability is proven with shared contract tests
 
-Do not build another checkpoint engine.
+Not assumed from adapter implementations.
 
-## ADR-012
+## ADR-012 — Capabilities are explicit
 
-**Portability is demonstrated through shared contract tests.**
+Portable and engine-specific behavior are advertised precisely.
 
-Not assumed.
+## ADR-013 — Knowledge is common core functionality
 
-## ADR-013
+Only tool wrapping is engine-specific.
 
-**Capabilities are explicit.**
+## ADR-014 — Runtime state categories remain separate
 
-The engines may have different optional features.
+Knowledge, memory, session, invocation, approval, schedule, sandbox, and checkpoint state have distinct lifecycles.
 
-## ADR-014
+## ADR-015 — Protocol behavior belongs in core where practical
 
-**Knowledge is common core functionality.**
+HTTP/MCP/A2A/OpenAPI are not reimplemented per engine.
 
-Engine adapters only expose it as native tools.
+## ADR-016 — A2A Tasks are projections over common invocation state
 
-## ADR-015
+No second A2A workflow/durability engine.
 
-**Knowledge, memory, session and execution persistence are distinct.**
+## ADR-017 — Security is deployment/runtime configuration
 
-Do not collapse them.
+Workflows do not contain raw credentials.
 
----
+## ADR-018 — Enterprise identity remains external
 
-# 94. Final Architecture
+OWA is not an identity provider.
 
-```text
-                     OPEN WORKFLOW AGENT
-                             │
-                  Stable Public Contracts
-                             │
-             ┌───────────────┼────────────────┐
-             │               │                │
-           Config       Open Workflow        API
-                             │
-                             ▼
-                     Validate + Normalize
-                             │
-                             ▼
-                   Canonical Execution Plan
-                             │
-              ┌──────────────┴──────────────┐
-              │                             │
-              ▼                             ▼
-        ADK ENGINE                   LANGGRAPH ENGINE
-              │                             │
-       Dynamic Workflow              Functional API
-       Graph Runtime                  Checkpointer
-       ctx.run_node                   Tasks/Entrypoint
-       ADK Agents                     Agent/Graph
-              │                             │
-              └──────────────┬──────────────┘
-                             │
-                       Common Services
-                             │
-       ┌────────────┬────────┼───────────┬──────────┐
-       ▼            ▼        ▼           ▼          ▼
-     Models      Knowledge  Memory      Tools     Protocols
-       │            │        │           │          │
-    LiteLLM      Embedding  Store      MCP/etc. HTTP/MCP/A2A
-```
+## ADR-019 — Traffic policy is separate from authentication/authorization
+
+Identity permissions and admission limits remain distinct models.
+
+## ADR-020 — Protocol advertisement is evidence-based
+
+Pinned versions are targets; only implemented/tested behavior is advertised.
 
 ---
 
-# 95. Final Project Definition
-
-Open Workflow Agent is:
-
-> **A lightweight, configuration-driven, model-agnostic agent and workflow platform that executes Open Workflow definitions through interchangeable agent-runtime engines such as ADK and LangGraph.**
-
-Its most important characteristics are:
+# 41. Final Architecture
 
 ```text
-one external contract
-one repository
-multiple engines
-separate Docker images
-Open Workflow as the DSL
-default workflow when none is supplied
-agent + llm runtime catalog functions
-externalized configuration
-automatic knowledge ingestion
-optional persistent memory
-engine-native durability
-cross-engine contract testing
+                         OPEN WORKFLOW AGENT
+                                  |
+                         Stable Public Contracts
+                                  |
+          +-----------------------+-----------------------+
+          |                       |                       |
+        Config               Open Workflow              API
+                                  |
+                         Validate + Normalize
+                                  |
+                                  v
+                       Canonical Execution Plan
+                                  |
+                    +-------------+-------------+
+                    |                           |
+                    v                           v
+               ADK ENGINE                LANGGRAPH ENGINE
+                    |                           |
+                    +-------------+-------------+
+                                  |
+                           Common Services
+                                  |
+      +-----------+-----------+-----------+-----------+-----------+
+      |           |           |           |           |           |
+    Models     Knowledge     Memory      Tools      Protocols   Runtime State
+      |           |           |           |           |           |
+   LiteLLM     Embeddings    Store      MCP/etc. HTTP/MCP/A2A  invocation/
+                                                               approval/
+                                                               schedule/
+                                                               sandbox
 ```
 
-The architecture is intentionally designed so that:
+The central value of the project is that:
 
 ```text
 workflow.yaml
@@ -3246,18 +1199,6 @@ agent.yaml
 /knowledge
 ```
 
-remain unchanged when deployment changes from:
+remain stable when deployment changes from one supported engine image to another, provided the workflow uses capabilities in the common portable profile.
 
-```text
-open-workflow-agent-adk
-```
-
-to:
-
-```text
-open-workflow-agent-langgraph
-```
-
-provided the workflow uses capabilities in the common portable profile.
-
-That portability is the central value of the project.
+That portability, backed by explicit capabilities and shared contract tests, is the defining product contract of Open Workflow Agent.
