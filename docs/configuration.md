@@ -132,6 +132,7 @@ a2a:
   agent_name: Open Workflow Agent
   agent_description: Configuration-driven Open Workflow runtime over A2A.
   agent_version: 0.1.0
+  public_base_url: null
   auth_token: null
   max_message_chars: 100000
 
@@ -702,6 +703,13 @@ and a synchronous `message/send` endpoint with two selectable transport
 implementations (`jsonrpc` — the most deployed — and `http_json`). Bearer
 `auth_token` is optional but recommended for any non-loopback exposure. The
 bounded profile has no streaming, push notifications, or task objects. See
+[api.md](api.md#inbound-a2a-optional-bounded).
+
+`public_base_url` sets the externally reachable address published in the
+Agent Card's `url` field. Set it whenever the runtime sits behind a reverse
+proxy or TLS terminator; without it the card derives the URL from the
+incoming request, which is only correct for direct exposure. `agent_version`
+defaults to the runtime release version. See
 [api.md](api.md#inbound-a2a-optional-bounded).
 
 ## `sandbox`

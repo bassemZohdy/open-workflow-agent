@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from ._version import __version__
 from .a2a import a2a_capabilities, extract_output_text, mount_a2a
 from .config import RuntimeConfig
 from .engine import PortableWorkflowEngine, WorkflowEngine
@@ -182,7 +183,7 @@ def create_app(
             if services is None:
                 runtime_services.close()
 
-    app = FastAPI(title="Open Workflow Agent", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Open Workflow Agent", version=__version__, lifespan=lifespan)
     app.add_middleware(
         RequestSizeLimitMiddleware, max_bytes=runtime_config.server.max_request_bytes
     )

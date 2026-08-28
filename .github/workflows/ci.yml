@@ -95,10 +95,16 @@ jobs:
           import tomllib
           from pathlib import Path
 
+          import re
+
           expected = tomllib.loads(Path("pyproject.toml").read_text())['project']['version']
           for path in ("core/pyproject.toml", "engines/adk/pyproject.toml", "engines/langgraph/pyproject.toml"):
               actual = tomllib.loads(Path(path).read_text())['project']['version']
               assert actual == expected, f"{path} has version {actual}, expected {expected}"
+          runtime = re.search(r'__version__ = "([^"]+)"', Path("core/src/open_workflow_agent/_version.py").read_text())
+          assert runtime and runtime.group(1) == expected, (
+              f"core/src/open_workflow_agent/_version.py has {runtime.group(1) if runtime else 'no version'}, expected {expected}"
+          )
           print(f"release version: {expected}")
           PY
           uv lock --check

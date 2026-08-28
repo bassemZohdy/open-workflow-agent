@@ -62,6 +62,7 @@ jobs:
           series="${project_version%.*}"
 
           python - "$project_version" <<'PY'
+          import re
           import sys
           import tomllib
           from pathlib import Path
@@ -76,6 +77,15 @@ jobs:
               actual = tomllib.loads(Path(path).read_text())['project']['version']
               if actual != expected:
                   raise SystemExit(f'{path} has version {actual}, expected {expected}')
+          runtime_version = re.search(
+              r'__version__ = "([^"]+)"',
+              Path('core/src/open_workflow_agent/_version.py').read_text(),
+          )
+          if runtime_version is None or runtime_version.group(1) != expected:
+              found = runtime_version.group(1) if runtime_version else 'no version'
+              raise SystemExit(
+                  f'core/src/open_workflow_agent/_version.py has {found}, expected {expected}'
+              )
           PY
 
           tag="$(git tag --points-at "$RELEASE_SHA" --list 'v*.*.*' --sort=-v:refname | head -n1)"

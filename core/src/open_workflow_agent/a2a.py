@@ -199,7 +199,7 @@ def mount_a2a(
     async def agent_card(request: Request) -> JSONResponse | dict[str, Any]:
         if unauthorized := authorized(request):
             return unauthorized
-        base = str(request.base_url).rstrip("/")
+        base = config.public_base_url or str(request.base_url).rstrip("/")
         return build_agent_card(
             config,
             url=f"{base}{config.path}",

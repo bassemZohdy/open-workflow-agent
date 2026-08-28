@@ -61,8 +61,8 @@ Full audit of `main` after the sandbox package refactor, the bounded A2A slice, 
 
 ### Tasks — gaps to fix
 
-- [ ] ARCH-1: Agent Card `url` is derived from the request base URL, which is wrong behind reverse proxies/TLS termination. Add a deployment-configured public base URL for the A2A card (and consider a general public-URL setting for other absolute links).
-- [ ] ARCH-2: version strings are triple-sourced (FastAPI app version, `a2a.agent_version` default, package `pyproject.toml` versions already cross-checked by CI). Single-source the runtime version and derive the rest.
+- [x] ARCH-1: Agent Card `url` is derived from the request base URL, which is wrong behind reverse proxies/TLS termination. (Fixed: `a2a.public_base_url` configuration with http(s) validation; the card publishes it verbatim, falling back to request derivation only when unset.)
+- [x] ARCH-2: version strings are triple-sourced (FastAPI app version, `a2a.agent_version` default, package `pyproject.toml` versions already cross-checked by CI). (Fixed: `core/src/open_workflow_agent/_version.py` is the single source; FastAPI and the A2A card derive from it, and CI plus the release prepare job verify it against the package versions.)
 
 ### Tasks — decisions to take
 

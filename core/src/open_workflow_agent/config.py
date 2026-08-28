@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from ._version import __version__
 from .errors import ConfigurationError
 
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -200,7 +201,8 @@ class A2AConfig(StrictModel):
     path: str = "/a2a"
     agent_name: str = "Open Workflow Agent"
     agent_description: str = "Configuration-driven Open Workflow runtime over A2A."
-    agent_version: str = "0.1.0"
+    agent_version: str = __version__
+    public_base_url: str | None = None
     auth_token: str | None = None
     max_message_chars: int = Field(default=100_000, gt=0)
 
@@ -211,6 +213,16 @@ class A2AConfig(StrictModel):
         if not selected.startswith("/") or len(selected) > 128:
             raise ValueError("a2a path must start with '/' and stay under 128 characters")
         return selected.rstrip("/")
+
+    @field_validator("public_base_url")
+    @classmethod
+    def validate_public_base_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        selected = value.strip().rstrip("/")
+        if not selected.startswith(("http://", "https://")) or "://" in selected[7:]:
+            raise ValueError("a2a public_base_url must be an absolute http(s) URL")
+        return selected
 
 
 class ApprovalConfig(StrictModel):

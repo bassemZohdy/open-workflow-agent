@@ -299,6 +299,7 @@ a2a:
   transport: jsonrpc        # jsonrpc (default, most deployed) | http_json
   path: /a2a
   agent_name: Open Workflow Agent
+  public_base_url: https://agents.example.com   # card url behind proxies
   auth_token: set-via-deployment-secret   # optional bearer
   max_message_chars: 100000
 ```
@@ -327,7 +328,8 @@ error code) — there is no long-lived task object in this profile.
 
 When `auth_token` is set, every A2A request requires
 `Authorization: Bearer <token>` (HTTP 401 otherwise). `/v1/capabilities`
-reports the active block under `features.a2a`. Streaming (`message/stream`),
+reports the active block under `features.a2a`. Behind a reverse proxy, set
+`a2a.public_base_url` so the card publishes the externally reachable URL. Streaming (`message/stream`),
 push notifications, and persistent tasks are intentionally not part of this
 profile; see [a2a-streaming-evaluation.md](a2a-streaming-evaluation.md).
 

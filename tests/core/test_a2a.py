@@ -178,6 +178,25 @@ def test_agent_card_build_is_transport_aware() -> None:
     assert card["skills"][0]["name"] == "demo"
 
 
+@pytest.mark.asyncio
+async def test_agent_card_honors_public_base_url(tmp_path) -> None:
+    app = _make_app(tmp_path, _app_config(public_base_url="https://agents.example.com"))
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://internal:8080"
+        ) as client:
+            card = (await client.get("/a2a/agent.json")).json()
+            assert card["url"] == "https://agents.example.com/a2a"
+
+
+def test_invalid_public_base_url_is_rejected() -> None:
+    with pytest.raises(Exception, match="public_base_url"):
+        RuntimeConfig.model_validate(
+            {"a2a": {"enabled": True, "public_base_url": "agents.example.com"}}
+        )
+
+
 def test_unknown_transport_is_rejected() -> None:
     with pytest.raises(Exception, match="transport"):
         RuntimeConfig.model_validate({"a2a": {"enabled": True, "transport": "carrier-pigeon"}})

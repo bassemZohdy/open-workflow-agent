@@ -15,6 +15,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   sanitized error mapping. Streaming, push notifications, and task objects
   remain out of scope.
 
+### Fixed
+
+- The A2A Agent Card publishes a deployment-configured public base URL
+  (`a2a.public_base_url`) instead of deriving it from the request, which was
+  incorrect behind reverse proxies.
+- The runtime version is single-sourced (`_version.py`) and verified against
+  the package versions in CI and the release workflow.
+
 ### Changed
 
 - `run.container` now admits the deployment-enabled Kubernetes sandbox
