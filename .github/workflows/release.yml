@@ -38,7 +38,7 @@ jobs:
       series: ${{ steps.release.outputs.series }}
       short_sha: ${{ steps.release.outputs.short_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
@@ -167,11 +167,11 @@ jobs:
       matrix:
         engine: [adk, langgraph]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Validate Docker Hub publishing configuration
         shell: bash
@@ -184,21 +184,21 @@ jobs:
           test -n "$DOCKERHUB_TOKEN" || { echo "DOCKERHUB_TOKEN repository secret is required." >&2; exit 1; }
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Generate image metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}
@@ -215,7 +215,7 @@ jobs:
 
       - name: Build image locally for scanning
         id: build-scan
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.${{ matrix.engine }}
@@ -242,7 +242,7 @@ jobs:
 
       - name: Build once and push to GHCR and Docker Hub
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile.${{ matrix.engine }}
@@ -258,7 +258,7 @@ jobs:
           sbom: true
 
       - name: Attest published GHCR image provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/open-workflow-agent-${{ matrix.engine }}
           subject-digest: ${{ steps.build.outputs.digest }}
@@ -301,11 +301,11 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       - name: Validate Docker Hub publishing configuration
         shell: bash
@@ -318,21 +318,21 @@ jobs:
           test -n "$DOCKERHUB_TOKEN" || { echo "DOCKERHUB_TOKEN repository secret is required." >&2; exit 1; }
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Generate controller image metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ matrix.image }}
@@ -348,7 +348,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
 
       - name: Build controller image locally for scanning
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -372,7 +372,7 @@ jobs:
 
       - name: Push controller image to GHCR
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
@@ -385,7 +385,7 @@ jobs:
           sbom: true
 
       - name: Attest published controller image provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ matrix.image }}
           subject-digest: ${{ steps.build.outputs.digest }}
