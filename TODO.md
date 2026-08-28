@@ -43,6 +43,37 @@ The bounded inbound A2A profile is implemented (Agent Card + synchronous `messag
 
 The adapter remains an optional package with CI-enforced native, shared contract, and CTK coverage (144 tests green). Deferred by decision: the production-engine work — independent runtime image, hardened-image acceptance, persistence/resume coverage, capability reporting, and release metadata. The evaluation record lives in `docs/engine-adapter-evaluation.md`.
 
+## Architecture Review — 2026-08-28
+
+Full audit of `main` after the sandbox package refactor, the bounded A2A slice, and the v0.1.0 release, checked against `Project Definition.md` (§17, §62, §85–88), `AGENTS.md`, and `docs/development.md`.
+
+### Verified clean (evidence)
+
+- Dependency direction (§87): core imports no engine package; engines import core only; no cross-engine imports (grep-verified).
+- No engine creates execution paths: zero subprocess/container/controller references in engine packages; engines consume `SandboxManager` through the shared executor only.
+- Open Workflow 1.0.3 schema: repository copy and bundled copy are byte-identical.
+- Internal execution plan never exposed: it lives in application state; public responses carry status/output/sanitized errors and the workflow fingerprint only.
+- Lifecycle separation holds: knowledge/memory/approvals/schedules/invocations/sandbox/engine-native state remain isolated stores; engine-native state stays in private per-engine files.
+- Sandbox single-path preserved through the package refactor; the layered package keeps implementations in core as shared utilities.
+- Fail-closed defaults unchanged: A2A, sandbox, shell, external catalogs, approvals all disabled by default.
+- Secret handling: constant-time bearer comparisons (a2a, approvals); no secret logging in new modules; `fromEnv` references fail closed outside `secret_environment`.
+- `trust_env` on outbound clients: ambient proxies allowed for generic protocol calls, disabled where DNS pinning must not be bypassed and on loopback controller transports (deliberate, documented).
+
+### Tasks — gaps to fix
+
+- [ ] ARCH-1: Agent Card `url` is derived from the request base URL, which is wrong behind reverse proxies/TLS termination. Add a deployment-configured public base URL for the A2A card (and consider a general public-URL setting for other absolute links).
+- [ ] ARCH-2: version strings are triple-sourced (FastAPI app version, `a2a.agent_version` default, package `pyproject.toml` versions already cross-checked by CI). Single-source the runtime version and derive the rest.
+
+### Tasks — decisions to take
+
+- [ ] DEC-1: pin the target A2A spec version (v0.2 serves `agent.json`, v0.3 renamed to `agent-card.json`; the runtime currently serves both paths and claims `protocolVersion: 0.3.0`). Decide the pinned version and the conformance-claim wording ("bounded profile, spec-version-locked", never "fully conformant").
+- [ ] DEC-2: inbound A2A authentication model — single shared bearer today; decide between named tokens with per-token skill scoping (runtime-managed, recommended first step) versus edge-delegated OAuth2/OIDC.
+- [ ] DEC-3: skill ownership — keep one-workflow-one-skill, or expose multiple registered workflows as config-declared skills with `message/send` routing by skill id.
+- [ ] DEC-4: Task model v1 scope — map A2A tasks onto invocations (task id = `invocation_id`, `waiting` → `input-required` so durable approvals surface to A2A clients), add `tasks/get`/`tasks/cancel`, and decide whether async `message/send` (return task immediately) is wanted alongside the synchronous form. This is the gate for real A2A client interoperability.
+- [ ] DEC-5: consolidate the two contract modules (`sandbox_contract.py` portable-requirements SPI vs `sandbox/contract.py` abstract interface) — merge or rename to remove the naming confusion. Cosmetic; no behavior change.
+
+Known soft spots already documented and accepted (not re-tasked): NetworkPolicy enforcement is deployment-asserted and not runtime-verified (`features.sandbox` trusts `network_policy_enforced`); non-deadline controller failures surface as generic `sandbox_process_error` 500s.
+
 ## Working Rules
 
 - Add or update tests before marking backlog items complete.
