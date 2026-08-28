@@ -270,7 +270,7 @@ Container acceptance verifies internal sandbox behavior under arbitrary UID, rea
 
 ### Base image updates
 
-All runtime and controller Dockerfiles pin their base images by digest (`python:3.12-slim@sha256:...`, `docker:27.5.1-cli@sha256:...`). To update a base image:
+All runtime and controller Dockerfiles pin their base images by digest (`python:3.12-slim@sha256:...`, `docker:29.7.2-cli@sha256:...`). To update a base image:
 
 1. Resolve the current multi-arch digest, for example:
    `docker buildx imagetools inspect python:3.12-slim --format '{{json .Manifest.Digest}}'`

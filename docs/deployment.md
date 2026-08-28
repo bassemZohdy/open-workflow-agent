@@ -41,7 +41,7 @@ sha-<sha>    immutable verified source revision
 0.1          minor series, when a matching SemVer release is published
 ```
 
-For production, prefer an exact SemVer tag or image digest rather than `latest` once a formal release is available. Both registries receive the same verified build and tags.
+For production, pin an exact SemVer tag (`0.1.0` or newer) or an image digest rather than `latest`. Both registries receive the same verified build and tags.
 
 Images are published only after the full GitHub Actions CI gate succeeds. OCI SBOM/provenance metadata is generated for the published build, and GitHub build provenance attestations are attached to the canonical GHCR image.
 
@@ -99,7 +99,7 @@ docker run -d --name open-workflow-agent-langgraph \
   bzohdy/open-workflow-agent-langgraph:latest
 ```
 
-No source checkout or Docker build is required. Replace `latest` with a release tag or digest for production deployments when available. Use the corresponding `ghcr.io/bassemzohdy/...` image if GHCR is preferred by your platform or supply-chain policy.
+No source checkout or Docker build is required. Replace `latest` with a release tag (`0.1.0` or newer) or an image digest for production deployments. Use the corresponding `ghcr.io/bassemzohdy/...` image if GHCR is preferred by your platform or supply-chain policy.
 
 ## Docker Compose without source checkout
 
@@ -362,7 +362,7 @@ containers:
         mountPath: /data
 ```
 
-For LangGraph, replace only the image name. For production, pin the workload to a SemVer tag or digest when available.
+For LangGraph, replace only the image name. For production, pin the workload to a SemVer tag or digest.
 
 Recommended security posture:
 
@@ -416,6 +416,12 @@ curl http://host:8080/health/live
 curl http://host:8080/health/ready
 curl http://host:8080/v1/capabilities
 ```
+
+The published runtime images carry a built-in Docker `HEALTHCHECK` against
+`/health/ready` (respecting `OWA__SERVER__PORT`) and an explicit
+`STOPSIGNAL SIGTERM`; plain Docker reports health from these directly, while
+Kubernetes/OpenShift should use the liveness/readiness probes shown above and
+in `deploy/*/runtime.yaml`.
 
 `/v1/capabilities` is the authoritative runtime capability view for the selected engine/version.
 

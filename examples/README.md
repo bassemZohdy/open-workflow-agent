@@ -15,7 +15,7 @@ docker run --rm --name open-workflow-agent \
   -v "$(pwd)/owa/config:/config:ro" \
   -v "$(pwd)/owa/knowledge:/knowledge:ro" \
   -v "$(pwd)/owa/data:/data" \
-  bzohdy/open-workflow-agent-adk:latest
+  bzohdy/open-workflow-agent-adk:0.1.0
 ```
 
 The same layout works for the LangGraph image, Kubernetes ConfigMaps/volumes, and OpenShift. See [getting-started](../docs/getting-started.md) and [deployment](../docs/deployment.md).

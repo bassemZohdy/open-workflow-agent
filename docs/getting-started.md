@@ -46,13 +46,13 @@ The built-in deterministic fake model requires no API key and is useful for vali
 ADK:
 
 ```bash
-docker pull bzohdy/open-workflow-agent-adk:latest
+docker pull bzohdy/open-workflow-agent-adk:0.1.0
 ```
 
 LangGraph:
 
 ```bash
-docker pull bzohdy/open-workflow-agent-langgraph:latest
+docker pull bzohdy/open-workflow-agent-langgraph:0.1.0
 ```
 
 You normally run one engine. Both use the same public configuration and mounted paths.
@@ -65,7 +65,7 @@ docker run --rm --name open-workflow-agent \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  bzohdy/open-workflow-agent-adk:latest
+  bzohdy/open-workflow-agent-adk:0.1.0
 ```
 
 ## Start LangGraph
@@ -76,7 +76,7 @@ docker run --rm --name open-workflow-agent \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  bzohdy/open-workflow-agent-langgraph:latest
+  bzohdy/open-workflow-agent-langgraph:0.1.0
 ```
 
 The host port is `8080` in both examples. Change only the image when switching engines. If you prefer GHCR, use the corresponding `ghcr.io/bassemzohdy/...` image with the same tag.
@@ -159,7 +159,7 @@ docker run --rm \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  bzohdy/open-workflow-agent-adk:latest
+  bzohdy/open-workflow-agent-adk:0.1.0
 ```
 
 The `-p 8080:8080` mapping publishes the container's fixed internal port 8080 on the host; use the left-hand side to change the host port (for example `-p 9090:8080`). Setting `OWA__SERVER__PORT` on the published image is only needed together with `-p <host>:<custom>` and a matching container-port change.

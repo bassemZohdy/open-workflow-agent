@@ -37,11 +37,11 @@ ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<tag>
 For the latest verified `main` build:
 
 ```bash
-docker pull bzohdy/open-workflow-agent-adk:latest
-docker pull bzohdy/open-workflow-agent-langgraph:latest
+docker pull bzohdy/open-workflow-agent-adk:0.1.0
+docker pull bzohdy/open-workflow-agent-langgraph:0.1.0
 ```
 
-Every verified `main` build publishes `latest` and an immutable `sha-<sha>` tag to both registries. A formal SemVer release such as `v0.1.0` additionally publishes `0.1.0` and `0.1`. For production, prefer an explicit release version or image digest rather than `latest` once a formal release is available.
+Every verified `main` build publishes `latest` and an immutable `sha-<sha>` tag to both registries. The formal release `v0.1.0` additionally publishes `0.1.0` and `0.1`. For production, pin an explicit release version or image digest rather than `latest`.
 
 Images are published only after the GitHub Actions quality, engine, CTK, Docker, restart/resume, and persistence gates succeed. Both registries receive the same build and tags. OCI SBOM/provenance metadata is generated during the build, and GitHub build provenance attestations are published against the canonical GHCR image.
 
@@ -71,27 +71,27 @@ The deterministic `fake/default` model lets you validate the runtime without an 
 ADK:
 
 ```bash
-docker pull bzohdy/open-workflow-agent-adk:latest
+docker pull bzohdy/open-workflow-agent-adk:0.1.0
 
 docker run --rm --name open-workflow-agent \
   -p 8080:8080 \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  bzohdy/open-workflow-agent-adk:latest
+  bzohdy/open-workflow-agent-adk:0.1.0
 ```
 
 LangGraph uses the same configuration and mounts; only the image changes:
 
 ```bash
-docker pull bzohdy/open-workflow-agent-langgraph:latest
+docker pull bzohdy/open-workflow-agent-langgraph:0.1.0
 
 docker run --rm --name open-workflow-agent \
   -p 8080:8080 \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  bzohdy/open-workflow-agent-langgraph:latest
+  bzohdy/open-workflow-agent-langgraph:0.1.0
 ```
 
 If you prefer GHCR, replace the image with the corresponding `ghcr.io/bassemzohdy/...` image and keep the same tag.
@@ -316,7 +316,7 @@ Configuration + Open Workflow + Knowledge + Memory + Tools
              ADK                 LangGraph
 ```
 
-ADK and LangGraph are implementation engines, not public application contracts. The same mounted configuration and workflow should remain portable when they use capabilities in the common profile.
+ADK and LangGraph are implementation engines, not public application contracts. The same mounted configuration and workflow should remain portable when they use capabilities in the common profile. An optional Microsoft Agent Framework adapter exists for evaluation; it is not a production release target (see `TODO.md` B-008).
 
 ## Development
 
