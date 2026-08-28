@@ -23,6 +23,20 @@ from .storage import ensure_storage_namespace, namespaced_datasource, resolve_da
 from .tools import AgentToolBinding, ToolRegistry
 from .workflow_catalog import WorkflowCatalog
 
+_OPEN_WORKFLOW_A2A_METHODS = {
+    "message/send": "SendMessage",
+    "message/stream": "SendStreamingMessage",
+    "tasks/get": "GetTask",
+    "tasks/list": "ListTasks",
+    "tasks/cancel": "CancelTask",
+    "tasks/resubscribe": "SubscribeToTask",
+    "tasks/pushNotificationConfig/set": "CreateTaskPushNotificationConfig",
+    "tasks/pushNotificationConfig/get": "GetTaskPushNotificationConfig",
+    "tasks/pushNotificationConfig/list": "ListTaskPushNotificationConfigs",
+    "tasks/pushNotificationConfig/delete": "DeleteTaskPushNotificationConfig",
+    "agent/getAuthenticatedExtendedCard": "GetExtendedAgentCard",
+}
+
 
 class RuntimeServices:
     def __init__(
@@ -209,6 +223,10 @@ class RuntimeServices:
         return tuple(bindings)
 
     async def call_protocol(self, protocol: str, payload: Any) -> Any:
+        if protocol == "a2a" and isinstance(payload, dict):
+            method = payload.get("method")
+            if isinstance(method, str) and method in _OPEN_WORKFLOW_A2A_METHODS:
+                payload = {**payload, "method": _OPEN_WORKFLOW_A2A_METHODS[method]}
         return await self.protocols.call(protocol, payload)
 
     def close(self) -> None:
