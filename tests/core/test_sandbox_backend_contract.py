@@ -6,7 +6,7 @@ import pytest
 from open_workflow_agent.config import SandboxConfig
 from open_workflow_agent.errors import SandboxPolicyError
 from open_workflow_agent.sandbox import InternalSandboxBackend
-from open_workflow_agent.sandbox_contract import (
+from open_workflow_agent.sandbox_capabilities import (
     SandboxBackendCapabilities,
     SandboxExecutionRequirements,
     SandboxInputFile,
