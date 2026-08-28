@@ -308,17 +308,33 @@ class KubernetesApiRunner:
 
             try:
                 async with asyncio.timeout(request.limits.timeout_seconds + 5.0):
-                    phase = await self._wait_for_terminal(job_name)
+                    phase, job_body = await self._wait_for_terminal(job_name)
             except TimeoutError as exc:
                 await self._delete_job(job_name)
                 raise ControllerFailure("sandbox_timeout", "sandbox execution timed out") from exc
 
-            stdout = await self._read_logs(job_name, request.limits.max_output_bytes)
             if phase != "succeeded":
+                # Best-effort logs for diagnostics; the Job controller may have
+                # already deleted the failed pod.
+                try:
+                    stdout = await self._read_logs(job_name, request.limits.max_output_bytes)
+                except ControllerFailure:
+                    stdout = ""
+                conditions = (
+                    job_body.get("status", {}).get("conditions", [])
+                    if isinstance(job_body, Mapping)
+                    else []
+                )
+                if any(
+                    isinstance(condition, dict) and condition.get("reason") == "DeadlineExceeded"
+                    for condition in conditions
+                ):
+                    raise ControllerFailure("sandbox_timeout", "sandbox execution timed out")
                 raise ControllerFailure(
                     "sandbox_process_error",
                     "sandbox job exited with a non-zero status",
                 )
+            stdout = await self._read_logs(job_name, request.limits.max_output_bytes)
             return ExecutionResult(
                 exit_code=0,
                 stdout=stdout,
@@ -396,7 +412,7 @@ class KubernetesApiRunner:
                 if not self.config.secret_name or value.secret_ref not in self.config.secret_keys:
                     self._policy_error("secret_ref")
 
-    async def _wait_for_terminal(self, job_name: str) -> str:
+    async def _wait_for_terminal(self, job_name: str) -> tuple[str, dict[str, Any]]:
         path = f"{self._jobs_path()}/{quote(job_name, safe='')}"
         while True:
             response = await self._client.get(path)
@@ -404,9 +420,9 @@ class KubernetesApiRunner:
             body = response.json()
             status = body.get("status", {}) if isinstance(body, Mapping) else {}
             if int(status.get("succeeded", 0) or 0) > 0:
-                return "succeeded"
+                return "succeeded", body if isinstance(body, dict) else {}
             if int(status.get("failed", 0) or 0) > 0:
-                return "failed"
+                return "failed", body if isinstance(body, dict) else {}
             await asyncio.sleep(self.config.poll_interval_seconds)
 
     async def _read_logs(self, job_name: str, limit: int) -> str:
@@ -503,6 +519,10 @@ def build_job_manifest(config: ControllerConfig, request: ExecutionRequest) -> d
             "privileged": False,
             "readOnlyRootFilesystem": True,
             "runAsNonRoot": True,
+            # A numeric non-root identity is required so the kubelet can verify
+            # runAsNonRoot for images that do not declare a USER.
+            "runAsUser": 65532,
+            "runAsGroup": 65532,
             "capabilities": {"drop": ["ALL"]},
             "seccompProfile": {"type": "RuntimeDefault"},
         },

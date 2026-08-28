@@ -67,7 +67,7 @@ def test_run_container_is_enabled_only_for_safe_docker_policy() -> None:
         sandbox=_config(),
     )
 
-    with pytest.raises(UnsupportedWorkflowFeature, match="Docker sandbox backend"):
+    with pytest.raises(UnsupportedWorkflowFeature, match="container sandbox backend"):
         validate_sandbox_capabilities(
             _workflow({"image": _IMAGE}),
             sandbox=SandboxConfig(enabled=True),

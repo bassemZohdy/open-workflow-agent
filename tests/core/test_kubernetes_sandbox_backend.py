@@ -164,6 +164,27 @@ async def test_timeout_requests_controller_cleanup() -> None:
 
 
 @pytest.mark.asyncio
+async def test_execution_posts_json_content_type() -> None:
+    """The real controller is FastAPI: it parses the body only as JSON."""
+
+    seen: dict[str, str] = {}
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        seen["content_type"] = request.headers.get("content-type", "")
+        return httpx.Response(
+            200, json={"exit_code": 0, "stdout": "", "stderr": "", "duration": 0.1}
+        )
+
+    backend = KubernetesSandboxBackend(_config(), transport=httpx.MockTransport(handler))
+    try:
+        await backend.execute(_request())
+    finally:
+        await backend.shutdown()
+
+    assert seen["content_type"] == "application/json"
+
+
+@pytest.mark.asyncio
 async def test_explicit_cancellation_reaches_controller() -> None:
     posted = asyncio.Event()
     released = asyncio.Event()

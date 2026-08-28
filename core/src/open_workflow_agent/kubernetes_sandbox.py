@@ -153,7 +153,11 @@ class KubernetesSandboxBackend:
 
         self._active.add(request.execution_id)
         try:
-            response = await self._client.post("/v1/executions", content=encoded)
+            response = await self._client.post(
+                "/v1/executions",
+                content=encoded,
+                headers={"Content-Type": "application/json"},
+            )
         except asyncio.CancelledError:
             await self._best_effort_cancel(request.execution_id)
             raise

@@ -703,9 +703,9 @@ def _validate_executable_run(
     run: Mapping[str, Any], *, sandbox: SandboxConfig, reference: str
 ) -> dict[str, Any] | None:
     if "container" in run:
-        if not sandbox.enabled or sandbox.backend != "docker":
+        if not sandbox.enabled or sandbox.backend not in {"docker", "kubernetes"}:
             raise UnsupportedWorkflowFeature(
-                "run.container requires the deployment-enabled Docker sandbox backend",
+                "run.container requires a deployment-enabled container sandbox backend",
                 details={"reference": reference},
             )
         container = run["container"]
@@ -719,7 +719,12 @@ def _validate_executable_run(
                 "dynamic container image selection is not enabled",
                 details={"reference": reference},
             )
-        if image not in sandbox.docker.allowed_images:
+        allowed_images = (
+            sandbox.kubernetes.allowed_images
+            if sandbox.backend == "kubernetes"
+            else sandbox.docker.allowed_images
+        )
+        if image not in allowed_images:
             raise UnsupportedWorkflowFeature(
                 "container image is not deployment-approved",
                 details={"reference": reference},

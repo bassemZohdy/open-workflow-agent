@@ -100,8 +100,11 @@ def test_job_manifest_is_restricted_and_arbitrary_uid_compatible() -> None:
     assert container["securityContext"]["privileged"] is False
     assert container["securityContext"]["readOnlyRootFilesystem"] is True
     assert container["securityContext"]["runAsNonRoot"] is True
+    # A numeric non-root identity lets the kubelet verify runAsNonRoot for
+    # images that do not declare a USER directive.
+    assert container["securityContext"]["runAsUser"] == 65532
+    assert container["securityContext"]["runAsGroup"] == 65532
     assert container["securityContext"]["capabilities"] == {"drop": ["ALL"]}
-    assert "runAsUser" not in container["securityContext"]
     assert all("hostPath" not in volume for volume in pod["volumes"])
     assert all("sizeLimit" in volume["emptyDir"] for volume in pod["volumes"])
     assert container["resources"]["limits"]["memory"] == str(1024 * 1024)
