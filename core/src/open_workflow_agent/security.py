@@ -21,7 +21,11 @@ _HEADER_NAME = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
 
 
 class _StrictSecurityModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_assignment=True,
+        hide_input_in_errors=True,
+    )
 
 
 class SecretReference(_StrictSecurityModel):
