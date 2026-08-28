@@ -80,6 +80,14 @@ def test_completed_text_output_uses_v1_text_part_shape() -> None:
     assert "kind" not in task["artifacts"][0]["parts"][0]
 
 
+def test_completed_bytes_output_uses_base64_protojson_encoding() -> None:
+    task = project_a2a_task(_handle("completed", output=b"hello"))
+
+    assert task["artifacts"][0]["parts"] == [
+        {"raw": "aGVsbG8=", "mediaType": "application/octet-stream"}
+    ]
+
+
 def test_waiting_task_maps_to_input_required_without_engine_details() -> None:
     task = project_a2a_task(_handle("waiting"))
 
@@ -87,8 +95,12 @@ def test_waiting_task_maps_to_input_required_without_engine_details() -> None:
         "state": "TASK_STATE_INPUT_REQUIRED",
         "message": {
             "messageId": "inv-1:input-required",
+            "contextId": "ctx-1",
+            "taskId": "inv-1",
             "role": "ROLE_AGENT",
-            "parts": [{"text": "additional input is required"}],
+            "parts": [
+                {"text": "additional input is required", "mediaType": "text/plain"}
+            ],
         },
     }
 
@@ -106,7 +118,13 @@ def test_faulted_task_exposes_only_sanitized_common_error_code() -> None:
     )
 
     assert task["status"]["state"] == "TASK_STATE_FAILED"
-    assert task["status"]["message"]["parts"] == [{"text": "workflow failed: tool_error"}]
+    assert task["status"]["message"] == {
+        "messageId": "inv-1:error",
+        "contextId": "ctx-1",
+        "taskId": "inv-1",
+        "role": "ROLE_AGENT",
+        "parts": [{"text": "workflow failed: tool_error", "mediaType": "text/plain"}],
+    }
     serialized = repr(task)
     assert "internal implementation details" not in serialized
     assert "do-not-leak" not in serialized
