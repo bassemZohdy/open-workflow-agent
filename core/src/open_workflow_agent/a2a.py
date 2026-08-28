@@ -131,6 +131,7 @@ class JsonRpcError(Exception):
     INVALID_PARAMS = -32602
     INTERNAL_ERROR = -32603
     APPLICATION_ERROR = -32000
+    VERSION_NOT_SUPPORTED = -32009
 
     def __init__(
         self,
@@ -179,6 +180,10 @@ def _authorize(config: A2AConfig, request: Request) -> bool:
     return hmac.compare_digest(authorization.removeprefix("Bearer ").strip(), config.auth_token)
 
 
+def _requested_protocol_version(request: Request) -> str | None:
+    return request.headers.get("a2a-version") or request.query_params.get("A2A-Version")
+
+
 def _reply_message(source_message: dict[str, Any], reply: str) -> dict[str, Any]:
     source_id = source_message.get("messageId")
     return {
@@ -221,6 +226,30 @@ def mount_a2a(
             status_code=401,
         )
 
+    def version_supported(request: Request) -> JSONResponse | None:
+        requested = _requested_protocol_version(request)
+        if requested == A2A_PROTOCOL_VERSION:
+            return None
+        if config.transport == "jsonrpc":
+            return _jsonrpc_error(
+                None,
+                JsonRpcError(
+                    JsonRpcError.VERSION_NOT_SUPPORTED,
+                    "A2A protocol version is not supported",
+                    details={"supportedVersion": A2A_PROTOCOL_VERSION},
+                ),
+            )
+        return _http_json_response(
+            {
+                "error": {
+                    "code": "version_not_supported",
+                    "message": "A2A protocol version is not supported",
+                    "supportedVersion": A2A_PROTOCOL_VERSION,
+                }
+            },
+            status_code=400,
+        )
+
     @app.get(A2A_AGENT_CARD_PATH, response_model=None)
     async def agent_card(request: Request) -> JSONResponse | dict[str, Any]:
         if unauthorized := authorized(request):
@@ -238,6 +267,8 @@ def mount_a2a(
         async def jsonrpc_entry(request: Request) -> JSONResponse:
             if unauthorized := authorized(request):
                 return unauthorized
+            if unsupported := version_supported(request):
+                return unsupported
             try:
                 envelope = await request.json()
             except ValueError as exc:
@@ -286,6 +317,8 @@ def mount_a2a(
         async def http_json_entry(request: Request) -> JSONResponse:
             if unauthorized := authorized(request):
                 return unauthorized
+            if unsupported := version_supported(request):
+                return unsupported
             try:
                 payload = await request.json()
             except ValueError:
