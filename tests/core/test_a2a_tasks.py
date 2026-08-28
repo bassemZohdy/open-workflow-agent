@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from open_workflow_agent.a2a_tasks import A2A_TASK_STATES, a2a_task_state, project_a2a_task
+from open_workflow_agent.a2a_tasks import (
+    A2A_TASK_STATES,
+    a2a_task_state,
+    project_a2a_task,
+)
 from open_workflow_agent.persistence import ExecutionHandle
 
 
