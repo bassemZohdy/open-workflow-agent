@@ -26,9 +26,13 @@ do:
       call: a2a
       with:
         server: https://service.test/a2a
-        method: message/send
+        method: SendMessage
         parameters:
-          value: a2a
+          message:
+            role: ROLE_USER
+            messageId: fixture-message
+            parts:
+              - text: a2a
   - openapi_call:
       call: openapi
       with:
