@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install kubeconform
         shell: bash
         run: |
@@ -50,8 +50,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6.8.0
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "0.11.26"
           enable-cache: true
@@ -141,8 +141,8 @@ jobs:
       run:
         working-directory: engines/${{ matrix.engine }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6.8.0
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "0.11.26"
           enable-cache: true
@@ -178,7 +178,7 @@ jobs:
           } > "$RUNNER_TEMP/ctk-${{ matrix.engine }}-provenance.txt"
       - name: Upload CTK results and provenance
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ctk-${{ matrix.engine }}-results
           path: |
@@ -204,8 +204,8 @@ jobs:
             resume_port: 19081
             sandbox_port: 20081
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build independent runtime image
         shell: bash
         run: |
@@ -404,7 +404,7 @@ jobs:
           python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["status"] == "completed"; assert d["output"] == {"done": True}' "$resume"
       - name: Upload container logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docker-${{ matrix.engine }}-logs
           path: ${{ runner.temp }}/owa-${{ matrix.engine }}-*.log

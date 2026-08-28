@@ -31,8 +31,8 @@ jobs:
       run:
         working-directory: engines/agent-framework
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6.8.0
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
         with:
           version: "0.11.26"
           enable-cache: true
