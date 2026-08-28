@@ -4,6 +4,25 @@ All notable changes to the Open Workflow Agent are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Bounded inbound A2A profile behind deployment configuration: Agent Card
+  discovery and a synchronous `message/send` endpoint with two selectable
+  transport implementations (`jsonrpc` — the default and most deployed — and
+  `http_json`), optional bearer authentication, message-size bounds, and
+  sanitized error mapping. Streaming, push notifications, and task objects
+  remain out of scope.
+
+### Changed
+
+- `run.container` now admits the deployment-enabled Kubernetes sandbox
+  backend with its own exact-digest allowlist (previously docker-only).
+- Kubernetes sandbox Jobs run as numeric non-root `65532:65532`; Jobs failing
+  at their deadline surface `sandbox_timeout`; the runtime posts execution
+  payloads with an explicit JSON content type.
+
 ## [0.1.0] - 2026-08-28
 
 First formal release: published from the verified `main` head with exact-version, minor-series, `latest`, and source-SHA image tags on GHCR and Docker Hub.

@@ -266,9 +266,11 @@ POST /v1/approvals/{id}/decision
 POST /v1/schedules
 GET  /v1/schedules/{id}
 POST /v1/schedules/{id}/cancel
+GET  /a2a/agent.json        (inbound A2A, optional)
+POST /a2a                   (inbound A2A, optional)
 ```
 
-Use `/v1/capabilities` to discover the capabilities of the selected engine/runtime version.
+Use `/v1/capabilities` to discover the capabilities of the selected engine/runtime version. The optional inbound A2A endpoints (Agent Card plus `message/send` over JSON-RPC or HTTP+JSON) exist only when a deployment enables them; see [api.md](docs/api.md).
 
 ## Sandbox execution
 

@@ -11,6 +11,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from .a2a import a2a_capabilities, extract_output_text, mount_a2a
 from .config import RuntimeConfig
 from .engine import PortableWorkflowEngine, WorkflowEngine
 from .errors import (
@@ -228,6 +229,7 @@ def create_app(
         )
         value.setdefault("features", {})["sandbox"] = runtime_services.sandbox.capabilities()
         value.setdefault("features", {})["lifecycleStreaming"] = streaming_capabilities()
+        value.setdefault("features", {})["a2a"] = a2a_capabilities(runtime_config.a2a)
         return value
 
     @app.post("/v1/events")
@@ -442,6 +444,33 @@ def create_app(
     @app.post("/v1/admin/knowledge/reload")
     async def reload_knowledge() -> dict[str, Any]:
         return runtime_services.knowledge.reload()
+
+    async def _a2a_invoke_message(text: str) -> tuple[str, str]:
+        plan = getattr(
+            app.state,
+            "plan",
+            compile_sandbox_workflow(sandbox=runtime_config.sandbox),
+        )
+        handle = runtime_services.invocations.create(
+            engine=runtime_engine.engine_name,
+            session_id=None,
+            user_id=None,
+            workflow_name=plan.name,
+            workflow_version=plan.version,
+            workflow_fingerprint=plan.fingerprint,
+        )
+        result = await runtime_engine.invoke(plan, handle, {"question": text})
+        if result.status == "faulted":
+            error = result.error or {}
+            return "", str(error.get("code", "workflow_execution_error"))
+        if result.status == "cancelled":
+            return "", "invocation_cancelled"
+        if result.status == "waiting":
+            return "", "workflow_waiting"
+        return extract_output_text(result.output), ""
+
+    if runtime_config.a2a.enabled:
+        mount_a2a(app, runtime_config.a2a, invoke_message=_a2a_invoke_message)
 
     return app
 

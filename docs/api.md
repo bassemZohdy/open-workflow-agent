@@ -288,6 +288,49 @@ decision after a restart.
 The bearer/operator guard is a bounded deployment authorization boundary, not a
 replacement for an enterprise identity provider.
 
+## Inbound A2A (optional, bounded)
+
+The runtime can expose itself as an A2A agent. This is disabled by default and
+gated by deployment configuration:
+
+```yaml
+a2a:
+  enabled: true
+  transport: jsonrpc        # jsonrpc (default, most deployed) | http_json
+  path: /a2a
+  agent_name: Open Workflow Agent
+  auth_token: set-via-deployment-secret   # optional bearer
+  max_message_chars: 100000
+```
+
+Two transport implementations are selectable through `a2a.transport`:
+
+- `jsonrpc` (default) — JSON-RPC 2.0 over HTTP, the most widely deployed A2A
+  transport. `message/send` only; JSON-RPC error objects carry sanitized codes.
+- `http_json` — the A2A HTTP+JSON transport: the body is a plain A2A message
+  object and the reply is an agent message object.
+
+Discovery:
+
+```http
+GET /a2a/agent.json          (also at /.well-known/agent.json)
+```
+
+returns the bounded Agent Card (`preferredTransport`, capabilities without
+streaming or push notifications, one skill bound to the configured workflow).
+
+`message/send` is synchronous: the first text part becomes the workflow input
+(`question`), and the workflow output text becomes the reply's text part. When
+the workflow is waiting, cancelled, or faults, the transport returns a
+sanitized error (`workflow_waiting`, `invocation_cancelled`, or the common
+error code) — there is no long-lived task object in this profile.
+
+When `auth_token` is set, every A2A request requires
+`Authorization: Bearer <token>` (HTTP 401 otherwise). `/v1/capabilities`
+reports the active block under `features.a2a`. Streaming (`message/stream`),
+push notifications, and persistent tasks are intentionally not part of this
+profile; see [a2a-streaming-evaluation.md](a2a-streaming-evaluation.md).
+
 ## Schedules
 
 ### Create

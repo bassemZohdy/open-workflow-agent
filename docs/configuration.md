@@ -125,6 +125,16 @@ approvals:
   enabled: false
   operator_token: null
 
+a2a:
+  enabled: false
+  transport: jsonrpc
+  path: /a2a
+  agent_name: Open Workflow Agent
+  agent_description: Configuration-driven Open Workflow runtime over A2A.
+  agent_version: 0.1.0
+  auth_token: null
+  max_message_chars: 100000
+
 sandbox:
   enabled: false
   backend: internal
@@ -676,6 +686,23 @@ approvals:
 ```
 
 Disabled by default. When enabled, workflows can compose durable human-in-the-loop approvals from standard `emit`/`listen` tasks, and the operator endpoints under `/v1/approvals` become active. The `operator_token` is the bearer credential for operator decisions and inbox reads; supply it through a deployment secret rather than a plain file. Decisions additionally require an `X-Operator-Id` header and are idempotent per `Idempotency-Key`. See [api.md](api.md#approvals-human-in-the-loop) for the operator flow.
+
+## `a2a`
+
+```yaml
+a2a:
+  enabled: true
+  transport: jsonrpc   # jsonrpc (default) | http_json
+  auth_token: set-via-deployment-secret
+```
+
+Disabled by default. When enabled, the runtime exposes a bounded inbound A2A
+profile: an Agent Card (`GET /a2a/agent.json`, also `/.well-known/agent.json`)
+and a synchronous `message/send` endpoint with two selectable transport
+implementations (`jsonrpc` — the most deployed — and `http_json`). Bearer
+`auth_token` is optional but recommended for any non-loopback exposure. The
+bounded profile has no streaming, push notifications, or task objects. See
+[api.md](api.md#inbound-a2a-optional-bounded).
 
 ## `sandbox`
 

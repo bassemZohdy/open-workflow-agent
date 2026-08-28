@@ -134,11 +134,13 @@ The release pipeline adds exact-version, minor-series, `latest`, and immutable s
 
 ## Current Next Step
 
-The first formal release **v0.1.0** is published (2026-08-28) from the verified head `c47cb86`. Remaining work is acceptance- and decision-gated:
+All decided work is shipped: v0.1.0 released, Kubernetes sandbox acceptance green (kind), and a bounded inbound A2A profile delivered behind `a2a.enabled` with selectable transports (`jsonrpc` default, `http_json`). Per the 2026-08-28 product decisions, the following are intentionally deferred and tracked in `TODO.md`:
 
-1. B-006.3 — Kubernetes acceptance is complete (kind, 2026-08-28, see the record above); OpenShift acceptance (SCC/security-context/arbitrary-UID behavior) remains the only outstanding sandbox gate before OpenShift-specific advertisement.
-2. B-007 — decide the next bounded slice: inbound A2A, general portable streaming, or continued deferral.
-3. B-008 — decide whether the Microsoft Agent Framework adapter becomes a production engine. Progress: the adapter now passes the full shared contract surface and CTK subset natively (139 tests) and CI enforces those suites; an independent runtime image, persistence/resume coverage, and hardened-image acceptance remain before any third-engine advertisement.
+1. OpenShift sandbox acceptance (SCC/security-context/arbitrary-UID) — deferred until an OpenShift cluster is available; Kubernetes acceptance is recorded green above.
+2. A2A conformance, `message/stream`/general streaming, and push notifications — deferred; the bounded profile is the current contract.
+3. Microsoft Agent Framework production status — deferred; the adapter stays optional with CI-enforced shared-gate coverage.
+
+The immediate follow-up for the A2A slice is its remote CI verification (the code ships with this documentation) and recording those run IDs here.
 
 Full MCP, A2A, OpenAPI, external-catalog, streaming, or Open Workflow ecosystem conformance remains unclaimed beyond the tested Portable Profile/capabilities.
 

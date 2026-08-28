@@ -192,6 +192,27 @@ class PersistenceConfig(StrictModel):
     database: str = "/data/runtime.sqlite3"
 
 
+class A2AConfig(StrictModel):
+    """Deployment policy for inbound A2A exposure (bounded profile)."""
+
+    enabled: bool = False
+    transport: Literal["jsonrpc", "http_json"] = "jsonrpc"
+    path: str = "/a2a"
+    agent_name: str = "Open Workflow Agent"
+    agent_description: str = "Configuration-driven Open Workflow runtime over A2A."
+    agent_version: str = "0.1.0"
+    auth_token: str | None = None
+    max_message_chars: int = Field(default=100_000, gt=0)
+
+    @field_validator("path")
+    @classmethod
+    def validate_path(cls, value: str) -> str:
+        selected = value.strip()
+        if not selected.startswith("/") or len(selected) > 128:
+            raise ValueError("a2a path must start with '/' and stay under 128 characters")
+        return selected.rstrip("/")
+
+
 class ApprovalConfig(StrictModel):
     enabled: bool = False
     operator_token: str | None = None
@@ -451,6 +472,7 @@ class RuntimeConfig(StrictModel):
     memory: MemoryConfig = Field(default_factory=MemoryConfig)
     persistence: PersistenceConfig = Field(default_factory=PersistenceConfig)
     approvals: ApprovalConfig = Field(default_factory=ApprovalConfig)
+    a2a: A2AConfig = Field(default_factory=A2AConfig)
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
     tools: list[ToolConfig] = Field(default_factory=list)
     server: ServerConfig = Field(default_factory=ServerConfig)

@@ -1,5 +1,3 @@
-# A2A Exposure and Streaming Evaluation
-
 Status: B-007 implementation in progress. The first bounded slice is **common runtime lifecycle streaming over SSE**. Inbound A2A exposure, A2A task streaming, gRPC streaming, and push notifications remain disabled and are not advertised.
 
 ## Reference baseline

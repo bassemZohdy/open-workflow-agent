@@ -780,6 +780,22 @@ deployment configures catalog trust):
 - Unsupported remote behaviors remain explicitly fail-closed; remote scripts
   and remote catalog-supplied code are never executed.
 
+Bounded inbound A2A exposure (deployment-selected, disabled by default):
+
+- The runtime exposes an Agent Card (`/a2a/agent.json` and
+  `/.well-known/agent.json`) and a synchronous `message/send` endpoint so A2A
+  clients can drive the configured workflow. Streaming (`message/stream`),
+  push notifications, and persistent task objects are outside the profile.
+- Two transport implementations are selectable through configuration:
+  `jsonrpc` (JSON-RPC 2.0 over HTTP — the most widely deployed A2A transport,
+  the default) and `http_json` (A2A HTTP+JSON). New transports may be added
+  behind the same flag without workflow changes.
+- The first message text part becomes the workflow input (`question`);
+  the workflow output text becomes the reply's text part. Waiting, cancelled,
+  and faulted workflows surface sanitized transport-specific errors.
+- An optional deployment-provided bearer token guards every A2A request;
+  `/v1/capabilities` reports the active `features.a2a` block.
+
 ---
 
 # 18. Engine-Specific Capabilities Are Allowed
@@ -2812,10 +2828,19 @@ additional engines  Microsoft Agent Framework native adapter merged as an
                     optional package; production status still deferred
 ```
 
+Delivered as a bounded slice (see section 17):
+
+```text
+A2A exposure        inbound bounded profile: Agent Card + synchronous
+                    message/send with selectable transports (jsonrpc
+                    default, http_json), behind deployment configuration
+```
+
 Still deferred:
 
 ```text
-A2A exposure        inbound A2A server/conformance
+A2A conformance     message/stream, push notifications, task objects,
+                    full Agent Card conformance
 streaming           general portable output streaming beyond bounded
                     lifecycle SSE
 ```
