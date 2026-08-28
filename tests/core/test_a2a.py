@@ -80,7 +80,8 @@ async def test_agent_card_reports_bounded_v1_profile(tmp_path) -> None:
                 "card": A2A_AGENT_CARD_PATH,
                 "streaming": False,
                 "pushNotifications": False,
-                "tasks": False,
+                "tasks": True,
+                "taskOperations": ["GetTask", "CancelTask"],
                 "auth": None,
             }
 
