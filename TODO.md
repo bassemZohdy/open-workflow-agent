@@ -4,15 +4,15 @@
 
 ## Current Phase
 
-**v0.1.0 released; bounded inbound A2A shipped; protocol/security architecture decisions resolved and implementation resumed (2026-08-28).**
+**v0.1.0 released; protocol/security decisions resolved; latest-stable protocol migration and security-model implementation in progress (2026-08-28).**
 
-The full backlog sweep is green, v0.1.0 is released, Kubernetes sandbox acceptance passed on kind, and the bounded inbound A2A profile is implemented behind deployment configuration. The next work is no longer decision-blocked.
+The full backlog sweep is green, v0.1.0 is released, Kubernetes sandbox acceptance passed on kind, and inbound A2A has now been migrated from the legacy v0.3 assumptions to the stable A2A 1.0 line. The next work is no longer decision-blocked.
 
 ### Current integration head
 
-- `main` is aligned with `origin/main` at the architecture-review/fix series.
-- Verification before the decision-only documentation updates: root `280 passed, 11 skipped` at >=80% coverage; ADK `104 passed`; LangGraph `104 passed`; Agent Framework `144 passed`; all locks checked and packages built.
-- The current release remains **v0.1.0** (`c47cb86`).
+- A2A v1 code verification: CI run `33171216121` is green for commit `cb529e1` (root quality/tests/contracts, ADK/LangGraph native+CTK, and Docker acceptance).
+- The A2A v1 migration is documented in README/API plus the protocol baseline/security decision records; subsequent documentation-only commits do not change runtime behavior.
+- The current formal release remains **v0.1.0** (`c47cb86`); current `main` work is unreleased.
 
 ## Active Backlog
 
@@ -26,9 +26,9 @@ The full backlog sweep is green, v0.1.0 is released, Kubernetes sandbox acceptan
   - CloudEvents: `1.0.2`
   - AsyncAPI Specification: `3.1.0`
   - gRPC: no independent OWA application-protocol version is pinned; use the stable protocol/tooling required by the binding being implemented.
-- [ ] PROTOCOL-2: update existing implementations that lag the verified stable baseline. A2A is first and must move from legacy `0.3.0` assumptions to A2A `1.0.1` before Task/streaming expansion.
+- [ ] PROTOCOL-2: update existing implementations that lag the verified stable baseline. A2A migration is complete; audit/migrate existing MCP, OpenAPI, and CloudEvents behavior next where required.
 - [ ] PROTOCOL-3: add deterministic compatibility/conformance tests for every pinned baseline and advertise protocol/version only after the applicable gates are green.
-- [x] PROTOCOL-4: **no backward-compatibility commitment before the product contract stabilizes.** Remove legacy protocol aliases/behavior during migrations unless explicitly required later by a new product decision. Do not carry v0.x compatibility for A2A after the v1 migration.
+- [x] PROTOCOL-4: **no backward-compatibility commitment before the product contract stabilizes.** Remove legacy protocol aliases/behavior during migrations unless explicitly required later by a new product decision. A2A v0.3 compatibility was removed during the v1 migration.
 - [ ] PROTOCOL-5: add a release/CI check preventing an unreviewed protocol-baseline change from being advertised as supported.
 
 ### Security configuration model
@@ -45,7 +45,7 @@ The full backlog sweep is green, v0.1.0 is released, Kubernetes sandbox acceptan
 
 ### A2A next bounded profile
 
-- [ ] A2A-1: migrate Agent Card/discovery/transport metadata to A2A `1.0.1`. Claim only an **A2A 1.0.1 bounded profile**, never full conformance until interoperability/conformance gates pass. Remove legacy v0.3 discovery/metadata compatibility rather than carrying it forward.
+- [x] A2A-1: migrated Agent Card/discovery/transport metadata and bounded SendMessage behavior to stable A2A `1.0.1`; runtime advertises protocol version `1.0`, uses `/.well-known/agent-card.json`, `supportedInterfaces`, JSON-RPC `SendMessage`, HTTP+JSON `/message:send`, v1 Part shape, and no v0.3 compatibility aliases. CI run `33171216121` green.
 - [ ] A2A-2: replace the single shared bearer-only model with named security profiles and per-principal skill/action authorization.
 - [ ] A2A-3: support multiple config-declared A2A skills mapped to explicitly registered workflows. Clients must not choose arbitrary workflow paths/files/catalog entries.
 - [ ] A2A-4: implement the A2A Task model as a projection over common OWA invocation state, not a second execution engine. Prefer `task_id == invocation_id`; validate exact TaskStatus mapping against A2A `1.0.1`.
