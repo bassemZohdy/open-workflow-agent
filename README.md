@@ -164,7 +164,7 @@ Configuration precedence is:
 built-in defaults < YAML < environment variables
 ```
 
-Environment variables use the `OWA__...` convention.
+Environment variables use the `OWA__...` convention. Authentication and authorization are deployment configuration too; protocol adapters consume named security profiles, while raw credentials stay in environment/deployment secret mechanisms rather than workflow files. Traffic/rate/concurrency policy is kept separate from identity and authorization configuration.
 
 ## Add a workflow
 
@@ -266,11 +266,12 @@ POST /v1/approvals/{id}/decision
 POST /v1/schedules
 GET  /v1/schedules/{id}
 POST /v1/schedules/{id}/cancel
-GET  /a2a/agent.json        (inbound A2A, optional)
-POST /a2a                   (inbound A2A, optional)
+GET  /.well-known/agent-card.json  (A2A 1.0.1 bounded profile, optional)
+POST /a2a                         (A2A JSON-RPC binding, optional)
+POST /a2a/message:send            (A2A HTTP+JSON binding, optional)
 ```
 
-Use `/v1/capabilities` to discover the capabilities of the selected engine/runtime version. The optional inbound A2A endpoints (Agent Card plus `message/send` over JSON-RPC or HTTP+JSON) exist only when a deployment enables them; see [api.md](docs/api.md).
+Use `/v1/capabilities` to discover the selected engine/runtime capabilities. The optional inbound A2A boundary targets stable A2A release `1.0.1` and advertises protocol version `1.0`; JSON-RPC uses `SendMessage`, while HTTP+JSON uses `/message:send`. Legacy A2A v0.3 discovery/method/Part forms are intentionally not retained. See [api.md](docs/api.md), [protocol baselines](docs/protocol-baselines.md), and [protocol/security decisions](docs/protocol-security-decisions.md).
 
 ## Sandbox execution
 
@@ -280,7 +281,7 @@ Three execution backends exist behind deployment configuration:
 
 - **Internal sandbox** — controlled child-process execution inside the normal runtime deployment: dedicated workspace, bounded environment, input/output limits, timeout, cancellation, and cleanup. It is a controlled execution boundary, **not** a hard isolation boundary; it does not provide container, pod, VM, or microVM isolation.
 - **Docker backend** — stronger-isolation external execution through a restricted Unix-socket controller so the main runtime never mounts an unrestricted Docker socket. Production acceptance is recorded green (see `PROJECT.md`).
-- **Kubernetes/OpenShift backend** — controller-held cluster lifecycle permissions with deployment-owned namespace, ServiceAccount, image, resource, secret, and network-policy controls; the main runtime never receives cluster-wide permissions. Real-cluster acceptance is still pending, so it is not yet advertised through `/v1/capabilities`.
+- **Kubernetes/OpenShift backend** — controller-held cluster lifecycle permissions with deployment-owned namespace, ServiceAccount, image, resource, secret, and network-policy controls; the main runtime never receives cluster-wide permissions. Real-cluster Kubernetes acceptance is recorded in `PROJECT.md`; OpenShift-specific SCC/arbitrary-UID acceptance remains deferred and must not be advertised until verified.
 
 See [Sandbox execution architecture](docs/sandbox-execution.md), the [external sandbox contract](docs/external-sandbox-contract.md), and the ordered backlog in [TODO.md](TODO.md) for the acceptance state of each backend.
 
@@ -289,13 +290,15 @@ See [Sandbox execution architecture](docs/sandbox-execution.md), the [external s
 - [Getting started](docs/getting-started.md) — run a published image and invoke your first agent.
 - [Configuration](docs/configuration.md) — runtime configuration and model-provider reference.
 - [API guide](docs/api.md) — HTTP endpoints and request/response examples.
+- [Protocol baselines](docs/protocol-baselines.md) — pinned latest-stable external protocol/specification versions.
+- [Protocol and security decisions](docs/protocol-security-decisions.md) — version policy, security profiles, authorization vocabulary, traffic-policy separation, and A2A task/skill decisions.
 - [Deployment guide](docs/deployment.md) — Docker Hub/GHCR images, persistence, Docker, Kubernetes, and OpenShift.
 - [Developer guide](docs/development.md) — source checkout, repository structure, tests, and contribution workflow.
 - [CI runners and governance](docs/ci-runners.md) — self-hosted Docker runner bootstrap, recovery, and branch-history governance.
 - [Sandbox execution architecture](docs/sandbox-execution.md) — internal sandbox and external execution backends.
 - [Troubleshooting and compatibility](docs/troubleshooting.md) — FAQ, upgrade notes, and version/compatibility matrix.
 - [External sandbox contract](docs/external-sandbox-contract.md) — backend-neutral sandbox request/result/capability contract and controller boundaries.
-- [A2A/streaming evaluation](docs/a2a-streaming-evaluation.md) — bounded lifecycle SSE baseline and deferred inbound A2A/general streaming scope.
+- [A2A/streaming evaluation](docs/a2a-streaming-evaluation.md) — bounded lifecycle SSE baseline and deferred A2A streaming/push scope.
 - [Engine adapter evaluation](docs/engine-adapter-evaluation.md) — how the Microsoft Agent Framework third engine was selected and its current deferral state.
 - [Project Definition](Project%20Definition.md) — authoritative architecture and product contract.
 - [PROJECT.md](PROJECT.md) — verified implementation status.
@@ -318,7 +321,7 @@ Configuration + Open Workflow + Knowledge + Memory + Tools
              ADK                 LangGraph
 ```
 
-ADK and LangGraph are implementation engines, not public application contracts. The same mounted configuration and workflow should remain portable when they use capabilities in the common profile. An optional Microsoft Agent Framework adapter exists for evaluation; it is not a production release target (see `TODO.md` B-008).
+ADK and LangGraph are implementation engines, not public application contracts. The same mounted configuration and workflow should remain portable when they use capabilities in the common profile. An optional Microsoft Agent Framework adapter exists for evaluation; it is not a production release target.
 
 ## Development
 
