@@ -7,6 +7,7 @@ checkpoint references, workflow fingerprints, or deployment secrets.
 
 from __future__ import annotations
 
+import base64
 import json
 from typing import Any
 
@@ -53,26 +54,39 @@ def project_a2a_task(handle: ExecutionHandle) -> dict[str, Any]:
             candidate = handle.error.get("code")
             if isinstance(candidate, str) and candidate:
                 code = candidate
-        task["status"]["message"] = {
-            "messageId": f"{handle.invocation_id}:error",
-            "role": "ROLE_AGENT",
-            "parts": [{"text": f"workflow failed: {code}"}],
-        }
+        task["status"]["message"] = _status_message(
+            handle,
+            suffix="error",
+            text=f"workflow failed: {code}",
+        )
     elif handle.status == "waiting":
-        task["status"]["message"] = {
-            "messageId": f"{handle.invocation_id}:input-required",
-            "role": "ROLE_AGENT",
-            "parts": [{"text": "additional input is required"}],
-        }
+        task["status"]["message"] = _status_message(
+            handle,
+            suffix="input-required",
+            text="additional input is required",
+        )
 
     return task
+
+
+def _status_message(handle: ExecutionHandle, *, suffix: str, text: str) -> dict[str, Any]:
+    return {
+        "messageId": f"{handle.invocation_id}:{suffix}",
+        "contextId": handle.session_id,
+        "taskId": handle.invocation_id,
+        "role": "ROLE_AGENT",
+        "parts": [{"text": text, "mediaType": "text/plain"}],
+    }
 
 
 def _output_part(output: Any) -> dict[str, Any]:
     if isinstance(output, str):
         return {"text": output, "mediaType": "text/plain"}
     if isinstance(output, bytes):
-        return {"raw": output.hex(), "mediaType": "application/octet-stream"}
+        return {
+            "raw": base64.b64encode(output).decode("ascii"),
+            "mediaType": "application/octet-stream",
+        }
     return {
         "data": _json_compatible(output),
         "mediaType": "application/json",
