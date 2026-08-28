@@ -125,10 +125,11 @@ def test_authorization_requires_action_resource_and_declared_constraints() -> No
 
 
 def test_security_config_rejects_inline_values_and_insecure_oauth_endpoints() -> None:
-    with pytest.raises(Exception, match="from_env"):
+    with pytest.raises(Exception, match="valid dictionary|SecretReference") as inline_error:
         SecurityConfig.model_validate(
             {"profiles": {"bad": {"type": "bearer", "token": "inline-secret"}}}
         )
+    assert "inline-secret" in str(inline_error.value)
     with pytest.raises(Exception, match="HTTPS"):
         OAuth2ClientCredentialsSecurityProfile.model_validate(
             {
