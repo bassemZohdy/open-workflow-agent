@@ -27,6 +27,10 @@ def _make_app(tmp_path, config: RuntimeConfig):
     return create_app(config=config, services=services)
 
 
+def _v1_headers(**extra: str) -> dict[str, str]:
+    return {"A2A-Version": A2A_PROTOCOL_VERSION, **extra}
+
+
 @pytest.mark.asyncio
 async def test_a2a_disabled_by_default(tmp_path) -> None:
     services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
@@ -89,6 +93,7 @@ async def test_jsonrpc_send_message_round_trip(tmp_path) -> None:
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/a2a",
+                headers=_v1_headers(),
                 json={
                     "jsonrpc": "2.0",
                     "id": 7,
@@ -113,6 +118,29 @@ async def test_jsonrpc_send_message_round_trip(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
+async def test_a2a_v1_version_is_required_and_wrong_version_is_rejected(tmp_path) -> None:
+    app = _make_app(tmp_path, _app_config())
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "SendMessage",
+        "params": {"message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]}},
+    }
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            missing = await client.post("/a2a", json=payload)
+            assert missing.json()["error"]["code"] == -32009
+            assert missing.json()["error"]["data"]["supportedVersion"] == "1.0"
+
+            legacy = await client.post("/a2a", headers={"A2A-Version": "0.3"}, json=payload)
+            assert legacy.json()["error"]["code"] == -32009
+
+            query_version = await client.post("/a2a?A2A-Version=1.0", json=payload)
+            assert query_version.status_code == 200
+
+
+@pytest.mark.asyncio
 async def test_jsonrpc_rejects_legacy_method_and_legacy_part_shape(tmp_path) -> None:
     app = _make_app(tmp_path, _app_config())
     async with app.router.lifespan_context(app):
@@ -120,12 +148,14 @@ async def test_jsonrpc_rejects_legacy_method_and_legacy_part_shape(tmp_path) -> 
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             legacy_method = await client.post(
                 "/a2a",
+                headers=_v1_headers(),
                 json={"jsonrpc": "2.0", "id": 1, "method": "message/send", "params": {}},
             )
             assert legacy_method.json()["error"]["code"] == -32601
 
             legacy_part = await client.post(
                 "/a2a",
+                headers=_v1_headers(),
                 json={
                     "jsonrpc": "2.0",
                     "id": 2,
@@ -152,7 +182,7 @@ async def test_http_json_transport_round_trip(tmp_path) -> None:
             assert card["supportedInterfaces"][0]["protocolBinding"] == "HTTP+JSON"
             response = await client.post(
                 "/a2a/message:send",
-                headers={"Content-Type": A2A_HTTP_JSON_MEDIA_TYPE},
+                headers=_v1_headers(**{"Content-Type": A2A_HTTP_JSON_MEDIA_TYPE}),
                 json={
                     "message": {
                         "role": "ROLE_USER",
@@ -168,6 +198,21 @@ async def test_http_json_transport_round_trip(tmp_path) -> None:
             assert message["parts"] == [{"text": "a2a-reply"}]
 
             assert (await client.post("/a2a", json={})).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_http_json_rejects_unsupported_version(tmp_path) -> None:
+    app = _make_app(tmp_path, _app_config(transport="http_json"))
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/a2a/message:send",
+                headers={"A2A-Version": "0.3"},
+                json={"message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]}},
+            )
+            assert response.status_code == 400
+            assert response.json()["error"]["code"] == "version_not_supported"
 
 
 @pytest.mark.asyncio
@@ -194,6 +239,7 @@ async def test_oversized_message_is_rejected(tmp_path) -> None:
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             response = await client.post(
                 "/a2a",
+                headers=_v1_headers(),
                 json={
                     "jsonrpc": "2.0",
                     "id": 3,
