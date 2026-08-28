@@ -4,25 +4,29 @@
 
 ## Current Phase
 
-**v0.1.0 is released. Current `main` is unreleased pre-stable work focused on protocol-baseline completion, shared security policy, and the next bounded A2A profile.**
+**v0.1.0 is released. Current `main` is unreleased pre-stable work focused on shared security integration, deployment-declared A2A skills, and the remaining A2A Task/streaming profile.**
 
-The public product contract is still stabilizing. Legacy protocol generations are removed during migrations unless an explicit compatibility decision says otherwise.
+The public product contract is still stabilizing. External A2A wire behavior targets the official A2A v1 definitions. Open Workflow 1.0.3 keeps its own schema-defined A2A call vocabulary; OWA translates that vocabulary to the selected A2A wire operation at the runtime protocol boundary rather than changing the Open Workflow schema.
 
 ## Current Implementation State
 
 - Open Workflow Specification baseline: `1.0.3`.
-- A2A baseline: stable release `1.0.1`, protocol version `1.0`.
+- A2A baseline: stable release `1.0.1`, protocol version `1.0`, validated against the official A2A Project definitions at `a2a-protocol.org`.
 - Bounded inbound A2A is implemented and disabled by default:
   - Agent Card discovery at `/.well-known/agent-card.json`;
-  - JSON-RPC `SendMessage` on the configured A2A endpoint;
-  - HTTP+JSON `POST <a2a-path>/message:send`;
+  - JSON-RPC `SendMessage`, `GetTask`, and `CancelTask` on the configured A2A endpoint;
+  - HTTP+JSON `POST <a2a-path>/message:send`, `GET <a2a-path>/tasks/{id}`, and `POST <a2a-path>/tasks/{id}:cancel`;
+  - A2A Task is a sanitized projection over common OWA invocation/`ExecutionHandle` state;
   - selectable `jsonrpc` and `http_json` transports;
   - optional temporary bearer guard, request/message bounds, sanitized errors;
-  - no A2A v0.3 compatibility aliases.
-- Common outbound MCP/A2A protocol clients have been migrated toward the pinned stable baselines and are covered by deterministic tests; protocol-wide verification/advertisement gates remain active work.
+  - no A2A v0.3 wire compatibility aliases.
+- Open Workflow DSL `message/send`, `tasks/get`, `tasks/cancel`, and related schema-defined method names are translated in `RuntimeServices.call_protocol()` to official A2A v1 wire operations; they are not exposed as legacy A2A wire aliases.
+- Common outbound MCP/A2A protocol clients are pinned to their reviewed stable baselines and covered by deterministic tests.
+- Machine-readable protocol baselines live in `resources/protocol-baselines.yaml`; deterministic tests tie the manifest to runtime constants, documentation, supported method sets, and bounded claims.
 - Bounded common lifecycle SSE is implemented and remains separate from A2A streaming.
+- Framework-neutral security profile primitives now exist for `bearer`, `api_key`, `oauth2_client_credentials`, and `mtls`, including env-only secret references and authorization vocabulary/checks. RuntimeConfig/protocol integration is still active work.
+- Security profile validation hides rejected input values so attempted inline secrets are not echoed by validation errors.
 - Kubernetes sandbox real-cluster acceptance is green; OpenShift-specific SCC/arbitrary-UID acceptance is deferred until an OpenShift cluster is available.
-- Shared named security profiles are designed/documented but not yet implemented.
 - Microsoft Agent Framework remains an optional CI-covered adapter, not a production image/release target.
 - Formal release remains `v0.1.0`; current `main` changes are unreleased.
 
@@ -32,26 +36,30 @@ The public product contract is still stabilizing. Legacy protocol generations ar
 
 - [x] **PROTOCOL-1** — inventory external protocols/specifications and pin the latest stable released baselines from authoritative sources.
   - Open Workflow Specification: `1.0.3`
-  - A2A Protocol: `1.0.1`
+  - A2A Protocol: `1.0.1` / protocol `1.0`
   - Model Context Protocol: `2026-07-28`
   - OpenAPI Specification: `3.2.0`
   - CloudEvents: `1.0.2`
   - AsyncAPI Specification: `3.1.0`
-- [ ] **PROTOCOL-2** — finish auditing/migrating every implemented protocol behavior to the pinned baselines.
-  - A2A bounded inbound migration: complete.
-  - MCP common-client migration: implemented on `main`; complete final audit/verification.
-  - OpenAPI: keep as a bounded operation adapter; do not claim full OAS 3.2 parser/conformance.
-  - CloudEvents: verify the bounded lifecycle event contract against the supported stable semantics.
-- [ ] **PROTOCOL-3** — add deterministic compatibility/interoperability tests for each advertised pinned baseline and advertise version support only after applicable gates are green.
-- [x] **PROTOCOL-4** — no backward-compatibility commitment before public-contract stabilization; A2A v0.3 compatibility was intentionally removed.
-- [ ] **PROTOCOL-5** — add a CI/release guard preventing an unreviewed protocol-baseline change from being advertised as supported.
+- [x] **PROTOCOL-2** — audit/migrate implemented protocol behavior to the pinned baselines.
+  - A2A bounded inbound/client behavior uses stable v1 wire operations and v1 Part/Task shapes.
+  - Open Workflow A2A call vocabulary is translated only at the protocol boundary; the official Open Workflow 1.0.3 schema remains untouched.
+  - MCP common-client behavior is pinned to `2026-07-28`.
+  - OpenAPI remains a bounded operation adapter; no full OAS 3.2 parser/conformance claim.
+  - CloudEvents lifecycle contract remains a bounded `specversion: 1.0` profile against the `1.0.2` release baseline.
+- [ ] **PROTOCOL-3** — complete external compatibility/interoperability evidence for every advertised pinned baseline before any broad conformance claim.
+  - Deterministic local baseline/shape/advertisement tests: complete.
+  - Engine-shared Open Workflow CTK/contract coverage: complete for the portable profile.
+  - Broad external A2A/MCP/OpenAPI conformance/interoperability suites: not claimed yet.
+- [x] **PROTOCOL-4** — no backward-compatibility commitment before public-contract stabilization; A2A v0.3 wire compatibility was intentionally removed.
+- [x] **PROTOCOL-5** — CI/release baseline-drift guard implemented through `resources/protocol-baselines.yaml` plus deterministic root tests; an unreviewed manifest/runtime/docs mismatch fails the normal quality gate.
 
 ### P0 — Shared security configuration
 
-- [ ] **SECURITY-1** — implement reusable named security profiles for inbound/outbound protocol adapters. Initial types only: `bearer`, `api_key`, `oauth2_client_credentials`, `mtls`.
-- [ ] **SECURITY-2** — expose profiles through strict YAML plus `OWA__...` overrides. Protocol/tool configuration references profiles; workflow definitions never contain raw credentials.
-- [ ] **SECURITY-3** — resolve sensitive values from deployment secret/environment references and keep secrets out of logs, plans, capability responses, Agent Cards, lifecycle events, A2A Tasks/artifacts, sandbox output, and persisted invocation metadata.
-- [ ] **SECURITY-4** — implement standard authorization vocabulary and checks: principal/identity, role, scope, permission/action, resource, audience. Keep roles and scopes distinct. Use protocol-native actions where applicable (`message.send`, `tasks.get`, `tasks.cancel`).
+- [ ] **SECURITY-1** — integrate reusable named security profiles across inbound/outbound protocol adapters. Initial framework-neutral profile models are implemented and tested for `bearer`, `api_key`, `oauth2_client_credentials`, and `mtls`; adapter wiring remains.
+- [ ] **SECURITY-2** — expose profiles through the main strict runtime YAML plus `OWA__...` overrides. Protocol/tool configuration references profiles; workflow definitions never contain raw credentials.
+- [ ] **SECURITY-3** — complete secret-safe integration across adapters/logs/plans/capabilities/Agent Cards/lifecycle/A2A Tasks/sandbox/persistence. Env-only `SecretReference` resolution and secret-safe validation errors are implemented; full adapter-path verification remains.
+- [ ] **SECURITY-4** — wire standard authorization checks into protocol actions/skills. Framework-neutral principal/role/scope/action/resource/audience policy evaluation is implemented and tested; A2A/MCP enforcement remains.
 - [x] **SECURITY-5** — enterprise OAuth2/OIDC federation, token exchange, delegated-user identity, and consent remain outside OWA. Delegated-user support stays deferred until a concrete requirement exists.
 - [ ] **SECURITY-6** — remove temporary protocol-specific credential fields as shared profiles replace them. Do not retain aliases only for backward compatibility.
 
@@ -61,29 +69,27 @@ The public product contract is still stabilizing. Legacy protocol generations ar
 
 ### P1 — A2A next bounded profile
 
-- [x] **A2A-1** — migrate discovery/transport metadata and bounded `SendMessage` behavior to stable A2A `1.0.1`; advertise protocol version `1.0`; use `/.well-known/agent-card.json`, `supportedInterfaces`, JSON-RPC `SendMessage`, HTTP+JSON `/message:send`, and v1 Part shapes; remove v0.3 aliases.
+- [x] **A2A-1** — migrate discovery/transport metadata and bounded `SendMessage` behavior to stable A2A `1.0.1`; advertise protocol version `1.0`; use `/.well-known/agent-card.json`, `supportedInterfaces`, JSON-RPC `SendMessage`, HTTP+JSON `/message:send`, and v1 Part shapes; remove v0.3 wire aliases.
 - [ ] **A2A-2** — replace the temporary bearer-only model with shared named security profiles and per-principal skill/action authorization.
 - [ ] **A2A-3** — support multiple deployment-configured A2A skills mapped only to explicitly registered workflows. Clients must never select arbitrary workflow paths/files/catalog entries.
-- [ ] **A2A-4** — implement A2A Tasks as a thin projection over common OWA invocation state, not a second execution/persistence engine. Prefer `task_id == invocation_id` unless the pinned protocol requires otherwise. Validate the exact TaskStatus mapping against A2A `1.0.1`.
-- [ ] **A2A-5** — add Task retrieval and cancellation through common invocation/`ExecutionHandle` APIs. Durable waiting/approval state remains owned by existing common stores.
-- [ ] **A2A-6** — map waiting/input-required/resume behavior to the A2A Task model using protocol-native semantics; do not invent an OWA-specific async flag.
-- [ ] **A2A-7** — after Task state is green, implement A2A streaming/resubscription over the common lifecycle/event infrastructure. Never expose engine-native checkpoint or stream objects.
-- [ ] **A2A-8** — add A2A interoperability/conformance coverage and capability-accuracy tests before expanding advertisement.
+- [x] **A2A-4** — implement A2A Tasks as a thin projection over common OWA invocation state, not a second execution/persistence engine. `task_id == invocation_id`; Task state, context, status messages, artifacts, and raw-byte base64 JSON encoding are covered by deterministic tests against the official v1 definitions.
+- [x] **A2A-5** — add Task retrieval and cancellation through common invocation/`ExecutionHandle` APIs. Implemented JSON-RPC `GetTask`/`CancelTask` and HTTP+JSON `/tasks/{id}` / `/tasks/{id}:cancel`, including official Task-not-found `-32001` and Task-not-cancelable `-32002` JSON-RPC mappings.
+- [ ] **A2A-6** — map waiting/input-required/resume and protocol-native asynchronous behavior to the A2A Task model. Follow official `SendMessageConfiguration.returnImmediately`; do not invent an OWA-specific async flag.
+- [ ] **A2A-7** — after Task state/authorization are green, implement A2A streaming/resubscription over the common lifecycle/event infrastructure. Never expose engine-native checkpoint or stream objects.
+- [ ] **A2A-8** — add external A2A interoperability/conformance evidence and capability-accuracy tests before expanding advertisement beyond the bounded Task profile.
 
-### Recommended implementation order for A2A
+### Recommended implementation order for remaining A2A work
 
 ```text
-shared security profiles
-  -> deployment-declared skills
-  -> Task projection
-  -> tasks/get + tasks/cancel
+shared security RuntimeConfig/adapters
+  -> deployment-declared skills + per-skill authorization
   -> waiting/input-required + resume mapping
-  -> spec-native async behavior
+  -> SendMessageConfiguration.returnImmediately async behavior
   -> message/task streaming + resubscription
   -> interoperability/conformance gates
 ```
 
-The current blocker for streaming is therefore **not engine streaming**. It is the missing portable A2A Task/message/artifact lifecycle projection and its authorization/capability contract.
+The Task projection and get/cancel blocker is removed. The current blockers for broader A2A streaming/async advertisement are now **shared authorization + skill routing + portable waiting/resume/async semantics**, not engine-native streaming.
 
 ## Intentionally Deferred
 
@@ -97,7 +103,7 @@ Push notifications remain deferred because they introduce an outbound callback t
 
 ### Full A2A conformance claim
 
-A broad/full A2A conformance claim remains deferred until the bounded Task/streaming profile and applicable interoperability/conformance gates are complete. Advertise only the implemented bounded profile.
+A broad/full A2A conformance claim remains deferred until the bounded async/streaming profile and applicable interoperability/conformance gates are complete. Advertise only the implemented bounded profile.
 
 ### Microsoft Agent Framework production status
 
@@ -113,6 +119,7 @@ User delegation/token exchange/consent is deferred until a concrete enterprise A
 
 ## Working Rules
 
+- Use the official A2A Project website/specification definitions as the source of truth for A2A wire behavior.
 - Add/update deterministic tests before marking implementation tasks complete.
 - Keep core framework-neutral; engine packages own framework-specific behavior only.
 - Route executable workflow operations through common `SandboxManager`.
