@@ -129,7 +129,7 @@ def test_security_config_rejects_inline_values_and_insecure_oauth_endpoints() ->
         SecurityConfig.model_validate(
             {"profiles": {"bad": {"type": "bearer", "token": "inline-secret"}}}
         )
-    assert "inline-secret" in str(inline_error.value)
+    assert "inline-secret" not in str(inline_error.value)
     with pytest.raises(Exception, match="HTTPS"):
         OAuth2ClientCredentialsSecurityProfile.model_validate(
             {
