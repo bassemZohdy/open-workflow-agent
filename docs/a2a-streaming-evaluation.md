@@ -1,35 +1,52 @@
 # A2A and Streaming Evaluation
 
-Status: **bounded inbound A2A 1.0 profile shipped; A2A Tasks and protocol-native streaming remain active backlog.**
+Status: **bounded inbound A2A v1 SendMessage + Task get/cancel profile implemented; shared authorization, async waiting/resume, and streaming remain active backlog.**
 
 ## Reference Baseline
 
-The project targets the stable A2A **1.0.1** release and advertises protocol version **1.0** only for implemented/verified behavior.
+The project pins A2A maintenance release **1.0.1** and advertises wire protocol version **1.0** only for implemented/verified behavior.
 
-Authoritative references:
+For A2A wire semantics, use the official A2A Project website and generated definitions as the primary source of truth:
 
 ```text
 https://a2a-protocol.org/latest/
-https://github.com/a2aproject/A2A
+https://a2a-protocol.org/latest/definitions/
 ```
 
-Legacy A2A v0.3 discovery, methods, and Part forms are intentionally not preserved as compatibility aliases.
+The upstream release history is used to pin the reviewed maintenance release. External A2A v0.3 discovery/method/Part compatibility aliases are intentionally not retained.
 
-## Current Open Workflow Agent A2A Boundary
+## Open Workflow A2A Vocabulary Is a Separate Layer
 
-The runtime now has both:
+The official Open Workflow 1.0.3 schema defines its own A2A call values such as `message/send`, `tasks/get`, and `tasks/cancel`.
 
-- a bounded common outbound A2A client path in `ProtocolServices`; and
-- an optional bounded inbound A2A server boundary.
+OWA preserves that schema unchanged and translates those values at `RuntimeServices.call_protocol()` to the official A2A v1 wire operations:
 
-Inbound A2A is disabled by default and deployment-controlled.
+```text
+message/send  -> SendMessage
+tasks/get     -> GetTask
+tasks/cancel  -> CancelTask
+```
 
-Implemented discovery/bindings:
+This is a DSL-to-protocol adapter, not a legacy A2A wire compatibility layer.
+
+## Current A2A Boundary
+
+The runtime has a bounded common outbound A2A client and an optional inbound A2A server. Inbound A2A is disabled by default and deployment-controlled.
+
+Implemented bindings:
 
 ```text
 GET  /.well-known/agent-card.json
-POST <configured A2A path>                 JSON-RPC SendMessage
-POST <configured A2A path>/message:send    HTTP+JSON
+
+JSON-RPC at <configured path>
+  SendMessage
+  GetTask
+  CancelTask
+
+HTTP+JSON
+  POST <configured path>/message:send
+  GET  <configured path>/tasks/{id}
+  POST <configured path>/tasks/{id}:cancel
 ```
 
 Selectable transports:
@@ -41,133 +58,121 @@ http_json
 
 Current guarantees:
 
-- stable A2A v1 Agent Card metadata with `supportedInterfaces`;
-- synchronous bounded `SendMessage`;
-- v1 message/Part shapes;
-- deployment-configured public base URL rather than request-derived identity;
+- A2A v1 Agent Card metadata with `supportedInterfaces`;
+- bounded synchronous `SendMessage`;
+- v1 Message/Part shapes;
+- A2A Task projection over common invocation state;
+- Task retrieval/cancellation using common `InvocationStore` and engine cancellation;
+- deployment-configured public base URL;
 - optional temporary deployment bearer guard;
 - bounded request/message sizes;
-- sanitized transport-specific errors;
-- no engine-native checkpoint, thread, run, or stream objects;
-- ADK and LangGraph use the same common protocol boundary;
-- `/v1/capabilities` advertises only the implemented bounded A2A profile.
+- sanitized errors;
+- no engine-native checkpoint/thread/run/stream exposure;
+- identical common Task semantics independent of ADK/LangGraph;
+- capability advertisement limited to implemented behavior.
 
 Current non-guarantees:
 
-- no persistent A2A Task model yet;
-- no Task get/cancel API yet;
-- no protocol-native async Task-returning send behavior yet;
-- no A2A message/task streaming or resubscription yet;
+- no deployment-declared multi-skill routing yet;
+- shared named security profiles are not wired into A2A yet;
+- no protocol-native non-blocking `returnImmediately` behavior yet;
+- no complete waiting/input-required/resume multi-turn contract yet;
+- no A2A streaming/resubscription yet;
 - no push notifications;
 - no broad/full A2A conformance claim;
-- no user-delegation/token-exchange contract inside OWA.
+- no delegated-user/token-exchange contract inside OWA.
+
+## Implemented A2A Task Projection
+
+A2A Tasks are a view over common OWA invocation state, never a second workflow/persistence engine.
+
+Identity:
+
+```text
+A2A task id   = OWA invocation_id
+A2A contextId = OWA session_id
+```
+
+State mapping:
+
+```text
+OWA running    -> TASK_STATE_WORKING
+OWA waiting    -> TASK_STATE_INPUT_REQUIRED
+OWA completed  -> TASK_STATE_COMPLETED
+OWA faulted    -> TASK_STATE_FAILED
+OWA cancelled  -> TASK_STATE_CANCELED
+```
+
+Output projection follows the official v1 Part representation:
+
+```text
+string output      -> text Part
+structured output  -> data Part
+byte output        -> base64 raw Part
+```
+
+Waiting/failure status Messages carry `taskId` and `contextId`. Failure projection exposes only a sanitized common error code, never engine exceptions or secrets.
+
+Official JSON-RPC Task error mappings implemented:
+
+```text
+Task not found       -32001
+Task not cancelable  -32002
+```
+
+HTTP+JSON returns the corresponding bounded 404/400 error boundary.
 
 ## Existing Common Lifecycle SSE
 
-The engine-neutral lifecycle stream is already implemented at:
+The engine-neutral lifecycle stream remains:
 
 ```text
 GET /v1/events/lifecycle/stream
 ```
 
-It is a reusable runtime primitive, not an A2A binding.
+It provides reusable bounded mechanics—SSE framing, replay, ordering, queues, backpressure, subscriber limits, event/byte/time limits, and sanitized lifecycle data—but it is **not** itself an A2A stream.
 
-Implemented invariants:
+An A2A streaming endpoint must translate common lifecycle state into protocol-native Task/Message/Artifact stream responses rather than exposing raw OWA lifecycle CloudEvents as A2A payloads.
 
-- Server-Sent Events;
-- common sanitized lifecycle CloudEvents;
-- per-runtime emission ordering;
-- subscriber registration before response control is yielded;
-- bounded replay with `Last-Event-ID` while the cursor remains retained;
-- fail-closed replay error when the cursor is no longer available;
-- bounded subscriber queues with slow-consumer termination;
-- bounded event count, byte count, stream lifetime, queue size, and subscriber count;
-- explicit terminal stream reason;
-- disconnecting an observer does not cancel the workflow invocation;
-- no ADK/LangGraph checkpoint or native stream objects.
+## Official Async Semantics
 
-The lifecycle stream remains separate from `features.streaming`, which represents engine-native/general output streaming.
+The official A2A v1 contract defines ordinary `SendMessage` as blocking by default. `SendMessageConfiguration.returnImmediately=true` is the protocol-native non-blocking option.
 
-## Why A2A Streaming Is Not the Next First Step
-
-The missing prerequisite is no longer “an inbound A2A endpoint” or “some streaming primitive.” Both now exist in bounded form.
-
-The remaining architectural prerequisite is a portable A2A Task/message/artifact lifecycle projection over common OWA invocation state.
-
-Target relationship:
+That gives OWA the required design rule:
 
 ```text
-A2A Task
-   |
-   +-- task_id / context_id
-   +-- status
-   +-- messages
-   +-- artifacts
-   |
-   v
-OWA invocation_id / ExecutionHandle
-   |
-   v
-ADK or LangGraph native execution state
+returnImmediately absent/false
+  -> execute until terminal or interrupted Task state
+
+returnImmediately true
+  -> return the current Task projection without waiting for terminal completion
+  -> client follows with GetTask and later SubscribeToTask when supported
 ```
 
-A2A must not introduce a second workflow engine or a second durability model.
+OWA must not add a custom `async` flag.
 
-Preferred identity:
+Before implementing this, the runtime needs a clean common way to launch/retain an active invocation while returning its persistent `ExecutionHandle` projection without binding the public contract to an in-process engine task object.
+
+## Waiting / Input Required / Resume
+
+The common runtime already owns waiting and resume semantics. The remaining A2A work is to make the protocol projection exact:
 
 ```text
-A2A task_id == OWA invocation_id
+common waiting
+  -> TASK_STATE_INPUT_REQUIRED
+  -> TaskStatus.message explains that additional input is required
+
+new client message / protocol-native continuation
+  -> common invocation resume
+  -> same task id/context id
+  -> updated Task projection
 ```
 
-unless exact A2A 1.0.1 semantics require a distinct external identifier.
+`AUTH_REQUIRED` must not be invented from ordinary waiting state. It should be introduced only when an actual authentication continuation requirement exists.
 
-## Required Task Mapping Work
+## Shared Security Boundary
 
-The next bounded slice should validate and implement the exact A2A 1.0.1 TaskStatus mapping against the portable OWA lifecycle.
-
-Conceptual mapping only — implementation must validate exact protocol names before finalizing:
-
-```text
-A2A submitted / working
-        -> common invocation created/running
-
-A2A input-required
-        -> common waiting/HITL state
-
-A2A completed
-        -> common completed
-
-A2A failed
-        -> common faulted
-
-A2A canceled
-        -> common cancelled
-```
-
-Common invocation, persistence, cancellation, approval, resume, and lifecycle services remain authoritative.
-
-## Recommended A2A Implementation Order
-
-```text
-1. Shared named security profiles
-2. Deployment-declared A2A skills mapped to registered workflows
-3. A2A Task projection over Invocation/ExecutionHandle
-4. Task retrieval
-5. Task cancellation
-6. waiting/input-required/resume mapping
-7. spec-native async Task-returning send behavior
-8. A2A message/task streaming over common lifecycle events
-9. resubscription/reconciliation
-10. interoperability/conformance gates
-```
-
-This order avoids inventing streaming semantics before the public A2A lifecycle object exists.
-
-## Security Boundary Before Expanding A2A
-
-The current temporary bearer field is a bounded pre-stable implementation detail. The next profile should consume the common named security model.
-
-Initial shared profile types:
+Framework-neutral security primitives now exist for:
 
 ```text
 bearer
@@ -176,48 +181,49 @@ oauth2_client_credentials
 mtls
 ```
 
-Authorization should be expressible per principal/action/resource, including A2A actions such as:
+They include env-only secret references, secret-safe validation, principal/role/scope/audience modeling, and action/resource authorization rules.
+
+Remaining integration before expanding A2A:
+
+- add profiles to the main strict runtime configuration;
+- make A2A reference a named profile instead of `auth_token`;
+- advertise official Agent Card `securitySchemes` / `securityRequirements` accurately;
+- authenticate at HTTP/TLS layer, never in A2A message payloads;
+- authorize protocol-native actions such as `message.send`, `tasks.get`, and `tasks.cancel` against the selected skill/resource;
+- map clients only to deployment-declared skills/workflows.
+
+Delegated identity, OAuth/OIDC federation, token exchange, and consent remain external identity-platform concerns.
+
+## Remaining Implementation Order
 
 ```text
-message.send
-tasks.get
-tasks.cancel
+1. RuntimeConfig + protocol integration for named security profiles
+2. deployment-declared A2A skills -> registered workflows
+3. per-principal skill/action authorization
+4. waiting/input-required/resume protocol mapping
+5. SendMessageConfiguration.returnImmediately
+6. SendStreamingMessage over common lifecycle/event infrastructure
+7. SubscribeToTask reconciliation/resubscription
+8. external interoperability/conformance evidence
 ```
 
-A2A skills must be deployment-owned and map only to explicitly registered workflows. A client must never select an arbitrary workflow file/path/catalog entry.
+The earlier Task-model blocker is removed. The current blockers are authorization/skill routing and the precise portable async/resume contract.
 
-User delegation, OAuth2/OIDC federation, token exchange, and consent remain identity-platform responsibilities and do not block the basic Task projection.
+## Streaming Rules
 
-## A2A Streaming Decision
+When A2A streaming is implemented:
 
-After Task state is stable, A2A HTTP streaming should map protocol-native task/message/artifact updates onto the existing common event/lifecycle infrastructure.
-
-Rules:
-
-- stream incrementally; do not buffer the entire response;
-- never expose engine-native checkpoints or stream objects;
-- preserve the same authentication/authorization checks as non-streaming operations;
+- use official `SendStreamingMessage` / `SubscribeToTask` semantics;
+- stream incrementally rather than buffering the response;
+- project common Task/Message/Artifact state, not engine-native streams;
+- preserve the same security/authorization as non-streaming operations;
 - preserve bounded queues, backpressure, time/byte/event limits, and sanitized errors;
-- support resubscription/reconciliation using protocol-native semantics where required;
-- capability advertisement must remain exact and fail closed.
-
-The common lifecycle SSE endpoint may provide reusable mechanics, but the A2A stream is a separate protocol contract and must not simply expose raw lifecycle events as if they were A2A Task updates.
+- use protocol-native resubscription/reconciliation;
+- advertise streaming only after deterministic and interoperability gates are green.
 
 ## Push Notifications
 
-Push notifications remain deferred because they create a new outbound callback trust boundary.
-
-Required policy before implementation:
-
-- callback endpoint allowlisting;
-- TLS/server identity verification;
-- callback authentication;
-- SSRF protection;
-- replay/idempotency protection;
-- bounded retries and dead-letter behavior;
-- secret-safe logging/observability.
-
-Push notifications are not required to complete the next bounded Task/streaming profile.
+Push notifications remain intentionally deferred because they add an outbound callback trust boundary requiring callback allowlisting, TLS/server identity verification, callback authentication, SSRF protection, replay/idempotency controls, bounded retries/dead-letter behavior, and secret-safe observability.
 
 ## Current Capability Position
 
@@ -225,16 +231,20 @@ Push notifications are not required to complete the next bounded Task/streaming 
 common lifecycle SSE          implemented
 inbound A2A Agent Card        implemented
 A2A SendMessage               implemented
+A2A Task projection           implemented
+A2A GetTask                   implemented
+A2A CancelTask                implemented
 jsonrpc transport             implemented
 http_json transport           implemented
-persistent A2A Tasks          active backlog
-Task get/cancel               active backlog
-A2A async Task behavior       active backlog after Task projection
-A2A streaming/resubscription  active backlog after Task projection
+shared security primitives    implemented; adapter integration active
+multi-skill routing           active backlog
+waiting/resume A2A mapping    active backlog
+returnImmediately async       active backlog
+A2A streaming/resubscription  active backlog
 push notifications            intentionally deferred
 full A2A conformance claim    intentionally deferred
 ```
 
-The key architectural conclusion is:
+The architectural conclusion is now:
 
-> The A2A blocker has shifted from transport/server readiness to the missing protocol-level Task projection, authorization boundary, and exact lifecycle mapping. Implement those in core before adding streaming.
+> The A2A Task projection/get/cancel blocker is removed. Complete shared authorization, deployment-owned skill routing, and protocol-native async/resume semantics before advertising streaming.
