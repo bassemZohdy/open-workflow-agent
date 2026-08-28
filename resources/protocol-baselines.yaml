@@ -1,0 +1,35 @@
+verified: "2026-08-28"
+policy: latest-stable-reviewed
+baselines:
+  open_workflow:
+    release: "1.0.3"
+    implemented: true
+    profile: "OWA Portable Profile v1"
+    conformance_claim: false
+  a2a:
+    release: "1.0.1"
+    protocol_version: "1.0"
+    implemented: true
+    profile: "bounded inbound/outbound profile"
+    conformance_claim: false
+  mcp:
+    release: "2026-07-28"
+    protocol_version: "2026-07-28"
+    implemented: true
+    profile: "bounded common client/tool profile"
+    conformance_claim: false
+  openapi:
+    release: "3.2.0"
+    implemented: true
+    profile: "bounded operation adapter"
+    conformance_claim: false
+  cloudevents:
+    release: "1.0.2"
+    specversion: "1.0"
+    implemented: true
+    profile: "bounded lifecycle events"
+    conformance_claim: false
+  asyncapi:
+    release: "3.1.0"
+    implemented: false
+    conformance_claim: false
