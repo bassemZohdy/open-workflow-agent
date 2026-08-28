@@ -98,9 +98,7 @@ def test_waiting_task_maps_to_input_required_without_engine_details() -> None:
             "contextId": "ctx-1",
             "taskId": "inv-1",
             "role": "ROLE_AGENT",
-            "parts": [
-                {"text": "additional input is required", "mediaType": "text/plain"}
-            ],
+            "parts": [{"text": "additional input is required", "mediaType": "text/plain"}],
         },
     }
 
