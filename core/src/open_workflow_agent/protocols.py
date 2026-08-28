@@ -16,6 +16,9 @@ import httpx
 
 from .errors import ToolError
 
+MCP_PROTOCOL_VERSION = "2026-07-28"
+A2A_PROTOCOL_VERSION = "1.0"
+
 MCP_METHODS = frozenset(
     {
         "tools/list",
@@ -29,17 +32,11 @@ MCP_METHODS = frozenset(
 )
 A2A_METHODS = frozenset(
     {
-        "message/send",
-        "message/stream",
-        "tasks/get",
-        "tasks/list",
-        "tasks/cancel",
-        "tasks/resubscribe",
-        "tasks/pushNotificationConfig/set",
-        "tasks/pushNotificationConfig/get",
-        "tasks/pushNotificationConfig/list",
-        "tasks/pushNotificationConfig/delete",
-        "agent/getAuthenticatedExtendedCard",
+        "SendMessage",
+        "GetTask",
+        "ListTasks",
+        "CancelTask",
+        "GetExtendedAgentCard",
     }
 )
 OUTPUT_MODES = frozenset({"raw", "content", "response"})
@@ -254,6 +251,12 @@ class ProtocolServices:
             endpoint = _endpoint_value(payload.get("endpoint") or http_transport.get("endpoint"))
             if not endpoint:
                 raise ToolError("mcp call requires transport.http.endpoint")
+            requested_version = payload.get("protocolVersion")
+            if requested_version is not None and str(requested_version) != MCP_PROTOCOL_VERSION:
+                raise ToolError(
+                    f"unsupported MCP protocol version: {requested_version}; "
+                    f"supported version is {MCP_PROTOCOL_VERSION}"
+                )
             method = payload.get("method", "tools/call")
             if method not in MCP_METHODS:
                 raise ToolError(f"unsupported MCP method: {method}")
@@ -270,8 +273,12 @@ class ProtocolServices:
                 "params": parameters,
             }
             headers = dict(http_transport.get("headers", {}) or {})
-            if payload.get("protocolVersion"):
-                headers.setdefault("MCP-Protocol-Version", str(payload["protocolVersion"]))
+            headers["Mcp-Protocol-Version"] = MCP_PROTOCOL_VERSION
+            headers["Mcp-Method"] = str(method)
+            if method == "tools/call" and isinstance(parameters, dict):
+                name = parameters.get("name")
+                if isinstance(name, str) and name:
+                    headers["Mcp-Name"] = name
             client = payload.get("client")
             if isinstance(client, dict):
                 if client.get("name"):
@@ -294,20 +301,29 @@ class ProtocolServices:
             )
             if not endpoint:
                 raise ToolError("a2a call requires server endpoint")
-            method = payload.get("method", "message/send")
+            requested_version = payload.get("protocolVersion")
+            if requested_version is not None and str(requested_version) != A2A_PROTOCOL_VERSION:
+                raise ToolError(
+                    f"unsupported A2A protocol version: {requested_version}; "
+                    f"supported version is {A2A_PROTOCOL_VERSION}"
+                )
+            method = payload.get("method", "SendMessage")
             if method not in A2A_METHODS:
                 raise ToolError(f"unsupported A2A method: {method}")
+            parameters = payload.get("parameters", payload.get("params"))
+            if parameters is None:
+                message = payload.get("message")
+                parameters = {"message": message} if method == "SendMessage" else {}
             body = {
                 "jsonrpc": "2.0",
                 "id": payload.get("id", operation_id or str(uuid4())),
                 "method": method,
-                "params": payload.get(
-                    "parameters", payload.get("params", payload.get("message", {}))
-                ),
+                "params": parameters,
             }
             return await self.http.request(
                 "POST",
                 str(endpoint),
+                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
                 json=body,
                 operation_id=operation_id,
                 request_timeout=_duration_seconds(payload.get("timeout")),
