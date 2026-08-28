@@ -2,71 +2,110 @@
 
 Verified: 2026-08-29
 
-Open Workflow Agent targets the latest stable released version of each external protocol/specification it implements or advertises. Baselines are pinned per project release or reviewed `main` state; they never float automatically at runtime.
+Open Workflow Agent targets reviewed stable releases of the external protocols/specifications it implements or advertises. The canonical machine-readable project record is `resources/protocol-baselines.yaml`. Baselines are pinned per reviewed project state and never float automatically at runtime.
 
 ## Current Baselines
 
 | Protocol / specification | Pinned stable baseline | OWA status |
 | --- | --- | --- |
 | Open Workflow Specification | `1.0.3` | Implemented subset / OWA Portable Profile |
-| A2A Protocol | `1.0.1` | Bounded inbound v1 profile implemented; Task/streaming/conformance expansion remains backlog |
-| Model Context Protocol | `2026-07-28` | Common client migration implemented on `main`; final compatibility/advertisement audit remains active |
+| A2A Protocol | release `1.0.1`, protocol `1.0` | Bounded v1 SendMessage + Task get/cancel profile |
+| Model Context Protocol | `2026-07-28` | Bounded common client/tool profile |
 | OpenAPI Specification | `3.2.0` | Bounded operation adapter only; no full parser/conformance claim |
-| CloudEvents | `1.0.2` | Bounded lifecycle snapshot/SSE behavior implemented; exact compatibility verification remains active |
-| AsyncAPI Specification | `3.1.0` | Future binding baseline |
-| gRPC | current stable protocol/toolchain | No independent OWA application-protocol version is advertised unless a concrete binding is implemented |
+| CloudEvents | `1.0.2` | Bounded lifecycle snapshot/SSE profile using `specversion: 1.0` |
+| AsyncAPI Specification | `3.1.0` | Future binding baseline; not implemented |
 
-## Authoritative Verification
+## CI Drift Guard
 
-### Open Workflow Specification — 1.0.3
+`tests/core/test_protocol_baselines.py` ties the manifest to:
 
-The official workflow schema used by OWA identifies itself as:
+- runtime A2A and MCP protocol constants;
+- the bundled Open Workflow `1.0.3` schema;
+- the bounded supported A2A/MCP operation sets;
+- documentation baseline rows;
+- the project rule that no broad conformance claim is made by default.
+
+Because this test is part of the root quality gate used before release, changing a runtime-advertised baseline without updating/reviewing the canonical manifest and documentation fails CI.
+
+## Open Workflow Specification — 1.0.3
+
+OWA bundles and validates against the official Open Workflow schema revision:
 
 ```text
 https://open-workflow-specification.org/schemas/1.0.3/workflow.yaml
 ```
 
-OWA bundles and validates against this exact schema revision.
+The schema is not modified by OWA. OWA advertises its tested Portable Profile rather than claiming full Open Workflow conformance.
 
-Authoritative source:
+The Open Workflow A2A task schema defines call values such as:
+
+```text
+message/send
+tasks/get
+tasks/cancel
+```
+
+These values are the Open Workflow DSL vocabulary. They are not external A2A wire compatibility aliases. OWA translates them at `RuntimeServices.call_protocol()` to the pinned A2A v1 wire operation names while leaving the Open Workflow schema untouched.
+
+Authoritative project source:
 
 ```text
 https://github.com/open-workflow-specification/specification
 ```
 
-OWA intentionally advertises only its tested Portable Profile rather than claiming full Open Workflow conformance.
+## A2A Protocol — release 1.0.1 / protocol 1.0
 
-### A2A Protocol — 1.0.1
+For A2A wire semantics, use the **official A2A Project website and generated protocol definitions** as the primary source of truth:
 
-The official A2A project lists `v1.0.1` as the stable maintenance release used by this project. OWA has migrated the bounded inbound profile away from legacy `0.3.0` assumptions.
+```text
+https://a2a-protocol.org/latest/
+https://a2a-protocol.org/latest/definitions/
+```
 
-Implemented v1 boundary includes:
+The upstream release history is used to pin the reviewed maintenance release (`1.0.1`), while the Agent Card advertises the A2A wire protocol version `1.0`.
+
+Implemented bounded v1 boundary:
 
 ```text
 GET  /.well-known/agent-card.json
-JSON-RPC SendMessage
-HTTP+JSON /message:send
-supportedInterfaces
-protocolVersion: 1.0
-v1 message/Part shapes
+
+JSON-RPC:
+  SendMessage
+  GetTask
+  CancelTask
+
+HTTP+JSON:
+  POST /message:send
+  GET  /tasks/{id}
+  POST /tasks/{id}:cancel
 ```
 
-Legacy v0.3 discovery paths, method names, and Part compatibility aliases are intentionally not retained.
+Implemented v1 semantics also include:
 
-Persistent A2A Tasks, task retrieval/cancellation, protocol-native async Task behavior, streaming/resubscription, push notifications, and broad conformance remain outside the currently advertised bounded profile.
+- `supportedInterfaces` with protocol version `1.0`;
+- v1 Message/Part shapes without v0.3 `kind` discriminators;
+- Task projection over common OWA invocation state;
+- Task state mapping to `TASK_STATE_WORKING`, `INPUT_REQUIRED`, `COMPLETED`, `FAILED`, and `CANCELED`;
+- Task artifacts using text/data/raw Part shapes; raw bytes use base64 JSON encoding;
+- JSON-RPC Task-not-found `-32001`;
+- JSON-RPC Task-not-cancelable `-32002`;
+- capability advertisement limited to implemented Task operations.
 
-Authoritative sources:
+Legacy v0.3 discovery paths/method names remain unsupported on the A2A wire endpoint.
 
-```text
-https://github.com/a2aproject/A2A/releases
-https://a2a-protocol.org/latest/
-```
+Not yet advertised:
 
-### Model Context Protocol — 2026-07-28
+- `SendMessageConfiguration.returnImmediately` non-blocking behavior;
+- waiting/resume as complete multi-turn A2A semantics;
+- `SendStreamingMessage` / `SubscribeToTask`;
+- push notifications;
+- broad/full A2A conformance.
 
-The MCP project released specification revision `2026-07-28`, including the stateless protocol core and the current authorization/task semantics.
+The official A2A specification defines ordinary `SendMessage` as blocking by default and uses `returnImmediately=true` for the protocol-native non-blocking path. OWA will follow that contract rather than introducing a custom async flag.
 
-The common OWA MCP client migration is implemented on `main`; final protocol-wide audit and compatibility/advertisement gates remain active work before making a broader support claim.
+## Model Context Protocol — 2026-07-28
+
+The common OWA MCP client is pinned to `2026-07-28` and covered by deterministic method/version/transport tests. OWA claims only the bounded operations implemented by `ProtocolServices`, not complete MCP conformance.
 
 Authoritative sources:
 
@@ -75,11 +114,9 @@ https://modelcontextprotocol.io/
 https://blog.modelcontextprotocol.io/posts/2026-07-28/
 ```
 
-### OpenAPI Specification — 3.2.0
+## OpenAPI Specification — 3.2.0
 
-The OpenAPI Initiative identifies `3.2.0` as the current stable OpenAPI Specification baseline used for OWA review.
-
-OWA currently exposes a bounded operation adapter. It does not claim a complete OAS 3.2 parser or conformance implementation.
+OWA exposes a bounded operation adapter. It does not claim a complete OAS 3.2 parser or conformance implementation.
 
 Authoritative source:
 
@@ -87,11 +124,9 @@ Authoritative source:
 https://spec.openapis.org/oas/latest.html
 ```
 
-### CloudEvents — 1.0.2
+## CloudEvents — 1.0.2
 
-The CloudEvents specification repository identifies `ce@v1.0.2` as the stable core/event-format family baseline used by OWA.
-
-OWA exposes bounded lifecycle CloudEvents snapshots and lifecycle SSE. Exact compatibility verification remains part of the active protocol gate before broadening any conformance wording.
+OWA exposes bounded lifecycle CloudEvents JSON snapshots and SSE observations using CloudEvents `specversion: 1.0`. This is a bounded runtime profile, not a claim of implementing every CloudEvents transport/binding.
 
 Authoritative source:
 
@@ -99,19 +134,15 @@ Authoritative source:
 https://github.com/cloudevents/spec
 ```
 
-### AsyncAPI Specification — 3.1.0
+## AsyncAPI Specification — 3.1.0
 
-AsyncAPI `3.1.0` is the target baseline if/when an AsyncAPI binding is implemented.
+AsyncAPI `3.1.0` is pinned only as a future binding baseline. OWA does not currently implement or advertise AsyncAPI behavior.
 
 Authoritative source:
 
 ```text
 https://www.asyncapi.com/docs/reference/specification/v3.1.0
 ```
-
-### gRPC
-
-gRPC does not define an OWA-level application schema version analogous to A2A, MCP, OpenAPI, or AsyncAPI. If OWA introduces a gRPC binding, the project must pin the relevant protobuf definitions and stable library/toolchain versions and advertise only the application contract actually implemented.
 
 ## Upgrade Policy
 
@@ -133,10 +164,10 @@ OWA release
 
 Draft, preview, RC, and editor-draft specifications must not become the default production baseline.
 
-Because the OWA public contract is still stabilizing, legacy protocol generations are removed during migration rather than maintained automatically as compatibility layers.
+Because the OWA public contract is still stabilizing, external protocol compatibility layers are not retained automatically. Compatibility is explicit and reviewed.
 
 ## Advertisement Rule
 
-`/v1/capabilities`, Agent Cards, protocol metadata, and release documentation may advertise only behavior that is both implemented and covered by the applicable deterministic/acceptance gates.
+`/v1/capabilities`, Agent Cards, protocol metadata, and release documentation may advertise only behavior that is both implemented and covered by applicable deterministic/acceptance gates.
 
-A pinned baseline is therefore a review target, not by itself a conformance claim.
+A pinned baseline is a review target, not by itself a conformance claim.
