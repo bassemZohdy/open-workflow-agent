@@ -2,51 +2,39 @@
 
 Date: 2026-08-28
 
-This document records the project-wide decisions for protocol baselines, security configuration, A2A skill/task semantics, traffic policy, and the sandbox contract naming cleanup.
+This document records the project-wide protocol, security, A2A, traffic-policy, and sandbox-contract decisions. `Project Definition.md` remains the product/architecture authority; this file is the focused implementation policy.
 
-`Project Definition.md` remains authoritative. This document refines how protocol integrations and security configuration must be implemented.
+## 1. Protocol version policy
 
-## 1. External protocol version policy
+OWA targets the **latest stable released** version of every external protocol/specification it implements or advertises. Draft, preview, RC, editor-draft, or unreleased revisions are not production contracts.
 
-Open Workflow Agent targets the **latest stable released version** of every external protocol/specification it implements or advertises.
-
-Each OWA release pins an explicitly reviewed baseline. Draft, preview, RC, editor-draft, or unreleased revisions are not production contracts.
-
-Required process:
+Each baseline change follows:
 
 ```text
-latest stable release from authoritative source
-        ↓
-compatibility/security review
-        ↓
-pin exact project baseline/schema/fixtures
-        ↓
-implementation/migration
-        ↓
-deterministic contract/conformance/interoperability tests
-        ↓
-capability advertisement
-        ↓
-release
+authoritative stable release
+  -> compatibility/security review
+  -> exact pinned baseline
+  -> implementation/migration
+  -> deterministic tests
+  -> capability advertisement
+  -> release
 ```
 
-### No backward compatibility at this stage
+### No backward compatibility before contract stabilization
 
-OWA does **not** carry legacy protocol generations while its public product contract is still stabilizing.
+OWA is still pre-stable. It does not carry legacy protocol generations by default.
 
-When migrating an implementation to a newer stable protocol baseline:
+When moving to a newer stable baseline:
 
-- remove legacy version-specific semantics and discovery aliases unless a new explicit product decision requires them;
-- do not maintain v0.x compatibility merely because an SDK supports it;
-- do not advertise multiple protocol generations without dedicated tests and a later compatibility decision.
+- remove legacy version-specific semantics and aliases unless a new explicit product decision requires them;
+- do not preserve v0.x behavior only because an SDK supports it;
+- do not advertise multiple generations without dedicated compatibility tests.
 
-This specifically means the A2A v1 migration will not retain v0.3 compatibility behavior.
+A2A v0.3 compatibility is therefore intentionally removed rather than preserved.
 
-## 2. Pinned protocol baselines
+## 2. Pinned baselines
 
-The verified baseline record is maintained in `docs/protocol-baselines.md`.
-
-Current baselines:
+The verified record is maintained in [protocol-baselines.md](protocol-baselines.md).
 
 ```text
 Open Workflow Specification  1.0.3
@@ -57,50 +45,30 @@ CloudEvents                  1.0.2
 AsyncAPI Specification       3.1.0
 ```
 
-gRPC is treated as transport/tooling infrastructure unless an OWA feature introduces a separately versioned application protocol binding.
+gRPC is infrastructure/tooling unless an OWA feature introduces a separately versioned application binding.
 
-## 3. Capability advertisement
+`/v1/capabilities` and protocol discovery metadata advertise only implemented, verified behavior. Prefer `<Protocol> <version> bounded profile` until conformance/interoperability evidence justifies a broader claim.
 
-`/v1/capabilities` and protocol-specific discovery metadata must advertise only protocol/version/features that are implemented and deterministically verified.
+## 3. Security is deployment configuration
 
-Preferred wording remains:
+Authentication and authorization are runtime/deployment concerns, configured through strict YAML plus the existing `OWA__...` environment override convention. Protocol adapters consume resolved security policy; they do not own deployment identity policy.
 
-```text
-<Protocol> <version> bounded profile
-```
+Workflows must never contain raw credentials.
 
-until the applicable conformance/interoperability suite justifies a broader claim.
+## 4. Supported security profile types
 
-## 4. Authentication and authorization are deployment configuration
-
-Authentication and authorization are runtime/deployment concerns and must be externally configurable.
-
-Configuration precedence remains:
+The initial shared security model intentionally supports only the common interoperable mechanisms:
 
 ```text
-built-in defaults
-      ↓
-YAML configuration
-      ↓
-environment-variable overrides
+bearer
+api_key
+oauth2_client_credentials
+mtls
 ```
 
-Environment-variable overrides use the existing `OWA__...` nested convention.
+Do not add uncommon, legacy, or vendor-specific mechanisms without a demonstrated requirement.
 
-Protocol implementations consume resolved security configuration; they do not own deployment security policy.
-
-## 5. Supported security profile types
-
-The initial shared security schema intentionally supports only the most common interoperable mechanisms:
-
-1. `bearer`
-2. `api_key`
-3. `oauth2_client_credentials`
-4. `mtls`
-
-Do not add uncommon, legacy, or vendor-specific authentication mechanisms without a demonstrated requirement.
-
-Conceptual examples:
+Conceptual target schema:
 
 ```yaml
 security:
@@ -108,49 +76,50 @@ security:
     partner-agent:
       type: bearer
       token:
-        fromEnv: A2A_PARTNER_TOKEN
+        from_env: A2A_PARTNER_TOKEN
 
     partner-api:
       type: api_key
-      in: header
+      location: header
       name: X-API-Key
       value:
-        fromEnv: PARTNER_API_KEY
+        from_env: PARTNER_API_KEY
 
     internal-service:
       type: oauth2_client_credentials
       token_endpoint: https://identity.example.com/oauth2/token
       client_id:
-        fromEnv: INTERNAL_CLIENT_ID
+        from_env: INTERNAL_CLIENT_ID
       client_secret:
-        fromEnv: INTERNAL_CLIENT_SECRET
-      scopes:
-        - workflow.invoke
+        from_env: INTERNAL_CLIENT_SECRET
+      scopes: [workflow.invoke]
 
     internal-mtls:
       type: mtls
       certificate:
-        fromEnv: OWA_CLIENT_CERT_PATH
+        from_env: OWA_CLIENT_CERT_PATH
       private_key:
-        fromEnv: OWA_CLIENT_KEY_PATH
+        from_env: OWA_CLIENT_KEY_PATH
       ca_certificate:
-        fromEnv: OWA_CA_CERT_PATH
+        from_env: OWA_CA_CERT_PATH
 ```
 
-Exact field names are finalized by the strict Pydantic implementation, but these four mechanisms define the initial scope.
+These examples describe the target model. Exact strict parser fields become authoritative only when `SECURITY-1` through `SECURITY-4` are implemented and green.
 
-## 6. Standard authorization vocabulary
+## 5. Authorization vocabulary
 
-OWA configuration and documentation use the following standard terms consistently:
+Use these terms consistently:
 
-- **principal / identity** — authenticated caller/service/agent;
-- **role** — named grouping of permissions where role-based authorization is useful;
-- **scope** — delegated or credential-associated authority, especially OAuth2;
-- **permission / action** — concrete operation the principal may perform;
-- **resource** — object/service/skill/workflow the action targets;
-- **audience** — intended token/service recipient where applicable.
+- **principal / identity** — authenticated caller, service, or agent;
+- **role** — named grouping of permissions;
+- **scope** — credential/delegation authority, especially OAuth2;
+- **permission / action** — concrete allowed operation;
+- **resource** — target object, service, skill, workflow, or API;
+- **audience** — intended token/service recipient.
 
-Protocol-native action names should be used when a protocol defines them. A2A examples include:
+Roles and scopes are not synonyms.
+
+Use protocol-native action identifiers where available. For A2A examples:
 
 ```text
 message.send
@@ -158,13 +127,9 @@ tasks.get
 tasks.cancel
 ```
 
-Roles and scopes are not synonyms. A deployment may map roles to permissions or scopes, but the runtime configuration model must keep the concepts explicit rather than silently treating one as the other.
+## 6. Named reusable profiles
 
-## 7. Named security profiles
-
-Protocol integrations reference reusable named security profiles instead of duplicating credentials in each protocol block.
-
-Conceptual configuration:
+Protocol integrations reference named security profiles instead of duplicating credentials:
 
 ```yaml
 security:
@@ -172,73 +137,39 @@ security:
     partner-agent:
       type: bearer
       token:
-        fromEnv: A2A_PARTNER_TOKEN
+        from_env: A2A_PARTNER_TOKEN
       authorization:
         principal: partner-agent
-        roles:
-          - partner
-        scopes:
-          - agent.invoke
+        roles: [partner]
+        scopes: [agent.invoke]
         permissions:
           - action: message.send
-            resources:
-              - skill:residence-renewal
+            resources: [skill:residence-renewal]
           - action: tasks.get
-            resources:
-              - skill:residence-renewal
-```
+            resources: [skill:residence-renewal]
+        audience: open-workflow-agent
 
-Protocol configuration then references the profile:
-
-```yaml
 a2a:
   security_profile: partner-agent
-
-mcp:
-  servers:
-    customer-data:
-      url: https://mcp.example.com
-      security_profile: internal-service
 ```
 
-Workflows may reference a configured security profile only where the runtime contract allows it; they must not carry raw credentials.
+The previous single A2A bearer field is a temporary implementation detail, not a compatibility contract. It will be removed when the shared profile model lands.
 
-## 8. Secret handling
+## 7. Secret handling
 
-Preferred pattern:
+Sensitive values come from deployment-owned secret/environment mechanisms such as Kubernetes/OpenShift Secrets, Docker secrets, Vault, External Secrets Operator, or equivalent secret managers.
 
-```yaml
-token:
-  fromEnv: A2A_PARTNER_TOKEN
-```
+Secrets must never be serialized into workflows, plans, capability responses, Agent Cards, lifecycle events, task/artifact payloads, logs, sandbox output, or persisted invocation metadata.
 
-The real secret should be provided by Kubernetes/OpenShift Secrets, Docker secret/environment injection, Vault, External Secrets Operator, or an equivalent deployment secret manager.
+## 8. Enterprise identity boundary
 
-Secrets must never be serialized into:
+OWA may enforce bounded authentication/authorization but **must not become an identity provider**.
 
-- workflow definitions;
-- execution plans;
-- capability responses;
-- Agent Cards;
-- lifecycle events;
-- task/artifact payloads;
-- logs;
-- retained sandbox output;
-- persisted invocation metadata.
+OAuth2/OIDC federation, token exchange, delegated-user identity, consent, and cross-domain identity remain deployment/identity-platform responsibilities. Delegated user identity is deferred until a concrete enterprise A2A/MCP requirement exists, and must use standards-based identity mechanisms when introduced.
 
-## 9. Enterprise identity boundary
+## 9. Traffic policy is separate
 
-OWA may enforce bounded local authentication and authorization, but **must not become an identity provider**.
-
-Enterprise OAuth2/OIDC federation, token exchange, user delegation, consent, and cross-domain identity remain deployment/identity-platform responsibilities.
-
-Delegated user identity is intentionally deferred until a concrete enterprise A2A/MCP requirement exists. When introduced it must use standards-based identity/token-exchange mechanisms rather than custom message fields.
-
-## 10. Traffic policy is separate from security profiles
-
-Rate limiting, concurrency limiting, request/burst control, circuit behavior, and similar traffic-management concerns belong in a separate deployment-controlled `traffic_policy` model.
-
-Conceptually:
+Rate limiting, concurrency limits, request/burst controls, circuit behavior, and related admission policy belong to a separate deployment-controlled `traffic_policy` model.
 
 ```yaml
 traffic_policy:
@@ -248,15 +179,11 @@ traffic_policy:
     burst: 100
 ```
 
-A security profile answers **who is this caller and what may it do?**
+Security answers **who is the caller and what may it do?** Traffic policy answers **how much traffic may be admitted?** Do not merge these models.
 
-A traffic policy answers **how much traffic may be admitted and under what operational limits?**
+## 10. A2A skill ownership
 
-Do not mix the two models.
-
-## 11. A2A skill ownership
-
-The A2A runtime supports multiple deployment-configured skills backed by explicitly registered workflows.
+A2A supports multiple deployment-configured skills backed by explicitly registered workflows:
 
 ```yaml
 a2a:
@@ -264,27 +191,16 @@ a2a:
     - id: residence-renewal
       name: Residence Renewal
       workflow: residence-renewal
-
     - id: residence-status
       name: Residence Status
       workflow: residence-status
 ```
 
-Routing is deployment-owned:
+Routing is deployment-owned. An A2A client must never select an arbitrary workflow path, file, catalog entry, or execution backend.
 
-```text
-A2A skill id
-     ↓
-configured mapping
-     ↓
-registered workflow
-```
+## 11. A2A Tasks
 
-An A2A client must never choose an arbitrary workflow path, file, catalog entry, or execution backend.
-
-## 12. A2A Task model
-
-A2A Tasks are a protocol projection over common OWA invocation state, not another execution engine.
+A2A Tasks are a protocol projection over common OWA invocation state, not a second execution engine.
 
 Preferred identity relationship:
 
@@ -292,49 +208,31 @@ Preferred identity relationship:
 A2A task_id == OWA invocation_id
 ```
 
-unless A2A `1.0.1` requires a distinct external identifier.
+unless the pinned A2A specification requires a distinct external identifier. Common invocation, persistence, resume, cancellation, approval, and lifecycle services remain authoritative.
 
-The exact state mapping is validated against the pinned A2A specification during implementation. Common OWA invocation/persistence/resume/cancellation/approval/lifecycle services remain authoritative.
-
-## 13. A2A synchronous, asynchronous, and streaming behavior
-
-Implementation sequence:
+Implementation order:
 
 ```text
-A2A 1.0.1 Agent Card/discovery migration
-        ↓
-Task projection
-        ↓
-Task get/cancel
-        ↓
-waiting/input-required + resume
-        ↓
-spec-native asynchronous behavior
-        ↓
-message/task streaming
-        ↓
-resubscription/interoperability gates
+A2A 1.0.1 Agent Card / SendMessage
+  -> Task projection
+  -> Task get/cancel
+  -> waiting/input-required + resume
+  -> spec-native async behavior
+  -> message/task streaming
+  -> resubscription/interoperability gates
 ```
 
-OWA must not invent proprietary async/stream extensions when the pinned protocol defines native semantics.
+Do not invent proprietary async/stream extensions when A2A defines native semantics.
 
-Streaming reuses the common bounded lifecycle/event infrastructure and must not expose engine-native checkpoint or stream objects.
+Push notifications remain deferred because they introduce a separate outbound callback trust boundary: allowlisting, SSRF controls, TLS identity, callback authentication, replay/idempotency protection, bounded retries/dead-letter handling, and secret-safe observability.
 
-## 14. A2A push notifications
+## 12. Multi-tenancy
 
-Push notifications remain deferred because they create an outbound callback trust boundary requiring callback allowlisting, SSRF protection, TLS/server identity verification, callback authentication, replay/idempotency protection, bounded retries/dead-letter behavior, and secret-safe observability.
+Multi-tenancy is outside the current product scope. New structures should avoid obvious future blockers, but no tenant model, tenant routing, or tenant-aware authorization is implemented now.
 
-This does not block the core Task/get/cancel/stream profile.
+## 13. Sandbox contract naming
 
-## 15. Multi-tenancy
-
-Multi-tenancy remains outside the current product scope.
-
-New security/profile/persistence structures should avoid obvious design choices that would prevent future tenant isolation, but no tenant model, tenant routing, or tenant-aware authorization should be implemented now.
-
-## 16. Sandbox contract naming
-
-Keep the two concepts separate:
+The naming cleanup is **implemented**.
 
 ```text
 sandbox/contract.py
@@ -342,34 +240,27 @@ sandbox/contract.py
 
 owns backend request/result/interface contracts.
 
-The portable requirements/capability SPI currently named:
-
-```text
-sandbox_contract.py
-```
-
-should be renamed to:
-
 ```text
 sandbox_capabilities.py
 ```
 
-or an equivalent capability-oriented name. Do not merge the two responsibilities.
+owns portable execution requirements, backend capability descriptors, and compatibility checks.
 
-## 17. Required tests before capability advertisement
+The two responsibilities remain intentionally separate.
 
-For every protocol/security expansion, tests must cover as applicable:
+## 14. Required verification
 
-- strict configuration parsing;
-- YAML/environment override behavior;
+Before expanding protocol/security capability advertisement, applicable tests must cover:
+
+- strict YAML/environment configuration parsing;
 - secret-reference resolution and non-disclosure;
 - authentication success/failure;
-- authorization allow/deny by principal, scope, permission/action, and resource;
+- authorization allow/deny by principal, scope, action, and resource;
 - protocol-version metadata accuracy;
 - malformed/oversized request rejection;
 - sanitized errors;
 - timeout/cancellation behavior;
-- persistence/restart behavior for durable Tasks/state;
+- persistence/restart behavior for durable state;
 - cross-engine observable parity;
 - authoritative interoperability/conformance fixtures where available.
 
