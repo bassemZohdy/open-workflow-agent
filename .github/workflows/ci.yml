@@ -22,14 +22,35 @@ env:
   IMAGE_SIZE_LIMIT_BYTES: "2147483648"
 
 jobs:
+  manifests:
+    name: Validate deployment manifests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubeconform
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -sSfL \
+            "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz" \
+            | tar -C /usr/local/bin -xz kubeconform
+          kubeconform -v
+      - name: Validate deploy manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          kubeconform -strict -summary -kubernetes-version 1.31.0 deploy/
+
   root:
     name: Root quality gates
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v6.8.0
         with:
+          version: "0.11.26"
           enable-cache: true
       - name: Install Python
         run: uv python install "$PYTHON_VERSION"
@@ -50,7 +71,9 @@ jobs:
         run: |
           set -euo pipefail
           timeout --signal=TERM --kill-after=30s 8m \
-            uv run --locked pytest -vv --durations=20
+            uv run --locked pytest -vv --durations=20 \
+              --cov=core/src/open_workflow_agent --cov-report=term-missing \
+              --cov-fail-under=80
       - name: Shared contract tests
         shell: bash
         run: |
@@ -116,8 +139,9 @@ jobs:
         working-directory: engines/${{ matrix.engine }}
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v6.8.0
         with:
+          version: "0.11.26"
           enable-cache: true
       - name: Install Python
         run: uv python install "$PYTHON_VERSION"

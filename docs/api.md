@@ -51,6 +51,32 @@ resolved function references without returning catalog endpoints, credentials,
 or remote definitions. Readiness is not reported until configured catalog
 functions have been fetched and verified.
 
+When the sandbox is enabled, `features.sandbox` reports the selected backend and
+only the controls that backend actually enforces, for example:
+
+```json
+{
+  "features": {
+    "sandbox": {
+      "enabled": true,
+      "backend": "internal",
+      "internalProcess": {"enabled": true, "shell": {"enabled": false}}
+    },
+    "approvals": {
+      "approval": true,
+      "durable": true,
+      "replay": true,
+      "operatorAuthorization": "bearer"
+    },
+    "lifecycleStreaming": {"enabled": true, "transport": "sse", "durable": false}
+  }
+}
+```
+
+`sandbox.enabled: false` (the default) means `run.shell`, `run.script`, and
+`run.container` are rejected. See [sandbox-execution.md](sandbox-execution.md)
+for the per-backend capability model.
+
 ## Invoke a workflow
 
 ```http
@@ -174,6 +200,93 @@ application/cloudevents-batch+json
 ```
 
 It is a snapshot, not a stream and not a durable event broker.
+
+### Lifecycle SSE stream
+
+```http
+GET /v1/events/lifecycle/stream
+```
+
+A bounded Server-Sent Events stream of the same lifecycle CloudEvents, advertised
+through `features.lifecycleStreaming`. It is a bounded transport, not a durable
+streaming contract:
+
+```text
+max_events       default 100 (1-1000)     stream terminates after this many events
+max_bytes        default 1048576 bytes    stream terminates after this many bytes
+timeout_seconds  default 30 (0-300]       stream terminates after this long
+queue_size       default 64 (1-1000)      bounded buffer; overflow terminates the stream
+Last-Event-ID    optional header          resume from that event; unknown IDs return 409
+```
+
+The stream always terminates (terminal event, bound reached, or timeout) and
+carries lifecycle events only — it is not general output/token streaming.
+Concurrent streams are capacity-limited; over capacity returns HTTP `429`
+(`stream_capacity_exceeded`).
+
+## Approvals (human-in-the-loop)
+
+Durable approval state is a bounded HITL mechanism layered on the standard
+event contract. It is disabled until the deployment sets:
+
+```yaml
+approvals:
+  enabled: true
+  operator_token: <deployment-provided bearer token>
+```
+
+### Workflow side
+
+A workflow requests approval with a standard `emit` task and waits with a
+standard `listen` task using a deterministic `one.with` filter. The request
+event's CloudEvents extension `approvalexpiresat` (optional) sets decision
+expiry. Event `data` is untrusted input: the workflow's input/output schema must
+validate a decision before it affects a side effect.
+
+### Operator endpoints
+
+All approval endpoints require the configured bearer token **and** an operator
+identity:
+
+```text
+Authorization: Bearer <approvals.operator_token>
+X-Operator-Id: <operator identity>
+```
+
+List the inbox (optionally filtered by `status=pending|approved|rejected|expired`):
+
+```http
+GET /v1/approvals?status=pending&limit=100
+```
+
+Read one record:
+
+```http
+GET /v1/approvals/{approval_id}
+```
+
+Respond (idempotent per `Idempotency-Key`; repeated decisions on a terminal
+approval are rejected):
+
+```http
+POST /v1/approvals/{approval_id}/decision
+Authorization: Bearer <token>
+X-Operator-Id: alice
+Idempotency-Key: decision-123
+Content-Type: application/json
+
+{
+  "decision": "approved",
+  "value": {"comment": "looks good"}
+}
+```
+
+Records persist across restarts. Once a decision is terminal, it replays
+through the normal `listen` path, so a waiting invocation resumes with the
+decision after a restart.
+
+The bearer/operator guard is a bounded deployment authorization boundary, not a
+replacement for an enterprise identity provider.
 
 ## Schedules
 

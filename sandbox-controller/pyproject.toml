@@ -2,7 +2,11 @@
 name = "open-workflow-agent-sandbox-controller"
 version = "0.1.0"
 description = "Restricted Docker execution controller for Open Workflow Agent"
-requires-python = ">=3.11"
+license = "MIT"
+license-files = ["../LICENSE"]
+readme = "README.md"
+authors = [{ name = "Bassem Zohdy" }]
+requires-python = ">=3.12"
 dependencies = [
   "fastapi==0.141.1",
   "pydantic==2.13.4",

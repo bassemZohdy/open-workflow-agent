@@ -1,7 +1,12 @@
 [project]
 name = "open-workflow-agent-langgraph"
 version = "0.1.0"
-requires-python = ">=3.11"
+description = "LangGraph engine adapter for the Open Workflow Agent"
+license = "MIT"
+license-files = ["../../LICENSE"]
+readme = "README.md"
+authors = [{ name = "Bassem Zohdy" }]
+requires-python = ">=3.12"
 dependencies = ["open-workflow-agent", "langgraph==1.2.11"]
 
 [project.optional-dependencies]

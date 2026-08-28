@@ -180,11 +180,11 @@ For a rollback, remove `use.catalogs` from the workflow and remove the external
 catalog policy; local `workflow.catalog` child workflows remain available
 without network access.
 
-## Sandbox execution deployment boundary (planned)
+## Sandbox execution deployment boundary
 
-Executable Open Workflow tasks are not enabled in the current production profile. `run.script`, `run.shell`, and `run.container` remain rejected until the corresponding sandbox milestones are implemented and verified.
+Executable Open Workflow tasks are implemented but disabled by default. `run.script`, `run.shell`, and `run.container` are rejected until the deployment explicitly selects a sandbox backend; workflow definitions cannot enable them on their own. All execution goes through one framework-neutral `SandboxManager` contract, so engines never create independent subprocess, Docker, or Kubernetes execution paths.
 
-The first sandbox milestone is intentionally **internal**:
+The **internal** sandbox backend works inside a normal runtime deployment without Docker, Kubernetes, or OpenShift:
 
 ```text
 Open Workflow Agent runtime
@@ -199,31 +199,69 @@ InternalSandboxBackend
 controlled child process
 ```
 
-This internal backend must work without a Docker Engine, Kubernetes, or OpenShift. It provides bounded process execution and policy controls, but it is not a hard isolation boundary because the child process still shares the runtime container/host kernel and namespaces.
+It provides a dedicated workspace and bounded environment, input/output, timeout, cancellation, and cleanup — but it is a controlled execution boundary, **not** a hard isolation boundary: the child process still shares the runtime container/host kernel and namespaces. Do not treat internal-sandbox subprocess restrictions as equivalent to container, pod, VM, or microVM isolation.
 
-Docker and Kubernetes/OpenShift are later optional backends for stronger isolation:
+The **external** backends provide stronger isolation and are selected through deployment configuration:
 
 ```text
 SandboxManager
    |
    +-- InternalSandboxBackend
-   +-- DockerSandboxBackend       later
-   +-- KubernetesSandboxBackend   later
+   +-- DockerSandboxBackend       production-accepted (restricted Unix-socket controller)
+   +-- KubernetesSandboxBackend   merged; real-cluster acceptance pending
 ```
 
-Deployment requirements for those future backends are strict:
+Deployment requirements for the external backends are strict:
 
 - do not mount unrestricted `/var/run/docker.sock` into the Open Workflow Agent runtime;
-- use a separate/restricted Docker controller or socket/API proxy exposing only the minimum required sandbox operations;
-- use a dedicated Kubernetes/OpenShift sandbox namespace/project and narrowly scoped ServiceAccount;
-- do not grant cluster-wide workload management permissions;
+- use the separate/restricted Docker controller (Unix-socket only) exposing only the minimum required sandbox operations;
+- use a dedicated Kubernetes/OpenShift sandbox namespace/project and narrowly scoped ServiceAccount held by the controller, not the runtime;
+- do not grant cluster-wide workload management permissions to the runtime or controller;
 - prohibit privileged mode, host networking/namespaces, and host-path mounts for sandbox workloads;
 - enforce approved images/registries, resource limits, ephemeral-storage bounds, network policy/egress restrictions, secret isolation, timeout, and cleanup/TTL behavior;
 - advertise only isolation controls actually enforced by the selected backend.
 
-Backend selection will be deployment policy, not a workflow-specific Docker/Kubernetes extension. The same Open Workflow definition should be able to move from the internal backend to an external backend when the required capability is supported.
+Backend selection is deployment policy, not a workflow-specific Docker/Kubernetes extension. The same Open Workflow definition can move from the internal backend to an external backend when the required capability is supported. `/v1/capabilities` reports the sandbox block for the selected backend; Kubernetes/OpenShift execution is advertised only after real-cluster acceptance gates are green (see `TODO.md` B-006.3).
 
-See [sandbox-execution.md](sandbox-execution.md) for the approved architecture and [TODO.md](../TODO.md) for B-005/B-006 acceptance tasks.
+See [sandbox-execution.md](sandbox-execution.md) for the approved architecture and [external-sandbox-contract.md](external-sandbox-contract.md) for the backend-neutral contract.
+
+## API exposure, rate limits, and controller trust boundary
+
+### Unauthenticated endpoints and rate controls
+
+The HTTP API (`/v1/invoke`, `/v1/events`, `/v1/schedules`, `/v1/invocations/*/resume|cancel`) has **no built-in authentication or rate limiting**. The runtime is designed to sit behind a deployment-controlled edge. Any exposure beyond loopback or a private network must place authentication, authorization, and rate/concurrency controls in front of it — for example a reverse proxy, API gateway, or service mesh that enforces:
+
+- per-client and global request-rate limits on the unauthenticated endpoints;
+- bounded request body sizes (the runtime also enforces its own input/output bounds);
+- bounded concurrent in-flight invocations (each invocation executes a workflow and may consume model tokens, sandbox processes, or protocol connections);
+- TLS termination and standard access logging.
+
+Without such an edge, a single caller can saturate the runtime; treat this as a deployment prerequisite, not an optional hardening.
+
+Approval endpoints (`/v1/approvals*`) additionally enforce the runtime's own bearer + operator-header guard when `approvals.enabled` is set; see [api.md](api.md).
+
+### Sandbox controller Unix-socket trust boundary
+
+The Docker sandbox backend splits trust in two:
+
+```text
+runtime container  --(dedicated Unix socket, shared volume)-->  controller container  --(Docker socket)-->  Docker
+```
+
+- The **runtime** never mounts the host Docker socket. It talks to the controller over a dedicated Unix socket (default `/run/owa-sandbox/controller.sock`).
+- The **controller** is the only component holding Docker credentials. It exposes no TCP listener and only the minimum sandbox operations.
+- The dedicated socket is group-0 accessible: any code that executes inside the runtime container (group `0`) can drive the controller, and through it the approved Docker operations. The boundary therefore assumes the runtime container's code and dependencies are trusted. It limits blast radius and policy bypass paths (approved-image digests, non-root workloads, denied networking) — it is not a defense against arbitrary code execution inside the runtime itself. For a stronger boundary, run the controller with a socket proxy or rootless Docker, or use the Kubernetes controller with namespace-scoped RBAC.
+
+### Controller images, deployment, and upgrades
+
+Both restricted controllers are published by the release pipeline alongside the engine images:
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-sandbox-controller:<tag>
+ghcr.io/bassemzohdy/open-workflow-agent-kubernetes-sandbox-controller:<tag>
+```
+
+They receive the same `latest`, `sha-<sha>`, and (on tagged releases) version tags, OCI SBOM/provenance metadata, GHCR provenance attestations, and the Trivy scan gate. Locally, `compose.sandbox.yaml` shows the reference wiring (controller + shared socket volume). For upgrades: the controller/runtime socket protocol is private to a release — pull the controller image tag that matches the runtime image tag (for example the same `sha-<sha>`), then restart both together. The Kubernetes controller runs as a loopback sidecar of the runtime (`sandbox.kubernetes.controller_url` defaults to `http://127.0.0.1:8090`); the Docker controller runs as a separate container sharing only the socket volume.
 
 ## Real model providers
 
@@ -286,6 +324,14 @@ This `.env` pattern is for local development. Production deployments should use 
 See [configuration.md](configuration.md#model) for detailed OpenAI, Anthropic, OpenRouter, Ollama, Compose, and generic provider examples.
 
 ## Kubernetes/OpenShift
+
+Reference manifests that follow this guidance are provided in the repository and validated in CI with `kubeconform -strict`:
+
+- `deploy/kubernetes/runtime.yaml` — Namespace, PersistentVolumeClaim, Deployment (non-root, read-only root filesystem, dropped capabilities, liveness/readiness/startup probes against `/health/live` and `/health/ready`), and ClusterIP Service for the ADK image.
+- `deploy/openshift/runtime.yaml` — the same layout for the LangGraph image without a pinned UID (OpenShift's restricted-v2 SCC allocates an arbitrary non-root UID, which the images support).
+- `deploy/kubernetes/sandbox-boundary.yaml` and `deploy/openshift/sandbox-boundary.yaml` — the restricted sandbox-controller namespace, ServiceAccounts, and RBAC boundary (see [sandbox-execution.md](sandbox-execution.md)).
+
+`replicas: 1` with a `Recreate` strategy is intentional: the scheduler uses single-runtime ownership and the default deployment keeps durable state on one `ReadWriteOnce` volume. Horizontal scale-out requires external coordination of scheduler ownership and state and is not part of the bounded profile.
 
 Use either published registry in the workload specification. Docker Hub is shown below for consistency with end-user examples; replace it with the corresponding GHCR image if your organization prefers the canonical provenance registry.
 
@@ -415,8 +461,8 @@ After the first GHCR package publication, set the GHCR package visibility to **P
 CI enforces a 2 GiB hard image-size limit for each engine image. With LiteLLM, FastEmbed/ONNX, PostgreSQL support, and the selected engine runtime bundled, the verified images are approximately:
 
 ```text
-ADK        575 MB
-LangGraph  515 MB
+ADK        266 MB
+LangGraph  248 MB
 ```
 
 They remain well below the gate and avoid the earlier Torch/CUDA dependency bloat.
@@ -437,11 +483,11 @@ CI also validates:
 
 Current bounded features should not be interpreted as broader infrastructure guarantees:
 
-- generic event delivery is process-local and non-durable;
-- lifecycle CloudEvents are a bounded snapshot, not a stream/broker;
+- generic event delivery is process-local and non-durable (durable approval state/replay is a separate bounded mechanism);
+- lifecycle CloudEvents are a bounded snapshot and the SSE endpoint is bounded to lifecycle events, not a general output stream/broker;
 - scheduling uses single-runtime ownership rather than distributed scheduler ownership;
-- external workflow catalogs are disabled;
-- shell/script/container execution is disabled; the internal and external sandbox designs are roadmap items only;
+- external workflow catalogs are disabled unless a deployment explicitly configures catalog trust policy (HTTPS-only, pinned, allowlisted; see the external catalog section above);
+- shell/script execution uses the internal sandbox only when enabled by deployment configuration and is not a hard isolation boundary; container execution uses the selected external backend (Docker accepted; Kubernetes/OpenShift pending real-cluster acceptance);
 - authentication is expected at the deployment boundary unless another trusted layer is introduced.
 
 Always check `/v1/capabilities` and the current project status before relying on optional features.

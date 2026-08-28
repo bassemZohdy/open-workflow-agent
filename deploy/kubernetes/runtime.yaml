@@ -1,0 +1,144 @@
+# Reference Kubernetes deployment for the Open Workflow Agent runtime images.
+# This is a starting point, not a turnkey production deployment: replace image
+# tags with pinned digests, provide real configuration/knowledge sources, and
+# set provider secrets through your secret management before use.
+#
+# Scale-out note: replicas is intentionally 1 with a Recreate strategy. The
+# scheduler uses single-runtime ownership and the default deployment keeps
+# durable state on a single RWO volume; horizontal scale-out requires external
+# coordination of that state and is documented in docs/deployment.md.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: owa
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: owa-data
+  namespace: owa
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: owa-adk
+  namespace: owa
+  labels:
+    app.kubernetes.io/name: open-workflow-agent
+    app.kubernetes.io/instance: owa-adk
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: open-workflow-agent
+      app.kubernetes.io/instance: owa-adk
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: open-workflow-agent
+        app.kubernetes.io/instance: owa-adk
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 0
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: runtime
+          # Replace with an exact version or digest for production use.
+          image: ghcr.io/bassemzohdy/open-workflow-agent-adk:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: OWA__MODEL__PROVIDER
+              value: fake
+            - name: OWA__MODEL__NAME
+              value: fake/default
+            - name: OWA__SERVER__HOST
+              value: 0.0.0.0
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 2Gi
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          startupProbe:
+            httpGet:
+              path: /health/ready
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+            - name: config
+              mountPath: /config
+            - name: knowledge
+              mountPath: /knowledge
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: owa-data
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+        # Replace with a ConfigMap (runtime configuration/workflow) so the
+        # runtime can load /config/agent.yaml.
+        - name: config
+          emptyDir: {}
+        # Replace with a read-only volume holding your knowledge documents.
+        - name: knowledge
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: owa-adk
+  namespace: owa
+  labels:
+    app.kubernetes.io/name: open-workflow-agent
+    app.kubernetes.io/instance: owa-adk
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: open-workflow-agent
+    app.kubernetes.io/instance: owa-adk
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

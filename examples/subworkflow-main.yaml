@@ -1,0 +1,15 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: parent-workflow
+  version: '1.0.0'
+
+do:
+  - summarize:
+      run:
+        workflow:
+          namespace: examples
+          name: child-summary
+          version: 1.0.0
+        input:
+          text: ${ .input }

@@ -1,0 +1,18 @@
+agent:
+  name: support
+  instruction: |
+    Answer questions. Use the ticketing MCP tool when the question involves an
+    open ticket.
+
+model:
+  provider: fake
+  name: fake/default
+
+# Configured agent tools are deployment-controlled and bounded by the runtime
+# protocol policies (TLS verification, timeouts, response-size limits, endpoint
+# validation). Replace the endpoint with your own deployment's tool endpoint.
+tools:
+  - type: mcp
+    name: ticketing
+    endpoint: https://ticketing.internal.example/mcp
+    options: {}

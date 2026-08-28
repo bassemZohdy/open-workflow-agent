@@ -1,0 +1,51 @@
+# Reference wiring for the Docker external sandbox backend.
+#
+# The restricted sandbox controller holds the Docker socket; the runtime never
+# mounts it. The controller and runtime exchange a dedicated Unix socket over a
+# shared volume. This is a local/Compose reference, not a production topology.
+#
+# Usage:
+#   docker compose -f compose.yaml -f compose.sandbox.yaml --profile adk --profile sandbox up
+#
+# Enable the backend through configuration (e.g. in .env):
+#   OWA__SANDBOX__ENABLED=true
+#   OWA__SANDBOX__BACKEND=docker
+#   OWA__SANDBOX__DOCKER__ALLOWED_IMAGES=ghcr.io/...@sha256:...
+# Container execution is refused until deployment policy approves exact image
+# digests; see docs/deployment.md and docs/external-sandbox-contract.md.
+
+services:
+  sandbox-controller:
+    profiles: ["sandbox"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.sandbox-controller
+    image: ${SANDBOX_CONTROLLER_IMAGE:-owa-sandbox-controller:local}
+    user: "65532:0"
+    # Only the controller sees the host Docker socket. Restrict this further in
+    # production with a socket proxy or rootless Docker if your threat model
+    # requires it.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - sandbox_socket:/run/owa-sandbox
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=64m
+    restart: unless-stopped
+
+  adk:
+    volumes:
+      - sandbox_socket:/run/owa-sandbox
+    environment:
+      OWA__SANDBOX__ENABLED: ${OWA__SANDBOX__ENABLED:-false}
+      OWA__SANDBOX__BACKEND: docker
+
+  langgraph:
+    volumes:
+      - sandbox_socket:/run/owa-sandbox
+    environment:
+      OWA__SANDBOX__ENABLED: ${OWA__SANDBOX__ENABLED:-false}
+      OWA__SANDBOX__BACKEND: docker
+
+volumes:
+  sandbox_socket:

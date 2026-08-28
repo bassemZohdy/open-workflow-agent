@@ -8,6 +8,7 @@ import importlib
 import json
 import os
 import re
+import time
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -126,9 +127,11 @@ class KnowledgeService:
                 hash TEXT,
                 parser TEXT,
                 chunking TEXT,
-                embedding TEXT
+                embedding TEXT,
+                indexed_at TEXT
         )"""
         )
+        self._migrate_manifest_columns()
         identifier_type = "BIGSERIAL" if self.connection.is_postgresql else "INTEGER"
         vector_type = "BYTEA" if self.connection.is_postgresql else "BLOB"
         self.connection.execute(f"""CREATE TABLE IF NOT EXISTS chunks (
@@ -139,6 +142,41 @@ class KnowledgeService:
         )""")
         self.connection.commit()
         self._watch_task: asyncio.Task[None] | None = None
+
+    def _migrate_manifest_columns(self) -> None:
+        if self.connection.is_postgresql:
+            rows = self.connection.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'manifest'"
+            ).fetchall()
+            columns = {row[0] for row in rows}
+        else:
+            rows = self.connection.execute("PRAGMA table_info(manifest)").fetchall()
+            columns = {row[1] for row in rows}
+        if "indexed_at" not in columns:
+            self.connection.execute("ALTER TABLE manifest ADD COLUMN indexed_at TEXT")
+            self.connection.commit()
+
+    @staticmethod
+    def _parser_identity(path: Path) -> str:
+        suffix = path.suffix.lower()
+        if suffix == ".pdf":
+            try:
+                import pypdf
+
+                return f"pypdf@{getattr(pypdf, '__version__', 'unknown')}"
+            except ImportError:
+                return "pypdf@missing"
+        if suffix == ".json":
+            return "stdlib-json"
+        if suffix in {".yaml", ".yml"}:
+            return f"pyyaml@{getattr(yaml, '__version__', 'unknown')}"
+        return "text"
+
+    def _chunking_identity(self) -> str:
+        return f"whitespace-window:{self.chunk_size}+{self.chunk_overlap}"
+
+    def _index_timestamp(self) -> str:
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
     def reload(self) -> dict[str, int]:
         if not self.root.exists():
@@ -182,32 +220,35 @@ class KnowledgeService:
                 )
             if self.connection.is_postgresql:
                 self.connection.execute(
-                    """INSERT INTO manifest(path, hash, parser, chunking, embedding)
-                    VALUES (?, ?, ?, ?, ?)
+                    """INSERT INTO manifest(path, hash, parser, chunking, embedding, indexed_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     ON CONFLICT(path) DO UPDATE SET
                         hash = EXCLUDED.hash,
                         parser = EXCLUDED.parser,
                         chunking = EXCLUDED.chunking,
-                        embedding = EXCLUDED.embedding""",
+                        embedding = EXCLUDED.embedding,
+                        indexed_at = EXCLUDED.indexed_at""",
                     (
                         path_string,
                         digest,
-                        path.suffix.lower(),
-                        str(self.chunk_size),
+                        self._parser_identity(path),
+                        self._chunking_identity(),
                         self.embedding.identity,
+                        self._index_timestamp(),
                     ),
                 )
             else:
                 self.connection.execute(
                     """INSERT OR REPLACE INTO manifest(
-                        path, hash, parser, chunking, embedding
-                    ) VALUES (?, ?, ?, ?, ?)""",
+                        path, hash, parser, chunking, embedding, indexed_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)""",
                     (
                         path_string,
                         digest,
-                        path.suffix.lower(),
-                        str(self.chunk_size),
+                        self._parser_identity(path),
+                        self._chunking_identity(),
                         self.embedding.identity,
+                        self._index_timestamp(),
                     ),
                 )
         for removed in set(existing) - set(current):

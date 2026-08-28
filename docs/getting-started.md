@@ -150,17 +150,19 @@ memory:
   enabled: auto
 ```
 
-Environment variables override YAML. For example:
+Environment variables override YAML. For example, raise the log level:
 
 ```bash
 docker run --rm \
   -p 8080:8080 \
-  -e OWA__SERVER__PORT=8080 \
+  -e OWA__OBSERVABILITY__LOG_LEVEL=DEBUG \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
   bzohdy/open-workflow-agent-adk:latest
 ```
+
+The `-p 8080:8080` mapping publishes the container's fixed internal port 8080 on the host; use the left-hand side to change the host port (for example `-p 9090:8080`). Setting `OWA__SERVER__PORT` on the published image is only needed together with `-p <host>:<custom>` and a matching container-port change.
 
 See [configuration.md](configuration.md) for all supported settings.
 

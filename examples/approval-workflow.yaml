@@ -1,0 +1,45 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: refund-approval
+  version: '1.0.0'
+
+# Durable human-in-the-loop approval composed from standard event tasks.
+# Requires deployment configuration:
+#
+#   approvals:
+#     enabled: true
+#     operator_token: <secret>
+#
+# The emit creates/refreshes the persisted approval record. The operator
+# responds via POST /v1/approvals/{id}/decision (bearer + X-Operator-Id).
+# The decision replays through listen even after a restart.
+do:
+  - requestApproval:
+      emit:
+        event:
+          with:
+            id: refund-request-1
+            subject: refund-request-1
+            type: io.openworkflow.agent.approval.requested
+            data:
+              question: Approve the refund request?
+              amount: 120
+  - waitForDecision:
+      listen:
+        to:
+          one:
+            with:
+              type: io.openworkflow.agent.approval.decided
+              subject: refund-request-1
+        read: data
+  - process:
+      try:
+        - validate:
+            set:
+              handled: ${ .decision.approved == true }
+      catch:
+        do:
+          - reject:
+              set:
+                handled: false

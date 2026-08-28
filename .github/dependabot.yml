@@ -1,0 +1,79 @@
+version: 2
+
+updates:
+  # GitHub Actions versions used across workflows.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # Root runtime project (uv lockfile).
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      root-python:
+        patterns:
+          - "*"
+
+  # Engine projects with independent exact locks.
+  - package-ecosystem: uv
+    directory: /engines/adk
+    schedule:
+      interval: weekly
+    groups:
+      adk-python:
+        patterns:
+          - "*"
+
+  - package-ecosystem: uv
+    directory: /engines/langgraph
+    schedule:
+      interval: weekly
+    groups:
+      langgraph-python:
+        patterns:
+          - "*"
+
+  - package-ecosystem: uv
+    directory: /engines/agent-framework
+    schedule:
+      interval: weekly
+    groups:
+      agent-framework-python:
+        patterns:
+          - "*"
+
+  # Sandbox controllers.
+  - package-ecosystem: uv
+    directory: /sandbox-controller
+    schedule:
+      interval: weekly
+    groups:
+      sandbox-controller-python:
+        patterns:
+          - "*"
+
+  - package-ecosystem: uv
+    directory: /kubernetes-sandbox-controller
+    schedule:
+      interval: weekly
+    groups:
+      kubernetes-controller-python:
+        patterns:
+          - "*"
+
+  # Base images for runtime and controller Dockerfiles.
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+    groups:
+      base-images:
+        patterns:
+          - "*"

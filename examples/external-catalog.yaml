@@ -1,0 +1,20 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: external-catalog-caller
+  version: '1.0.0'
+
+# Authoring shape for a workflow using external catalog functions. This
+# workflow is REJECTED unless the deployment configures a matching trust
+# policy under workflow.external_catalogs (HTTPS-only, allowlisted host,
+# optional/required SHA-256 pins). See docs/configuration.md and
+# docs/deployment.md for the trust boundaries.
+use:
+  catalogs:
+    shipping:
+      endpoint: https://catalog.example.com/open-workflow
+do:
+  - quote:
+      call: shipping/rates@1.0.0
+      with:
+        input: ${ .input }

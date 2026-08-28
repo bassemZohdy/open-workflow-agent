@@ -121,6 +121,44 @@ persistence:
   datasource: null
   database: /data/runtime.sqlite3
 
+approvals:
+  enabled: false
+  operator_token: null
+
+sandbox:
+  enabled: false
+  backend: internal
+  allow_shell: false
+  script_runtimes: [python]
+  timeout_seconds: 30.0
+  max_input_bytes: 1048576
+  max_output_bytes: 1048576
+  max_workspace_bytes: 33554432
+  workspace_root: /tmp/owa-sandbox
+  executable_search_path: /opt/venv/bin:/usr/local/bin:/usr/bin:/bin
+  inherited_environment: []
+  secret_environment: []
+  cpu_seconds: 30
+  memory_bytes: 536870912
+  file_size_bytes: 33554432
+  process_count: 64
+  docker:
+    controller_socket: /run/owa-sandbox/controller.sock
+    allowed_images: []
+    require_digest: true
+    run_as_user: 65532:65532
+    network: denied
+  kubernetes:
+    controller_url: http://127.0.0.1:8090
+    allowed_images: []
+    require_digest: true
+    platform: kubernetes
+    network: denied
+    network_policy_enforced: false
+    process_limit_enforced: false
+    secret_name: null
+    secret_keys: []
+
 tools: []
 
 server:
@@ -453,6 +491,80 @@ and correlation IDs.
 
 Workflow files are mounted under `/config`; adding or replacing them does not require rebuilding the published image.
 
+### Scheduling a workflow
+
+The workflow document itself declares scheduling with exactly one of
+`schedule.after` or `schedule.every` (a `duration`):
+
+```yaml
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: nightly-cleanup
+  version: '1.0.0'
+schedule:
+  every:
+    hours: 6
+do:
+  - run:
+      call: agent:1.0.0@default
+      with:
+        input: ${ .input }
+```
+
+```yaml
+schedule:
+  after:
+    minutes: 30
+```
+
+- `after` creates one delayed start; `every` creates recurring starts after each
+  successful completion.
+- Schedule metadata is durable in the runtime store; dispatch is owned by one
+  runtime process and a restart reclaims an interrupted dispatch (at-least-once).
+- Schedules are created through `POST /v1/schedules`, which validates the
+  configured workflow's schedule block; `cron` and event-triggered `on` are part
+  of Open Workflow 1.0.3's schema but are **not supported by the runtime** —
+  using them fails validation (the bounded profile has no cron parser or event
+  trigger).
+
+### Sub-workflows with `run.workflow`
+
+Register deployment-provided child workflows under `workflow.catalog`, then call
+them with the standard `run` task:
+
+```yaml
+workflow:
+  catalog:
+    - document:
+        dsl: '1.0.3'
+        namespace: examples
+        name: child-summary
+        version: '1.0.0'
+      do:
+        - summarize:
+            call: agent:1.0.0@default
+            with:
+              input: ${ .text }
+```
+
+```yaml
+do:
+  - summarize:
+      run:
+        workflow:
+          namespace: examples
+          name: child-summary
+          version: 1.0.0
+        input:
+          text: ${ .input }
+```
+
+`version: latest` selects the highest registered version when omitted. The
+child gets its own invocation/session identity and runs on the selected
+engine's native path; lifecycle events retain `parent_invocation_id` and
+`parent_task_reference`.
+
 ## `knowledge`
 
 ```yaml
@@ -507,6 +619,26 @@ Values:
 
 Available memory tools are `add_memory`, `search_memory`, and `delete_memory`.
 
+When memory is enabled, these tools are registered automatically as agent tools,
+so the configured agent can remember and recall facts across invocations:
+
+```text
+add_memory    {"text": "...", "metadata": {...}}  ->  {"id": 1}
+search_memory {"query": "renewal", "limit": 5}    ->  [{...}, ...]
+delete_memory {"id": 1}                           ->  {"deleted": true}
+```
+
+`search_knowledge` is the knowledge counterpart (always registered when
+knowledge is configured). A minimal walkthrough:
+
+```text
+1. Set memory.enabled: true (or auto with a database-backed runtime).
+2. Invoke the agent: "Remember that customer 42's invoice is overdue."
+   The agent calls add_memory; the fact persists in /data/memory.sqlite3.
+3. In a later invocation (or after a restart), ask: "What do you remember
+   about customer 42?" The agent calls search_memory and retrieves the fact.
+```
+
 Memory is separate from engine checkpoint/resume state.
 
 ## `persistence`
@@ -534,6 +666,29 @@ OWA__PERSISTENCE__DATASOURCE='postgresql://user:password@host:5432/database'
 The datasource is shared as a connection target, but subsystems use isolated namespaces/tables. ADK and LangGraph retain their own native durable state rather than sharing engine checkpoint formats.
 
 Persist `/data` using a host volume/PVC when SQLite is used. No source-code change or image rebuild is required to switch between configured persistence targets supported by the image.
+
+## `approvals`
+
+```yaml
+approvals:
+  enabled: true
+  operator_token: set-via-deployment-secret
+```
+
+Disabled by default. When enabled, workflows can compose durable human-in-the-loop approvals from standard `emit`/`listen` tasks, and the operator endpoints under `/v1/approvals` become active. The `operator_token` is the bearer credential for operator decisions and inbox reads; supply it through a deployment secret rather than a plain file. Decisions additionally require an `X-Operator-Id` header and are idempotent per `Idempotency-Key`. See [api.md](api.md#approvals-human-in-the-loop) for the operator flow.
+
+## `sandbox`
+
+```yaml
+sandbox:
+  enabled: true
+  backend: internal   # internal | docker | kubernetes
+  allow_shell: false
+  script_runtimes: [python]
+  timeout_seconds: 30.0
+```
+
+Disabled by default; workflow definitions cannot enable execution on their own. `run.script`/`run.shell` use the internal backend (`allow_shell: true` additionally enables shell execution), and `run.container` requires the `docker` or `kubernetes` backend with its controller configuration (see the `docker:`/`kubernetes:` blocks in the full shape above and [deployment.md](deployment.md)). Process controls (`cpu_seconds`, `memory_bytes`, `file_size_bytes`, `process_count`, output/input bounds, dedicated workspace, environment filtering with `inherited_environment`/`secret_environment`) apply to the internal backend. The internal sandbox is a controlled execution boundary — not container/VM isolation. `/v1/capabilities` reports the effective `features.sandbox` block for the selected backend.
 
 ## `tools`
 
@@ -578,6 +733,26 @@ observability:
 ```
 
 The runtime also emits engine-neutral lifecycle records containing stable workflow/task references where applicable.
+
+### Lifecycle CloudEvents reference
+
+Lifecycle records are exposed as bounded CloudEvents 1.0 structured JSON
+snapshots via `GET /v1/events/lifecycle` (source
+`urn:open-workflow-agent:lifecycle`) and via the bounded SSE stream. Event
+`type` values include the task/workflow lifecycle (`TaskStarted`,
+`TaskCompleted`, `TaskFaulted`, `TaskCancelled`, `TaskProgress`, `TaskWaiting`,
+`TaskRetried`, `WorkflowStarted`, `WorkflowCompleted`, `WorkflowFaulted`,
+`WorkflowCancelled`, `WorkflowResumed`, `WorkflowWaiting`) and the approval
+lifecycle:
+
+```text
+io.openworkflow.agent.approval.requested   approval request persisted (emit of this type creates the record)
+io.openworkflow.agent.approval.decided     terminal decision recorded via the approval API
+```
+
+Events expose only common identifiers and sanitized error codes — never
+engine-native checkpoint state or secrets. Generic workflow `emit` events are
+separate from lifecycle events and remain process-local.
 
 ## Recommended deployment pattern
 

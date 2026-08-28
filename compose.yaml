@@ -50,6 +50,18 @@ services:
     tmpfs:
       - /tmp:rw,nosuid,nodev,size=256m
     user: "10001:0"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os,sys,urllib.request; port=os.environ.get('OWA__SERVER__PORT','8080'); sys.exit(0 if urllib.request.urlopen(f'http://127.0.0.1:{port}/health/ready',timeout=4).status==200 else 1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
     restart: unless-stopped
 
   langgraph:
@@ -84,6 +96,18 @@ services:
     tmpfs:
       - /tmp:rw,nosuid,nodev,size=256m
     user: "10001:0"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os,sys,urllib.request; port=os.environ.get('OWA__SERVER__PORT','8080'); sys.exit(0 if urllib.request.urlopen(f'http://127.0.0.1:{port}/health/ready',timeout=4).status==200 else 1)",
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
     restart: unless-stopped
 
 volumes:

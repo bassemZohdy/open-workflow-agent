@@ -1,0 +1,12 @@
+agent:
+  name: support
+  instruction: |
+    Remember durable customer facts with the memory tools and use them when
+    answering later questions.
+
+model:
+  provider: fake
+  name: fake/default
+
+memory:
+  enabled: auto

@@ -1,6 +1,6 @@
 # Additional Engine Adapter Evaluation
 
-Status: B-008 selection groundwork. No third engine dependency is enabled by this document.
+Status: B-008 selection groundwork. The Microsoft Agent Framework native adapter (`engines/agent-framework/`) is merged as an optional package behind `agent-framework-core==1.14.0` with an exact lock; it is not yet a production image/release target (see `TODO.md` B-008 for the remaining production gates).
 
 ## Decision criteria
 

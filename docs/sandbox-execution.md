@@ -1,8 +1,8 @@
 # Sandbox Execution Architecture
 
-This document defines the approved execution-isolation direction for Open Workflow Agent. It is an architectural requirement and roadmap document, not a statement that shell, script, or container execution is currently enabled.
+This document defines the approved execution-isolation architecture for Open Workflow Agent. The internal sandbox, the Docker external backend with its restricted Unix-socket controller, and the Kubernetes/OpenShift controller boundary are implemented behind deployment-controlled configuration (`sandbox:` in the runtime configuration; see [configuration.md](configuration.md)).
 
-Current production behavior remains unchanged: `run.shell`, `run.script`, and `run.container` are rejected until their corresponding sandbox capability is implemented, tested, and advertised through `/v1/capabilities`.
+Default behavior remains fail-closed: `run.shell`, `run.script`, and `run.container` are rejected unless the deployment explicitly enables a sandbox backend, and `/v1/capabilities` reports only the controls actually enforced by the selected backend. Kubernetes/OpenShift container execution is advertised only after its real-cluster acceptance gates are green (see `TODO.md` B-006.3).
 
 ## Goals
 
@@ -43,7 +43,7 @@ Open Workflow task/function
                  stronger isolation boundary
 ```
 
-Level 1 and Level 2 are the internal sandbox foundation. Level 3 is a later optional backend family.
+Level 1 and Level 2 form the internal sandbox foundation. Level 3 is the optional external backend family selected through deployment configuration.
 
 ## Security terminology
 
@@ -71,9 +71,9 @@ SandboxManager
       |
       +-- InternalSandboxBackend
       |
-      +-- DockerSandboxBackend        (later)
+      +-- DockerSandboxBackend        (restricted controller boundary)
       |
-      +-- KubernetesSandboxBackend    (later)
+      +-- KubernetesSandboxBackend    (restricted controller boundary)
 ```
 
 Engine adapters must never contain independent `subprocess`, Docker, or Kubernetes execution paths for portable workflow semantics.
@@ -140,9 +140,7 @@ This is a programming and policy boundary. It does not make arbitrary in-process
 
 ## Internal process sandbox
 
-The first executable backend is `InternalSandboxBackend`.
-
-It must not require Docker or Kubernetes. It may use an OS child process, but the process must be created through one common implementation with explicit policy.
+The first executable backend is `InternalSandboxBackend`. It is implemented and shared by both engines through `SandboxManager`.
 
 Minimum behavior:
 
@@ -230,63 +228,56 @@ run.container
 
 Shell execution is higher risk than direct executable invocation.
 
-When `run.shell` is eventually implemented:
+`run.shell` is available only when the deployment sets `sandbox.allow_shell: true` with the sandbox backend enabled:
 
-- it must remain disabled until a dedicated capability and policy are configured;
 - workflow data must not be concatenated into an implementation-created shell command string;
-- the runtime must preserve the Open Workflow-defined command semantics rather than invent another templating language;
+- the runtime preserves the Open Workflow-defined command semantics rather than inventing another templating language;
 - timeouts, environment policy, output limits, workspace policy, cancellation, and resource controls remain mandatory;
 - unsupported shell features fail closed.
 
-The implementation should prefer direct executable/argument execution for operations that do not semantically require a shell.
+The implementation prefers direct executable/argument execution for operations that do not semantically require a shell.
 
 ## Script execution
 
-When `run.script` is implemented, supported runtimes must be explicit and capability-advertised.
+`run.script` supports explicit, capability-advertised runtimes (`sandbox.script_runtimes`, `python` by default).
 
-The runtime must not dynamically install interpreters or packages during startup or execution. Script runtimes must already exist in the selected release image or be provided by an external sandbox image in a later backend.
+The runtime never dynamically installs interpreters or packages during startup or execution. Script runtimes must already exist in the selected release image or be provided by an external sandbox image.
 
-Arbitrary dependency installation initiated by workflow input is outside the initial internal sandbox profile.
+Arbitrary dependency installation initiated by workflow input is outside the internal sandbox profile.
 
 ## External sandbox backends
 
-External backends are a later milestone and depend on the internal `SandboxManager` contract.
+External backends depend on the internal `SandboxManager` contract and are disabled by default.
 
 ### Docker backend
 
 The Open Workflow Agent runtime container must not receive unrestricted `/var/run/docker.sock` access.
 
-A production-quality Docker backend should use a separately controlled execution component or a restricted Docker API/socket proxy exposing only the operations required to create, start, wait for, inspect logs from, stop, and remove sandbox containers.
+The implemented Docker backend talks to a separately controlled execution component — the restricted Docker sandbox controller (`sandbox-controller/`) — over a Unix socket, exposing only the operations required to create, start, wait for, inspect logs from, stop, and remove sandbox containers. The deployment pins approved images (digest-required by default), forces non-root execution, and denies container networking.
 
 ### Kubernetes/OpenShift backend
 
-A Kubernetes/OpenShift backend should create isolated ephemeral Pods or Jobs in a dedicated sandbox namespace/project using a narrowly scoped ServiceAccount.
+A Kubernetes/OpenShift backend creates isolated ephemeral Pods in a dedicated sandbox namespace/project using a narrowly scoped ServiceAccount held by the restricted controller (`kubernetes-sandbox-controller/`), reachable only on a loopback endpoint from the runtime.
 
-Expected controls include non-root execution, no privileged mode, no host namespaces, no host-path mounts, resource requests/limits, bounded ephemeral storage, network policy, approved images/registries, and cleanup/TTL behavior.
-
-The external backend is the place to provide a stronger isolation boundary for untrusted or higher-risk code.
+Expected controls include non-root execution, no privileged mode, no host namespaces, no host-path mounts, resource requests/limits, bounded ephemeral storage, network policy, approved images/registries, and cleanup/TTL behavior. Real-cluster acceptance (including OpenShift SCC/security-context behavior) is still pending; see `TODO.md` B-006.3.
 
 ## Backend selection
 
 Backend selection is deployment policy, not workflow authoring syntax.
 
-A future configuration may conceptually resemble:
+The implemented configuration conceptually resembles:
 
 ```yaml
 sandbox:
-  backend: internal
-  limits:
-    timeout_seconds: 30
-    max_output_bytes: 10485760
-  process:
-    inherit_environment: false
-  network:
-    mode: runtime-policy
+  enabled: true
+  backend: internal   # internal | docker | kubernetes
+  allow_shell: false
+  script_runtimes: [python]
+  timeout_seconds: 30
+  max_output_bytes: 10485760
 ```
 
-This example is **not yet a supported public configuration contract**. Exact fields must be added only with the implementation, strict configuration models, tests, and configuration documentation.
-
-A later deployment may select `docker` or `kubernetes` without changing the Open Workflow definition, provided the selected backend advertises the required capability.
+See [configuration.md](configuration.md) for the exact strict configuration model and [api.md](api.md) for the `features.sandbox` capability block. A deployment can select `docker` or `kubernetes` without changing the Open Workflow definition, provided the selected backend advertises the required capability.
 
 ## Capability model
 
@@ -360,7 +351,7 @@ External backend tests are separate and must prove their stronger isolation and 
 
 ## Delivery order
 
-The required order is:
+The required order was and remains:
 
 ```text
 1. Sandbox contract and threat model
@@ -376,4 +367,4 @@ The required order is:
 11. Container execution profile
 ```
 
-Do not implement the external backends first. The internal manager, policy model, and backend-neutral contracts are the foundation for every later execution mode.
+Steps 1-9 are implemented and accepted (Docker acceptance recorded green in `PROJECT.md`). Step 10/11 code is merged; Kubernetes/OpenShift remains gated on real-cluster acceptance before advertisement. The internal manager, policy model, and backend-neutral contracts remain the foundation for every execution mode.

@@ -50,6 +50,74 @@ def test_knowledge_manifest_skips_unchanged_documents(tmp_path):
     knowledge.close()
 
 
+def test_knowledge_manifest_records_parser_chunking_and_timestamp(tmp_path):
+    root = tmp_path / "knowledge"
+    root.mkdir()
+    (root / "policy.md").write_text("License renewal policy.", encoding="utf-8")
+    (root / "data.json").write_text('{"key": "value"}', encoding="utf-8")
+    knowledge = KnowledgeService(
+        root,
+        tmp_path / "knowledge.sqlite3",
+        chunk_size=64,
+        chunk_overlap=8,
+        embedding=DeterministicEmbeddingProvider(),
+    )
+    assert knowledge.reload()["added"] == 2
+    rows = {
+        row[0]: row
+        for row in knowledge.connection.execute(
+            "SELECT path, parser, chunking, indexed_at FROM manifest"
+        )
+    }
+    markdown_row = rows[str(root / "policy.md")]
+    json_row = rows[str(root / "data.json")]
+    assert markdown_row[1] == "text"
+    assert json_row[1] == "stdlib-json"
+    for row in (markdown_row, json_row):
+        # Chunking identity records the real algorithm and parameters, not just
+        # the chunk size, so upgrades remain auditable.
+        assert row[2] == "whitespace-window:64+8"
+        assert row[3] and row[3].endswith("Z")
+    knowledge.close()
+
+
+def test_knowledge_manifest_migration_adds_indexed_at(tmp_path):
+    import sqlite3
+
+    root = tmp_path / "knowledge"
+    root.mkdir()
+    (root / "policy.md").write_text("License renewal policy.", encoding="utf-8")
+    database = tmp_path / "knowledge.sqlite3"
+    connection = sqlite3.connect(database)
+    connection.execute(
+        "CREATE TABLE manifest (path TEXT PRIMARY KEY, hash TEXT, parser TEXT, "
+        "chunking TEXT, embedding TEXT)"
+    )
+    connection.execute(
+        "INSERT INTO manifest VALUES "
+        "('/stale/policy.md', 'digest', '.md', '400', 'deterministic:8')"
+    )
+    connection.commit()
+    connection.close()
+
+    knowledge = KnowledgeService(
+        database=database, root=root, embedding=DeterministicEmbeddingProvider()
+    )
+    counts = knowledge.reload()
+    assert counts["added"] == 1
+    assert counts["deleted"] == 1
+    stale = knowledge.connection.execute(
+        "SELECT indexed_at FROM manifest WHERE path = '/stale/policy.md'"
+    ).fetchone()
+    assert stale is None
+    fresh = knowledge.connection.execute(
+        "SELECT indexed_at FROM manifest WHERE path LIKE '%policy.md' "
+        "AND path != '/stale/policy.md'"
+    ).fetchone()
+    assert fresh is not None and fresh[0]
+    knowledge.close()
+
+
 def test_knowledge_reindexes_when_embedding_identity_changes(tmp_path):
     root = tmp_path / "knowledge"
     root.mkdir()

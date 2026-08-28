@@ -259,6 +259,10 @@ POST /v1/invocations/{id}/cancel
 POST /v1/admin/knowledge/reload
 POST /v1/events
 GET  /v1/events/lifecycle
+GET  /v1/events/lifecycle/stream
+GET  /v1/approvals
+GET  /v1/approvals/{id}
+POST /v1/approvals/{id}/decision
 POST /v1/schedules
 GET  /v1/schedules/{id}
 POST /v1/schedules/{id}/cancel
@@ -266,15 +270,17 @@ POST /v1/schedules/{id}/cancel
 
 Use `/v1/capabilities` to discover the capabilities of the selected engine/runtime version.
 
-## Sandbox execution roadmap
+## Sandbox execution
 
-Executable Open Workflow operations are intentionally not enabled yet. `run.shell`, `run.script`, and `run.container` remain rejected until the planned sandbox milestones pass their security and cross-engine acceptance gates.
+Executable Open Workflow operations (`run.shell`, `run.script`, `run.container`) are implemented but disabled by default; workflow definitions cannot enable them on their own. All execution goes through one framework-neutral `SandboxManager` contract shared by ADK and LangGraph — engines never create independent subprocess, Docker, or Kubernetes execution paths.
 
-The next execution foundation is an **internal sandbox** that works inside the normal runtime deployment and does not require Docker or Kubernetes. It provides controlled child-process execution with bounded environment, workspace, input/output, timeout, cancellation, cleanup, and enforceable resource limits. It is explicitly **not** a hard isolation boundary.
+Three execution backends exist behind deployment configuration:
 
-Docker and Kubernetes/OpenShift are planned later as optional stronger-isolation backends behind the same framework-neutral `SandboxManager`. ADK and LangGraph must not implement their own subprocess/container execution paths, and the main runtime must not receive unrestricted Docker socket or cluster-wide Kubernetes access.
+- **Internal sandbox** — controlled child-process execution inside the normal runtime deployment: dedicated workspace, bounded environment, input/output limits, timeout, cancellation, and cleanup. It is a controlled execution boundary, **not** a hard isolation boundary; it does not provide container, pod, VM, or microVM isolation.
+- **Docker backend** — stronger-isolation external execution through a restricted Unix-socket controller so the main runtime never mounts an unrestricted Docker socket. Production acceptance is recorded green (see `PROJECT.md`).
+- **Kubernetes/OpenShift backend** — controller-held cluster lifecycle permissions with deployment-owned namespace, ServiceAccount, image, resource, secret, and network-policy controls; the main runtime never receives cluster-wide permissions. Real-cluster acceptance is still pending, so it is not yet advertised through `/v1/capabilities`.
 
-See [Sandbox execution architecture](docs/sandbox-execution.md) and the ordered B-005/B-006 backlog in [TODO.md](TODO.md).
+See [Sandbox execution architecture](docs/sandbox-execution.md), the [external sandbox contract](docs/external-sandbox-contract.md), and the ordered backlog in [TODO.md](TODO.md) for the acceptance state of each backend.
 
 ## Documentation
 
@@ -283,11 +289,19 @@ See [Sandbox execution architecture](docs/sandbox-execution.md) and the ordered 
 - [API guide](docs/api.md) — HTTP endpoints and request/response examples.
 - [Deployment guide](docs/deployment.md) — Docker Hub/GHCR images, persistence, Docker, Kubernetes, and OpenShift.
 - [Developer guide](docs/development.md) — source checkout, repository structure, tests, and contribution workflow.
-- [Sandbox execution architecture](docs/sandbox-execution.md) — planned internal sandbox and later external execution backends.
+- [CI runners and governance](docs/ci-runners.md) — self-hosted Docker runner bootstrap, recovery, and branch-history governance.
+- [Sandbox execution architecture](docs/sandbox-execution.md) — internal sandbox and external execution backends.
+- [Troubleshooting and compatibility](docs/troubleshooting.md) — FAQ, upgrade notes, and version/compatibility matrix.
+- [External sandbox contract](docs/external-sandbox-contract.md) — backend-neutral sandbox request/result/capability contract and controller boundaries.
+- [A2A/streaming evaluation](docs/a2a-streaming-evaluation.md) — bounded lifecycle SSE baseline and deferred inbound A2A/general streaming scope.
+- [Engine adapter evaluation](docs/engine-adapter-evaluation.md) — how the Microsoft Agent Framework third engine was selected and its current deferral state.
 - [Project Definition](Project%20Definition.md) — authoritative architecture and product contract.
 - [PROJECT.md](PROJECT.md) — verified implementation status.
 - [TODO.md](TODO.md) — active backlog.
 - [AGENTS.md](AGENTS.md) — mandatory contributor/AI-agent rules.
+- [Contributing](CONTRIBUTING.md) — contribution workflow.
+- [Security policy](SECURITY.md) — private vulnerability reporting and security model.
+- [Changelog](CHANGELOG.md) — notable changes.
 
 ## Runtime model
 

@@ -30,7 +30,7 @@ jobs:
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
-      should_publish: ${{ steps.release.outputs.should_publish }}
+      should_publish: ${{ steps.gate.outputs.companions_ok == 'true' && steps.release.outputs.should_publish == 'true' }}
       is_release: ${{ steps.release.outputs.is_release }}
       should_create_release: ${{ steps.release.outputs.should_create_release }}
       tag: ${{ steps.release.outputs.tag }}
@@ -108,11 +108,59 @@ jobs:
           echo "series=$series" >> "$GITHUB_OUTPUT"
           echo "short_sha=${RELEASE_SHA:0:12}" >> "$GITHUB_OUTPUT"
 
+      # Publication precondition: the companion acceptance workflows are
+      # path-filtered, so they do not run for every push. Their latest run on
+      # main must be green and cover the release head (ancestor), which proves
+      # the release head did not change their inputs since the last green run.
+      - name: Require green companion acceptance runs
+        id: gate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          ok=true
+          gate() {
+            local workflow line conclusion run_sha
+            line="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" \
+              --branch main --status completed --limit 1 \
+              --json conclusion,headSha --jq '.[0] | "\(.conclusion) \(.headSha)"')"
+            if [[ -z "$line" ]]; then
+              echo "FAIL: no completed $workflow run on main" >&2
+              ok=false
+              return 0
+            fi
+            conclusion="${line%% *}"
+            run_sha="${line##* }"
+            if [[ "$conclusion" != "success" ]]; then
+              echo "FAIL: latest $workflow run on main ($run_sha) is $conclusion" >&2
+              ok=false
+              return 0
+            fi
+            if ! git merge-base --is-ancestor "$run_sha" "$RELEASE_SHA"; then
+              echo "FAIL: latest green $workflow run ($run_sha) does not cover $RELEASE_SHA" >&2
+              ok=false
+              return 0
+            fi
+            echo "OK: $workflow green at $run_sha covers $RELEASE_SHA"
+          }
+          gate external-sandbox-ci.yml
+          gate postgres-ci.yml
+          echo "companions_ok=$ok" >> "$GITHUB_OUTPUT"
+          if [[ "$ok" != "true" ]]; then
+            echo "Publication skipped: companion acceptance gate failed." >&2
+          fi
+
   publish:
     name: Publish ${{ matrix.engine }} image
     needs: prepare
     if: needs.prepare.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
+    # The Docker Hub token is long-lived; publication runs inside a protected
+    # environment so repository admins can add required reviewers and deployment
+    # restrictions in repository settings.
+    environment: release
     strategy:
       fail-fast: false
       matrix:
@@ -164,6 +212,33 @@ jobs:
             org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
             org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
 
+      - name: Build image locally for scanning
+        id: build-scan
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.${{ matrix.engine }}
+          push: false
+          load: true
+          platforms: linux/amd64
+          tags: owa-${{ matrix.engine }}:${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            OWA_VERSION=${{ needs.prepare.outputs.version }}
+            VCS_REF=${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha,scope=release-${{ matrix.engine }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.engine }}
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: owa-${{ matrix.engine }}:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
       - name: Build once and push to GHCR and Docker Hub
         id: build
         uses: docker/build-push-action@v6
@@ -178,7 +253,6 @@ jobs:
             OWA_VERSION=${{ needs.prepare.outputs.version }}
             VCS_REF=${{ github.event.workflow_run.head_sha }}
           cache-from: type=gha,scope=release-${{ matrix.engine }}
-          cache-to: type=gha,mode=max,scope=release-${{ matrix.engine }}
           provenance: mode=max
           sbom: true
 
@@ -205,6 +279,98 @@ jobs:
               echo "- Tags: \`latest\`, \`sha-${{ needs.prepare.outputs.short_sha }}\`"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
+
+  publish-controllers:
+    name: Publish sandbox controller images
+    needs: prepare
+    if: needs.prepare.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    environment: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: open-workflow-agent-sandbox-controller
+            dockerfile: docker/Dockerfile.sandbox-controller
+          - image: open-workflow-agent-kubernetes-sandbox-controller
+            dockerfile: docker/Dockerfile.kubernetes-sandbox-controller
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate controller image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ matrix.image }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=sha-${{ needs.prepare.outputs.short_sha }}
+            type=raw,value=${{ needs.prepare.outputs.version }},enable=${{ needs.prepare.outputs.is_release == 'true' }}
+            type=raw,value=${{ needs.prepare.outputs.series }},enable=${{ needs.prepare.outputs.is_release == 'true' }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+
+      - name: Build controller image locally for scanning
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: false
+          load: true
+          platforms: linux/amd64
+          tags: owa-${{ matrix.image }}:${{ github.sha }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=release-${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.image }}
+
+      - name: Scan controller image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: owa-${{ matrix.image }}:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
+
+      - name: Push controller image to GHCR
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          platforms: linux/amd64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=release-${{ matrix.image }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Attest published controller image provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ matrix.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
 
   github-release:
     name: Create GitHub Release

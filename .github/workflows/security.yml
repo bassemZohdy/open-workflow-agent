@@ -1,0 +1,118 @@
+name: Security
+
+on:
+  schedule:
+    # Mondays 06:00 UTC: weekly advisory sweep over every locked environment.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+  push:
+    paths:
+      - "**/uv.lock"
+      - "**/pyproject.toml"
+      - ".github/workflows/security.yml"
+  pull_request:
+    paths:
+      - "**/uv.lock"
+      - "**/pyproject.toml"
+      - ".github/workflows/security.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  PIP_AUDIT_VERSION: "2.7.3"
+
+jobs:
+  dependencies:
+    name: Audit ${{ matrix.project }} dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: .
+            extras: --extra model --extra knowledge
+          - project: engines/adk
+            extras: --extra native --extra postgres
+          - project: engines/langgraph
+            extras: --extra sqlite --extra postgres
+          - project: engines/agent-framework
+            extras: --extra native
+          - project: sandbox-controller
+            extras: ""
+          - project: kubernetes-sandbox-controller
+            extras: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6.8.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Export resolved requirements
+        run: |
+          set -euo pipefail
+          # --no-emit-package drops the engines' editable root-package reference,
+          # which pip-audit cannot audit, while keeping its resolved dependencies.
+          uv export --project "${{ matrix.project }}" --locked --no-hashes \
+            --format requirements-txt --no-emit-project \
+            --no-emit-package open-workflow-agent --no-dev ${{ matrix.extras }} \
+            --output-file "${{ runner.temp }}/requirements.txt"
+      - name: Audit resolved dependencies
+        run: |
+          set -euo pipefail
+          set +e
+          uvx "pip-audit==$PIP_AUDIT_VERSION" \
+            --requirement "${{ runner.temp }}/requirements.txt" \
+            --no-deps --strict --format json \
+            --output "${{ runner.temp }}/audit.json"
+          status=$?
+          set -e
+          if [[ ! -s "${{ runner.temp }}/audit.json" ]]; then
+            echo "pip-audit produced no report" >&2
+            exit 1
+          fi
+          python - "${{ runner.temp }}/audit.json" <<'PY'
+          import json
+          import sys
+
+          report = json.load(open(sys.argv[1]))
+          fixable = []
+          unfixable = []
+          for dependency, vulnerabilities in report.items():
+              for vulnerability in vulnerabilities:
+                  entry = {
+                      "dependency": dependency,
+                      "id": vulnerability.get("id"),
+                      "fix_versions": vulnerability.get("fix_versions", []),
+                      "description": (vulnerability.get("description") or "")[:200],
+                  }
+                  if entry["fix_versions"]:
+                      fixable.append(entry)
+                  else:
+                      unfixable.append(entry)
+
+          for entry in fixable + unfixable:
+              print(f"{entry['dependency']}: {entry['id']} fix={entry['fix_versions'] or 'none'}")
+
+          if fixable:
+              print(f"FAIL: {len(fixable)} fixable advisories found" >&2)
+              sys.exit(1)
+          if unfixable:
+              print(f"WARNING: {len(unfixable)} advisories have no fix available yet")
+          print("no fixable advisories")
+          PY
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-${{ matrix.project }}
+          path: ${{ runner.temp }}/audit.json
+          if-no-files-found: ignore

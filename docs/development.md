@@ -41,7 +41,7 @@ Core owns:
 - protocol services;
 - invocation metadata;
 - common errors and lifecycle events;
-- sandbox policy, manager/backend contracts, and portable executable-task semantics when B-005 is implemented.
+- sandbox policy, manager/backend contracts, and portable executable-task semantics.
 
 Each engine owns:
 
@@ -59,6 +59,9 @@ Engines do **not** own subprocess, Docker, or Kubernetes execution for portable 
 core/                     framework-neutral runtime
 engines/adk/              ADK adapter and dependency lock
 engines/langgraph/        LangGraph adapter and dependency lock
+engines/agent-framework/  optional Microsoft Agent Framework adapter
+sandbox-controller/       restricted Docker sandbox controller
+kubernetes-sandbox-controller/  restricted Kubernetes/OpenShift sandbox controller
 runtime-catalog/          built-in runtime functions
 resources/                Open Workflow resources/schema assets
 tests/core/               common unit/integration tests
@@ -68,10 +71,11 @@ tests/langgraph/          LangGraph-specific tests
 tests/ctk/                selected Open Workflow CTK coverage
 tests/e2e/                container/end-to-end coverage
 docker/                   engine Dockerfiles and entrypoint
+deploy/                   Kubernetes/OpenShift deployment manifests
 docs/                     user/operator/developer documentation
 ```
 
-The exact sandbox package layout will be introduced during B-005, but it must remain under framework-neutral core services rather than either engine package.
+The sandbox implementation lives under framework-neutral core services (`core/src/open_workflow_agent/sandbox.py`, `sandbox_contract.py`, `docker_sandbox.py`, `kubernetes_sandbox.py`), never inside an engine package.
 
 ## Local setup
 
@@ -92,6 +96,8 @@ uv run ruff format --check core engines tests
 uv run ruff check .
 uv run mypy core/src
 ```
+
+Type-check scope decision: `mypy` runs strict over `core/src` only. Engine packages are deliberately excluded because the engine-native SDKs (google-adk, langgraph, agent-framework) ship incomplete or untyped stubs, so strict checking would be noise rather than signal; engine adapters are still checked by ruff lint/format and are exercised by the shared contract and CTK suites. Revisit only if an SDK ships complete type stubs.
 
 Build packages:
 
@@ -260,7 +266,18 @@ docker compose --profile langgraph up --build
 
 Remote CI additionally validates image metadata/size, container acceptance, PostgreSQL persistence, selected CTK coverage, and stop/restart/resume behavior.
 
-When B-005 is implemented, container acceptance must also verify internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container.
+Container acceptance verifies internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container. Docker external-sandbox acceptance runs on the self-hosted Docker runner; Kubernetes/OpenShift real-cluster acceptance is tracked separately in `TODO.md` B-006.3.
+
+### Base image updates
+
+All runtime and controller Dockerfiles pin their base images by digest (`python:3.12-slim@sha256:...`, `docker:27.5.1-cli@sha256:...`). To update a base image:
+
+1. Resolve the current multi-arch digest, for example:
+   `docker buildx imagetools inspect python:3.12-slim --format '{{json .Manifest.Digest}}'`
+2. Update the `ARG PYTHON_IMAGE` value in `docker/Dockerfile.adk` and `docker/Dockerfile.langgraph`, and the `FROM` lines in `docker/Dockerfile.sandbox-controller` and `docker/Dockerfile.kubernetes-sandbox-controller`.
+3. Run the local image acceptance steps and the CI Docker jobs; the Security workflow and the Trivy release gate must also pass on the rebuilt image.
+
+Dependabot opens weekly update PRs for GitHub Actions versions, every `uv.lock`, and the base images in `docker/`; the Security workflow (pip-audit over every locked environment) and the release Trivy gate block publication on known fixable `CRITICAL`/`HIGH` image advisories.
 
 ## Documentation rule
 

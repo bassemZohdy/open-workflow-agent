@@ -6,7 +6,7 @@ Treat `Project Definition.md` as authoritative; read it before implementation. U
 
 ## Structure
 
-`core/` owns framework-neutral contracts and services. `engines/adk/` and `engines/langgraph/` own their adapters, dependencies, locks, and images. Shared fixtures belong in `tests/contract/`; engine and container tests belong in their corresponding test directories. Runtime functions and Open Workflow resources belong under `runtime-catalog/` and `resources/`.
+`core/` owns framework-neutral contracts and services. `engines/adk/`, `engines/langgraph/`, and `engines/agent-framework/` own their adapters, dependencies, locks, and images (Agent Framework remains an optional native package, not a production image/release target). `sandbox-controller/` and `kubernetes-sandbox-controller/` own the restricted external-sandbox controllers. Shared fixtures belong in `tests/contract/`; engine and container tests belong in their corresponding test directories. Runtime functions and Open Workflow resources belong under `runtime-catalog/` and `resources/`.
 
 ## Critical Constraints
 
@@ -18,13 +18,13 @@ Treat `Project Definition.md` as authoritative; read it before implementation. U
 - Portability requires identical shared fixtures and expected results on both engines; advertise differences through capabilities.
 - Executable workflow operations must use the common sandbox execution contract. ADK and LangGraph must never create independent subprocess, Docker, or Kubernetes execution paths.
 - The internal sandbox is a controlled execution boundary, not a hard isolation boundary. Do not describe subprocess restrictions as equivalent to container, pod, VM, or microVM isolation.
-- Implement the internal sandbox before any external Docker/Kubernetes/OpenShift backend. Docker/Kubernetes must remain optional backends, not core runtime prerequisites.
+- Docker/Kubernetes remain optional deployment-selected backends, not core runtime prerequisites. The internal sandbox and the restricted controller boundary precede and underpin them.
 
 ## Development and Verification
 
 Use strict typed Python, four-space indentation, deterministic fakes, and no paid APIs in tests. Keep engine dependency environments independent and never install packages at container startup or as part of sandbox execution. Preserve Open Workflow task references, translate framework exceptions into the common error contract, and run the relevant contract suite after engine changes.
 
-For sandbox work, follow `docs/sandbox-execution.md` and the ordered B-005/B-006 tasks in `TODO.md`. Do not advertise `run.script`, `run.shell`, or `run.container` until their deterministic cross-engine and container/backend acceptance gates are green.
+For sandbox work, follow `docs/sandbox-execution.md` and the sandbox acceptance items in `TODO.md` (B-006.3 owns Kubernetes/OpenShift real-cluster acceptance). The internal sandbox and Docker backend are merged with acceptance recorded in `PROJECT.md`; do not advertise `run.script`, `run.shell`, or `run.container`, or the Kubernetes/OpenShift backend, beyond the acceptance gates already proven green.
 
 ## Security
 

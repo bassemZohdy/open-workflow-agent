@@ -37,6 +37,7 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
         "controlled-error",
         "wait-timeout",
         "policy-semantics",
+        "try",
     ],
 )
 async def test_portable_fixture_has_same_result_on_each_engine(
@@ -111,4 +112,8 @@ def _expected(fixture_name: str, input_data: dict[str, object]) -> object:
         return {"path": "/openapi"}
     if fixture_name == "policy-semantics":
         return {"completed": True}
+    if fixture_name == "try":
+        # The try body faults before producing output; the catch-do state
+        # (identical on both engines) becomes the workflow output.
+        return {"recovered": True}
     return input_data

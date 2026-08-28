@@ -715,32 +715,70 @@ selected engine's native execution/checkpoint path. Common lifecycle events
 retain `parent_invocation_id` and `parent_task_reference`. Shell/script `run`
 variants and remote or external catalog resolution remain unsupported.
 
-### Deferred HITL and external-catalog contract
+### Bounded durable HITL and external-catalog profile
 
-The next lifecycle slice is contract-defined but not enabled as a portable
-feature. Open Workflow 1.0.3 has no separate `approval` task, so a future
-bounded approval flow must compose the existing event contract: an operator
-deployment may publish a request and a decision as ordinary events, while a
-workflow uses the standard `listen` task with a deterministic `one.with`
-filter. Event `data` is untrusted workflow input and must be validated by the
-workflow's input/output schemas before it affects a side effect.
+Open Workflow 1.0.3 has no separate `approval` task, so durable HITL composes
+the existing event contract rather than introducing a proprietary task. This
+slice is now implemented and portable across both engines, behind explicit
+deployment configuration.
 
-This does not currently constitute durable HITL. The process-local event bus
-has no approval inbox, replay, durable delivery, operator identity,
-authorization, decision expiry, or dedicated approval endpoint. A waiting
-invocation may be persisted as common lifecycle metadata, but a pending
-approval event is not guaranteed to survive process restart. `/v1/capabilities`
-therefore reports generic event/listen/wait support only; it must not claim
-approval or HITL support. Deployment authentication and authorization remain
-outside the portable core.
+Two distinct mechanisms must not be conflated:
 
-External catalogs are disabled explicitly. `workflow.catalog` is limited to
-deployment-provided local definitions; an Open Workflow `use.catalogs` resource
-is rejected with `unsupported_workflow_feature` rather than fetched or silently
-ignored. A future external-catalog profile must first define endpoint allowlists,
-TLS/authentication, version and digest pinning, signature or trust policy,
-bounded responses, caching, persistence, failure behavior, and capability
-advertisement. It must never expose catalog credentials or engine-native state.
+- Generic `emit`/`listen` eventing remains process-local and non-durable. It
+  has no approval inbox, replay, durable delivery, or operator identity, and a
+  pending generic event is not guaranteed to survive process restart.
+- Durable approval state is a separate persisted layer: approval request and
+  decision records live in the common runtime store, and a terminal decision
+  replays through the normal `listen` path after restart.
+
+Implemented approval behavior:
+
+```text
+GET  /v1/approvals                      operator-protected inbox listing
+GET  /v1/approvals/{approval_id}        operator-protected record read
+POST /v1/approvals/{approval_id}/decision  bearer-authorized, idempotent decision
+```
+
+- A workflow requests approval with a standard `emit` task and waits with the
+  standard `listen` task using a deterministic `one.with` filter. Event `data`
+  is untrusted workflow input and must be validated by the workflow's
+  input/output schemas before it affects a side effect.
+- Operator decisions require bearer authorization (deployment-provided
+  `approvals.operator_token`) plus an explicit operator identity header, and
+  are idempotent: repeated decisions on a terminal approval are rejected.
+- Approval request/decision state survives process restart; terminal decisions
+  replay through `listen` so a resumed invocation observes the decision.
+- `approvals.enabled` gates the feature (disabled by default). When enabled,
+  `/v1/capabilities` reports `features.approvals` with `approval`, `durable`,
+  `replay`, and `operatorAuthorization: "bearer"`.
+- The bearer/operator-header guard is deliberately a bounded deployment
+  authorization boundary, not a replacement for an enterprise identity
+  provider. Expiry and idempotency apply to approval records; deployment
+  authentication and authorization remain outside the portable core.
+
+Implemented external-catalog profile (fail-closed, disabled unless a
+deployment configures catalog trust):
+
+- An Open Workflow `use.catalogs` resource requires an explicitly configured
+  external-catalog policy; without one it is rejected with
+  `unsupported_workflow_feature` rather than fetched or silently ignored.
+- Trust boundaries are deployment-controlled: alias allowlists with
+  host/endpoint policy, HTTPS/TLS enforcement, no redirects, bounded streaming
+  responses, and environment-only authentication. Credentials never appear in
+  workflow files or catalog references.
+- References use exact semantic versions with optional or required SHA-256
+  digest pins. Failed or missing pins fail closed.
+- Fetching uses one-shot DNS resolution with public-address validation and a
+  pinned HTTP transport, so connections reach only the approved addresses while
+  hostname-based TLS verification is preserved (connection-level DNS-rebinding
+  resistance).
+- Catalog content is cached in an isolated store with bounded revalidation;
+  after a failed revalidation the runtime refuses stale or unverified content.
+- Resolution happens before plan derivation across startup, child workflows,
+  and schedules (resolve-before-plan ordering). `/v1/capabilities` reports the
+  sanitized `features.catalogs` policy/state.
+- Unsupported remote behaviors remain explicitly fail-closed; remote scripts
+  and remote catalog-supplied code are never executed.
 
 ---
 
@@ -2092,19 +2130,20 @@ Workflow files are trusted deployment artifacts.
 
 User input is not trusted.
 
-For initial releases disable:
+Executable operations remain disabled by default and are enabled only through
+the deployment security profile:
 
 ```text
-run.shell
-run.script
-run.container
+run.shell       sandbox.enabled + sandbox.allow_shell
+run.script      sandbox.enabled + sandbox.script_runtimes
+run.container   sandbox.enabled + sandbox.backend = docker | kubernetes
 ```
 
-unless explicitly enabled in a future security profile.
+External catalogs are also disabled by default and require an explicitly
+configured deployment trust policy (see the bounded external-catalog profile in
+section 17).
 
-External catalogs should also be disabled initially.
-
-Initial default catalog:
+Default catalog:
 
 ```text
 local runtime-provided functions only
@@ -2764,21 +2803,27 @@ raise
 
 # 85. Later Milestones
 
-Potential:
+Already delivered from this list (see section 17 and `PROJECT.md`):
 
 ```text
-external catalogs
-HITL
-A2A exposure
-streaming
-additional engines
+external catalogs   bounded deployment-trusted profile implemented
+HITL                bounded durable approval state/replay implemented
+additional engines  Microsoft Agent Framework native adapter merged as an
+                    optional package; production status still deferred
 ```
 
-Possible future engine:
+Still deferred:
+
+```text
+A2A exposure        inbound A2A server/conformance
+streaming           general portable output streaming beyond bounded
+                    lifecycle SSE
+```
+
+Remaining deferred-engine work:
 
 ```text
 OpenAI Agents SDK
-Microsoft Agent Framework
 other graph/workflow frameworks
 ```
 

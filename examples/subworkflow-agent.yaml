@@ -1,0 +1,24 @@
+agent:
+  name: support
+  instruction: |
+    You summarize text.
+
+model:
+  provider: fake
+  name: fake/default
+
+workflow:
+  # The parent workflow that calls the child via run.workflow.
+  path: /config/subworkflow-main.yaml
+  # Deployment-provided local child workflows available to run.workflow.
+  catalog:
+    - document:
+        dsl: '1.0.3'
+        namespace: examples
+        name: child-summary
+        version: 1.0.0
+      do:
+        - summary:
+            call: agent:1.0.0@default
+            with:
+              input: ${ .text }
