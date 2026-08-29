@@ -471,7 +471,9 @@ def create_app(
         return extract_output_text(result.output), ""
 
     if runtime_config.a2a.enabled:
-        mount_a2a(app, runtime_config.a2a, invoke_message=_a2a_invoke_message)
+        mount_a2a(
+            app, runtime_config.a2a, runtime_config.security, invoke_message=_a2a_invoke_message
+        )
 
     return app
 

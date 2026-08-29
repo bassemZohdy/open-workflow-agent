@@ -26,6 +26,7 @@ from fastapi.responses import JSONResponse
 
 from .a2a_tasks import project_a2a_task
 from .config import A2AConfig
+from .security import BearerSecurityProfile, SecurityConfig, resolve_secret
 
 A2A_SPEC_RELEASE = "1.0.1"
 A2A_PROTOCOL_VERSION = "1.0"
@@ -50,7 +51,7 @@ def a2a_capabilities(config: A2AConfig) -> dict[str, Any]:
         "pushNotifications": False,
         "tasks": config.enabled,
         "taskOperations": ["GetTask", "CancelTask"] if config.enabled else [],
-        "auth": "bearer" if config.enabled and config.auth_token else None,
+        "auth": "bearer" if config.enabled and config.security_profile else None,
     }
 
 
@@ -176,13 +177,20 @@ def _http_json_response(content: dict[str, Any], *, status_code: int = 200) -> J
     )
 
 
-def _authorize(config: A2AConfig, request: Request) -> bool:
-    if not config.auth_token:
+def _authorize(config: A2AConfig, security: SecurityConfig, request: Request) -> bool:
+    if not config.security_profile:
         return True
+    profile = security.profile(config.security_profile)
+    if not isinstance(profile, BearerSecurityProfile):
+        return False
     authorization = request.headers.get("authorization", "")
     if not authorization.startswith("Bearer "):
         return False
-    return hmac.compare_digest(authorization.removeprefix("Bearer ").strip(), config.auth_token)
+    try:
+        expected = resolve_secret(profile.token)
+    except ValueError:
+        return False
+    return hmac.compare_digest(authorization.removeprefix("Bearer ").strip(), expected)
 
 
 def _requested_protocol_version(request: Request) -> str | None:
@@ -227,6 +235,7 @@ async def _cancel_task(app: FastAPI, task_id: str) -> dict[str, Any]:
 def mount_a2a(
     app: FastAPI,
     config: A2AConfig,
+    security: SecurityConfig,
     *,
     invoke_message: Callable[[str], Awaitable[tuple[str, str]]],
 ) -> None:
@@ -241,7 +250,7 @@ def mount_a2a(
         return
 
     def authorized(request: Request) -> JSONResponse | None:
-        if _authorize(config, request):
+        if _authorize(config, security, request):
             return None
         if config.transport == "jsonrpc":
             return _jsonrpc_error(

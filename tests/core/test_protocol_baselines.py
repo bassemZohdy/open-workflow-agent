@@ -80,16 +80,23 @@ def test_protocol_documentation_cannot_drift_from_the_pinned_manifest() -> None:
     baselines = _baselines()
     documentation = DOC_FILE.read_text(encoding="utf-8")
 
-    expected_rows = {
-        "Open Workflow Specification": baselines["open_workflow"]["release"],
-        "A2A Protocol": baselines["a2a"]["release"],
-        "Model Context Protocol": baselines["mcp"]["release"],
-        "OpenAPI Specification": baselines["openapi"]["release"],
-        "CloudEvents": baselines["cloudevents"]["release"],
-        "AsyncAPI Specification": baselines["asyncapi"]["release"],
+    expected_labels = {
+        "Open Workflow Specification": "open_workflow",
+        "A2A Protocol": "a2a",
+        "Model Context Protocol": "mcp",
+        "OpenAPI Specification": "openapi",
+        "CloudEvents": "cloudevents",
+        "AsyncAPI Specification": "asyncapi",
     }
-    for label, release in expected_rows.items():
-        assert f"| {label} | `{release}` |" in documentation
+    for label, key in expected_labels.items():
+        entry = baselines[key]
+        release = entry["release"]
+        protocol_version = entry.get("protocol_version")
+        if protocol_version is not None and protocol_version != release:
+            expected_row = f"| {label} | release `{release}`, protocol `{protocol_version}` |"
+        else:
+            expected_row = f"| {label} | `{release}` |"
+        assert expected_row in documentation
 
-    assert "latest stable released version" in documentation
+    assert "reviewed stable releases" in documentation
     assert "never float automatically at runtime" in documentation

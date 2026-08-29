@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from ._version import __version__
 from .errors import ConfigurationError
+from .security import SecurityConfig
 
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _IMAGE_DIGEST = re.compile(r"^.+@sha256:[0-9a-fA-F]{64}$")
@@ -203,7 +204,7 @@ class A2AConfig(StrictModel):
     agent_description: str = "Configuration-driven Open Workflow runtime over A2A."
     agent_version: str = __version__
     public_base_url: str | None = None
-    auth_token: str | None = None
+    security_profile: str | None = None
     max_message_chars: int = Field(default=100_000, gt=0)
 
     @field_validator("path")
@@ -485,10 +486,24 @@ class RuntimeConfig(StrictModel):
     persistence: PersistenceConfig = Field(default_factory=PersistenceConfig)
     approvals: ApprovalConfig = Field(default_factory=ApprovalConfig)
     a2a: A2AConfig = Field(default_factory=A2AConfig)
+    security: SecurityConfig = Field(default_factory=SecurityConfig)
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
     tools: list[ToolConfig] = Field(default_factory=list)
     server: ServerConfig = Field(default_factory=ServerConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
+
+    @model_validator(mode="after")
+    def validate_a2a_security_profile(self) -> RuntimeConfig:
+        name = self.a2a.security_profile
+        if name is None:
+            return self
+        if name not in self.security.profiles:
+            raise ValueError(f"a2a.security_profile references unknown security profile: {name}")
+        if self.security.profiles[name].type != "bearer":
+            raise ValueError(
+                "a2a.security_profile must reference a security profile of type 'bearer'"
+            )
+        return self
 
     @classmethod
     def from_file(cls, path: str | Path | None = None) -> RuntimeConfig:

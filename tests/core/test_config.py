@@ -114,3 +114,68 @@ def test_unknown_key_raises_configuration_error(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigurationError):
         RuntimeConfig.from_file(path)
+
+
+def test_security_profiles_round_trip_every_profile_type() -> None:
+    config = RuntimeConfig.model_validate(
+        {
+            "security": {
+                "profiles": {
+                    "bearer-profile": {"type": "bearer", "token": {"from_env": "TOKEN_ENV"}},
+                    "api-key-profile": {"type": "api_key", "key": {"from_env": "KEY_ENV"}},
+                    "oauth-profile": {
+                        "type": "oauth2_client_credentials",
+                        "token_url": "https://auth.example.com/token",
+                        "client_id": {"from_env": "CLIENT_ID_ENV"},
+                        "client_secret": {"from_env": "CLIENT_SECRET_ENV"},
+                    },
+                    "mtls-profile": {
+                        "type": "mtls",
+                        "certificate": {"from_env": "CERT_ENV"},
+                        "private_key": {"from_env": "KEY_ENV"},
+                    },
+                }
+            }
+        }
+    )
+    assert config.security.profiles["bearer-profile"].type == "bearer"
+    assert config.security.profiles["api-key-profile"].type == "api_key"
+    assert config.security.profiles["oauth-profile"].type == "oauth2_client_credentials"
+    assert config.security.profiles["mtls-profile"].type == "mtls"
+
+
+def test_a2a_security_profile_must_reference_known_profile(tmp_path: Path) -> None:
+    from open_workflow_agent.errors import ConfigurationError
+
+    path = tmp_path / "agent.yaml"
+    path.write_text("a2a:\n  security_profile: missing\n", encoding="utf-8")
+    with pytest.raises(ConfigurationError):
+        RuntimeConfig.from_file(path)
+
+
+def test_a2a_security_profile_must_be_bearer_type(tmp_path: Path) -> None:
+    from open_workflow_agent.errors import ConfigurationError
+
+    path = tmp_path / "agent.yaml"
+    path.write_text(
+        "security:\n"
+        "  profiles:\n"
+        "    api-key-profile:\n"
+        "      type: api_key\n"
+        "      key:\n"
+        "        from_env: KEY_ENV\n"
+        "a2a:\n"
+        "  security_profile: api-key-profile\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ConfigurationError):
+        RuntimeConfig.from_file(path)
+
+
+def test_a2a_auth_token_field_is_no_longer_accepted(tmp_path: Path) -> None:
+    from open_workflow_agent.errors import ConfigurationError
+
+    path = tmp_path / "agent.yaml"
+    path.write_text("a2a:\n  auth_token: secret\n", encoding="utf-8")
+    with pytest.raises(ConfigurationError):
+        RuntimeConfig.from_file(path)

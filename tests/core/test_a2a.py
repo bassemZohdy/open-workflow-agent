@@ -16,8 +16,11 @@ from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.services import RuntimeServices
 
 
-def _app_config(**a2a: object) -> RuntimeConfig:
-    return RuntimeConfig.model_validate({"a2a": {"enabled": True, **a2a}})
+def _app_config(*, security: dict[str, object] | None = None, **a2a: object) -> RuntimeConfig:
+    payload: dict[str, object] = {"a2a": {"enabled": True, **a2a}}
+    if security is not None:
+        payload["security"] = security
+    return RuntimeConfig.model_validate(payload)
 
 
 def _make_app(tmp_path, config: RuntimeConfig):
@@ -216,9 +219,23 @@ async def test_http_json_rejects_unsupported_version(tmp_path) -> None:
             assert response.json()["error"]["code"] == "version_not_supported"
 
 
+_BEARER_SECURITY = {
+    "profiles": {
+        "partner-agent": {
+            "type": "bearer",
+            "token": {"from_env": "OWA_TEST_A2A_BEARER"},
+        }
+    }
+}
+
+
 @pytest.mark.asyncio
-async def test_bearer_auth_is_enforced_when_configured(tmp_path) -> None:
-    app = _make_app(tmp_path, _app_config(auth_token="secret-token"))
+async def test_bearer_auth_is_enforced_when_configured(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("OWA_TEST_A2A_BEARER", "secret-token")
+    app = _make_app(
+        tmp_path,
+        _app_config(security=_BEARER_SECURITY, security_profile="partner-agent"),
+    )
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -230,6 +247,22 @@ async def test_bearer_auth_is_enforced_when_configured(tmp_path) -> None:
             assert authorized.status_code == 200
             capabilities = (await client.get("/v1/capabilities")).json()
             assert capabilities["features"]["a2a"]["auth"] == "bearer"
+
+
+@pytest.mark.asyncio
+async def test_bearer_auth_fails_closed_when_secret_is_unavailable(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("OWA_TEST_A2A_BEARER", raising=False)
+    app = _make_app(
+        tmp_path,
+        _app_config(security=_BEARER_SECURITY, security_profile="partner-agent"),
+    )
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get(
+                A2A_AGENT_CARD_PATH, headers={"Authorization": "Bearer secret-token"}
+            )
+            assert response.status_code == 401
 
 
 @pytest.mark.asyncio
