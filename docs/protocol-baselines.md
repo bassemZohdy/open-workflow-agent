@@ -91,6 +91,20 @@ Implemented v1 semantics also include:
 - JSON-RPC Task-not-cancelable `-32002`;
 - capability advertisement limited to implemented Task operations.
 
+### Outbound A2A client method set
+
+The common outbound A2A client (`ProtocolServices.call(protocol="a2a")`) accepts exactly these official v1 JSON-RPC wire operations:
+
+```text
+SendMessage
+GetTask
+ListTasks
+CancelTask
+GetExtendedAgentCard
+```
+
+Any other wire method — including `SendStreamingMessage`, `SubscribeToTask`, and the push-notification config operations — is rejected before any network call. Open Workflow DSL call values such as `tasks/list` and `agent/getAuthenticatedExtendedCard` are translated at the `RuntimeServices.call_protocol()` boundary onto the wire methods above; DSL values whose translated wire operation is outside this set fail closed.
+
 Legacy v0.3 discovery paths/method names remain unsupported on the A2A wire endpoint.
 
 Not yet advertised:

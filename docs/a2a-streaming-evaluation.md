@@ -183,10 +183,13 @@ mtls
 
 They include env-only secret references, secret-safe validation, principal/role/scope/audience modeling, and action/resource authorization rules.
 
+Completed integration:
+
+- profiles are part of the main strict runtime configuration (`RuntimeConfig.security.profiles`);
+- A2A inbound authentication references a named `bearer` profile through `a2a.security_profile` (the temporary `auth_token` field is removed).
+
 Remaining integration before expanding A2A:
 
-- add profiles to the main strict runtime configuration;
-- make A2A reference a named profile instead of `auth_token`;
 - advertise official Agent Card `securitySchemes` / `securityRequirements` accurately;
 - authenticate at HTTP/TLS layer, never in A2A message payloads;
 - authorize protocol-native actions such as `message.send`, `tasks.get`, and `tasks.cancel` against the selected skill/resource;

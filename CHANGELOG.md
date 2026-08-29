@@ -39,7 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Current deferred scope
 
-- Persistent A2A Tasks, task get/cancel, input-required/resume mapping, protocol-native async behavior, and streaming/resubscription remain active backlog rather than shipped capability.
+- A2A Task projection and Task get/cancel are implemented; input-required/resume mapping, protocol-native `returnImmediately` async behavior, streaming/resubscription, deployment-declared A2A skills, and per-principal authorization remain active backlog rather than shipped capability.
 - A2A push notifications remain intentionally deferred until an outbound callback trust/security model exists.
 - A broad/full A2A conformance claim remains deferred until Task/streaming/interoperability gates are green.
 - OpenShift-specific sandbox acceptance remains deferred until an OpenShift cluster is available.
