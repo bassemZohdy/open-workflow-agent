@@ -262,15 +262,15 @@ Implemented security groundwork:
 - validation errors hide rejected input values to prevent accidental secret echo;
 - OAuth2 client-credential token endpoint requires HTTPS;
 - principal/identity, roles, scopes, actions, resources, and audience remain distinct;
-- deterministic authorization policy evaluation exists in core.
+- deterministic authorization policy evaluation exists in core;
+- `RuntimeConfig.security.profiles` is a strict-parsed section of the main runtime configuration, with `OWA__SECURITY__...` overrides;
+- A2A inbound bearer authentication resolves a named `bearer` security profile (`a2a.security_profile`), replacing the temporary `auth_token` field; `RuntimeConfig` rejects unknown or non-bearer profile references at startup; a missing deployment secret at request time fails closed (401), not a crash.
 
 Still active:
 
-- add the shared security section to the main runtime configuration model;
-- wire named profiles into inbound/outbound protocol adapters;
+- wire named profiles into outbound protocol adapters (MCP/HTTP/OpenAPI clients, external catalog fetches) and the approvals operator check (`ApprovalConfig.operator_token` remains a separate temporary field);
 - advertise A2A `securitySchemes` / security requirements accurately;
-- replace temporary A2A `auth_token` and other protocol-specific credential fields;
-- enforce per-skill/per-action A2A authorization.
+- enforce per-skill/per-action A2A authorization (depends on deployment-declared A2A skills, `A2A-3`).
 
 OWA does not become an identity provider. OAuth2/OIDC federation, delegated-user token exchange, and consent remain external identity-platform responsibilities.
 

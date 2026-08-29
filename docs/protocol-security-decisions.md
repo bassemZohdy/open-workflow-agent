@@ -104,7 +104,7 @@ security:
         from_env: OWA_CA_CERT_PATH
 ```
 
-These examples describe the target model. Exact strict parser fields become authoritative only when `SECURITY-1` through `SECURITY-4` are implemented and green.
+These examples describe the target model. The `bearer` profile shape (`type`, `token.from_env`) is implemented and consumed by A2A inbound authentication today; the `api_key`/`oauth2_client_credentials`/`mtls` field names above are illustrative only and do not yet match the strict parser (see `core/src/open_workflow_agent/security.py` for the authoritative current fields). They become authoritative once a real adapter consumes them and `SECURITY-1` through `SECURITY-4` are fully green.
 
 ## 5. Authorization vocabulary
 
@@ -153,7 +153,7 @@ a2a:
   security_profile: partner-agent
 ```
 
-The previous single A2A bearer field is a temporary implementation detail, not a compatibility contract. It will be removed when the shared profile model lands.
+The previous single A2A bearer field (`auth_token`) was a temporary implementation detail, not a compatibility contract. It has been removed now that the shared profile model is wired for A2A inbound authentication; `a2a.security_profile` must reference a `bearer`-type entry in `security.profiles`. Nested `authorization` (roles/scopes/permissions enforcement) shown above remains conceptual and is not yet parsed or enforced (`SECURITY-4`).
 
 ## 7. Secret handling
 

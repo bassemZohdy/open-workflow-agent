@@ -174,20 +174,27 @@ OWA can expose itself as an A2A server. The current implementation pins A2A main
 
 A2A is disabled by default.
 
-Current deployment configuration still uses the temporary bearer field:
+Inbound A2A authentication references a named security profile instead of an inline token:
 
 ```yaml
+security:
+  profiles:
+    partner-agent:
+      type: bearer
+      token:
+        from_env: A2A_PARTNER_TOKEN
+
 a2a:
   enabled: true
   transport: jsonrpc        # jsonrpc | http_json
   path: /a2a
   agent_name: Open Workflow Agent
   public_base_url: https://agents.example.com
-  auth_token: set-via-deployment-secret   # temporary pre-shared-security field
+  security_profile: partner-agent
   max_message_chars: 100000
 ```
 
-Shared named security primitives now exist in core, but `auth_token` is not removed until the profiles are wired into `RuntimeConfig` and the A2A adapter.
+`a2a.security_profile` must name an entry in `security.profiles` of type `bearer`; the runtime rejects the configuration at startup otherwise. Only bearer-token authentication is wired today. Per-principal/per-action authorization (roles, scopes, permissions) is not enforced yet — see `SECURITY-4` in `TODO.md`.
 
 ### Discovery
 

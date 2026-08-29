@@ -9,7 +9,7 @@ on:
       - ".github/workflows/external-sandbox-ci.yml"
       - "core/src/open_workflow_agent/config.py"
       - "core/src/open_workflow_agent/sandbox/**"
-      - "core/src/open_workflow_agent/sandbox_contract.py"
+      - "core/src/open_workflow_agent/sandbox_capabilities.py"
       - "core/src/open_workflow_agent/services.py"
       - "sandbox-controller/**"
       - "kubernetes-sandbox-controller/**"
@@ -30,7 +30,7 @@ on:
       - ".github/workflows/external-sandbox-ci.yml"
       - "core/src/open_workflow_agent/config.py"
       - "core/src/open_workflow_agent/sandbox/**"
-      - "core/src/open_workflow_agent/sandbox_contract.py"
+      - "core/src/open_workflow_agent/sandbox_capabilities.py"
       - "core/src/open_workflow_agent/services.py"
       - "sandbox-controller/**"
       - "kubernetes-sandbox-controller/**"
@@ -77,7 +77,7 @@ jobs:
           uv run --locked ruff format --check \
             core/src/open_workflow_agent/config.py \
             core/src/open_workflow_agent/sandbox/ \
-            core/src/open_workflow_agent/sandbox_contract.py \
+            core/src/open_workflow_agent/sandbox_capabilities.py \
             core/src/open_workflow_agent/services.py \
             sandbox-controller/src \
             kubernetes-sandbox-controller/src \
@@ -92,7 +92,7 @@ jobs:
           uv run --locked ruff check \
             core/src/open_workflow_agent/config.py \
             core/src/open_workflow_agent/sandbox/ \
-            core/src/open_workflow_agent/sandbox_contract.py \
+            core/src/open_workflow_agent/sandbox_capabilities.py \
             core/src/open_workflow_agent/services.py \
             sandbox-controller/src \
             kubernetes-sandbox-controller/src \

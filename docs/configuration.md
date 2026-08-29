@@ -130,13 +130,13 @@ observability:
 
 ### Pre-release security migration note
 
-The old single A2A bearer field is **not part of the target public schema**. OWA has no backward-compatibility commitment before the product contract stabilizes, so it will be removed rather than preserved as an alias when the shared security-profile implementation lands.
+The old single A2A bearer field (`a2a.auth_token`) has been removed. OWA has no backward-compatibility commitment before the product contract stabilizes, so it was replaced rather than preserved as an alias once the shared security-profile implementation landed.
 
-The target schema is defined in [protocol-security-decisions.md](protocol-security-decisions.md) and tracked by `SECURITY-1` through `SECURITY-4` in `TODO.md`. Until those implementation tasks are green, do not assume the conceptual `security` examples below are accepted by the strict parser.
+The target schema is defined in [protocol-security-decisions.md](protocol-security-decisions.md) and tracked by `SECURITY-1` through `SECURITY-4` in `TODO.md`. Profile definitions (`security.profiles`, `type`, `token`) and A2A bearer authentication (`a2a.security_profile`) are implemented and strict-parsed today. The per-profile `authorization` block below (roles/scopes/permissions enforcement) remains conceptual — it is not yet parsed or enforced (`SECURITY-4`).
 
-## Shared security profiles — target schema
+## Shared security profiles
 
-Authentication and authorization are deployment/runtime configuration. The initial shared schema intentionally supports only the most common interoperable mechanisms:
+Authentication and authorization are deployment/runtime configuration. The shared schema intentionally supports only the most common interoperable mechanisms:
 
 ```text
 bearer
@@ -145,7 +145,23 @@ oauth2_client_credentials
 mtls
 ```
 
-Conceptual configuration:
+Implemented today — profile definition and A2A bearer authentication:
+
+```yaml
+security:
+  profiles:
+    partner-agent:
+      type: bearer
+      token:
+        from_env: A2A_PARTNER_TOKEN
+
+a2a:
+  security_profile: partner-agent
+```
+
+`a2a.security_profile` must reference a `bearer`-type profile; the runtime rejects the configuration at startup otherwise (unknown profile name, or a non-bearer profile type).
+
+Conceptual (not yet parsed or enforced) — per-profile authorization:
 
 ```yaml
 security:
@@ -164,12 +180,9 @@ security:
           - action: tasks.get
             resources: [skill:residence-renewal]
         audience: open-workflow-agent
-
-a2a:
-  security_profile: partner-agent
 ```
 
-The standard authorization vocabulary is:
+The standard authorization vocabulary (for the conceptual block above) is:
 
 - `principal` / identity — authenticated caller, service, or agent;
 - `role` — named grouping of permissions;

@@ -14,18 +14,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - HTTP+JSON `/message:send`;
   - selectable `jsonrpc` (default) and `http_json` transports;
   - deployment-configured public base URL;
-  - optional temporary bearer authentication;
+  - optional bearer authentication via a named security profile;
   - message/request bounds and sanitized transport-specific errors.
 - Stable protocol baseline record covering Open Workflow `1.0.3`, A2A `1.0.1`, MCP `2026-07-28`, OpenAPI `3.2.0`, CloudEvents `1.0.2`, and AsyncAPI `3.1.0`.
 - Protocol/security architecture decisions for named reusable security profiles, standard authorization vocabulary, A2A skill ownership, A2A Task projection, traffic-policy separation, and explicit enterprise identity boundaries.
 - Deterministic stable-protocol client tests for the current MCP/A2A common-client migration.
+- `RuntimeConfig.security.profiles`: a strict-parsed, named security profile section (`bearer`, `api_key`, `oauth2_client_credentials`, `mtls`) exposed through the main runtime YAML plus `OWA__SECURITY__...` overrides.
 
 ### Changed
 
 - A2A v0.3 discovery/method/Part compatibility assumptions were removed. The bounded inbound profile now targets A2A release `1.0.1` and advertises protocol version `1.0` only for implemented behavior.
 - The active A2A roadmap now treats persistent A2A Tasks as a projection over common OWA invocation/`ExecutionHandle` state rather than a second workflow or persistence engine.
 - A2A streaming/resubscription is ordered after Task state and will reuse common lifecycle/event infrastructure without exposing engine-native checkpoint/stream objects.
-- Authentication/authorization is moving from temporary protocol-specific credential fields to reusable named deployment security profiles. Initial planned mechanisms are `bearer`, `api_key`, `oauth2_client_credentials`, and `mtls`.
+- Authentication/authorization is moving from temporary protocol-specific credential fields to reusable named deployment security profiles. A2A inbound bearer authentication is the first adapter wired to `security.profiles` (`a2a.security_profile` replaces `auth_token`); outbound protocol clients and the approvals operator check remain on temporary fields. Initial supported mechanisms are `bearer`, `api_key`, `oauth2_client_credentials`, and `mtls`.
 - Rate limiting, concurrency, burst/admission, and future circuit policy are explicitly separated into deployment traffic policy rather than being folded into identity/security configuration.
 - `run.container` admits the deployment-enabled Kubernetes sandbox backend with its own exact-digest allowlist.
 - Kubernetes sandbox Jobs run as numeric non-root `65532:65532`; deadline failures surface `sandbox_timeout`; runtime execution payloads use an explicit JSON content type.

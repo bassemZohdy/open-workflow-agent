@@ -1,20 +1,27 @@
 # Open Workflow Agent
 
+[![CI](https://github.com/BassemZohdy/open-workflow-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/BassemZohdy/open-workflow-agent/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/BassemZohdy/open-workflow-agent?include_prereleases)](https://github.com/BassemZohdy/open-workflow-agent/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.12-blue.svg)](pyproject.toml)
+
 Open Workflow Agent is a configuration-driven runtime for running AI agents and Open Workflow 1.0.3 workflows without writing application-specific orchestration code.
 
-You provide configuration, an optional workflow, optional knowledge, and optional tools. The runtime executes the same public contract on interchangeable engines such as ADK and LangGraph.
+You provide configuration, an optional workflow, optional knowledge, and optional tools. The runtime executes the same public contract on interchangeable engines (Google ADK and LangGraph today), so your workflows, knowledge, and integrations stay portable.
 
 ## Why use it?
 
 Use Open Workflow Agent when you want to:
 
-- run an AI agent from configuration;
-- add knowledge, memory, tools, or workflows without changing application code;
-- keep workflow definitions portable across supported execution engines;
-- expose the runtime through a stable HTTP API;
-- run the same packaged runtime in Docker, Kubernetes, or OpenShift.
+- run an AI agent from configuration — no application code, no rebuild to change workflow, knowledge, tools, or providers;
+- expose your agent to other systems over **A2A 1.0.1** (Agent Card discovery, synchronous `message/send`, and task operations) behind a deployment-selected transport;
+- run **durable human-in-the-loop approvals**: workflows pause, operators decide through protected endpoints, and decisions survive restarts;
+- execute **sandboxed operations** (`run.shell`, `run.script`, `run.container`) through one framework-neutral contract with internal, Docker, or Kubernetes/OpenShift isolation backends;
+- schedule workflows (`schedule.after`/`schedule.every`) with durable, restart-safe, at-least-once dispatch;
+- publish lifecycle events as CloudEvents 1.0 with a bounded SSE stream;
+- keep workflow definitions portable across execution engines — engines are implementation details, not your API.
 
-Every invocation is executed as a workflow. If you do not provide a workflow, Open Workflow Agent generates a default workflow that calls the configured agent.
+Every invocation runs as a workflow. If you do not provide one, the runtime generates a default workflow that calls the configured agent.
 
 ## Published container images
 
@@ -34,7 +41,7 @@ ghcr.io/bassemzohdy/open-workflow-agent-adk:<tag>
 ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<tag>
 ```
 
-For the latest verified `main` build:
+For the current release:
 
 ```bash
 docker pull bzohdy/open-workflow-agent-adk:0.1.0
@@ -117,6 +124,17 @@ curl -X POST http://localhost:8080/v1/invoke \
 ```
 
 The response includes an `invocation_id`, `session_id`, status, and output.
+
+### 5. What to try next
+
+- Check what your deployment advertises: `GET /v1/capabilities`.
+- Add knowledge and ask questions that use `search_knowledge` (below).
+- Expose the agent over A2A: enable `a2a.enabled` and point any A2A client at the Agent Card.
+- Pause a workflow for human approval and resume it — see [Approvals](docs/api.md#approvals-human-in-the-loop).
+
+## Security model in one paragraph
+
+The HTTP API is unauthenticated by default: deployments place authentication, authorization, and rate limiting at the edge (reverse proxy, gateway, or mesh). Inbound A2A supports deployment-configured named security profiles (`bearer` today, with `api_key`, OAuth2 client-credentials, and mTLS defined); secrets always come from deployment secret mechanisms, never workflow files. Shell/script/container execution, external catalogs, A2A, and approvals are all disabled until a deployment explicitly enables them, and every capability is reported truthfully by `GET /v1/capabilities`. See [SECURITY.md](SECURITY.md).
 
 ## Configuration and mounted content
 
@@ -266,12 +284,16 @@ POST /v1/approvals/{id}/decision
 POST /v1/schedules
 GET  /v1/schedules/{id}
 POST /v1/schedules/{id}/cancel
-GET  /.well-known/agent-card.json  (A2A 1.0.1 bounded profile, optional)
-POST /a2a                         (A2A JSON-RPC binding, optional)
-POST /a2a/message:send            (A2A HTTP+JSON binding, optional)
+
+# Inbound A2A 1.0.1 (optional; requires a2a.enabled)
+GET  /.well-known/agent-card.json
+POST /a2a                      (JSON-RPC binding: SendMessage)
+POST /a2a/message:send         (HTTP+JSON binding)
+GET  /a2a/tasks/{task_id}      (task status projection)
+POST /a2a/tasks/{task_id}:cancel
 ```
 
-Use `/v1/capabilities` to discover the selected engine/runtime capabilities. The optional inbound A2A boundary targets stable A2A release `1.0.1` and advertises protocol version `1.0`; JSON-RPC uses `SendMessage`, while HTTP+JSON uses `/message:send`. Legacy A2A v0.3 discovery/method/Part forms are intentionally not retained. See [api.md](docs/api.md), [protocol baselines](docs/protocol-baselines.md), and [protocol/security decisions](docs/protocol-security-decisions.md).
+Use `/v1/capabilities` to discover the selected engine/runtime capabilities. The optional inbound A2A boundary targets stable A2A release `1.0.1` and advertises protocol version `1.0`; JSON-RPC uses `SendMessage`, while HTTP+JSON uses `/message:send`. A2A tasks are a projection over runtime invocations: a waiting workflow appears as `input-required`, which is how durable approvals surface to A2A clients. Legacy A2A v0.3 discovery/method/Part forms are intentionally not retained. See [api.md](docs/api.md), [protocol baselines](docs/protocol-baselines.md), and [protocol/security decisions](docs/protocol-security-decisions.md).
 
 ## Sandbox execution
 
@@ -283,7 +305,22 @@ Three execution backends exist behind deployment configuration:
 - **Docker backend** — stronger-isolation external execution through a restricted Unix-socket controller so the main runtime never mounts an unrestricted Docker socket. Production acceptance is recorded green (see `PROJECT.md`).
 - **Kubernetes/OpenShift backend** — controller-held cluster lifecycle permissions with deployment-owned namespace, ServiceAccount, image, resource, secret, and network-policy controls; the main runtime never receives cluster-wide permissions. Real-cluster Kubernetes acceptance is recorded in `PROJECT.md`; OpenShift-specific SCC/arbitrary-UID acceptance remains deferred and must not be advertised until verified.
 
-See [Sandbox execution architecture](docs/sandbox-execution.md), the [external sandbox contract](docs/external-sandbox-contract.md), and the ordered backlog in [TODO.md](TODO.md) for the acceptance state of each backend.
+See [Sandbox execution architecture](docs/sandbox-execution.md), the [external sandbox contract](docs/external-sandbox-contract.md), and [TODO.md](TODO.md) for the acceptance state of each backend.
+
+## Runtime model
+
+```text
+Configuration + Open Workflow + Knowledge + Memory + Tools
+                         |
+                         v
+                 Open Workflow Agent
+                         |
+              +----------+----------+
+              |                     |
+             ADK                 LangGraph
+```
+
+ADK and LangGraph are implementation engines, not public application contracts. The same mounted configuration and workflow should remain portable when they use capabilities in the common profile. An optional Microsoft Agent Framework adapter exists for evaluation; it is not a production release target.
 
 ## Documentation
 
@@ -307,21 +344,6 @@ See [Sandbox execution architecture](docs/sandbox-execution.md), the [external s
 - [Contributing](CONTRIBUTING.md) — contribution workflow.
 - [Security policy](SECURITY.md) — private vulnerability reporting and security model.
 - [Changelog](CHANGELOG.md) — notable changes.
-
-## Runtime model
-
-```text
-Configuration + Open Workflow + Knowledge + Memory + Tools
-                         |
-                         v
-                 Open Workflow Agent
-                         |
-              +----------+----------+
-              |                     |
-             ADK                 LangGraph
-```
-
-ADK and LangGraph are implementation engines, not public application contracts. The same mounted configuration and workflow should remain portable when they use capabilities in the common profile. An optional Microsoft Agent Framework adapter exists for evaluation; it is not a production release target.
 
 ## Development
 

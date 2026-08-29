@@ -22,7 +22,7 @@ Backend selection is deployment-controlled. Workflow documents never choose `int
 
 ## Common requirements
 
-`open_workflow_agent.sandbox_contract` defines portable requirements for:
+`open_workflow_agent.sandbox_capabilities` defines portable requirements for:
 
 - execution kind (`script`, `shell`, `container`);
 - runtime selection;
