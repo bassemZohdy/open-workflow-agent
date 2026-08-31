@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Annotated, Literal
 from urllib.parse import urlparse
@@ -194,6 +195,34 @@ def resolve_secret(reference: SecretReference) -> str:
     return value
 
 
+class ProfileAuthentication:
+    """Resolve a named security profile into protocol headers at call time.
+
+    Existence and header capability are validated at construction so unknown
+    profile references fail closed at startup. The credential value itself is
+    resolved from its deployment environment variable at the last responsible
+    moment and never cached.
+    """
+
+    def __init__(self, security: SecurityConfig, profile_name: str) -> None:
+        profile = security.profile(profile_name)
+        if not isinstance(profile, (BearerSecurityProfile, ApiKeySecurityProfile)):
+            raise ValueError(f"security profile '{profile_name}' does not provide protocol headers")
+        self.security = security
+        self.profile_name = profile_name
+
+    def headers(self, endpoint: str) -> Mapping[str, str]:
+        del endpoint
+        profile = self.security.profile(self.profile_name)
+        if isinstance(profile, BearerSecurityProfile):
+            return {"Authorization": f"Bearer {resolve_secret(profile.token)}"}
+        if isinstance(profile, ApiKeySecurityProfile):
+            return {profile.header: resolve_secret(profile.key)}
+        raise ValueError(
+            f"security profile '{self.profile_name}' does not provide protocol headers"
+        )
+
+
 def static_principal(profile: BearerSecurityProfile | ApiKeySecurityProfile) -> Principal:
     """Build the deployment-defined principal attached to a static credential."""
 
@@ -241,6 +270,7 @@ __all__ = [
     "SecurityConfig",
     "SecurityProfile",
     "authorize",
+    "ProfileAuthentication",
     "resolve_secret",
     "static_principal",
 ]

@@ -19,6 +19,7 @@ from .errors import (
     ApprovalValidationError,
 )
 from .events import EventBus, EventEnvelope
+from .security import BearerSecurityProfile, SecurityConfig, resolve_secret
 from .storage import StorageConnection, open_storage
 
 APPROVAL_REQUEST_EVENT = "io.openworkflow.agent.approval.requested"
@@ -340,11 +341,13 @@ class ApprovalService:
         database: str | Path,
         *,
         enabled: bool,
-        operator_token: str | None,
+        operator_security_profile: str | None,
+        security: SecurityConfig,
         event_bus: EventBus,
     ) -> None:
         self.enabled = enabled
-        self.operator_token = operator_token
+        self.operator_security_profile = operator_security_profile
+        self.security = security
         self.store = ApprovalStore(database)
         self.event_bus: EventBus = ApprovalEventBus(event_bus, self.store) if enabled else event_bus
 
@@ -354,12 +357,22 @@ class ApprovalService:
 
     def authorize(self, authorization: str | None, operator_id: str | None) -> str:
         self.ensure_enabled()
-        if not self.operator_token:
+        if not self.operator_security_profile:
             raise ApprovalAuthorizationError("approval operator authorization is not configured")
+        try:
+            profile = self.security.profile(self.operator_security_profile)
+        except ValueError as exc:
+            raise ApprovalAuthorizationError("approval operator authorization failed") from exc
+        if not isinstance(profile, BearerSecurityProfile):
+            raise ApprovalAuthorizationError("approval operator authorization failed")
         if not authorization or not authorization.startswith("Bearer "):
             raise ApprovalAuthorizationError("approval operator bearer token is required")
         supplied = authorization.removeprefix("Bearer ").strip()
-        if not hmac.compare_digest(supplied, self.operator_token):
+        try:
+            expected = resolve_secret(profile.token)
+        except ValueError as exc:
+            raise ApprovalAuthorizationError("approval operator authorization failed") from exc
+        if not hmac.compare_digest(supplied, expected):
             raise ApprovalAuthorizationError("approval operator authorization failed")
         if operator_id is None or not operator_id.strip():
             raise ApprovalAuthorizationError("approval operator identity is required")

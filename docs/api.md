@@ -144,9 +144,16 @@ This stream carries common lifecycle events only. It is not general output/token
 Durable approval state is disabled until configured:
 
 ```yaml
+security:
+  profiles:
+    operator:
+      type: bearer
+      token:
+        from_env: OWA_OPERATOR_TOKEN
+
 approvals:
   enabled: true
-  operator_token: <deployment-provided bearer token>
+  operator_security_profile: operator
 ```
 
 The approval-specific bearer field remains a bounded pre-shared-security implementation.
@@ -162,7 +169,7 @@ POST /v1/approvals/{approval_id}/decision
 Authorization requires:
 
 ```text
-Authorization: Bearer <approvals.operator_token>
+Authorization: Bearer <token from the referenced security profile>
 X-Operator-Id: <operator identity>
 ```
 

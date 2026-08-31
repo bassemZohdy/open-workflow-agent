@@ -31,7 +31,7 @@ Catalog references with integrity pins must match the configured SHA-256 digest 
 
 ### Approvals API returns authorization errors
 
-Approval endpoints require both the configured `approvals.operator_token` (as `Authorization: Bearer ...`) and an `X-Operator-Id` header. `approval operator authorization is not configured` means the deployment has `approvals.enabled: true` but no `operator_token`.
+Approval endpoints require the bearer token of the security profile named by `approvals.operator_security_profile` (sent as `Authorization: Bearer ...`) plus an `X-Operator-Id` header. `approval operator authorization is not configured` means `approvals.enabled` is true but no profile is referenced; `approval operator authorization failed` covers a wrong token or an unresolved profile secret (the profile variable is unset in the deployment).
 
 ### Executable tasks are rejected
 

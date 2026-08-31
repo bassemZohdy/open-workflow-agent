@@ -15,8 +15,21 @@ ENGINE_CASES = engine_cases()
 
 
 def _config() -> RuntimeConfig:
+    import os
+
+    os.environ["OWA_CONTRACT_OPERATOR_TOKEN"] = "test-operator-token"
     return RuntimeConfig.model_validate(
-        {"approvals": {"enabled": True, "operator_token": "test-operator-token"}}
+        {
+            "security": {
+                "profiles": {
+                    "operator": {
+                        "type": "bearer",
+                        "token": {"from_env": "OWA_CONTRACT_OPERATOR_TOKEN"},
+                    }
+                }
+            },
+            "approvals": {"enabled": True, "operator_security_profile": "operator"},
+        }
     )
 
 

@@ -47,6 +47,7 @@ class CatalogAuthenticationConfig(StrictModel):
     bearer_token_env: str | None = None
     basic_username_env: str | None = None
     basic_password_env: str | None = None
+    security_profile: str | None = None
 
     @model_validator(mode="after")
     def validate_basic_pair(self) -> CatalogAuthenticationConfig:
@@ -228,7 +229,7 @@ class A2AConfig(StrictModel):
 
 class ApprovalConfig(StrictModel):
     enabled: bool = False
-    operator_token: str | None = None
+    operator_security_profile: str | None = None
 
 
 class DockerSandboxConfig(StrictModel):
@@ -463,6 +464,7 @@ class ToolConfig(StrictModel):
     type: Literal["mcp", "openapi", "a2a"]
     name: str | None = None
     endpoint: str | None = None
+    security_profile: str | None = None
     options: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -503,6 +505,34 @@ class RuntimeConfig(StrictModel):
             raise ValueError(
                 "a2a.security_profile must reference a security profile of type 'bearer'"
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_security_profile_references(self) -> RuntimeConfig:
+        header_capable = {"bearer", "api_key"}
+
+        def require_header_profile(field: str, name: str | None) -> None:
+            if name is None:
+                return
+            profile = self.security.profiles.get(name)
+            if profile is None:
+                raise ValueError(f"{field} references unknown security profile: {name}")
+            if profile.type not in header_capable:
+                raise ValueError(
+                    f"{field} must reference a security profile of type "
+                    f"{' or '.join(sorted(header_capable))}"
+                )
+
+        require_header_profile(
+            "approvals.operator_security_profile", self.approvals.operator_security_profile
+        )
+        for catalog_name, catalog in self.workflow.external_catalogs.items():
+            require_header_profile(
+                f"external catalog '{catalog_name}' authentication",
+                catalog.authentication.security_profile,
+            )
+        for index, tool in enumerate(self.tools):
+            require_header_profile(f"tools[{index}]", tool.security_profile)
         return self
 
     @classmethod

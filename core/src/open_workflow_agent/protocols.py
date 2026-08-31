@@ -323,7 +323,10 @@ class ProtocolServices:
             return await self.http.request(
                 "POST",
                 str(endpoint),
-                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                headers={
+                    **(payload.get("headers") or {}),
+                    "A2A-Version": A2A_PROTOCOL_VERSION,
+                },
                 json=body,
                 operation_id=operation_id,
                 request_timeout=_duration_seconds(payload.get("timeout")),
@@ -346,6 +349,7 @@ class ProtocolServices:
             return await self.http.request(
                 str(payload.get("method", "POST")),
                 str(endpoint),
+                headers=payload.get("headers"),
                 params=payload.get("query"),
                 json=parameters,
                 operation_id=operation_id or str(operation_id_value),

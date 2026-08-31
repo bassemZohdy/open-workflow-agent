@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Protocol/security architecture decisions for named reusable security profiles, standard authorization vocabulary, A2A skill ownership, A2A Task projection, traffic-policy separation, and explicit enterprise identity boundaries.
 - Deterministic stable-protocol client tests for the current MCP/A2A common-client migration.
 - `RuntimeConfig.security.profiles`: a strict-parsed, named security profile section (`bearer`, `api_key`, `oauth2_client_credentials`, `mtls`) exposed through the main runtime YAML plus `OWA__SECURITY__...` overrides.
+- Named security profiles now cover the approvals operator check (`approvals.operator_security_profile`, replacing the raw `approvals.operator_token`), external-catalog authentication (`workflow.external_catalogs.<name>.authentication.security_profile`), and per-tool authentication (`tools[].security_profile`) — all validated at startup and resolved fail-closed at request time. OpenAPI/A2A outbound tool calls forward profile headers.
 
 ### Changed
 

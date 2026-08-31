@@ -66,11 +66,13 @@ class RuntimeServices:
         raw_event_bus = event_bus or InMemoryEventBus()
         self.workflow_catalog = WorkflowCatalog()
         self.external_catalogs = ExternalCatalogResolver(
-            config.workflow.external_catalogs, event_sink=self.events
+            config.workflow.external_catalogs, event_sink=self.events, security=config.security
         )
         self.workflow_runner: Any = None
         self.protocols = ProtocolServices()
-        self.tools = ToolRegistry.from_config(config.tools, self.protocols)
+        self.tools = ToolRegistry.from_config(
+            config.tools, self.protocols, security=config.security
+        )
         sandbox_backend: SandboxBackend
         if config.sandbox.backend == "docker":
             sandbox_backend = DockerSandboxBackend(config.sandbox)
@@ -103,7 +105,8 @@ class RuntimeServices:
         self.approvals = ApprovalService(
             invocation_path,
             enabled=config.approvals.enabled,
-            operator_token=config.approvals.operator_token,
+            operator_security_profile=config.approvals.operator_security_profile,
+            security=config.security,
             event_bus=raw_event_bus,
         )
         self.event_bus = self.approvals.event_bus

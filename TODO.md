@@ -23,11 +23,11 @@ Verified implementation detail lives in `PROJECT.md` and is updated after every 
 
 ### P0 — Shared security configuration
 
-- [ ] **SECURITY-1** — integrate reusable named security profiles across inbound/outbound protocol adapters. `RuntimeConfig.security`/`SecurityConfig.profiles` are implemented and wired into A2A inbound bearer authentication (`a2a.security_profile`); MCP/HTTP outbound clients (`protocols.py`, `external_catalog.py`) and the approvals operator check still use ad-hoc credential fields.
+- [ ] **SECURITY-1** — integrate reusable named security profiles across inbound/outbound protocol adapters. Done: A2A inbound bearer (`a2a.security_profile`), approvals operator check (`approvals.operator_security_profile`), external-catalog authentication (`authentication.security_profile`), and per-tool references (`tools[].security_profile`) with OpenAPI/A2A/MCP header forwarding. Remaining: OAuth2 client-credentials/mTLS profile types for outbound adapters, and MCP stdio (disabled) has no auth surface.
 - [x] **SECURITY-2** — expose profiles through the main strict runtime YAML plus `OWA__...` overrides. `RuntimeConfig.security` is a strict-parsed section; `OWA__SECURITY__...` overrides work through the existing generic environment-override mechanism. Protocol/tool configuration references profiles by name; workflow definitions never contain raw credentials.
 - [ ] **SECURITY-3** — complete secret-safe integration across adapters/logs/plans/capabilities/Agent Cards/lifecycle/A2A Tasks/sandbox/persistence. Env-only `SecretReference` resolution and secret-safe validation errors are implemented; full adapter-path verification remains.
 - [ ] **SECURITY-4** — wire standard authorization checks into protocol actions/skills. Framework-neutral principal/role/scope/action/resource/audience policy evaluation is implemented and tested; A2A/MCP enforcement remains. Depends on `A2A-3` (skills) for meaningful per-resource checks.
-- [ ] **SECURITY-6** — remove temporary protocol-specific credential fields as shared profiles replace them. `A2AConfig.auth_token` is removed (replaced by `security_profile`); `ApprovalConfig.operator_token` and the outbound catalog/tool credential fields remain.
+- [ ] **SECURITY-6** — remove temporary protocol-specific credential fields as shared profiles replace them. `A2AConfig.auth_token` and `ApprovalConfig.operator_token` are removed (replaced by named profile references). Remaining ad-hoc fields: external-catalog `bearer_token_env`/`basic_*_env` (basic has no profile type yet) and the legacy global `OWA_BEARER_TOKEN_ENV` protocol-client environment.
 
 ### P1 — Traffic policy
 

@@ -72,7 +72,7 @@ persistence:
 
 approvals:
   enabled: false
-  operator_token: null
+  operator_security_profile: null
 
 a2a:
   enabled: false
@@ -274,7 +274,28 @@ Prefer injecting production datasources via `OWA__PERSISTENCE__DATASOURCE` from 
 
 ## `approvals`
 
-Approvals are disabled by default. The current `approvals.operator_token` is a bounded pre-security-profile field and is expected to migrate to the shared security model rather than become a permanent parallel authentication mechanism.
+Approvals are disabled by default. Operator authorization uses a named
+`bearer` profile from `security.profiles`:
+
+```yaml
+security:
+  profiles:
+    operator:
+      type: bearer
+      token:
+        from_env: OWA_OPERATOR_TOKEN
+
+approvals:
+  enabled: true
+  operator_security_profile: operator
+```
+
+The reference is validated at startup (the profile must exist and be of type
+`bearer`). The token resolves from the referenced environment variable at
+request time; a missing variable fails closed with 401 and never leaks the
+value. Tools (`tools[].security_profile`) and external-catalog authentication
+(`workflow.external_catalogs.<name>.authentication.security_profile`) accept
+`bearer` or `api_key` profile references the same way.
 
 ## `a2a`
 

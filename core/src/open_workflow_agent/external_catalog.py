@@ -26,6 +26,7 @@ from .protocols import (
     ProtocolServices,
     resolve_public_addresses_async,
 )
+from .security import ProfileAuthentication, SecurityConfig
 
 CATALOG_FUNCTION_REFERENCE = re.compile(
     r"^(?P<name>[a-z0-9][a-z0-9-]*):(?P<version>\d+\.\d+\.\d+)@(?P<catalog>[A-Za-z][A-Za-z0-9_-]*)$"
@@ -81,10 +82,12 @@ class ExternalCatalogResolver:
         *,
         http: HttpClient | None = None,
         event_sink: EventSink | None = None,
+        security: SecurityConfig | None = None,
     ) -> None:
         self.policies = dict(policies or {})
         self.http = http
         self.event_sink = event_sink
+        self.security = security
         self._cache: dict[str, _CachedResource] = {}
         self._resolved: dict[str, set[str]] = {}
         self._states: dict[str, str] = {name: "configured" for name in self.policies}
@@ -254,7 +257,7 @@ class ExternalCatalogResolver:
                 ),
             )
         auth = policy.authentication
-        authentication: AuthenticationProvider | None = _authentication(auth)
+        authentication: AuthenticationProvider | None = _authentication(auth, self.security)
         if authentication is not None and auth_host:
             authentication = _HostBoundAuthentication(authentication, auth_host)
         return HttpClient(
@@ -416,7 +419,17 @@ class ExternalCatalogResolver:
             )
 
 
-def _authentication(config: CatalogAuthenticationConfig) -> EnvironmentAuthentication | None:
+def _authentication(
+    config: CatalogAuthenticationConfig,
+    security: SecurityConfig | None,
+) -> AuthenticationProvider | None:
+    if config.security_profile:
+        if security is None:
+            raise ToolError(
+                "catalog security profile reference requires runtime security configuration",
+                details={"profile": config.security_profile},
+            )
+        return ProfileAuthentication(security, config.security_profile)
     if not any((config.bearer_token_env, config.basic_username_env, config.basic_password_env)):
         return None
     return EnvironmentAuthentication(

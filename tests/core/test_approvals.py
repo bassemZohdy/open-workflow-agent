@@ -14,7 +14,24 @@ from open_workflow_agent.approvals import (
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import ApprovalAuthorizationError, ApprovalConflict
 from open_workflow_agent.events import InMemoryEventBus
+from open_workflow_agent.security import SecurityConfig
 from open_workflow_agent.services import RuntimeServices
+
+
+def _security(token: str) -> SecurityConfig:
+    import os
+
+    os.environ["OWA_TEST_OPERATOR_TOKEN"] = token
+    return SecurityConfig.model_validate(
+        {
+            "profiles": {
+                "operator": {
+                    "type": "bearer",
+                    "token": {"from_env": "OWA_TEST_OPERATOR_TOKEN"},
+                }
+            }
+        }
+    )
 
 
 @pytest.mark.asyncio
@@ -23,7 +40,8 @@ async def test_durable_approval_decision_is_idempotent_and_replayed_after_restar
     service = ApprovalService(
         database,
         enabled=True,
-        operator_token="secret",
+        operator_security_profile="operator",
+        security=_security("secret"),
         event_bus=InMemoryEventBus(),
     )
     assert isinstance(service.event_bus, ApprovalEventBus)
@@ -76,7 +94,8 @@ async def test_durable_approval_decision_is_idempotent_and_replayed_after_restar
     restarted = ApprovalService(
         database,
         enabled=True,
-        operator_token="secret",
+        operator_security_profile="operator",
+        security=_security("secret"),
         event_bus=InMemoryEventBus(),
     )
     replay = await asyncio.wait_for(
@@ -95,7 +114,8 @@ async def test_approval_decision_cannot_bypass_operator_api(tmp_path) -> None:
     service = ApprovalService(
         tmp_path / "runtime.sqlite3",
         enabled=True,
-        operator_token="secret",
+        operator_security_profile="operator",
+        security=_security("secret"),
         event_bus=InMemoryEventBus(),
     )
     with pytest.raises(ValueError, match="approval decisions"):
@@ -118,9 +138,20 @@ def test_approval_api_requires_authorization_and_reports_capability(tmp_path) ->
     config = RuntimeConfig.model_validate(
         {
             "model": {"provider": "fake", "name": "fake/default"},
-            "approvals": {"enabled": True, "operator_token": "secret"},
+            "security": {
+                "profiles": {
+                    "operator": {
+                        "type": "bearer",
+                        "token": {"from_env": "OWA_TEST_OPERATOR_TOKEN"},
+                    }
+                }
+            },
+            "approvals": {"enabled": True, "operator_security_profile": "operator"},
         }
     )
+    import os
+
+    os.environ.setdefault("OWA_TEST_OPERATOR_TOKEN", "secret")
     services = RuntimeServices(config, database_root=tmp_path)
     app = create_app(config=config, services=services)
     with TestClient(app) as client:
