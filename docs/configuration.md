@@ -157,6 +157,7 @@ security:
 
 a2a:
   security_profile: partner-agent
+  skills: []
 ```
 
 `a2a.security_profile` must reference a `bearer`-type profile; the runtime rejects the configuration at startup otherwise (unknown profile name, or a non-bearer profile type).
@@ -300,6 +301,12 @@ value. Tools (`tools[].security_profile`) and external-catalog authentication
 ## `a2a`
 
 The implemented inbound A2A boundary targets stable A2A release `1.0.1` and advertises protocol version `1.0`.
+
+Multiple deployment-declared skills are supported: each `a2a.skills` entry
+maps a skill id to an explicitly registered workflow (registered through
+`workflow.catalog`; names must resolve uniquely). Clients route with
+`message.metadata.skillId`; an unknown or missing skill id fails closed with
+a sanitized error. Undeclared skills are never advertised.
 
 ```yaml
 a2a:
