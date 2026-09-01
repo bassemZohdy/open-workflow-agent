@@ -16,6 +16,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   - deployment-configured public base URL;
   - optional bearer authentication via a named security profile;
   - message/request bounds and sanitized transport-specific errors.
+- Deployment-declared A2A skills (`a2a.skills`): each entry maps a skill id to
+  an explicitly registered workflow; the Agent Card advertises exactly those
+  skills, `message.metadata.skillId` routes the message, and unknown or
+  ambiguous workflow names fail closed at startup or request time.
 - Stable protocol baseline record covering Open Workflow `1.0.3`, A2A `1.0.1`, MCP `2026-07-28`, OpenAPI `3.2.0`, CloudEvents `1.0.2`, and AsyncAPI `3.1.0`.
 - Protocol/security architecture decisions for named reusable security profiles, standard authorization vocabulary, A2A skill ownership, A2A Task projection, traffic-policy separation, and explicit enterprise identity boundaries.
 - Deterministic stable-protocol client tests for the current MCP/A2A common-client migration.
