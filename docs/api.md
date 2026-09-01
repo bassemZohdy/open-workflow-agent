@@ -198,10 +198,17 @@ a2a:
   agent_name: Open Workflow Agent
   public_base_url: https://agents.example.com
   security_profile: partner-agent
+  skills:
+    - id: residence-renewal
+      workflow: residence-renewal   # workflow registered via workflow.catalog
   max_message_chars: 100000
 ```
 
 `a2a.security_profile` must name an entry in `security.profiles` of type `bearer`; the runtime rejects the configuration at startup otherwise. Only bearer-token authentication is wired today. Per-principal/per-action authorization (roles, scopes, permissions) is not enforced yet — see `SECURITY-4` in `TODO.md`.
+
+Declared skills are advertised on the Agent Card and selected by clients
+through `message.metadata.skillId`; routing is deployment-owned and unknown
+or ambiguous names fail closed (`A2A-3`).
 
 ### Discovery
 

@@ -36,7 +36,7 @@ Verified implementation detail lives in `PROJECT.md` and is updated after every 
 ### P1 — A2A next bounded profile
 
 - [ ] **A2A-2** — replace the temporary bearer-only model with shared named security profiles and per-principal skill/action authorization. Authentication half is done (`a2a.security_profile` resolves a named `bearer` profile); per-principal skill/action authorization still depends on `A2A-3` + `SECURITY-4`.
-- [ ] **A2A-3** — support multiple deployment-configured A2A skills mapped only to explicitly registered workflows. Clients must never select arbitrary workflow paths/files/catalog entries.
+- [x] **A2A-3** — support multiple deployment-configured A2A skills mapped only to explicitly registered workflows. Clients must never select arbitrary workflow paths/files/catalog entries. (`a2a.skills` entries reference uniquely registered `workflow.catalog` names; the Agent Card advertises exactly those skills, `message.metadata.skillId` routes, and unknown/ambiguous references fail closed at startup or request time.)
 - [ ] **A2A-6** — map waiting/input-required/resume and protocol-native asynchronous behavior to the A2A Task model. Follow official `SendMessageConfiguration.returnImmediately`; do not invent an OWA-specific async flag.
 - [ ] **A2A-7** — after Task state/authorization are green, implement A2A streaming/resubscription over the common lifecycle/event infrastructure. Never expose engine-native checkpoint or stream objects.
 - [ ] **A2A-8** — add external A2A interoperability/conformance evidence and capability-accuracy tests before expanding advertisement beyond the bounded Task profile.
