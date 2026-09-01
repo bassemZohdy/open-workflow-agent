@@ -195,6 +195,54 @@ class PersistenceConfig(StrictModel):
     database: str = "/data/runtime.sqlite3"
 
 
+_A2A_SKILL_ID = re.compile(r"^[a-z0-9]([-a-z0-9]*[a-z0-9])?$")
+
+
+class A2ASkillConfig(StrictModel):
+    """Deployment-declared A2A skill mapped to an explicitly registered workflow.
+
+    Clients never select workflow paths, files, or catalog entries; routing is
+    deployment-owned through this declaration.
+    """
+
+    id: str
+    workflow: str
+    name: str | None = None
+    description: str = "Executes the mapped deployment-configured workflow."
+    tags: list[str] = Field(default_factory=lambda: ["workflow"])
+
+    @field_validator("id")
+    @classmethod
+    def validate_id(cls, value: str) -> str:
+        selected = value.strip()
+        if not selected or len(selected) > 63 or not _A2A_SKILL_ID.fullmatch(selected):
+            raise ValueError("a2a skill id must be a lowercase DNS-like identifier")
+        return selected
+
+    @field_validator("workflow")
+    @classmethod
+    def validate_workflow(cls, value: str) -> str:
+        selected = value.strip()
+        if not selected or len(selected) > 128:
+            raise ValueError("a2a skill workflow must be a registered workflow name")
+        return selected
+
+    @field_validator("name", "description")
+    @classmethod
+    def validate_non_empty(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("a2a skill name/description must not be empty")
+        return value
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: list[str]) -> list[str]:
+        selected = [tag.strip() for tag in value]
+        if any(not tag for tag in selected) or len(selected) != len(set(selected)):
+            raise ValueError("a2a skill tags must be unique non-empty values")
+        return selected
+
+
 class A2AConfig(StrictModel):
     """Deployment policy for inbound A2A exposure (bounded profile)."""
 
@@ -206,6 +254,7 @@ class A2AConfig(StrictModel):
     agent_version: str = __version__
     public_base_url: str | None = None
     security_profile: str | None = None
+    skills: tuple[A2ASkillConfig, ...] = Field(default_factory=tuple)
     max_message_chars: int = Field(default=100_000, gt=0)
 
     @field_validator("path")
@@ -215,6 +264,16 @@ class A2AConfig(StrictModel):
         if not selected.startswith("/") or len(selected) > 128:
             raise ValueError("a2a path must start with '/' and stay under 128 characters")
         return selected.rstrip("/")
+
+    @field_validator("skills")
+    @classmethod
+    def validate_unique_skill_ids(
+        cls, value: tuple[A2ASkillConfig, ...]
+    ) -> tuple[A2ASkillConfig, ...]:
+        ids = [skill.id for skill in value]
+        if len(ids) != len(set(ids)):
+            raise ValueError("a2a skill ids must be unique")
+        return value
 
     @field_validator("public_base_url")
     @classmethod

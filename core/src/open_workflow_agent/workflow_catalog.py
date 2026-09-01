@@ -63,3 +63,18 @@ class WorkflowCatalog:
             "nested workflow is not registered in the local workflow catalog",
             details={"namespace": namespace, "name": name, "version": version},
         )
+
+    def resolve_by_name(self, name: str) -> WorkflowPlan:
+        """Resolve a uniquely named registered plan (deployment-declared reference).
+
+        Ambiguous names fail closed: a deployment must register exactly one
+        workflow per name used by an A2A skill declaration.
+        """
+
+        candidates = [plan for (_, item_name, _), plan in self._plans.items() if item_name == name]
+        if len(candidates) == 1:
+            return candidates[0]
+        raise UnsupportedWorkflowFeature(
+            "workflow name is not uniquely registered in the local workflow catalog",
+            details={"name": name, "matches": len(candidates)},
+        )

@@ -26,6 +26,7 @@ from .sandbox import compile_sandbox_workflow, resolve_and_compile_sandbox_workf
 from .scheduling import WorkflowScheduler
 from .services import RuntimeServices
 from .streaming import StreamLimits, lifecycle_sse_stream, streaming_capabilities
+from .workflow import WorkflowPlan
 
 
 class RequestSizeLimitMiddleware:
@@ -167,6 +168,22 @@ def create_app(
                     catalog=runtime_services.catalog,
                 )
                 runtime_services.workflow_catalog.register(child_plan)
+            if runtime_config.a2a.enabled:
+                skill_plans: dict[str, WorkflowPlan] = {}
+                skill_cards: list[dict[str, Any]] = []
+                for skill in runtime_config.a2a.skills:
+                    plan = runtime_services.workflow_catalog.resolve_by_name(skill.workflow)
+                    skill_plans[skill.id] = plan
+                    skill_cards.append(
+                        {
+                            "id": skill.id,
+                            "name": skill.name or plan.name,
+                            "description": skill.description,
+                            "tags": list(skill.tags),
+                        }
+                    )
+                app.state.a2a_skill_plans = skill_plans
+                app.state.a2a_skill_cards = skill_cards
             if runtime_config.knowledge.reload.mode == "startup":
                 runtime_services.knowledge.reload()
             elif runtime_config.knowledge.reload.mode == "watch":
@@ -446,12 +463,17 @@ def create_app(
     async def reload_knowledge() -> dict[str, Any]:
         return runtime_services.knowledge.reload()
 
-    async def _a2a_invoke_message(text: str) -> tuple[str, str]:
-        plan = getattr(
-            app.state,
-            "plan",
-            compile_sandbox_workflow(sandbox=runtime_config.sandbox),
-        )
+    async def _a2a_invoke_message(text: str, skill_id: str | None = None) -> tuple[str, str]:
+        skill_plans = getattr(app.state, "a2a_skill_plans", {}) or {}
+        if skill_id is not None:
+            plan = skill_plans.get(skill_id)
+            if plan is None:
+                return "", "skill_not_found"
+        else:
+            fallback: WorkflowPlan | None = getattr(app.state, "plan", None)
+            if fallback is None:
+                fallback = compile_sandbox_workflow(sandbox=runtime_config.sandbox)
+            plan = fallback
         handle = runtime_services.invocations.create(
             engine=runtime_engine.engine_name,
             session_id=None,

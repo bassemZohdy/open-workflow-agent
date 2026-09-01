@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import hmac
 import json
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -41,6 +41,7 @@ _TERMINAL_TASK_STATUSES = frozenset({"completed", "faulted", "cancelled"})
 def a2a_capabilities(config: A2AConfig) -> dict[str, Any]:
     """Return the sanitized ``features.a2a`` capability block."""
 
+    skills = [skill.id for skill in config.skills]
     return {
         "enabled": config.enabled,
         "specRelease": A2A_SPEC_RELEASE if config.enabled else None,
@@ -51,12 +52,19 @@ def a2a_capabilities(config: A2AConfig) -> dict[str, Any]:
         "pushNotifications": False,
         "tasks": config.enabled,
         "taskOperations": ["GetTask", "CancelTask"] if config.enabled else [],
+        "skills": skills if config.enabled else [],
         "auth": "bearer" if config.enabled and config.security_profile else None,
     }
 
 
-def build_agent_card(config: A2AConfig, *, url: str, workflow_name: str) -> dict[str, Any]:
-    """Build the bounded A2A v1 Agent Card for the configured workflow."""
+def build_agent_card(
+    config: A2AConfig,
+    *,
+    url: str,
+    workflow_name: str,
+    skills: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Build the bounded A2A v1 Agent Card for the configured workflow(s)."""
 
     return {
         "name": config.agent_name,
@@ -72,7 +80,8 @@ def build_agent_card(config: A2AConfig, *, url: str, workflow_name: str) -> dict
         "capabilities": {"streaming": False, "pushNotifications": False},
         "defaultInputModes": ["text/plain"],
         "defaultOutputModes": ["text/plain"],
-        "skills": [
+        "skills": skills
+        or [
             {
                 "id": "workflow",
                 "name": workflow_name,
@@ -206,6 +215,17 @@ def _reply_message(source_message: dict[str, Any], reply: str) -> dict[str, Any]
     }
 
 
+def _requested_skill_id(params: Any, message: Any) -> str | None:
+    """Read the deployment-declared skill selector from A2A metadata."""
+
+    for source in (message.get("metadata") if isinstance(message, Mapping) else None, params):
+        if isinstance(source, Mapping):
+            value = source.get("skillId")
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+    return None
+
+
 def _task_id(params: Any) -> str:
     if not isinstance(params, dict) or not isinstance(params.get("id"), str) or not params["id"]:
         raise JsonRpcError(JsonRpcError.INVALID_PARAMS, "task operation requires params.id")
@@ -237,13 +257,16 @@ def mount_a2a(
     config: A2AConfig,
     security: SecurityConfig,
     *,
-    invoke_message: Callable[[str], Awaitable[tuple[str, str]]],
+    invoke_message: Callable[[str, str | None], Awaitable[tuple[str, str]]],
+    skills: list[dict[str, Any]] | None = None,
 ) -> None:
     """Mount the selected bounded A2A v1 binding on the application.
 
-    ``invoke_message(text) -> tuple[str, str]`` executes the configured
-    workflow and returns ``(reply_text, error_code)``. Error codes are the
-    sanitized common-runtime contract, not engine exceptions.
+    ``invoke_message(text, skill_id) -> tuple[str, str]`` executes the mapped
+    workflow and returns ``(reply_text, error_code)``. ``skill_id`` is the
+    deployment-declared skill selected by the client metadata (or ``None`` for
+    the implicit workflow). Error codes are the sanitized common-runtime
+    contract, not engine exceptions.
     """
 
     if not config.enabled:
@@ -299,6 +322,7 @@ def mount_a2a(
             config,
             url=f"{base}{config.path}",
             workflow_name=str(getattr(app.state, "workflow_name", config.agent_name)),
+            skills=skills or getattr(app.state, "a2a_skill_cards", None),
         )
 
     if config.transport == "jsonrpc":
@@ -337,6 +361,12 @@ def mount_a2a(
                         JsonRpcError.INVALID_PARAMS, "SendMessage requires params.message"
                     )
                 message = params["message"]
+                skill_id = _requested_skill_id(params, message)
+                if config.skills and skill_id not in {skill.id for skill in config.skills}:
+                    raise JsonRpcError(
+                        JsonRpcError.INVALID_PARAMS,
+                        f"unknown skill: {skill_id}" if skill_id else "message requires a skillId",
+                    )
                 try:
                     text = extract_message_text(message.get("parts"))
                 except ValueError as exc:
@@ -346,7 +376,7 @@ def mount_a2a(
                         JsonRpcError.INVALID_PARAMS,
                         f"message text exceeds {config.max_message_chars} characters",
                     )
-                reply, error_code = await invoke_message(text)
+                reply, error_code = await invoke_message(text, skill_id)
                 if error_code:
                     raise JsonRpcError(
                         JsonRpcError.APPLICATION_ERROR,
@@ -405,7 +435,20 @@ def mount_a2a(
                     },
                     status_code=413,
                 )
-            reply, error_code = await invoke_message(text)
+            skill_id = _requested_skill_id(params=payload, message=message)
+            if config.skills and skill_id not in {skill.id for skill in config.skills}:
+                return _http_json_response(
+                    {
+                        "error": {
+                            "code": "skill_not_found",
+                            "message": f"unknown skill: {skill_id}"
+                            if skill_id
+                            else "message requires a skillId",
+                        }
+                    },
+                    status_code=422,
+                )
+            reply, error_code = await invoke_message(text, skill_id)
             if error_code:
                 return _http_json_response(
                     {"error": {"code": error_code, "message": "workflow execution failed"}},
