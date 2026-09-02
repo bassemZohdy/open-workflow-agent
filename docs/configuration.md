@@ -84,6 +84,12 @@ a2a:
   public_base_url: null
   max_message_chars: 100000
 
+protocols:
+  security_profile: null
+
+security:
+  profiles: {}
+
 sandbox:
   enabled: false
   backend: internal
@@ -132,7 +138,9 @@ observability:
 
 The old single A2A bearer field (`a2a.auth_token`) has been removed. OWA has no backward-compatibility commitment before the product contract stabilizes, so it was replaced rather than preserved as an alias once the shared security-profile implementation landed.
 
-The target schema is defined in [protocol-security-decisions.md](protocol-security-decisions.md) and tracked by `SECURITY-1` through `SECURITY-4` in `TODO.md`. Profile definitions (`security.profiles`, `type`, `token`) and A2A bearer authentication (`a2a.security_profile`) are implemented and strict-parsed today. The per-profile `authorization` block below (roles/scopes/permissions enforcement) remains conceptual — it is not yet parsed or enforced (`SECURITY-4`).
+The same policy removed the remaining ad-hoc credential surfaces: external-catalog authentication (`bearer_token_env`, `basic_username_env`, `basic_password_env`) and the ambient outbound protocol credentials (`OWA_BEARER_TOKEN_ENV`, `OWA_BASIC_USERNAME_ENV`, `OWA_BASIC_PASSWORD_ENV`) are gone. All protocol, catalog, tool, and approval credentials now resolve exclusively through named `security.profiles`.
+
+The target schema is defined in [protocol-security-decisions.md](protocol-security-decisions.md) and tracked by `SECURITY-1` through `SECURITY-4` in `TODO.md`. Profile definitions (`security.profiles`, `type`, `token`), A2A bearer authentication (`a2a.security_profile`), and per-principal A2A authorization (`a2a.authorization`) are implemented and strict-parsed today.
 
 ## Shared security profiles
 
@@ -145,7 +153,7 @@ oauth2_client_credentials
 mtls
 ```
 
-Implemented today — profile definition and A2A bearer authentication:
+Implemented today — profile definition, A2A bearer authentication, and per-principal A2A authorization:
 
 ```yaml
 security:
@@ -154,36 +162,32 @@ security:
       type: bearer
       token:
         from_env: A2A_PARTNER_TOKEN
+      principal: partner-client
+      roles: [partners]
 
 a2a:
   security_profile: partner-agent
+  authorization:
+    rules:
+      - actions: [message.send]
+        resources: [skill:workflow]
+        roles: [partners]
+      - actions: [tasks.get, tasks.cancel]
+        resources: [tasks]
   skills: []
 ```
 
-`a2a.security_profile` must reference a `bearer`-type profile; the runtime rejects the configuration at startup otherwise (unknown profile name, or a non-bearer profile type).
+`a2a.security_profile` must reference a `bearer`-type profile; the runtime rejects the configuration at startup otherwise (unknown profile name, or a non-bearer profile type). The profile's `principal`, `roles`, `scopes`, and `audience` attributes become the authenticated principal for every request that presents the profile's token.
 
-Conceptual (not yet parsed or enforced) — per-profile authorization:
+`a2a.authorization` holds explicit allow rules evaluated against that principal per operation:
 
-```yaml
-security:
-  profiles:
-    partner-agent:
-      type: bearer
-      token:
-        from_env: A2A_PARTNER_TOKEN
-      authorization:
-        principal: partner-agent
-        roles: [partner]
-        scopes: [agent.invoke]
-        permissions:
-          - action: message.send
-            resources: [skill:residence-renewal]
-          - action: tasks.get
-            resources: [skill:residence-renewal]
-        audience: open-workflow-agent
-```
+- `message.send` on `skill:<id>` — SendMessage, where `<id>` is the client-selected skill id (`skill:workflow` for the implicit single-workflow skill);
+- `tasks.get` on `tasks` — GetTask;
+- `tasks.cancel` on `tasks` — CancelTask.
 
-The standard authorization vocabulary (for the conceptual block above) is:
+A rule matches when the action and resource match (exact value or `*`), and every declared `roles`, `scopes`, and `audience` requirement is satisfied by the principal. First matching rule allows; no match denies with HTTP 403. Declaring an authorization policy without a security profile is rejected at startup — authorization without authenticated principals is not supported. Agent Card discovery is authentication-gated but not policy-gated, because clients need the card to discover the interface. Per-task resources would require per-caller task ownership and remain out of scope with multi-tenancy.
+
+The standard authorization vocabulary is:
 
 - `principal` / identity — authenticated caller, service, or agent;
 - `role` — named grouping of permissions;
@@ -294,9 +298,15 @@ approvals:
 The reference is validated at startup (the profile must exist and be of type
 `bearer`). The token resolves from the referenced environment variable at
 request time; a missing variable fails closed with 401 and never leaks the
-value. Tools (`tools[].security_profile`) and external-catalog authentication
-(`workflow.external_catalogs.<name>.authentication.security_profile`) accept
-`bearer` or `api_key` profile references the same way.
+value. Tools (`tools[].security_profile`), external-catalog authentication
+(`workflow.external_catalogs.<name>.authentication.security_profile`), and
+workflow-initiated outbound protocol calls (`protocols.security_profile`)
+accept `bearer` or `api_key` profile references the same way.
+
+The `protocols.security_profile` binding applies to `callHTTP`, `callMCP`,
+`callA2A`, and `callOpenAPI` protocol invocations issued from workflow
+definitions; the resolved credential headers are injected at call time and are
+never part of the workflow document or its persisted plan.
 
 ## `a2a`
 

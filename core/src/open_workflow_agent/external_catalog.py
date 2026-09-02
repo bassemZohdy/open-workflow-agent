@@ -21,7 +21,6 @@ from .errors import OwaError, ToolError, UnsupportedWorkflowFeature, WorkflowSch
 from .observability import EventSink, WorkflowEvent
 from .protocols import (
     AuthenticationProvider,
-    EnvironmentAuthentication,
     HttpClient,
     ProtocolServices,
     resolve_public_addresses_async,
@@ -423,20 +422,14 @@ def _authentication(
     config: CatalogAuthenticationConfig,
     security: SecurityConfig | None,
 ) -> AuthenticationProvider | None:
-    if config.security_profile:
-        if security is None:
-            raise ToolError(
-                "catalog security profile reference requires runtime security configuration",
-                details={"profile": config.security_profile},
-            )
-        return ProfileAuthentication(security, config.security_profile)
-    if not any((config.bearer_token_env, config.basic_username_env, config.basic_password_env)):
+    if not config.security_profile:
         return None
-    return EnvironmentAuthentication(
-        bearer_env=config.bearer_token_env,
-        username_env=config.basic_username_env,
-        password_env=config.basic_password_env,
-    )
+    if security is None:
+        raise ToolError(
+            "catalog security profile reference requires runtime security configuration",
+            details={"profile": config.security_profile},
+        )
+    return ProfileAuthentication(security, config.security_profile)
 
 
 def _endpoint_uri(definition: Any) -> str | None:

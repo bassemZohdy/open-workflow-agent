@@ -204,7 +204,19 @@ a2a:
   max_message_chars: 100000
 ```
 
-`a2a.security_profile` must name an entry in `security.profiles` of type `bearer`; the runtime rejects the configuration at startup otherwise. Only bearer-token authentication is wired today. Per-principal/per-action authorization (roles, scopes, permissions) is not enforced yet — see `SECURITY-4` in `TODO.md`.
+`a2a.security_profile` must name an entry in `security.profiles` of type `bearer`; the runtime rejects the configuration at startup otherwise. Only bearer-token authentication is wired today.
+
+Per-principal authorization is enforced through `a2a.authorization` rules. The authenticated principal comes from the profile's declared `principal`/`roles`/`scopes`/`audience` attributes, and each operation is checked against the policy vocabulary:
+
+```text
+message.send  on skill:<id>   (skill:workflow for the implicit skill)
+tasks.get      on tasks
+tasks.cancel   on tasks
+```
+
+First matching rule allows; no match denies with HTTP `403` (`"forbidden"`).
+Without a policy, all authenticated operations are allowed. Declaring an
+authorization policy without a security profile fails at startup (`SECURITY-4`).
 
 Declared skills are advertised on the Agent Card and selected by clients
 through `message.metadata.skillId`; routing is deployment-owned and unknown

@@ -7,11 +7,11 @@
 - `TODO.md` — active and intentionally deferred backlog.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current Phase — 2026-08-29
+## Current Phase — 2026-09-03
 
 `v0.1.0` is the current formal release. `main` contains additional unreleased pre-stable work.
 
-The bounded A2A profile has advanced beyond synchronous `SendMessage`: common A2A Task projection plus Task retrieval/cancellation are implemented. Protocol baseline auditing/drift protection is also implemented. The next active work is shared security integration, deployment-declared A2A skills, waiting/resume/async semantics, and then streaming/resubscription.
+The bounded A2A profile has advanced beyond synchronous `SendMessage`: common A2A Task projection plus Task retrieval/cancellation are implemented, deployment-declared skills route messages to explicitly registered workflows, and per-principal authorization (`a2a.authorization`) gates every operation. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. Protocol baseline auditing/drift protection is also implemented. The next active work is waiting/resume/async semantics, streaming/resubscription, traffic policy, and external interoperability evidence.
 
 No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engine conformance claim is made beyond the exact tested capability/profile boundaries.
 
@@ -211,31 +211,20 @@ Task not cancelable  -32002
 
 HTTP+JSON uses the matching official-style 404/400 boundary for the same conditions.
 
-`features.a2a` currently advertises Tasks with exactly `GetTask` and `CancelTask`; streaming and push notifications remain false.
-
-Remote verification for the earlier SendMessage-only A2A slice at commit `a20ef51` remains:
-
-| Workflow | Run | Result |
-| --- | --- | --- |
-| CI | `33156173321` | green |
-| External Sandbox | `33156173327` | green |
-| PostgreSQL | `33156173308` | green |
-| Release/latest refresh | `33156335003` | success |
-
-The newer Task profile is unreleased `main` work and is being verified by the normal CI matrix before being recorded as a release.
+`features.a2a` currently advertises Tasks with exactly `GetTask` and `CancelTask`, the deployment-declared skill ids, and whether per-principal authorization enforcement is active; streaming and push notifications remain false.
 
 ## Remaining A2A Work
 
 The remaining order is:
 
 ```text
-shared named security RuntimeConfig/adapters
-  -> deployment-declared skills + per-skill authorization
-  -> waiting/input-required + resume mapping
+waiting/input-required + resume mapping
   -> SendMessageConfiguration.returnImmediately async behavior
   -> streaming/resubscription over common lifecycle events
   -> external interoperability/conformance evidence
 ```
+
+Shared named security profiles, deployment-declared skills, and per-skill/per-principal authorization are complete (see Security Architecture State).
 
 The official A2A v1 semantics are the guide: ordinary `SendMessage` blocks by default, while `returnImmediately=true` is the protocol-native non-blocking request and returns Task state for later `GetTask`/subscription. OWA will not add a custom async flag.
 
@@ -264,13 +253,16 @@ Implemented security groundwork:
 - principal/identity, roles, scopes, actions, resources, and audience remain distinct;
 - deterministic authorization policy evaluation exists in core;
 - `RuntimeConfig.security.profiles` is a strict-parsed section of the main runtime configuration, with `OWA__SECURITY__...` overrides;
-- A2A inbound bearer authentication resolves a named `bearer` security profile (`a2a.security_profile`), replacing the temporary `auth_token` field; `RuntimeConfig` rejects unknown or non-bearer profile references at startup; a missing deployment secret at request time fails closed (401), not a crash.
+- A2A inbound bearer authentication resolves a named `bearer` security profile (`a2a.security_profile`), replacing the temporary `auth_token` field; `RuntimeConfig` rejects unknown or non-bearer profile references at startup; a missing deployment secret at request time fails closed (401), not a crash;
+- the approvals operator check (`approvals.operator_security_profile`), external-catalog authentication (`authentication.security_profile`), per-tool authentication (`tools[].security_profile`), and workflow-initiated outbound protocol calls (`protocols.security_profile`) all resolve named `bearer`/`api_key` profiles fail-closed at call time;
+- A2A per-principal authorization (`a2a.authorization`) enforces explicit allow rules — `message.send` on `skill:<id>` (or `skill:workflow` for the implicit skill), `tasks.get`/`tasks.cancel` on the `tasks` collection — against the authenticated profile principal; first matching rule allows, no match returns a sanitized 403, and a policy declared without a security profile is rejected at startup;
+- every temporary credential field is removed (`a2a.auth_token`, `approvals.operator_token`, external-catalog `bearer_token_env`/`basic_*_env`, ambient `OWA_BEARER_TOKEN_ENV`/`OWA_BASIC_*` protocol-client variables); credentials resolve exclusively through named profiles;
+- secret-safety verification tests assert the resolved token value never appears on Agent Cards, capability documents, A2A Task projections, protocol error bodies, or configuration validation errors.
 
 Still active:
 
-- wire named profiles into outbound protocol adapters (MCP/HTTP/OpenAPI clients, external catalog fetches) and the approvals operator check (`ApprovalConfig.operator_token` remains a separate temporary field);
 - advertise A2A `securitySchemes` / security requirements accurately;
-- enforce per-skill/per-action A2A authorization (depends on deployment-declared A2A skills, `A2A-3`).
+- wire OAuth2 client-credentials/mTLS profile types into outbound adapters when those transports gain HTTPS/client-cert callers.
 
 OWA does not become an identity provider. OAuth2/OIDC federation, delegated-user token exchange, and consent remain external identity-platform responsibilities.
 
@@ -286,12 +278,10 @@ SQLite remains the reference datasource. PostgreSQL common stores and ADK/LangGr
 
 The authoritative ordered backlog is `TODO.md`. Current priorities are:
 
-1. finish shared security RuntimeConfig/adapter integration;
-2. implement deployment-declared A2A skills and per-skill/action authorization;
-3. implement waiting/input-required/resume plus official `returnImmediately` semantics;
-4. implement A2A streaming/resubscription only after those Task semantics are stable;
-5. add external interoperability/conformance evidence before broadening claims;
-6. keep traffic policy separate from security policy.
+1. implement waiting/input-required/resume plus official `returnImmediately` semantics;
+2. implement A2A streaming/resubscription only after those Task semantics are stable;
+3. introduce the deployment-controlled `traffic_policy` model;
+4. add external interoperability/conformance evidence before broadening claims.
 
 ## Intentionally Deferred
 

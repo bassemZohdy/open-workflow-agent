@@ -15,6 +15,7 @@ from uuid import uuid4
 import httpx
 
 from .errors import ToolError
+from .security import ProfileAuthentication, SecurityConfig
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
 A2A_PROTOCOL_VERSION = "1.0"
@@ -44,37 +45,6 @@ OUTPUT_MODES = frozenset({"raw", "content", "response"})
 
 class AuthenticationProvider(Protocol):
     def headers(self, endpoint: str) -> Mapping[str, str]: ...
-
-
-class EnvironmentAuthentication:
-    """Resolve bearer/basic credentials from environment variables at runtime."""
-
-    def __init__(
-        self,
-        *,
-        bearer_env: str | None = None,
-        username_env: str | None = None,
-        password_env: str | None = None,
-    ) -> None:
-        self.bearer_env = bearer_env
-        self.username_env = username_env
-        self.password_env = password_env
-
-    def headers(self, endpoint: str) -> Mapping[str, str]:
-        del endpoint
-        if self.bearer_env:
-            token = os.getenv(self.bearer_env)
-            if token:
-                return {"Authorization": f"Bearer {token}"}
-        if self.username_env and self.password_env:
-            username = os.getenv(self.username_env)
-            password = os.getenv(self.password_env)
-            if username is not None and password is not None:
-                import base64
-
-                encoded = base64.b64encode(f"{username}:{password}".encode()).decode()
-                return {"Authorization": f"Basic {encoded}"}
-        return {}
 
 
 class HttpClient:
@@ -192,7 +162,20 @@ class HttpClient:
 
 
 class ProtocolServices:
-    def __init__(self, http: HttpClient | None = None) -> None:
+    def __init__(
+        self,
+        http: HttpClient | None = None,
+        *,
+        security: SecurityConfig | None = None,
+        security_profile: str | None = None,
+    ) -> None:
+        authentication: AuthenticationProvider | None = None
+        if security_profile:
+            if security is None:
+                raise ToolError(
+                    "protocol security profile reference requires runtime security configuration"
+                )
+            authentication = ProfileAuthentication(security, security_profile)
         self.http = http or HttpClient(
             allowed_hosts={
                 host.strip()
@@ -200,22 +183,7 @@ class ProtocolServices:
                 if host.strip()
             }
             or None,
-            authentication=(
-                EnvironmentAuthentication(
-                    bearer_env=os.getenv("OWA_BEARER_TOKEN_ENV"),
-                    username_env=os.getenv("OWA_BASIC_USERNAME_ENV"),
-                    password_env=os.getenv("OWA_BASIC_PASSWORD_ENV"),
-                )
-                if any(
-                    os.getenv(name)
-                    for name in (
-                        "OWA_BEARER_TOKEN_ENV",
-                        "OWA_BASIC_USERNAME_ENV",
-                        "OWA_BASIC_PASSWORD_ENV",
-                    )
-                )
-                else None
-            ),
+            authentication=authentication,
         )
 
     async def call(self, protocol: str, payload: Any) -> Any:

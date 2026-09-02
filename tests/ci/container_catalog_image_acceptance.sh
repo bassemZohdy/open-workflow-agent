@@ -21,7 +21,8 @@ import httpx
 from open_workflow_agent.catalog import FakeModel, FunctionCatalog
 from open_workflow_agent.config import CatalogAuthenticationConfig, ExternalCatalogConfig
 from open_workflow_agent.external_catalog import ExternalCatalogResolver
-from open_workflow_agent.protocols import EnvironmentAuthentication, HttpClient
+from open_workflow_agent.protocols import HttpClient
+from open_workflow_agent.security import ProfileAuthentication, SecurityConfig
 from open_workflow_agent.workflow import compile_workflow
 
 FUNCTION_YAML = """\
@@ -58,15 +59,25 @@ async def main() -> None:
         assert request.url.path == "/root/functions/echo/1.0.0/function.yaml"
         return httpx.Response(200, text=FUNCTION_YAML, headers={"ETag": '"ci-image"'})
 
+    security = SecurityConfig.model_validate(
+        {
+            "profiles": {
+                "catalog-reader": {
+                    "type": "bearer",
+                    "token": {"from_env": "CATALOG_TEST_TOKEN"},
+                }
+            }
+        }
+    )
     policy = ExternalCatalogConfig(
         allowed_hosts=["catalog.test"],
-        authentication=CatalogAuthenticationConfig(bearer_token_env="CATALOG_TEST_TOKEN"),
+        authentication=CatalogAuthenticationConfig(security_profile="catalog-reader"),
     )
     client = HttpClient(
         transport=httpx.MockTransport(handler),
         max_response_bytes=policy.max_response_bytes,
         allowed_hosts={"catalog.test"},
-        authentication=EnvironmentAuthentication(bearer_env="CATALOG_TEST_TOKEN"),
+        authentication=ProfileAuthentication(security, "catalog-reader"),
     )
     resolver = ExternalCatalogResolver({"trusted": policy}, http=client)
     plan = compile_workflow(WORKFLOW, trusted_catalogs={"trusted": policy})

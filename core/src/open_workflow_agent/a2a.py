@@ -26,7 +26,15 @@ from fastapi.responses import JSONResponse
 
 from .a2a_tasks import project_a2a_task
 from .config import A2AConfig
-from .security import BearerSecurityProfile, SecurityConfig, resolve_secret
+from .security import (
+    AuthorizationPolicy,
+    BearerSecurityProfile,
+    Principal,
+    SecurityConfig,
+    authorize,
+    resolve_secret,
+    static_principal,
+)
 
 A2A_SPEC_RELEASE = "1.0.1"
 A2A_PROTOCOL_VERSION = "1.0"
@@ -54,6 +62,9 @@ def a2a_capabilities(config: A2AConfig) -> dict[str, Any]:
         "taskOperations": ["GetTask", "CancelTask"] if config.enabled else [],
         "skills": skills if config.enabled else [],
         "auth": "bearer" if config.enabled and config.security_profile else None,
+        "authorization": bool(
+            config.enabled and config.authorization and config.authorization.rules
+        ),
     }
 
 
@@ -186,20 +197,36 @@ def _http_json_response(content: dict[str, Any], *, status_code: int = 200) -> J
     )
 
 
-def _authorize(config: A2AConfig, security: SecurityConfig, request: Request) -> bool:
+_IMPLICIT_SKILL_RESOURCE = "skill:workflow"
+_TASK_RESOURCE = "tasks"
+
+
+def _authenticate(
+    config: A2AConfig, security: SecurityConfig, request: Request
+) -> Principal | None:
     if not config.security_profile:
-        return True
+        return Principal(identity="anonymous")
     profile = security.profile(config.security_profile)
     if not isinstance(profile, BearerSecurityProfile):
-        return False
+        return None
     authorization = request.headers.get("authorization", "")
     if not authorization.startswith("Bearer "):
-        return False
+        return None
     try:
         expected = resolve_secret(profile.token)
     except ValueError:
-        return False
-    return hmac.compare_digest(authorization.removeprefix("Bearer ").strip(), expected)
+        return None
+    if not hmac.compare_digest(authorization.removeprefix("Bearer ").strip(), expected):
+        return None
+    return static_principal(profile)
+
+
+def _permitted(
+    principal: Principal, policy: AuthorizationPolicy | None, *, action: str, resource: str
+) -> bool:
+    if policy is None or not policy.rules:
+        return True
+    return authorize(principal, policy, action=action, resource=resource)
 
 
 def _requested_protocol_version(request: Request) -> str | None:
@@ -272,11 +299,12 @@ def mount_a2a(
     if not config.enabled:
         return
 
-    def authorized(request: Request) -> JSONResponse | None:
-        if _authorize(config, security, request):
-            return None
+    def gate(request: Request) -> tuple[Principal | None, JSONResponse | None]:
+        principal = _authenticate(config, security, request)
+        if principal is not None:
+            return principal, None
         if config.transport == "jsonrpc":
-            return _jsonrpc_error(
+            return None, _jsonrpc_error(
                 None,
                 JsonRpcError(
                     JsonRpcError.APPLICATION_ERROR,
@@ -284,10 +312,36 @@ def mount_a2a(
                     http_status=401,
                 ),
             )
-        return _http_json_response(
+        return None, _http_json_response(
             {"error": {"code": "unauthorized", "message": "a2a authorization failed"}},
             status_code=401,
         )
+
+    def forbidden(request_id: Any = None) -> JSONResponse:
+        if config.transport == "jsonrpc":
+            return _jsonrpc_error(
+                request_id,
+                JsonRpcError(
+                    JsonRpcError.APPLICATION_ERROR,
+                    "forbidden",
+                    http_status=403,
+                ),
+            )
+        return _http_json_response(
+            {"error": {"code": "forbidden", "message": "not authorized for this operation"}},
+            status_code=403,
+        )
+
+    def send_permitted(principal: Principal, skill_id: str | None) -> bool:
+        return _permitted(
+            principal,
+            config.authorization,
+            action="message.send",
+            resource=f"skill:{skill_id}" if skill_id else _IMPLICIT_SKILL_RESOURCE,
+        )
+
+    def task_permitted(principal: Principal, action: str) -> bool:
+        return _permitted(principal, config.authorization, action=action, resource=_TASK_RESOURCE)
 
     def version_supported(request: Request) -> JSONResponse | None:
         requested = _requested_protocol_version(request)
@@ -315,7 +369,8 @@ def mount_a2a(
 
     @app.get(A2A_AGENT_CARD_PATH, response_model=None)
     async def agent_card(request: Request) -> JSONResponse | dict[str, Any]:
-        if unauthorized := authorized(request):
+        _, unauthorized = gate(request)
+        if unauthorized is not None:
             return unauthorized
         base = config.public_base_url or str(request.base_url).rstrip("/")
         return build_agent_card(
@@ -329,8 +384,10 @@ def mount_a2a(
 
         @app.post(config.path)
         async def jsonrpc_entry(request: Request) -> JSONResponse:
-            if unauthorized := authorized(request):
+            principal, unauthorized = gate(request)
+            if unauthorized is not None:
                 return unauthorized
+            assert principal is not None
             if unsupported := version_supported(request):
                 return unsupported
             request_id: Any = None
@@ -345,8 +402,12 @@ def mount_a2a(
                 method = envelope.get("method")
                 params = envelope.get("params")
                 if method == "GetTask":
+                    if not task_permitted(principal, "tasks.get"):
+                        return forbidden(request_id)
                     return _jsonrpc_response(request_id, _get_task(app, _task_id(params)))
                 if method == "CancelTask":
+                    if not task_permitted(principal, "tasks.cancel"):
+                        return forbidden(request_id)
                     return _jsonrpc_response(
                         request_id,
                         await _cancel_task(app, _task_id(params)),
@@ -367,6 +428,8 @@ def mount_a2a(
                         JsonRpcError.INVALID_PARAMS,
                         f"unknown skill: {skill_id}" if skill_id else "message requires a skillId",
                     )
+                if not send_permitted(principal, skill_id):
+                    return forbidden(request_id)
                 try:
                     text = extract_message_text(message.get("parts"))
                 except ValueError as exc:
@@ -394,8 +457,10 @@ def mount_a2a(
 
         @app.post(send_path, response_model=None)
         async def http_json_entry(request: Request) -> JSONResponse:
-            if unauthorized := authorized(request):
+            principal, unauthorized = gate(request)
+            if unauthorized is not None:
                 return unauthorized
+            assert principal is not None
             if unsupported := version_supported(request):
                 return unsupported
             try:
@@ -448,6 +513,8 @@ def mount_a2a(
                     },
                     status_code=422,
                 )
+            if not send_permitted(principal, skill_id):
+                return forbidden()
             reply, error_code = await invoke_message(text, skill_id)
             if error_code:
                 return _http_json_response(
@@ -458,8 +525,12 @@ def mount_a2a(
 
         @app.get(task_path, response_model=None)
         async def http_json_get_task(task_id: str, request: Request) -> JSONResponse:
-            if unauthorized := authorized(request):
+            principal, unauthorized = gate(request)
+            if unauthorized is not None:
                 return unauthorized
+            assert principal is not None
+            if not task_permitted(principal, "tasks.get"):
+                return forbidden()
             if unsupported := version_supported(request):
                 return unsupported
             try:
@@ -472,8 +543,12 @@ def mount_a2a(
 
         @app.post(cancel_task_path, response_model=None)
         async def http_json_cancel_task(task_id: str, request: Request) -> JSONResponse:
-            if unauthorized := authorized(request):
+            principal, unauthorized = gate(request)
+            if unauthorized is not None:
                 return unauthorized
+            assert principal is not None
+            if not task_permitted(principal, "tasks.cancel"):
+                return forbidden()
             if unsupported := version_supported(request):
                 return unsupported
             try:

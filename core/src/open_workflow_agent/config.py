@@ -13,7 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from ._version import __version__
 from .errors import ConfigurationError
-from .security import SecurityConfig
+from .security import AuthorizationPolicy, SecurityConfig
 
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _IMAGE_DIGEST = re.compile(r"^.+@sha256:[0-9a-fA-F]{64}$")
@@ -40,22 +40,11 @@ class CatalogAuthenticationConfig(StrictModel):
     """Deployment-owned references to catalog credentials.
 
     Workflow documents are intentionally not allowed to carry credentials. The
-    resolver reads these environment variables only when it talks to a
+    resolver resolves the named security profile only when it talks to a
     deployment-trusted catalog or invokes a function loaded from one.
     """
 
-    bearer_token_env: str | None = None
-    basic_username_env: str | None = None
-    basic_password_env: str | None = None
     security_profile: str | None = None
-
-    @model_validator(mode="after")
-    def validate_basic_pair(self) -> CatalogAuthenticationConfig:
-        if bool(self.basic_username_env) != bool(self.basic_password_env):
-            raise ValueError(
-                "basic_username_env and basic_password_env must be configured together"
-            )
-        return self
 
 
 class ExternalCatalogConfig(StrictModel):
@@ -254,6 +243,7 @@ class A2AConfig(StrictModel):
     agent_version: str = __version__
     public_base_url: str | None = None
     security_profile: str | None = None
+    authorization: AuthorizationPolicy | None = None
     skills: tuple[A2ASkillConfig, ...] = Field(default_factory=tuple)
     max_message_chars: int = Field(default=100_000, gt=0)
 
@@ -527,6 +517,12 @@ class ToolConfig(StrictModel):
     options: dict[str, Any] = Field(default_factory=dict)
 
 
+class ProtocolConfig(StrictModel):
+    """Deployment policy for workflow-initiated outbound protocol calls."""
+
+    security_profile: str | None = None
+
+
 class ServerConfig(StrictModel):
     host: str = "0.0.0.0"
     port: int = 8080
@@ -547,6 +543,7 @@ class RuntimeConfig(StrictModel):
     persistence: PersistenceConfig = Field(default_factory=PersistenceConfig)
     approvals: ApprovalConfig = Field(default_factory=ApprovalConfig)
     a2a: A2AConfig = Field(default_factory=A2AConfig)
+    protocols: ProtocolConfig = Field(default_factory=ProtocolConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
     tools: list[ToolConfig] = Field(default_factory=list)
@@ -557,6 +554,11 @@ class RuntimeConfig(StrictModel):
     def validate_a2a_security_profile(self) -> RuntimeConfig:
         name = self.a2a.security_profile
         if name is None:
+            if self.a2a.authorization is not None and self.a2a.authorization.rules:
+                raise ValueError(
+                    "a2a.authorization requires a2a.security_profile; "
+                    "authorization without authenticated principals is not supported"
+                )
             return self
         if name not in self.security.profiles:
             raise ValueError(f"a2a.security_profile references unknown security profile: {name}")
@@ -585,6 +587,7 @@ class RuntimeConfig(StrictModel):
         require_header_profile(
             "approvals.operator_security_profile", self.approvals.operator_security_profile
         )
+        require_header_profile("protocols.security_profile", self.protocols.security_profile)
         for catalog_name, catalog in self.workflow.external_catalogs.items():
             require_header_profile(
                 f"external catalog '{catalog_name}' authentication",

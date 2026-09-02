@@ -127,6 +127,19 @@ tasks.get
 tasks.cancel
 ```
 
+The implemented A2A binding enforces these through `a2a.authorization`, an
+explicit deployment-owned allow policy evaluated against the authenticated
+principal of `a2a.security_profile`. Actions use the vocabulary above;
+resources are `skill:<id>` for SendMessage (the client-selected deployment
+skill, or `skill:workflow` for the implicit single-workflow skill) and the
+`tasks` collection for Task operations. First matching rule allows; no match
+denies with a sanitized 403. Card discovery is authentication-gated but not
+policy-gated because clients need the card to discover the interface.
+Per-task resources would require per-caller task ownership and remain out of
+scope with multi-tenancy (section 12). Declaring a policy without a security
+profile is rejected at startup — authorization without authenticated
+principals is not supported.
+
 ## 6. Named reusable profiles
 
 Protocol integrations reference named security profiles instead of duplicating credentials:

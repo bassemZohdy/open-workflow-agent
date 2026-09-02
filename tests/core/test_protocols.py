@@ -9,13 +9,24 @@ from open_workflow_agent.errors import ToolError, UnsupportedWorkflowFeature
 from open_workflow_agent.protocols import (
     A2A_PROTOCOL_VERSION,
     MCP_PROTOCOL_VERSION,
-    EnvironmentAuthentication,
     HttpClient,
     ProtocolServices,
     _PinnedNetworkBackend,
     resolve_public_addresses_async,
 )
+from open_workflow_agent.security import SecurityConfig
 from open_workflow_agent.workflow import compile_workflow
+
+
+def _bearer_security(monkeypatch: pytest.MonkeyPatch, *, token: str = "secret") -> SecurityConfig:
+    monkeypatch.setenv("OWA_PROTOCOL_TEST_TOKEN", token)
+    return SecurityConfig.model_validate(
+        {
+            "profiles": {
+                "outbound": {"type": "bearer", "token": {"from_env": "OWA_PROTOCOL_TEST_TOKEN"}}
+            }
+        }
+    )
 
 
 @pytest.mark.asyncio
@@ -47,11 +58,13 @@ async def test_official_protocol_shapes_and_operation_headers(monkeypatch):
         seen.append(request)
         return httpx.Response(200, json={"ok": True})
 
-    monkeypatch.setenv("OWA_TOKEN", "secret")
+    security = _bearer_security(monkeypatch)
+    from open_workflow_agent.security import ProfileAuthentication
+
     services = ProtocolServices(
         HttpClient(
-            authentication=EnvironmentAuthentication(bearer_env="OWA_TOKEN"),
             transport=httpx.MockTransport(handler),
+            authentication=ProfileAuthentication(security, "outbound"),
         )
     )
     await services.call(
@@ -70,6 +83,20 @@ async def test_official_protocol_shapes_and_operation_headers(monkeypatch):
     assert request.headers["Mcp-Method"] == "tools/call"
     assert request.headers["Mcp-Name"] == "lookup"
     assert json.loads(request.content)["params"]["name"] == "lookup"
+
+
+def test_protocol_security_profile_fails_closed(monkeypatch):
+    with pytest.raises(ToolError, match="runtime security configuration"):
+        ProtocolServices(security_profile="outbound")
+    security = _bearer_security(monkeypatch)
+    with pytest.raises(ValueError, match="unknown security profile"):
+        ProtocolServices(security=security, security_profile="missing")
+    services = ProtocolServices(security=security, security_profile="outbound")
+    assert services.http.authentication.headers("https://mcp.test") == {
+        "Authorization": "Bearer secret"
+    }
+    unauthenticated = ProtocolServices()
+    assert unauthenticated.http.authentication is None
 
 
 @pytest.mark.asyncio

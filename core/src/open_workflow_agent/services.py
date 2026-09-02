@@ -69,7 +69,9 @@ class RuntimeServices:
             config.workflow.external_catalogs, event_sink=self.events, security=config.security
         )
         self.workflow_runner: Any = None
-        self.protocols = ProtocolServices()
+        self.protocols = ProtocolServices(
+            security=config.security, security_profile=config.protocols.security_profile
+        )
         self.tools = ToolRegistry.from_config(
             config.tools, self.protocols, security=config.security
         )

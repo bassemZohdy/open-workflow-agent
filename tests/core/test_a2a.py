@@ -87,6 +87,7 @@ async def test_agent_card_reports_bounded_v1_profile(tmp_path) -> None:
                 "taskOperations": ["GetTask", "CancelTask"],
                 "skills": [],
                 "auth": None,
+                "authorization": False,
             }
 
 
