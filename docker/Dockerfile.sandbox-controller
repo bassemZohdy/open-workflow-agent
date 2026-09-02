@@ -1,6 +1,12 @@
-FROM docker:29.7.2-cli@sha256:000bb62ff495f986c9f5578eb67cc2cb98b91138eda81d7762d5371eb8a497fe
+FROM docker:29.7.2-cli@sha256:3f4743208d2338c934d7b8bcfbe1bb54c0b2355c510ad5e0f31c0c4a54bd704e
 
-RUN apk add --no-cache python3 py3-pip \
+# Security upgrade at build time: the pinned base image ships Alpine packages
+# (openssl, libexpat) that the Alpine security team has since fixed. Upgrading
+# here keeps the runtime image free of known CRITICAL/HIGH OS-package CVEs
+# without waiting for a base-image rebuild. The controller installs nothing at
+# runtime, so this does not violate the no-runtime-install boundary.
+RUN apk upgrade --no-cache \
+    && apk add --no-cache python3 py3-pip \
     && python3 -m venv /opt/venv
 
 ENV PATH="/opt/venv/bin:/usr/local/bin:/usr/bin:/bin" \
