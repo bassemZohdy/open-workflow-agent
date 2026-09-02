@@ -1,6 +1,6 @@
 # A2A and Streaming Evaluation
 
-Status: **bounded inbound A2A v1 SendMessage + Task get/cancel profile implemented; shared authorization, async waiting/resume, and streaming remain active backlog.**
+Status: **bounded inbound A2A v1 profile implemented: SendMessage, Task get/cancel, deployment-declared skills, per-principal authorization, waiting/input-required + `returnImmediately` async behavior, and resuming sends. Streaming/resubscription remains active backlog.**
 
 ## Reference Baseline
 
@@ -73,10 +73,6 @@ Current guarantees:
 
 Current non-guarantees:
 
-- no deployment-declared multi-skill routing yet;
-- shared named security profiles are not wired into A2A yet;
-- no protocol-native non-blocking `returnImmediately` behavior yet;
-- no complete waiting/input-required/resume multi-turn contract yet;
 - no A2A streaming/resubscription yet;
 - no push notifications;
 - no broad/full A2A conformance claim;

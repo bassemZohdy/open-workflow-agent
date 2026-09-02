@@ -11,7 +11,7 @@
 
 `v0.1.0` is the current formal release. `main` contains additional unreleased pre-stable work.
 
-The bounded A2A profile has advanced beyond synchronous `SendMessage`: common A2A Task projection plus Task retrieval/cancellation are implemented, deployment-declared skills route messages to explicitly registered workflows, and per-principal authorization (`a2a.authorization`) gates every operation. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. Protocol baseline auditing/drift protection is also implemented. The next active work is waiting/resume/async semantics, streaming/resubscription, traffic policy, and external interoperability evidence.
+The bounded A2A profile now covers the full bounded Task lifecycle: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, and resuming sends over the common resume contract. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The next active work is streaming/resubscription over common lifecycle events, traffic policy, and external interoperability evidence.
 
 No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engine conformance claim is made beyond the exact tested capability/profile boundaries.
 
@@ -211,6 +211,8 @@ Task not cancelable  -32002
 
 HTTP+JSON uses the matching official-style 404/400 boundary for the same conditions.
 
+`SendMessage` follows official async semantics: blocking sends return `result.message` on completion or `result.task` when the workflow ends up waiting (`TASK_STATE_INPUT_REQUIRED`); `configuration.returnImmediately: true` starts the invocation and returns the Task projection immediately for `GetTask` polling; sends carrying `message.taskId` resume a waiting task through the common resume contract (fingerprint-verified), while unknown or non-waiting tasks are rejected with sanitized errors.
+
 `features.a2a` currently advertises Tasks with exactly `GetTask` and `CancelTask`, the deployment-declared skill ids, and whether per-principal authorization enforcement is active; streaming and push notifications remain false.
 
 ## Remaining A2A Work
@@ -218,13 +220,11 @@ HTTP+JSON uses the matching official-style 404/400 boundary for the same conditi
 The remaining order is:
 
 ```text
-waiting/input-required + resume mapping
-  -> SendMessageConfiguration.returnImmediately async behavior
-  -> streaming/resubscription over common lifecycle events
+streaming/resubscription over common lifecycle events
   -> external interoperability/conformance evidence
 ```
 
-Shared named security profiles, deployment-declared skills, and per-skill/per-principal authorization are complete (see Security Architecture State).
+Shared named security profiles, deployment-declared skills, per-skill/per-principal authorization, waiting/input-required mapping, `returnImmediately` async behavior, and resume-via-SendMessage are complete (see Security Architecture State and Current A2A State).
 
 The official A2A v1 semantics are the guide: ordinary `SendMessage` blocks by default, while `returnImmediately=true` is the protocol-native non-blocking request and returns Task state for later `GetTask`/subscription. OWA will not add a custom async flag.
 
@@ -278,10 +278,9 @@ SQLite remains the reference datasource. PostgreSQL common stores and ADK/LangGr
 
 The authoritative ordered backlog is `TODO.md`. Current priorities are:
 
-1. implement waiting/input-required/resume plus official `returnImmediately` semantics;
-2. implement A2A streaming/resubscription only after those Task semantics are stable;
-3. introduce the deployment-controlled `traffic_policy` model;
-4. add external interoperability/conformance evidence before broadening claims.
+1. implement A2A streaming/resubscription over the common lifecycle/event infrastructure;
+2. introduce the deployment-controlled `traffic_policy` model;
+3. add external interoperability/conformance evidence before broadening claims.
 
 ## Intentionally Deferred
 

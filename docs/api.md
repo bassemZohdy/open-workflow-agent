@@ -267,7 +267,35 @@ A2A-Version: 1.0
 }
 ```
 
-The current SendMessage path is bounded/synchronous. A2A v1 `SendMessageConfiguration.returnImmediately` is not yet implemented.
+Blocking sends return `result.message` when the workflow completes, or
+`result.task` when the workflow ends up waiting — an A2A Task in
+`TASK_STATE_INPUT_REQUIRED` that clients follow with `GetTask`.
+
+Protocol-native asynchronous behavior follows the official
+`SendMessageConfiguration`. With `returnImmediately: true` the runtime starts
+the invocation and returns the Task projection immediately (typically
+`TASK_STATE_WORKING`); the client then follows progress with `GetTask`:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "SendMessage",
+  "params": {
+    "message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]},
+    "configuration": {"returnImmediately": true}
+  }
+}
+```
+
+OWA implements no other async flag.
+
+Resuming sends carry the existing `message.taskId`: a task in
+`TASK_STATE_INPUT_REQUIRED` is resumed through the common resume contract
+using the message text as input. Unknown task references return `-32001`
+(`task_not_found`); terminal or non-waiting tasks are rejected with a
+sanitized `task is not accepting input` error. HTTP+JSON maps these to
+`404` and `409` respectively.
 
 #### GetTask
 
@@ -317,6 +345,10 @@ POST /a2a/message:send
 A2A-Version: 1.0
 Content-Type: application/a2a+json
 ```
+
+The body is the same A2A `SendMessageRequest` object as the JSON-RPC `params`
+(message plus optional `configuration.returnImmediately`), and responses carry
+the same `message`/`task` bodies described for JSON-RPC above.
 
 Get a Task:
 
@@ -368,10 +400,10 @@ SendMessage                   implemented
 Task projection               implemented
 GetTask                       implemented
 CancelTask                    implemented
-shared security primitives    implemented; adapter integration pending
-multi-skill routing           pending
-waiting/resume A2A mapping    pending
-returnImmediately async       pending
+per-principal authorization   implemented (a2a.authorization)
+multi-skill routing           implemented (a2a.skills)
+returnImmediately async       implemented
+waiting/resume A2A mapping    implemented over the common resume contract
 streaming/resubscription      pending
 push notifications            deferred
 full conformance claim        not claimed

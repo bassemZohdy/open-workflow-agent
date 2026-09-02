@@ -237,6 +237,8 @@ A2A 1.0.1 Agent Card / SendMessage
 
 Do not invent proprietary async/stream extensions when A2A defines native semantics.
 
+Waiting, input-required, and resume mapping are protocol projections of the common invocation/resume contracts, never a second resume mechanism. A blocking `SendMessage` returns `result.task` when the workflow ends up waiting (`TASK_STATE_INPUT_REQUIRED`); `SendMessageConfiguration.returnImmediately` is the only asynchronous flag OWA implements, and it returns the Task projection immediately for later `GetTask` polling. A resuming send carries the existing `message.taskId` and reuses the common resume contract (fingerprint-verified against the original workflow); unknown tasks return `task_not_found`, and tasks that are not waiting are rejected with a sanitized `task is not accepting input` error.
+
 Push notifications remain deferred because they introduce a separate outbound callback trust boundary: allowlisting, SSRF controls, TLS identity, callback authentication, replay/idempotency protection, bounded retries/dead-letter handling, and secret-safe observability.
 
 ## 12. Multi-tenancy

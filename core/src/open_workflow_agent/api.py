@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any, Literal
@@ -12,9 +13,16 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from ._version import __version__
-from .a2a import a2a_capabilities, extract_output_text, mount_a2a
+from .a2a import (
+    A2ASendOutcome,
+    ResumeTarget,
+    a2a_capabilities,
+    extract_output_text,
+    mount_a2a,
+)
+from .a2a_tasks import project_a2a_task
 from .config import RuntimeConfig
-from .engine import PortableWorkflowEngine, WorkflowEngine
+from .engine import InvocationResult, PortableWorkflowEngine, WorkflowEngine
 from .errors import (
     ApprovalNotFound,
     EventValidationError,
@@ -463,17 +471,45 @@ def create_app(
     async def reload_knowledge() -> dict[str, Any]:
         return runtime_services.knowledge.reload()
 
-    async def _a2a_invoke_message(text: str, skill_id: str | None = None) -> tuple[str, str]:
+    def _a2a_plan_for_skill(skill_id: str | None) -> WorkflowPlan | None:
         skill_plans = getattr(app.state, "a2a_skill_plans", {}) or {}
         if skill_id is not None:
-            plan = skill_plans.get(skill_id)
-            if plan is None:
-                return "", "skill_not_found"
-        else:
-            fallback: WorkflowPlan | None = getattr(app.state, "plan", None)
-            if fallback is None:
-                fallback = compile_sandbox_workflow(sandbox=runtime_config.sandbox)
-            plan = fallback
+            return skill_plans.get(skill_id)
+        fallback: WorkflowPlan | None = getattr(app.state, "plan", None)
+        if fallback is None:
+            return compile_sandbox_workflow(sandbox=runtime_config.sandbox)
+        return fallback
+
+    def _a2a_task_snapshot(invocation_id: str) -> dict[str, Any] | None:
+        handle = runtime_services.invocations.get(invocation_id)
+        if handle is None:
+            return None
+        return project_a2a_task(handle)
+
+    def _a2a_outcome(
+        invocation_id: str, result: InvocationResult, return_immediately: bool
+    ) -> A2ASendOutcome:
+        if return_immediately:
+            task = _a2a_task_snapshot(invocation_id)
+            if task is not None:
+                return A2ASendOutcome(task=task)
+        if result.status == "faulted":
+            error = result.error or {}
+            return A2ASendOutcome(error_code=str(error.get("code", "workflow_execution_error")))
+        if result.status == "cancelled":
+            return A2ASendOutcome(error_code="invocation_cancelled")
+        if result.status == "waiting":
+            task = _a2a_task_snapshot(invocation_id)
+            if task is not None:
+                return A2ASendOutcome(task=task)
+        return A2ASendOutcome(reply_text=extract_output_text(result.output))
+
+    async def _a2a_start_task(
+        text: str, skill_id: str | None, return_immediately: bool
+    ) -> A2ASendOutcome:
+        plan = _a2a_plan_for_skill(skill_id)
+        if plan is None:
+            return A2ASendOutcome(error_code="skill_not_found")
         handle = runtime_services.invocations.create(
             engine=runtime_engine.engine_name,
             session_id=None,
@@ -482,19 +518,83 @@ def create_app(
             workflow_version=plan.version,
             workflow_fingerprint=plan.fingerprint,
         )
-        result = await runtime_engine.invoke(plan, handle, {"question": text})
-        if result.status == "faulted":
-            error = result.error or {}
-            return "", str(error.get("code", "workflow_execution_error"))
-        if result.status == "cancelled":
-            return "", "invocation_cancelled"
-        if result.status == "waiting":
-            return "", "workflow_waiting"
-        return extract_output_text(result.output), ""
+        invocation = runtime_engine.invoke(plan, handle, {"question": text})
+        if return_immediately:
+            _a2a_spawn(invocation)
+            task = _a2a_task_snapshot(handle.invocation_id)
+            if task is not None:
+                return A2ASendOutcome(task=task)
+            return A2ASendOutcome(error_code="task_not_found")
+        return _a2a_outcome(handle.invocation_id, await invocation, return_immediately)
+
+    def _a2a_spawn(invocation: Any) -> None:
+        background: set[asyncio.Task[Any]] | None = getattr(app.state, "a2a_background_tasks", None)
+        if background is None:
+            background = set()
+            app.state.a2a_background_tasks = background
+        task = asyncio.ensure_future(invocation)
+        background.add(task)
+        task.add_done_callback(background.discard)
+
+    def _a2a_plan_for_fingerprint(fingerprint: str) -> WorkflowPlan | None:
+        candidates: list[WorkflowPlan] = list(
+            (getattr(app.state, "a2a_skill_plans", {}) or {}).values()
+        )
+        default = getattr(app.state, "plan", None)
+        if default is not None:
+            candidates.append(default)
+        for plan in candidates:
+            if plan.fingerprint == fingerprint:
+                return plan
+        return None
+
+    async def _a2a_resolve_resume_target(task_id: str) -> ResumeTarget | None:
+        handle = runtime_services.invocations.get(task_id)
+        if handle is None:
+            return None
+        skill_plans = getattr(app.state, "a2a_skill_plans", {}) or {}
+        skill_id: str | None = None
+        for candidate, plan in skill_plans.items():
+            if plan.fingerprint == handle.workflow_fingerprint:
+                skill_id = candidate
+                break
+        deployable = skill_id is not None or (
+            _a2a_plan_for_fingerprint(handle.workflow_fingerprint) is not None
+        )
+        return ResumeTarget(status=handle.status, skill_id=skill_id, deployable=deployable)
+
+    async def _a2a_resume_task(text: str, task_id: str, return_immediately: bool) -> A2ASendOutcome:
+        handle = runtime_services.invocations.get(task_id)
+        if handle is None:
+            return A2ASendOutcome(error_code="task_not_found")
+        plan = _a2a_plan_for_fingerprint(handle.workflow_fingerprint)
+        if plan is None:
+            return A2ASendOutcome(error_code="task_not_resumeable")
+        if handle.status != "waiting":
+            return A2ASendOutcome(error_code="task_not_accepting_input")
+        resumption = runtime_engine.resume(handle, {"question": text}, plan)
+        if return_immediately:
+            _a2a_spawn(resumption)
+            task = _a2a_task_snapshot(task_id)
+            if task is not None:
+                return A2ASendOutcome(task=task)
+            return A2ASendOutcome(error_code="task_not_found")
+        try:
+            result = await resumption
+        except OwaError as exc:
+            payload = exc.as_dict()
+            code = payload.get("code") if isinstance(payload, dict) else None
+            return A2ASendOutcome(error_code=str(code or "workflow_execution_error"))
+        return _a2a_outcome(task_id, result, return_immediately)
 
     if runtime_config.a2a.enabled:
         mount_a2a(
-            app, runtime_config.a2a, runtime_config.security, invoke_message=_a2a_invoke_message
+            app,
+            runtime_config.a2a,
+            runtime_config.security,
+            start_task=_a2a_start_task,
+            resolve_resume_target=_a2a_resolve_resume_target,
+            resume_task=_a2a_resume_task,
         )
 
     return app

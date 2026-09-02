@@ -19,6 +19,7 @@ from __future__ import annotations
 import hmac
 import json
 from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -259,6 +260,29 @@ def _task_id(params: Any) -> str:
     return str(params["id"])
 
 
+@dataclass(frozen=True, slots=True)
+class A2ASendOutcome:
+    """Result of one SendMessage execution, transport-independent.
+
+    Exactly one of ``reply_text``, ``task``, or ``error_code`` is set.
+    ``task`` carries a sanitized A2A Task projection (used for
+    ``returnImmediately`` sends and for sends that end in ``input-required``).
+    """
+
+    reply_text: str | None = None
+    task: dict[str, Any] | None = None
+    error_code: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ResumeTarget:
+    """Deployment-side view of an existing task for a resuming SendMessage."""
+
+    status: str
+    skill_id: str | None
+    deployable: bool
+
+
 def _get_task(app: FastAPI, task_id: str) -> dict[str, Any]:
     handle = app.state.services.invocations.get(task_id)
     if handle is None:
@@ -284,20 +308,45 @@ def mount_a2a(
     config: A2AConfig,
     security: SecurityConfig,
     *,
-    invoke_message: Callable[[str, str | None], Awaitable[tuple[str, str]]],
+    start_task: Callable[[str, str | None, bool], Awaitable[A2ASendOutcome]],
+    resolve_resume_target: Callable[[str], Awaitable[ResumeTarget | None]],
+    resume_task: Callable[[str, str, bool], Awaitable[A2ASendOutcome]],
     skills: list[dict[str, Any]] | None = None,
 ) -> None:
     """Mount the selected bounded A2A v1 binding on the application.
 
-    ``invoke_message(text, skill_id) -> tuple[str, str]`` executes the mapped
-    workflow and returns ``(reply_text, error_code)``. ``skill_id`` is the
-    deployment-declared skill selected by the client metadata (or ``None`` for
-    the implicit workflow). Error codes are the sanitized common-runtime
-    contract, not engine exceptions.
+    ``start_task(text, skill_id, return_immediately)`` executes the mapped
+    workflow for a new task. ``resolve_resume_target(task_id)`` returns the
+    deployment-side view of an existing task (``None`` when unknown), and
+    ``resume_task(text, task_id, return_immediately)`` resumes a waiting task
+    through the common resume contract. Outcomes carry a sanitized reply, a
+    Task projection, or a sanitized error code — never engine exceptions.
     """
 
     if not config.enabled:
         return
+
+    def send_error(
+        request_id: Any,
+        *,
+        code: str,
+        message: str,
+        status: int,
+        rpc_code: int = JsonRpcError.APPLICATION_ERROR,
+        details: Any = None,
+    ) -> JSONResponse:
+        if config.transport == "jsonrpc":
+            # JSON-RPC reports protocol-level failures in the error envelope at
+            # HTTP 200; only transport-layer gates (401/403) use HTTP statuses.
+            del status
+            return _jsonrpc_error(
+                request_id,
+                JsonRpcError(rpc_code, message, details=details),
+            )
+        return _http_json_response(
+            {"error": {"code": code, "message": message}},
+            status_code=status,
+        )
 
     def gate(request: Request) -> tuple[Principal | None, JSONResponse | None]:
         principal = _authenticate(config, security, request)
@@ -342,6 +391,103 @@ def mount_a2a(
 
     def task_permitted(principal: Principal, action: str) -> bool:
         return _permitted(principal, config.authorization, action=action, resource=_TASK_RESOURCE)
+
+    async def handle_send(
+        principal: Principal, params: Any, *, request_id: Any = None
+    ) -> JSONResponse:
+        if not isinstance(params, dict) or not isinstance(params.get("message"), dict):
+            return send_error(
+                request_id,
+                code="invalid_request",
+                message="SendMessage requires a message object",
+                status=422,
+                rpc_code=JsonRpcError.INVALID_PARAMS,
+            )
+        message = params["message"]
+        try:
+            text = extract_message_text(message.get("parts"))
+        except ValueError as exc:
+            return send_error(
+                request_id,
+                code="invalid_request",
+                message=str(exc),
+                status=422,
+                rpc_code=JsonRpcError.INVALID_PARAMS,
+            )
+        if len(text) > config.max_message_chars:
+            return send_error(
+                request_id,
+                code="message_too_large",
+                message=f"message text exceeds {config.max_message_chars} characters",
+                status=413,
+                rpc_code=JsonRpcError.INVALID_PARAMS,
+            )
+        configuration = params.get("configuration")
+        return_immediately = bool(
+            isinstance(configuration, Mapping) and configuration.get("returnImmediately") is True
+        )
+
+        task_ref = message.get("taskId")
+        if isinstance(task_ref, str) and task_ref.strip():
+            target = await resolve_resume_target(task_ref.strip())
+            if target is None:
+                return send_error(
+                    request_id,
+                    code="task_not_found",
+                    message="task not found",
+                    status=404,
+                    rpc_code=JsonRpcError.TASK_NOT_FOUND,
+                )
+            if not target.deployable:
+                if config.authorization and config.authorization.rules:
+                    return forbidden(request_id)
+                return send_error(
+                    request_id,
+                    code="task_not_resumeable",
+                    message="task is not accepting input",
+                    status=409,
+                )
+            if target.status != "waiting":
+                return send_error(
+                    request_id,
+                    code="task_not_accepting_input",
+                    message="task is not accepting input",
+                    status=409,
+                )
+            if not send_permitted(principal, target.skill_id):
+                return forbidden(request_id)
+            outcome = await resume_task(text, task_ref.strip(), return_immediately)
+        else:
+            skill_id = _requested_skill_id(params, message)
+            if config.skills and skill_id not in {skill.id for skill in config.skills}:
+                return send_error(
+                    request_id,
+                    code="skill_not_found",
+                    message=f"unknown skill: {skill_id}"
+                    if skill_id
+                    else "message requires a skillId",
+                    status=422,
+                    rpc_code=JsonRpcError.INVALID_PARAMS,
+                )
+            if not send_permitted(principal, skill_id):
+                return forbidden(request_id)
+            outcome = await start_task(text, skill_id, return_immediately)
+
+        if outcome.error_code:
+            return send_error(
+                request_id,
+                code=outcome.error_code,
+                message="workflow execution failed",
+                status=500,
+                details={"code": outcome.error_code},
+            )
+        if outcome.task is not None:
+            body: dict[str, Any] = {"task": outcome.task}
+        else:
+            body = {"message": _reply_message(message, outcome.reply_text or "")}
+        if config.transport == "jsonrpc":
+            return _jsonrpc_response(request_id, body)
+        return _http_json_response(body)
 
     def version_supported(request: Request) -> JSONResponse | None:
         requested = _requested_protocol_version(request)
@@ -417,36 +563,7 @@ def mount_a2a(
                         JsonRpcError.METHOD_NOT_FOUND,
                         "A2A method is not supported in the bounded profile",
                     )
-                if not isinstance(params, dict) or not isinstance(params.get("message"), dict):
-                    raise JsonRpcError(
-                        JsonRpcError.INVALID_PARAMS, "SendMessage requires params.message"
-                    )
-                message = params["message"]
-                skill_id = _requested_skill_id(params, message)
-                if config.skills and skill_id not in {skill.id for skill in config.skills}:
-                    raise JsonRpcError(
-                        JsonRpcError.INVALID_PARAMS,
-                        f"unknown skill: {skill_id}" if skill_id else "message requires a skillId",
-                    )
-                if not send_permitted(principal, skill_id):
-                    return forbidden(request_id)
-                try:
-                    text = extract_message_text(message.get("parts"))
-                except ValueError as exc:
-                    raise JsonRpcError(JsonRpcError.INVALID_PARAMS, str(exc)) from exc
-                if len(text) > config.max_message_chars:
-                    raise JsonRpcError(
-                        JsonRpcError.INVALID_PARAMS,
-                        f"message text exceeds {config.max_message_chars} characters",
-                    )
-                reply, error_code = await invoke_message(text, skill_id)
-                if error_code:
-                    raise JsonRpcError(
-                        JsonRpcError.APPLICATION_ERROR,
-                        "workflow execution failed",
-                        details={"code": error_code},
-                    )
-                return _jsonrpc_response(request_id, {"message": _reply_message(message, reply)})
+                return await handle_send(principal, params, request_id=request_id)
             except JsonRpcError as error:
                 return _jsonrpc_error(request_id, error)
 
@@ -470,7 +587,7 @@ def mount_a2a(
                     {"error": {"code": "invalid_request", "message": "invalid JSON payload"}},
                     status_code=422,
                 )
-            if not isinstance(payload, dict) or not isinstance(payload.get("message"), dict):
+            if not isinstance(payload, dict):
                 return _http_json_response(
                     {
                         "error": {
@@ -480,48 +597,7 @@ def mount_a2a(
                     },
                     status_code=422,
                 )
-            message = payload["message"]
-            try:
-                text = extract_message_text(message.get("parts"))
-            except ValueError as exc:
-                return _http_json_response(
-                    {"error": {"code": "invalid_request", "message": str(exc)}},
-                    status_code=422,
-                )
-            if len(text) > config.max_message_chars:
-                return _http_json_response(
-                    {
-                        "error": {
-                            "code": "message_too_large",
-                            "message": (
-                                f"message text exceeds {config.max_message_chars} characters"
-                            ),
-                        }
-                    },
-                    status_code=413,
-                )
-            skill_id = _requested_skill_id(params=payload, message=message)
-            if config.skills and skill_id not in {skill.id for skill in config.skills}:
-                return _http_json_response(
-                    {
-                        "error": {
-                            "code": "skill_not_found",
-                            "message": f"unknown skill: {skill_id}"
-                            if skill_id
-                            else "message requires a skillId",
-                        }
-                    },
-                    status_code=422,
-                )
-            if not send_permitted(principal, skill_id):
-                return forbidden()
-            reply, error_code = await invoke_message(text, skill_id)
-            if error_code:
-                return _http_json_response(
-                    {"error": {"code": error_code, "message": "workflow execution failed"}},
-                    status_code=500,
-                )
-            return _http_json_response({"message": _reply_message(message, reply)})
+            return await handle_send(principal, payload)
 
         @app.get(task_path, response_model=None)
         async def http_json_get_task(task_id: str, request: Request) -> JSONResponse:

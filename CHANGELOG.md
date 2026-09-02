@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Per-principal A2A authorization (`a2a.authorization`): explicit deployment-owned allow rules (`message.send`, `tasks.get`, `tasks.cancel` on `skill:<id>`/`tasks` resources) evaluated against the authenticated profile principal; first matching rule allows, no match denies with a sanitized 403, and the capability block advertises whether enforcement is active (`SECURITY-4`, `A2A-2`).
 - `protocols.security_profile`: workflow-initiated outbound protocol calls (`callHTTP`, `callMCP`, `callA2A`, `callOpenAPI`) resolve credentials from a named `bearer`/`api_key` security profile at call time (`SECURITY-1`).
 - Secret-safety verification tests covering the A2A adapter path: Agent Card, capabilities, Task projections, protocol error bodies, and configuration validation errors never expose the resolved secret value (`SECURITY-3`).
+- Protocol-native A2A async behavior (`A2A-6`): `SendMessageConfiguration.returnImmediately` starts the invocation and returns the Task projection immediately for `GetTask` polling; blocking sends return `result.task` when the workflow ends up waiting (`TASK_STATE_INPUT_REQUIRED`); resuming sends carry `message.taskId` and reuse the common fingerprint-verified resume contract, with sanitized `task_not_found`/`task is not accepting input` rejections.
 
 ### Changed
 
@@ -49,7 +50,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Current deferred scope
 
-- A2A Task projection, Task get/cancel, deployment-declared skills, and per-principal authorization are implemented; input-required/resume mapping, protocol-native `returnImmediately` async behavior, and streaming/resubscription remain active backlog rather than shipped capability.
+- A2A Task projection, Task get/cancel, deployment-declared skills, per-principal authorization, and the bounded waiting/input-required/resume/`returnImmediately` profile are implemented; streaming/resubscription remains active backlog rather than shipped capability.
 - A2A push notifications remain intentionally deferred until an outbound callback trust/security model exists.
 - A broad/full A2A conformance claim remains deferred until Task/streaming/interoperability gates are green.
 - OpenShift-specific sandbox acceptance remains deferred until an OpenShift cluster is available.
