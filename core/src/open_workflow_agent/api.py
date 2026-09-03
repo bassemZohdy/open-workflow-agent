@@ -6,6 +6,7 @@ import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any, Literal
+from uuid import uuid4
 
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
@@ -505,14 +506,14 @@ def create_app(
         return A2ASendOutcome(reply_text=extract_output_text(result.output))
 
     async def _a2a_start_task(
-        text: str, skill_id: str | None, return_immediately: bool
+        text: str, skill_id: str | None, return_immediately: bool, context_id: str | None = None
     ) -> A2ASendOutcome:
         plan = _a2a_plan_for_skill(skill_id)
         if plan is None:
             return A2ASendOutcome(error_code="skill_not_found")
         handle = runtime_services.invocations.create(
             engine=runtime_engine.engine_name,
-            session_id=None,
+            session_id=context_id or str(uuid4()),
             user_id=None,
             workflow_name=plan.name,
             workflow_version=plan.version,

@@ -158,5 +158,6 @@ def test_capabilities_advertise_only_implemented_task_operations(tmp_path) -> No
 
     assert capabilities["tasks"] is True
     assert capabilities["taskOperations"] == ["GetTask", "CancelTask"]
-    assert capabilities["streaming"] is False
+    assert capabilities["streaming"] is True
+    assert capabilities["streamingOperations"] == ["SendStreamingMessage", "SubscribeToTask"]
     assert capabilities["pushNotifications"] is False

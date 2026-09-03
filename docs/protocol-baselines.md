@@ -107,15 +107,14 @@ Any other wire method — including `SendStreamingMessage`, `SubscribeToTask`, a
 
 Legacy v0.3 discovery paths/method names remain unsupported on the A2A wire endpoint.
 
+The inbound A2A boundary additionally implements streaming/resubscription (A2A-7): `SendStreamingMessage` (HTTP+JSON `message:stream`) starts a task and streams official `statusUpdate`/`artifactUpdate` frames until terminal state, and `SubscribeToTask` (HTTP+JSON `tasks/{id}:subscribe`) attaches to an existing task. Streams translate common lifecycle events, are bounded (events/bytes/duration, then the client re-subscribes), and never expose engine-native checkpoint or stream objects. The outbound client above remains pinned to the non-streaming operation set; outbound streaming follows when a concrete requirement exists.
+
 Not yet advertised:
 
-- `SendMessageConfiguration.returnImmediately` non-blocking behavior;
-- waiting/resume as complete multi-turn A2A semantics;
-- `SendStreamingMessage` / `SubscribeToTask`;
 - push notifications;
 - broad/full A2A conformance.
 
-The official A2A specification defines ordinary `SendMessage` as blocking by default and uses `returnImmediately=true` for the protocol-native non-blocking path. OWA will follow that contract rather than introducing a custom async flag.
+The official A2A specification defines ordinary `SendMessage` as blocking by default and uses `returnImmediately=true` for the protocol-native non-blocking path. OWA follows that contract rather than introducing a custom async flag.
 
 ## Model Context Protocol — 2026-07-28
 

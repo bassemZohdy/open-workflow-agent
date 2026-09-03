@@ -1,6 +1,6 @@
 # A2A and Streaming Evaluation
 
-Status: **bounded inbound A2A v1 profile implemented: SendMessage, Task get/cancel, deployment-declared skills, per-principal authorization, waiting/input-required + `returnImmediately` async behavior, and resuming sends. Streaming/resubscription remains active backlog.**
+Status: **bounded inbound A2A v1 profile implemented: SendMessage, Task get/cancel, deployment-declared skills, per-principal authorization, waiting/input-required + `returnImmediately` async behavior, resuming sends, and bounded streaming/resubscription (`SendStreamingMessage` / `SubscribeToTask`).**
 
 ## Reference Baseline
 
@@ -73,10 +73,10 @@ Current guarantees:
 
 Current non-guarantees:
 
-- no A2A streaming/resubscription yet;
 - no push notifications;
 - no broad/full A2A conformance claim;
-- no delegated-user/token-exchange contract inside OWA.
+- no delegated-user/token-exchange contract inside OWA;
+- A2A streams are bounded SSE (events/bytes/duration) with re-subscription, not unlimited long-lived connections.
 
 ## Implemented A2A Task Projection
 

@@ -33,7 +33,7 @@ async def test_lifecycle_sse_endpoint_replays_and_advertises_common_profile(tmp_
             profile = capabilities["features"]["lifecycleStreaming"]
             assert profile["enabled"] is True
             assert profile["transport"] == "sse"
-            assert profile["a2aStreaming"] is False
+            assert profile["a2aStreaming"] is True
             assert capabilities["features"]["streaming"] is False
 
             response = await client.get(

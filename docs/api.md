@@ -297,6 +297,21 @@ using the message text as input. Unknown task references return `-32001`
 sanitized `task is not accepting input` error. HTTP+JSON maps these to
 `404` and `409` respectively.
 
+#### SendStreamingMessage / SubscribeToTask
+
+`SendStreamingMessage` takes the same `params` as `SendMessage` and answers
+with `text/event-stream`: an initial Task frame, then official
+`statusUpdate`/`artifactUpdate` frames translated from common lifecycle
+events, closing at the first terminal state. `SubscribeToTask` takes
+`params.id` and streams the same frames for an existing task (a terminal task
+yields only its projection). Over HTTP+JSON the routes are
+`POST /a2a/message:stream` and `POST /a2a/tasks/{id}:subscribe`.
+
+Streams are bounded — event count, byte size, and duration — and a client
+that needs more simply re-subscribes. Disconnecting a stream never cancels
+the underlying invocation. Unknown resubscription targets return `-32001`;
+resubscription requires the same `tasks.get` authorization as `GetTask`.
+
 #### GetTask
 
 ```json
@@ -366,6 +381,17 @@ A2A-Version: 1.0
 
 Missing Tasks return HTTP `404`; non-cancelable Tasks return HTTP `400`.
 
+Stream and resubscribe use the same semantics as the JSON-RPC
+`SendStreamingMessage`/`SubscribeToTask` operations:
+
+```http
+POST /a2a/message:stream
+POST /a2a/tasks/{task_id}:subscribe
+A2A-Version: 1.0
+```
+
+Both answer `text/event-stream` and are bounded like every other stream.
+
 ### Task projection
 
 OWA does not maintain a second A2A persistence engine. Task state is projected from common invocation state:
@@ -404,7 +430,7 @@ per-principal authorization   implemented (a2a.authorization)
 multi-skill routing           implemented (a2a.skills)
 returnImmediately async       implemented
 waiting/resume A2A mapping    implemented over the common resume contract
-streaming/resubscription      pending
+streaming/resubscription      implemented (bounded SSE, A2A-7)
 push notifications            deferred
 full conformance claim        not claimed
 ```

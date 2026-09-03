@@ -135,7 +135,7 @@ def streaming_capabilities() -> dict[str, Any]:
             "timeoutSeconds": defaults.timeout_seconds,
             "queueSize": defaults.queue_size,
         },
-        "a2aStreaming": False,
+        "a2aStreaming": True,
         "grpcStreaming": False,
         "pushNotifications": False,
     }

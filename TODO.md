@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**v0.1.0 is released. Current `main` is unreleased pre-stable work focused on A2A streaming/resubscription, traffic policy, and external interoperability evidence.**
+**v0.1.0 is released. Current `main` is unreleased pre-stable work focused on traffic policy and external interoperability evidence.**
 
 The public product contract is still stabilizing. External A2A wire behavior targets the official A2A v1 definitions. Open Workflow 1.0.3 keeps its own schema-defined A2A call vocabulary; OWA translates that vocabulary to the selected A2A wire operation at the runtime protocol boundary rather than changing the Open Workflow schema.
 
@@ -38,7 +38,7 @@ Verified implementation detail lives in `PROJECT.md` and is updated after every 
 - [x] **A2A-2** — replace the temporary bearer-only model with shared named security profiles and per-principal skill/action authorization. Both halves shipped: `a2a.security_profile` resolves a named `bearer` profile whose principal attributes (identity/roles/scopes/audience) become the authenticated caller, and `a2a.authorization` enforces per-skill/per-action allow rules with sanitized 403 denials.
 - [x] **A2A-3** — support multiple deployment-configured A2A skills mapped only to explicitly registered workflows. Clients must never select arbitrary workflow paths/files/catalog entries. (`a2a.skills` entries reference uniquely registered `workflow.catalog` names; the Agent Card advertises exactly those skills, `message.metadata.skillId` routes, and unknown/ambiguous references fail closed at startup or request time.)
 - [x] **A2A-6** — map waiting/input-required/resume and protocol-native asynchronous behavior to the A2A Task model. Shipped: blocking `SendMessage` returns `result.task` when the workflow ends up waiting (`TASK_STATE_INPUT_REQUIRED`); official `SendMessageConfiguration.returnImmediately` starts the invocation and returns the Task projection immediately for `GetTask` polling; resuming sends carry `message.taskId` and reuse the common fingerprint-verified resume contract. Unknown tasks fail with `task_not_found`; non-waiting tasks are rejected with a sanitized `task is not accepting input` error. No OWA-specific async flag exists.
-- [ ] **A2A-7** — after Task state/authorization are green, implement A2A streaming/resubscription over the common lifecycle/event infrastructure. Never expose engine-native checkpoint or stream objects.
+- [x] **A2A-7** — implement A2A streaming/resubscription over the common lifecycle/event infrastructure. Shipped: `SendStreamingMessage` (`message:stream`) and `SubscribeToTask` (`tasks/{id}:subscribe`) stream official `statusUpdate`/`artifactUpdate` frames translated from common lifecycle CloudEvents over bounded SSE (event/byte/duration limits, fail-closed backpressure, re-subscribe to continue); a terminal task yields only its projection; disconnecting never cancels the invocation; engine-native checkpoint/stream objects are never exposed.
 - [ ] **A2A-8** — add external A2A interoperability/conformance evidence and capability-accuracy tests before expanding advertisement beyond the bounded Task profile.
 
 ### P2 — Maintenance
@@ -52,11 +52,11 @@ shared security RuntimeConfig/adapters: complete
   -> deployment-declared skills + per-skill authorization: complete
   -> waiting/input-required + resume mapping: complete
   -> SendMessageConfiguration.returnImmediately async behavior: complete
-  -> message/task streaming + resubscription (A2A-7)
+  -> message/task streaming + resubscription: complete
   -> interoperability/conformance gates (A2A-8, PROTOCOL-3)
 ```
 
-The remaining A2A work is **streaming/resubscription over the common lifecycle/event infrastructure** and external interoperability/conformance evidence; Task state, authorization, skill routing, and async semantics are done.
+The remaining A2A work is **external interoperability/conformance evidence**; the bounded protocol profile itself — Task state, authorization, skills, async semantics, and streaming — is complete.
 
 ## Intentionally Deferred
 

@@ -23,8 +23,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
+from .a2a_streaming import a2a_sse_stream, a2a_stream_media_type
 from .a2a_tasks import project_a2a_task
 from .config import A2AConfig
 from .security import (
@@ -36,6 +37,7 @@ from .security import (
     resolve_secret,
     static_principal,
 )
+from .streaming import StreamLimits
 
 A2A_SPEC_RELEASE = "1.0.1"
 A2A_PROTOCOL_VERSION = "1.0"
@@ -57,7 +59,10 @@ def a2a_capabilities(config: A2AConfig) -> dict[str, Any]:
         "protocolVersion": A2A_PROTOCOL_VERSION if config.enabled else None,
         "transport": config.transport,
         "card": A2A_AGENT_CARD_PATH if config.enabled else None,
-        "streaming": False,
+        "streaming": config.enabled,
+        "streamingOperations": (
+            ["SendStreamingMessage", "SubscribeToTask"] if config.enabled else []
+        ),
         "pushNotifications": False,
         "tasks": config.enabled,
         "taskOperations": ["GetTask", "CancelTask"] if config.enabled else [],
@@ -89,7 +94,7 @@ def build_agent_card(
             }
         ],
         "version": config.agent_version,
-        "capabilities": {"streaming": False, "pushNotifications": False},
+        "capabilities": {"streaming": True, "pushNotifications": False},
         "defaultInputModes": ["text/plain"],
         "defaultOutputModes": ["text/plain"],
         "skills": skills
@@ -308,16 +313,16 @@ def mount_a2a(
     config: A2AConfig,
     security: SecurityConfig,
     *,
-    start_task: Callable[[str, str | None, bool], Awaitable[A2ASendOutcome]],
+    start_task: Callable[[str, str | None, bool, str | None], Awaitable[A2ASendOutcome]],
     resolve_resume_target: Callable[[str], Awaitable[ResumeTarget | None]],
     resume_task: Callable[[str, str, bool], Awaitable[A2ASendOutcome]],
     skills: list[dict[str, Any]] | None = None,
 ) -> None:
     """Mount the selected bounded A2A v1 binding on the application.
 
-    ``start_task(text, skill_id, return_immediately)`` executes the mapped
-    workflow for a new task. ``resolve_resume_target(task_id)`` returns the
-    deployment-side view of an existing task (``None`` when unknown), and
+    ``start_task(text, skill_id, return_immediately, context_id)`` executes the
+    mapped workflow for a new task. ``resolve_resume_target(task_id)`` returns
+    the deployment-side view of an existing task (``None`` when unknown), and
     ``resume_task(text, task_id, return_immediately)`` resumes a waiting task
     through the common resume contract. Outcomes carry a sanitized reply, a
     Task projection, or a sanitized error code — never engine exceptions.
@@ -325,6 +330,21 @@ def mount_a2a(
 
     if not config.enabled:
         return
+
+    stream_limits = StreamLimits()
+
+    def task_stream(task_id: str) -> StreamingResponse:
+        services = app.state.services
+        return StreamingResponse(
+            a2a_sse_stream(
+                services.lifecycle_events,
+                services.invocations,
+                task_id,
+                limits=stream_limits,
+            ),
+            media_type=a2a_stream_media_type(),
+            headers={"Cache-Control": "no-store"},
+        )
 
     def send_error(
         request_id: Any,
@@ -392,9 +412,15 @@ def mount_a2a(
     def task_permitted(principal: Principal, action: str) -> bool:
         return _permitted(principal, config.authorization, action=action, resource=_TASK_RESOURCE)
 
-    async def handle_send(
-        principal: Principal, params: Any, *, request_id: Any = None
-    ) -> JSONResponse:
+    def validate_message(
+        params: Any, request_id: Any
+    ) -> tuple[dict[str, Any], str, bool, str | None] | JSONResponse:
+        """Shared SendMessage/SendStreamingMessage validation.
+
+        Returns ``(message, text, return_immediately, context_id)`` or an error
+        response.
+        """
+
         if not isinstance(params, dict) or not isinstance(params.get("message"), dict):
             return send_error(
                 request_id,
@@ -426,6 +452,19 @@ def mount_a2a(
         return_immediately = bool(
             isinstance(configuration, Mapping) and configuration.get("returnImmediately") is True
         )
+        raw_context = message.get("contextId")
+        context_id = (
+            raw_context.strip() if isinstance(raw_context, str) and raw_context.strip() else None
+        )
+        return message, text, return_immediately, context_id
+
+    async def handle_send(
+        principal: Principal, params: Any, *, request_id: Any = None
+    ) -> JSONResponse:
+        validated = validate_message(params, request_id)
+        if isinstance(validated, JSONResponse):
+            return validated
+        message, text, return_immediately, context_id = validated
 
         task_ref = message.get("taskId")
         if isinstance(task_ref, str) and task_ref.strip():
@@ -471,7 +510,7 @@ def mount_a2a(
                 )
             if not send_permitted(principal, skill_id):
                 return forbidden(request_id)
-            outcome = await start_task(text, skill_id, return_immediately)
+            outcome = await start_task(text, skill_id, return_immediately, context_id)
 
         if outcome.error_code:
             return send_error(
@@ -488,6 +527,60 @@ def mount_a2a(
         if config.transport == "jsonrpc":
             return _jsonrpc_response(request_id, body)
         return _http_json_response(body)
+
+    async def handle_stream(
+        principal: Principal, params: Any, *, request_id: Any = None
+    ) -> JSONResponse | StreamingResponse:
+        validated = validate_message(params, request_id)
+        if isinstance(validated, JSONResponse):
+            return validated
+        message, text, _, context_id = validated
+        skill_id = _requested_skill_id(params, message)
+        if config.skills and skill_id not in {skill.id for skill in config.skills}:
+            return send_error(
+                request_id,
+                code="skill_not_found",
+                message=f"unknown skill: {skill_id}" if skill_id else "message requires a skillId",
+                status=422,
+                rpc_code=JsonRpcError.INVALID_PARAMS,
+            )
+        if not send_permitted(principal, skill_id):
+            return forbidden(request_id)
+        outcome = await start_task(text, skill_id, True, context_id)
+        if outcome.error_code or outcome.task is None:
+            return send_error(
+                request_id,
+                code=outcome.error_code or "task_not_found",
+                message="workflow execution failed",
+                status=500,
+                details={"code": outcome.error_code or "task_not_found"},
+            )
+        return task_stream(str(outcome.task["id"]))
+
+    def handle_resubscribe(
+        principal: Principal, params: Any, *, request_id: Any = None
+    ) -> JSONResponse | StreamingResponse:
+        if not task_permitted(principal, "tasks.get"):
+            return forbidden(request_id)
+        try:
+            task_id = _task_id(params)
+        except JsonRpcError as error:
+            return send_error(
+                request_id,
+                code="invalid_request",
+                message=error.message,
+                status=422,
+                rpc_code=JsonRpcError.INVALID_PARAMS,
+            )
+        if app.state.services.invocations.get(task_id) is None:
+            return send_error(
+                request_id,
+                code="task_not_found",
+                message="task not found",
+                status=404,
+                rpc_code=JsonRpcError.TASK_NOT_FOUND,
+            )
+        return task_stream(task_id)
 
     def version_supported(request: Request) -> JSONResponse | None:
         requested = _requested_protocol_version(request)
@@ -528,8 +621,8 @@ def mount_a2a(
 
     if config.transport == "jsonrpc":
 
-        @app.post(config.path)
-        async def jsonrpc_entry(request: Request) -> JSONResponse:
+        @app.post(config.path, response_model=None)
+        async def jsonrpc_entry(request: Request) -> JSONResponse | StreamingResponse:
             principal, unauthorized = gate(request)
             if unauthorized is not None:
                 return unauthorized
@@ -551,6 +644,8 @@ def mount_a2a(
                     if not task_permitted(principal, "tasks.get"):
                         return forbidden(request_id)
                     return _jsonrpc_response(request_id, _get_task(app, _task_id(params)))
+                if method == "SubscribeToTask":
+                    return handle_resubscribe(principal, params, request_id=request_id)
                 if method == "CancelTask":
                     if not task_permitted(principal, "tasks.cancel"):
                         return forbidden(request_id)
@@ -558,19 +653,23 @@ def mount_a2a(
                         request_id,
                         await _cancel_task(app, _task_id(params)),
                     )
-                if method != "SendMessage":
+                if method != "SendMessage" and method != "SendStreamingMessage":
                     raise JsonRpcError(
                         JsonRpcError.METHOD_NOT_FOUND,
                         "A2A method is not supported in the bounded profile",
                     )
+                if method == "SendStreamingMessage":
+                    return await handle_stream(principal, params, request_id=request_id)
                 return await handle_send(principal, params, request_id=request_id)
             except JsonRpcError as error:
                 return _jsonrpc_error(request_id, error)
 
     else:
         send_path = f"{config.path}/message:send"
+        stream_path = f"{config.path}/message:stream"
         task_path = f"{config.path}/tasks/{{task_id}}"
         cancel_task_path = f"{config.path}/tasks/{{task_id}}:cancel"
+        subscribe_task_path = f"{config.path}/tasks/{{task_id}}:subscribe"
 
         @app.post(send_path, response_model=None)
         async def http_json_entry(request: Request) -> JSONResponse:
@@ -598,6 +697,46 @@ def mount_a2a(
                     status_code=422,
                 )
             return await handle_send(principal, payload)
+
+        @app.post(stream_path, response_model=None)
+        async def http_json_stream(request: Request) -> JSONResponse | StreamingResponse:
+            principal, unauthorized = gate(request)
+            if unauthorized is not None:
+                return unauthorized
+            assert principal is not None
+            if unsupported := version_supported(request):
+                return unsupported
+            try:
+                payload = await request.json()
+            except ValueError:
+                return _http_json_response(
+                    {"error": {"code": "invalid_request", "message": "invalid JSON payload"}},
+                    status_code=422,
+                )
+            if not isinstance(payload, dict):
+                return _http_json_response(
+                    {
+                        "error": {
+                            "code": "invalid_request",
+                            "message": "body must be an A2A SendMessageRequest object",
+                        }
+                    },
+                    status_code=422,
+                )
+            result: JSONResponse | StreamingResponse = await handle_stream(principal, payload)
+            return result
+
+        @app.post(subscribe_task_path, response_model=None)
+        async def http_json_subscribe(
+            task_id: str, request: Request
+        ) -> JSONResponse | StreamingResponse:
+            principal, unauthorized = gate(request)
+            if unauthorized is not None:
+                return unauthorized
+            assert principal is not None
+            if unsupported := version_supported(request):
+                return unsupported
+            return handle_resubscribe(principal, {"id": task_id})
 
         @app.get(task_path, response_model=None)
         async def http_json_get_task(task_id: str, request: Request) -> JSONResponse:

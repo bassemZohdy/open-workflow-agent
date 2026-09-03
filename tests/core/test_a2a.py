@@ -69,7 +69,7 @@ async def test_agent_card_reports_bounded_v1_profile(tmp_path) -> None:
                     "protocolVersion": A2A_PROTOCOL_VERSION,
                 }
             ]
-            assert card["capabilities"] == {"streaming": False, "pushNotifications": False}
+            assert card["capabilities"] == {"streaming": True, "pushNotifications": False}
             assert card["defaultInputModes"] == ["text/plain"]
             assert card["defaultOutputModes"] == ["text/plain"]
             assert (await client.get("/.well-known/agent.json")).status_code == 404
@@ -81,7 +81,8 @@ async def test_agent_card_reports_bounded_v1_profile(tmp_path) -> None:
                 "protocolVersion": A2A_PROTOCOL_VERSION,
                 "transport": "jsonrpc",
                 "card": A2A_AGENT_CARD_PATH,
-                "streaming": False,
+                "streaming": True,
+                "streamingOperations": ["SendStreamingMessage", "SubscribeToTask"],
                 "pushNotifications": False,
                 "tasks": True,
                 "taskOperations": ["GetTask", "CancelTask"],

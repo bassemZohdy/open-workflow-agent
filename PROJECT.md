@@ -11,7 +11,7 @@
 
 `v0.1.0` is the current formal release. `main` contains additional unreleased pre-stable work.
 
-The bounded A2A profile now covers the full bounded Task lifecycle: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, and resuming sends over the common resume contract. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The next active work is streaming/resubscription over common lifecycle events, traffic policy, and external interoperability evidence.
+The bounded inbound A2A profile is complete end to end: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, resuming sends over the common resume contract, and bounded streaming/resubscription (`SendStreamingMessage`/`SubscribeToTask`) translating common lifecycle events into official status/artifact frames. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The next active work is the deployment-controlled `traffic_policy` model and external interoperability evidence.
 
 No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engine conformance claim is made beyond the exact tested capability/profile boundaries.
 
@@ -213,18 +213,19 @@ HTTP+JSON uses the matching official-style 404/400 boundary for the same conditi
 
 `SendMessage` follows official async semantics: blocking sends return `result.message` on completion or `result.task` when the workflow ends up waiting (`TASK_STATE_INPUT_REQUIRED`); `configuration.returnImmediately: true` starts the invocation and returns the Task projection immediately for `GetTask` polling; sends carrying `message.taskId` resume a waiting task through the common resume contract (fingerprint-verified), while unknown or non-waiting tasks are rejected with sanitized errors.
 
-`features.a2a` currently advertises Tasks with exactly `GetTask` and `CancelTask`, the deployment-declared skill ids, and whether per-principal authorization enforcement is active; streaming and push notifications remain false.
+Streaming/resubscription (`SendStreamingMessage` over `message:stream`, `SubscribeToTask` over `tasks/{id}:subscribe`) streams official `Task`/`statusUpdate`/`artifactUpdate` frames translated from common lifecycle CloudEvents. Streams are bounded by event/byte/duration limits with fail-closed backpressure, disconnecting never cancels the invocation, and engine-native checkpoint/stream objects are never exposed.
+
+`features.a2a` currently advertises Tasks with exactly `GetTask` and `CancelTask`, `SendStreamingMessage`/`SubscribeToTask` streaming operations, the deployment-declared skill ids, bearer authentication, and whether per-principal authorization enforcement is active; push notifications remain false.
 
 ## Remaining A2A Work
 
 The remaining order is:
 
 ```text
-streaming/resubscription over common lifecycle events
-  -> external interoperability/conformance evidence
+external interoperability/conformance evidence
 ```
 
-Shared named security profiles, deployment-declared skills, per-skill/per-principal authorization, waiting/input-required mapping, `returnImmediately` async behavior, and resume-via-SendMessage are complete (see Security Architecture State and Current A2A State).
+The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining backlog work is the deployment-controlled `traffic_policy` model and interop/conformance evidence.
 
 The official A2A v1 semantics are the guide: ordinary `SendMessage` blocks by default, while `returnImmediately=true` is the protocol-native non-blocking request and returns Task state for later `GetTask`/subscription. OWA will not add a custom async flag.
 
@@ -278,9 +279,8 @@ SQLite remains the reference datasource. PostgreSQL common stores and ADK/LangGr
 
 The authoritative ordered backlog is `TODO.md`. Current priorities are:
 
-1. implement A2A streaming/resubscription over the common lifecycle/event infrastructure;
-2. introduce the deployment-controlled `traffic_policy` model;
-3. add external interoperability/conformance evidence before broadening claims.
+1. introduce the deployment-controlled `traffic_policy` model;
+2. add external interoperability/conformance evidence before broadening claims.
 
 ## Intentionally Deferred
 
