@@ -300,7 +300,15 @@ SQLite remains the reference datasource. PostgreSQL common stores and ADK/LangGr
 
 ## Current Active Backlog
 
-The authoritative ordered backlog is `TODO.md`. All active backlog items are complete. Only intentionally deferred items remain.
+The authoritative ordered backlog is `TODO.md`. Current priorities are:
+
+1. wire OAuth2/mTLS security profiles into outbound protocol adapters;
+2. add optional built-in API authentication for the main HTTP endpoints;
+3. OpenShift sandbox acceptance and multi-arch Docker images;
+4. Prometheus metrics and structured logging;
+5. dependency hygiene (`numpy`/`pypdf` to optional extras, ruff target fix, mypy for engines);
+6. API documentation for memory, scheduling, approvals, events, and OpenAPI spec;
+7. expand CTK subset and add performance benchmarks.
 
 ## Intentionally Deferred
 
