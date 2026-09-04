@@ -16,8 +16,8 @@ Verified implementation detail lives in `PROJECT.md` and is updated after every 
 
 ### P0 — Security hardening
 
-- [ ] **SECURITY-5** — wire OAuth2 client-credentials and mTLS security profile types into outbound protocol adapters (`protocols.py`) so workflows can call HTTPS/client-cert-protected endpoints using named profiles. Currently only `bearer` and `api_key` profiles inject HTTP headers; `oauth2_client_credentials` and `mtls` profiles are parsed and validated but not resolved by the outbound HTTP client.
-- [ ] **SECURITY-7** — add an optional built-in API authentication layer for the main HTTP API (`/v1/*` endpoints). Today the main REST endpoints are unauthenticated; only A2A has optional bearer auth. Deployments without a reverse proxy or service mesh have no way to protect invoke/resume/cancel/approvals/schedules endpoints.
+- [x] **SECURITY-5** — wire OAuth2 client-credentials and mTLS security profile types into outbound protocol adapters (`protocols.py`) so workflows can call HTTPS/client-cert-protected endpoints using named profiles. Shipped: OAuth2 tokens are cached until expiry; mTLS provides client certificates to httpx.
+- [x] **SECURITY-7** — add an optional built-in API authentication layer for the main HTTP API (`/v1/*` endpoints). Shipped: `ApiAuthenticationMiddleware` supports bearer tokens and API keys via named security profiles; health endpoints remain unprotected.
 
 ### P0 — Deployment readiness
 
@@ -27,12 +27,12 @@ Verified implementation detail lives in `PROJECT.md` and is updated after every 
 ### P1 — Observability
 
 - [ ] **OBS-1** — add a Prometheus `/metrics` endpoint exposing invocation counts, latency histograms, active invocations, scheduler jobs, approval queue depth, sandbox execution stats, traffic policy counters, and A2A request/error rates. Currently the runtime has no machine-readable metrics surface.
-- [ ] **OBS-2** — add structured JSON logging support. The runtime currently uses plain-text log formatting; structured logging is required for log aggregation platforms (ELK, Loki, CloudWatch).
+- [x] **OBS-2** — add structured JSON logging support. Shipped: `JsonFormatter` for structured logging; configurable via `observability.structured_logging` and `observability.log_format`.
 
 ### P1 — Dependency hygiene
 
 - [ ] **DEPS-1** — move `numpy` and `pypdf` from core hard dependencies to an optional `[knowledge]` extra. These are only needed for the knowledge/embedding service but are currently installed for every deployment even when knowledge is unused. This reduces the base image footprint and install time.
-- [ ] **DEPS-2** — fix ruff `target-version` from `"py311"` to `"py312"` in `pyproject.toml`. The project requires `python >= 3.12` but the linter targets `py311`, which disables 3.12-specific checks.
+- [x] **DEPS-2** — fix ruff `target-version` from `"py311"` to `"py312"` in `pyproject.toml`. The project requires `python >= 3.12` but the linter targets `py311`, which disables 3.12-specific checks.
 - [ ] **DEPS-3** — enable mypy for engine packages. Currently `mypy` in `pyproject.toml` excludes `^(engines|tests)/`; engine adapter code is not statically type-checked.
 
 ### P1 — Documentation
@@ -61,8 +61,8 @@ Verified implementation detail lives in `PROJECT.md` and is updated after every 
 
 ### P2 — Architecture
 
-- [ ] **ARCH-1** — add dependency health checks to `/health/ready`. Currently `/health/ready` returns `ok` when the lifespan completes but does not verify downstream dependencies (database connectivity, model availability, knowledge index readiness).
-- [ ] **ARCH-2** — add CORS configuration support. The API has no CORS restrictions; add a configurable CORS policy for browser-based clients while keeping the default restrictive.
+- [x] **ARCH-1** — add dependency health checks to `/health/ready`. Shipped: ready endpoint now checks database, knowledge, and model services and reports degraded status if any fail.
+- [x] **ARCH-2** — add CORS configuration support. Shipped: configurable CORS origins, methods, headers, and credentials via `server.cors_*` configuration.
 - [ ] **ARCH-3** — add per-endpoint or per-principal rate limiting to the traffic policy. The current traffic policy is global; A2A endpoints may need different limits than REST endpoints, and authenticated principals may deserve higher quotas.
 
 ## Intentionally Deferred
