@@ -83,7 +83,7 @@ def build_agent_card(
 ) -> dict[str, Any]:
     """Build the bounded A2A v1 Agent Card for the configured workflow(s)."""
 
-    return {
+    card: dict[str, Any] = {
         "name": config.agent_name,
         "description": config.agent_description,
         "supportedInterfaces": [
@@ -109,6 +109,18 @@ def build_agent_card(
             }
         ],
     }
+
+    # Advertise security schemes when authentication is configured
+    if config.security_profile:
+        card["securitySchemes"] = {
+            "bearer": {
+                "type": "http",
+                "scheme": "bearer",
+            }
+        }
+        card["security"] = [{"bearer": []}]
+
+    return card
 
 
 def extract_message_text(parts: Any) -> str:

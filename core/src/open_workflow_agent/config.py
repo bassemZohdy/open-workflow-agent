@@ -523,6 +523,30 @@ class ProtocolConfig(StrictModel):
     security_profile: str | None = None
 
 
+class RateLimitConfig(StrictModel):
+    """Deployment-controlled rate limiting policy."""
+
+    requests_per_second: float = Field(default=10.0, gt=0)
+    burst: int = Field(default=20, gt=0)
+
+
+class ConcurrencyLimitConfig(StrictModel):
+    """Deployment-controlled concurrency limiting policy."""
+
+    max_concurrent: int = Field(default=50, gt=0)
+
+
+class TrafficPolicyConfig(StrictModel):
+    """Deployment-controlled traffic policy for rate limits, concurrency limits, and burst/admission control.
+
+    Authentication/authorization profiles must not own traffic management.
+    """
+
+    enabled: bool = False
+    rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
+    concurrency_limit: ConcurrencyLimitConfig = Field(default_factory=ConcurrencyLimitConfig)
+
+
 class ServerConfig(StrictModel):
     host: str = "0.0.0.0"
     port: int = 8080
@@ -545,6 +569,7 @@ class RuntimeConfig(StrictModel):
     a2a: A2AConfig = Field(default_factory=A2AConfig)
     protocols: ProtocolConfig = Field(default_factory=ProtocolConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
+    traffic_policy: TrafficPolicyConfig = Field(default_factory=TrafficPolicyConfig)
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
     tools: list[ToolConfig] = Field(default_factory=list)
     server: ServerConfig = Field(default_factory=ServerConfig)

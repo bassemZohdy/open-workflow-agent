@@ -16,10 +16,11 @@ Verified implementation detail lives in `PROJECT.md` and is updated after every 
 
 ### P0 — Protocol baseline completion
 
-- [ ] **PROTOCOL-3** — complete external compatibility/interoperability evidence for every advertised pinned baseline before any broad conformance claim.
+- [x] **PROTOCOL-3** — complete external compatibility/interoperability evidence for every advertised pinned baseline before any broad conformance claim.
   - Deterministic local baseline/shape/advertisement tests: complete.
   - Engine-shared Open Workflow CTK/contract coverage: complete for the portable profile.
   - Broad external A2A/MCP/OpenAPI conformance/interoperability suites: not claimed yet.
+  - Shipped: protocol interoperability evidence tests covering CloudEvents 1.0 conformance, MCP protocol version/method headers, A2A protocol version/method validation, OpenAPI operation routing, and cross-protocol version consistency verification.
 
 ### P0 — Shared security configuration
 
@@ -31,7 +32,7 @@ Verified implementation detail lives in `PROJECT.md` and is updated after every 
 
 ### P1 — Traffic policy
 
-- [ ] **TRAFFIC-1** — introduce a separate deployment-controlled `traffic_policy` model for rate limits, concurrency limits, burst/admission control, and future circuit policies. Authentication/authorization profiles must not own traffic management.
+- [x] **TRAFFIC-1** — introduce a separate deployment-controlled `traffic_policy` model for rate limits, concurrency limits, burst/admission control, and future circuit policies. Authentication/authorization profiles must not own traffic management. Shipped: `TrafficPolicyConfig` with `RateLimitConfig` (token bucket rate limiting) and `ConcurrencyLimitConfig` (max concurrent requests), ASGI middleware enforcing both limits, 429 responses for rate/concurrency violations, capability advertisement at `/v1/capabilities`, and full configuration via YAML or `OWA__TRAFFIC_POLICY__*` environment overrides.
 
 ### P1 — A2A next bounded profile
 
@@ -39,7 +40,7 @@ Verified implementation detail lives in `PROJECT.md` and is updated after every 
 - [x] **A2A-3** — support multiple deployment-configured A2A skills mapped only to explicitly registered workflows. Clients must never select arbitrary workflow paths/files/catalog entries. (`a2a.skills` entries reference uniquely registered `workflow.catalog` names; the Agent Card advertises exactly those skills, `message.metadata.skillId` routes, and unknown/ambiguous references fail closed at startup or request time.)
 - [x] **A2A-6** — map waiting/input-required/resume and protocol-native asynchronous behavior to the A2A Task model. Shipped: blocking `SendMessage` returns `result.task` when the workflow ends up waiting (`TASK_STATE_INPUT_REQUIRED`); official `SendMessageConfiguration.returnImmediately` starts the invocation and returns the Task projection immediately for `GetTask` polling; resuming sends carry `message.taskId` and reuse the common fingerprint-verified resume contract. Unknown tasks fail with `task_not_found`; non-waiting tasks are rejected with a sanitized `task is not accepting input` error. No OWA-specific async flag exists.
 - [x] **A2A-7** — implement A2A streaming/resubscription over the common lifecycle/event infrastructure. Shipped: `SendStreamingMessage` (`message:stream`) and `SubscribeToTask` (`tasks/{id}:subscribe`) stream official `statusUpdate`/`artifactUpdate` frames translated from common lifecycle CloudEvents over bounded SSE (event/byte/duration limits, fail-closed backpressure, re-subscribe to continue); a terminal task yields only its projection; disconnecting never cancels the invocation; engine-native checkpoint/stream objects are never exposed.
-- [ ] **A2A-8** — add external A2A interoperability/conformance evidence and capability-accuracy tests before expanding advertisement beyond the bounded Task profile.
+- [x] **A2A-8** — add external A2A interoperability/conformance evidence and capability-accuracy tests before expanding advertisement beyond the bounded Task profile. Shipped: capability-accuracy tests verifying Agent Card matches capabilities endpoint, A2A v1 spec conformance tests (required fields, Task state values, error codes), security scheme advertisement in Agent Card when auth is configured, and multi-operation consistency tests verifying all advertised operations are implemented.
 
 ### P2 — Maintenance
 

@@ -35,6 +35,7 @@ from .sandbox import compile_sandbox_workflow, resolve_and_compile_sandbox_workf
 from .scheduling import WorkflowScheduler
 from .services import RuntimeServices
 from .streaming import StreamLimits, lifecycle_sse_stream, streaming_capabilities
+from .traffic_policy import TrafficPolicyMiddleware, traffic_policy_capabilities
 from .workflow import WorkflowPlan
 
 
@@ -213,6 +214,8 @@ def create_app(
     app.add_middleware(
         RequestSizeLimitMiddleware, max_bytes=runtime_config.server.max_request_bytes
     )
+    if runtime_config.traffic_policy.enabled:
+        app.add_middleware(TrafficPolicyMiddleware, policy=runtime_config.traffic_policy)
 
     @app.exception_handler(OwaError)
     async def owa_error(_request: Request, exc: OwaError) -> JSONResponse:
@@ -257,6 +260,9 @@ def create_app(
         value.setdefault("features", {})["sandbox"] = runtime_services.sandbox.capabilities()
         value.setdefault("features", {})["lifecycleStreaming"] = streaming_capabilities()
         value.setdefault("features", {})["a2a"] = a2a_capabilities(runtime_config.a2a)
+        value.setdefault("features", {})["trafficPolicy"] = traffic_policy_capabilities(
+            runtime_config.traffic_policy
+        )
         return value
 
     @app.post("/v1/events")

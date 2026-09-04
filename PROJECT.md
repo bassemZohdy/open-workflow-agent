@@ -173,11 +173,15 @@ JSON-RPC at <configured A2A path>
   SendMessage
   GetTask
   CancelTask
+  SendStreamingMessage
+  SubscribeToTask
 
 HTTP+JSON
   POST <configured A2A path>/message:send
   GET  <configured A2A path>/tasks/{id}
   POST <configured A2A path>/tasks/{id}:cancel
+  POST <configured A2A path>/message:stream
+  POST <configured A2A path>/tasks/{id}:subscribe
 ```
 
 Implemented Task model:
@@ -217,6 +221,8 @@ Streaming/resubscription (`SendStreamingMessage` over `message:stream`, `Subscri
 
 `features.a2a` currently advertises Tasks with exactly `GetTask` and `CancelTask`, `SendStreamingMessage`/`SubscribeToTask` streaming operations, the deployment-declared skill ids, bearer authentication, and whether per-principal authorization enforcement is active; push notifications remain false.
 
+Agent Card now advertises `securitySchemes` and `security` requirements when authentication is configured (bearer scheme), conforming to A2A v1 Agent Card specification patterns.
+
 ## Remaining A2A Work
 
 The remaining order is:
@@ -232,6 +238,8 @@ The official A2A v1 semantics are the guide: ordinary `SendMessage` blocks by de
 Push notifications remain separately deferred because they create an outbound callback trust boundary requiring allowlisting, TLS identity verification, callback authentication, SSRF protection, replay/idempotency controls, bounded retries/dead-letter handling, and secret-safe observability.
 
 Delegated-user identity, token exchange, and consent remain deployment/identity-platform concerns and do not block Task support.
+
+Interoperability evidence is now provided through capability-accuracy tests, A2A v1 spec conformance tests, security scheme advertisement, and multi-operation consistency tests.
 
 ## Security Architecture State
 
@@ -269,6 +277,28 @@ OWA does not become an identity provider. OAuth2/OIDC federation, delegated-user
 
 Traffic/rate/concurrency policy remains a separate deployment concern from authentication/authorization.
 
+## Traffic Policy State
+
+The deployment-controlled `traffic_policy` model is implemented:
+
+```text
+TrafficPolicyConfig
+  enabled: bool = false
+  rate_limit: RateLimitConfig (token bucket, requests_per_second + burst)
+  concurrency_limit: ConcurrencyLimitConfig (max_concurrent)
+```
+
+Implemented behavior:
+
+- token bucket rate limiting with configurable requests-per-second and burst capacity;
+- concurrent request limiting with configurable max concurrent requests;
+- 429 responses with structured error codes (`rate_limit_exceeded`, `concurrency_limit_exceeded`);
+- ASGI middleware applied only when `traffic_policy.enabled=true`;
+- capability advertisement at `/v1/capabilities` under `features.trafficPolicy`;
+- full configuration via YAML or `OWA__TRAFFIC_POLICY__*` environment overrides.
+
+Traffic policy is intentionally separate from security profiles — authentication/authorization profiles must not own traffic management.
+
 ## Persistence and State Boundaries
 
 The runtime preserves distinct lifecycles for knowledge, memory, session, common invocation metadata, approvals, schedules, sandbox executions, and engine-native checkpoints/state.
@@ -277,10 +307,10 @@ SQLite remains the reference datasource. PostgreSQL common stores and ADK/LangGr
 
 ## Current Active Backlog
 
-The authoritative ordered backlog is `TODO.md`. Current priorities are:
+The authoritative ordered backlog is `TODO.md`. All active backlog items are now complete:
 
-1. introduce the deployment-controlled `traffic_policy` model;
-2. add external interoperability/conformance evidence before broadening claims.
+1. ~~introduce the deployment-controlled `traffic_policy` model~~ — complete
+2. ~~add external interoperability/conformance evidence before broadening claims~~ — complete
 
 ## Intentionally Deferred
 
