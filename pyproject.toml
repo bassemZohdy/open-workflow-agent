@@ -13,7 +13,7 @@ dependencies = [
   "jsonschema==4.26.0",
   "numpy==2.5.2",
   "pypdf==6.16.2",
-  "pydantic==2.13.4",
+  "pydantic==2.13.5",
   "PyYAML==6.0.3",
   "uvicorn==0.52.4",
 ]
@@ -22,7 +22,7 @@ dependencies = [
 dev = [
   "pytest==9.1.1",
   "pytest-asyncio==1.4.0",
-  "ruff==0.16.4",
+  "ruff==0.16.5",
   "mypy==2.3.1",
   "types-jsonschema==4.26.0.20260518",
   "types-PyYAML==6.0.12.20260815",
@@ -30,9 +30,9 @@ dev = [
 ]
 
 [project.optional-dependencies]
-model = ["litellm==1.98.0"]
+model = ["litellm==1.99.0"]
 knowledge = ["fastembed==0.8.0"]
-postgres = ["psycopg[binary]==3.3.4"]
+postgres = ["psycopg[binary]==3.3.5"]
 
 [build-system]
 requires = ["hatchling"]
