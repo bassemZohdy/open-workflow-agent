@@ -10,7 +10,7 @@ requires-python = ">=3.12"
 dependencies = ["open-workflow-agent"]
 
 [project.optional-dependencies]
-native = ["agent-framework-core==1.15.0"]
+native = ["agent-framework-core==1.16.0"]
 knowledge = ["open-workflow-agent[knowledge]"]
 model = ["open-workflow-agent[model]"]
 postgres = ["open-workflow-agent[postgres]"]
