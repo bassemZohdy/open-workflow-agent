@@ -59,15 +59,18 @@ class HttpClient:
         authentication: AuthenticationProvider | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
         destination_resolver: Callable[[str], Awaitable[tuple[str, ...]]] | None = None,
+        client_cert: tuple[str, str] | None = None,
+        ca_bundle: str | None = None,
     ) -> None:
         self.timeout = timeout
         self.max_response_bytes = max_response_bytes
-        self.verify_tls = verify_tls
+        self.verify_tls = ca_bundle if ca_bundle else verify_tls
         self.follow_redirects = follow_redirects
         self.allowed_hosts = allowed_hosts
         self.authentication = authentication
         self.transport = transport
         self.destination_resolver = destination_resolver
+        self.client_cert = client_cert
 
     async def request(
         self,
@@ -117,6 +120,7 @@ class HttpClient:
                 follow_redirects=redirects_enabled,
                 trust_env=trust_env,
                 transport=request_transport,
+                cert=self.client_cert,
             ) as client:
                 async with client.stream(method, endpoint, **kwargs) as streamed:
                     chunks: list[bytes] = []
@@ -170,12 +174,21 @@ class ProtocolServices:
         security_profile: str | None = None,
     ) -> None:
         authentication: AuthenticationProvider | None = None
+        client_cert: tuple[str, str] | None = None
+        ca_bundle: str | None = None
         if security_profile:
             if security is None:
                 raise ToolError(
                     "protocol security profile reference requires runtime security configuration"
                 )
-            authentication = ProfileAuthentication(security, security_profile)
+            auth = ProfileAuthentication(security, security_profile)
+            if hasattr(auth, '_supports_oauth2') and auth._supports_oauth2:
+                authentication = auth
+            elif hasattr(auth, '_supports_mtls') and auth._supports_mtls:
+                client_cert = auth.client_cert()
+                ca_bundle = auth.ca_bundle()
+            else:
+                authentication = auth
         self.http = http or HttpClient(
             allowed_hosts={
                 host.strip()
@@ -184,6 +197,8 @@ class ProtocolServices:
             }
             or None,
             authentication=authentication,
+            client_cert=client_cert,
+            ca_bundle=ca_bundle,
         )
 
     async def call(self, protocol: str, payload: Any) -> Any:

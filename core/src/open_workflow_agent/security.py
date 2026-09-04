@@ -206,10 +206,17 @@ class ProfileAuthentication:
 
     def __init__(self, security: SecurityConfig, profile_name: str) -> None:
         profile = security.profile(profile_name)
-        if not isinstance(profile, (BearerSecurityProfile, ApiKeySecurityProfile)):
+        self._supports_headers = isinstance(
+            profile, (BearerSecurityProfile, ApiKeySecurityProfile)
+        )
+        self._supports_oauth2 = isinstance(profile, OAuth2ClientCredentialsSecurityProfile)
+        self._supports_mtls = isinstance(profile, MtlsSecurityProfile)
+        if not (self._supports_headers or self._supports_oauth2 or self._supports_mtls):
             raise ValueError(f"security profile '{profile_name}' does not provide protocol headers")
         self.security = security
         self.profile_name = profile_name
+        self._oauth2_token: str | None = None
+        self._oauth2_token_expiry: float = 0.0
 
     def headers(self, endpoint: str) -> Mapping[str, str]:
         del endpoint
@@ -218,9 +225,70 @@ class ProfileAuthentication:
             return {"Authorization": f"Bearer {resolve_secret(profile.token)}"}
         if isinstance(profile, ApiKeySecurityProfile):
             return {profile.header: resolve_secret(profile.key)}
+        if isinstance(profile, OAuth2ClientCredentialsSecurityProfile):
+            return {"Authorization": f"Bearer {self._resolve_oauth2_token(profile)}"}
+        if isinstance(profile, MtlsSecurityProfile):
+            return {}
         raise ValueError(
             f"security profile '{self.profile_name}' does not provide protocol headers"
         )
+
+    def _resolve_oauth2_token(self, profile: OAuth2ClientCredentialsSecurityProfile) -> str:
+        """Resolve OAuth2 client credentials token with caching."""
+        import time
+
+        now = time.time()
+        if self._oauth2_token and now < self._oauth2_token_expiry:
+            return self._oauth2_token
+
+        import urllib.request
+        import urllib.parse
+
+        client_id = resolve_secret(profile.client_id)
+        client_secret = resolve_secret(profile.client_secret)
+
+        data = urllib.parse.urlencode(
+            {
+                "grant_type": "client_credentials",
+                "client_id": client_id,
+                "client_secret": client_secret,
+                **({"scope": " ".join(profile.scopes)} if profile.scopes else {}),
+                **({"audience": profile.audience} if profile.audience else {}),
+            }
+        ).encode()
+
+        req = urllib.request.Request(
+            profile.token_url,
+            data=data,
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                import json
+
+                result = json.loads(resp.read().decode())
+                self._oauth2_token = result["access_token"]
+                expires_in = result.get("expires_in", 3600)
+                self._oauth2_token_expiry = now + float(expires_in) - 60
+                return self._oauth2_token
+        except Exception as exc:
+            raise ValueError(f"OAuth2 token request failed: {exc}") from exc
+
+    def client_cert(self) -> tuple[str, str] | None:
+        """Return (certificate, private_key) for mTLS profiles."""
+        profile = self.security.profile(self.profile_name)
+        if isinstance(profile, MtlsSecurityProfile):
+            return (resolve_secret(profile.certificate), resolve_secret(profile.private_key))
+        return None
+
+    def ca_bundle(self) -> str | None:
+        """Return CA bundle path/content for mTLS profiles."""
+        profile = self.security.profile(self.profile_name)
+        if isinstance(profile, MtlsSecurityProfile) and profile.ca_bundle:
+            return resolve_secret(profile.ca_bundle)
+        return None
 
 
 def static_principal(profile: BearerSecurityProfile | ApiKeySecurityProfile) -> Principal:

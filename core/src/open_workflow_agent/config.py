@@ -551,10 +551,17 @@ class ServerConfig(StrictModel):
     host: str = "0.0.0.0"
     port: int = 8080
     max_request_bytes: int = 1_048_576
+    api_security_profile: str | None = None
+    cors_origins: list[str] = Field(default_factory=list)
+    cors_methods: list[str] = Field(default_factory=lambda: ["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+    cors_headers: list[str] = Field(default_factory=lambda: ["*"])
+    cors_allow_credentials: bool = False
 
 
 class ObservabilityConfig(StrictModel):
     log_level: str = "INFO"
+    structured_logging: bool = False
+    log_format: str = "json"  # "json" or "text"
 
 
 class RuntimeConfig(StrictModel):
@@ -609,6 +616,9 @@ class RuntimeConfig(StrictModel):
                     f"{' or '.join(sorted(header_capable))}"
                 )
 
+        require_header_profile(
+            "server.api_security_profile", self.server.api_security_profile
+        )
         require_header_profile(
             "approvals.operator_security_profile", self.approvals.operator_security_profile
         )

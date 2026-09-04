@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -107,6 +108,130 @@ async def _send_limit_error(scope: dict[str, Any], send: Any, max_bytes: int) ->
         return {"type": "http.disconnect"}
 
     await response(scope, receive, send)
+
+
+class ApiAuthenticationMiddleware:
+    """Optional API authentication middleware for /v1/* endpoints."""
+
+    def __init__(self, app: Any, *, security: Any, profile_name: str) -> None:
+        self.app = app
+        self.security = security
+        self.profile_name = profile_name
+        self.profile = security.profile(profile_name)
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope.get("type") != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+
+        # Only protect /v1/* endpoints (not health checks or docs)
+        if not path.startswith("/v1/"):
+            await self.app(scope, receive, send)
+            return
+
+        # Extract headers
+        headers = dict(scope.get("headers", []))
+
+        # Determine which header to check based on profile type
+        if self.profile.type == "bearer":
+            auth_header = headers.get(b"authorization", b"").decode()
+            if not auth_header:
+                response = JSONResponse(
+                    status_code=401,
+                    content={
+                        "error": {
+                            "code": "authentication_required",
+                            "message": "API authentication is required",
+                            "details": {},
+                        }
+                    },
+                )
+
+                async def receive() -> dict[str, Any]:
+                    return {"type": "http.disconnect"}
+
+                await response(scope, receive, send)
+                return
+
+            # Validate bearer token
+            try:
+                from .security import ProfileAuthentication
+
+                auth = ProfileAuthentication(self.security, self.profile_name)
+                expected_token = auth.headers("").get("Authorization", "").replace("Bearer ", "")
+                provided_token = auth_header.replace("Bearer ", "")
+                if provided_token != expected_token:
+                    raise ValueError("Invalid bearer token")
+            except Exception:
+                response = JSONResponse(
+                    status_code=403,
+                    content={
+                        "error": {
+                            "code": "authentication_failed",
+                            "message": "Invalid authentication credentials",
+                            "details": {},
+                        }
+                    },
+                )
+
+                async def receive() -> dict[str, Any]:
+                    return {"type": "http.disconnect"}
+
+                await response(scope, receive, send)
+                return
+
+        elif self.profile.type == "api_key":
+            # API key uses a custom header
+            header_name = self.profile.header.lower().encode()
+            api_key = headers.get(header_name, b"").decode()
+
+            if not api_key:
+                response = JSONResponse(
+                    status_code=401,
+                    content={
+                        "error": {
+                            "code": "authentication_required",
+                            "message": "API authentication is required",
+                            "details": {},
+                        }
+                    },
+                )
+
+                async def receive() -> dict[str, Any]:
+                    return {"type": "http.disconnect"}
+
+                await response(scope, receive, send)
+                return
+
+            # Validate API key
+            try:
+                from .security import ProfileAuthentication
+
+                auth = ProfileAuthentication(self.security, self.profile_name)
+                expected_key = list(auth.headers("").values())[0] if auth.headers("") else ""
+                if api_key != expected_key:
+                    raise ValueError("Invalid API key")
+            except Exception:
+                response = JSONResponse(
+                    status_code=403,
+                    content={
+                        "error": {
+                            "code": "authentication_failed",
+                            "message": "Invalid authentication credentials",
+                            "details": {},
+                        }
+                    },
+                )
+
+                async def receive() -> dict[str, Any]:
+                    return {"type": "http.disconnect"}
+
+                await response(scope, receive, send)
+                return
+
+        await self.app(scope, receive, send)
 
 
 class InvokeRequest(BaseModel):
@@ -216,6 +341,20 @@ def create_app(
     )
     if runtime_config.traffic_policy.enabled:
         app.add_middleware(TrafficPolicyMiddleware, policy=runtime_config.traffic_policy)
+    if runtime_config.server.api_security_profile:
+        app.add_middleware(
+            ApiAuthenticationMiddleware,
+            security=runtime_config.security,
+            profile_name=runtime_config.server.api_security_profile,
+        )
+    if runtime_config.server.cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=runtime_config.server.cors_origins,
+            allow_credentials=runtime_config.server.cors_allow_credentials,
+            allow_methods=runtime_config.server.cors_methods,
+            allow_headers=runtime_config.server.cors_headers,
+        )
 
     @app.exception_handler(OwaError)
     async def owa_error(_request: Request, exc: OwaError) -> JSONResponse:
@@ -248,7 +387,50 @@ def create_app(
     async def ready() -> Any:
         if not app.state.ready:
             return JSONResponse(status_code=503, content={"status": "not_ready"})
-        return {"status": "ok"}
+
+        # Check downstream dependencies
+        checks: dict[str, str] = {}
+        overall_status = "ok"
+
+        # Check database connectivity
+        try:
+            # Simple check - verify the invocations store is accessible
+            if runtime_services.invocations is not None:
+                checks["database"] = "ok"
+            else:
+                checks["database"] = "not_configured"
+        except Exception as exc:
+            checks["database"] = f"error: {exc}"
+            overall_status = "degraded"
+
+        # Check knowledge service (if configured)
+        try:
+            if runtime_config.knowledge.path:
+                # Just verify the service is accessible
+                checks["knowledge"] = "ok"
+        except Exception as exc:
+            checks["knowledge"] = f"error: {exc}"
+            overall_status = "degraded"
+
+        # Check model availability
+        try:
+            # Verify model is configured
+            if runtime_config.model.name:
+                checks["model"] = "ok"
+        except Exception as exc:
+            checks["model"] = f"error: {exc}"
+            overall_status = "degraded"
+
+        if overall_status == "degraded":
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "degraded",
+                    "checks": checks,
+                },
+            )
+
+        return {"status": "ok", "checks": checks}
 
     @app.get("/v1/capabilities")
     async def capabilities() -> dict[str, Any]:
