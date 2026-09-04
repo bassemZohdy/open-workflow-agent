@@ -12,53 +12,6 @@ The public product contract is still stabilizing. External A2A wire behavior tar
 
 Verified implementation detail lives in `PROJECT.md` and is updated after every gate-passing change. Formal release remains `v0.1.0`; current `main` changes are unreleased pre-stable work.
 
-## Active Backlog
-
-### P0 — Protocol baseline completion
-
-- [x] **PROTOCOL-3** — complete external compatibility/interoperability evidence for every advertised pinned baseline before any broad conformance claim.
-  - Deterministic local baseline/shape/advertisement tests: complete.
-  - Engine-shared Open Workflow CTK/contract coverage: complete for the portable profile.
-  - Broad external A2A/MCP/OpenAPI conformance/interoperability suites: not claimed yet.
-  - Shipped: protocol interoperability evidence tests covering CloudEvents 1.0 conformance, MCP protocol version/method headers, A2A protocol version/method validation, OpenAPI operation routing, and cross-protocol version consistency verification.
-
-### P0 — Shared security configuration
-
-- [x] **SECURITY-1** — integrate reusable named security profiles across inbound/outbound protocol adapters. Wired: A2A inbound bearer (`a2a.security_profile`), approvals operator check (`approvals.operator_security_profile`), external-catalog authentication (`authentication.security_profile`), per-tool references (`tools[].security_profile`), and workflow-initiated outbound protocol calls (`protocols.security_profile`). OAuth2 client-credentials/mTLS profile types exist in the schema; wiring them into outbound adapters follows when those transports gain HTTPS/client-cert callers. MCP stdio remains disabled with no auth surface.
-- [x] **SECURITY-2** — expose profiles through the main strict runtime YAML plus `OWA__...` overrides. `RuntimeConfig.security` is a strict-parsed section; `OWA__SECURITY__...` overrides work through the existing generic environment-override mechanism. Protocol/tool configuration references profiles by name; workflow definitions never contain raw credentials.
-- [x] **SECURITY-3** — complete secret-safe integration across adapters/logs/plans/capabilities/Agent Cards/lifecycle/A2A Tasks/sandbox/persistence. Env-only `SecretReference` resolution resolves at the last responsible moment without caching; `hide_input_in_errors` keeps secret values out of validation errors; end-to-end tests verify the resolved token never appears on Agent Cards, capabilities, A2A Task projections, protocol error bodies, or config validation output. New adapter surfaces must extend this verification when added.
-- [x] **SECURITY-4** — wire standard authorization checks into protocol actions/skills. A2A enforces `a2a.authorization` allow rules (`message.send`/`tasks.get`/`tasks.cancel` on `skill:<id>`/`tasks` resources) against the authenticated profile principal; first match allows, no match returns sanitized 403, and declaring a policy without authentication fails at startup. Inbound MCP does not exist (MCP is outbound-client only, authenticated per tool).
-- [x] **SECURITY-6** — remove temporary protocol-specific credential fields as shared profiles replace them. Removed: `A2AConfig.auth_token`, `ApprovalConfig.operator_token`, external-catalog `bearer_token_env`/`basic_username_env`/`basic_password_env`, and the ambient `OWA_BEARER_TOKEN_ENV`/`OWA_BASIC_*` protocol-client environment variables. All credentials now resolve exclusively through named `security.profiles`.
-
-### P1 — Traffic policy
-
-- [x] **TRAFFIC-1** — introduce a separate deployment-controlled `traffic_policy` model for rate limits, concurrency limits, burst/admission control, and future circuit policies. Authentication/authorization profiles must not own traffic management. Shipped: `TrafficPolicyConfig` with `RateLimitConfig` (token bucket rate limiting) and `ConcurrencyLimitConfig` (max concurrent requests), ASGI middleware enforcing both limits, 429 responses for rate/concurrency violations, capability advertisement at `/v1/capabilities`, and full configuration via YAML or `OWA__TRAFFIC_POLICY__*` environment overrides.
-
-### P1 — A2A next bounded profile
-
-- [x] **A2A-2** — replace the temporary bearer-only model with shared named security profiles and per-principal skill/action authorization. Both halves shipped: `a2a.security_profile` resolves a named `bearer` profile whose principal attributes (identity/roles/scopes/audience) become the authenticated caller, and `a2a.authorization` enforces per-skill/per-action allow rules with sanitized 403 denials.
-- [x] **A2A-3** — support multiple deployment-configured A2A skills mapped only to explicitly registered workflows. Clients must never select arbitrary workflow paths/files/catalog entries. (`a2a.skills` entries reference uniquely registered `workflow.catalog` names; the Agent Card advertises exactly those skills, `message.metadata.skillId` routes, and unknown/ambiguous references fail closed at startup or request time.)
-- [x] **A2A-6** — map waiting/input-required/resume and protocol-native asynchronous behavior to the A2A Task model. Shipped: blocking `SendMessage` returns `result.task` when the workflow ends up waiting (`TASK_STATE_INPUT_REQUIRED`); official `SendMessageConfiguration.returnImmediately` starts the invocation and returns the Task projection immediately for `GetTask` polling; resuming sends carry `message.taskId` and reuse the common fingerprint-verified resume contract. Unknown tasks fail with `task_not_found`; non-waiting tasks are rejected with a sanitized `task is not accepting input` error. No OWA-specific async flag exists.
-- [x] **A2A-7** — implement A2A streaming/resubscription over the common lifecycle/event infrastructure. Shipped: `SendStreamingMessage` (`message:stream`) and `SubscribeToTask` (`tasks/{id}:subscribe`) stream official `statusUpdate`/`artifactUpdate` frames translated from common lifecycle CloudEvents over bounded SSE (event/byte/duration limits, fail-closed backpressure, re-subscribe to continue); a terminal task yields only its projection; disconnecting never cancels the invocation; engine-native checkpoint/stream objects are never exposed.
-- [x] **A2A-8** — add external A2A interoperability/conformance evidence and capability-accuracy tests before expanding advertisement beyond the bounded Task profile. Shipped: capability-accuracy tests verifying Agent Card matches capabilities endpoint, A2A v1 spec conformance tests (required fields, Task state values, error codes), security scheme advertisement in Agent Card when auth is configured, and multi-operation consistency tests verifying all advertised operations are implemented.
-
-### P2 — Maintenance
-
-- [x] **MAINT-1** — review Dependabot PR #22 (Docker base image `python:3.12-slim` → `python:3.14-slim`). Closed without merging: the runtime floor stays Python 3.12; dependents (notably LiteLLM/fastembed native wheels) were not validated on 3.14 and the release pipeline is pinned to 3.12. Revisit when 3.14 support is explicitly desired (`#21`/`#22` both closed for the same reason).
-
-### Recommended implementation order for remaining A2A work
-
-```text
-shared security RuntimeConfig/adapters: complete
-  -> deployment-declared skills + per-skill authorization: complete
-  -> waiting/input-required + resume mapping: complete
-  -> SendMessageConfiguration.returnImmediately async behavior: complete
-  -> message/task streaming + resubscription: complete
-  -> interoperability/conformance gates (A2A-8, PROTOCOL-3)
-```
-
-The remaining A2A work is **external interoperability/conformance evidence**; the bounded protocol profile itself — Task state, authorization, skills, async semantics, and streaming — is complete.
-
 ## Intentionally Deferred
 
 ### OpenShift sandbox acceptance

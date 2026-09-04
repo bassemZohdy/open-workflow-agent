@@ -7,11 +7,11 @@
 - `TODO.md` — active and intentionally deferred backlog.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current Phase — 2026-09-03
+## Current Phase — 2026-09-04
 
 `v0.1.0` is the current formal release. `main` contains additional unreleased pre-stable work.
 
-The bounded inbound A2A profile is complete end to end: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, resuming sends over the common resume contract, and bounded streaming/resubscription (`SendStreamingMessage`/`SubscribeToTask`) translating common lifecycle events into official status/artifact frames. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The next active work is the deployment-controlled `traffic_policy` model and external interoperability evidence.
+The bounded inbound A2A profile is complete end to end: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, resuming sends over the common resume contract, and bounded streaming/resubscription (`SendStreamingMessage`/`SubscribeToTask`) translating common lifecycle events into official status/artifact frames. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The deployment-controlled `traffic_policy` model is implemented with token bucket rate limiting and concurrency limits. External interoperability/conformance evidence is complete for all advertised baselines.
 
 No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engine conformance claim is made beyond the exact tested capability/profile boundaries.
 
@@ -225,13 +225,7 @@ Agent Card now advertises `securitySchemes` and `security` requirements when aut
 
 ## Remaining A2A Work
 
-The remaining order is:
-
-```text
-external interoperability/conformance evidence
-```
-
-The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining backlog work is the deployment-controlled `traffic_policy` model and interop/conformance evidence.
+The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). All active backlog items are complete.
 
 The official A2A v1 semantics are the guide: ordinary `SendMessage` blocks by default, while `returnImmediately=true` is the protocol-native non-blocking request and returns Task state for later `GetTask`/subscription. OWA will not add a custom async flag.
 
@@ -270,7 +264,6 @@ Implemented security groundwork:
 
 Still active:
 
-- advertise A2A `securitySchemes` / security requirements accurately;
 - wire OAuth2 client-credentials/mTLS profile types into outbound adapters when those transports gain HTTPS/client-cert callers.
 
 OWA does not become an identity provider. OAuth2/OIDC federation, delegated-user token exchange, and consent remain external identity-platform responsibilities.
@@ -307,10 +300,7 @@ SQLite remains the reference datasource. PostgreSQL common stores and ADK/LangGr
 
 ## Current Active Backlog
 
-The authoritative ordered backlog is `TODO.md`. All active backlog items are now complete:
-
-1. ~~introduce the deployment-controlled `traffic_policy` model~~ — complete
-2. ~~add external interoperability/conformance evidence before broadening claims~~ — complete
+The authoritative ordered backlog is `TODO.md`. All active backlog items are complete. Only intentionally deferred items remain.
 
 ## Intentionally Deferred
 
