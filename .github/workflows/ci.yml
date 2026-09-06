@@ -211,14 +211,14 @@ jobs:
         run: |
           set -euo pipefail
           timeout --signal=TERM --kill-after=30s 8m \
-            uv run --locked --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
+            uv run --locked --extra knowledge --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
             pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract -vv --durations=20
       - name: Portable Profile CTK subset
         shell: bash
         run: |
           set -euo pipefail
           timeout --signal=TERM --kill-after=30s 5m \
-            uv run --locked --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
+            uv run --locked --extra knowledge --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
             pytest ../../tests/ctk -vv --durations=20 | tee "$RUNNER_TEMP/ctk-${{ matrix.engine }}.log"
       - name: Capture CTK provenance
         shell: bash

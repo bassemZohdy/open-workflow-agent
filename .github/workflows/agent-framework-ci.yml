@@ -42,7 +42,7 @@ jobs:
         run: uv lock --check
       - name: Run native, shared contract, and CTK suites
         run: >-
-          uv run --locked --extra native --with pytest --with pytest-asyncio
+          uv run --locked --extra knowledge --extra native --with pytest --with pytest-asyncio
           pytest ../../tests/agent_framework ../../tests/contract ../../tests/ctk -vv
       - name: Build adapter wheel
         run: uv build
