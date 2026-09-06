@@ -25,6 +25,7 @@ htmlcov/
 !.env.example
 
 # Local tooling and operating-system files
+.commandcode/
 .idea/
 .vscode/
 .DS_Store
