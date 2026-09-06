@@ -96,7 +96,7 @@ jobs:
         run: |
           set -euo pipefail
           timeout --signal=TERM --kill-after=30s 5m \
-            uv run --locked --extra postgres pytest tests/core/test_postgres_persistence.py -vv --durations=20
+            uv run --locked --extra knowledge --extra postgres pytest tests/core/test_postgres_persistence.py -vv --durations=20
 
   postgres-runtime:
     name: PostgreSQL persistence ${{ matrix.engine }} acceptance
