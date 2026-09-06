@@ -1,0 +1,7 @@
+apiVersion: v2
+name: open-workflow-agent
+description: Configuration-driven Open Workflow Agent runtime
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"

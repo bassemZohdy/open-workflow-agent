@@ -105,7 +105,12 @@ jobs:
             tests/core/test_sandbox_backend_contract.py \
             tests/contract/test_container_sandbox_contract.py
       - name: Type check common runtime
-        run: uv run --locked mypy core/src
+        run: >-
+          uv run --locked mypy
+          --package open_workflow_agent
+          --package open_workflow_agent_adk
+          --package open_workflow_agent_langgraph
+          --package open_workflow_agent_agent_framework
       - name: Run external sandbox contract tests
         shell: bash
         run: |

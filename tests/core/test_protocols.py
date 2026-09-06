@@ -11,6 +11,12 @@ from open_workflow_agent.protocols import (
     MCP_PROTOCOL_VERSION,
     HttpClient,
     ProtocolServices,
+    _duration_seconds,
+    _endpoint_value,
+    _format_response,
+    _normalize_hostname,
+    _operation_id,
+    _pinned_transport,
     _PinnedNetworkBackend,
     resolve_public_addresses_async,
 )
@@ -323,3 +329,136 @@ async def test_pinned_network_backend_connects_only_to_approved_addresses():
     assert delegate.calls == [("93.184.216.34", 443, {"server_hostname": "service.test"})]
     with pytest.raises(OSError, match="unexpected network destination"):
         await backend.connect_tcp("other.test", 443)
+
+
+@pytest.mark.asyncio
+async def test_pinned_network_backend_falls_back_and_delegates_other_operations():
+    class RecordingDelegate:
+        def __init__(self) -> None:
+            self.tcp_attempts: list[str] = []
+            self.unix_path: str | None = None
+            self.slept: float | None = None
+
+        async def connect_tcp(self, host: str, port: int, **kwargs: object) -> object:
+            del port, kwargs
+            self.tcp_attempts.append(host)
+            if host == "192.0.2.1":
+                raise OSError("first address unavailable")
+            return "stream"
+
+        async def connect_unix_socket(self, path: str, **kwargs: object) -> object:
+            del kwargs
+            self.unix_path = path
+            return "unix-stream"
+
+        async def sleep(self, seconds: float) -> None:
+            self.slept = seconds
+
+    delegate = RecordingDelegate()
+    backend = _PinnedNetworkBackend(
+        delegate,
+        hostname="service.test",
+        port=443,
+        addresses=("192.0.2.1", "192.0.2.2"),
+    )
+    assert await backend.connect_tcp("service.test", 443) == "stream"
+    assert delegate.tcp_attempts == ["192.0.2.1", "192.0.2.2"]
+    assert await backend.connect_unix_socket("/tmp/socket") == "unix-stream"
+    await backend.sleep(0.25)
+    assert delegate.unix_path == "/tmp/socket"
+    assert delegate.slept == 0.25
+
+
+def test_protocol_helpers_cover_endpoint_and_timeout_shapes():
+    assert _normalize_hostname("Service.TEST.") == "service.test"
+    assert _normalize_hostname("münich.example") == "xn--mnich-kva.example"
+    assert _operation_id({"operationId": "one"}) == "one"
+    assert _operation_id({"operation_id": "two", "id": "three"}) == "two"
+    generated = _operation_id({})
+    assert generated
+    assert _endpoint_value("https://service.test") == "https://service.test"
+    assert _endpoint_value({"endpoint": {"uri": "https://service.test"}}) == (
+        "https://service.test"
+    )
+    assert _endpoint_value({"uri": 42}) is None
+    assert _duration_seconds(None) is None
+    assert _duration_seconds({"minutes": 2, "seconds": 3}) == 123
+    assert _duration_seconds(1.5) == 1.5
+    assert _duration_seconds("250ms") == 0.25
+    assert _duration_seconds("2 h") == 7200
+    with pytest.raises(ToolError, match="invalid protocol timeout"):
+        _duration_seconds("not-a-duration")
+
+
+def test_protocol_response_formatting_and_pinned_transport_validation():
+    json_response = httpx.Response(200, json={"ok": True}, headers={"x-test": "yes"})
+    assert _format_response(json_response, "content") == {"ok": True}
+    assert _format_response(json_response, "response")["headers"]["x-test"] == "yes"
+    text_response = httpx.Response(200, text="plain")
+    assert _format_response(text_response, "content") == "plain"
+    assert _format_response(text_response, "raw") == "plain"
+
+    with pytest.raises(ToolError, match="no approved"):
+        _pinned_transport(verify_tls=True, endpoint="https://service.test", addresses=())
+    with pytest.raises(ToolError, match="missing a hostname"):
+        _pinned_transport(verify_tls=True, endpoint="https:///path", addresses=("93.184.216.34",))
+
+
+@pytest.mark.asyncio
+async def test_http_client_rejects_invalid_endpoints_and_allows_not_modified():
+    client = HttpClient(transport=httpx.MockTransport(lambda _: httpx.Response(304)))
+    with pytest.raises(ToolError, match="absolute HTTP"):
+        await client.request("GET", "/relative")
+    with pytest.raises(ToolError, match="unsupported HTTP output"):
+        await client.request("GET", "https://service.test", output="invalid")
+    with pytest.raises(ToolError, match="HTTP request failed"):
+        await client.request("GET", "https://service.test")
+    assert await client.request("GET", "https://service.test", allow_not_modified=True) == ""
+
+
+@pytest.mark.asyncio
+async def test_public_address_resolution_covers_literal_and_dns_failures(monkeypatch):
+    assert await resolve_public_addresses_async("https://93.184.216.34") == ("93.184.216.34",)
+    with pytest.raises(ToolError, match="disallowed IP"):
+        await resolve_public_addresses_async("https://127.0.0.1")
+
+    monkeypatch.setattr(
+        socket, "getaddrinfo", lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError())
+    )
+    with pytest.raises(ToolError, match="could not be resolved"):
+        await resolve_public_addresses_async("https://service.test")
+
+
+@pytest.mark.asyncio
+async def test_protocol_services_rejects_malformed_operation_shapes():
+    services = ProtocolServices(
+        HttpClient(transport=httpx.MockTransport(lambda _: httpx.Response(200, json={"ok": True})))
+    )
+    with pytest.raises(ToolError, match="unsupported protocol"):
+        await services.call("stdio", {})
+    with pytest.raises(ToolError, match="payload must be an object"):
+        await services.call("http", [])
+    with pytest.raises(ToolError, match="requires endpoint"):
+        await services.call("http", {})
+    with pytest.raises(ToolError, match="transport object"):
+        await services.call("mcp", {"transport": []})
+    with pytest.raises(ToolError, match="stdio"):
+        await services.call("mcp", {"transport": {"stdio": {}}})
+    with pytest.raises(ToolError, match="HTTP transport"):
+        await services.call("mcp", {"transport": {"http": []}})
+    with pytest.raises(ToolError, match="transport.http.endpoint"):
+        await services.call("mcp", {"transport": {"http": {}}})
+    with pytest.raises(ToolError, match="unsupported MCP method"):
+        await services.call(
+            "mcp", {"transport": {"http": {"endpoint": "https://service.test"}}, "method": "bad"}
+        )
+    with pytest.raises(ToolError, match="requires server endpoint"):
+        await services.call("a2a", {})
+    with pytest.raises(ToolError, match="unsupported A2A method"):
+        await services.call("a2a", {"server": "https://service.test", "method": "bad"})
+    with pytest.raises(ToolError, match="requires document endpoint"):
+        await services.call("openapi", {})
+    with pytest.raises(ToolError, match="requires operationId"):
+        await services.call("openapi", {"document": {"endpoint": "https://service.test"}})
+    with pytest.raises(ToolError, match="invalid protocol timeout"):
+        await services.call("http", {"endpoint": "https://service.test", "timeout": "bad"})

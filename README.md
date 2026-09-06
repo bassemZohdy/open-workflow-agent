@@ -336,6 +336,7 @@ ADK and LangGraph are implementation engines, not public application contracts. 
 - [Troubleshooting and compatibility](docs/troubleshooting.md) — FAQ, upgrade notes, and version/compatibility matrix.
 - [External sandbox contract](docs/external-sandbox-contract.md) — backend-neutral sandbox request/result/capability contract and controller boundaries.
 - [A2A/streaming evaluation](docs/a2a-streaming-evaluation.md) — bounded lifecycle SSE baseline and deferred A2A streaming/push scope.
+- [Custom catalog functions](docs/custom-catalog-functions.md) — catalog layout, function manifests, deployment trust, and verification.
 - [Engine adapter evaluation](docs/engine-adapter-evaluation.md) — how the Microsoft Agent Framework third engine was selected and its current deferral state.
 - [Project Definition](Project%20Definition.md) — authoritative architecture and product contract.
 - [PROJECT.md](PROJECT.md) — verified implementation status.

@@ -1,0 +1,18 @@
+model:
+  provider: fake
+  name: fake/default
+
+sandbox:
+  enabled: true
+  backend: kubernetes
+  allow_shell: false
+  timeout_seconds: 30
+  kubernetes:
+    controller_url: http://127.0.0.1:8090
+    allowed_images:
+      - "registry.example.com/owa/python@sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    require_digest: true
+    platform: kubernetes # use openshift for an OpenShift deployment
+    network: denied
+    network_policy_enforced: true
+    process_limit_enforced: true

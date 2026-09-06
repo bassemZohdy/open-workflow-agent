@@ -1,6 +1,6 @@
 # A2A and Streaming Evaluation
 
-Status: **bounded inbound A2A v1 profile implemented: SendMessage, Task get/cancel, deployment-declared skills, per-principal authorization, waiting/input-required + `returnImmediately` async behavior, resuming sends, and bounded streaming/resubscription (`SendStreamingMessage` / `SubscribeToTask`).**
+Status: **bounded inbound A2A v1 profile fully implemented: SendMessage, Task get/cancel, deployment-declared skills, per-principal authorization, waiting/input-required + `returnImmediately` async behavior, resuming sends, bounded streaming/resubscription (`SendStreamingMessage` / `SubscribeToTask`), security scheme advertisement, and interoperability evidence tests.**
 
 ## Reference Baseline
 
@@ -42,11 +42,15 @@ JSON-RPC at <configured path>
   SendMessage
   GetTask
   CancelTask
+  SendStreamingMessage
+  SubscribeToTask
 
 HTTP+JSON
   POST <configured path>/message:send
   GET  <configured path>/tasks/{id}
   POST <configured path>/tasks/{id}:cancel
+  POST <configured path>/message:stream
+  POST <configured path>/tasks/{id}:subscribe
 ```
 
 Selectable transports:
@@ -64,12 +68,15 @@ Current guarantees:
 - A2A Task projection over common invocation state;
 - Task retrieval/cancellation using common `InvocationStore` and engine cancellation;
 - deployment-configured public base URL;
-- optional temporary deployment bearer guard;
+- optional bearer authentication via named security profiles;
+- per-principal authorization with action/resource/role policies;
 - bounded request/message sizes;
 - sanitized errors;
 - no engine-native checkpoint/thread/run/stream exposure;
 - identical common Task semantics independent of ADK/LangGraph;
-- capability advertisement limited to implemented behavior.
+- capability advertisement limited to implemented behavior;
+- security scheme advertisement in Agent Card when auth is configured;
+- bounded streaming with event/byte/duration limits and fail-closed backpressure.
 
 Current non-guarantees:
 
@@ -147,11 +154,11 @@ returnImmediately true
 
 OWA must not add a custom `async` flag.
 
-Before implementing this, the runtime needs a clean common way to launch/retain an active invocation while returning its persistent `ExecutionHandle` projection without binding the public contract to an in-process engine task object.
+This is now implemented. Blocking sends return `result.message` on completion or `result.task` when the workflow ends up waiting (`TASK_STATE_INPUT_REQUIRED`); `configuration.returnImmediately: true` starts the invocation and returns the Task projection immediately for `GetTask` polling.
 
 ## Waiting / Input Required / Resume
 
-The common runtime already owns waiting and resume semantics. The remaining A2A work is to make the protocol projection exact:
+The common runtime already owns waiting and resume semantics. The A2A protocol projection is now exact:
 
 ```text
 common waiting
@@ -164,7 +171,7 @@ new client message / protocol-native continuation
   -> updated Task projection
 ```
 
-`AUTH_REQUIRED` must not be invented from ordinary waiting state. It should be introduced only when an actual authentication continuation requirement exists.
+Resuming sends carry `message.taskId` and reuse the common fingerprint-verified resume contract. Unknown tasks fail with `task_not_found`; non-waiting tasks are rejected with a sanitized `task is not accepting input` error.
 
 ## Shared Security Boundary
 
@@ -182,43 +189,30 @@ They include env-only secret references, secret-safe validation, principal/role/
 Completed integration:
 
 - profiles are part of the main strict runtime configuration (`RuntimeConfig.security.profiles`);
-- A2A inbound authentication references a named `bearer` profile through `a2a.security_profile` (the temporary `auth_token` field is removed).
-
-Remaining integration before expanding A2A:
-
-- advertise official Agent Card `securitySchemes` / `securityRequirements` accurately;
-- authenticate at HTTP/TLS layer, never in A2A message payloads;
-- authorize protocol-native actions such as `message.send`, `tasks.get`, and `tasks.cancel` against the selected skill/resource;
-- map clients only to deployment-declared skills/workflows.
+- A2A inbound authentication references a named `bearer` profile through `a2a.security_profile` (the temporary `auth_token` field is removed);
+- per-principal authorization (`a2a.authorization`) enforces explicit allow rules;
+- Agent Card advertises `securitySchemes` and `security` requirements when auth is configured;
+- OAuth2 client-credentials and mTLS profiles are wired to outbound protocol adapters.
 
 Delegated identity, OAuth/OIDC federation, token exchange, and consent remain external identity-platform concerns.
 
-## Remaining Implementation Order
+## A2A Streaming Implementation
+
+Streaming is now implemented over the common lifecycle/event infrastructure:
 
 ```text
-1. RuntimeConfig + protocol integration for named security profiles
-2. deployment-declared A2A skills -> registered workflows
-3. per-principal skill/action authorization
-4. waiting/input-required/resume protocol mapping
-5. SendMessageConfiguration.returnImmediately
-6. SendStreamingMessage over common lifecycle/event infrastructure
-7. SubscribeToTask reconciliation/resubscription
-8. external interoperability/conformance evidence
+SendStreamingMessage (JSON-RPC) / message:stream (HTTP+JSON)
+SubscribeToTask (JSON-RPC) / tasks/{id}:subscribe (HTTP+JSON)
 ```
 
-The earlier Task-model blocker is removed. The current blockers are authorization/skill routing and the precise portable async/resume contract.
+Implementation details:
 
-## Streaming Rules
-
-When A2A streaming is implemented:
-
-- use official `SendStreamingMessage` / `SubscribeToTask` semantics;
-- stream incrementally rather than buffering the response;
-- project common Task/Message/Artifact state, not engine-native streams;
-- preserve the same security/authorization as non-streaming operations;
-- preserve bounded queues, backpressure, time/byte/event limits, and sanitized errors;
-- use protocol-native resubscription/reconciliation;
-- advertise streaming only after deterministic and interoperability gates are green.
+- translates common lifecycle CloudEvents into official A2A v1 `statusUpdate` and `artifactUpdate` frames;
+- streams are bounded by event/byte/duration limits with fail-closed backpressure;
+- disconnecting never cancels the underlying invocation;
+- engine-native checkpoint/stream objects are never exposed;
+- re-subscription via `SubscribeToTask` reconciles from the current task state;
+- security and authorization are enforced identically to non-streaming operations.
 
 ## Push Notifications
 
@@ -227,23 +221,23 @@ Push notifications remain intentionally deferred because they add an outbound ca
 ## Current Capability Position
 
 ```text
-common lifecycle SSE          implemented
-inbound A2A Agent Card        implemented
-A2A SendMessage               implemented
-A2A Task projection           implemented
-A2A GetTask                   implemented
-A2A CancelTask                implemented
-jsonrpc transport             implemented
-http_json transport           implemented
-shared security primitives    implemented; adapter integration active
-multi-skill routing           active backlog
-waiting/resume A2A mapping    active backlog
-returnImmediately async       active backlog
-A2A streaming/resubscription  active backlog
-push notifications            intentionally deferred
-full A2A conformance claim    intentionally deferred
+common lifecycle SSE                    implemented
+inbound A2A Agent Card                  implemented
+A2A SendMessage                         implemented
+A2A Task projection                     implemented
+A2A GetTask                             implemented
+A2A CancelTask                          implemented
+jsonrpc transport                       implemented
+http_json transport                     implemented
+shared security primitives              implemented
+multi-skill routing                     implemented
+waiting/resume A2A mapping              implemented
+returnImmediately async                 implemented
+A2A streaming/resubscription            implemented
+security scheme advertisement           implemented
+interoperability evidence tests         implemented
+push notifications                      intentionally deferred
+full A2A conformance claim              intentionally deferred
 ```
 
-The architectural conclusion is now:
-
-> The A2A Task projection/get/cancel blocker is removed. Complete shared authorization, deployment-owned skill routing, and protocol-native async/resume semantics before advertising streaming.
+The bounded inbound A2A profile is complete. No active implementation work remains in this bounded profile; broader interoperability/full-conformance work and the intentionally deferred items (push notifications and a full conformance claim) remain outside scope.

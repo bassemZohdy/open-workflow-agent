@@ -12,28 +12,40 @@ import time
 from pathlib import Path
 from typing import Any, Protocol
 
-import numpy as np
 import yaml
 
 from .errors import KnowledgeError
 from .storage import StorageConnection, open_storage
+
+try:
+    import numpy as np
+
+    NUMPY_AVAILABLE = True
+except ImportError:
+    np = None  # type: ignore[assignment]
+    NUMPY_AVAILABLE = False
 
 
 class EmbeddingProvider(Protocol):
     dimensions: int
     identity: str
 
-    def embed(self, text: str) -> np.ndarray: ...
+    def embed(self, text: str) -> Any: ...
 
 
 class DeterministicEmbeddingProvider:
     """Small offline provider reserved for deterministic tests."""
 
     def __init__(self, dimensions: int = 64) -> None:
+        if not NUMPY_AVAILABLE:
+            raise ImportError(
+                "numpy is required for knowledge/embedding functionality. "
+                "Install it with: pip install open-workflow-agent[knowledge]"
+            )
         self.dimensions = dimensions
         self.identity = f"deterministic-sha256/{dimensions}"
 
-    def embed(self, text: str) -> np.ndarray:
+    def embed(self, text: str) -> Any:
         vector = np.zeros(self.dimensions, dtype=np.float32)
         for token in re.findall(r"\w+", text.lower()):
             digest = hashlib.sha256(token.encode()).digest()
@@ -57,6 +69,11 @@ class FastEmbedEmbeddingProvider:
         model: Any | None = None,
         cache_dir: str | Path | None = None,
     ) -> None:
+        if not NUMPY_AVAILABLE:
+            raise ImportError(
+                "numpy is required for knowledge/embedding functionality. "
+                "Install it with: pip install open-workflow-agent[knowledge]"
+            )
         self.model_name = model_name
         self.model_revision = model_revision
         self.identity = f"{model_name}@{model_revision}"
@@ -64,7 +81,7 @@ class FastEmbedEmbeddingProvider:
         self.cache_dir = str(cache_dir) if cache_dir else os.getenv("FASTEMBED_CACHE_PATH")
         self.dimensions = 384
 
-    def embed(self, text: str) -> np.ndarray:
+    def embed(self, text: str) -> Any:
         if self._model is None:
             try:
                 fastembed: Any = importlib.import_module("fastembed")
@@ -259,6 +276,11 @@ class KnowledgeService:
         return counts
 
     def search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
+        if not NUMPY_AVAILABLE:
+            raise ImportError(
+                "numpy is required for knowledge search functionality. "
+                "Install it with: pip install open-workflow-agent[knowledge]"
+            )
         if not self.connection.execute("SELECT 1 FROM chunks LIMIT 1").fetchone():
             return []
         query_vector = self.embedding.embed(query)

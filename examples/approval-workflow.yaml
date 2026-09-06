@@ -7,9 +7,15 @@ document:
 # Durable human-in-the-loop approval composed from standard event tasks.
 # Requires deployment configuration:
 #
+#   security:
+#     profiles:
+#       operator:
+#         type: bearer
+#         token:
+#           from_env: OWA_OPERATOR_TOKEN
 #   approvals:
 #     enabled: true
-#     operator_token: <secret>
+#     operator_security_profile: operator
 #
 # The emit creates/refreshes the persisted approval record. The operator
 # responds via POST /v1/approvals/{id}/decision (bearer + X-Operator-Id).

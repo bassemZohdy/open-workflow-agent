@@ -186,13 +186,18 @@ Rate limiting, concurrency limits, request/burst controls, circuit behavior, and
 
 ```yaml
 traffic_policy:
-  inbound:
-    max_concurrent_requests: 100
-    requests_per_second: 50
-    burst: 100
+  enabled: true
+  rate_limit: {requests_per_second: 50, burst: 100}
+  concurrency_limit: {max_concurrent: 100}
+  endpoint_limits:
+    - path_prefix: /v1/invoke
+      concurrency_limit: {max_concurrent: 20}
+  principal_limits:
+    - principal: partner-client
+      rate_limit: {requests_per_second: 10, burst: 20}
 ```
 
-Security answers **who is the caller and what may it do?** Traffic policy answers **how much traffic may be admitted?** Do not merge these models.
+Security answers **who is the caller and what may it do?** Traffic policy answers **how much traffic may be admitted?** Global limits apply to all HTTP requests; matching endpoint and authenticated-principal limits are additional scopes. Do not merge these models.
 
 ## 10. A2A skill ownership
 

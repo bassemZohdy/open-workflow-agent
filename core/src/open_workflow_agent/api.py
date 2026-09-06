@@ -11,7 +11,7 @@ from uuid import uuid4
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from ._version import __version__
@@ -32,8 +32,11 @@ from .errors import (
     OwaError,
     ScheduleNotFound,
 )
+from .metrics import MetricsMiddleware
 from .sandbox import compile_sandbox_workflow, resolve_and_compile_sandbox_workflow
 from .scheduling import WorkflowScheduler
+from .security import static_principal
+from .security_headers import SecurityHeadersMiddleware
 from .services import RuntimeServices
 from .streaming import StreamLimits, lifecycle_sse_stream, streaming_capabilities
 from .traffic_policy import TrafficPolicyMiddleware, traffic_policy_capabilities
@@ -231,6 +234,7 @@ class ApiAuthenticationMiddleware:
                 await response(scope, receive, send)
                 return
 
+        scope["owa.principal"] = static_principal(self.profile).identity
         await self.app(scope, receive, send)
 
 
@@ -340,7 +344,11 @@ def create_app(
         RequestSizeLimitMiddleware, max_bytes=runtime_config.server.max_request_bytes
     )
     if runtime_config.traffic_policy.enabled:
-        app.add_middleware(TrafficPolicyMiddleware, policy=runtime_config.traffic_policy)
+        app.add_middleware(
+            TrafficPolicyMiddleware,
+            policy=runtime_config.traffic_policy,
+            metrics=runtime_services.metrics,
+        )
     if runtime_config.server.api_security_profile:
         app.add_middleware(
             ApiAuthenticationMiddleware,
@@ -355,6 +363,16 @@ def create_app(
             allow_methods=runtime_config.server.cors_methods,
             allow_headers=runtime_config.server.cors_headers,
         )
+    if runtime_config.server.security_headers.enabled:
+        app.add_middleware(
+            SecurityHeadersMiddleware,
+            config=runtime_config.server.security_headers,
+        )
+    app.add_middleware(
+        MetricsMiddleware,
+        metrics=runtime_services.metrics,
+        a2a_path=runtime_config.a2a.path,
+    )
 
     @app.exception_handler(OwaError)
     async def owa_error(_request: Request, exc: OwaError) -> JSONResponse:
@@ -431,6 +449,25 @@ def create_app(
             )
 
         return {"status": "ok", "checks": checks}
+
+    @app.get("/metrics", response_class=Response)
+    async def metrics() -> Response:
+        schedule_counts = runtime_services.schedules.status_counts()
+        for status in ("active", "completed", "cancelled", "faulted"):
+            runtime_services.metrics.set_gauge(
+                "owa_scheduler_jobs",
+                float(schedule_counts.get(status, 0)),
+                labels={"status": status},
+            )
+        approval_counts = runtime_services.approvals.store.status_counts()
+        runtime_services.metrics.set_gauge(
+            "owa_approval_queue_depth",
+            float(approval_counts.get("pending", 0)),
+        )
+        return Response(
+            content=runtime_services.metrics.render(),
+            media_type="text/plain; version=0.0.4",
+        )
 
     @app.get("/v1/capabilities")
     async def capabilities() -> dict[str, Any]:

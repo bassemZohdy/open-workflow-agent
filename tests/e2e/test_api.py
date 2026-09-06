@@ -79,7 +79,10 @@ async def test_api_limits_payloads_and_normalizes_not_found(tmp_path):
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            assert (await client.get("/health/ready")).json() == {"status": "ok"}
+            assert (await client.get("/health/ready")).json() == {
+                "status": "ok",
+                "checks": {"database": "ok", "knowledge": "ok", "model": "ok"},
+            }
             oversized = await client.post("/v1/invoke", json={"input": "x" * 100})
             assert oversized.status_code == 413
             assert oversized.json()["error"]["code"] == "request_too_large"

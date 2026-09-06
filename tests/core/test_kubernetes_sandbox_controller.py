@@ -100,10 +100,10 @@ def test_job_manifest_is_restricted_and_arbitrary_uid_compatible() -> None:
     assert container["securityContext"]["privileged"] is False
     assert container["securityContext"]["readOnlyRootFilesystem"] is True
     assert container["securityContext"]["runAsNonRoot"] is True
-    # A numeric non-root identity lets the kubelet verify runAsNonRoot for
-    # images that do not declare a USER directive.
-    assert container["securityContext"]["runAsUser"] == 65532
-    assert container["securityContext"]["runAsGroup"] == 65532
+    # OpenShift's restricted SCC supplies an arbitrary namespace UID. An
+    # explicit UID would be rejected when it falls outside that UID range.
+    assert "runAsUser" not in container["securityContext"]
+    assert "runAsGroup" not in container["securityContext"]
     assert container["securityContext"]["capabilities"] == {"drop": ["ALL"]}
     assert all("hostPath" not in volume for volume in pod["volumes"])
     assert all("sizeLimit" in volume["emptyDir"] for volume in pod["volumes"])
@@ -115,6 +115,14 @@ def test_job_manifest_is_restricted_and_arbitrary_uid_compatible() -> None:
         "key": "API_TOKEN",
         "optional": False,
     }
+
+
+def test_kubernetes_job_manifest_sets_fixed_non_root_uid() -> None:
+    manifest = build_job_manifest(_config(platform="kubernetes"), _request())
+    container = manifest["spec"]["template"]["spec"]["containers"][0]
+
+    assert container["securityContext"]["runAsUser"] == 65532
+    assert container["securityContext"]["runAsGroup"] == 65532
 
 
 def test_controller_rejects_mutable_images() -> None:

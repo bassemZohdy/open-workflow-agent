@@ -14,8 +14,23 @@ from open_workflow_agent.errors import (
 )
 from open_workflow_agent.workflow import (
     OFFICIAL_SCHEMA_RELATIVE_PATH,
+    ExecutionState,
     ExpressionEvaluator,
     WorkflowExecutor,
+    _catch_matches,
+    _duration_seconds,
+    _error_details,
+    _merge,
+    _nested_task_lists,
+    _resolve_protocol_endpoints,
+    _retry_allowed,
+    _retry_attempts,
+    _retry_delay,
+    _task_body,
+    _validate_emit_capability,
+    _validate_listen_capability,
+    _validate_run_capability,
+    _walk_tasks,
     compile_workflow,
 )
 from pydantic import ValidationError
@@ -63,6 +78,112 @@ def test_expression_evaluator_supports_paths_templates_and_conditions():
     assert evaluator.evaluate("Hello ${ .customer.name }", data) == "Hello Ada"
     assert evaluator.evaluate(".items[1]", data) == 3
     assert evaluator.condition("${ .items[1] == 3 }", data)
+
+
+def test_expression_evaluator_covers_composites_variables_and_boolean_operators():
+    evaluator = ExpressionEvaluator()
+    data = {"value": 3, "nested": {"name": "Ada"}, "items": [1, 2]}
+    variables = {"extra": {"name": "Grace"}, "flag": True}
+    assert evaluator.evaluate({"x": "${ .value }"}, data) == {"x": 3}
+    assert evaluator.evaluate(["${ .value }", "literal"], data) == [3, "literal"]
+    assert evaluator.evaluate("${ $extra.name }", data, variables=variables) == "Grace"
+    assert evaluator.evaluate("${ @flag }", data, variables=variables) is True
+    assert evaluator.evaluate("${ .items + [3] }", data) == [1, 2, 3]
+    assert evaluator.evaluate("${ { 'value': .value, 'name': .nested.name } }", data) == {
+        "value": 3,
+        "name": "Ada",
+    }
+    assert evaluator.evaluate("${ [ .value, true, null ] }", data) == [3, True, None]
+    assert evaluator.evaluate("${ 'quoted' }", data) == "quoted"
+    assert evaluator.condition(".value > 2 and not .value < 2", data)
+    assert evaluator.condition(".value == 3 or .value == 99", data)
+    assert evaluator.condition("false", data) is False
+    assert evaluator.evaluate(".missing[9]", data) is None
+
+
+def test_workflow_helpers_cover_validation_and_retry_edges():
+    state = ExecutionState(data={"ok": True}, variables={"value": 1})
+    expressions = ExpressionEvaluator()
+    assert _merge({"a": 1}, {"b": 2}) == {"a": 1, "b": 2}
+    assert _merge({"a": 1}, 2) == 2
+    assert _duration_seconds({"after": {"seconds": 2}}) == 2
+    assert _duration_seconds({"minutes": 1, "seconds": 2}) == 62
+    assert _duration_seconds("PT1.5S") == 1.5
+    assert _duration_seconds("2m") == 120
+    with pytest.raises(WorkflowSemanticError, match="invalid duration"):
+        _duration_seconds("invalid")
+    assert _retry_attempts(None) == 1
+    assert _retry_attempts({"limit": {"attempt": {"count": 2}}}) == 3
+    assert _retry_attempts("invalid") == 1
+    assert _retry_delay({"delay": "1s", "backoff": {"exponential": {}}}, 2) == 4
+    assert _retry_delay({"delay": "1s", "backoff": {"linear": {}}}, 2) == 3
+    assert _retry_delay({"delay": "1s"}, 2) == 1
+    assert _retry_delay(None, 2) is None
+    assert _retry_allowed(None, state, expressions) is True
+    assert _retry_allowed({"when": "false"}, state, expressions) is False
+    assert _retry_allowed({"exceptWhen": "true"}, state, expressions) is False
+    assert _catch_matches(
+        {"errors": {"with": {"type": "x"}}}, {"code": "x", "details": {}}, state, expressions
+    )
+    assert not _catch_matches({"when": "false"}, {"code": "x", "details": {}}, state, expressions)
+    assert not _catch_matches(
+        {"exceptWhen": "true"}, {"code": "x", "details": {}}, state, expressions
+    )
+    error = WorkflowExecutionError("boom")
+    assert _error_details(error)["message"] == "boom"
+    assert _error_details(RuntimeError("boom"))["code"] == "workflow_execution_error"
+
+
+def test_workflow_helpers_cover_task_shapes_and_endpoint_templates():
+    assert _task_body({"do": [{"one": {"set": {"x": 1}}}]}) == [{"one": {"set": {"x": 1}}}]
+    assert _task_body({"set": {"x": 1}}) == [{"set": {"x": 1}}]
+    assert _task_body("invalid") == []
+    definition = {
+        "do": [{"inner": {"set": {}}}],
+        "for": {"each": "item"},
+        "fork": {"branches": [{"do": []}]},
+        "try": [],
+        "catch": {"do": []},
+        "switch": [{"case": {"do": []}}, "invalid"],
+    }
+    assert len(_nested_task_lists(definition)) == 6
+    assert list(_walk_tasks([{"one": {}}, "bad"], prefix="/do")) == [
+        ("/do/0/one", {}),
+        ("/do/1", "bad"),
+    ]
+    payload = {"endpoint": "https://{.host}/api/{ $path }", "nested": [{"url": "{missing}"}]}
+    assert _resolve_protocol_endpoints(
+        payload, {"host": "service.test"}, {"path": "v1", "missing": "fallback"}
+    ) == {"endpoint": "https://service.test/api/v1", "nested": [{"url": "fallback"}]}
+    with pytest.raises(WorkflowSemanticError, match="unable to resolve"):
+        _resolve_protocol_endpoints({"endpoint": "https://{missing}"}, {}, {})
+
+
+def test_expression_evaluator_supports_bare_object_and_list_expressions():
+    evaluator = ExpressionEvaluator()
+
+    assert evaluator.evaluate(
+        "{ ids: [ $input, .id ] }",
+        {"id": 2},
+        variables={"input": 1},
+    ) == {"ids": [1, 2]}
+
+
+def test_workflow_capability_helpers_reject_invalid_definitions():
+    with pytest.raises(WorkflowSemanticError):
+        _validate_emit_capability({}, "/do/0/emit")
+    with pytest.raises(UnsupportedWorkflowFeature):
+        _validate_listen_capability({"to": {"all": {}}}, "/do/0/listen")
+    with pytest.raises(WorkflowSemanticError):
+        _validate_listen_capability({"to": {"one": {}}}, "/do/0/listen")
+    with pytest.raises(UnsupportedWorkflowFeature):
+        _validate_listen_capability({"to": {"one": {"with": {}}}, "foreach": {}}, "/do/0/listen")
+    with pytest.raises(WorkflowSemanticError):
+        _validate_run_capability({}, "/do/0/run")
+    with pytest.raises(UnsupportedWorkflowFeature):
+        _validate_run_capability({"script": {}}, "/do/0/run")
+    with pytest.raises(WorkflowSemanticError):
+        _validate_run_capability({"workflow": {"name": "missing"}}, "/do/0/run")
 
 
 @pytest.mark.asyncio

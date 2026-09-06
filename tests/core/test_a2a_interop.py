@@ -11,13 +11,10 @@ import pytest
 from open_workflow_agent.a2a import (
     A2A_AGENT_CARD_PATH,
     A2A_PROTOCOL_VERSION,
-    A2A_SPEC_RELEASE,
-    a2a_capabilities,
-    build_agent_card,
 )
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
-from open_workflow_agent.config import A2AConfig, RuntimeConfig
+from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.services import RuntimeServices
 
 
@@ -342,7 +339,9 @@ async def test_task_state_values_match_a2a_v1_spec(tmp_path) -> None:
     }
 
     for owa_state, a2a_state in A2A_TASK_STATES.items():
-        assert a2a_state in valid_states, f"OWA state '{owa_state}' maps to invalid A2A state '{a2a_state}'"
+        assert a2a_state in valid_states, (
+            f"OWA state '{owa_state}' maps to invalid A2A state '{a2a_state}'"
+        )
 
 
 @pytest.mark.asyncio

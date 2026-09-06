@@ -1,0 +1,32 @@
+agent:
+  name: support
+  instruction: Answer support questions using the configured workflow.
+
+model:
+  provider: fake
+  name: fake/default
+
+workflow:
+  path: /config/workflow.yaml
+
+security:
+  profiles:
+    partner-agent:
+      type: bearer
+      token:
+        from_env: OWA_A2A_PARTNER_TOKEN
+      principal: partner-client
+      roles: [partners]
+
+a2a:
+  enabled: true
+  transport: jsonrpc
+  path: /a2a
+  public_base_url: https://agents.example.com
+  security_profile: partner-agent
+  skills:
+    - id: support
+      workflow: support-agent
+      name: Support workflow
+      description: Answer support questions.
+      tags: [support]

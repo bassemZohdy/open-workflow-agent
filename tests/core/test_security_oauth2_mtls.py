@@ -7,10 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from open_workflow_agent.security import (
-    MtlsSecurityProfile,
-    OAuth2ClientCredentialsSecurityProfile,
     ProfileAuthentication,
-    SecretReference,
     SecurityConfig,
 )
 
@@ -132,8 +129,12 @@ def test_mtls_client_cert_returns_certificate_and_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verify mTLS profile returns certificate and key."""
-    monkeypatch.setenv("CERT_CONTENT", "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----")
-    monkeypatch.setenv("KEY_CONTENT", "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----")
+    monkeypatch.setenv(
+        "CERT_CONTENT", "-----BEGIN CERTIFICATE-----\ntest\n-----END CERTIFICATE-----"
+    )
+    monkeypatch.setenv(
+        "KEY_CONTENT", "-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----"
+    )
 
     security = SecurityConfig.model_validate(
         {

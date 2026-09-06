@@ -6,18 +6,17 @@ respective specifications and accurately advertise their capabilities.
 
 from __future__ import annotations
 
-import json
-
 import httpx
 import pytest
 from open_workflow_agent.a2a import (
     A2A_PROTOCOL_VERSION as INBOUND_A2A_PROTOCOL_VERSION,
+)
+from open_workflow_agent.a2a import (
     A2A_SPEC_RELEASE,
 )
 from open_workflow_agent.observability import (
     CLOUD_EVENTS_SPECVERSION,
     CloudEvent,
-    LifecycleCloudEventSink,
     WorkflowEvent,
 )
 from open_workflow_agent.protocols import (
@@ -28,7 +27,6 @@ from open_workflow_agent.protocols import (
     HttpClient,
     ProtocolServices,
 )
-
 
 # --- CloudEvents 1.0 Conformance Tests ---
 
@@ -88,7 +86,6 @@ def test_cloud_event_serialization_includes_required_attributes() -> None:
 
 def test_lifecycle_event_to_cloud_event_has_correct_structure() -> None:
     """Verify lifecycle events convert to valid CloudEvents structure."""
-    from datetime import UTC, datetime
 
     event = WorkflowEvent(
         event_type="WorkflowStarted",
@@ -168,9 +165,7 @@ def test_mcp_rejects_legacy_protocol_version() -> None:
     """Verify MCP rejects unsupported protocol versions."""
     services = ProtocolServices(
         HttpClient(
-            transport=httpx.MockTransport(
-                lambda request: httpx.Response(200, json={"ok": True})
-            )
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"ok": True}))
         )
     )
 
@@ -247,9 +242,7 @@ def test_a2a_rejects_legacy_protocol_version() -> None:
     """Verify A2A rejects unsupported protocol versions."""
     services = ProtocolServices(
         HttpClient(
-            transport=httpx.MockTransport(
-                lambda request: httpx.Response(200, json={"ok": True})
-            )
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"ok": True}))
         )
     )
 
@@ -273,9 +266,7 @@ def test_a2a_rejects_legacy_method_names() -> None:
     """Verify A2A rejects legacy method names."""
     services = ProtocolServices(
         HttpClient(
-            transport=httpx.MockTransport(
-                lambda request: httpx.Response(200, json={"ok": True})
-            )
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, json={"ok": True}))
         )
     )
 

@@ -182,9 +182,9 @@ class ProtocolServices:
                     "protocol security profile reference requires runtime security configuration"
                 )
             auth = ProfileAuthentication(security, security_profile)
-            if hasattr(auth, '_supports_oauth2') and auth._supports_oauth2:
+            if hasattr(auth, "_supports_oauth2") and auth._supports_oauth2:
                 authentication = auth
-            elif hasattr(auth, '_supports_mtls') and auth._supports_mtls:
+            elif hasattr(auth, "_supports_mtls") and auth._supports_mtls:
                 client_cert = auth.client_cert()
                 ca_bundle = auth.ca_bundle()
             else:
@@ -395,7 +395,7 @@ class _PinnedNetworkBackend:
 
 
 def _pinned_transport(
-    *, verify_tls: bool, endpoint: str, addresses: tuple[str, ...]
+    *, verify_tls: bool | str, endpoint: str, addresses: tuple[str, ...]
 ) -> httpx.AsyncBaseTransport:
     if not addresses:
         raise ToolError("protocol endpoint has no approved network addresses")

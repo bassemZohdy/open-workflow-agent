@@ -1269,9 +1269,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "jsonschema" },
-    { name = "numpy" },
     { name = "pydantic" },
-    { name = "pypdf" },
     { name = "pyyaml" },
     { name = "uvicorn" },
 ]
@@ -1279,6 +1277,8 @@ dependencies = [
 [package.optional-dependencies]
 knowledge = [
     { name = "fastembed" },
+    { name = "numpy" },
+    { name = "pypdf" },
 ]
 model = [
     { name = "litellm" },
@@ -1294,10 +1294,10 @@ requires-dist = [
     { name = "httpx", specifier = "==0.28.1" },
     { name = "jsonschema", specifier = "==4.26.0" },
     { name = "litellm", marker = "extra == 'model'", specifier = "==1.98.0" },
-    { name = "numpy", specifier = "==2.5.2" },
+    { name = "numpy", marker = "extra == 'knowledge'", specifier = "==2.5.2" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'postgres'", specifier = "==3.3.4" },
     { name = "pydantic", specifier = "==2.13.4" },
-    { name = "pypdf", specifier = "==6.16.2" },
+    { name = "pypdf", marker = "extra == 'knowledge'", specifier = "==6.16.2" },
     { name = "pyyaml", specifier = "==6.0.3" },
     { name = "uvicorn", specifier = "==0.52.4" },
 ]

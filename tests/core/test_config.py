@@ -3,7 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.config import (
+    A2AConfig,
+    A2ASkillConfig,
+    DockerSandboxConfig,
+    ExternalCatalogConfig,
+    KubernetesSandboxConfig,
+    RuntimeConfig,
+    SandboxConfig,
+)
 
 
 def test_defaults_when_no_file_exists(tmp_path: Path) -> None:
@@ -179,3 +187,106 @@ def test_a2a_auth_token_field_is_no_longer_accepted(tmp_path: Path) -> None:
     path.write_text("a2a:\n  auth_token: secret\n", encoding="utf-8")
     with pytest.raises(ConfigurationError):
         RuntimeConfig.from_file(path)
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"allowed_hosts": ["example.test", "example.test"]}, "duplicates"),
+        ({"allowed_hosts": [""]}, "empty"),
+        ({"allowed_endpoints": ["http://example.test"]}, "absolute HTTPS"),
+        ({"allowed_endpoints": ["https://user:pass@example.test"]}, "credentials"),
+        ({"timeout_seconds": 0}, "greater than zero"),
+        ({"max_response_bytes": 0}, "greater than zero"),
+        ({"cache_ttl_seconds": -1}, "cannot be negative"),
+        ({"max_cache_age_seconds": 0}, "greater than zero"),
+        ({"max_cache_entries": 0}, "greater than zero"),
+        ({"integrity_pins": {"": "0" * 64}}, "keys cannot be empty"),
+        ({"integrity_pins": {"fn": "not-a-digest"}}, "SHA-256"),
+        ({"follow_redirects": True}, "redirects"),
+        ({"verify_tls": False}, "TLS"),
+    ],
+)
+def test_external_catalog_validation_rejects_unsafe_values(
+    payload: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        ExternalCatalogConfig.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"id": "", "workflow": "main"}, "identifier"),
+        ({"id": "UPPER", "workflow": "main"}, "identifier"),
+        ({"id": "main", "workflow": ""}, "registered workflow"),
+        ({"id": "main", "workflow": "main", "name": ""}, "must not be empty"),
+        ({"id": "main", "workflow": "main", "tags": ["x", "x"]}, "unique"),
+    ],
+)
+def test_a2a_skill_validation_rejects_unsafe_values(
+    payload: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        A2ASkillConfig.model_validate(payload)
+
+
+def test_a2a_validation_normalizes_paths_and_rejects_duplicate_skills() -> None:
+    assert A2AConfig.model_validate({"path": "/a2a/"}).path == "/a2a"
+    assert A2AConfig.model_validate(
+        {"public_base_url": "https://example.test/"}
+    ).public_base_url == ("https://example.test")
+    with pytest.raises(ValueError, match="unique"):
+        A2AConfig.model_validate(
+            {
+                "skills": [
+                    {"id": "one", "workflow": "first"},
+                    {"id": "one", "workflow": "second"},
+                ]
+            }
+        )
+    with pytest.raises(ValueError, match="absolute http"):
+        A2AConfig.model_validate({"public_base_url": "ftp://example.test"})
+
+
+@pytest.mark.parametrize(
+    ("factory", "payload", "message"),
+    [
+        (DockerSandboxConfig, {"controller_socket": "relative"}, "absolute path"),
+        (DockerSandboxConfig, {"allowed_images": ["busybox"]}, "sha256"),
+        (DockerSandboxConfig, {"run_as_user": "0"}, "non-root"),
+        (KubernetesSandboxConfig, {"controller_url": "https://example.test"}, "loopback"),
+        (KubernetesSandboxConfig, {"secret_keys": ["bad-name"]}, "environment-style"),
+        (KubernetesSandboxConfig, {"secret_keys": ["TOKEN"]}, "secret_name"),
+    ],
+)
+def test_sandbox_controller_validation_rejects_unsafe_values(
+    factory: object, payload: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        factory.model_validate(payload)  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"script_runtimes": []}, "at least one"),
+        ({"script_runtimes": ["ruby"]}, "unsupported"),
+        ({"script_runtimes": ["python", "python"]}, "duplicates"),
+        ({"timeout_seconds": 0}, "greater than zero"),
+        ({"max_input_bytes": 0}, "byte limits"),
+        ({"cpu_seconds": 0}, "resource limits"),
+        ({"workspace_root": "relative"}, "absolute path"),
+        ({"executable_search_path": "relative"}, "absolute paths"),
+        ({"inherited_environment": ["BAD-NAME"]}, "environment variable"),
+        ({"inherited_environment": ["TOKEN"], "secret_environment": ["TOKEN"]}, "overlap"),
+        ({"enabled": True, "backend": "docker"}, "approved image"),
+        (
+            {"enabled": True, "backend": "kubernetes", "kubernetes": {"allowed_images": []}},
+            "approved image",
+        ),
+    ],
+)
+def test_sandbox_validation_rejects_unsafe_values(payload: dict[str, object], message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        SandboxConfig.model_validate(payload)

@@ -33,7 +33,7 @@ class AdkAgentFactory:
         bound: list[Any] = []
         for binding in bindings:
 
-            async def invoke(payload: dict[str, Any], item=binding) -> Any:
+            async def invoke(payload: dict[str, Any], item: AgentToolBinding = binding) -> Any:
                 return await item.invoke(payload)
 
             invoke.__name__ = binding.name

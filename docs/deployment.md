@@ -45,6 +45,8 @@ For production, pin an exact SemVer tag (`0.1.0` or newer) or an image digest ra
 
 Images are published only after the full GitHub Actions CI gate succeeds. OCI SBOM/provenance metadata is generated for the published build, and GitHub build provenance attestations are attached to the canonical GHCR image.
 
+The release workflow publishes multi-platform manifests for `linux/amd64` and `linux/arm64` for both runtime images and both restricted sandbox-controller images. It scans the loadable amd64 image before pushing the verified multi-platform manifest.
+
 ## Runtime paths
 
 Both engine images expose port `8080` and use the same public paths:
@@ -229,7 +231,7 @@ See [sandbox-execution.md](sandbox-execution.md) for the approved architecture a
 
 ### Unauthenticated endpoints and rate controls
 
-The HTTP API (`/v1/invoke`, `/v1/events`, `/v1/schedules`, `/v1/invocations/*/resume|cancel`) has **no built-in authentication or rate limiting**. The runtime is designed to sit behind a deployment-controlled edge. Any exposure beyond loopback or a private network must place authentication, authorization, and rate/concurrency controls in front of it — for example a reverse proxy, API gateway, or service mesh that enforces:
+The HTTP API (`/v1/invoke`, `/v1/events`, `/v1/schedules`, `/v1/invocations/*/resume|cancel`) supports optional built-in bearer/API-key authentication through `server.api_security_profile`; it remains unauthenticated when no profile is configured. Deployment-controlled traffic policy can also enforce rate and concurrency limits. Any exposure beyond loopback or a private network should still use a deployment-controlled edge — for example a reverse proxy, API gateway, or service mesh — that enforces:
 
 - per-client and global request-rate limits on the unauthenticated endpoints;
 - bounded request body sizes (the runtime also enforces its own input/output bounds);
@@ -327,7 +329,11 @@ See [configuration.md](configuration.md#model) for detailed OpenAI, Anthropic, O
 
 Reference manifests that follow this guidance are provided in the repository and validated in CI with `kubeconform -strict`:
 
+- `deploy/helm/open-workflow-agent` — reusable Helm chart for the runtime Deployment, Service, PVC, network policy, and opt-in edge/monitoring resources. See its README for ADK/LangGraph and OpenShift overrides.
 - `deploy/kubernetes/runtime.yaml` — Namespace, PersistentVolumeClaim, Deployment (non-root, read-only root filesystem, dropped capabilities, liveness/readiness/startup probes against `/health/live` and `/health/ready`), and ClusterIP Service for the ADK image.
+- `deploy/kubernetes/runtime-network-policy.yaml` — default-deny ingress/egress policies with explicit runtime ingress and deployment-approved DNS, HTTPS, PostgreSQL, and sandbox-controller egress.
+- `deploy/kubernetes/edge-routes.yaml` — optional Ingress and Gateway API `HTTPRoute` templates for the `owa-adk` Service. Replace the example host, TLS Secret, ingress class, and Gateway parent with deployment-owned values, then apply only one of the two routing resources.
+- `deploy/kubernetes/monitoring.yaml` — optional Prometheus Operator `ServiceMonitor` and `PrometheusRule` templates for `/metrics`, HTTP error rate/latency, and sandbox failures. Replace the Prometheus selection and alert-routing labels with deployment-owned values before applying.
 - `deploy/openshift/runtime.yaml` — the same layout for the LangGraph image without a pinned UID (OpenShift's restricted-v2 SCC allocates an arbitrary non-root UID, which the images support).
 - `deploy/kubernetes/sandbox-boundary.yaml` and `deploy/openshift/sandbox-boundary.yaml` — the restricted sandbox-controller namespace, ServiceAccounts, and RBAC boundary (see [sandbox-execution.md](sandbox-execution.md)).
 
@@ -414,6 +420,7 @@ Before sending traffic, verify:
 ```bash
 curl http://host:8080/health/live
 curl http://host:8080/health/ready
+curl http://host:8080/metrics
 curl http://host:8080/v1/capabilities
 ```
 
@@ -447,8 +454,8 @@ successful push CI on main
    Release workflow
         |
         +-- resolve project version and optional matching SemVer tag
-        +-- build ADK image once
-        +-- build LangGraph image once
+        +-- build ADK image once (amd64 + arm64)
+        +-- build LangGraph image once (amd64 + arm64)
         +-- push each build to Docker Hub and GHCR
         +-- publish latest + sha-<sha>
         +-- if matching vX.Y.Z exists: also publish X.Y.Z + X.Y

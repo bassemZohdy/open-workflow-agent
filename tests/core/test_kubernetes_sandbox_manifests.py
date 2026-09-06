@@ -78,3 +78,85 @@ def test_controller_and_workload_service_accounts_do_not_auto_mount_tokens(path:
         "owa-sandbox-workload",
     }
     assert all(account["automountServiceAccountToken"] is False for account in accounts)
+
+
+def test_runtime_namespace_network_policy_is_default_deny() -> None:
+    documents = _documents("deploy/kubernetes/runtime-network-policy.yaml")
+    policies = {document["metadata"]["name"]: document for document in documents}
+
+    assert set(policies) == {
+        "default-deny-ingress",
+        "allow-runtime-ingress",
+        "default-deny-egress",
+        "allow-runtime-egress",
+    }
+    assert policies["default-deny-ingress"]["spec"] == {
+        "podSelector": {},
+        "policyTypes": ["Ingress"],
+    }
+    assert policies["default-deny-egress"]["spec"] == {
+        "podSelector": {},
+        "policyTypes": ["Egress"],
+    }
+
+    allow_ingress = policies["allow-runtime-ingress"]["spec"]
+    assert allow_ingress["podSelector"]["matchLabels"] == {
+        "app.kubernetes.io/name": "open-workflow-agent"
+    }
+    assert allow_ingress["ingress"][0]["ports"] == [{"protocol": "TCP", "port": 8080}]
+
+    allow_egress = policies["allow-runtime-egress"]["spec"]
+    egress_ports = {
+        (port["protocol"], port["port"])
+        for entry in allow_egress["egress"]
+        for port in entry["ports"]
+    }
+    assert egress_ports == {
+        ("UDP", 53),
+        ("TCP", 53),
+        ("TCP", 443),
+        ("TCP", 5432),
+        ("TCP", 8090),
+    }
+
+
+def test_optional_edge_routes_target_the_reference_runtime_service() -> None:
+    documents = _documents("deploy/kubernetes/edge-routes.yaml")
+    assert {document["kind"] for document in documents} == {"Ingress", "HTTPRoute"}
+
+    ingress = next(document for document in documents if document["kind"] == "Ingress")
+    assert ingress["spec"]["ingressClassName"] == "nginx"
+    assert ingress["spec"]["tls"] == [{"hosts": ["owa.example.com"], "secretName": "owa-tls"}]
+    ingress_backend = ingress["spec"]["rules"][0]["http"]["paths"][0]["backend"]
+    assert ingress_backend == {"service": {"name": "owa-adk", "port": {"name": "http"}}}
+
+    route = next(document for document in documents if document["kind"] == "HTTPRoute")
+    assert route["spec"]["parentRefs"] == [{"name": "owa-gateway", "sectionName": "http"}]
+    backend = route["spec"]["rules"][0]["backendRefs"][0]
+    assert backend == {"name": "owa-adk", "port": 8080}
+
+
+def test_optional_monitoring_templates_match_runtime_metrics_and_service_labels() -> None:
+    documents = _documents("deploy/kubernetes/monitoring.yaml")
+    assert {document["kind"] for document in documents} == {"ServiceMonitor", "PrometheusRule"}
+
+    monitor = next(document for document in documents if document["kind"] == "ServiceMonitor")
+    assert monitor["spec"]["selector"]["matchLabels"] == {
+        "app.kubernetes.io/name": "open-workflow-agent",
+        "app.kubernetes.io/instance": "owa-adk",
+    }
+    assert monitor["spec"]["endpoints"] == [
+        {"port": "http", "path": "/metrics", "interval": "30s", "scrapeTimeout": "10s"}
+    ]
+
+    rule = next(document for document in documents if document["kind"] == "PrometheusRule")
+    alerts = rule["spec"]["groups"][0]["rules"]
+    assert {alert["alert"] for alert in alerts} == {
+        "OwaRuntimeHighHttpErrorRate",
+        "OwaRuntimeHighHttpLatency",
+        "OwaSandboxExecutionFailures",
+    }
+    expressions = "\n".join(alert["expr"] for alert in alerts)
+    assert "owa_http_errors_total" in expressions
+    assert "owa_http_request_duration_seconds_bucket" in expressions
+    assert 'owa_sandbox_executions_total{event="failed"}' in expressions

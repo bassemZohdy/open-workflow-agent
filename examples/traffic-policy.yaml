@@ -1,0 +1,16 @@
+traffic_policy:
+  enabled: true
+  rate_limit:
+    requests_per_second: 25
+    burst: 50
+  concurrency_limit:
+    max_concurrent: 100
+  endpoint_limits:
+    - path_prefix: /v1/invoke
+      concurrency_limit:
+        max_concurrent: 20
+  principal_limits:
+    - principal: partner-client
+      rate_limit:
+        requests_per_second: 10
+        burst: 20

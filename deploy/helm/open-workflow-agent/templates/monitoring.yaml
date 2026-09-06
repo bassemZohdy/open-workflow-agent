@@ -1,0 +1,65 @@
+{{- if .Values.monitoring.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "open-workflow-agent.fullname" . }}
+  labels:
+    {{- include "open-workflow-agent.labels" . | nindent 4 }}
+    {{- toYaml .Values.monitoring.serviceMonitor.labels | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "open-workflow-agent.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.monitoring.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.monitoring.serviceMonitor.scrapeTimeout }}
+{{- end }}
+{{- if .Values.monitoring.prometheusRule.enabled }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "open-workflow-agent.fullname" . }}
+  labels:
+    {{- include "open-workflow-agent.labels" . | nindent 4 }}
+    {{- toYaml .Values.monitoring.prometheusRule.labels | nindent 4 }}
+spec:
+  groups:
+    - name: open-workflow-agent.runtime
+      rules:
+        - alert: OwaRuntimeHighHttpErrorRate
+          expr: >-
+            sum(rate(owa_http_errors_total[5m]))
+            /
+            clamp_min(sum(rate(owa_http_requests_total[5m])), 1)
+            > 0.05
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Open Workflow Agent HTTP error rate is high
+            description: More than 5% of runtime HTTP requests have failed for 10 minutes.
+        - alert: OwaRuntimeHighHttpLatency
+          expr: >-
+            histogram_quantile(
+              0.95,
+              sum by (le) (rate(owa_http_request_duration_seconds_bucket[5m]))
+            )
+            > 2
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Open Workflow Agent HTTP latency is high
+            description: The runtime-wide HTTP request p95 has exceeded two seconds for 10 minutes.
+        - alert: OwaSandboxExecutionFailures
+          expr: sum(rate(owa_sandbox_executions_total{event="failed"}[5m])) > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: Open Workflow Agent sandbox executions are failing
+            description: Sandbox failures have been observed continuously for five minutes.
+{{- end }}

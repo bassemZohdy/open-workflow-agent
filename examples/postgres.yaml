@@ -1,0 +1,16 @@
+model:
+  provider: fake
+  name: fake/default
+
+persistence:
+  datasource: postgresql://owa:replace-me@postgres.example.com:5432/owa
+
+memory:
+  enabled: true
+  database: /data/memory.sqlite3 # ignored when the shared datasource is PostgreSQL
+
+knowledge:
+  database: /data/knowledge.sqlite3 # namespaced PostgreSQL storage is selected
+
+# Inject the datasource through OWA__PERSISTENCE__DATASOURCE or a deployment
+# secret in production; the URI above is only a shape example.

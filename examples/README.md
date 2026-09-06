@@ -32,8 +32,21 @@ The same layout works for the LangGraph image, Kubernetes ConfigMaps/volumes, an
 | [`subworkflow-main.yaml`](subworkflow-main.yaml) | Local sub-workflows: `workflow.catalog` registration + `run.workflow`. |
 | [`external-catalog.yaml`](external-catalog.yaml) | External catalog authoring shape (`use.catalogs`); requires a deployment trust policy, otherwise rejected. |
 
+Deployment configuration recipes:
+
+| Example | Demonstrates |
+| --- | --- |
+| [`a2a-agent.yaml`](a2a-agent.yaml) | A2A Agent Card exposure, named bearer authentication, and deployment-declared skills. |
+| [`security-profiles.yaml`](security-profiles.yaml) | Bearer, API-key, OAuth2 client-credentials, and mTLS profile shapes. |
+| [`traffic-policy.yaml`](traffic-policy.yaml) | Token-bucket rate limiting and concurrent-request admission. |
+| [`sandbox-docker.yaml`](sandbox-docker.yaml) | Digest-pinned Docker sandbox policy through the restricted controller boundary. |
+| [`sandbox-kubernetes.yaml`](sandbox-kubernetes.yaml) | Digest-pinned Kubernetes/OpenShift sandbox policy with enforced network/process controls. |
+| [`protocol-tools.yaml`](protocol-tools.yaml) | Deployment-controlled MCP, OpenAPI, and A2A tool endpoints. |
+| [`postgres.yaml`](postgres.yaml) | PostgreSQL common persistence configuration and secret-injection guidance. |
+
 ## Notes
 
 - The deterministic `fake/default` model requires no API key. Swap `model.provider` to `litellm` with a real model name for production (see [configuration](../docs/configuration.md#model)).
 - External catalogs and sandbox execution are disabled by default and fail closed without explicit deployment configuration.
 - Scheduling has no cron support in the bounded profile; use `schedule.after`/`schedule.every`.
+- The deployment recipes contain placeholders for endpoints, image digests, and secret environment variables; replace them before use.

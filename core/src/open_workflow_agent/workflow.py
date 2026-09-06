@@ -352,7 +352,7 @@ class ExpressionEvaluator:
                 lambda match: str(self._evaluate_atom(match.group(1).strip(), data, variables)),
                 expression,
             )
-        if text.startswith(".") or text.startswith("$") or text.startswith("@"):
+        if text.startswith((".", "$", "@", "{", "[")):
             return self._evaluate_atom(text, data, variables)
         return expression
 

@@ -1,4 +1,20 @@
 name: llm
 version: 1.0.0
 namespace: default
-description: Invoke the configured model directly.
+description: Invoke the configured language model directly without tool-calling.
+input:
+  description: The prompt to send to the language model
+  oneOf:
+    - type: string
+    - type: object
+    - type: array
+      items:
+        type: object
+        properties:
+          role:
+            type: string
+          content:
+            type: string
+output:
+  description: The model's response text
+  type: string

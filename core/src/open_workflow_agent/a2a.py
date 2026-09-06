@@ -239,6 +239,28 @@ def _authenticate(
     return static_principal(profile)
 
 
+class _A2APrincipalMiddleware:
+    """Expose a verified A2A principal to outer traffic-policy middleware."""
+
+    def __init__(self, app: Any, *, config: A2AConfig, security: SecurityConfig) -> None:
+        self.app = app
+        self.config = config
+        self.security = security
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        path = str(scope.get("path", ""))
+        is_a2a_path = scope.get("type") == "http" and (
+            path == A2A_AGENT_CARD_PATH
+            or path == self.config.path
+            or path.startswith(f"{self.config.path}/")
+        )
+        if is_a2a_path and self.config.security_profile:
+            principal = _authenticate(self.config, self.security, Request(scope, receive))
+            if principal is not None:
+                scope["owa.principal"] = principal.identity
+        await self.app(scope, receive, send)
+
+
 def _permitted(
     principal: Principal, policy: AuthorizationPolicy | None, *, action: str, resource: str
 ) -> bool:
@@ -343,6 +365,7 @@ def mount_a2a(
     if not config.enabled:
         return
 
+    app.add_middleware(_A2APrincipalMiddleware, config=config, security=security)
     stream_limits = StreamLimits()
 
     def task_stream(task_id: str) -> StreamingResponse:

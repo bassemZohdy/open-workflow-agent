@@ -9,8 +9,26 @@ import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import ExternalCatalogConfig, RuntimeConfig
 from open_workflow_agent.errors import ToolError, UnsupportedWorkflowFeature, WorkflowSchemaError
-from open_workflow_agent.external_catalog import ExternalCatalogResolver
+from open_workflow_agent.external_catalog import (
+    CatalogFunctionReference,
+    ExternalCatalogResolver,
+    _authentication,
+    _contains_key,
+    _contains_sensitive_header,
+    _endpoint_uri,
+    _function_uri,
+    _header,
+    _HostBoundAuthentication,
+    _nested_values,
+    _referenced_functions,
+    _resolve_external_destination,
+    _validate_function_definition,
+    _validate_invocation_endpoints,
+    _validate_network_destination,
+    parse_catalog_function_reference,
+)
 from open_workflow_agent.protocols import HttpClient
+from open_workflow_agent.security import SecurityConfig
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import (
     WorkflowExecutor,
@@ -368,3 +386,159 @@ def test_external_catalog_transport_controls_are_strict():
         ExternalCatalogConfig(allowed_hosts=["catalog.test"], follow_redirects=True)
     with pytest.raises(ValueError, match="TLS"):
         ExternalCatalogConfig(allowed_hosts=["catalog.test"], verify_tls=False)
+
+
+def test_external_catalog_reference_and_uri_helpers():
+    reference = parse_catalog_function_reference("echo:1.2.3@trusted_catalog")
+    assert reference == CatalogFunctionReference("echo", "1.2.3", "trusted_catalog")
+    assert reference is not None and reference.value == "echo:1.2.3@trusted_catalog"
+    assert parse_catalog_function_reference("echo:latest@trusted") is None
+    assert parse_catalog_function_reference("Echo:1.2.3@trusted") is None
+
+    assert _function_uri("https://catalog.test/root", reference) == (
+        "https://catalog.test/root/functions/echo/1.2.3/function.yaml"
+    )
+    assert _function_uri("https://github.com/acme/catalog", reference).endswith(
+        "/acme/catalog/refs/heads/main/functions/echo/1.2.3/function.yaml"
+    )
+    assert _function_uri("https://github.com/acme/catalog/tree/release/v1", reference).endswith(
+        "/acme/catalog/refs/heads/release/v1/functions/echo/1.2.3/function.yaml"
+    )
+    assert _function_uri("https://gitlab.com/acme/catalog", reference).endswith(
+        "/acme/catalog/-/raw/main/functions/echo/1.2.3/function.yaml"
+    )
+    assert _function_uri("https://gitlab.com/acme/catalog/-/tree/release", reference).endswith(
+        "/acme/catalog/-/raw/release/functions/echo/1.2.3/function.yaml"
+    )
+    with pytest.raises(WorkflowSchemaError, match="owner and repository"):
+        _function_uri("https://github.com/acme", reference)
+
+    assert _endpoint_uri("https://catalog.test") == "https://catalog.test"
+    assert _endpoint_uri({"endpoint": "https://catalog.test"}) == "https://catalog.test"
+    assert _endpoint_uri({"endpoint": {"uri": "https://catalog.test"}}) == ("https://catalog.test")
+    assert _endpoint_uri({"endpoint": 1}) is None
+    with pytest.raises(WorkflowSchemaError, match="authentication"):
+        _endpoint_uri({"endpoint": {"authentication": {}}})
+
+
+def test_external_catalog_definition_and_recursive_helpers():
+    reference = CatalogFunctionReference("echo", "1.0.0", "trusted")
+    valid = {"call": "http", "with": {"endpoint": "https://api.test"}}
+    assert _validate_function_definition(valid, reference) == ("http", valid["with"])
+    assert _contains_key({"nested": [{"$ref": "x"}]}, "$ref") is True
+    assert _contains_key({"nested": []}, "$ref") is False
+    assert _nested_values({"a": [1, {"b": 2}]}) == [
+        {"a": [1, {"b": 2}]},
+        [1, {"b": 2}],
+        1,
+        {"b": 2},
+        2,
+    ]
+    assert _contains_sensitive_header({"nested": [{"Cookie": "secret"}]}) is True
+    assert _contains_sensitive_header({"safe": "value"}) is False
+
+    for definition, message in [
+        ({"with": {"$ref": "x"}}, "references are disabled"),
+        ({"run": {"script": {}}}, "script functions"),
+        ({"call": "stdio"}, "supported protocol"),
+        ({"call": "http", "with": []}, "invalid with"),
+        ({"call": "http", "with": {"headers": {"authorization": "secret"}}}, "authorization"),
+    ]:
+        with pytest.raises((UnsupportedWorkflowFeature, WorkflowSchemaError), match=message):
+            _validate_function_definition(definition, reference)
+
+    workflow = {"do": [{"call": "echo:1.0.0@trusted"}, {"call": "noop:1.0.0@default"}]}
+    assert _referenced_functions(workflow) == {reference}
+
+
+def test_external_catalog_invocation_destinations_and_headers(monkeypatch):
+    policy = ExternalCatalogConfig(allowed_hosts=["api.test"])
+    _validate_invocation_endpoints(
+        {"body": [{"endpoint": "https://api.test/one"}, {"uri": "https://api.test/two"}]},
+        policy,
+    )
+    with pytest.raises(UnsupportedWorkflowFeature, match="host is not allowed"):
+        _validate_invocation_endpoints({"url": "https://other.test"}, policy)
+    assert _header({"ETag": "v1"}, "etag") == "v1"
+    assert _header({}, "etag") is None
+
+    class Provider:
+        def headers(self, endpoint: str) -> dict[str, str]:
+            return {"X-Endpoint": endpoint}
+
+    bound = _HostBoundAuthentication(Provider(), "api.test")
+    assert bound.headers("https://api.test/one") == {"X-Endpoint": "https://api.test/one"}
+    assert bound.headers("https://other.test/one") == {}
+
+    assert _authentication(type("Auth", (), {"security_profile": None})(), None) is None
+    with pytest.raises(ToolError, match="runtime security configuration"):
+        _authentication(type("Auth", (), {"security_profile": "missing"})(), None)
+    monkeypatch.setenv("OWA_CATALOG_TEST_TOKEN", "secret")
+    security = SecurityConfig.model_validate(
+        {
+            "profiles": {
+                "catalog": {
+                    "type": "bearer",
+                    "token": {"from_env": "OWA_CATALOG_TEST_TOKEN"},
+                }
+            }
+        }
+    )
+    assert _authentication(type("Auth", (), {"security_profile": "catalog"})(), security).headers(
+        "https://api.test"
+    ) == {"Authorization": "Bearer secret"}
+
+
+@pytest.mark.asyncio
+async def test_external_catalog_destination_resolution_failures(monkeypatch):
+    policy = ExternalCatalogConfig(allowed_hosts=["api.test"])
+    import open_workflow_agent.external_catalog as module
+
+    async def approved(_uri: str, *, timeout: float) -> tuple[str, ...]:
+        assert timeout == policy.timeout_seconds
+        return ("93.184.216.34",)
+
+    monkeypatch.setattr(module, "resolve_public_addresses_async", approved)
+    assert await _resolve_external_destination("https://api.test", policy) == ("93.184.216.34",)
+
+    async def denied(*_args: object, **_kwargs: object) -> tuple[str, ...]:
+        raise ToolError("disallowed IP address")
+
+    monkeypatch.setattr(module, "resolve_public_addresses_async", denied)
+    with pytest.raises(UnsupportedWorkflowFeature, match="disallowed IP"):
+        await _resolve_external_destination("https://api.test", policy)
+
+    async def failed(*_args: object, **_kwargs: object) -> tuple[str, ...]:
+        raise ToolError("resolver unavailable")
+
+    monkeypatch.setattr(module, "resolve_public_addresses_async", failed)
+    with pytest.raises(ToolError, match="could not be resolved"):
+        await _resolve_external_destination("https://api.test", policy)
+
+    with pytest.raises(WorkflowSchemaError, match="malformed"):
+        await _resolve_external_destination("https://[invalid", policy)
+
+
+@pytest.mark.asyncio
+async def test_external_catalog_network_destination_validation(monkeypatch):
+    policy = ExternalCatalogConfig(allowed_hosts=["api.test"])
+    mock_client = HttpClient(transport=httpx.MockTransport(lambda _: httpx.Response(200)))
+    await _validate_network_destination("https://api.test", policy, mock_client)
+    await _validate_network_destination("https://", policy, mock_client)
+    with pytest.raises(UnsupportedWorkflowFeature, match="disallowed IP"):
+        await _validate_network_destination("https://127.0.0.1", policy, mock_client)
+
+    real_client = HttpClient()
+    monkeypatch.setattr(
+        socket,
+        "getaddrinfo",
+        lambda *_args, **_kwargs: [
+            (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))
+        ],
+    )
+    await _validate_network_destination("https://api.test", policy, real_client)
+    monkeypatch.setattr(
+        socket, "getaddrinfo", lambda *_args, **_kwargs: (_ for _ in ()).throw(OSError())
+    )
+    with pytest.raises(ToolError, match="could not be resolved"):
+        await _validate_network_destination("https://api.test", policy, real_client)

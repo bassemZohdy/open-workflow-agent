@@ -1,0 +1,87 @@
+# NetworkPolicy for the Open Workflow Agent runtime namespace.
+# This policy restricts network traffic to only what's necessary for the runtime.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: owa
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-runtime-ingress
+  namespace: owa
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: open-workflow-agent
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow health check probes from within the cluster
+    - from:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-egress
+  namespace: owa
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-runtime-egress
+  namespace: owa
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: open-workflow-agent
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS resolution
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow HTTPS for external API calls (model providers, external catalogs)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+    # Allow PostgreSQL if using external database
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Allow sandbox controller communication
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: sandbox-controller
+      ports:
+        - protocol: TCP
+          port: 8090

@@ -12,9 +12,10 @@ document:
 use:
   catalogs:
     shipping:
-      endpoint: https://catalog.example.com/open-workflow
+      endpoint:
+        uri: https://catalog.example.com/open-workflow
 do:
   - quote:
-      call: shipping/rates@1.0.0
+      call: rates:1.0.0@shipping
       with:
         input: ${ .input }

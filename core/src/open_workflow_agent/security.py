@@ -206,9 +206,7 @@ class ProfileAuthentication:
 
     def __init__(self, security: SecurityConfig, profile_name: str) -> None:
         profile = security.profile(profile_name)
-        self._supports_headers = isinstance(
-            profile, (BearerSecurityProfile, ApiKeySecurityProfile)
-        )
+        self._supports_headers = isinstance(profile, (BearerSecurityProfile, ApiKeySecurityProfile))
         self._supports_oauth2 = isinstance(profile, OAuth2ClientCredentialsSecurityProfile)
         self._supports_mtls = isinstance(profile, MtlsSecurityProfile)
         if not (self._supports_headers or self._supports_oauth2 or self._supports_mtls):
@@ -241,8 +239,8 @@ class ProfileAuthentication:
         if self._oauth2_token and now < self._oauth2_token_expiry:
             return self._oauth2_token
 
-        import urllib.request
         import urllib.parse
+        import urllib.request
 
         client_id = resolve_secret(profile.client_id)
         client_secret = resolve_secret(profile.client_secret)

@@ -173,6 +173,13 @@ class ApprovalStore:
             ).fetchall()
         return [self._decode(row) for row in rows]
 
+    def status_counts(self) -> dict[str, int]:
+        self._expire_due()
+        rows = self.connection.execute(
+            "SELECT status, COUNT(*) FROM approvals GROUP BY status"
+        ).fetchall()
+        return {str(status): int(count) for status, count in rows}
+
     def decide(
         self,
         approval_id: str,

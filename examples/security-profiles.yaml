@@ -1,0 +1,32 @@
+# Credentials are resolved from deployment environment variables at request time.
+security:
+  profiles:
+    inbound-agent:
+      type: bearer
+      token:
+        from_env: OWA_INBOUND_AGENT_TOKEN
+
+    billing-api:
+      type: api_key
+      key:
+        from_env: OWA_BILLING_API_KEY
+      header: X-API-Key
+
+    partner-oauth:
+      type: oauth2_client_credentials
+      token_url: https://identity.example.com/oauth2/token
+      client_id:
+        from_env: OWA_PARTNER_CLIENT_ID
+      client_secret:
+        from_env: OWA_PARTNER_CLIENT_SECRET
+      scopes: [workflow.invoke]
+      audience: https://api.example.com
+
+    partner-mtls:
+      type: mtls
+      certificate:
+        from_env: OWA_PARTNER_CLIENT_CERT
+      private_key:
+        from_env: OWA_PARTNER_CLIENT_KEY
+      ca_bundle:
+        from_env: OWA_PARTNER_CA_BUNDLE

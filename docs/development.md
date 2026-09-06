@@ -80,8 +80,12 @@ The sandbox implementation is a framework-neutral core package (`core/src/open_w
 ## Local setup
 
 ```bash
-uv sync --locked
+uv sync --locked --extra knowledge
 ```
+
+The `knowledge` extra is included in the development and root CI environments
+because the common suite exercises the local embedding provider; it remains
+optional for runtime installations that do not mount or query knowledge.
 
 Run the common test suite:
 
@@ -89,15 +93,47 @@ Run the common test suite:
 uv run pytest -q
 ```
 
+Mutation testing runs on Linux because mutmut requires process-fork support.
+The repository configuration limits the CI mutation scope to the traffic-policy
+middleware and selects dedicated focused tests so the result remains a repeatable
+quality signal rather than a full-suite performance job:
+
+```bash
+cp -R core/src src
+uv sync --locked --group mutation
+uv run --locked --group mutation mutmut run
+uv run --locked --group mutation mutmut results
+rm -rf src
+```
+
+The temporary `src` copy is needed because mutmut's module-key matching expects
+a conventional top-level source root, while production sources remain under
+`core/src`.
+
+On Windows, run these commands inside WSL or rely on the Ubuntu CI job.
+
+Run the dependency-free runtime benchmarks:
+
+```bash
+uv run python -m benchmarks.runtime --iterations 50 --concurrency 10
+```
+
 Formatting/lint/type checks:
 
 ```bash
 uv run ruff format --check core engines tests
 uv run ruff check .
-uv run mypy core/src
+uv run mypy --package open_workflow_agent \
+  --package open_workflow_agent_adk \
+  --package open_workflow_agent_langgraph \
+  --package open_workflow_agent_agent_framework
 ```
 
-Type-check scope decision: `mypy` runs strict over `core/src` only. Engine packages are deliberately excluded because the engine-native SDKs (google-adk, langgraph, agent-framework) ship incomplete or untyped stubs, so strict checking would be noise rather than signal; engine adapters are still checked by ruff lint/format and are exercised by the shared contract and CTK suites. Revisit only if an SDK ships complete type stubs.
+Mypy runs strict over core and the three engine adapter packages. Native SDK imports
+remain an explicit integration boundary: missing or incomplete SDK stubs are isolated
+through the package-specific override, while adapter-owned signatures and logic remain
+type-checked. The Agent Framework adapter is optional and is checked even when its
+native dependency is not installed.
 
 Build packages:
 
@@ -287,6 +323,28 @@ To reproduce the B-006.3 Kubernetes acceptance locally:
 3. Deploy a runtime pod with the Kubernetes sandbox controller as a loopback sidecar: the controller container uses the `owa-sandbox-controller` service account with a projected service-account token at `/var/run/secrets/owa-controller` plus the `kube-root-ca.crt` ConfigMap; the runtime sets `sandbox.backend: kubernetes` with digest-pinned `allowed_images`, `network_policy_enforced: true`, and a `workflow.definition` exercising `run.container`.
 4. `kubectl port-forward` the runtime port and drive `POST /v1/invoke`; verify execution, timeout (`sandbox_timeout`), cancellation, restart/ambiguous-failure cleanup (`activeDeadlineSeconds` + TTL), secret safety (`secretKeyRef`, no value in logs/responses), RBAC (controller token forbidden on secrets/pods/cross-namespace/cluster scope), and egress denial.
 5. Teardown: `kind delete cluster --name owa-acceptance`.
+
+### OpenShift sandbox acceptance
+
+Run `tests/ci/openshift_sandbox_acceptance.sh` against a disposable OpenShift
+project after publishing two digest-pinned images. Set
+`OWA_K8S_CONTROLLER_IMAGE` to the Kubernetes/OpenShift controller image and
+`OWA_SANDBOX_IMAGE` to the approved workload image. The script creates only a
+project-scoped ServiceAccount, Role, RoleBinding, default-deny NetworkPolicy,
+and controller Deployment; it removes the generated project on exit. When a
+pre-created disposable project is required, set `OWA_OPENSHIFT_PROJECT` and
+`OWA_OPENSHIFT_ALLOW_EXISTING=1`; the script then removes only its uniquely
+named resources.
+
+The acceptance checks the applied pod's `openshift.io/scc` annotation, confirms
+that the restricted SCC injects a non-root UID while the controller template
+does not hard-code one, verifies the controller process UID and security
+context, checks the ServiceAccount's positive and negative RBAC permissions,
+and invokes the controller. The sandbox execution must prove arbitrary
+non-root UID execution, writable `/workspace`, read-only root filesystem, and
+denied cluster egress. A successful local/static check or Kubernetes run does
+not close `DEPLOY-1`; update that item only after this script passes against a
+real OpenShift cluster.
 
 Dependabot opens weekly update PRs for GitHub Actions versions, every `uv.lock`, and the base images in `docker/`; the Security workflow (pip-audit over every locked environment) and the release Trivy gate block publication on known fixable `CRITICAL`/`HIGH` image advisories. When a base bump does not clear an advisory because the upstream image has not been rebuilt yet, the finding is recorded with a dated rationale in `.trivyignore` and must be re-checked on every base refresh; findings in our own code or Python dependencies are never suppressed.
 

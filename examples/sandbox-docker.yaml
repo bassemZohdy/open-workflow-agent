@@ -1,0 +1,16 @@
+model:
+  provider: fake
+  name: fake/default
+
+sandbox:
+  enabled: true
+  backend: docker
+  allow_shell: false
+  timeout_seconds: 30
+  docker:
+    controller_socket: /run/owa-sandbox/controller.sock
+    allowed_images:
+      - "registry.example.com/owa/python@sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    require_digest: true
+    run_as_user: "65532:65532"
+    network: denied

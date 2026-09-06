@@ -7,11 +7,11 @@
 - `TODO.md` — active and intentionally deferred backlog.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current Phase — 2026-09-04
+## Current Phase — 2026-09-05
 
 `v0.1.0` is the current formal release. `main` contains additional unreleased pre-stable work.
 
-The bounded inbound A2A profile is complete end to end: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, resuming sends over the common resume contract, and bounded streaming/resubscription (`SendStreamingMessage`/`SubscribeToTask`) translating common lifecycle events into official status/artifact frames. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The deployment-controlled `traffic_policy` model is implemented with token bucket rate limiting and concurrency limits. External interoperability/conformance evidence is complete for all advertised baselines.
+The bounded inbound A2A profile is complete end to end: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, resuming sends over the common resume contract, and bounded streaming/resubscription (`SendStreamingMessage`/`SubscribeToTask`) translating common lifecycle events into official status/artifact frames. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The deployment-controlled `traffic_policy` model is implemented with global token-bucket/concurrency limits plus endpoint-prefix and authenticated-principal scopes. External interoperability/conformance evidence is complete for all advertised baselines.
 
 No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engine conformance claim is made beyond the exact tested capability/profile boundaries.
 
@@ -264,7 +264,7 @@ Implemented security groundwork:
 
 Still active:
 
-- wire OAuth2 client-credentials/mTLS profile types into outbound adapters when those transports gain HTTPS/client-cert callers.
+- broader identity-platform integration remains outside OWA; OAuth2 client-credentials and mTLS profile types are wired to the outbound protocol adapter and covered by core tests.
 
 OWA does not become an identity provider. OAuth2/OIDC federation, delegated-user token exchange, and consent remain external identity-platform responsibilities.
 
@@ -279,12 +279,16 @@ TrafficPolicyConfig
   enabled: bool = false
   rate_limit: RateLimitConfig (token bucket, requests_per_second + burst)
   concurrency_limit: ConcurrencyLimitConfig (max_concurrent)
+  endpoint_limits: list[TrafficEndpointLimitConfig] (longest path-prefix scope)
+  principal_limits: list[TrafficPrincipalLimitConfig] (authenticated identity scopes)
 ```
 
 Implemented behavior:
 
 - token bucket rate limiting with configurable requests-per-second and burst capacity;
 - concurrent request limiting with configurable max concurrent requests;
+- additional longest-matching endpoint-prefix limits and authenticated-principal limits;
+- static bearer/API-key profile identities, including the bounded A2A profile, are attached to the request scope before traffic admission;
 - 429 responses with structured error codes (`rate_limit_exceeded`, `concurrency_limit_exceeded`);
 - ASGI middleware applied only when `traffic_policy.enabled=true`;
 - capability advertisement at `/v1/capabilities` under `features.trafficPolicy`;
@@ -298,17 +302,42 @@ The runtime preserves distinct lifecycles for knowledge, memory, session, common
 
 SQLite remains the reference datasource. PostgreSQL common stores and ADK/LangGraph native PostgreSQL adapters are implemented with isolated namespaces. Engine-native checkpoint state is never exposed as a public resume or A2A Task contract.
 
+## Verified Follow-up Work — 2026-09-05
+
+The following backlog items are implemented and verified in the current worktree:
+
+- `SECURITY-8`: security response headers are configurable under `server.security_headers`; HSTS is emitted only for HTTPS ASGI requests.
+- `DEPS-1`: `numpy` and `pypdf` are optional knowledge dependencies in both root and standalone-core package metadata, with deferred imports.
+- `DEPS-4`: built-in `agent:1.0.0` and `llm:1.0.0` catalog manifests declare valid input/output JSON Schemas.
+- `DOCS-6` and `DOCS-8`: contributor architecture and bounded A2A streaming documentation are current.
+- `K8S-3`: runtime-namespace default-deny NetworkPolicy is provided and covered by manifest tests.
+- `DEPLOY-2`: the protected release workflow publishes runtime and sandbox-controller images for `linux/amd64` and `linux/arm64`, with a workflow regression test.
+- `DEPLOY-1` progress: the Kubernetes/OpenShift controller now leaves the workload UID unset for `platform=openshift` so restricted SCC can inject the project UID range, while retaining the fixed non-root UID for vanilla Kubernetes. The OpenShift acceptance harness checks SCC assignment, arbitrary-UID execution, security context, RBAC, network denial, workspace writes, and cleanup; real-cluster execution remains pending.
+- `OBS-1`: `/metrics` exposes bounded Prometheus text metrics for workflow lifecycle, task and sandbox events, HTTP/A2A traffic, traffic policy, scheduler jobs, and pending approvals.
+- `DEPS-3`: strict mypy checks cover core, ADK, LangGraph, and optional Agent Framework adapter packages, with native SDK boundaries explicitly isolated.
+- `DOCS-1` through `DOCS-4`: the API guide now documents memory tools, scheduling, approvals, generic events, lifecycle snapshots, and bounded SSE replay.
+- `DOCS-5`: the default-profile OpenAPI schema is versioned at `docs/openapi.json` and compared against the generated FastAPI schema in CI tests.
+- `DOCS-7`: custom catalog function authoring, manifest layout, protocol boundaries, trust policy, and verification are documented in `docs/custom-catalog-functions.md`.
+- `DOCS-9`: deployment configuration recipes cover A2A, security profiles, traffic policy, sandbox backends, protocol tools, and PostgreSQL persistence.
+- `TEST-2`: dependency-free benchmark harness reports compilation latency, sequential invocation latency, and concurrent throughput as JSON.
+- `TEST-3`: core coverage is enforced at 90%; the full suite currently reports 611 passed, 11 skipped, and 90.24% exact coverage (613/6281 statements missed) with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
+- `TEST-4`: Linux/WSL-compatible mutmut coverage targets the framework-neutral traffic-policy middleware with 13 direct tests; the current 316-mutant baseline kills 272 mutants, records 22 survivors, 18 timeouts, and 4 mutants without test association for future test-strengthening work.
+- `TEST-5`: deterministic 100-request async stress coverage verifies traffic-policy concurrency bounds and burst admission without external services.
+- `TEST-1` progress: the portable CTK subset now covers 22 feature files, 35 scenarios, and 70 deterministic executions across both available engines, including pinned upstream data-flow input-, output-, and non-object-output filtering plus HTTP content-output projection cases, alongside successful and failing HTTP, MCP, A2A, OpenAPI, event, catalog-call, registered child-workflow `run`, input rejection, flow, policy, transform, validation, nested-input, sequence, and retry scenarios over shared common services; broader upstream CTK coverage and additional implemented features remain open.
+- `K8S-2`: optional Kubernetes Ingress and Gateway API `HTTPRoute` templates target the reference runtime Service; deployment-owned host, TLS, ingress-class, and Gateway-parent values remain explicit placeholders.
+- `K8S-4`: optional Prometheus Operator `ServiceMonitor` and `PrometheusRule` templates scrape `/metrics` and alert on HTTP error rate, p95 latency, and sandbox failures; CRD fields are covered by targeted manifest tests.
+- `K8S-1`: reusable Helm chart under `deploy/helm/open-workflow-agent` packages the runtime Deployment, Service, PVC, default-deny network policy, and opt-in edge/monitoring integrations; `helm lint` and rendered integration tests pass.
+- `ARCH-3`: traffic policy supports additional longest-matching endpoint-prefix and authenticated-principal rate/concurrency scopes, with static HTTP/A2A security profile identities propagated before admission and capability/configuration/enforcement tests.
+
+The relevant core tests, package builds, lock checks, repository-wide Ruff, formatting, and mypy checks passed. The full core suite currently passes with 611 passed, 11 skipped, and 90.24% exact coverage.
+
 ## Current Active Backlog
 
 The authoritative ordered backlog is `TODO.md`. Current priorities are:
 
-1. wire OAuth2/mTLS security profiles into outbound protocol adapters;
-2. add optional built-in API authentication for the main HTTP endpoints;
-3. OpenShift sandbox acceptance and multi-arch Docker images;
-4. Prometheus metrics and structured logging;
-5. dependency hygiene (`numpy`/`pypdf` to optional extras, ruff target fix, mypy for engines);
-6. API documentation for memory, scheduling, approvals, events, and OpenAPI spec;
-7. expand CTK subset and add performance benchmarks.
+1. OpenShift sandbox acceptance;
+2. CTK expansion and maintaining the 90% core coverage gate;
+3. Strengthening the mutation baseline, especially surviving traffic-policy mutants.
 
 ## Intentionally Deferred
 
@@ -330,11 +359,11 @@ Protocol baseline changes are compatibility/security changes and must not be tre
 ## Key Commands
 
 ```text
-uv sync --locked
+uv sync --locked --extra knowledge
 uv run ruff format --check core engines tests
 uv run ruff check .
-uv run mypy core/src
-uv run pytest -q --cov=core/src/open_workflow_agent --cov-fail-under=80
+uv run mypy --package open_workflow_agent --package open_workflow_agent_adk --package open_workflow_agent_langgraph --package open_workflow_agent_agent_framework
+uv run --locked pytest -q --cov=core/src/open_workflow_agent --cov-fail-under=90
 uv build
 uv build --directory core
 uv run --directory engines/adk --locked --extra native --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract ../../tests/ctk -q

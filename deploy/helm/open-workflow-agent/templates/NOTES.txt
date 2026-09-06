@@ -1,0 +1,8 @@
+Open Workflow Agent has been installed as {{ include "open-workflow-agent.fullname" . }}.
+
+Engine: {{ .Values.engine }}
+Service: {{ include "open-workflow-agent.fullname" . }}:{{ .Values.service.port }}
+
+The chart leaves edge exposure and Prometheus resources disabled by default.
+Enable exactly the deployment-owned routing and monitoring integrations needed
+by the cluster, and replace example image/configuration values before use.

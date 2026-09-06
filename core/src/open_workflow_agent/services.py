@@ -12,6 +12,7 @@ from .events import EventBus, InMemoryEventBus
 from .external_catalog import ExternalCatalogResolver
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
 from .memory import MemoryService
+from .metrics import Metrics, MetricsEventSink
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
 from .persistence import InvocationStore
 from .protocols import ProtocolServices
@@ -61,8 +62,9 @@ class RuntimeServices:
         self.agent_instruction = config.agent.instruction
         self.database_root = Path(database_root) if database_root else None
         self.datasource = resolve_datasource(config.persistence.datasource)
+        self.metrics = Metrics()
         self.events = event_sink or InMemoryEventSink()
-        self.lifecycle_events = LifecycleCloudEventSink(self.events)
+        self.lifecycle_events = LifecycleCloudEventSink(MetricsEventSink(self.events, self.metrics))
         raw_event_bus = event_bus or InMemoryEventBus()
         self.workflow_catalog = WorkflowCatalog()
         self.external_catalogs = ExternalCatalogResolver(

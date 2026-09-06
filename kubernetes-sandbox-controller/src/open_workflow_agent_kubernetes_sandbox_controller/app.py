@@ -509,23 +509,27 @@ def build_job_manifest(config: ControllerConfig, request: ExecutionRequest) -> d
     """Build the only Job shape the controller is allowed to submit."""
 
     job_name = _job_name(request.execution_id)
+    container_security_context: dict[str, Any] = {
+        "allowPrivilegeEscalation": False,
+        "privileged": False,
+        "readOnlyRootFilesystem": True,
+        "runAsNonRoot": True,
+        "capabilities": {"drop": ["ALL"]},
+        "seccompProfile": {"type": "RuntimeDefault"},
+    }
+    if config.platform == "kubernetes":
+        # A numeric non-root identity lets the kubelet verify runAsNonRoot for
+        # images that do not declare a USER directive. OpenShift's restricted
+        # SCC must allocate the namespace's arbitrary UID instead; an
+        # explicit UID here would be rejected when it falls outside that
+        # namespace's UID range.
+        container_security_context.update({"runAsUser": 65532, "runAsGroup": 65532})
     container: dict[str, Any] = {
         "name": "sandbox",
         "image": request.image,
         "imagePullPolicy": "IfNotPresent",
         "env": _environment(config, request),
-        "securityContext": {
-            "allowPrivilegeEscalation": False,
-            "privileged": False,
-            "readOnlyRootFilesystem": True,
-            "runAsNonRoot": True,
-            # A numeric non-root identity is required so the kubelet can verify
-            # runAsNonRoot for images that do not declare a USER.
-            "runAsUser": 65532,
-            "runAsGroup": 65532,
-            "capabilities": {"drop": ["ALL"]},
-            "seccompProfile": {"type": "RuntimeDefault"},
-        },
+        "securityContext": container_security_context,
         "resources": {
             "requests": {
                 "cpu": config.cpu_limit,

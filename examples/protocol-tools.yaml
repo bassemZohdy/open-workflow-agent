@@ -1,0 +1,23 @@
+security:
+  profiles:
+    outbound:
+      type: bearer
+      token:
+        from_env: OWA_OUTBOUND_TOKEN
+
+protocols:
+  security_profile: outbound
+
+tools:
+  - type: mcp
+    name: ticketing
+    endpoint: https://ticketing.example.com/mcp
+    security_profile: outbound
+  - type: openapi
+    name: billing
+    endpoint: https://billing.example.com/openapi.json
+    security_profile: outbound
+  - type: a2a
+    name: partner-agent
+    endpoint: https://partner.example.com/a2a
+    security_profile: outbound

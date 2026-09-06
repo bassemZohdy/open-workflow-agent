@@ -13,6 +13,21 @@ GET /health/ready
 
 Liveness returns `{"status":"ok"}`. Readiness returns HTTP `503` with `{"status":"not_ready"}` until runtime initialization is complete.
 
+## Metrics
+
+```http
+GET /metrics
+```
+
+The endpoint returns Prometheus text format `0.0.4`. It exposes bounded, runtime-local
+metric families for workflow starts/completions and latency, active invocations, task
+events, sandbox executions, HTTP requests/errors (including the A2A surface), traffic
+policy admissions/rejections, scheduler jobs, and pending approvals.
+
+`/metrics` is outside the `/v1/*` API authentication profile. Deployments that expose
+it beyond a trusted monitoring network must protect it at the edge or through the
+monitoring plane.
+
 ## Capabilities
 
 ```http
@@ -30,6 +45,20 @@ Relevant common blocks include:
 - `features.a2a`
 
 When A2A is enabled with the current bounded Task profile, the A2A block includes the pinned release/protocol version and advertises only `GetTask`/`CancelTask` as Task operations. Streaming and push notifications remain false.
+
+## OpenAPI schema
+
+The runtime serves the generated schema at:
+
+```http
+GET /openapi.json
+```
+
+The versioned default-profile artifact is checked in at
+[`docs/openapi.json`](openapi.json). It covers the stable core HTTP surface,
+including health, metrics, invocation, events, approvals, and scheduling routes.
+Optional A2A wire routes remain documented separately because they are mounted
+only when `a2a.enabled` is true.
 
 ## Invoke a workflow
 
@@ -89,6 +118,63 @@ The idempotency header is optional.
 POST /v1/admin/knowledge/reload
 ```
 
+## Memory tools
+
+Long-term memory is exposed as built-in agent tools rather than as a separate
+`/v1/memory` resource. It is distinct from engine checkpoint/resume state and can
+be disabled with `memory.enabled: false`:
+
+```yaml
+memory:
+  enabled: auto       # false | true | auto
+  database: /data/memory.sqlite3
+```
+
+Tool contracts:
+
+```text
+add_memory    {"text": "...", "metadata": {"source": "..."}} -> {"id": 1}
+search_memory {"query": "...", "limit": 10} -> [{"id": 1, "text": "...", "metadata": {}, "created": ...}]
+delete_memory {"id": 1} -> {"deleted": true}
+```
+
+`text` is required for `add_memory`; `metadata` must be an object. `search_memory`
+accepts a limit from 1 through 100, and `delete_memory` requires an integer id.
+
+## Scheduling
+
+Scheduling is durable and owned by the single runtime process. The schedule rule
+(`after` or `every`) comes from the configured workflow definition; the API request
+supplies the input for each scheduled invocation.
+
+Create a schedule:
+
+```http
+POST /v1/schedules
+Content-Type: application/json
+Idempotency-Key: schedule-create-1
+```
+
+```json
+{"input": {"source": "scheduler"}}
+```
+
+The response contains the durable `schedule_id`, workflow identity/fingerprint,
+`kind`, `status`, and the UTC `next_run_at` timestamp. Reusing the same
+`Idempotency-Key` returns the original schedule instead of creating a duplicate.
+
+Inspect or cancel a schedule:
+
+```http
+GET  /v1/schedules/{schedule_id}
+POST /v1/schedules/{schedule_id}/cancel
+Idempotency-Key: schedule-cancel-1
+```
+
+Schedule states are `active`, `completed`, `cancelled`, and `faulted`. Cancellation
+is idempotent for an already terminal schedule; unknown ids return the normalized
+`schedule_not_found` error.
+
 ## Events
 
 Publish:
@@ -101,13 +187,17 @@ Content-Type: application/json
 ```json
 {
   "event": {
+    "id": "event-1",
+    "source": "urn:example:client",
     "type": "example.event",
     "data": {"value": 1}
   }
 }
 ```
 
-Generic event delivery is process-local/non-durable and is not a durable broker or approval queue.
+The response is the normalized event envelope with `id`, `source`, `type`, and
+RFC 3339 `time` fields. Generic event delivery is process-local/non-durable and is
+not a durable broker or approval queue.
 
 Lifecycle snapshot:
 
@@ -156,8 +246,8 @@ approvals:
   operator_security_profile: operator
 ```
 
-The approval-specific bearer field remains a bounded pre-shared-security implementation.
-
+Operator authorization resolves the named bearer security profile at request time;
+credentials are never supplied in workflow payloads or ordinary configuration files.
 Operator endpoints:
 
 ```http
@@ -172,6 +262,18 @@ Authorization requires:
 Authorization: Bearer <token from the referenced security profile>
 X-Operator-Id: <operator identity>
 ```
+
+List filters support `pending`, `approved`, `rejected`, or `expired`, with a limit
+from 1 through 1000. A decision request has this shape:
+
+```json
+{"decision": "approved", "value": {"ticket": "CHG-2"}}
+```
+
+`decision` must be `approved` or `rejected`; `value` is optional. Supply
+`Idempotency-Key` on the decision endpoint when the caller needs replay-safe
+operator actions. Responses contain the durable approval record, including its
+status, request event, timestamps, and decision/operator fields when present.
 
 A terminal decision persists and replays through the normal workflow `listen` path after restart.
 
@@ -436,30 +538,6 @@ full conformance claim        not claimed
 ```
 
 See [a2a-streaming-evaluation.md](a2a-streaming-evaluation.md), [protocol-baselines.md](protocol-baselines.md), and [protocol-security-decisions.md](protocol-security-decisions.md).
-
-## Schedules
-
-Create:
-
-```http
-POST /v1/schedules
-Content-Type: application/json
-```
-
-Get:
-
-```http
-GET /v1/schedules/{schedule_id}
-```
-
-Cancel:
-
-```http
-POST /v1/schedules/{schedule_id}/cancel
-Idempotency-Key: schedule-operation-123
-```
-
-Durable `after` and `every` starts are supported. Cron, distributed scheduler ownership, and event-triggered scheduling are not claimed.
 
 ## Error format
 

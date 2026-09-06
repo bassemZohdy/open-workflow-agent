@@ -1,0 +1,48 @@
+# Optional edge exposure templates for the reference owa-adk Service.
+# Replace the example host, TLS Secret, ingress class, and Gateway parent with
+# deployment-owned values before applying. Use one routing API, not both.
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: owa-adk
+  namespace: owa
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - owa.example.com
+      secretName: owa-tls
+  rules:
+    - host: owa.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: owa-adk
+                port:
+                  name: http
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: owa-adk
+  namespace: owa
+spec:
+  parentRefs:
+    - name: owa-gateway
+      sectionName: http
+  hostnames:
+    - owa.example.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: owa-adk
+          port: 8080

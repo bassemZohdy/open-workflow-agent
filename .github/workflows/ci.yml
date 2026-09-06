@@ -36,14 +36,28 @@ jobs:
             "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz" \
             | tar -C /usr/local/bin -xz kubeconform
           kubeconform -v
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.17.3
+      - name: Lint Helm chart
+        run: helm lint deploy/helm/open-workflow-agent
       - name: Validate deploy manifests
         shell: bash
         run: |
           set -euo pipefail
-          # Project is the OpenShift-only namespace kind; vanilla Kubernetes
-          # schemas do not carry it, so it is skipped explicitly rather than
-          # silently ignoring unknown kinds.
-          kubeconform -strict -summary -kubernetes-version 1.31.0 -skip Project deploy/
+          # Project, HTTPRoute, ServiceMonitor, and PrometheusRule are
+          # external/OpenShift API kinds; vanilla Kubernetes schemas do not
+          # carry them, so they are skipped explicitly rather than silently
+          # ignoring unknown kinds. Targeted repository tests validate their
+          # deployment-owned fields.
+          kubeconform -strict -summary -kubernetes-version 1.31.0 -skip Project,HTTPRoute,ServiceMonitor,PrometheusRule deploy/kubernetes deploy/openshift
+      - name: Validate rendered Helm release
+        shell: bash
+        run: |
+          set -euo pipefail
+          helm template owa deploy/helm/open-workflow-agent --namespace owa \
+            | kubeconform -strict -summary -kubernetes-version 1.31.0
 
   root:
     name: Root quality gates
@@ -58,7 +72,7 @@ jobs:
       - name: Install Python
         run: uv python install "$PYTHON_VERSION"
       - name: Sync locked root environment
-        run: uv sync --locked
+        run: uv sync --locked --extra knowledge
       - name: Check root lock
         run: uv lock --check
       - name: Validate Docker Compose profiles
@@ -67,8 +81,20 @@ jobs:
         run: uv run --locked ruff format --check core engines tests
       - name: Lint
         run: uv run --locked ruff check .
+      - name: Check shell acceptance scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for script in tests/ci/*.sh; do
+            bash -n "$script"
+          done
       - name: Type check
-        run: uv run --locked mypy core/src
+        run: >-
+          uv run --locked mypy
+          --package open_workflow_agent
+          --package open_workflow_agent_adk
+          --package open_workflow_agent_langgraph
+          --package open_workflow_agent_agent_framework
       - name: Tests
         shell: bash
         run: |
@@ -76,7 +102,7 @@ jobs:
           timeout --signal=TERM --kill-after=30s 8m \
             uv run --locked pytest -vv --durations=20 \
               --cov=core/src/open_workflow_agent --cov-report=term-missing \
-              --cov-fail-under=80
+              --cov-fail-under=90
       - name: Shared contract tests
         shell: bash
         run: |
@@ -127,6 +153,28 @@ jobs:
                   schema = "open_workflow_agent/_resources/open-workflow/1.0.3/workflow.yaml"
                   assert schema in names, f"missing packaged Open Workflow schema in {wheel.name}"
           PY
+
+  mutation:
+    name: Mutation testing
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Sync mutation environment
+        run: uv sync --locked --group mutation
+      - name: Stage source-root layout for mutmut
+        run: cp -R core/src src
+      - name: Run focused mutation suite
+        run: uv run --locked --group mutation mutmut run
+      - name: Report mutation results
+        if: always()
+        run: uv run --locked --group mutation mutmut results
 
   engines:
     name: ${{ matrix.engine }} native and contract tests

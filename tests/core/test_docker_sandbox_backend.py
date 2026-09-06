@@ -5,11 +5,20 @@ import json
 import httpx
 import pytest
 from open_workflow_agent.config import SandboxConfig
-from open_workflow_agent.errors import SandboxPolicyError, UnsupportedWorkflowFeature
+from open_workflow_agent.errors import (
+    SandboxPolicyError,
+    SandboxProcessError,
+    SandboxTimeoutError,
+    UnsupportedWorkflowFeature,
+)
 from open_workflow_agent.sandbox import (
     SandboxExecutionRequest,
     SandboxSecretReference,
     validate_sandbox_capabilities,
+)
+from open_workflow_agent.sandbox.backends.controller import (
+    cancel_controller_execution,
+    controller_error,
 )
 from open_workflow_agent.sandbox.backends.docker import DockerSandboxBackend
 from pydantic import ValidationError
@@ -199,3 +208,165 @@ async def test_controller_error_does_not_echo_secret(monkeypatch: pytest.MonkeyP
     await backend.shutdown()
     assert secret not in str(error.value)
     assert secret not in repr(error.value.details)
+
+
+def test_controller_error_maps_known_and_unknown_error_codes() -> None:
+    from open_workflow_agent.errors import (
+        SandboxOutputLimitError,
+        SandboxResourceLimitError,
+        SandboxTimeoutError,
+    )
+
+    assert isinstance(
+        controller_error(
+            httpx.Response(422, json={"error": {"code": "sandbox_timeout"}}),
+            backend_label="Docker",
+        ),
+        SandboxTimeoutError,
+    )
+    assert isinstance(
+        controller_error(
+            httpx.Response(422, json={"error": {"code": "sandbox_output_limit"}}),
+            backend_label="Docker",
+        ),
+        SandboxOutputLimitError,
+    )
+    assert isinstance(
+        controller_error(
+            httpx.Response(422, json={"error": {"code": "sandbox_resource_limit"}}),
+            backend_label="Docker",
+        ),
+        SandboxResourceLimitError,
+    )
+    assert isinstance(
+        controller_error(httpx.Response(500, text="not-json"), backend_label="Docker"),
+        SandboxProcessError,
+    )
+
+
+@pytest.mark.asyncio
+async def test_controller_cancellation_accepts_idempotent_statuses_and_maps_failures():
+    for status in (200, 202, 204, 404):
+        client = httpx.AsyncClient(
+            transport=httpx.MockTransport(lambda _request, status=status: httpx.Response(status)),
+            base_url="http://controller",
+        )
+        await cancel_controller_execution(
+            client, backend_label="Docker", execution_id="execution-1"
+        )
+        await client.aclose()
+
+    failing = httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(500, json={"error": {"code": "sandbox_process_error"}})
+        ),
+        base_url="http://controller",
+    )
+    with pytest.raises(SandboxProcessError):
+        await cancel_controller_execution(failing, backend_label="Docker", execution_id="bad")
+    await failing.aclose()
+
+
+@pytest.mark.asyncio
+async def test_docker_backend_maps_timeout_http_and_malformed_responses():
+    invalid = DockerSandboxBackend(
+        _config(), transport=httpx.MockTransport(lambda _request: httpx.Response(200, json={}))
+    )
+    with pytest.raises(SandboxProcessError, match="invalid response"):
+        await invalid.execute(
+            SandboxExecutionRequest(execution_id="invalid", kind="container", image=_IMAGE)
+        )
+    await invalid.shutdown()
+
+    def timeout(_request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("controller timeout")
+
+    timed = DockerSandboxBackend(_config(), transport=httpx.MockTransport(timeout))
+    with pytest.raises(SandboxTimeoutError):
+        await timed.execute(
+            SandboxExecutionRequest(execution_id="timeout", kind="container", image=_IMAGE)
+        )
+    await timed.shutdown()
+
+    unavailable = DockerSandboxBackend(
+        _config(),
+        transport=httpx.MockTransport(
+            lambda _request: (_ for _ in ()).throw(httpx.ConnectError("down"))
+        ),
+    )
+    with pytest.raises(SandboxProcessError, match="unavailable"):
+        await unavailable.execute(
+            SandboxExecutionRequest(execution_id="unavailable", kind="container", image=_IMAGE)
+        )
+    await unavailable.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_docker_backend_rejects_disabled_wrong_kind_and_oversized_requests():
+    disabled = DockerSandboxBackend(
+        SandboxConfig(enabled=False, backend="docker", docker={"allowed_images": [_IMAGE]}),
+        transport=httpx.MockTransport(lambda _request: httpx.Response(500)),
+    )
+    with pytest.raises(SandboxPolicyError, match="disabled"):
+        await disabled.execute(
+            SandboxExecutionRequest(execution_id="disabled", kind="container", image=_IMAGE)
+        )
+    await disabled.shutdown()
+
+    wrong_kind = DockerSandboxBackend(
+        _config(), transport=httpx.MockTransport(lambda _request: httpx.Response(500))
+    )
+    with pytest.raises(SandboxPolicyError, match="only run.container"):
+        await wrong_kind.execute(SandboxExecutionRequest(execution_id="wrong", kind="script"))
+    await wrong_kind.shutdown()
+
+    tiny = SandboxConfig(
+        enabled=True,
+        backend="docker",
+        max_input_bytes=1,
+        docker={"allowed_images": [_IMAGE]},
+    )
+    oversized = DockerSandboxBackend(
+        tiny, transport=httpx.MockTransport(lambda _request: httpx.Response(500))
+    )
+    with pytest.raises(SandboxPolicyError, match="input limit"):
+        await oversized.execute(
+            SandboxExecutionRequest(execution_id="oversized", kind="container", image=_IMAGE)
+        )
+    await oversized.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_docker_backend_cleanup_and_environment_edges(monkeypatch):
+    backend = DockerSandboxBackend(
+        _config(), transport=httpx.MockTransport(lambda _: httpx.Response(204))
+    )
+    assert await backend.cancel("not-active") is None
+    assert backend._resolve_environment(  # noqa: SLF001 - backend contract edge
+        SandboxExecutionRequest(
+            execution_id="plain", kind="container", image=_IMAGE, environment=(("SAFE", "value"),)
+        )
+    ) == {"SAFE": "value"}
+    with pytest.raises(SandboxPolicyError, match="not deployment-approved"):
+        backend._resolve_environment(  # noqa: SLF001
+            SandboxExecutionRequest(
+                execution_id="bad-secret",
+                kind="container",
+                image=_IMAGE,
+                environment=(("TOKEN", SandboxSecretReference("NOT_APPROVED")),),
+            )
+        )
+    monkeypatch.delenv("SANDBOX_TEST_SECRET", raising=False)
+    with pytest.raises(SandboxPolicyError, match="unavailable"):
+        backend._resolve_environment(  # noqa: SLF001
+            SandboxExecutionRequest(
+                execution_id="missing-secret",
+                kind="container",
+                image=_IMAGE,
+                environment=(("TOKEN", SandboxSecretReference("SANDBOX_TEST_SECRET")),),
+            )
+        )
+    backend._active.add("active")  # noqa: SLF001
+    await backend.cancel("active")
+    backend._active.add("shutdown")  # noqa: SLF001
+    await backend.shutdown()

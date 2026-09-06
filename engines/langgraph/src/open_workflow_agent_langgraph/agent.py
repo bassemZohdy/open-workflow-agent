@@ -33,7 +33,7 @@ class LangGraphAgentFactory:
         bound: list[Any] = []
         for binding in bindings:
 
-            async def invoke(payload: dict[str, Any], item=binding) -> Any:
+            async def invoke(payload: dict[str, Any], item: AgentToolBinding = binding) -> Any:
                 return await item.invoke(payload)
 
             bound.append(

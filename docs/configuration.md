@@ -129,10 +129,26 @@ server:
   host: 0.0.0.0
   port: 8080
   max_request_bytes: 1048576
+  security_headers:
+    enabled: true
+    content_type_options: nosniff
+    frame_options: DENY
+    content_security_policy: "default-src 'none'"
+    hsts_enabled: true
+    hsts_max_age_seconds: 31536000
+    hsts_include_subdomains: true
+    hsts_preload: false
 
 observability:
   log_level: INFO
 ```
+
+## Metrics endpoint
+
+The runtime always exposes `GET /metrics` in Prometheus text format. Metrics are
+in-process and reset when the runtime restarts; no additional configuration or
+third-party metrics service is required. Protect the endpoint at the deployment edge
+when it is reachable outside a trusted monitoring network.
 
 ### Pre-release security migration note
 
@@ -204,19 +220,28 @@ Enterprise federation, token exchange, delegated-user identity, and consent rema
 
 ## Traffic policy — separate concern
 
-Traffic management is deliberately separate from security profiles. The target deployment model uses a distinct `traffic_policy` block for rate, concurrency, burst, and related admission controls.
-
-Conceptually:
+Traffic management is deliberately separate from security profiles. The deployment-controlled `traffic_policy` block supports global limits plus optional endpoint and authenticated-principal scopes:
 
 ```yaml
 traffic_policy:
-  inbound:
-    max_concurrent_requests: 100
+  enabled: true
+  rate_limit:
     requests_per_second: 50
     burst: 100
+  concurrency_limit:
+    max_concurrent: 100
+  endpoint_limits:
+    - path_prefix: /v1/invoke
+      concurrency_limit:
+        max_concurrent: 20
+  principal_limits:
+    - principal: partner-client
+      rate_limit:
+        requests_per_second: 10
+        burst: 20
 ```
 
-A security profile answers who the caller is and what it may do; traffic policy answers how much traffic may be admitted.
+A security profile answers who the caller is and what it may do; traffic policy answers how much traffic may be admitted. Global limits apply to every HTTP request when enabled. The longest matching endpoint prefix and the authenticated principal's configured scope add further admission limits. Principal scopes use the identity declared by the named `server.api_security_profile` or `a2a.security_profile`; unauthenticated requests use no configured principal scope.
 
 ## `model`
 

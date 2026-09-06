@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 from open_workflow_agent.api import create_app
 from open_workflow_agent.config import RuntimeConfig

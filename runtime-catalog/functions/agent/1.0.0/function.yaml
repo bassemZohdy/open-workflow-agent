@@ -1,4 +1,21 @@
 name: agent
 version: 1.0.0
 namespace: default
-description: Invoke the configured autonomous agent.
+description: Invoke the configured autonomous agent with tool-calling capabilities.
+input:
+  type: object
+  properties:
+    input:
+      description: The input text or message for the agent
+      oneOf:
+        - type: string
+        - type: object
+    instruction:
+      type: string
+      description: Optional override for the agent instruction
+  additionalProperties: true
+output:
+  description: The agent's response, which may include tool call results
+  oneOf:
+    - type: string
+    - type: object

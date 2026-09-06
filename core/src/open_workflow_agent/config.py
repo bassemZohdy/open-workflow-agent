@@ -536,8 +536,50 @@ class ConcurrencyLimitConfig(StrictModel):
     max_concurrent: int = Field(default=50, gt=0)
 
 
+class TrafficLimitConfig(StrictModel):
+    """Optional rate/concurrency overrides for one traffic-policy scope."""
+
+    rate_limit: RateLimitConfig | None = None
+    concurrency_limit: ConcurrencyLimitConfig | None = None
+
+    @model_validator(mode="after")
+    def validate_non_empty(self) -> TrafficLimitConfig:
+        if self.rate_limit is None and self.concurrency_limit is None:
+            raise ValueError("traffic limit must define rate_limit or concurrency_limit")
+        return self
+
+
+class TrafficEndpointLimitConfig(TrafficLimitConfig):
+    """Add admission limits for a normalized request path prefix."""
+
+    path_prefix: str
+
+    @field_validator("path_prefix")
+    @classmethod
+    def validate_path_prefix(cls, value: str) -> str:
+        selected = value.strip()
+        if not selected.startswith("/") or len(selected) > 256:
+            raise ValueError("traffic endpoint path_prefix must start with '/' and stay bounded")
+        return selected.rstrip("/") or "/"
+
+
+class TrafficPrincipalLimitConfig(TrafficLimitConfig):
+    """Add admission limits for an authenticated deployment principal."""
+
+    principal: str
+
+    @field_validator("principal")
+    @classmethod
+    def validate_principal(cls, value: str) -> str:
+        selected = value.strip()
+        if not selected or len(selected) > 256:
+            raise ValueError("traffic principal must be a bounded non-empty value")
+        return selected
+
+
 class TrafficPolicyConfig(StrictModel):
-    """Deployment-controlled traffic policy for rate limits, concurrency limits, and burst/admission control.
+    """Deployment-controlled traffic policy for rate limits, concurrency limits,
+    and burst/admission control.
 
     Authentication/authorization profiles must not own traffic management.
     """
@@ -545,6 +587,31 @@ class TrafficPolicyConfig(StrictModel):
     enabled: bool = False
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
     concurrency_limit: ConcurrencyLimitConfig = Field(default_factory=ConcurrencyLimitConfig)
+    endpoint_limits: list[TrafficEndpointLimitConfig] = Field(default_factory=list)
+    principal_limits: list[TrafficPrincipalLimitConfig] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_unique_scopes(self) -> TrafficPolicyConfig:
+        endpoint_prefixes = [item.path_prefix for item in self.endpoint_limits]
+        if len(endpoint_prefixes) != len(set(endpoint_prefixes)):
+            raise ValueError("traffic endpoint path_prefix values must be unique")
+        principals = [item.principal for item in self.principal_limits]
+        if len(principals) != len(set(principals)):
+            raise ValueError("traffic principal values must be unique")
+        return self
+
+
+class SecurityHeadersConfig(StrictModel):
+    """Configuration for the default HTTP security response headers."""
+
+    enabled: bool = True
+    content_type_options: str = Field(default="nosniff", min_length=1)
+    frame_options: str = Field(default="DENY", min_length=1)
+    content_security_policy: str = Field(default="default-src 'none'", min_length=1)
+    hsts_enabled: bool = True
+    hsts_max_age_seconds: int = Field(default=31_536_000, ge=0)
+    hsts_include_subdomains: bool = True
+    hsts_preload: bool = False
 
 
 class ServerConfig(StrictModel):
@@ -553,9 +620,12 @@ class ServerConfig(StrictModel):
     max_request_bytes: int = 1_048_576
     api_security_profile: str | None = None
     cors_origins: list[str] = Field(default_factory=list)
-    cors_methods: list[str] = Field(default_factory=lambda: ["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+    cors_methods: list[str] = Field(
+        default_factory=lambda: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+    )
     cors_headers: list[str] = Field(default_factory=lambda: ["*"])
     cors_allow_credentials: bool = False
+    security_headers: SecurityHeadersConfig = Field(default_factory=SecurityHeadersConfig)
 
 
 class ObservabilityConfig(StrictModel):
@@ -616,9 +686,7 @@ class RuntimeConfig(StrictModel):
                     f"{' or '.join(sorted(header_capable))}"
                 )
 
-        require_header_profile(
-            "server.api_security_profile", self.server.api_security_profile
-        )
+        require_header_profile("server.api_security_profile", self.server.api_security_profile)
         require_header_profile(
             "approvals.operator_security_profile", self.approvals.operator_security_profile
         )

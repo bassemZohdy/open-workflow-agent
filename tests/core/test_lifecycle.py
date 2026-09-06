@@ -6,6 +6,8 @@ import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.engine import PortableWorkflowEngine
+from open_workflow_agent.errors import InvocationCancelled
+from open_workflow_agent.lifecycle import CancellationToken, LifecycleControl
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
@@ -124,3 +126,47 @@ def test_invocation_store_rejects_invalid_terminal_transition(tmp_path):
     with pytest.raises(InvocationStateError):
         store.update(handle, status="running")
     store.close()
+
+
+@pytest.mark.asyncio
+async def test_cancellation_token_and_lifecycle_control_paths():
+    token = CancellationToken()
+    assert token.cancel("user-request") is True
+    assert token.cancel("second-request") is False
+    assert token.cancelled is True
+    with pytest.raises(InvocationCancelled, match="cancellation requested"):
+        token.checkpoint()
+    with pytest.raises(InvocationCancelled):
+        await token.sleep(0)
+    await token.wait_cancelled()
+    idle = CancellationToken()
+    await idle.sleep(0)
+
+    control = LifecycleControl()
+    assert await control.wait_or_resume(0) is False
+    control.request_resume({"answer": 42})
+    assert await control.wait_or_resume(10) is True
+    assert control.resume_input == {"answer": 42}
+
+    fresh = CancellationToken()
+    value = await fresh.await_operation(asyncio.sleep(0, result="done"))
+    assert value == "done"
+    operation = asyncio.create_task(asyncio.sleep(10))
+    waiting = asyncio.create_task(fresh.await_operation(operation))
+    await asyncio.sleep(0)
+    fresh.cancel("stop")
+    with pytest.raises(InvocationCancelled):
+        await waiting
+    assert operation.cancelled()
+
+    sleeping = CancellationToken()
+    sleeper = asyncio.create_task(sleeping.sleep(10))
+    await asyncio.sleep(0)
+    sleeping.cancel("interrupt")
+    with pytest.raises(InvocationCancelled):
+        await sleeper
+
+    cancelled_control = LifecycleControl()
+    cancelled_control.token.cancel("control-stop")
+    with pytest.raises(InvocationCancelled):
+        await cancelled_control.wait_or_resume(10)

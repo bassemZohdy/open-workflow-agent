@@ -145,6 +145,12 @@ class ScheduleStore:
         ).fetchone()
         return self._decode(row) if row else None
 
+    def status_counts(self) -> dict[str, int]:
+        rows = self.connection.execute(
+            "SELECT status, COUNT(*) FROM schedules GROUP BY status"
+        ).fetchall()
+        return {str(status): int(count) for status, count in rows}
+
     def claim_due(
         self, *, now: float | None = None, lease_seconds: float = 30.0
     ) -> ScheduleRecord | None:

@@ -8,7 +8,19 @@ from open_workflow_agent.a2a import (
     A2A_PROTOCOL_VERSION,
     A2A_SPEC_RELEASE,
     A2AConfig,
+    JsonRpcError,
+    _authenticate,
+    _http_json_response,
+    _jsonrpc_error,
+    _jsonrpc_response,
+    _permitted,
+    _reply_message,
+    _requested_protocol_version,
+    _requested_skill_id,
+    _task_id,
     build_agent_card,
+    extract_message_text,
+    extract_output_text,
 )
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
@@ -323,3 +335,104 @@ def test_invalid_public_base_url_is_rejected() -> None:
 def test_unknown_transport_is_rejected() -> None:
     with pytest.raises(Exception, match="transport"):
         RuntimeConfig.model_validate({"a2a": {"enabled": True, "transport": "carrier-pigeon"}})
+
+
+def test_a2a_text_output_and_response_helpers():
+    assert extract_message_text([{"text": "hello"}, {"text": "world"}]) == "hello\nworld"
+    with pytest.raises(ValueError, match="non-empty array"):
+        extract_message_text([])
+    with pytest.raises(ValueError, match="entries must be objects"):
+        extract_message_text(["hello"])
+    with pytest.raises(ValueError, match="non-empty text"):
+        extract_message_text([{"text": ""}])
+    with pytest.raises(ValueError, match="exceeds"):
+        extract_message_text([{"text": "x"}] * 65)
+
+    assert extract_output_text("reply") == "reply"
+    assert extract_output_text({"response": {"text": "nested"}}) == "nested"
+    assert extract_output_text({"output": {"message": "nested"}}) == "nested"
+    assert extract_output_text(None) == ""
+    assert extract_output_text({"value": 1}) == '{"value": 1}'
+    assert _reply_message({}, "ok")["messageId"] == "a2a-reply"
+    assert _reply_message({"messageId": "m-1"}, "ok")["messageId"] == "a2a-m-1-reply"
+
+    response = _jsonrpc_response(1, {"ok": True})
+    assert response.status_code == 200
+    assert httpx.Response(200, content=response.body).json()["result"] == {"ok": True}
+    error = _jsonrpc_error(1, JsonRpcError(-1, "bad", details={"safe": True}, http_status=422))
+    assert httpx.Response(error.status_code, content=error.body).json()["error"]["data"] == {
+        "safe": True
+    }
+    http_response = _http_json_response({"ok": True}, status_code=201)
+    assert http_response.status_code == 201
+    assert http_response.media_type == A2A_HTTP_JSON_MEDIA_TYPE
+
+
+def test_a2a_request_selection_and_authentication_helpers(monkeypatch):
+    from starlette.requests import Request
+
+    request = Request(
+        {
+            "type": "http",
+            "headers": [(b"a2a-version", b"1.0")],
+            "query_string": b"A2A-Version=0.3",
+            "method": "GET",
+            "path": "/a2a",
+            "raw_path": b"/a2a",
+            "scheme": "http",
+            "server": ("test", 80),
+            "client": ("test", 1),
+            "root_path": "",
+        }
+    )
+    assert _requested_protocol_version(request) == "1.0"
+    assert _requested_skill_id({"skillId": " from-params "}, {}) == "from-params"
+    assert _requested_skill_id({}, {"metadata": {"skillId": "from-message"}}) == "from-message"
+    assert _requested_skill_id({}, {}) is None
+    with pytest.raises(JsonRpcError, match="params.id"):
+        _task_id({})
+    assert _task_id({"id": "task-1"}) == "task-1"
+    assert _permitted(
+        object(),
+        None,
+        action="message.send",
+        resource="skill:workflow",  # type: ignore[arg-type]
+    )
+
+    monkeypatch.setenv("OWA_A2A_HELPER_TOKEN", "secret")
+    security = RuntimeConfig.model_validate(
+        {
+            "security": {
+                "profiles": {
+                    "partner": {
+                        "type": "bearer",
+                        "token": {"from_env": "OWA_A2A_HELPER_TOKEN"},
+                    }
+                }
+            }
+        }
+    ).security
+    config = A2AConfig(security_profile="partner")
+    authorized = Request(
+        {
+            "type": "http",
+            "headers": [(b"authorization", b"Bearer secret")],
+            "method": "GET",
+            "path": "/a2a",
+            "raw_path": b"/a2a",
+            "scheme": "http",
+            "server": ("test", 80),
+            "client": ("test", 1),
+            "query_string": b"",
+            "root_path": "",
+        }
+    )
+    assert _authenticate(config, security, authorized) is not None
+    unauthorized = Request(
+        {
+            **authorized.scope,
+            "headers": [(b"authorization", b"Bearer wrong")],
+        }
+    )
+    assert _authenticate(config, security, unauthorized) is None
+    assert _authenticate(A2AConfig(), security, unauthorized).identity == "anonymous"
