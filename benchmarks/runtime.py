@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import json
 import time
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from open_workflow_agent.catalog import FakeModel
@@ -62,24 +63,25 @@ async def run_benchmark(*, iterations: int = 50, concurrency: int = 10) -> dict[
     plan = compile_workflow(BENCHMARK_WORKFLOW)
     compilation_seconds = benchmark_compilation(iterations)
     config = RuntimeConfig.model_validate({"model": {"provider": "fake"}})
-    services = RuntimeServices(config, model=FakeModel())
-    engine = PortableWorkflowEngine()
-    await engine.initialize(services)
+    with TemporaryDirectory(prefix="owa-benchmark-") as database_root:
+        services = RuntimeServices(config, model=FakeModel(), database_root=database_root)
+        engine = PortableWorkflowEngine()
+        await engine.initialize(services)
 
-    async def invoke_once() -> Any:
-        return await engine.invoke(plan, _new_handle(services, plan), {"value": "ok"})
+        async def invoke_once() -> Any:
+            return await engine.invoke(plan, _new_handle(services, plan), {"value": "ok"})
 
-    try:
-        sequential_started = time.perf_counter()
-        sequential_results = [await invoke_once() for _ in range(iterations)]
-        sequential_seconds = time.perf_counter() - sequential_started
+        try:
+            sequential_started = time.perf_counter()
+            sequential_results = [await invoke_once() for _ in range(iterations)]
+            sequential_seconds = time.perf_counter() - sequential_started
 
-        concurrent_started = time.perf_counter()
-        concurrent_results = await asyncio.gather(*(invoke_once() for _ in range(concurrency)))
-        concurrent_seconds = time.perf_counter() - concurrent_started
-    finally:
-        await engine.shutdown()
-        services.close()
+            concurrent_started = time.perf_counter()
+            concurrent_results = await asyncio.gather(*(invoke_once() for _ in range(concurrency)))
+            concurrent_seconds = time.perf_counter() - concurrent_started
+        finally:
+            await engine.shutdown()
+            services.close()
 
     results = [*sequential_results, *concurrent_results]
     if any(result.status != "completed" for result in results):

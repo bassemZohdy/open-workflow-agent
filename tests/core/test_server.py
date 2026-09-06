@@ -6,7 +6,20 @@ import types
 from open_workflow_agent.config import RuntimeConfig
 
 
-def test_server_main_configures_logging_and_starts_uvicorn(monkeypatch):
+def test_server_main_configures_logging_and_starts_uvicorn(monkeypatch, tmp_path):
+    config_file = tmp_path / "agent.yaml"
+    config_file.write_text(
+        "model:\n"
+        "  provider: fake\n"
+        "knowledge:\n"
+        f"  database: {tmp_path / 'knowledge.sqlite3'}\n"
+        "memory:\n"
+        f"  database: {tmp_path / 'memory.sqlite3'}\n"
+        "persistence:\n"
+        f"  database: {tmp_path / 'runtime.sqlite3'}\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("OWA_CONFIG_FILE", str(config_file))
     import open_workflow_agent.server as server
 
     config = RuntimeConfig.model_validate(

@@ -71,7 +71,7 @@ jobs:
       - name: Install Python
         run: uv python install "$PYTHON_VERSION"
       - name: Sync locked environment
-        run: uv sync --locked
+        run: uv sync --locked --extra knowledge
       - name: Format and lint external sandbox slice
         run: |
           uv run --locked ruff format --check \

@@ -1472,6 +1472,7 @@ dev = [
     { name = "types-jsonschema", specifier = "==4.26.0.20260518" },
     { name = "types-pyyaml", specifier = "==6.0.12.20260815" },
 ]
+mutation = [{ name = "mutmut", specifier = "==3.7.0" }]
 
 [[package]]
 name = "open-workflow-agent-langgraph"

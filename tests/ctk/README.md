@@ -27,7 +27,7 @@ scenarios exercise the same common services as production. Broader upstream
 CTK coverage, external-authentication cases, and protocol interop fixtures
 remain excluded until their engine-shared contracts are defined.
 
-The pinned upstream subset passed for both engines in GitHub Actions run
+The earlier 70-execution pinned upstream subset passed for both engines in GitHub Actions run
 [`32831528433`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32831528433). Each engine job uploads test output plus provenance containing
 the repository commit, this pinned upstream CTK commit, and SHA-256 hashes for
 the selected scenario files. Further expansion is deferred to later backlog

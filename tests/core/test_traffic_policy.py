@@ -10,6 +10,20 @@ from fastapi.testclient import TestClient
 from open_workflow_agent.config import RuntimeConfig
 
 
+def _test_config(tmp_path: Path, overrides: dict[str, object] | None = None) -> RuntimeConfig:
+    data = dict(overrides or {})
+    for section, filename in (
+        ("knowledge", "knowledge.sqlite3"),
+        ("memory", "memory.sqlite3"),
+        ("persistence", "runtime.sqlite3"),
+    ):
+        section_value = data.setdefault(section, {})
+        if not isinstance(section_value, dict):
+            raise TypeError(f"{section} configuration must be an object")
+        section_value.setdefault("database", str(tmp_path / filename))
+    return RuntimeConfig.model_validate(data)
+
+
 def test_traffic_policy_defaults_disabled() -> None:
     config = RuntimeConfig()
     assert config.traffic_policy.enabled is False
@@ -127,11 +141,10 @@ def test_traffic_policy_unknown_keys_rejected(tmp_path: Path) -> None:
         RuntimeConfig.from_file(path)
 
 
-def test_traffic_policy_disabled_does_not_add_middleware() -> None:
+def test_traffic_policy_disabled_does_not_add_middleware(tmp_path: Path) -> None:
     from open_workflow_agent.api import create_app
-    from open_workflow_agent.config import RuntimeConfig
 
-    config = RuntimeConfig()
+    config = _test_config(tmp_path)
     assert config.traffic_policy.enabled is False
     app = create_app(config=config)
     # Verify the middleware stack size doesn't include traffic policy
@@ -139,11 +152,10 @@ def test_traffic_policy_disabled_does_not_add_middleware() -> None:
     assert len(app.user_middleware) == 3
 
 
-def test_traffic_policy_enabled_adds_middleware() -> None:
+def test_traffic_policy_enabled_adds_middleware(tmp_path: Path) -> None:
     from open_workflow_agent.api import create_app
-    from open_workflow_agent.config import RuntimeConfig
 
-    config = RuntimeConfig.model_validate({"traffic_policy": {"enabled": True}})
+    config = _test_config(tmp_path, {"traffic_policy": {"enabled": True}})
     app = create_app(config=config)
     # When enabled, all four request middleware layers are added.
     assert len(app.user_middleware) == 4
@@ -179,10 +191,11 @@ def test_traffic_policy_capabilities_enabled() -> None:
     }
 
 
-def test_traffic_policy_endpoint_limit_is_additional_and_path_scoped() -> None:
+def test_traffic_policy_endpoint_limit_is_additional_and_path_scoped(tmp_path: Path) -> None:
     from open_workflow_agent.api import create_app
 
-    config = RuntimeConfig.model_validate(
+    config = _test_config(
+        tmp_path,
         {
             "model": {"provider": "fake"},
             "traffic_policy": {
@@ -196,7 +209,7 @@ def test_traffic_policy_endpoint_limit_is_additional_and_path_scoped() -> None:
                     }
                 ],
             },
-        }
+        },
     )
     app = create_app(config=config)
     with TestClient(app, raise_server_exceptions=False) as client:
@@ -207,11 +220,13 @@ def test_traffic_policy_endpoint_limit_is_additional_and_path_scoped() -> None:
 
 def test_traffic_policy_principal_limit_uses_authenticated_profile(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     from open_workflow_agent.api import create_app
 
     monkeypatch.setenv("TRAFFIC_POLICY_TOKEN", "traffic-token")
-    config = RuntimeConfig.model_validate(
+    config = _test_config(
+        tmp_path,
         {
             "model": {"provider": "fake"},
             "server": {"api_security_profile": "partner-auth"},
@@ -235,7 +250,7 @@ def test_traffic_policy_principal_limit_uses_authenticated_profile(
                     }
                 ],
             },
-        }
+        },
     )
     app = create_app(config=config)
     headers = {"Authorization": "Bearer traffic-token"}
@@ -247,11 +262,13 @@ def test_traffic_policy_principal_limit_uses_authenticated_profile(
 
 def test_traffic_policy_principal_limit_uses_a2a_profile(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     from open_workflow_agent.api import create_app
 
     monkeypatch.setenv("A2A_TRAFFIC_POLICY_TOKEN", "a2a-traffic-token")
-    config = RuntimeConfig.model_validate(
+    config = _test_config(
+        tmp_path,
         {
             "model": {"provider": "fake"},
             "a2a": {"enabled": True, "security_profile": "a2a-auth"},
@@ -275,7 +292,7 @@ def test_traffic_policy_principal_limit_uses_a2a_profile(
                     }
                 ],
             },
-        }
+        },
     )
     app = create_app(config=config)
     headers = {"Authorization": "Bearer a2a-traffic-token"}
@@ -284,11 +301,11 @@ def test_traffic_policy_principal_limit_uses_a2a_profile(
         assert client.get("/.well-known/agent-card.json", headers=headers).status_code == 429
 
 
-def test_traffic_policy_rate_limit_enforcement() -> None:
+def test_traffic_policy_rate_limit_enforcement(tmp_path: Path) -> None:
     from open_workflow_agent.api import create_app
-    from open_workflow_agent.config import RuntimeConfig
 
-    config = RuntimeConfig.model_validate(
+    config = _test_config(
+        tmp_path,
         {
             "model": {"provider": "fake"},
             "traffic_policy": {
@@ -296,7 +313,7 @@ def test_traffic_policy_rate_limit_enforcement() -> None:
                 "rate_limit": {"requests_per_second": 0.1, "burst": 2},
                 "concurrency_limit": {"max_concurrent": 100},
             },
-        }
+        },
     )
     app = create_app(config=config)
     client = TestClient(app, raise_server_exceptions=False)
@@ -315,11 +332,11 @@ def test_traffic_policy_rate_limit_enforcement() -> None:
     assert "requests_per_second" in error["details"]
 
 
-def test_traffic_policy_concurrency_limit_enforcement() -> None:
+def test_traffic_policy_concurrency_limit_enforcement(tmp_path: Path) -> None:
     from open_workflow_agent.api import create_app
-    from open_workflow_agent.config import RuntimeConfig
 
-    config = RuntimeConfig.model_validate(
+    config = _test_config(
+        tmp_path,
         {
             "model": {"provider": "fake"},
             "traffic_policy": {
@@ -327,7 +344,7 @@ def test_traffic_policy_concurrency_limit_enforcement() -> None:
                 "rate_limit": {"requests_per_second": 1000, "burst": 1000},
                 "concurrency_limit": {"max_concurrent": 1},
             },
-        }
+        },
     )
     app = create_app(config=config)
 
