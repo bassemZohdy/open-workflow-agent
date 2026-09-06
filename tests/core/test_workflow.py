@@ -17,6 +17,7 @@ from open_workflow_agent.workflow import (
     ExecutionState,
     ExpressionEvaluator,
     WorkflowExecutor,
+    _catch_error_value,
     _catch_matches,
     _duration_seconds,
     _error_details,
@@ -77,6 +78,7 @@ def test_expression_evaluator_supports_paths_templates_and_conditions():
     assert evaluator.evaluate("${ .customer.name }", data) == "Ada"
     assert evaluator.evaluate("Hello ${ .customer.name }", data) == "Hello Ada"
     assert evaluator.evaluate(".items[1]", data) == 3
+    assert evaluator.evaluate(".items | length", data) == 2
     assert evaluator.condition("${ .items[1] == 3 }", data)
 
 
@@ -326,6 +328,22 @@ async def test_try_catches_filtered_raise_and_exports_error(services):
     )
 
     assert result == {"recovered": "controlled failure"}
+
+
+def test_catch_error_value_flattens_workflow_details_without_dropping_outer_fields():
+    assert _catch_error_value(
+        {
+            "code": "tool_error",
+            "message": "request failed",
+            "details": {"type": "urn:error", "status": 404, "instance": "/do/0/task"},
+        }
+    ) == {
+        "code": "tool_error",
+        "message": "request failed",
+        "type": "urn:error",
+        "status": 404,
+        "instance": "/do/0/task",
+    }
 
 
 @pytest.mark.asyncio

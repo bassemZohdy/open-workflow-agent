@@ -44,13 +44,20 @@ def _load_scenarios() -> list[dict[str, Any]]:
                     current = "input"
                 elif "fault with error" in preceding:
                     current = "fault_error"
+                elif "property with value" in preceding:
+                    current = "property_value"
                 elif "event should be delivered" in preceding:
                     current = "event"
                 else:
                     current = "output"
                 buffer = []
             elif line.startswith('    """') and current:
-                blocks[current] = yaml.safe_load("\n".join(buffer))
+                parsed = yaml.safe_load("\n".join(buffer))
+                if current == "property_value":
+                    path = blocks.pop("_property_value_path")
+                    blocks.setdefault("property_values", {})[path] = parsed
+                else:
+                    blocks[current] = parsed
                 current = None
             elif current:
                 buffer.append(line[4:] if line.startswith("    ") else line)
@@ -69,6 +76,13 @@ def _load_scenarios() -> list[dict[str, Any]]:
                 if match:
                     properties = [item.strip().strip("'") for item in match.group(1).split(",")]
                     blocks.setdefault("properties", []).extend(properties)
+                match = re.match(
+                    r"    And the workflow output should have a '([^']+)' property with value:",
+                    line,
+                )
+                if match:
+                    blocks.setdefault("property_values", {})[match.group(1)] = None
+                    blocks["_property_value_path"] = match.group(1)
                 if line == "    Then the workflow should fault":
                     blocks["fault"] = True
                 match = re.match(
@@ -114,10 +128,26 @@ async def test_upstream_ctk_portable_profile_scenarios(
         if request.url.path == "/error":
             return httpx.Response(503, json={"error": "controlled protocol failure"})
         if request.url.path == "/v2/pet/1":
-            return httpx.Response(200, json={"id": 1, "name": "ctk-pet"})
+            return httpx.Response(
+                200,
+                json={"id": 1, "name": "ctk-pet", "status": "available"},
+            )
         if request.url.path == "/v2/pet/2":
             return httpx.Response(200, json={"id": 2, "name": "ctk-pet-2"})
+        if request.url.path == "/v2/pet/getPetByName/Milou":
+            return httpx.Response(404, json={"error": "pet not found"})
         if request.url.path == "/v2/pet/findByStatus":
+            return httpx.Response(
+                200,
+                json=[{"id": 1, "name": "ctk-pet", "status": "available"}],
+            )
+        if request.url.path == "/v2/swagger.json":
+            request_body = request.content
+            if b"petId" in request_body:
+                return httpx.Response(
+                    200,
+                    json={"id": 1, "name": "ctk-pet", "status": "available"},
+                )
             return httpx.Response(
                 200,
                 json=[{"id": 1, "name": "ctk-pet", "status": "available"}],
@@ -177,6 +207,12 @@ async def test_upstream_ctk_portable_profile_scenarios(
             assert isinstance(value, dict)
             assert part in value
             value = value[part]
+    for path, expected in scenario.get("property_values", {}).items():
+        value: Any = result.output
+        for part in path.split("."):
+            assert isinstance(value, dict)
+            value = value[part]
+        assert value == expected
     task_names = [
         event.task_name for event in services.events.events if event.event_type == "TaskStarted"
     ]

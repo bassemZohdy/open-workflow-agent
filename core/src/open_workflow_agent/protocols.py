@@ -503,11 +503,34 @@ def _format_response(response: httpx.Response, output: str) -> Any:
     except ValueError:
         body = response.text
     if output == "response":
-        return {
+        formatted: dict[str, Any] = {
             "status": response.status_code,
             "headers": dict(response.headers),
             "body": body,
+            # Keep the compact response keys used by OWA callers while also
+            # exposing the Open Workflow response vocabulary. Request
+            # metadata is deliberately limited to non-sensitive headers.
+            "statusCode": response.status_code,
+            "content": body,
         }
+        try:
+            request = response.request
+        except RuntimeError:
+            request = None
+        formatted["request"] = (
+            {
+                "method": request.method,
+                "uri": str(request.url),
+                "headers": {
+                    key: value
+                    for key, value in request.headers.items()
+                    if key.lower() not in {"authorization", "cookie", "proxy-authorization"}
+                },
+            }
+            if request is not None
+            else {}
+        )
+        return formatted
     return body
 
 

@@ -264,6 +264,19 @@ async def test_http_contract_exposes_bounded_output_modes():
     assert response["status"] == 201
     assert response["body"] == {"created": True}
     assert response["headers"]["x-test"] == "yes"
+    assert response["statusCode"] == 201
+    assert response["content"] == {"created": True}
+    assert response["request"]["method"] == "GET"
+    assert response["request"]["uri"] == "https://service.test"
+
+    request = httpx.Request(
+        "GET",
+        "https://service.test",
+        headers={"Authorization": "Bearer secret", "X-Trace": "ctk"},
+    )
+    safe_response = _format_response(httpx.Response(200, json={}, request=request), "response")
+    assert "authorization" not in {key.lower() for key in safe_response["request"]["headers"]}
+    assert safe_response["request"]["headers"]["x-trace"] == "ctk"
 
 
 def test_unsupported_protocol_transport_fails_during_workflow_validation():

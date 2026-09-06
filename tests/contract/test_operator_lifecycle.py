@@ -286,8 +286,10 @@ async def test_operator_matrix_retry_reuses_side_effect_operation(
     retry_event = next(
         event for event in services.events.events if event.event_type == "TaskRetried"
     )
-    assert retry_event.task_reference == "/do/0/side_effect"
-    assert retry_event.operation_id == f"{handle.invocation_id}:/do/0/side_effect"
+    assert retry_event.task_reference == "/do/0/retry_side_effect/try/0/side_effect"
+    assert retry_event.operation_id == (
+        f"{handle.invocation_id}:/do/0/retry_side_effect/try/0/side_effect"
+    )
     services.close()
 
 

@@ -393,6 +393,25 @@ class ExpressionEvaluator:
         expression = expression.strip()
         while _is_wrapped(expression, "(", ")"):
             expression = expression[1:-1].strip()
+        pipeline = _split_top_level(expression, "|")
+        if len(pipeline) > 1:
+            result = self._evaluate_atom(pipeline[0], data, variables)
+            for stage in pipeline[1:]:
+                stage = stage.strip()
+                if stage == "length":
+                    if result is None:
+                        result = 0
+                    elif isinstance(result, (Mapping, Sequence)) and not isinstance(
+                        result, (str, bytes)
+                    ):
+                        result = len(result)
+                    elif isinstance(result, str):
+                        result = len(result)
+                    else:
+                        raise ExpressionError("length filter requires an array, object, or string")
+                else:
+                    result = self._evaluate_atom(stage, result, variables)
+            return result
         if expression in (".", "$"):
             return data
         if expression.startswith("@"):
@@ -664,7 +683,16 @@ class WorkflowExecutor:
                 )
                 raise
             except Exception as exc:
-                if isinstance(exc, WorkflowExecutionError):
+                if isinstance(
+                    exc,
+                    (
+                        WorkflowExecutionError,
+                        WorkflowSemanticError,
+                        UnsupportedWorkflowFeature,
+                        ExpressionError,
+                        ToolError,
+                    ),
+                ):
                     exc.details.setdefault("instance", reference)
                 self._emit(
                     "TaskFaulted",
@@ -783,6 +811,7 @@ class WorkflowExecutor:
     async def _run_task(
         self, name: str, definition: Mapping[str, Any], state: ExecutionState
     ) -> Any:
+        task_reference = str(state.variables.get("_task_reference", "/do"))
         if "if" in definition and not self.expressions.condition(
             definition["if"], state.data, variables=state.variables
         ):
@@ -830,18 +859,30 @@ class WorkflowExecutor:
         if "fork" in definition:
             return await self._run_fork(definition["fork"], state)
         if "do" in definition:
-            await self._run_tasks(_task_body(definition["do"]), state)
+            await self._run_tasks(
+                _task_body(definition["do"]),
+                state,
+                prefix=f"{task_reference}/do",
+            )
             return state.data
         if "try" in definition:
             catch = definition.get("catch") or definition.get("except")
             if catch is None:
-                await self._run_tasks(_task_body(definition["try"]), state)
+                await self._run_tasks(
+                    _task_body(definition["try"]),
+                    state,
+                    prefix=f"{task_reference}/try",
+                )
                 return state.data
             catch_retry = catch.get("retry") if isinstance(catch, Mapping) else None
             attempts = _retry_attempts(catch_retry)
             for attempt in range(attempts):
                 try:
-                    await self._run_tasks(_task_body(definition["try"]), state)
+                    await self._run_tasks(
+                        _task_body(definition["try"]),
+                        state,
+                        prefix=f"{task_reference}/try",
+                    )
                     return state.data
                 except Exception as exc:
                     if isinstance(exc, InvocationCancelled):
@@ -872,8 +913,12 @@ class WorkflowExecutor:
                         continue
                     as_name = catch.get("as", "error")
                     if isinstance(as_name, str):
-                        state.variables[as_name] = error
-                    await self._run_tasks(_task_body(catch.get("do", [])), state)
+                        state.variables[as_name] = _catch_error_value(error)
+                    await self._run_tasks(
+                        _task_body(catch.get("do", [])),
+                        state,
+                        prefix=f"{task_reference}/catch/do",
+                    )
                     self._apply_transition(catch.get("then"), state)
                     return state.data
         if "wait" in definition:
@@ -968,11 +1013,19 @@ class WorkflowExecutor:
             ):
                 body = case.get("do")
                 if body is not None:
-                    await self._run_tasks(_task_body(body), state)
+                    await self._run_tasks(
+                        _task_body(body),
+                        state,
+                        prefix=self._nested_prefix(state, "switch"),
+                    )
                 self._apply_transition(case.get("then"), state)
                 return state.data
         if otherwise is not None:
-            await self._run_tasks(_task_body(otherwise), state)
+            await self._run_tasks(
+                _task_body(otherwise),
+                state,
+                prefix=self._nested_prefix(state, "switch/otherwise"),
+            )
         return state.data
 
     async def _run_for(self, definition: Any, state: ExecutionState) -> Any:
@@ -1000,7 +1053,7 @@ class WorkflowExecutor:
             )
             child.variables[variable] = value
             child.variables["index"] = index
-            await self._run_tasks(body, child)
+            await self._run_tasks(body, child, prefix=self._nested_prefix(child, "do"))
             state.data = child.data
             results.append(child.data)
         if definition.get("output") == "array":
@@ -1017,7 +1070,7 @@ class WorkflowExecutor:
         if not isinstance(branches, list):
             raise WorkflowSemanticError("fork branches must be a list")
 
-        async def run_branch(branch: Any) -> Any:
+        async def run_branch(index: int, branch: Any) -> Any:
             child = ExecutionState(
                 copy.deepcopy(state.data),
                 dict(state.outputs),
@@ -1027,11 +1080,15 @@ class WorkflowExecutor:
             await self._run_tasks(
                 _task_body(branch.get("do", branch) if isinstance(branch, Mapping) else branch),
                 child,
+                prefix=self._nested_prefix(child, f"branches/{index}"),
             )
             return child.data
 
         if compete:
-            branch_tasks = [asyncio.create_task(run_branch(branch)) for branch in branches]
+            branch_tasks = [
+                asyncio.create_task(run_branch(index, branch))
+                for index, branch in enumerate(branches)
+            ]
             if not branch_tasks:
                 return state.data
             done, pending = await asyncio.wait(branch_tasks, return_when=asyncio.FIRST_COMPLETED)
@@ -1040,7 +1097,9 @@ class WorkflowExecutor:
             await asyncio.gather(*pending, return_exceptions=True)
             return next(iter(done)).result()
 
-        results = await asyncio.gather(*(run_branch(branch) for branch in branches))
+        results = await asyncio.gather(
+            *(run_branch(index, branch) for index, branch in enumerate(branches))
+        )
         if results and all(isinstance(result, Mapping) for result in results):
             merged = dict(state.data) if isinstance(state.data, Mapping) else {}
             for result in results:
@@ -1223,6 +1282,11 @@ class WorkflowExecutor:
     def _control(self, state: ExecutionState) -> LifecycleControl | None:
         control = state.context.get("_lifecycle")
         return control if isinstance(control, LifecycleControl) else None
+
+    @staticmethod
+    def _nested_prefix(state: ExecutionState, suffix: str) -> str:
+        parent = str(state.variables.get("_task_reference", "/do"))
+        return f"{parent}/{suffix}"
 
     def _token(self, state: ExecutionState) -> Any:
         control = self._control(state)
@@ -1430,6 +1494,16 @@ def _error_details(error: Exception) -> dict[str, Any]:
     if hasattr(error, "as_dict"):
         return cast(dict[str, Any], error.as_dict())
     return {"code": "workflow_execution_error", "message": str(error), "details": {}}
+
+
+def _catch_error_value(error: Mapping[str, Any]) -> dict[str, Any]:
+    """Expose OWS error fields to catch handlers without changing API errors."""
+
+    value = dict(error)
+    details = value.pop("details", None)
+    if isinstance(details, Mapping):
+        value.update(details)
+    return value
 
 
 def _duration_seconds(value: Any) -> float | None:
