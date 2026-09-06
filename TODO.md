@@ -14,61 +14,12 @@ Verified implementation detail lives in `PROJECT.md` and is updated after every 
 
 ## Active Backlog
 
-### P0 — Security hardening
-
-- [x] **SECURITY-5** — wire OAuth2 client-credentials and mTLS security profile types into outbound protocol adapters (`protocols.py`) so workflows can call HTTPS/client-cert-protected endpoints using named profiles. Shipped: OAuth2 tokens are cached until expiry; mTLS provides client certificates to httpx.
-- [x] **SECURITY-7** — add an optional built-in API authentication layer for the main HTTP API (`/v1/*` endpoints). Shipped: `ApiAuthenticationMiddleware` supports bearer tokens and API keys via named security profiles; health endpoints remain unprotected.
-- [x] **SECURITY-8** — add security response headers middleware. Shipped: configurable `server.security_headers` defaults for content-type sniffing, framing, CSP, and TLS-aware HSTS; duplicate response headers are preserved and deterministic tests cover HTTP, HTTPS, overrides, and disabled mode.
-
 ### P0 — Deployment readiness
 
 - [ ] **DEPLOY-1** — add OpenShift-specific SCC/security-context/arbitrary-UID sandbox acceptance. Shipped locally: the controller leaves the workload UID unset for OpenShift SCC allocation, and `tests/ci/openshift_sandbox_acceptance.sh` verifies SCC assignment, arbitrary-UID execution, security context, RBAC, network denial, workspace writes, and cleanup. OpenShift-specific enforcement is not checked until the harness passes against a real cluster.
-- [x] **DEPLOY-2** — publish multi-arch Docker images (`linux/amd64` + `linux/arm64`) for the runtime and sandbox controller images. Shipped: the protected release workflow enables QEMU and publishes both architectures for all runtime and sandbox-controller image tags; vulnerability scanning remains on the loadable amd64 build before publication.
-
-### P1 — Observability
-
-- [x] **OBS-1** — add a Prometheus `/metrics` endpoint exposing invocation counts, latency histograms, active invocations, scheduler jobs, approval queue depth, sandbox execution stats, traffic policy counters, and A2A request/error rates. Shipped: dependency-free bounded registry, lifecycle/event-sink instrumentation, HTTP surface middleware, and durable scheduler/approval gauges with endpoint tests and documentation.
-- [x] **OBS-2** — add structured JSON logging support. Shipped: `JsonFormatter` for structured logging; configurable via `observability.structured_logging` and `observability.log_format`.
-
-### P1 — Dependency hygiene
-
-- [x] **DEPS-1** — move `numpy` and `pypdf` from core hard dependencies to an optional `[knowledge]` extra. Shipped in both the root and standalone `core` packages, with deferred imports and locked/build metadata verification.
-- [x] **DEPS-2** — fix ruff `target-version` from `"py311"` to `"py312"` in `pyproject.toml`. The project requires `python >= 3.12` but the linter targets `py311`, which disables 3.12-specific checks.
-- [x] **DEPS-3** — enable mypy for engine packages. Shipped: strict package checks now cover core, ADK, LangGraph, and optional Agent Framework adapters; incomplete native SDK imports are isolated through explicit package overrides, and adapter-owned signatures remain checked.
-- [x] **DEPS-4** — add input/output schema definitions to runtime catalog `function.yaml` files. Shipped for the built-in `agent:1.0.0` and `llm:1.0.0` functions with JSON Schema validation tests.
-
-### P1 — Documentation
-
-- [x] **DOCS-1** — document the memory API (`/v1/memory` or equivalent add/search/delete endpoints). Shipped: `docs/api.md` documents the built-in `add_memory`, `search_memory`, and `delete_memory` contracts, limits, configuration, and their separation from engine checkpoint state.
-- [x] **DOCS-2** — document the scheduling API (`/v1/schedules` endpoints for create/get/cancel). Shipped: `docs/api.md` documents durable schedule creation, workflow-owned schedule rules, idempotency, state transitions, inspection, and cancellation.
-- [x] **DOCS-3** — document the approvals API (`/v1/approvals` endpoints for list/get/decide). Shipped: `docs/api.md` documents named-profile operator authorization, filters, decision payloads, idempotency, response fields, and durable replay behavior.
-- [x] **DOCS-4** — document the events API (`/v1/events` for publish, `/v1/events/lifecycle` for snapshot, `/v1/events/lifecycle/stream` for SSE). Shipped: `docs/api.md` documents normalized event envelopes, lifecycle media types, bounded stream controls, replay cursors, and non-durable generic delivery.
-- [x] **DOCS-5** — publish a machine-readable OpenAPI specification for the HTTP API. Shipped: versioned default-profile `docs/openapi.json`, documented runtime `/openapi.json` discovery, and a regression test that compares the artifact with FastAPI's generated schema.
-- [x] **DOCS-6** — create an architecture overview document for new contributors. Shipped: `docs/architecture-overview.md` covers the runtime pipeline, module structure, extension points, configuration, and test layout.
-- [x] **DOCS-7** — document how to author custom catalog functions. Shipped: `docs/custom-catalog-functions.md` covers repository layout, versioned references, manifests, supported protocol calls, deployment trust policy, security restrictions, and verification.
-- [x] **DOCS-8** — update `docs/a2a-streaming-evaluation.md` to reflect that A2A streaming is now implemented. Shipped: the document now records the bounded streaming/resubscription implementation, guarantees, capabilities, and deferred broader conformance work.
-- [x] **DOCS-9** — add example configurations for common use cases. Shipped: deployment recipes for A2A skills, bearer/API-key/OAuth2/mTLS profiles, traffic policy, Docker/Kubernetes sandbox backends, MCP/OpenAPI/A2A tools, and PostgreSQL persistence, linked from `examples/README.md`.
-
 ### P1 — Testing
 
 - [ ] **TEST-1** — expand the Open Workflow CTK subset. The selected suite now covers 22 feature files, 42 scenarios, and 84 deterministic executions, including pinned upstream data-flow filtering, HTTP and OpenAPI content/response output projections, caught and uncaught protocol errors, portable `emit`, `listen`, built-in catalog `call`, registered child-workflow `run`, successful and failing HTTP/MCP/A2A/OpenAPI protocol calls, input rejection, flow, policy, transform, validation, nested-input, sequence, and retry scenarios through both engines. Remaining expansion includes broader upstream CTK coverage and other CTK features that are or claim to be implemented.
-- [x] **TEST-2** — add performance benchmarks for the core runtime pipeline (workflow compilation, invocation latency, concurrency throughput). Shipped: dependency-free JSON benchmark harness under `benchmarks/`, smoke-tested with deterministic fake-model runs and documented for repeatable local/CI comparison.
-- [x] **TEST-3** — increase the core coverage threshold from 80% to 90%. Shipped: expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths; the full suite reports 90.24% exact core coverage (616/6313 statements missed) and CI now enforces `--cov-fail-under=90`.
-- [x] **TEST-4** — add mutation testing to validate test quality. Shipped: a Linux/WSL-compatible mutmut job targets the framework-neutral traffic-policy middleware with 13 direct tests; the current baseline generates 316 mutants (272 killed, 22 surviving, 18 timed out, and 4 without test association), making surviving behavior an explicit follow-up signal rather than an unmeasured gap.
-- [x] **TEST-5** — add load/stress testing for concurrent invocations. Shipped: deterministic 100-request async stress coverage verifies the traffic policy bounds active concurrency and enforces burst admission without external services.
-
-### P2 — Kubernetes deployment
-
-- [x] **K8S-1** — create a Helm chart for Kubernetes deployment. Shipped: `deploy/helm/open-workflow-agent` parameterizes the runtime image/engine, PVC, security context, network policy, optional Ingress/HTTPRoute, and optional Prometheus resources; `helm lint` and rendered integration tests pass.
-- [x] **K8S-2** — add Ingress/Gateway API resource templates to the deployment manifests. Shipped: optional `deploy/kubernetes/edge-routes.yaml` contains an Ingress and Gateway API `HTTPRoute` targeting the reference `owa-adk` Service, with deployment-owned host/TLS/Gateway placeholders and targeted manifest tests.
-- [x] **K8S-3** — add NetworkPolicy for the runtime namespace. Shipped: default-deny ingress/egress with explicit runtime ingress and deployment-approved DNS, HTTPS, PostgreSQL, and sandbox-controller egress, covered by manifest tests.
-- [x] **K8S-4** — add monitoring/alerting rule templates. Shipped: optional Prometheus Operator `ServiceMonitor` and `PrometheusRule` resources scrape `/metrics` and alert on HTTP error rate, p95 latency, and sandbox failures; targeted manifest tests verify the metric families and labels.
-
-### P2 — Architecture
-
-- [x] **ARCH-1** — add dependency health checks to `/health/ready`. Shipped: ready endpoint now checks database, knowledge, and model services and reports degraded status if any fail.
-- [x] **ARCH-2** — add CORS configuration support. Shipped: configurable CORS origins, methods, headers, and credentials via `server.cors_*` configuration.
-- [x] **ARCH-3** — add per-endpoint or per-principal rate limiting to the traffic policy. Shipped: global limits now compose with the longest matching endpoint-prefix scope and authenticated principal scope; HTTP and bounded A2A bearer identities are propagated before admission, and capability/configuration/enforcement tests cover the behavior.
 
 ## Intentionally Deferred
 
