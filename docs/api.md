@@ -306,7 +306,7 @@ a2a:
   max_message_chars: 100000
 ```
 
-`a2a.security_profile` must name an entry in `security.profiles` of type `bearer`; the runtime rejects the configuration at startup otherwise. Only bearer-token authentication is wired today.
+`a2a.security_profile` must name an entry in `security.profiles` of type `bearer`; the runtime rejects the configuration at startup otherwise. Inbound A2A authentication uses bearer tokens; outbound protocol adapters additionally support API keys, OAuth2 client credentials, and mTLS.
 
 Per-principal authorization is enforced through `a2a.authorization` rules. The authenticated principal comes from the profile's declared `principal`/`roles`/`scopes`/`audience` attributes, and each operation is checked against the policy vocabulary:
 
@@ -318,7 +318,7 @@ tasks.cancel   on tasks
 
 First matching rule allows; no match denies with HTTP `403` (`"forbidden"`).
 Without a policy, all authenticated operations are allowed. Declaring an
-authorization policy without a security profile fails at startup (`SECURITY-4`).
+authorization policy without a security profile fails at startup.
 
 Declared skills are advertised on the Agent Card and selected by clients
 through `message.metadata.skillId`; routing is deployment-owned and unknown

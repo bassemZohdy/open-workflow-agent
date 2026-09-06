@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**v0.1.0 is released. Current `main` is unreleased pre-stable work focused on deployment readiness, observability, dependency hygiene, and broader test/documentation coverage.**
+**v0.1.0 is released. Current `main` is unreleased pre-stable work focused on deployment readiness and broader test coverage.**
 
 The public product contract is still stabilizing. External A2A wire behavior targets the official A2A v1 definitions. Open Workflow 1.0.3 keeps its own schema-defined A2A call vocabulary; OWA translates that vocabulary to the selected A2A wire operation at the runtime protocol boundary rather than changing the Open Workflow schema.
 

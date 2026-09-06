@@ -1,6 +1,6 @@
 # External Sandbox Backend Contract
 
-Status: B-006.1 implementation baseline.
+Status: implementation baseline.
 
 ## Goal
 

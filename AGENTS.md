@@ -24,7 +24,7 @@ Treat `Project Definition.md` as authoritative; read it before implementation. U
 
 Use strict typed Python, four-space indentation, deterministic fakes, and no paid APIs in tests. Keep engine dependency environments independent and never install packages at container startup or as part of sandbox execution. Preserve Open Workflow task references, translate framework exceptions into the common error contract, and run the relevant contract suite after engine changes.
 
-For sandbox work, follow `docs/sandbox-execution.md` and the sandbox acceptance items in `TODO.md` (B-006.3 owns Kubernetes/OpenShift real-cluster acceptance). The internal sandbox and Docker backend are merged with acceptance recorded in `PROJECT.md`; do not advertise `run.script`, `run.shell`, or `run.container`, or the Kubernetes/OpenShift backend, beyond the acceptance gates already proven green.
+For sandbox work, follow `docs/sandbox-execution.md` and the sandbox acceptance items in `TODO.md` (`DEPLOY-1` owns Kubernetes/OpenShift real-cluster acceptance). The internal sandbox and Docker backend are merged with acceptance recorded in `PROJECT.md`; do not advertise `run.script`, `run.shell`, or `run.container`, or the Kubernetes/OpenShift backend, beyond the acceptance gates already proven green.
 
 ## Security
 

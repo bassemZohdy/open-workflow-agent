@@ -225,7 +225,7 @@ Agent Card now advertises `securitySchemes` and `security` requirements when aut
 
 ## Remaining A2A Work
 
-The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). All active backlog items are complete.
+The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining active work is listed in `TODO.md`.
 
 The official A2A v1 semantics are the guide: ordinary `SendMessage` blocks by default, while `returnImmediately=true` is the protocol-native non-blocking request and returns Task state for later `GetTask`/subscription. OWA will not add a custom async flag.
 
@@ -336,12 +336,10 @@ The relevant core tests, package builds, lock checks, repository-wide Ruff, form
 The authoritative ordered backlog is `TODO.md`. Current priorities are:
 
 1. OpenShift sandbox acceptance;
-2. CTK expansion and maintaining the 90% core coverage gate;
-3. Strengthening the mutation baseline, especially surviving traffic-policy mutants.
+2. CTK expansion while maintaining the 90% core coverage gate.
 
 ## Intentionally Deferred
 
-- OpenShift-specific sandbox acceptance until an OpenShift cluster is available.
 - A2A push notifications.
 - Broad/full A2A conformance claim until async/streaming/interoperability gates are green.
 - Microsoft Agent Framework production image/release status.

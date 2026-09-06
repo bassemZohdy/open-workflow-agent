@@ -156,7 +156,7 @@ The old single A2A bearer field (`a2a.auth_token`) has been removed. OWA has no 
 
 The same policy removed the remaining ad-hoc credential surfaces: external-catalog authentication (`bearer_token_env`, `basic_username_env`, `basic_password_env`) and the ambient outbound protocol credentials (`OWA_BEARER_TOKEN_ENV`, `OWA_BASIC_USERNAME_ENV`, `OWA_BASIC_PASSWORD_ENV`) are gone. All protocol, catalog, tool, and approval credentials now resolve exclusively through named `security.profiles`.
 
-The target schema is defined in [protocol-security-decisions.md](protocol-security-decisions.md) and tracked by `SECURITY-1` through `SECURITY-4` in `TODO.md`. Profile definitions (`security.profiles`, `type`, `token`), A2A bearer authentication (`a2a.security_profile`), and per-principal A2A authorization (`a2a.authorization`) are implemented and strict-parsed today.
+The target schema is defined in [protocol-security-decisions.md](protocol-security-decisions.md). Profile definitions (`security.profiles`, `type`, `token`), A2A bearer authentication (`a2a.security_profile`), and per-principal A2A authorization (`a2a.authorization`) are implemented and strict-parsed today; verified implementation status is recorded in `PROJECT.md`.
 
 ## Shared security profiles
 
@@ -359,7 +359,7 @@ GET /.well-known/agent-card.json
 
 JSON-RPC uses `SendMessage`; HTTP+JSON uses `/a2a/message:send`. Legacy v0.3 discovery paths, `message/send`, and legacy Part forms are intentionally not retained.
 
-Persistent A2A Tasks, Task get/cancel, multi-skill routing, async Task behavior, and streaming/resubscription remain backlog items and must not be advertised as implemented until their gates are green.
+Persistent A2A Tasks, Task get/cancel, multi-skill routing, async Task behavior, and streaming/resubscription are implemented in the bounded inbound profile and are advertised only through the verified capabilities for the selected deployment.
 
 ## `sandbox`
 

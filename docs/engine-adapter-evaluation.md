@@ -1,6 +1,6 @@
 # Additional Engine Adapter Evaluation
 
-Status: B-008 selection groundwork. The Microsoft Agent Framework native adapter (`engines/agent-framework/`) is merged as an optional package behind `agent-framework-core==1.15.0` with an exact lock; it is not yet a production image/release target (see `TODO.md` B-008 for the remaining production gates).
+Status: selection groundwork. The Microsoft Agent Framework native adapter (`engines/agent-framework/`) is merged as an optional package behind `agent-framework-core==1.15.0` with an exact lock; it is not yet a production image/release target (see the intentionally deferred items in `TODO.md` for its remaining production gates).
 
 ## Decision criteria
 
@@ -29,7 +29,7 @@ Current Python package metadata identifies `agent-framework` / `agent-framework-
 
 - validates that the common execution plan is not accidentally shaped only around ADK/LangGraph concepts;
 - provides a third implementation with a different workflow runtime and checkpoint model;
-- has first-class workflow/agent composition and current A2A-facing patterns, useful after B-007 boundaries are finalized;
+- has first-class workflow/agent composition and current A2A-facing patterns, useful after the public A2A/streaming boundaries are finalized;
 - Python support aligns with the existing repository/toolchain;
 - MIT licensing is compatible with an independent optional adapter package.
 
@@ -63,13 +63,13 @@ Pydantic AI is MIT licensed and provides a typed agent runtime with broad provid
 
 ## Provisional selection
 
-**Microsoft Agent Framework is the preferred B-008 third-engine candidate**, subject to a dependency/lock/image-size spike after B-006 and the B-007 boundary work are stable.
+**Microsoft Agent Framework is the preferred optional third-engine candidate**, subject to a dependency/lock/image-size spike after the sandbox contract and public A2A/streaming boundaries are stable.
 
 This is intentionally a selection decision only. Do not add the dependency or advertise the engine until the following gate is met:
 
-1. B-005 production acceptance is recorded as green.
-2. B-006 backend-neutral sandbox contract is stable.
-3. B-007 A2A/streaming capability boundaries are finalized so engine-native streaming does not redefine the public contract.
+1. Existing runtime production acceptance is recorded as green.
+2. The backend-neutral sandbox contract is stable.
+3. Public A2A/streaming capability boundaries are finalized so engine-native streaming does not redefine the public contract.
 4. A dependency spike proves an independent Microsoft Agent Framework adapter can remain below the project image-size gate without pulling unrelated Azure/provider packages.
 
 ## Adapter shape

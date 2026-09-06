@@ -302,7 +302,7 @@ docker compose --profile langgraph up --build
 
 Remote CI additionally validates image metadata/size, container acceptance, PostgreSQL persistence, selected CTK coverage, and stop/restart/resume behavior.
 
-Container acceptance verifies internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container. Docker external-sandbox acceptance runs on the self-hosted Docker runner; Kubernetes/OpenShift real-cluster acceptance is tracked separately in `TODO.md` B-006.3.
+Container acceptance verifies internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container. Docker external-sandbox acceptance runs on the self-hosted Docker runner; Kubernetes/OpenShift real-cluster acceptance is tracked separately in `TODO.md` under `DEPLOY-1`.
 
 ### Base image updates
 
@@ -315,7 +315,7 @@ All runtime and controller Dockerfiles pin their base images by digest (`python:
 
 ### Kubernetes sandbox acceptance with kind
 
-To reproduce the B-006.3 Kubernetes acceptance locally:
+To reproduce the Kubernetes sandbox acceptance locally:
 
 1. Create a cluster with a NetworkPolicy-enforcing CNI (kindnet does not enforce policy):
    `kind create cluster --name owa-acceptance`, then install Calico (patch `CALICO_IPV4POOL_CIDR` to the kind pod CIDR `10.244.0.0/16`).

@@ -2,7 +2,7 @@
 
 This document defines the approved execution-isolation architecture for Open Workflow Agent. The internal sandbox, the Docker external backend with its restricted Unix-socket controller, and the Kubernetes/OpenShift controller boundary are implemented behind deployment-controlled configuration (`sandbox:` in the runtime configuration; see [configuration.md](configuration.md)).
 
-Default behavior remains fail-closed: `run.shell`, `run.script`, and `run.container` are rejected unless the deployment explicitly enables a sandbox backend, and `/v1/capabilities` reports only the controls actually enforced by the selected backend. Kubernetes/OpenShift container execution is advertised only after its real-cluster acceptance gates are green (see `TODO.md` B-006.3).
+Default behavior remains fail-closed: `run.shell`, `run.script`, and `run.container` are rejected unless the deployment explicitly enables a sandbox backend, and `/v1/capabilities` reports only the controls actually enforced by the selected backend. Kubernetes/OpenShift container execution is advertised only after its real-cluster acceptance gates are green (see `TODO.md` `DEPLOY-1`).
 
 ## Goals
 
@@ -259,7 +259,7 @@ The implemented Docker backend talks to a separately controlled execution compon
 
 A Kubernetes/OpenShift backend creates isolated ephemeral Pods in a dedicated sandbox namespace/project using a narrowly scoped ServiceAccount held by the restricted controller (`kubernetes-sandbox-controller/`), reachable only on a loopback endpoint from the runtime.
 
-Expected controls include non-root execution, no privileged mode, no host namespaces, no host-path mounts, resource requests/limits, bounded ephemeral storage, network policy, approved images/registries, and cleanup/TTL behavior. Real-cluster acceptance (including OpenShift SCC/security-context behavior) is still pending; see `TODO.md` B-006.3.
+Expected controls include non-root execution, no privileged mode, no host namespaces, no host-path mounts, resource requests/limits, bounded ephemeral storage, network policy, approved images/registries, and cleanup/TTL behavior. Real-cluster acceptance (including OpenShift SCC/security-context behavior) is still pending; see `TODO.md` `DEPLOY-1`.
 
 ## Backend selection
 

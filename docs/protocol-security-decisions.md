@@ -68,7 +68,7 @@ mtls
 
 Do not add uncommon, legacy, or vendor-specific mechanisms without a demonstrated requirement.
 
-Conceptual target schema:
+Current schema:
 
 ```yaml
 security:
@@ -80,14 +80,13 @@ security:
 
     partner-api:
       type: api_key
-      location: header
-      name: X-API-Key
-      value:
+      header: X-API-Key
+      key:
         from_env: PARTNER_API_KEY
 
     internal-service:
       type: oauth2_client_credentials
-      token_endpoint: https://identity.example.com/oauth2/token
+      token_url: https://identity.example.com/oauth2/token
       client_id:
         from_env: INTERNAL_CLIENT_ID
       client_secret:
@@ -100,11 +99,14 @@ security:
         from_env: OWA_CLIENT_CERT_PATH
       private_key:
         from_env: OWA_CLIENT_KEY_PATH
-      ca_certificate:
+      ca_bundle:
         from_env: OWA_CA_CERT_PATH
 ```
 
-These examples describe the target model. The `bearer` profile shape (`type`, `token.from_env`) is implemented and consumed by A2A inbound authentication today; the `api_key`/`oauth2_client_credentials`/`mtls` field names above are illustrative only and do not yet match the strict parser (see `core/src/open_workflow_agent/security.py` for the authoritative current fields). They become authoritative once a real adapter consumes them and `SECURITY-1` through `SECURITY-4` are fully green.
+These examples describe the implemented model. Inbound A2A authentication uses
+the `bearer` profile; outbound protocol adapters also consume `api_key`,
+`oauth2_client_credentials`, and `mtls` profiles. The strict parser in
+`core/src/open_workflow_agent/security.py` is authoritative for field details.
 
 ## 5. Authorization vocabulary
 
@@ -166,7 +168,7 @@ a2a:
   security_profile: partner-agent
 ```
 
-The previous single A2A bearer field (`auth_token`) was a temporary implementation detail, not a compatibility contract. It has been removed now that the shared profile model is wired for A2A inbound authentication; `a2a.security_profile` must reference a `bearer`-type entry in `security.profiles`. Nested `authorization` (roles/scopes/permissions enforcement) shown above remains conceptual and is not yet parsed or enforced (`SECURITY-4`).
+The previous single A2A bearer field (`auth_token`) was a temporary implementation detail, not a compatibility contract. It has been removed now that the shared profile model is wired for A2A inbound authentication; `a2a.security_profile` must reference a `bearer`-type entry in `security.profiles`. The nested `authorization` policy shown above is parsed and enforced against the authenticated principal.
 
 ## 7. Secret handling
 
