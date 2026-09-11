@@ -46,7 +46,8 @@ def test_release_publishes_controller_images_for_both_architectures() -> None:
     assert set(published[0]["platforms"].split(",")) == {"linux/amd64", "linux/arm64"}
 
 
-def test_docker_controller_removes_unused_compose_plugin_from_base_paths() -> None:
+def test_docker_controller_removes_unused_cli_plugins_from_base_paths() -> None:
     dockerfile = (ROOT / "docker" / "Dockerfile.sandbox-controller").read_text(encoding="utf-8")
-    assert "/usr/libexec/docker/cli-plugins/docker-compose" in dockerfile
-    assert "/usr/local/libexec/docker/cli-plugins/docker-compose" in dockerfile
+    for plugin in ("docker-compose", "docker-buildx"):
+        assert f"/usr/libexec/docker/cli-plugins/{plugin}" in dockerfile
+        assert f"/usr/local/libexec/docker/cli-plugins/{plugin}" in dockerfile
