@@ -17,6 +17,7 @@ The public contract remains Open Workflow 1.0.3. The runtime uses a framework-ne
 - [x] **VALIDATE-1** — reject non-positive protocol timeouts before they are reduced to a misleading near-zero network timeout.
 - [x] **DOCS-1** — correct the architecture guide and engine READMEs so sandbox and native-engine claims match the implementation.
 - [x] **CI-1a** — add a lightweight Markdown relative-link workflow for documentation-only changes, while keeping the full code/test workflow scoped to code changes.
+- [x] **RELEASE-1** — remove the unused Docker Compose CLI plugin from the restricted Docker sandbox controller image after the merged-head release scan identified it as a high-severity, fixed gRPC dependency finding.
 
 ## Active backlog
 

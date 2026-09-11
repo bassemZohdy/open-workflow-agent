@@ -7,6 +7,9 @@ FROM docker:29.7.2-cli@sha256:3f4743208d2338c934d7b8bcfbe1bb54c0b2355c510ad5e0f3
 # runtime, so this does not violate the no-runtime-install boundary.
 RUN apk upgrade --no-cache \
     && apk add --no-cache python3 py3-pip \
+    # The controller invokes the Docker CLI directly; Compose is unused and
+    # would add an avoidable scanned attack surface to the release image.
+    && rm -f /usr/local/libexec/docker/cli-plugins/docker-compose \
     && python3 -m venv /opt/venv
 
 ENV PATH="/opt/venv/bin:/usr/local/bin:/usr/bin:/bin" \
