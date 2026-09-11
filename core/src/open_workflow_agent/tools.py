@@ -8,7 +8,7 @@ from typing import Any
 
 from .config import ToolConfig
 from .errors import ToolError
-from .protocols import AuthenticationProvider, ProtocolServices
+from .protocols import AuthenticationProvider, ProtocolServices, _merge_authoritative_headers
 from .security import ProfileAuthentication, SecurityConfig
 
 
@@ -95,14 +95,15 @@ class ToolRegistry:
             if tool.type == "mcp":
                 transport = dict(payload.get("transport") or {})
                 http_transport = dict(transport.get("http") or {})
-                http_transport["headers"] = {
-                    **profile_headers,
-                    **dict(http_transport.get("headers") or {}),
-                }
+                http_transport["headers"] = _merge_authoritative_headers(
+                    dict(http_transport.get("headers") or {}), profile_headers
+                )
                 transport["http"] = http_transport
                 payload["transport"] = transport
             else:
-                payload["headers"] = {**profile_headers, **dict(payload.get("headers") or {})}
+                payload["headers"] = _merge_authoritative_headers(
+                    dict(payload.get("headers") or {}), profile_headers
+                )
         if tool.endpoint and isinstance(payload, dict):
             payload = {**payload, "endpoint": tool.endpoint}
         return await self.protocols.call(tool.type, payload)

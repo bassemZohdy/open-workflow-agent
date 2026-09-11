@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
+import open_workflow_agent.knowledge as knowledge_module
 import pytest
 from open_workflow_agent.errors import KnowledgeError
 from open_workflow_agent.knowledge import (
@@ -59,6 +60,14 @@ def test_embedding_providers_cover_deterministic_and_injected_models(monkeypatch
     assert lazy.embed("hello").tolist() == [6.0, 7.0]
 
 
+def test_fastembed_provider_can_be_constructed_without_optional_numpy(monkeypatch):
+    monkeypatch.setattr(knowledge_module, "NUMPY_AVAILABLE", False)
+    provider = FastEmbedEmbeddingProvider()
+    assert provider.identity.endswith("@ea78891063587eb050ed4166b20062eaf978037c")
+    with pytest.raises(KnowledgeError, match="numpy is required"):
+        provider.embed("hello")
+
+
 def test_knowledge_service_indexes_supported_files_and_watches_changes(tmp_path: Path):
     root = tmp_path / "knowledge"
     database = tmp_path / "knowledge.sqlite3"
@@ -95,6 +104,13 @@ def test_knowledge_service_indexes_supported_files_and_watches_changes(tmp_path:
         assert "topic" in service._parse(root / "config.yaml")
         with pytest.raises(KnowledgeError, match="unable to parse"):
             service._parse(root / "missing.txt")
+
+        assert service.reload() == {"added": 1, "updated": 0, "deleted": 0, "unchanged": 2}
+        service.chunk_size = 1
+        service.chunk_overlap = 0
+        assert service.reload() == {"added": 0, "updated": 3, "deleted": 0, "unchanged": 0}
+        with pytest.raises(KnowledgeError, match="limit must be between"):
+            service.search("alpha", limit=101)
     finally:
         service.close()
 

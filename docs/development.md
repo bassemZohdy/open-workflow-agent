@@ -147,14 +147,14 @@ uv build --directory core
 ADK:
 
 ```bash
-uv run --directory engines/adk --locked --extra native --with pytest --with pytest-asyncio \
+uv run --directory engines/adk --locked --extra native --extra knowledge --with pytest --with pytest-asyncio \
   pytest ../../tests/adk ../../tests/contract ../../tests/ctk -q
 ```
 
 LangGraph:
 
 ```bash
-uv run --directory engines/langgraph --locked --extra sqlite --with pytest --with pytest-asyncio \
+uv run --directory engines/langgraph --locked --extra sqlite --extra knowledge --with pytest --with pytest-asyncio \
   pytest ../../tests/langgraph ../../tests/contract ../../tests/ctk -q
 ```
 

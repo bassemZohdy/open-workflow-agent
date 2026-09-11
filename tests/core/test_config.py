@@ -247,6 +247,14 @@ def test_a2a_validation_normalizes_paths_and_rejects_duplicate_skills() -> None:
         )
     with pytest.raises(ValueError, match="absolute http"):
         A2AConfig.model_validate({"public_base_url": "ftp://example.test"})
+    for value in (
+        "https://user:password@example.test",
+        "https://example.test?token=secret",
+        "https://example.test/#fragment",
+        "https://[invalid",
+    ):
+        with pytest.raises(ValueError, match="public_base_url"):
+            A2AConfig.model_validate({"public_base_url": value})
 
 
 @pytest.mark.parametrize(

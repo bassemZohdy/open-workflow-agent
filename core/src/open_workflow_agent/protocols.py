@@ -89,10 +89,17 @@ class HttpClient:
             raise ToolError(f"unsupported HTTP output mode: {output}")
         headers = dict(kwargs.pop("headers", {}) or {})
         if self.authentication:
-            headers = {**self.authentication.headers(endpoint), **headers}
+            # Deployment-owned authentication and operation identity cannot be
+            # replaced by workflow-provided headers.
+            headers = _merge_authoritative_headers(headers, self.authentication.headers(endpoint))
         if operation_id:
-            headers.setdefault("X-OWA-Operation-ID", operation_id)
-            headers.setdefault("Idempotency-Key", operation_id)
+            headers = _merge_authoritative_headers(
+                headers,
+                {
+                    "X-OWA-Operation-ID": operation_id,
+                    "Idempotency-Key": operation_id,
+                },
+            )
         if headers:
             kwargs["headers"] = headers
         try:
@@ -158,11 +165,25 @@ class HttpClient:
             raise ToolError(f"HTTP request failed: {exc}") from exc
 
     def _check_endpoint(self, endpoint: str) -> None:
-        parsed = urlparse(endpoint)
-        if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        try:
+            parsed = urlparse(endpoint)
+            hostname = parsed.hostname
+            port = parsed.port
+        except ValueError as exc:
+            raise ToolError("protocol endpoint must be an absolute HTTP(S) URL") from exc
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not hostname
+            or (port is not None and not 1 <= port <= 65535)
+        ):
             raise ToolError("protocol endpoint must be an absolute HTTP(S) URL")
-        if self.allowed_hosts is not None and parsed.hostname not in self.allowed_hosts:
-            raise ToolError(f"protocol host is not allowed: {parsed.hostname}")
+        if parsed.username or parsed.password:
+            raise ToolError("protocol endpoint cannot contain credentials")
+        normalized_hostname = _normalize_hostname(hostname)
+        if self.allowed_hosts is not None and normalized_hostname not in {
+            _normalize_hostname(host) for host in self.allowed_hosts
+        }:
+            raise ToolError(f"protocol host is not allowed: {hostname}")
 
 
 class ProtocolServices:
@@ -479,6 +500,21 @@ def _normalize_hostname(host: str) -> str:
         return host.rstrip(".").lower()
 
 
+def _merge_authoritative_headers(
+    headers: Mapping[Any, Any], authoritative: Mapping[str, str]
+) -> dict[str, str]:
+    """Merge deployment-owned headers while honoring HTTP name case rules."""
+
+    protected = {name.lower() for name in authoritative}
+    merged = {
+        str(name): str(value)
+        for name, value in headers.items()
+        if str(name).lower() not in protected
+    }
+    merged.update(authoritative)
+    return merged
+
+
 def _operation_id(payload: dict[str, Any]) -> str:
     value = payload.get("operation_id") or payload.get("operationId") or payload.get("id")
     return str(value) if value else str(uuid4())
@@ -546,18 +582,26 @@ def _duration_seconds(value: Any) -> float | None:
             "milliseconds": 0.001,
         }
         if any(unit in value for unit in units):
-            return sum(float(value.get(unit, 0)) * multiplier for unit, multiplier in units.items())
+            value = sum(
+                float(value.get(unit, 0)) * multiplier for unit, multiplier in units.items()
+            )
     if isinstance(value, (int, float)):
-        return float(value)
+        seconds = float(value)
+        if seconds <= 0:
+            raise ToolError(f"invalid protocol timeout: {value}")
+        return seconds
     text = str(value).strip().lower()
     match = re.fullmatch(r"([0-9]+(?:\.[0-9]+)?)\s*(ms|s|m|h)?", text)
     if not match:
         raise ToolError(f"invalid protocol timeout: {value}")
     number = float(match.group(1))
-    return {
+    seconds = {
         None: number,
         "ms": number / 1000,
         "s": number,
         "m": number * 60,
         "h": number * 3600,
     }[match.group(2)]
+    if seconds <= 0:
+        raise ToolError(f"invalid protocol timeout: {value}")
+    return seconds

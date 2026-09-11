@@ -7,7 +7,7 @@
 - `TODO.md` — active and intentionally deferred backlog.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current Phase — 2026-09-05
+## Current Phase — 2026-09-11
 
 `v0.1.0` is the current formal release. `main` contains additional unreleased pre-stable work.
 
@@ -302,12 +302,16 @@ The runtime preserves distinct lifecycles for knowledge, memory, session, common
 
 SQLite remains the reference datasource. PostgreSQL common stores and ADK/LangGraph native PostgreSQL adapters are implemented with isolated namespaces. Engine-native checkpoint state is never exposed as a public resume or A2A Task contract.
 
-## Verified Follow-up Work — 2026-09-05
+## Verified Follow-up Work — 2026-09-11
 
 The following backlog items are implemented and verified in the current worktree:
 
 - `SECURITY-8`: security response headers are configurable under `server.security_headers`; HSTS is emitted only for HTTPS ASGI requests.
 - `DEPS-1`: `numpy` and `pypdf` are optional knowledge dependencies in both root and standalone-core package metadata, with deferred imports.
+- `FIX-1`: the default FastEmbed provider is lazy with respect to optional NumPy, so minimal/core-only and isolated engine environments can construct `RuntimeServices`; knowledge operations fail with a bounded error when the extra is absent.
+- `FIX-2`: knowledge manifest reuse checks include file hash, parser identity, chunking identity, and embedding identity, so parser/chunking changes trigger deterministic re-indexing.
+- `SEC-1` and `SEC-2`: deployment-owned authentication and operation/idempotency headers override workflow/tool payload values; protocol endpoints reject embedded credentials; A2A public-base URLs reject malformed ports, credentials, queries, and fragments; protocol allowlist host matching is normalized.
+- `VALIDATE-1`: non-positive protocol timeouts are rejected before request dispatch.
 - `DEPS-4`: built-in `agent:1.0.0` and `llm:1.0.0` catalog manifests declare valid input/output JSON Schemas.
 - `DOCS-6` and `DOCS-8`: contributor architecture and bounded A2A streaming documentation are current.
 - `K8S-3`: runtime-namespace default-deny NetworkPolicy is provided and covered by manifest tests.
@@ -319,8 +323,10 @@ The following backlog items are implemented and verified in the current worktree
 - `DOCS-5`: the default-profile OpenAPI schema is versioned at `docs/openapi.json` and compared against the generated FastAPI schema in CI tests.
 - `DOCS-7`: custom catalog function authoring, manifest layout, protocol boundaries, trust policy, and verification are documented in `docs/custom-catalog-functions.md`.
 - `DOCS-9`: deployment configuration recipes cover A2A, security profiles, traffic policy, sandbox backends, protocol tools, and PostgreSQL persistence.
+- `DOCS-1` follow-up: the architecture and engine README wording now describes the internal sandbox as a controlled child-process boundary and the production adapters as native execution envelopes; task-level native compilation is not claimed.
+- `CI-1a`: documentation-only changes have a lightweight Markdown relative-link workflow, while the full code/test workflow remains path-scoped.
 - `TEST-2`: dependency-free benchmark harness reports compilation latency, sequential invocation latency, and concurrent throughput as JSON.
-- `TEST-3`: core coverage is enforced at 90%; the full suite currently reports 626 passed, 11 skipped, and 90.24% exact coverage (616/6313 statements missed) with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
+- `TEST-3`: core coverage is enforced at 90%; the full suite currently reports 632 passed, 8 skipped, and 91.09% exact coverage (565/6341 statements missed) with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
 - `TEST-4`: Linux/WSL-compatible mutmut coverage targets the framework-neutral traffic-policy middleware with 13 direct tests; the current 316-mutant baseline kills 272 mutants, records 22 survivors, 18 timeouts, and 4 mutants without test association for future test-strengthening work.
 - `TEST-5`: deterministic 100-request async stress coverage verifies traffic-policy concurrency bounds and burst admission without external services.
 - `TEST-1` progress: the portable CTK subset now covers 22 feature files, 42 scenarios, and 84 deterministic executions across both available engines, including pinned upstream data-flow filtering, HTTP and OpenAPI content/response output projections, caught and uncaught protocol errors, alongside successful and failing HTTP, MCP, A2A, OpenAPI, event, catalog-call, registered child-workflow `run`, input rejection, flow, policy, transform, validation, nested-input, sequence, and retry scenarios over shared common services; broader upstream CTK coverage and additional implemented features remain open.
@@ -329,14 +335,17 @@ The following backlog items are implemented and verified in the current worktree
 - `K8S-1`: reusable Helm chart under `deploy/helm/open-workflow-agent` packages the runtime Deployment, Service, PVC, default-deny network policy, and opt-in edge/monitoring integrations; `helm lint` and rendered integration tests pass.
 - `ARCH-3`: traffic policy supports additional longest-matching endpoint-prefix and authenticated-principal rate/concurrency scopes, with static HTTP/A2A security profile identities propagated before admission and capability/configuration/enforcement tests.
 
-The relevant core tests, package builds, lock checks, repository-wide Ruff, formatting, and mypy checks passed. The full core suite currently passes with 626 passed, 11 skipped, and 90.24% exact coverage.
+The relevant core tests, package builds, lock checks, repository-wide Ruff, formatting, and mypy checks passed. The full core suite currently passes with 632 passed, 8 skipped, and 91.09% exact coverage. The locked ADK and LangGraph matrices each pass with 168 tests; the optional Agent Framework matrix passes with 240 tests. The documentation relative-link validator also passes.
 
 ## Current Active Backlog
 
 The authoritative ordered backlog is `TODO.md`. Current priorities are:
 
 1. OpenShift sandbox acceptance;
-2. CTK expansion while maintaining the 90% core coverage gate.
+2. repository branch-protection configuration for documentation-only changes;
+3. review of the five open Dependabot updates;
+4. CTK expansion while maintaining the 90% core coverage gate;
+5. native-engine depth and differentiated benchmark evidence.
 
 ## Intentionally Deferred
 
@@ -364,7 +373,7 @@ uv run mypy --package open_workflow_agent --package open_workflow_agent_adk --pa
 uv run --locked pytest -q --cov=core/src/open_workflow_agent --cov-fail-under=90
 uv build
 uv build --directory core
-uv run --directory engines/adk --locked --extra native --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract ../../tests/ctk -q
-uv run --directory engines/langgraph --locked --extra sqlite --with pytest --with pytest-asyncio pytest ../../tests/langgraph ../../tests/contract ../../tests/ctk -q
-uv run --directory engines/agent-framework --locked --extra native --with pytest --with pytest-asyncio pytest ../../tests/agent_framework -q
+uv run --directory engines/adk --locked --extra native --extra knowledge --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract ../../tests/ctk -q
+uv run --directory engines/langgraph --locked --extra sqlite --extra knowledge --with pytest --with pytest-asyncio pytest ../../tests/langgraph ../../tests/contract ../../tests/ctk -q
+uv run --directory engines/agent-framework --locked --extra native --extra knowledge --with pytest --with pytest-asyncio pytest ../../tests/agent_framework ../../tests/contract ../../tests/ctk -q
 ```

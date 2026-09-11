@@ -69,11 +69,6 @@ class FastEmbedEmbeddingProvider:
         model: Any | None = None,
         cache_dir: str | Path | None = None,
     ) -> None:
-        if not NUMPY_AVAILABLE:
-            raise ImportError(
-                "numpy is required for knowledge/embedding functionality. "
-                "Install it with: pip install open-workflow-agent[knowledge]"
-            )
         self.model_name = model_name
         self.model_revision = model_revision
         self.identity = f"{model_name}@{model_revision}"
@@ -82,6 +77,11 @@ class FastEmbedEmbeddingProvider:
         self.dimensions = 384
 
     def embed(self, text: str) -> Any:
+        if not NUMPY_AVAILABLE:
+            raise KnowledgeError(
+                "numpy is required for knowledge/embedding functionality. "
+                "Install it with: pip install open-workflow-agent[knowledge]"
+            )
         if self._model is None:
             try:
                 fastembed: Any = importlib.import_module("fastembed")
@@ -211,15 +211,21 @@ class KnowledgeService:
             }:
                 current[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
         existing = {
-            row[0]: (row[1], row[2])
-            for row in self.connection.execute("SELECT path, hash, embedding FROM manifest")
+            row[0]: (row[1], row[2], row[3], row[4])
+            for row in self.connection.execute(
+                "SELECT path, hash, parser, chunking, embedding FROM manifest"
+            )
         }
         counts = {"added": 0, "updated": 0, "deleted": 0, "unchanged": 0}
         for path_string, digest in current.items():
-            if path_string in existing and existing[path_string] == (
+            path = Path(path_string)
+            index_identity = (
                 digest,
+                self._parser_identity(path),
+                self._chunking_identity(),
                 self.embedding.identity,
-            ):
+            )
+            if path_string in existing and existing[path_string] == index_identity:
                 counts["unchanged"] += 1
                 continue
             if path_string in existing:
@@ -227,7 +233,6 @@ class KnowledgeService:
                 self.connection.execute("DELETE FROM chunks WHERE path = ?", (path_string,))
             else:
                 counts["added"] += 1
-            path = Path(path_string)
             text = self._parse(path)
             for chunk in self._chunks(text):
                 vector = self.embedding.embed(chunk).astype(np.float32).tobytes()
@@ -277,10 +282,14 @@ class KnowledgeService:
 
     def search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
         if not NUMPY_AVAILABLE:
-            raise ImportError(
+            raise KnowledgeError(
                 "numpy is required for knowledge search functionality. "
                 "Install it with: pip install open-workflow-agent[knowledge]"
             )
+        if not isinstance(query, str) or not isinstance(limit, int) or isinstance(limit, bool):
+            raise KnowledgeError("knowledge search requires a string query and integer limit")
+        if limit < 1 or limit > 100:
+            raise KnowledgeError("knowledge search limit must be between 1 and 100")
         if not self.connection.execute("SELECT 1 FROM chunks LIMIT 1").fetchone():
             return []
         query_vector = self.embedding.embed(query)

@@ -79,6 +79,11 @@ async def test_official_protocol_shapes_and_operation_headers(monkeypatch):
             "method": "tools/call",
             "transport": {"http": {"endpoint": "https://mcp.test"}},
             "parameters": {"name": "lookup", "arguments": {"q": "x"}},
+            "headers": {
+                "authorization": "Bearer caller-controlled",
+                "x-owa-operation-id": "caller-controlled",
+                "Idempotency-Key": "caller-controlled",
+            },
             "operationId": "mcp-1",
         },
     )
@@ -422,11 +427,20 @@ async def test_http_client_rejects_invalid_endpoints_and_allows_not_modified():
     client = HttpClient(transport=httpx.MockTransport(lambda _: httpx.Response(304)))
     with pytest.raises(ToolError, match="absolute HTTP"):
         await client.request("GET", "/relative")
+    with pytest.raises(ToolError, match="cannot contain credentials"):
+        await client.request("GET", "https://user:password@service.test")
     with pytest.raises(ToolError, match="unsupported HTTP output"):
         await client.request("GET", "https://service.test", output="invalid")
     with pytest.raises(ToolError, match="HTTP request failed"):
         await client.request("GET", "https://service.test")
     assert await client.request("GET", "https://service.test", allow_not_modified=True) == ""
+
+
+def test_protocol_duration_rejects_non_positive_values():
+    with pytest.raises(ToolError, match="invalid protocol timeout"):
+        _duration_seconds(0)
+    with pytest.raises(ToolError, match="invalid protocol timeout"):
+        _duration_seconds({"seconds": -1})
 
 
 @pytest.mark.asyncio
