@@ -48,4 +48,4 @@ def test_release_publishes_controller_images_for_both_architectures() -> None:
 
 def test_docker_controller_removes_unused_compose_plugin() -> None:
     dockerfile = (ROOT / "docker" / "Dockerfile.sandbox-controller").read_text(encoding="utf-8")
-    assert "rm -f /usr/local/libexec/docker/cli-plugins/docker-compose" in dockerfile
+    assert "rm -f /usr/libexec/docker/cli-plugins/docker-compose" in dockerfile
