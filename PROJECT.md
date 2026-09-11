@@ -325,7 +325,7 @@ The following backlog items are implemented and verified in the current worktree
 - `DOCS-9`: deployment configuration recipes cover A2A, security profiles, traffic policy, sandbox backends, protocol tools, and PostgreSQL persistence.
 - `DOCS-1` follow-up: the architecture and engine README wording now describes the internal sandbox as a controlled child-process boundary and the production adapters as native execution envelopes; task-level native compilation is not claimed.
 - `CI-1a`: documentation-only changes have a lightweight Markdown relative-link workflow, while the full code/test workflow remains path-scoped.
-- `RELEASE-1` progress: the restricted Docker sandbox controller removes its unused Docker Compose CLI plugin before image scanning; a focused regression test guards the release-image hardening.
+- `RELEASE-1` progress: the restricted Docker sandbox controller removes its unused Docker Compose and Buildx CLI plugins before image scanning; a focused regression test guards the release-image hardening.
 - `TEST-2`: dependency-free benchmark harness reports compilation latency, sequential invocation latency, and concurrent throughput as JSON.
 - `TEST-3`: core coverage is enforced at 90%; the full suite currently reports 633 passed, 8 skipped, and 90.30% exact coverage (615/6341 statements missed) with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
 - `TEST-4`: Linux/WSL-compatible mutmut coverage targets the framework-neutral traffic-policy middleware with 13 direct tests; the current 316-mutant baseline kills 272 mutants, records 22 survivors, 18 timeouts, and 4 mutants without test association for future test-strengthening work.
