@@ -84,7 +84,7 @@ Named profiles with environment-only secrets:
 
 ### Sandbox Backends
 
-- **Internal** - In-process sandbox (default)
+- **Internal** - Controlled child-process sandbox (default when enabled; not hard isolation)
 - **Docker** - Restricted Docker container via controller socket
 - **Kubernetes** - Restricted K8s pod via controller sidecar
 
@@ -139,7 +139,7 @@ tests/
 
 ```bash
 # Install dependencies
-uv sync --locked
+uv sync --locked --extra knowledge
 
 # Run tests
 uv run pytest tests/core/ -q

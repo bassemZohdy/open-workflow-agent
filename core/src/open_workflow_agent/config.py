@@ -271,7 +271,20 @@ class A2AConfig(StrictModel):
         if value is None:
             return None
         selected = value.strip().rstrip("/")
-        if not selected.startswith(("http://", "https://")) or "://" in selected[7:]:
+        try:
+            parsed = urlparse(selected)
+            port = parsed.port
+        except ValueError as exc:
+            raise ValueError("a2a public_base_url must be an absolute http(s) URL") from exc
+        if (
+            parsed.scheme not in {"http", "https"}
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+            or (port is not None and not 1 <= port <= 65535)
+        ):
             raise ValueError("a2a public_base_url must be an absolute http(s) URL")
         return selected
 

@@ -62,7 +62,17 @@ async def test_tool_registry_invokes_configured_mcp_and_openapi_tools(monkeypatc
     assert registry.names() == ("lookup", "weather")
     assert [binding.name for binding in registry.bindings()] == ["lookup", "weather"]
     result = await registry.bindings()[0].invoke(
-        {"transport": {"http": {"headers": {"X-Caller": "yes"}}}, "query": "q"}
+        {
+            "transport": {
+                "http": {
+                    "headers": {
+                        "authorization": "Bearer caller-controlled",
+                        "X-Caller": "yes",
+                    }
+                }
+            },
+            "query": "q",
+        }
     )
     assert result["protocol"] == "mcp"
     mcp_payload = protocols.calls[0][1]

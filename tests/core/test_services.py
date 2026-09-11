@@ -15,6 +15,16 @@ from open_workflow_agent.persistence import InvocationStore
 from open_workflow_agent.workflow import compile_workflow
 
 
+def test_runtime_services_start_without_knowledge_extra(tmp_path, monkeypatch):
+    import open_workflow_agent.knowledge as knowledge_module
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    monkeypatch.setattr(knowledge_module, "NUMPY_AVAILABLE", False)
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    services.close()
+
+
 def test_memory_add_search_delete(tmp_path):
     memory = MemoryService(str(tmp_path / "memory.sqlite3"))
     identifier = memory.add("license renewal policy", {"source": "policy"})
