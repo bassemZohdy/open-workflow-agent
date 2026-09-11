@@ -9,7 +9,7 @@ RUN apk upgrade --no-cache \
     && apk add --no-cache python3 py3-pip \
     # The controller invokes the Docker CLI directly; Compose is unused and
     # would add an avoidable scanned attack surface to the release image.
-    && rm -f /usr/local/libexec/docker/cli-plugins/docker-compose \
+    && rm -f /usr/libexec/docker/cli-plugins/docker-compose \
     && python3 -m venv /opt/venv
 
 ENV PATH="/opt/venv/bin:/usr/local/bin:/usr/bin:/bin" \
