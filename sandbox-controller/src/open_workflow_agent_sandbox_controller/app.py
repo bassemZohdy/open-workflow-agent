@@ -21,7 +21,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from . import __version__
+from ._version import __version__
 
 _IMMUTABLE_IMAGE = re.compile(r"^(?:.+@sha256:|sha256:)[0-9a-fA-F]{64}$")
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
