@@ -991,16 +991,17 @@ AsyncAPI Specification       3.1.0
 
 # 36. Current Release and Project State
 
-Current formal release:
+Previous formal release:
 
 ```text
 v0.1.0
 ```
 
-The selected next release candidate is `v0.2.0`, containing the principal-bound
-A2A task-access contract and synchronized package/runtime metadata. The exact
-candidate SHA and publication evidence are recorded in `PROJECT.md` after the
-release gates complete.
+Current formal release: `v0.2.0`, published from verified commit
+`5d1bce6309654c3ada632483fbae71d0404cc33d` and recorded in `PROJECT.md`.
+The release includes the principal-bound A2A task-access contract and
+synchronized package/runtime metadata. The active ordered backlog is
+maintained only in `TODO.md`; no task-level native compiler is claimed.
 
 Verified major delivered areas include:
 
@@ -1052,6 +1053,14 @@ streaming/resubscription. It does not claim broad/full A2A conformance or
 implement push notifications.
 
 This sequence keeps A2A in core and reuses common invocation/durability semantics rather than implementing engine-specific A2A code.
+
+The post-release native-depth decision is settled for the current product
+scope: retain ADK and LangGraph as native execution envelopes around the
+framework-neutral common executor, and keep capability/documentation language
+narrow. A task-level plan-to-native-node compiler is not part of the current
+release and requires a separately approved product milestone before work
+begins; the public Open Workflow DSL and internal-plan boundary must remain
+unchanged.
 
 ---
 

@@ -37,8 +37,8 @@ Publication tags are:
 ```text
 latest       latest verified main build
 sha-<sha>    immutable verified source revision
-0.2.0        exact SemVer release, when a matching v0.2.0 release is published
-0.2          minor series, when a matching SemVer release is published
+0.2.0        current exact SemVer release
+0.2          current minor series
 ```
 
 For production, pin an exact SemVer tag (`0.2.0` or newer) or an image digest rather than `latest`. Both registries receive the same verified build and tags.

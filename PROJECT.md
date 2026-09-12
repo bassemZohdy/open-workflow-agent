@@ -9,10 +9,10 @@
 
 ## Current Phase — 2026-09-12
 
-`v0.1.0` is the previous formal release. `v0.2.0` is the selected release
-candidate for the principal-bound A2A task-access work now on the release
-branch; the candidate SHA and acceptance evidence are recorded after the
-release gates complete.
+`v0.1.0` is the previous formal release. `v0.2.0` is the current formal
+release for the principal-bound A2A task-access work. It was published from
+verified commit `5d1bce6309654c3ada632483fbae71d0404cc33d`; no active scoped
+backlog items remain.
 
 The bounded inbound A2A profile is complete end to end: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), principal-bound authenticated task access, waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, resuming sends over the common resume contract, and bounded streaming/resubscription (`SendStreamingMessage`/`SubscribeToTask`) translating common lifecycle events into official status/artifact frames. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The deployment-controlled `traffic_policy` model is implemented with global token-bucket/concurrency limits plus endpoint-prefix and authenticated-principal scopes. External interoperability/conformance evidence is complete for all advertised baselines.
 
@@ -109,13 +109,78 @@ sha256:add38f52c062a01ab81c61962ab609a728e62a367818cc77bff19a6a720d2a89
 
 Standard ADK/LangGraph images remain roughly 266 MB / 248 MB decimal after the 2026-08-27 dependency refresh and avoid the multi-gigabyte Torch/CUDA path.
 
-## Release Candidate v0.2.0 — 2026-09-12
+## Formal Release v0.2.0 — 2026-09-12
 
-The selected SemVer release is `v0.2.0`. It contains the bounded A2A task
-ownership contract and synchronized runtime/package metadata. The exact
-candidate SHA, companion workflow runs, published image digests, and rollback
-references will be filled from the verified GitHub release workflow before
-this section is promoted to a formal release record.
+Release commit:
+
+```text
+5d1bce6309654c3ada632483fbae71d0404cc33d
+```
+
+Release tag: `v0.2.0`
+
+GitHub Release workflow: `34701171499`
+
+GitHub Release: https://github.com/bassemZohdy/open-workflow-agent/releases/tag/v0.2.0
+
+The release contains the principal-bound A2A task-access contract, synchronized
+runtime/package metadata, and the sandbox-controller cleanup fix required by
+external acceptance.
+
+### Release evidence
+
+| Workflow | Run | Result |
+| --- | ---: | --- |
+| CI (main) | `34701012803` | green |
+| CI (tag) | `34701014864` | green |
+| Security (tag) | `34701014868` | green |
+| External Sandbox CI | `34701012783` | green |
+| PostgreSQL CI | `34700667802` | green; ancestor `5a41467`, unchanged path |
+| Agent Framework CI | `34700667743` | green; ancestor `5a41467`, unchanged path |
+| Documentation | `34700667852` | green; ancestor `5a41467`, docs unchanged in final fix |
+| Release | `34701171499` | success |
+
+The release workflow passed dependency/image scanning, OCI SBOM generation,
+OCI provenance generation, and GitHub build-provenance attestation for the
+published images. Companion runs shown as ancestor runs covered paths that
+were unchanged by the final sandbox cleanup fix; the exact release commit was
+covered by the main/tag CI, security, external-sandbox, and release runs.
+
+### Published image references
+
+The following immutable GHCR references are the canonical release references.
+The same release build and version/SHA tags were published to Docker Hub.
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk@sha256:156bc95fb6df508d5c446317ff06d54f4e7dcb25adfa33bc5939cb06dbdfb714
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph@sha256:9691f672b2b169ffb1b7b127eea7267846f20df707be4800d5e707cd5699791d
+ghcr.io/bassemzohdy/open-workflow-agent-sandbox-controller@sha256:45cc85803be5094200709b6a2ed05af4fc4034b5bf774a5d447146f5d1892001
+ghcr.io/bassemzohdy/open-workflow-agent-kubernetes-sandbox-controller@sha256:9074ec5348bf4961a78c804fb70cc6b92facc89ec3c1422f30ea526ee3a16859
+```
+
+Rollback references are the previous formal release images recorded above
+under `Formal Release v0.1.0`; rollback means selecting those immutable image
+digests and reverting the deployment configuration to the prior contract.
+
+## Verified Follow-up Work — 2026-09-12 (release)
+
+- `A2A-8` through `A2A-10`: authenticated A2A task ownership is persisted in
+  common invocation metadata, enforced for get/cancel/subscribe/resume across
+  JSON-RPC and HTTP+JSON, and covered by deterministic cross-principal,
+  unknown-task, transport, and sanitized-error tests.
+- `RELEASE-2`: exact-commit release readiness was completed for
+  `5d1bce6309654c3ada632483fbae71d0404cc33d`; metadata, locks, source state,
+  quality gates, engine evaluations, runtime/container acceptance, external
+  sandbox, PostgreSQL, security, documentation, image, SBOM, and provenance
+  evidence are recorded above.
+- `RELEASE-3`: `v0.2.0` was merged to `main`, tagged, published as a GitHub
+  Release, and pushed with immutable runtime/controller image references.
+- `ENGINE-4`: retain the current native execution-envelope architecture for
+  this release. Keep capability and documentation language narrow; do not
+  introduce a task-level native compiler unless a separate product requirement
+  justifies it. If that requirement appears, begin with LangGraph’s stronger
+  native resume path and prove ADK parity without changing the public DSL or
+  exposing the internal plan.
 
 ## Verified Kubernetes and OpenShift Sandbox Acceptance — 2026-09-12
 
@@ -354,7 +419,7 @@ The following backlog items are implemented and verified in the current worktree
 - `CI-1a`: documentation-only changes have a lightweight Markdown relative-link workflow, while the full code/test workflow remains path-scoped.
 - `RELEASE-1` progress: the restricted Docker sandbox controller removes its unused Docker Compose and Buildx CLI plugins before image scanning; a focused regression test guards the release-image hardening.
 - `TEST-2`: dependency-free benchmark harness reports compilation latency, sequential invocation latency, and concurrent throughput as JSON.
-- `TEST-3`: core coverage is enforced at 90%; the full locked root suite currently reports 649 passed, 11 skipped, and 90.35% exact coverage, with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
+- `TEST-3`: core coverage is enforced at 90%; the full locked root suite currently reports 652 passed, 11 skipped, and 90.41% exact coverage, with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
 - `OPS-1`: knowledge watch failures retain safe bounded status, keep the watcher alive for retry, emit safe warning metadata, and surface degraded readiness.
 - `OPS-2`: `docs/release-readiness.md` defines exact-commit, dependency, runtime acceptance, supply-chain, publication, and exception sign-off gates.
 - `TEST-4`: Linux/WSL-compatible mutmut coverage targets the framework-neutral traffic-policy middleware with 13 direct tests; the current 316-mutant baseline kills 272 mutants, records 22 survivors, 18 timeouts, and 4 mutants without test association for future test-strengthening work.
@@ -386,8 +451,8 @@ The following backlog items are implemented and verified in the current worktree
   persistence resources.
 
 The relevant core tests, package builds, lock checks, repository-wide Ruff,
-formatting, and mypy checks passed. The full locked root suite passes with 649
-passed, 11 skipped, and 90.35% exact coverage. The locked ADK and LangGraph
+formatting, and mypy checks passed. The full locked root suite passes with 652
+passed, 11 skipped, and 90.41% exact coverage. The locked ADK and LangGraph
 matrices each pass with 180 tests; the optional Agent Framework matrix passes
 with 258 tests. Native ADK and LangGraph benchmark probes both pass and report
 non-zero native checkpoint growth plus stable operation ids across replay. The
@@ -395,13 +460,11 @@ documentation relative-link validator also passes.
 
 ## Current Backlog State
 
-The authoritative scoped backlog is `TODO.md`. The active next milestone is
-release hardening and A2A task access: `A2A-8` through `A2A-10` decide, enforce,
-and test the task-access boundary, followed by `RELEASE-2` and `RELEASE-3` for
-exact-commit evidence and publication. `ENGINE-4` is a post-release decision
-track. Future work outside that milestone is listed under intentionally
-deferred scope below; verified implementation and acceptance evidence remains
-in this document.
+The authoritative scoped backlog is `TODO.md`. No active scoped backlog items
+remain: A2A task ownership, exact-commit release readiness, publication, and
+the post-release native-depth decision are complete and evidenced in this
+document. Future work is intentionally deferred until its stated product or
+security prerequisites exist; it is listed below and in `TODO.md`.
 
 ## Intentionally Deferred
 

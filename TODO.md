@@ -4,40 +4,15 @@
 
 ## Current Phase
 
-**`v0.2.0` is the selected release candidate. A2A task ownership is implemented and verified; exact-commit release gates and publication remain.**
+**`v0.2.0` is released from verified commit `5d1bce6309654c3ada632483fbae71d0404cc33d`; no active scoped backlog items remain.**
 
 The public contract remains Open Workflow 1.0.3. The runtime uses a framework-neutral common executor and deployment-selected ADK or LangGraph envelopes; it does not claim task-level native compilation or full Open Workflow/A2A conformance.
 
 ## Active backlog
 
-### Next milestone — release hardening and A2A task access
-
-This milestone prepares the current bounded profile for another formal release.
-Work is ordered: decide the A2A task-access boundary first, implement and test
-the chosen boundary where required, then run release gates on one exact commit
-and publish only after those gates are recorded. Do not pull push
-notifications, full protocol conformance, multi-tenancy, delegated identity,
-AsyncAPI, or Agent Framework production packaging into this milestone.
-
-#### P0 — A2A task-access decision and enforcement
-
-- [x] **A2A-8** — decide and document whether deployments with multiple A2A principals support per-task ownership. The selected contract binds task ownership to the authenticated principal and enforces it for get, cancel, subscribe, and resume, with a trusted unauthenticated single-principal mode for ownerless legacy handles. The decision is recorded in `Project Definition.md`, `PROJECT.md`, `docs/api.md`, and `docs/configuration.md`.
-- [x] **A2A-9** — implement the boundary selected by `A2A-8` without exposing task existence, credentials, or engine-native state. The same rule applies to JSON-RPC and HTTP+JSON `GetTask`, `CancelTask`, `SubscribeToTask`, and resuming `SendMessage`, while common invocation/task projection remains authoritative.
-- [x] **A2A-10** — add deterministic security and contract coverage for authorized access, cross-principal denial, unknown-task behavior, cancellation, subscription, both transports, and sanitized/non-disclosing errors; root and engine suites pass. Existing waiting-task resume coverage remains in the common A2A async suite.
-
-#### P1 — Exact-commit release readiness
-
-- [ ] **RELEASE-2** — run [docs/release-readiness.md](docs/release-readiness.md) against one exact candidate commit. Verify version/tag metadata, current `CHANGELOG.md`/`PROJECT.md`/`TODO.md`, clean source state, every independent lock, root quality and coverage gates, ADK/LangGraph/Agent Framework evaluation suites, documentation links, Docker/runtime restart-resume acceptance, external sandbox and PostgreSQL gates, dependency/image scans, and SBOM/provenance evidence. Record run identifiers, results, exceptions, and the candidate SHA in `PROJECT.md`.
-- [ ] **RELEASE-3** — publish the next formal release only after `A2A-8` through `A2A-10` and `RELEASE-2` are green. Select and record the SemVer version, merge the release commit to `main`, create the matching Git tag/GitHub Release, publish immutable runtime/controller image references, and record rollback references and digests in `PROJECT.md`.
-
-#### P2 — Post-release architecture decision
-
-- [ ] **ENGINE-4** — decide whether native-engine depth is a product requirement after the release. Either retain the current native execution-envelope architecture and keep its capability/documentation language narrow, or define a separate task-level plan-to-native-node/compiler milestone, starting with LangGraph’s stronger native resume path and then proving ADK parity. Do not change the public DSL or expose the internal execution plan.
-
-Milestone exit criteria: the A2A task-access contract is explicit and tested,
-the exact release candidate has complete evidence, and the release decision is
-recorded. `ENGINE-4` may remain open after publication as a separate architecture
-track.
+No active scoped backlog items remain. Completed work and release evidence are
+recorded in `PROJECT.md` and `CHANGELOG.md`. The intentionally deferred scope
+below is not scheduled until its stated product or security prerequisites exist.
 
 ## Intentionally deferred
 

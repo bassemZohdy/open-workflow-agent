@@ -5,6 +5,17 @@
 **Commit audited:** `37fcd9e` (`main`)
 **Decision scope:** implementation fit for the current Open Workflow Agent architecture
 
+## Post-release status — 2026-09-12
+
+The analysis below remains the evidence base for the engine comparison. The
+post-release `ENGINE-4` decision is now recorded: retain ADK and LangGraph as
+native execution envelopes around the framework-neutral common executor, keep
+capability and documentation language narrow, and do not start task-level
+plan-to-native-node compilation without a separately approved product
+requirement. The public Open Workflow DSL and internal execution-plan boundary
+remain unchanged. If native depth becomes a product requirement, begin with
+LangGraph's stronger native resume path and then prove ADK parity.
+
 ## Executive decision
 
 **If one production engine must be preferred, select LangGraph with a score of 88.0/100.** It has the more direct native checkpoint/resume path, uses a real LangGraph Functional API entrypoint, has native `Command(resume=...)` handling, and produces the smaller documented runtime image.
@@ -240,12 +251,19 @@ The native engine commands passed in this report’s environments; the root run�
 
 3. **Do not add a standalone LangChain engine solely to increase framework count.** If LangChain is needed, use LangChain Core types behind an adapter or add a real LangChain engine only with a defined workflow runtime, checkpoint/resume design, capability advertisement, independent lock/image, and the same shared fixtures.
 
-4. **Decide whether to deepen or narrow the native claim.** The next architecture decision is either:
+4. **Retain the current native execution-envelope claim for this release.**
+   The task-level compiler alternative remains a future, separately approved
+   product milestone rather than active work. Any such milestone must include
+   task-boundary checkpoint and cancellation tests for LangGraph first, followed
+   by equivalent ADK evidence, without changing the public DSL or exposing the
+   internal plan.
 
-   - implement a genuine plan-to-native-node compiler for each production engine, with task-boundary checkpoint and cancellation tests; or
-   - document the current adapters precisely as native execution envelopes around the common portable executor.
-
-5. **Add engine-differentiating benchmarks and native behavior tests before changing the weighted decision.** Measure compilation, sequential invocation, concurrent throughput, native interrupt/resume, checkpoint growth, and side-effect replay behavior separately for ADK and LangGraph. The existing dependency-free benchmark primarily measures common runtime behavior and should not be used as a native-framework ranking.
+5. **Keep engine-differentiating benchmarks as evidence for any future change.**
+   Measure compilation, sequential invocation, concurrent throughput, native
+   interrupt/resume, checkpoint growth, and side-effect replay behavior
+   separately for ADK and LangGraph. The existing dependency-free benchmark
+   primarily measures common runtime behavior and should not be used as a
+   native-framework ranking.
 
 ## Final decision record
 
@@ -254,5 +272,5 @@ Decision: LangGraph is the preferred single-engine default.
 Status: ADK remains production-supported.
 LangChain: not an implemented standalone engine; do not rank as equivalent.
 Score: LangGraph 88.0, ADK 83.5, LangChain 0.0.
-Blocking caveat: native task-level compilation and stronger resume/replay evidence remain future work.
+Native-depth status: current adapters are intentionally native execution envelopes; task-level compilation and stronger resume/replay evidence remain deferred product work.
 ```

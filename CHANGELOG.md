@@ -4,6 +4,10 @@ All notable changes to the Open Workflow Agent are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+No unreleased changes.
+
 ## [0.2.0] - 2026-09-12
 
 ### Added
@@ -37,8 +41,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Architecture, contributor, CTK, and README documentation now matches the
   shipped bounded A2A Task/async/streaming profile and accepted sandbox
   backends; historical/deferred scope remains explicit.
-- Verification records now reflect the current root suite result of 649 passed,
-  11 skipped, and 90.35% coverage.
+- Verification records now reflect the current root suite result of 652 passed,
+  11 skipped, and 90.41% exact coverage.
 - A2A v0.3 discovery/method/Part compatibility assumptions were removed. The bounded inbound profile now targets A2A release `1.0.1` and advertises protocol version `1.0` only for implemented behavior.
 - The active A2A roadmap now treats persistent A2A Tasks as a projection over common OWA invocation/`ExecutionHandle` state rather than a second workflow or persistence engine.
 - A2A streaming/resubscription reuses common lifecycle/event infrastructure without exposing engine-native checkpoint/stream objects.
