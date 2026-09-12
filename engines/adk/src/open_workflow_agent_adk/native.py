@@ -33,8 +33,18 @@ except ImportError:  # pragma: no cover - optional ADK db extra
     _DatabaseSessionService = None  # type: ignore[assignment]
 
 
+# ADK's dynamic FunctionNode is deliberately replayed after a restart. The
+# common executor derives side-effect operation ids from the invocation and
+# canonical task reference, so replay is safe only when the external effect
+# honors the propagated idempotency key.
+ADK_RESUME_STRATEGY = "replay_with_stable_operation_ids"
+
+
 class NativeAdkRunner:
     """Execute a plan through an ADK dynamic FunctionNode child."""
+
+    resume_strategy = ADK_RESUME_STRATEGY
+    rerun_on_resume = True
 
     def __init__(self) -> None:
         self.available = ADK_AVAILABLE
@@ -115,7 +125,11 @@ class NativeAdkRunner:
                 run_id="owa-plan",
             )
 
-        root = FunctionNode(func=root_node, name="owa_root", rerun_on_resume=True)
+        root = FunctionNode(
+            func=root_node,
+            name="owa_root",
+            rerun_on_resume=self.rerun_on_resume,
+        )
         framework_runner = Runner(
             app_name=app_name,
             node=root,

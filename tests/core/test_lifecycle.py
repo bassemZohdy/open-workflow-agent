@@ -170,3 +170,31 @@ async def test_cancellation_token_and_lifecycle_control_paths():
     cancelled_control.token.cancel("control-stop")
     with pytest.raises(InvocationCancelled):
         await cancelled_control.wait_or_resume(10)
+
+
+@pytest.mark.asyncio
+async def test_outer_cancellation_drains_waiting_lifecycle_operations():
+    token = CancellationToken()
+    operation_started = asyncio.Event()
+    operation_stopped = asyncio.Event()
+
+    async def operation() -> None:
+        operation_started.set()
+        try:
+            await asyncio.sleep(30)
+        finally:
+            operation_stopped.set()
+
+    waiting = asyncio.create_task(token.await_operation(operation()))
+    await operation_started.wait()
+    waiting.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await waiting
+    await asyncio.wait_for(operation_stopped.wait(), timeout=1)
+
+    control = LifecycleControl()
+    paused = asyncio.create_task(control.wait_or_resume(30))
+    await asyncio.sleep(0)
+    paused.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await paused

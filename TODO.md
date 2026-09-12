@@ -13,14 +13,14 @@ The public contract remains Open Workflow 1.0.3. The runtime uses a framework-ne
 ### P0 — Deployment and repository gates
 
 - [ ] **DEPLOY-1** — complete OpenShift-specific SCC/security-context/arbitrary-UID sandbox acceptance against a disposable real OpenShift cluster. The controller and static harness are prepared, but the real-cluster gate is still unverified. Do not advertise OpenShift container execution as accepted until this passes.
-- [ ] **CI-1** — configure repository branch protection to require the lightweight `Docs / Markdown links` check when a documentation-only pull request is evaluated. The workflow is committed; the GitHub branch-protection endpoint is unavailable to the current integration, so the repository setting remains an administrator action.
-- [ ] **DEPS-1** — review the six open Dependabot updates (root dependencies, ADK, Agent Framework, both controller Pydantic updates, and Docker base image) independently. The latest root and ADK update branches currently fail lock/repository gates; do not merge until each affected lockfile, native/contract tests, security scan, image acceptance, and release implications are verified. Close or defer updates that do not meet those gates.
+- [x] **CI-1** — configure repository branch protection to require the lightweight `Docs / Markdown links` check on every pull request, including documentation-only changes. The workflow now reports the check on every pull request, and GitHub branch protection was verified with that context required on `main`.
+- [x] **DEPS-1** — review the six Dependabot updates independently. Pydantic controller updates (#24 and #25), Agent Framework (#26), and base images (#30) passed their applicable gates and were merged. The Actions bundle (#35) was closed because its qemu v4 change failed the release-workflow regression tests; the root bundle (#36) was closed because its lockfile, native, security, and PostgreSQL gates failed. No failing bundle was merged.
 
 ### P1 — Portability and conformance evidence
 
-- [ ] **TEST-1** — expand the Open Workflow CTK subset beyond the current 22 feature files, 42 scenarios, and 84 deterministic ADK/LangGraph executions. Add fixtures only for behavior implemented in the common profile, keep the full-conformance claim explicitly deferred, and preserve the 90% core coverage gate.
-- [ ] **ENGINE-2** — add fair engine-specific evidence for compilation cost, sequential and concurrent throughput, checkpoint growth, interruption/resume behavior, and side-effect replay. Keep common-core benchmark results separate from native-framework comparisons.
-- [ ] **ENGINE-3** — strengthen ADK resume semantics. Prove task-boundary continuation without replay where the framework supports it, or keep replay behavior explicit and add durable idempotency guidance/tests for every side-effecting operation.
+- [x] **TEST-1** — expand the Open Workflow CTK subset to 26 feature files, 48 scenarios, and 96 deterministic ADK/LangGraph executions. Fixtures remain limited to behavior implemented in the common profile, the full-conformance claim remains deferred, and the core coverage gate remains above 90%.
+- [x] **ENGINE-2** — add fair engine-specific evidence for compilation cost, sequential and concurrent throughput, checkpoint growth, interruption/resume behavior, and side-effect replay. `benchmarks/engines.py` reports these separately from the common-core benchmark and the locked engine CI matrix uploads the JSON evidence.
+- [x] **ENGINE-3** — strengthen ADK resume semantics. The adapter explicitly uses replay with stable operation ids; interruption/resume tests and native probes verify repeated side effects reuse the idempotency key, with durable idempotency guidance in the engine documentation.
 
 ### P2 — Operations and maintainability
 

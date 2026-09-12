@@ -3,7 +3,11 @@ from open_workflow_agent.tools import AgentToolBinding
 from open_workflow_agent_adk import AdkWorkflowEngine
 from open_workflow_agent_adk.agent import AdkAgentFactory
 from open_workflow_agent_adk.model import AdkModelAdapter
-from open_workflow_agent_adk.native import ADK_AVAILABLE, NativeAdkRunner
+from open_workflow_agent_adk.native import (
+    ADK_AVAILABLE,
+    ADK_RESUME_STRATEGY,
+    NativeAdkRunner,
+)
 
 
 def test_adk_factory_and_adapter_preserve_common_contract():
@@ -12,6 +16,8 @@ def test_adk_factory_and_adapter_preserve_common_contract():
     assert AdkWorkflowEngine().capabilities().engine == "adk"
     assert AdkModelAdapter(ModelConfig()).config.name == "fake/default"
     assert NativeAdkRunner().available is ADK_AVAILABLE
+    assert NativeAdkRunner().resume_strategy == ADK_RESUME_STRATEGY
+    assert NativeAdkRunner().rerun_on_resume is True
 
 
 def test_adk_factory_binds_real_function_tools():

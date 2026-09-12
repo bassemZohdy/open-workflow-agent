@@ -332,23 +332,44 @@ The following backlog items are implemented and verified in the current worktree
 - `OPS-2`: `docs/release-readiness.md` defines exact-commit, dependency, runtime acceptance, supply-chain, publication, and exception sign-off gates.
 - `TEST-4`: Linux/WSL-compatible mutmut coverage targets the framework-neutral traffic-policy middleware with 13 direct tests; the current 316-mutant baseline kills 272 mutants, records 22 survivors, 18 timeouts, and 4 mutants without test association for future test-strengthening work.
 - `TEST-5`: deterministic 100-request async stress coverage verifies traffic-policy concurrency bounds and burst admission without external services.
-- `TEST-1` progress: the portable CTK subset now covers 22 feature files, 42 scenarios, and 84 deterministic executions across both available engines, including pinned upstream data-flow filtering, HTTP and OpenAPI content/response output projections, caught and uncaught protocol errors, alongside successful and failing HTTP, MCP, A2A, OpenAPI, event, catalog-call, registered child-workflow `run`, input rejection, flow, policy, transform, validation, nested-input, sequence, and retry scenarios over shared common services; broader upstream CTK coverage and additional implemented features remain open.
+- `TEST-1`: the portable CTK subset covers 26 feature files, 48 scenarios, and 96 deterministic executions across both available engines, including pinned upstream data-flow filtering, HTTP and OpenAPI content/response output projections, caught and uncaught protocol errors, alongside successful and failing HTTP, MCP, A2A, OpenAPI, event, catalog-call, registered child-workflow `run`, input rejection, conditional, `for` output, task-schema, `listen` read-mode, flow, policy, transform, validation, nested-input, sequence, and retry scenarios over shared common services; broader upstream CTK coverage and full conformance remain explicitly deferred.
 - `K8S-2`: optional Kubernetes Ingress and Gateway API `HTTPRoute` templates target the reference runtime Service; deployment-owned host, TLS, ingress-class, and Gateway-parent values remain explicit placeholders.
 - `K8S-4`: optional Prometheus Operator `ServiceMonitor` and `PrometheusRule` templates scrape `/metrics` and alert on HTTP error rate, p95 latency, and sandbox failures; CRD fields are covered by targeted manifest tests.
 - `K8S-1`: reusable Helm chart under `deploy/helm/open-workflow-agent` packages the runtime Deployment, Service, PVC, default-deny network policy, and opt-in edge/monitoring integrations; `helm lint` and rendered integration tests pass.
 - `ARCH-3`: traffic policy supports additional longest-matching endpoint-prefix and authenticated-principal rate/concurrency scopes, with static HTTP/A2A security profile identities propagated before admission and capability/configuration/enforcement tests.
 
-The relevant core tests, package builds, lock checks, repository-wide Ruff, formatting, and mypy checks passed. The full core suite currently passes with 633 passed, 8 skipped, and 90.30% exact coverage. The locked ADK and LangGraph matrices each pass with 168 tests; the optional Agent Framework matrix passes with 240 tests. The documentation relative-link validator also passes.
+## Verified Follow-up Work — 2026-09-12
+
+- `TEST-1`: the portable CTK subset expanded to 26 feature files and 48
+  scenarios, with `uv run pytest tests/ctk -q` passing 96 deterministic
+  ADK/LangGraph executions. The new repository-owned fixtures cover
+  conditional branches, `for` output accumulation, task schemas, and `listen`
+  read modes; full Open Workflow conformance remains explicitly deferred.
+- `ENGINE-2`: `benchmarks/engines.py` records engine compile latency,
+  sequential latency, concurrent throughput, native checkpoint growth, and
+  interruption/resume side-effect replay as JSON. The locked engine CI matrix
+  runs the probe and uploads its evidence separately from the common-runtime
+  benchmark. Native ADK and LangGraph probes pass locally.
+- `ENGINE-3`: ADK resume behavior is explicitly documented and named
+  `replay_with_stable_operation_ids`. Interruption/resume tests and the engine
+  probe verify that replayed side effects reuse the common operation id; callers
+  remain responsible for durable idempotency.
+- Lifecycle cancellation now drains child waits and operation tasks before
+  returning, preventing leaked post-cancellation work from touching closed
+  persistence resources.
+
+The relevant core tests, package builds, lock checks, repository-wide Ruff,
+formatting, and mypy checks passed. The full locked root suite passes with 647
+passed, 11 skipped, and 90.35% exact coverage. The locked ADK and LangGraph
+matrices each pass with 180 tests; the optional Agent Framework matrix passes
+with 258 tests. Native ADK and LangGraph benchmark probes both pass and report
+non-zero native checkpoint growth plus stable operation ids across replay. The
+documentation relative-link validator also passes.
 
 ## Current Active Backlog
 
-The authoritative ordered backlog is `TODO.md`. Current priorities are:
-
-1. OpenShift sandbox acceptance;
-2. repository branch-protection configuration for documentation-only changes;
-3. review of the five open Dependabot updates;
-4. CTK expansion while maintaining the 90% core coverage gate;
-5. native-engine depth and differentiated benchmark evidence.
+The authoritative ordered backlog is `TODO.md`. The only remaining active
+priority is OpenShift sandbox acceptance on a disposable real cluster.
 
 ## Intentionally Deferred
 

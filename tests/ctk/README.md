@@ -11,11 +11,12 @@ engine packages and compares their
 declared outputs, fault details, property-count assertions, task-order
 assertions, and event behavior.
 
-The repository-owned `emit.feature`, `listen.feature`, `call.feature`,
-`protocol.feature`, `flow.feature`, `policy.feature`, `transform.feature`,
-`try.feature`, `input.feature`, `nested.feature`, `sequence.feature`,
-`retry.feature`, and `run.feature` extend that pinned selection with deterministic
-cases for
+The repository-owned `emit.feature`, `listen.feature`, `listen-reads.feature`,
+`call.feature`, `protocol.feature`, `flow.feature`, `policy.feature`,
+`transform.feature`, `try.feature`, `input.feature`, `nested.feature`,
+`sequence.feature`, `retry.feature`, `run.feature`, `conditional.feature`,
+`for-output.feature`, and `task-schemas.feature` extend that pinned selection
+with deterministic cases for
 capabilities already covered by the common contract suite. Protocol scenarios
 use one shared MockTransport per engine so HTTP, MCP, A2A, and OpenAPI calls
 exercise the same common boundary without external network access. Retry
@@ -32,6 +33,7 @@ The earlier 70-execution pinned upstream subset passed for both engines in GitHu
 the repository commit, this pinned upstream CTK commit, and SHA-256 hashes for
 the selected scenario files. Further expansion is deferred to later backlog
 items and must remain limited to scenarios supported by the declared Portable
-Profile. In the current worktree, 22 feature files contain 42 scenarios and
-`uv run pytest tests/ctk -q` passes 84 executions across the available ADK and
-LangGraph engines.
+Profile. In the current worktree, 26 feature files contain 48 scenarios and
+`uv run pytest tests/ctk -q` passes 96 executions across the available ADK and
+LangGraph engines. The added cases cover conditional branches, `for` output
+accumulation, task input/output schemas, and `listen` read modes.
