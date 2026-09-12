@@ -12,7 +12,7 @@ The public contract remains Open Workflow 1.0.3. The runtime uses a framework-ne
 
 ### P0 — Deployment and repository gates
 
-- [ ] **DEPLOY-1** — complete OpenShift-specific SCC/security-context/arbitrary-UID sandbox acceptance against a disposable real OpenShift cluster. The controller and static harness are prepared, but the real-cluster gate is still unverified. Do not advertise OpenShift container execution as accepted until this passes.
+- [x] **DEPLOY-1** — complete OpenShift-specific SCC/security-context/arbitrary-UID sandbox acceptance against a disposable real OpenShift cluster. The acceptance harness passed on disposable OpenShift 4.22.1 (CRC) with `restricted-v2` injecting UID `1000720000`; it verified controller and sandbox security contexts, namespace-scoped RBAC, default-deny network behavior, workspace writes, read-only roots, and cleanup.
 - [x] **CI-1** — configure repository branch protection to require the lightweight `Docs / Markdown links` check on every pull request, including documentation-only changes. The workflow now reports the check on every pull request; GitHub displays it as `Docs / Markdown links` and exposes the required API context as `Markdown links`, which is verified on `main`.
 - [x] **DEPS-1** — review the six Dependabot updates independently. Pydantic controller updates (#24 and #25), Agent Framework (#26), and base images (#30) passed their applicable gates and were merged. The Actions bundle (#35) was closed because its qemu v4 change failed the release-workflow regression tests; the root bundle (#36) was closed because its lockfile, native, security, and PostgreSQL gates failed. No failing bundle was merged.
 

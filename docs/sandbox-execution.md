@@ -259,7 +259,7 @@ The implemented Docker backend talks to a separately controlled execution compon
 
 A Kubernetes/OpenShift backend creates isolated ephemeral Pods in a dedicated sandbox namespace/project using a narrowly scoped ServiceAccount held by the restricted controller (`kubernetes-sandbox-controller/`), reachable only on a loopback endpoint from the runtime.
 
-Expected controls include non-root execution, no privileged mode, no host namespaces, no host-path mounts, resource requests/limits, bounded ephemeral storage, network policy, approved images/registries, and cleanup/TTL behavior. Real-cluster acceptance (including OpenShift SCC/security-context behavior) is still pending; see `TODO.md` `DEPLOY-1`.
+Expected controls include non-root execution, no privileged mode, no host namespaces, no host-path mounts, resource requests/limits, bounded ephemeral storage, network policy, approved images/registries, and cleanup/TTL behavior. Real-cluster acceptance, including OpenShift SCC/security-context behavior, is green for the verified Kubernetes/OpenShift profile; see `PROJECT.md` and `TODO.md` `DEPLOY-1`.
 
 ## Backend selection
 
@@ -367,4 +367,4 @@ The required order was and remains:
 11. Container execution profile
 ```
 
-Steps 1-9 are implemented and accepted (Docker acceptance recorded green in `PROJECT.md`). Step 10/11 code is merged; Kubernetes/OpenShift remains gated on real-cluster acceptance before advertisement. The internal manager, policy model, and backend-neutral contracts remain the foundation for every execution mode.
+Steps 1-11 are implemented and accepted for the verified profiles (Docker and Kubernetes/OpenShift acceptance are recorded green in `PROJECT.md`). The internal manager, policy model, and backend-neutral contracts remain the foundation for every execution mode.

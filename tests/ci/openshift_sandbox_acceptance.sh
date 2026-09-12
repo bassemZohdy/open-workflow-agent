@@ -210,7 +210,12 @@ assert_rbac() {
   local resource="$2"
   local expected="$3"
   local actual
-  actual="$(oc auth can-i --as="$controller_identity" "$verb" "$resource" -n "$project")"
+  local actual_status=0
+  actual="$(oc auth can-i --as="$controller_identity" "$verb" "$resource" -n "$project")" || actual_status=$?
+  if [[ "$actual_status" -ne 0 && "$actual" != "no" ]]; then
+    echo "controller ServiceAccount can-i $verb $resource failed with status $actual_status" >&2
+    exit 1
+  fi
   [[ "$actual" == "$expected" ]] || {
     echo "controller ServiceAccount can-i $verb $resource returned $actual, expected $expected" >&2
     exit 1

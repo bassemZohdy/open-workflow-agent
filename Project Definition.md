@@ -776,7 +776,7 @@ External backends provide stronger isolation and deployment-owned image/resource
 
 The main runtime must not receive an unrestricted Docker socket or cluster-wide Kubernetes permissions.
 
-Kubernetes real-cluster acceptance is green. OpenShift-specific SCC/security-context/arbitrary-UID acceptance remains deferred until an OpenShift cluster is available.
+Kubernetes real-cluster acceptance is green. OpenShift-specific SCC/security-context/arbitrary-UID acceptance is also green on disposable OpenShift 4.22.1 (CRC); advertised behavior remains bounded by the verified acceptance profile.
 
 ---
 

@@ -214,7 +214,7 @@ SandboxManager
    |
    +-- InternalSandboxBackend
    +-- DockerSandboxBackend       production-accepted (restricted Unix-socket controller)
-   +-- KubernetesSandboxBackend   merged; real-cluster acceptance pending
+   +-- KubernetesSandboxBackend   merged; real-cluster acceptance green for the verified profile
 ```
 
 Deployment requirements for the external backends are strict:
@@ -504,7 +504,7 @@ Current bounded features should not be interpreted as broader infrastructure gua
 - lifecycle CloudEvents are a bounded snapshot and the SSE endpoint is bounded to lifecycle events, not a general output stream/broker;
 - scheduling uses single-runtime ownership rather than distributed scheduler ownership;
 - external workflow catalogs are disabled unless a deployment explicitly configures catalog trust policy (HTTPS-only, pinned, allowlisted; see the external catalog section above);
-- shell/script execution uses the internal sandbox only when enabled by deployment configuration and is not a hard isolation boundary; container execution uses the selected external backend (Docker accepted; Kubernetes/OpenShift pending real-cluster acceptance);
+- shell/script execution uses the internal sandbox only when enabled by deployment configuration and is not a hard isolation boundary; container execution uses the selected external backend (Docker and the verified Kubernetes/OpenShift profile accepted);
 - authentication is expected at the deployment boundary unless another trusted layer is introduced.
 
 Always check `/v1/capabilities` and the current project status before relying on optional features.

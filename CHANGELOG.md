@@ -41,6 +41,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A2A skill routing and per-principal skill/action authorization are implemented; skills and per-principal authorization are shipped capability rather than backlog.
 - Rate limiting, concurrency, burst/admission, and future circuit policy are explicitly separated into deployment traffic policy rather than being folded into identity/security configuration.
 - `run.container` admits the deployment-enabled Kubernetes sandbox backend with its own exact-digest allowlist.
+- Disposable OpenShift 4.22.1 acceptance now verifies restricted-v2 SCC injection, arbitrary-UID execution, restricted security contexts, namespace-scoped RBAC, network denial, and cleanup for the Kubernetes sandbox backend.
 - Kubernetes sandbox Jobs run as numeric non-root `65532:65532`; deadline failures surface `sandbox_timeout`; runtime execution payloads use an explicit JSON content type.
 
 ### Fixed
@@ -54,7 +55,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The full bounded inbound A2A profile is implemented: Task projection with get/cancel, deployment-declared skills, per-principal authorization, waiting/input-required + `returnImmediately` async behavior, resuming sends, and bounded streaming/resubscription. Push notifications and a broad conformance claim remain deferred.
 - A2A push notifications remain intentionally deferred until an outbound callback trust/security model exists.
 - A broad/full A2A conformance claim remains deferred until Task/streaming/interoperability gates are green.
-- OpenShift-specific sandbox acceptance remains deferred until an OpenShift cluster is available.
 - Microsoft Agent Framework remains an optional CI-covered adapter, not a production image/release target.
 - Multi-tenancy and delegated-user identity/token exchange/consent inside OWA remain out of current scope.
 

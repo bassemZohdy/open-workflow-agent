@@ -106,13 +106,20 @@ sha256:add38f52c062a01ab81c61962ab609a728e62a367818cc77bff19a6a720d2a89
 
 Standard ADK/LangGraph images remain roughly 266 MB / 248 MB decimal after the 2026-08-27 dependency refresh and avoid the multi-gigabyte Torch/CUDA path.
 
-## Verified Kubernetes Sandbox Acceptance — 2026-08-28
+## Verified Kubernetes and OpenShift Sandbox Acceptance — 2026-09-12
 
 Kubernetes real-cluster acceptance is green on kind with Kubernetes 1.37 and Calico NetworkPolicy enforcement.
 
 Verified behavior includes end-to-end `run.container`, numeric non-root execution, timeout/cancellation cleanup, secret-safe injection, namespace-bounded controller RBAC, and default-deny workload networking.
 
-OpenShift-specific SCC/security-context/arbitrary-UID acceptance remains deferred until an OpenShift cluster is available.
+OpenShift-specific acceptance is green on a disposable OpenShift 4.22.1 cluster provided by Red Hat OpenShift Local (CRC). The `restricted-v2` SCC injected UID `1000720000` for both the controller and sandbox workload, and the acceptance harness verified arbitrary-UID execution, restricted security contexts, namespace-scoped RBAC, default-deny cluster egress, writable `/workspace`, read-only roots, and cleanup.
+
+The run used the published immutable images:
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-kubernetes-sandbox-controller@sha256:428ac2d1e5aa71494100a9f41f4c22defcc47a6d1f63c0cfe1178d0776a5f1c9
+ghcr.io/bassemzohdy/open-workflow-agent-sandbox-controller@sha256:cae2d897a07fd038bbfe8bd6b00a668d64b06ad34b887769b79fe881d8f1098e
+```
 
 ## Bounded Lifecycle Streaming
 
@@ -316,7 +323,7 @@ The following backlog items are implemented and verified in the current worktree
 - `DOCS-6` and `DOCS-8`: contributor architecture and bounded A2A streaming documentation are current.
 - `K8S-3`: runtime-namespace default-deny NetworkPolicy is provided and covered by manifest tests.
 - `DEPLOY-2`: the protected release workflow publishes runtime and sandbox-controller images for `linux/amd64` and `linux/arm64`, with a workflow regression test.
-- `DEPLOY-1` progress: the Kubernetes/OpenShift controller now leaves the workload UID unset for `platform=openshift` so restricted SCC can inject the project UID range, while retaining the fixed non-root UID for vanilla Kubernetes. The OpenShift acceptance harness checks SCC assignment, arbitrary-UID execution, security context, RBAC, network denial, workspace writes, and cleanup; real-cluster execution remains pending.
+- `DEPLOY-1`: the Kubernetes/OpenShift controller leaves the workload UID unset for `platform=openshift` so restricted SCC can inject the project UID range, while retaining the fixed non-root UID for vanilla Kubernetes. The disposable OpenShift 4.22.1 acceptance harness passed with SCC assignment, arbitrary-UID execution, security context, RBAC, network denial, workspace writes, and cleanup verified.
 - `OBS-1`: `/metrics` exposes bounded Prometheus text metrics for workflow lifecycle, task and sandbox events, HTTP/A2A traffic, traffic policy, scheduler jobs, and pending approvals.
 - `DEPS-3`: strict mypy checks cover core, ADK, LangGraph, and optional Agent Framework adapter packages, with native SDK boundaries explicitly isolated.
 - `DOCS-1` through `DOCS-4`: the API guide now documents memory tools, scheduling, approvals, generic events, lifecycle snapshots, and bounded SSE replay.
@@ -327,7 +334,7 @@ The following backlog items are implemented and verified in the current worktree
 - `CI-1a`: documentation-only changes have a lightweight Markdown relative-link workflow, while the full code/test workflow remains path-scoped.
 - `RELEASE-1` progress: the restricted Docker sandbox controller removes its unused Docker Compose and Buildx CLI plugins before image scanning; a focused regression test guards the release-image hardening.
 - `TEST-2`: dependency-free benchmark harness reports compilation latency, sequential invocation latency, and concurrent throughput as JSON.
-- `TEST-3`: core coverage is enforced at 90%; the full suite currently reports 635 passed, 8 skipped, with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
+- `TEST-3`: core coverage is enforced at 90%; the full locked root suite currently reports 647 passed, 11 skipped, and 90.35% exact coverage, with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
 - `OPS-1`: knowledge watch failures retain safe bounded status, keep the watcher alive for retry, emit safe warning metadata, and surface degraded readiness.
 - `OPS-2`: `docs/release-readiness.md` defines exact-commit, dependency, runtime acceptance, supply-chain, publication, and exception sign-off gates.
 - `TEST-4`: Linux/WSL-compatible mutmut coverage targets the framework-neutral traffic-policy middleware with 13 direct tests; the current 316-mutant baseline kills 272 mutants, records 22 survivors, 18 timeouts, and 4 mutants without test association for future test-strengthening work.
@@ -368,8 +375,9 @@ documentation relative-link validator also passes.
 
 ## Current Active Backlog
 
-The authoritative ordered backlog is `TODO.md`. The only remaining active
-priority is OpenShift sandbox acceptance on a disposable real cluster.
+The authoritative ordered backlog is `TODO.md`. All scoped acceptance and
+evidence items in the active backlog are complete; further work is listed
+under intentionally deferred scope below.
 
 ## Intentionally Deferred
 

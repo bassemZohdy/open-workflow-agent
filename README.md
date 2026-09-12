@@ -303,7 +303,7 @@ Three execution backends exist behind deployment configuration:
 
 - **Internal sandbox** — controlled child-process execution inside the normal runtime deployment: dedicated workspace, bounded environment, input/output limits, timeout, cancellation, and cleanup. It is a controlled execution boundary, **not** a hard isolation boundary; it does not provide container, pod, VM, or microVM isolation.
 - **Docker backend** — stronger-isolation external execution through a restricted Unix-socket controller so the main runtime never mounts an unrestricted Docker socket. Production acceptance is recorded green (see `PROJECT.md`).
-- **Kubernetes/OpenShift backend** — controller-held cluster lifecycle permissions with deployment-owned namespace, ServiceAccount, image, resource, secret, and network-policy controls; the main runtime never receives cluster-wide permissions. Real-cluster Kubernetes acceptance is recorded in `PROJECT.md`; OpenShift-specific SCC/arbitrary-UID acceptance remains deferred and must not be advertised until verified.
+- **Kubernetes/OpenShift backend** — controller-held cluster lifecycle permissions with deployment-owned namespace, ServiceAccount, image, resource, secret, and network-policy controls; the main runtime never receives cluster-wide permissions. Kubernetes and OpenShift real-cluster acceptance are recorded in `PROJECT.md`; the advertised boundary remains limited to the verified SCC/arbitrary-UID profile.
 
 See [Sandbox execution architecture](docs/sandbox-execution.md), the [external sandbox contract](docs/external-sandbox-contract.md), and [TODO.md](TODO.md) for the acceptance state of each backend.
 
