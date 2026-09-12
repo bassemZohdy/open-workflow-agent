@@ -4,7 +4,7 @@
 
 - `Project Definition.md` — architecture/product contract.
 - `PROJECT.md` — verified implementation and release state.
-- `TODO.md` — active and intentionally deferred backlog.
+- `TODO.md` — scoped backlog, completed-work archive, and intentionally deferred work.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
 ## Current Phase — 2026-09-12
@@ -232,7 +232,7 @@ Agent Card now advertises `securitySchemes` and `security` requirements when aut
 
 ## Remaining A2A Work
 
-The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining active work is listed in `TODO.md`.
+The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining deferred work is listed in `TODO.md`.
 
 The official A2A v1 semantics are the guide: ordinary `SendMessage` blocks by default, while `returnImmediately=true` is the protocol-native non-blocking request and returns Task state for later `GetTask`/subscription. OWA will not add a custom async flag.
 
@@ -373,11 +373,12 @@ with 258 tests. Native ADK and LangGraph benchmark probes both pass and report
 non-zero native checkpoint growth plus stable operation ids across replay. The
 documentation relative-link validator also passes.
 
-## Current Active Backlog
+## Current Backlog State
 
-The authoritative ordered backlog is `TODO.md`. All scoped acceptance and
-evidence items in the active backlog are complete; further work is listed
-under intentionally deferred scope below.
+The authoritative scoped backlog is `TODO.md`. Completed implementation and
+acceptance items are archived under its `Completed scoped work` section, so no
+active scoped backlog items remain. Future work is listed under intentionally
+deferred scope below.
 
 ## Intentionally Deferred
 

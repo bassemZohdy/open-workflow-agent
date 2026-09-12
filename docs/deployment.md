@@ -227,7 +227,7 @@ Deployment requirements for the external backends are strict:
 - enforce approved images/registries, resource limits, ephemeral-storage bounds, network policy/egress restrictions, secret isolation, timeout, and cleanup/TTL behavior;
 - advertise only isolation controls actually enforced by the selected backend.
 
-Backend selection is deployment policy, not a workflow-specific Docker/Kubernetes extension. The same Open Workflow definition can move from the internal backend to an external backend when the required capability is supported. `/v1/capabilities` reports the sandbox block for the selected backend; Kubernetes/OpenShift execution is advertised only after real-cluster acceptance gates are green (see `TODO.md` `DEPLOY-1`).
+Backend selection is deployment policy, not a workflow-specific Docker/Kubernetes extension. The same Open Workflow definition can move from the internal backend to an external backend when the required capability is supported. `/v1/capabilities` reports the sandbox block for the selected backend; Kubernetes/OpenShift execution is advertised only after real-cluster acceptance gates are green (see the verified `DEPLOY-1` record in `PROJECT.md`).
 
 See [sandbox-execution.md](sandbox-execution.md) for the approved architecture and [external-sandbox-contract.md](external-sandbox-contract.md) for the backend-neutral contract.
 
