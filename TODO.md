@@ -4,15 +4,40 @@
 
 ## Current Phase
 
-**`v0.1.0` is released. The current scoped implementation and acceptance backlog is complete. `main` remains pre-stable; future work is limited to the intentionally deferred scope below.**
+**`v0.1.0` is released. The next milestone is release hardening plus an A2A task-access decision; intentionally deferred product scope remains below.**
 
 The public contract remains Open Workflow 1.0.3. The runtime uses a framework-neutral common executor and deployment-selected ADK or LangGraph envelopes; it does not claim task-level native compilation or full Open Workflow/A2A conformance.
 
 ## Active backlog
 
-No active scoped backlog items remain. Verified implementation and acceptance
-evidence is recorded in `PROJECT.md`; future work is listed under
-[Intentionally deferred](#intentionally-deferred).
+### Next milestone — release hardening and A2A task access
+
+This milestone prepares the current bounded profile for another formal release.
+Work is ordered: decide the A2A task-access boundary first, implement and test
+the chosen boundary where required, then run release gates on one exact commit
+and publish only after those gates are recorded. Do not pull push
+notifications, full protocol conformance, multi-tenancy, delegated identity,
+AsyncAPI, or Agent Framework production packaging into this milestone.
+
+#### P0 — A2A task-access decision and enforcement
+
+- [ ] **A2A-8** — decide and document whether deployments with multiple A2A principals support per-task ownership. The current bounded policy authorizes `tasks.get`/`tasks.cancel` against the shared `tasks` resource; it does not bind a task to its creating principal. Choose one explicit contract: (a) bind task ownership to the authenticated principal and enforce it for get, cancel, subscribe, and resume, or (b) reject multi-principal task access and require a documented trusted single-principal deployment mode. Record the decision in `Project Definition.md`, `PROJECT.md`, `docs/api.md`, and `docs/configuration.md`.
+- [ ] **A2A-9** — implement the boundary selected by `A2A-8` without exposing task existence, credentials, or engine-native state. Apply the same rule to JSON-RPC and HTTP+JSON `GetTask`, `CancelTask`, `SubscribeToTask`, and resuming `SendMessage` paths. Keep the common invocation/task projection authoritative.
+- [ ] **A2A-10** — add deterministic security and contract coverage for the selected boundary: authorized access, cross-principal denial, unknown-task behavior, waiting-task resume, cancellation, subscription, both transports, and sanitized/non-disclosing errors. Run the applicable root and engine suites before closing the tasks.
+
+#### P1 — Exact-commit release readiness
+
+- [ ] **RELEASE-2** — run [docs/release-readiness.md](docs/release-readiness.md) against one exact candidate commit. Verify version/tag metadata, current `CHANGELOG.md`/`PROJECT.md`/`TODO.md`, clean source state, every independent lock, root quality and coverage gates, ADK/LangGraph/Agent Framework evaluation suites, documentation links, Docker/runtime restart-resume acceptance, external sandbox and PostgreSQL gates, dependency/image scans, and SBOM/provenance evidence. Record run identifiers, results, exceptions, and the candidate SHA in `PROJECT.md`.
+- [ ] **RELEASE-3** — publish the next formal release only after `A2A-8` through `A2A-10` and `RELEASE-2` are green. Select and record the SemVer version, merge the release commit to `main`, create the matching Git tag/GitHub Release, publish immutable runtime/controller image references, and record rollback references and digests in `PROJECT.md`.
+
+#### P2 — Post-release architecture decision
+
+- [ ] **ENGINE-4** — decide whether native-engine depth is a product requirement after the release. Either retain the current native execution-envelope architecture and keep its capability/documentation language narrow, or define a separate task-level plan-to-native-node/compiler milestone, starting with LangGraph’s stronger native resume path and then proving ADK parity. Do not change the public DSL or expose the internal execution plan.
+
+Milestone exit criteria: the A2A task-access contract is explicit and tested,
+the exact release candidate has complete evidence, and the release decision is
+recorded. `ENGINE-4` may remain open after publication as a separate architecture
+track.
 
 ## Intentionally deferred
 

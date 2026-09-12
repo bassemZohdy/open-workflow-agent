@@ -28,6 +28,10 @@ class ExecutionHandle:
     error: dict[str, Any] | None = None
     parent_invocation_id: str | None = None
     parent_task_reference: str | None = None
+    # Deployment-level caller identity for object-level authorization.  This
+    # is deliberately common invocation metadata, not an engine credential or
+    # native execution reference.
+    owner_principal: str | None = None
 
 
 class InvocationStore:
@@ -50,6 +54,7 @@ class InvocationStore:
         workflow_fingerprint: str,
         parent_invocation_id: str | None = None,
         parent_task_reference: str | None = None,
+        owner_principal: str | None = None,
     ) -> ExecutionHandle:
         handle = ExecutionHandle(
             invocation_id=str(uuid.uuid4()),
@@ -62,6 +67,7 @@ class InvocationStore:
             workflow_fingerprint=workflow_fingerprint,
             parent_invocation_id=parent_invocation_id,
             parent_task_reference=parent_task_reference,
+            owner_principal=owner_principal,
         )
         self.connection.execute(
             "INSERT INTO invocations(invocation_id, payload, status) VALUES (?, ?, ?)",
@@ -74,7 +80,13 @@ class InvocationStore:
         row = self.connection.execute(
             "SELECT payload FROM invocations WHERE invocation_id = ?", (invocation_id,)
         ).fetchone()
-        return ExecutionHandle(**json.loads(row[0])) if row else None
+        if row is None:
+            return None
+        payload = json.loads(row[0])
+        # Keep persisted handles readable across the addition of the common
+        # ownership field; old rows represent trusted/unowned invocations.
+        payload.setdefault("owner_principal", None)
+        return ExecutionHandle(**payload)
 
     def update(self, handle: ExecutionHandle, **changes: Any) -> ExecutionHandle:
         requested_status = changes.get("status", handle.status)

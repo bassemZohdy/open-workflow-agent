@@ -30,6 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Secret-safety verification tests covering the A2A adapter path: Agent Card, capabilities, Task projections, protocol error bodies, and configuration validation errors never expose the resolved secret value (`SECURITY-3`).
 - Protocol-native A2A async behavior (`A2A-6`): `SendMessageConfiguration.returnImmediately` starts the invocation and returns the Task projection immediately for `GetTask` polling; blocking sends return `result.task` when the workflow ends up waiting (`TASK_STATE_INPUT_REQUIRED`); resuming sends carry `message.taskId` and reuse the common fingerprint-verified resume contract, with sanitized `task_not_found`/`task is not accepting input` rejections.
 - Bounded A2A streaming/resubscription (`A2A-7`): `SendStreamingMessage` (`message:stream`) and `SubscribeToTask` (`tasks/{id}:subscribe`) stream official `statusUpdate`/`artifactUpdate` frames translated from common lifecycle events over bounded SSE, with per-principal authorization, fail-closed backpressure, and no engine-native stream exposure.
+- Principal-bound A2A task access (`A2A-8` through `A2A-10`): authenticated task creators are persisted in common invocation metadata and required for get, cancel, subscribe, and resume across JSON-RPC and HTTP+JSON; unknown and cross-principal references return the same sanitized task-not-found response, with deterministic transport/security coverage.
 
 ### Changed
 

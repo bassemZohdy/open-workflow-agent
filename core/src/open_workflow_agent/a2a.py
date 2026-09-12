@@ -28,6 +28,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from .a2a_streaming import a2a_sse_stream, a2a_stream_media_type
 from .a2a_tasks import project_a2a_task
 from .config import A2AConfig
+from .persistence import ExecutionHandle
 from .security import (
     AuthorizationPolicy,
     BearerSecurityProfile,
@@ -269,6 +270,22 @@ def _permitted(
     return authorize(principal, policy, action=action, resource=resource)
 
 
+def _task_owner_matches(
+    config: A2AConfig, principal: Principal, owner_principal: str | None
+) -> bool:
+    """Apply the object-level A2A task boundary after action authorization.
+
+    A task created through authenticated A2A traffic is readable only by the
+    same deployment principal. Unowned legacy/internal invocations are
+    available only in the explicitly trusted, unauthenticated single-principal
+    mode; an authenticated endpoint cannot use them as an object reference.
+    """
+
+    if owner_principal is None:
+        return config.security_profile is None
+    return owner_principal == principal.identity
+
+
 def _requested_protocol_version(request: Request) -> str | None:
     return request.headers.get("a2a-version") or request.query_params.get("A2A-Version")
 
@@ -322,13 +339,6 @@ class ResumeTarget:
     deployable: bool
 
 
-def _get_task(app: FastAPI, task_id: str) -> dict[str, Any]:
-    handle = app.state.services.invocations.get(task_id)
-    if handle is None:
-        raise JsonRpcError(JsonRpcError.TASK_NOT_FOUND, "task not found")
-    return project_a2a_task(handle)
-
-
 async def _cancel_task(app: FastAPI, task_id: str) -> dict[str, Any]:
     handle = app.state.services.invocations.get(task_id)
     if handle is None:
@@ -347,15 +357,15 @@ def mount_a2a(
     config: A2AConfig,
     security: SecurityConfig,
     *,
-    start_task: Callable[[str, str | None, bool, str | None], Awaitable[A2ASendOutcome]],
+    start_task: Callable[[str, str | None, bool, str | None, str], Awaitable[A2ASendOutcome]],
     resolve_resume_target: Callable[[str], Awaitable[ResumeTarget | None]],
     resume_task: Callable[[str, str, bool], Awaitable[A2ASendOutcome]],
     skills: list[dict[str, Any]] | None = None,
 ) -> None:
     """Mount the selected bounded A2A v1 binding on the application.
 
-    ``start_task(text, skill_id, return_immediately, context_id)`` executes the
-    mapped workflow for a new task. ``resolve_resume_target(task_id)`` returns
+    ``start_task(text, skill_id, return_immediately, context_id, principal)``
+    executes the mapped workflow for a new task. ``resolve_resume_target(task_id)`` returns
     the deployment-side view of an existing task (``None`` when unknown), and
     ``resume_task(text, task_id, return_immediately)`` resumes a waiting task
     through the common resume contract. Outcomes carry a sanitized reply, a
@@ -367,6 +377,16 @@ def mount_a2a(
 
     app.add_middleware(_A2APrincipalMiddleware, config=config, security=security)
     stream_limits = StreamLimits()
+
+    def task_handle(principal: Principal, task_id: str) -> ExecutionHandle:
+        handle = app.state.services.invocations.get(task_id)
+        if not isinstance(handle, ExecutionHandle) or not _task_owner_matches(
+            config, principal, handle.owner_principal
+        ):
+            # Ownership failures intentionally have the same response as an
+            # unknown task so task existence is not disclosed cross-principal.
+            raise JsonRpcError(JsonRpcError.TASK_NOT_FOUND, "task not found")
+        return handle
 
     def task_stream(task_id: str) -> StreamingResponse:
         services = app.state.services
@@ -503,7 +523,18 @@ def mount_a2a(
 
         task_ref = message.get("taskId")
         if isinstance(task_ref, str) and task_ref.strip():
-            target = await resolve_resume_target(task_ref.strip())
+            normalized_task_ref = task_ref.strip()
+            try:
+                task_handle(principal, normalized_task_ref)
+            except JsonRpcError as error:
+                return send_error(
+                    request_id,
+                    code="task_not_found",
+                    message=error.message,
+                    status=404,
+                    rpc_code=error.code,
+                )
+            target = await resolve_resume_target(normalized_task_ref)
             if target is None:
                 return send_error(
                     request_id,
@@ -530,7 +561,7 @@ def mount_a2a(
                 )
             if not send_permitted(principal, target.skill_id):
                 return forbidden(request_id)
-            outcome = await resume_task(text, task_ref.strip(), return_immediately)
+            outcome = await resume_task(text, normalized_task_ref, return_immediately)
         else:
             skill_id = _requested_skill_id(params, message)
             if config.skills and skill_id not in {skill.id for skill in config.skills}:
@@ -545,7 +576,13 @@ def mount_a2a(
                 )
             if not send_permitted(principal, skill_id):
                 return forbidden(request_id)
-            outcome = await start_task(text, skill_id, return_immediately, context_id)
+            outcome = await start_task(
+                text,
+                skill_id,
+                return_immediately,
+                context_id,
+                principal.identity,
+            )
 
         if outcome.error_code:
             return send_error(
@@ -581,7 +618,7 @@ def mount_a2a(
             )
         if not send_permitted(principal, skill_id):
             return forbidden(request_id)
-        outcome = await start_task(text, skill_id, True, context_id)
+        outcome = await start_task(text, skill_id, True, context_id, principal.identity)
         if outcome.error_code or outcome.task is None:
             return send_error(
                 request_id,
@@ -607,13 +644,15 @@ def mount_a2a(
                 status=422,
                 rpc_code=JsonRpcError.INVALID_PARAMS,
             )
-        if app.state.services.invocations.get(task_id) is None:
+        try:
+            task_handle(principal, task_id)
+        except JsonRpcError as error:
             return send_error(
                 request_id,
                 code="task_not_found",
-                message="task not found",
+                message=error.message,
                 status=404,
-                rpc_code=JsonRpcError.TASK_NOT_FOUND,
+                rpc_code=error.code,
             )
         return task_stream(task_id)
 
@@ -678,15 +717,21 @@ def mount_a2a(
                 if method == "GetTask":
                     if not task_permitted(principal, "tasks.get"):
                         return forbidden(request_id)
-                    return _jsonrpc_response(request_id, _get_task(app, _task_id(params)))
+                    task_id = _task_id(params)
+                    return _jsonrpc_response(
+                        request_id,
+                        project_a2a_task(task_handle(principal, task_id)),
+                    )
                 if method == "SubscribeToTask":
                     return handle_resubscribe(principal, params, request_id=request_id)
                 if method == "CancelTask":
                     if not task_permitted(principal, "tasks.cancel"):
                         return forbidden(request_id)
+                    task_id = _task_id(params)
+                    task_handle(principal, task_id)
                     return _jsonrpc_response(
                         request_id,
-                        await _cancel_task(app, _task_id(params)),
+                        await _cancel_task(app, task_id),
                     )
                 if method != "SendMessage" and method != "SendStreamingMessage":
                     raise JsonRpcError(
@@ -784,7 +829,7 @@ def mount_a2a(
             if unsupported := version_supported(request):
                 return unsupported
             try:
-                return _http_json_response(_get_task(app, task_id))
+                return _http_json_response(project_a2a_task(task_handle(principal, task_id)))
             except JsonRpcError as error:
                 return _http_json_response(
                     {"error": {"code": "task_not_found", "message": error.message}},
@@ -802,6 +847,7 @@ def mount_a2a(
             if unsupported := version_supported(request):
                 return unsupported
             try:
+                task_handle(principal, task_id)
                 return _http_json_response(await _cancel_task(app, task_id))
             except JsonRpcError as error:
                 if error.code == JsonRpcError.TASK_NOT_FOUND:

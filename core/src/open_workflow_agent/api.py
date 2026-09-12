@@ -735,7 +735,11 @@ def create_app(
         return A2ASendOutcome(reply_text=extract_output_text(result.output))
 
     async def _a2a_start_task(
-        text: str, skill_id: str | None, return_immediately: bool, context_id: str | None = None
+        text: str,
+        skill_id: str | None,
+        return_immediately: bool,
+        context_id: str | None = None,
+        owner_principal: str = "anonymous",
     ) -> A2ASendOutcome:
         plan = _a2a_plan_for_skill(skill_id)
         if plan is None:
@@ -747,6 +751,7 @@ def create_app(
             workflow_name=plan.name,
             workflow_version=plan.version,
             workflow_fingerprint=plan.fingerprint,
+            owner_principal=owner_principal,
         )
         invocation = runtime_engine.invoke(plan, handle, {"question": text})
         if return_immediately:

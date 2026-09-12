@@ -320,6 +320,15 @@ First matching rule allows; no match denies with HTTP `403` (`"forbidden"`).
 Without a policy, all authenticated operations are allowed. Declaring an
 authorization policy without a security profile fails at startup.
 
+Authenticated A2A tasks are creator-bound. The common invocation metadata
+stores the profile principal identity as `owner_principal`; `GetTask`,
+`CancelTask`, `SubscribeToTask`, and a resuming `SendMessage` require that same
+identity after action authorization. Cross-principal and unknown task ids are
+deliberately indistinguishable: JSON-RPC returns `-32001` (`task not found`) and
+HTTP+JSON returns `404` with the same sanitized error body. Ownerless internal
+handles are usable through A2A only when authentication is disabled, which is
+the trusted single-principal mode.
+
 Declared skills are advertised on the Agent Card and selected by clients
 through `message.metadata.skillId`; routing is deployment-owned and unknown
 or ambiguous names fail closed (`A2A-3`).
@@ -394,7 +403,7 @@ OWA implements no other async flag.
 
 Resuming sends carry the existing `message.taskId`: a task in
 `TASK_STATE_INPUT_REQUIRED` is resumed through the common resume contract
-using the message text as input. Unknown task references return `-32001`
+using the message text as input. Unknown or cross-principal task references return `-32001`
 (`task_not_found`); terminal or non-waiting tasks are rejected with a
 sanitized `task is not accepting input` error. HTTP+JSON maps these to
 `404` and `409` respectively.
@@ -411,7 +420,7 @@ yields only its projection). Over HTTP+JSON the routes are
 
 Streams are bounded — event count, byte size, and duration — and a client
 that needs more simply re-subscribes. Disconnecting a stream never cancels
-the underlying invocation. Unknown resubscription targets return `-32001`;
+the underlying invocation. Unknown or cross-principal resubscription targets return `-32001`;
 resubscription requires the same `tasks.get` authorization as `GetTask`.
 
 #### GetTask
@@ -481,7 +490,7 @@ POST /a2a/tasks/{task_id}:cancel
 A2A-Version: 1.0
 ```
 
-Missing Tasks return HTTP `404`; non-cancelable Tasks return HTTP `400`.
+Missing or cross-principal Tasks return HTTP `404`; non-cancelable Tasks return HTTP `400`.
 
 Stream and resubscribe use the same semantics as the JSON-RPC
 `SendStreamingMessage`/`SubscribeToTask` operations:

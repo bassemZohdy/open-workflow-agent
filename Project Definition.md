@@ -512,6 +512,7 @@ protocol-native returnImmediately async behavior
 Task projection with get/cancel
 waiting/input-required/resume mapping
 deployment-declared skills and per-principal authorization
+principal-bound task access for authenticated A2A callers
 v1 message/Part shapes
 request/message size bounds
 sanitized transport errors
@@ -558,6 +559,15 @@ A2A task_id == OWA invocation_id
 ```
 
 unless the pinned A2A specification requires a distinct external identity.
+
+When A2A authentication is enabled, the common `ExecutionHandle` records the
+authenticated creator identity as `owner_principal`. `GetTask`, `CancelTask`,
+`SubscribeToTask`, and resuming `SendMessage` require the same principal. A
+cross-principal or unknown task returns the same sanitized task-not-found
+response, so task existence is not disclosed. Handles created without an A2A
+principal are accessible through A2A only in the explicitly trusted,
+unauthenticated single-principal deployment mode. The identity is common
+authorization metadata; credentials and engine-native state remain private.
 
 Common invocation, persistence, resume, cancellation, approval, schedule, and lifecycle services remain authoritative.
 
@@ -701,6 +711,10 @@ tasks.cancel
 ```
 
 Authorization should support least-privilege decisions per principal/action/resource.
+
+For object-scoped A2A Tasks, action authorization is followed by an ownership
+check against the authenticated principal. Ownership failures are deliberately
+indistinguishable from unknown Tasks at the wire boundary.
 
 ---
 
@@ -1030,8 +1044,9 @@ shared named security profiles
 The bounded profile includes Agent Card discovery, SendMessage, Task
 projection with get/cancel, waiting/input-required and resume mapping,
 protocol-native asynchronous sends, deployment-declared skills,
-per-principal authorization, and bounded streaming/resubscription. It does not
-claim broad/full A2A conformance or implement push notifications.
+per-principal authorization and authenticated task ownership, and bounded
+streaming/resubscription. It does not claim broad/full A2A conformance or
+implement push notifications.
 
 This sequence keeps A2A in core and reuses common invocation/durability semantics rather than implementing engine-specific A2A code.
 

@@ -216,7 +216,9 @@ a2a:
 - `tasks.get` on `tasks` — GetTask;
 - `tasks.cancel` on `tasks` — CancelTask.
 
-A rule matches when the action and resource match (exact value or `*`), and every declared `roles`, `scopes`, and `audience` requirement is satisfied by the principal. First matching rule allows; no match denies with HTTP 403. Declaring an authorization policy without a security profile is rejected at startup — authorization without authenticated principals is not supported. Agent Card discovery is authentication-gated but not policy-gated, because clients need the card to discover the interface. Per-task resources would require per-caller task ownership and remain out of scope with multi-tenancy.
+A rule matches when the action and resource match (exact value or `*`), and every declared `roles`, `scopes`, and `audience` requirement is satisfied by the principal. First matching rule allows; no match denies with HTTP 403. Declaring an authorization policy without a security profile is rejected at startup — authorization without authenticated principals is not supported. Agent Card discovery is authentication-gated but not policy-gated, because clients need the card to discover the interface.
+
+Task access has an additional object-level boundary. A task created through authenticated A2A traffic persists the authenticated profile identity as its common `owner_principal`. `GetTask`, `CancelTask`, `SubscribeToTask`, and a resuming `SendMessage` require the same identity after the action rule passes. An unknown task and a task owned by another principal both return the sanitized task-not-found response (JSON-RPC `-32001`, HTTP+JSON `404`) so task existence is not disclosed. Ownerless handles are accepted through A2A only when authentication is disabled, which is the trusted single-principal deployment mode; authenticated deployments cannot use ownerless internal invocation ids as A2A object references.
 
 The standard authorization vocabulary is:
 

@@ -9,9 +9,11 @@
 
 ## Current Phase — 2026-09-12
 
-`v0.1.0` is the current formal release. `main` contains additional unreleased pre-stable work.
+`v0.1.0` is the current formal release. `main` contains additional unreleased
+pre-stable work. The next milestone is release hardening plus an explicit A2A
+task-access decision; the ordered tasks are maintained in `TODO.md`.
 
-The bounded inbound A2A profile is complete end to end: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, resuming sends over the common resume contract, and bounded streaming/resubscription (`SendStreamingMessage`/`SubscribeToTask`) translating common lifecycle events into official status/artifact frames. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The deployment-controlled `traffic_policy` model is implemented with global token-bucket/concurrency limits plus endpoint-prefix and authenticated-principal scopes. External interoperability/conformance evidence is complete for all advertised baselines.
+The bounded inbound A2A profile is complete end to end: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), principal-bound authenticated task access, waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, resuming sends over the common resume contract, and bounded streaming/resubscription (`SendStreamingMessage`/`SubscribeToTask`) translating common lifecycle events into official status/artifact frames. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The deployment-controlled `traffic_policy` model is implemented with global token-bucket/concurrency limits plus endpoint-prefix and authenticated-principal scopes. External interoperability/conformance evidence is complete for all advertised baselines.
 
 No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engine conformance claim is made beyond the exact tested capability/profile boundaries.
 
@@ -198,6 +200,7 @@ A2A Task id        = OWA invocation_id
 A2A contextId      = OWA session_id
 Task state         = projection of common invocation status
 Task artifacts     = sanitized common invocation output
+owner_principal    = authenticated A2A creator identity (not wire-visible)
 engine references  = never exposed
 ```
 
@@ -223,6 +226,14 @@ Task not cancelable  -32002
 HTTP+JSON uses the matching official-style 404/400 boundary for the same conditions.
 
 `SendMessage` follows official async semantics: blocking sends return `result.message` on completion or `result.task` when the workflow ends up waiting (`TASK_STATE_INPUT_REQUIRED`); `configuration.returnImmediately: true` starts the invocation and returns the Task projection immediately for `GetTask` polling; sends carrying `message.taskId` resume a waiting task through the common resume contract (fingerprint-verified), while unknown or non-waiting tasks are rejected with sanitized errors.
+
+When A2A authentication is configured, each A2A-created invocation persists the
+authenticated principal identity in common invocation metadata. Get, cancel,
+subscribe, and resume require that same identity. Unknown and cross-principal
+references use the same sanitized `task_not_found` response. Existing or
+internal handles without an owner are available only in the trusted,
+unauthenticated single-principal mode; owner identities are never included in
+Task projections, lifecycle payloads, or engine-native state.
 
 Streaming/resubscription (`SendStreamingMessage` over `message:stream`, `SubscribeToTask` over `tasks/{id}:subscribe`) streams official `Task`/`statusUpdate`/`artifactUpdate` frames translated from common lifecycle CloudEvents. Streams are bounded by event/byte/duration limits with fail-closed backpressure, disconnecting never cancels the invocation, and engine-native checkpoint/stream objects are never exposed.
 
@@ -265,7 +276,7 @@ Implemented security groundwork:
 - `RuntimeConfig.security.profiles` is a strict-parsed section of the main runtime configuration, with `OWA__SECURITY__...` overrides;
 - A2A inbound bearer authentication resolves a named `bearer` security profile (`a2a.security_profile`), replacing the temporary `auth_token` field; `RuntimeConfig` rejects unknown or non-bearer profile references at startup; a missing deployment secret at request time fails closed (401), not a crash;
 - the approvals operator check (`approvals.operator_security_profile`), external-catalog authentication (`authentication.security_profile`), per-tool authentication (`tools[].security_profile`), and workflow-initiated outbound protocol calls (`protocols.security_profile`) all resolve named `bearer`/`api_key` profiles fail-closed at call time;
-- A2A per-principal authorization (`a2a.authorization`) enforces explicit allow rules — `message.send` on `skill:<id>` (or `skill:workflow` for the implicit skill), `tasks.get`/`tasks.cancel` on the `tasks` collection — against the authenticated profile principal; first matching rule allows, no match returns a sanitized 403, and a policy declared without a security profile is rejected at startup;
+- A2A per-principal authorization (`a2a.authorization`) enforces explicit allow rules — `message.send` on `skill:<id>` (or `skill:workflow` for the implicit skill), `tasks.get`/`tasks.cancel` on the `tasks` collection — against the authenticated profile principal; first matching rule allows, no match returns a sanitized 403, and a policy declared without a security profile is rejected at startup. Object-level task access then requires the persisted `owner_principal`; cross-principal and ownerless references on authenticated endpoints return the same sanitized task-not-found response;
 - every temporary credential field is removed (`a2a.auth_token`, `approvals.operator_token`, external-catalog `bearer_token_env`/`basic_*_env`, ambient `OWA_BEARER_TOKEN_ENV`/`OWA_BASIC_*` protocol-client variables); credentials resolve exclusively through named profiles;
 - secret-safety verification tests assert the resolved token value never appears on Agent Cards, capability documents, A2A Task projections, protocol error bodies, or configuration validation errors.
 
@@ -375,9 +386,13 @@ documentation relative-link validator also passes.
 
 ## Current Backlog State
 
-The authoritative scoped backlog is `TODO.md`. No active scoped backlog items
-remain. Future work is listed under intentionally deferred scope below; verified
-implementation and acceptance evidence remains in this document.
+The authoritative scoped backlog is `TODO.md`. The active next milestone is
+release hardening and A2A task access: `A2A-8` through `A2A-10` decide, enforce,
+and test the task-access boundary, followed by `RELEASE-2` and `RELEASE-3` for
+exact-commit evidence and publication. `ENGINE-4` is a post-release decision
+track. Future work outside that milestone is listed under intentionally
+deferred scope below; verified implementation and acceptance evidence remains
+in this document.
 
 ## Intentionally Deferred
 

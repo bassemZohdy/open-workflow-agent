@@ -129,6 +129,7 @@ class WorkflowEngine:
             workflow_fingerprint=workflow.fingerprint,
             parent_invocation_id=parent_handle.invocation_id,
             parent_task_reference=task_reference,
+            owner_principal=parent_handle.owner_principal,
         )
         try:
             result = await self.invoke(workflow, child, input_data)

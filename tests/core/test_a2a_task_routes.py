@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
@@ -20,7 +21,7 @@ def _runtime(tmp_path, *, transport: str):
     return app, services
 
 
-def _create_handle(services, *, status: str = "running", output=None):
+def _create_handle(services, *, status: str = "running", output=None, owner_principal=None):
     plan = compile_workflow()
     handle = services.invocations.create(
         engine="portable",
@@ -29,10 +30,43 @@ def _create_handle(services, *, status: str = "running", output=None):
         workflow_name=plan.name,
         workflow_version=plan.version,
         workflow_fingerprint=plan.fingerprint,
+        owner_principal=owner_principal,
     )
     if status != "running" or output is not None:
         services.invocations.update(handle, status=status, output=output)
     return handle
+
+
+def _secured_runtime(tmp_path, *, transport: str, principal: str, token_env: str):
+    config = RuntimeConfig.model_validate(
+        {
+            "security": {
+                "profiles": {
+                    "a2a-caller": {
+                        "type": "bearer",
+                        "token": {"from_env": token_env},
+                        "principal": principal,
+                    }
+                }
+            },
+            "a2a": {
+                "enabled": True,
+                "transport": transport,
+                "security_profile": "a2a-caller",
+            },
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    return create_app(config=config, services=services), services
+
+
+def _task_request(method: str, task_id: str, request_id: str = "task-1") -> dict[str, object]:
+    return {
+        "jsonrpc": "2.0",
+        "id": request_id,
+        "method": method,
+        "params": {"id": task_id},
+    }
 
 
 def test_jsonrpc_get_task_projects_common_invocation_state(tmp_path) -> None:
@@ -161,3 +195,132 @@ def test_capabilities_advertise_only_implemented_task_operations(tmp_path) -> No
     assert capabilities["streaming"] is True
     assert capabilities["streamingOperations"] == ["SendStreamingMessage", "SubscribeToTask"]
     assert capabilities["pushNotifications"] is False
+
+
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+def test_authenticated_a2a_task_access_is_bound_to_creator(
+    tmp_path, monkeypatch, transport
+) -> None:
+    monkeypatch.setenv("OWA_A2A_ALICE", "alice-secret")
+    monkeypatch.setenv("OWA_A2A_BOB", "bob-secret")
+
+    alice_app, alice_services = _secured_runtime(
+        tmp_path, transport=transport, principal="alice", token_env="OWA_A2A_ALICE"
+    )
+    handle = _create_handle(alice_services, owner_principal="alice")
+
+    alice_headers = {**A2A_HEADERS, "Authorization": "Bearer alice-secret"}
+    bob_app, bob_services = _secured_runtime(
+        tmp_path, transport=transport, principal="bob", token_env="OWA_A2A_BOB"
+    )
+    try:
+        with TestClient(alice_app) as alice_client:
+            if transport == "jsonrpc":
+                response = alice_client.post(
+                    "/a2a",
+                    headers=alice_headers,
+                    json=_task_request("GetTask", handle.invocation_id),
+                )
+                assert response.json()["result"]["id"] == handle.invocation_id
+            else:
+                response = alice_client.get(
+                    f"/a2a/tasks/{handle.invocation_id}", headers=alice_headers
+                )
+                assert response.status_code == 200
+                assert response.json()["id"] == handle.invocation_id
+
+        bob_headers = {**A2A_HEADERS, "Authorization": "Bearer bob-secret"}
+        with TestClient(bob_app) as bob_client:
+            if transport == "jsonrpc":
+                for method in ("GetTask", "CancelTask", "SubscribeToTask"):
+                    response = bob_client.post(
+                        "/a2a",
+                        headers=bob_headers,
+                        json=_task_request(method, handle.invocation_id, method),
+                    )
+                    assert response.status_code == 200
+                    assert response.json()["error"] == {
+                        "code": -32001,
+                        "message": "task not found",
+                    }
+                resume = bob_client.post(
+                    "/a2a",
+                    headers=bob_headers,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": "resume-1",
+                        "method": "SendMessage",
+                        "params": {
+                            "message": {
+                                "taskId": handle.invocation_id,
+                                "parts": [{"text": "continue"}],
+                            }
+                        },
+                    },
+                )
+                assert resume.json()["error"] == {
+                    "code": -32001,
+                    "message": "task not found",
+                }
+            else:
+                get_response = bob_client.get(
+                    f"/a2a/tasks/{handle.invocation_id}", headers=bob_headers
+                )
+                cancel_response = bob_client.post(
+                    f"/a2a/tasks/{handle.invocation_id}:cancel", headers=bob_headers
+                )
+                subscribe_response = bob_client.post(
+                    f"/a2a/tasks/{handle.invocation_id}:subscribe", headers=bob_headers
+                )
+                resume = bob_client.post(
+                    "/a2a/message:send",
+                    headers=bob_headers,
+                    json={
+                        "message": {
+                            "taskId": handle.invocation_id,
+                            "parts": [{"text": "continue"}],
+                        }
+                    },
+                )
+                assert get_response.status_code == 404
+                assert cancel_response.status_code == 404
+                assert subscribe_response.status_code == 404
+                assert resume.status_code == 404
+                assert get_response.json() == {
+                    "error": {"code": "task_not_found", "message": "task not found"}
+                }
+                assert cancel_response.json() == get_response.json()
+                assert subscribe_response.json() == get_response.json()
+                assert resume.json() == get_response.json()
+            assert bob_services.invocations.get(handle.invocation_id).status == "running"
+    finally:
+        # TestClient closes the application services; this also releases the
+        # shared SQLite handle for the next test.
+        alice_services.close()
+        bob_services.close()
+
+
+def test_authenticated_a2a_start_persists_creator_identity(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("OWA_A2A_ALICE", "alice-secret")
+    app, services = _secured_runtime(
+        tmp_path, transport="jsonrpc", principal="alice", token_env="OWA_A2A_ALICE"
+    )
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/a2a",
+                headers={**A2A_HEADERS, "Authorization": "Bearer alice-secret"},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "start-1",
+                    "method": "SendMessage",
+                    "params": {
+                        "message": {"parts": [{"text": "hello"}]},
+                        "configuration": {"returnImmediately": True},
+                    },
+                },
+            )
+        task_id = response.json()["result"]["task"]["id"]
+        assert services.invocations.get(task_id).owner_principal == "alice"
+    finally:
+        services.close()
