@@ -52,16 +52,17 @@ class CancellationToken:
             return
         sleeper = asyncio.create_task(asyncio.sleep(seconds))
         cancellation = asyncio.create_task(self._event.wait())
-        done, pending = await asyncio.wait(
-            {sleeper, cancellation}, return_when=asyncio.FIRST_COMPLETED
-        )
-        for task in pending:
-            task.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-        if cancellation in done and cancellation.result():
-            sleeper.cancel()
-            await asyncio.gather(sleeper, return_exceptions=True)
-            self.checkpoint()
+        try:
+            done, _ = await asyncio.wait(
+                {sleeper, cancellation}, return_when=asyncio.FIRST_COMPLETED
+            )
+            if cancellation in done and cancellation.result():
+                self.checkpoint()
+        finally:
+            for task in (sleeper, cancellation):
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(sleeper, cancellation, return_exceptions=True)
 
     async def wait_cancelled(self) -> None:
         await self._event.wait()
@@ -70,17 +71,16 @@ class CancellationToken:
         self.checkpoint()
         task = asyncio.ensure_future(operation)
         cancellation = asyncio.create_task(self._event.wait())
-        done, pending = await asyncio.wait(
-            {task, cancellation}, return_when=asyncio.FIRST_COMPLETED
-        )
-        for item in pending:
-            item.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-        if cancellation in done and cancellation.result():
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
-            self.checkpoint()
-        return task.result()
+        try:
+            done, _ = await asyncio.wait({task, cancellation}, return_when=asyncio.FIRST_COMPLETED)
+            if cancellation in done and cancellation.result():
+                self.checkpoint()
+            return task.result()
+        finally:
+            for item in (task, cancellation):
+                if not item.done():
+                    item.cancel()
+            await asyncio.gather(task, cancellation, return_exceptions=True)
 
 
 @dataclass(slots=True)
@@ -101,15 +101,18 @@ class LifecycleControl:
         timer = asyncio.create_task(asyncio.sleep(max(0.0, seconds)))
         resumed = asyncio.create_task(self.resume_event.wait())
         cancelled = asyncio.create_task(self.token.wait_cancelled())
-        done, pending = await asyncio.wait(
-            {timer, resumed, cancelled}, return_when=asyncio.FIRST_COMPLETED
-        )
-        for task in pending:
-            task.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-        if cancelled in done:
-            self.token.checkpoint()
-        return resumed in done and resumed.result()
+        try:
+            done, _ = await asyncio.wait(
+                {timer, resumed, cancelled}, return_when=asyncio.FIRST_COMPLETED
+            )
+            if cancelled in done:
+                self.token.checkpoint()
+            return resumed in done and resumed.result()
+        finally:
+            for task in (timer, resumed, cancelled):
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(timer, resumed, cancelled, return_exceptions=True)
 
 
 @dataclass(slots=True)

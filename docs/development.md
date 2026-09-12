@@ -304,6 +304,15 @@ Remote CI additionally validates image metadata/size, container acceptance, Post
 
 Container acceptance verifies internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container. Docker external-sandbox acceptance runs on the self-hosted Docker runner; Kubernetes/OpenShift real-cluster acceptance is tracked separately in `TODO.md` under `DEPLOY-1`.
 
+### Native engine benchmark evidence
+
+The engine matrix also runs `benchmarks/engines.py` once per locked ADK and
+LangGraph environment. Its JSON artifact keeps adapter compile-boundary,
+sequential/concurrent throughput, native checkpoint growth, and
+interruption/resume replay measurements separate from the dependency-free
+common-runtime benchmark. ADK replay is intentional: the benchmark and
+native tests require repeated side effects to carry the same operation id.
+
 ### Base image updates
 
 All runtime and controller Dockerfiles pin their base images by digest (`python:3.12-slim@sha256:...`, `docker:29.7.2-cli@sha256:...`). To update a base image:

@@ -148,7 +148,7 @@ LangChain receives zero because no adapter exposes the OWA engine SPI.
 
 **ADK: 5/5. LangGraph: 5/5. LangChain: 0/5.**
 
-The portable executor implements the declared Portable Profile tasks, functions, protocol boundaries, policies, nested workflows, event operations, and sandbox routing. Both production engines execute that same semantics path. The CTK README records 22 feature files, 42 scenarios, and 84 deterministic executions across ADK and LangGraph, while explicitly avoiding a full Open Workflow conformance claim.
+The portable executor implements the declared Portable Profile tasks, functions, protocol boundaries, policies, nested workflows, event operations, and sandbox routing. Both production engines execute that same semantics path. The CTK README records 26 feature files, 48 scenarios, and 96 deterministic executions across ADK and LangGraph, while explicitly avoiding a full Open Workflow conformance claim.
 
 The score does not mean full DSL conformance. It means both engines have equivalent evidence for the current declared subset.
 

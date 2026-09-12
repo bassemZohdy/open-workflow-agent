@@ -239,6 +239,22 @@ jobs:
             ${{ runner.temp }}/ctk-${{ matrix.engine }}.log
             ${{ runner.temp }}/ctk-${{ matrix.engine }}-provenance.txt
           if-no-files-found: warn
+      - name: Engine-specific benchmark probes
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 5m \
+            uv run --locked --extra knowledge --extra ${{ matrix.extra }} \
+            python ../../benchmarks/engines.py \
+              --engine ${{ matrix.engine }} --iterations 10 --concurrency 4 \
+            | tee "$RUNNER_TEMP/engine-benchmark-${{ matrix.engine }}.json"
+      - name: Upload engine benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: engine-benchmark-${{ matrix.engine }}
+          path: ${{ runner.temp }}/engine-benchmark-${{ matrix.engine }}.json
+          if-no-files-found: warn
 
   containers:
     name: Docker ${{ matrix.engine }} acceptance
