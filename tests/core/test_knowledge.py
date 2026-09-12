@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
 from pathlib import Path
 
@@ -132,3 +133,50 @@ async def test_knowledge_watch_task_is_idempotent_and_stoppable(tmp_path: Path):
     assert service._watch_task is None
     await service.stop_watch()
     service.close()
+
+
+def test_knowledge_reload_status_is_safe_and_bounded_on_failure(tmp_path: Path):
+    root = tmp_path / "knowledge"
+    root.mkdir()
+    (root / "broken.yaml").write_text("topic: [", encoding="utf-8")
+    service = KnowledgeService(
+        root,
+        tmp_path / "knowledge.sqlite3",
+        embedding=DeterministicEmbeddingProvider(4),
+    )
+    try:
+        with pytest.raises(KnowledgeError):
+            service.reload()
+        status = service.reload_status()
+        assert status["last_reload_succeeded"] is False
+        assert status["last_reload_error_type"] == "KnowledgeError"
+        assert status["reload_failure_count"] == 1
+        assert str(root) not in str(status)
+    finally:
+        service.close()
+
+
+@pytest.mark.asyncio
+async def test_knowledge_watch_retries_after_a_reload_failure(tmp_path: Path, monkeypatch):
+    service = KnowledgeService(
+        tmp_path / "knowledge",
+        tmp_path / "knowledge.sqlite3",
+        embedding=DeterministicEmbeddingProvider(4),
+    )
+    calls = 0
+
+    def failed_reload():
+        nonlocal calls
+        calls += 1
+        raise KnowledgeError("document path must not be logged")
+
+    monkeypatch.setattr(service, "reload", failed_reload)
+    await service.start_watch(interval_seconds=0.01)
+    try:
+        await asyncio.sleep(1.1)
+        assert calls >= 1
+        assert service._watch_task is not None
+        assert not service._watch_task.done()
+    finally:
+        await service.stop_watch()
+        service.close()

@@ -424,8 +424,12 @@ def create_app(
         # Check knowledge service (if configured)
         try:
             if runtime_config.knowledge.path:
-                # Just verify the service is accessible
-                checks["knowledge"] = "ok"
+                status = runtime_services.knowledge.reload_status()
+                if status["last_reload_succeeded"] is False:
+                    checks["knowledge"] = "degraded:reload_failed"
+                    overall_status = "degraded"
+                else:
+                    checks["knowledge"] = "ok"
         except Exception as exc:
             checks["knowledge"] = f"error: {exc}"
             overall_status = "degraded"

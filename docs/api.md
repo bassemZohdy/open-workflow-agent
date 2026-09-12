@@ -44,7 +44,7 @@ Relevant common blocks include:
 - `features.lifecycleStreaming`
 - `features.a2a`
 
-When A2A is enabled with the current bounded Task profile, the A2A block includes the pinned release/protocol version and advertises only `GetTask`/`CancelTask` as Task operations. Streaming and push notifications remain false.
+When A2A is enabled with the current bounded Task profile, the A2A block includes the pinned release/protocol version and advertises `GetTask`/`CancelTask` plus the bounded `SendStreamingMessage`/`SubscribeToTask` operations. Push notifications remain disabled.
 
 ## OpenAPI schema
 

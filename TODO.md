@@ -8,6 +8,14 @@
 
 The public contract remains Open Workflow 1.0.3. The runtime uses a framework-neutral common executor and deployment-selected ADK or LangGraph envelopes; it does not claim task-level native compilation or full Open Workflow/A2A conformance.
 
+## Audit snapshot — 2026-09-12
+
+- Latest `main`: `9e4242c` (`test: cover all removed base image CLI plugins`).
+- Open GitHub issues: none; open pull requests: six Dependabot updates.
+- Latest `main` CI and release runs are green. The current root/ADK Dependabot branches
+  fail their lock/repository gates and remain intentionally unmerged.
+- Local CI-shaped root suite: 635 passed, 8 skipped, with knowledge dependencies enabled.
+
 ## Completed in this audit
 
 - [x] **FIX-1** — make the default FastEmbed provider lazy with respect to optional NumPy. Minimal/core-only and engine environments can construct `RuntimeServices`; indexing and search fail with a bounded `KnowledgeError` when the knowledge extra is absent.
@@ -25,19 +33,19 @@ The public contract remains Open Workflow 1.0.3. The runtime uses a framework-ne
 
 - [ ] **DEPLOY-1** — complete OpenShift-specific SCC/security-context/arbitrary-UID sandbox acceptance against a disposable real OpenShift cluster. The controller and static harness are prepared, but the real-cluster gate is still unverified. Do not advertise OpenShift container execution as accepted until this passes.
 - [ ] **CI-1** — configure repository branch protection to require the lightweight `Docs / Markdown links` check when a documentation-only pull request is evaluated. The workflow is committed; the GitHub branch-protection endpoint is unavailable to the current integration, so the repository setting remains an administrator action.
-- [ ] **DEPS-1** — review the five open Dependabot updates (root dependencies, ADK, both controller Pydantic updates, and Docker base image) independently. Merge only after the affected lockfile, native/contract tests, security scan, image acceptance, and release implications are verified; close or defer updates that do not meet those gates.
+- [ ] **DEPS-1** — review the six open Dependabot updates (root dependencies, ADK, Agent Framework, both controller Pydantic updates, and Docker base image) independently. The latest root and ADK update branches currently fail lock/repository gates; do not merge until each affected lockfile, native/contract tests, security scan, image acceptance, and release implications are verified. Close or defer updates that do not meet those gates.
 
 ### P1 — Portability and conformance evidence
 
 - [ ] **TEST-1** — expand the Open Workflow CTK subset beyond the current 22 feature files, 42 scenarios, and 84 deterministic ADK/LangGraph executions. Add fixtures only for behavior implemented in the common profile, keep the full-conformance claim explicitly deferred, and preserve the 90% core coverage gate.
-- [ ] **ENGINE-1** — choose and document the native-engine depth required for the next milestone. Either implement task-level plan-to-native-node compilation for both production engines with task-boundary checkpoint/cancellation tests, or formally retain the current native execution-envelope architecture and adjust capability/reporting language accordingly.
+- [ ] **ENGINE-1** — formally record the current native execution-envelope architecture as the v0.1.x contract, including its capability/reporting limits; only reopen task-level plan-to-native-node compilation as a separately approved milestone.
 - [ ] **ENGINE-2** — add fair engine-specific evidence for compilation cost, sequential and concurrent throughput, checkpoint growth, interruption/resume behavior, and side-effect replay. Keep common-core benchmark results separate from native-framework comparisons.
 - [ ] **ENGINE-3** — strengthen ADK resume semantics. Prove task-boundary continuation without replay where the framework supports it, or keep replay behavior explicit and add durable idempotency guidance/tests for every side-effecting operation.
 
 ### P2 — Operations and maintainability
 
-- [ ] **OPS-1** — make background knowledge-watch failures observable and recoverable: retain the last reload error in bounded runtime health/metrics state, log only safe metadata, and define whether a later watch cycle retries after failure.
-- [ ] **OPS-2** — add a release-readiness checklist that records the exact commit, lock checks, core/engine matrices, external-sandbox/PostgreSQL gates, image scan results, and unresolved acceptance blockers before publishing a new version.
+- [x] **OPS-1** — make background knowledge-watch failures observable and recoverable: retain the last reload error type and bounded failure count, expose degraded knowledge readiness, log only safe metadata, and retry on the next watch cycle.
+- [x] **OPS-2** — add [the release-readiness checklist](docs/release-readiness.md) covering exact commit metadata, lock checks, core/engine matrices, external-sandbox/PostgreSQL/OpenShift gates, image scans, provenance, and unresolved blockers.
 
 ## Intentionally deferred
 

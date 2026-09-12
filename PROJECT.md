@@ -7,7 +7,7 @@
 - `TODO.md` — active and intentionally deferred backlog.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current Phase — 2026-09-11
+## Current Phase — 2026-09-12
 
 `v0.1.0` is the current formal release. `main` contains additional unreleased pre-stable work.
 
@@ -327,7 +327,9 @@ The following backlog items are implemented and verified in the current worktree
 - `CI-1a`: documentation-only changes have a lightweight Markdown relative-link workflow, while the full code/test workflow remains path-scoped.
 - `RELEASE-1` progress: the restricted Docker sandbox controller removes its unused Docker Compose and Buildx CLI plugins before image scanning; a focused regression test guards the release-image hardening.
 - `TEST-2`: dependency-free benchmark harness reports compilation latency, sequential invocation latency, and concurrent throughput as JSON.
-- `TEST-3`: core coverage is enforced at 90%; the full suite currently reports 633 passed, 8 skipped, and 90.30% exact coverage (615/6341 statements missed) with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
+- `TEST-3`: core coverage is enforced at 90%; the full suite currently reports 635 passed, 8 skipped, with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
+- `OPS-1`: knowledge watch failures retain safe bounded status, keep the watcher alive for retry, emit safe warning metadata, and surface degraded readiness.
+- `OPS-2`: `docs/release-readiness.md` defines exact-commit, dependency, runtime acceptance, supply-chain, publication, and exception sign-off gates.
 - `TEST-4`: Linux/WSL-compatible mutmut coverage targets the framework-neutral traffic-policy middleware with 13 direct tests; the current 316-mutant baseline kills 272 mutants, records 22 survivors, 18 timeouts, and 4 mutants without test association for future test-strengthening work.
 - `TEST-5`: deterministic 100-request async stress coverage verifies traffic-policy concurrency bounds and burst admission without external services.
 - `TEST-1` progress: the portable CTK subset now covers 22 feature files, 42 scenarios, and 84 deterministic executions across both available engines, including pinned upstream data-flow filtering, HTTP and OpenAPI content/response output projections, caught and uncaught protocol errors, alongside successful and failing HTTP, MCP, A2A, OpenAPI, event, catalog-call, registered child-workflow `run`, input rejection, flow, policy, transform, validation, nested-input, sequence, and retry scenarios over shared common services; broader upstream CTK coverage and additional implemented features remain open.

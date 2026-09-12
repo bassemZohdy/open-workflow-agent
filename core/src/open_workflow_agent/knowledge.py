@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import importlib
 import json
+import logging
 import os
 import re
 import time
@@ -16,6 +17,8 @@ import yaml
 
 from .errors import KnowledgeError
 from .storage import StorageConnection, open_storage
+
+logger = logging.getLogger(__name__)
 
 try:
     import numpy as np
@@ -159,6 +162,10 @@ class KnowledgeService:
         )""")
         self.connection.commit()
         self._watch_task: asyncio.Task[None] | None = None
+        self._last_reload_at: str | None = None
+        self._last_reload_succeeded: bool | None = None
+        self._last_reload_error_type: str | None = None
+        self._reload_failure_count = 0
 
     def _migrate_manifest_columns(self) -> None:
         if self.connection.is_postgresql:
@@ -196,6 +203,33 @@ class KnowledgeService:
         return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
     def reload(self) -> dict[str, int]:
+        """Reload supported documents and retain bounded operational status."""
+
+        try:
+            result = self._reload()
+        except Exception as exc:
+            self._last_reload_at = self._index_timestamp()
+            self._last_reload_succeeded = False
+            self._last_reload_error_type = type(exc).__name__
+            self._reload_failure_count += 1
+            raise
+        self._last_reload_at = self._index_timestamp()
+        self._last_reload_succeeded = True
+        self._last_reload_error_type = None
+        return result
+
+    def reload_status(self) -> dict[str, Any]:
+        """Return safe, bounded state for health and operational diagnostics."""
+
+        return {
+            "last_reload_at": self._last_reload_at,
+            "last_reload_succeeded": self._last_reload_succeeded,
+            "last_reload_error_type": self._last_reload_error_type,
+            "reload_failure_count": self._reload_failure_count,
+            "watch_running": self._watch_task is not None and not self._watch_task.done(),
+        }
+
+    def _reload(self) -> dict[str, int]:
         if not self.root.exists():
             return {"added": 0, "updated": 0, "deleted": 0, "unchanged": 0}
         current: dict[str, str] = {}
@@ -310,7 +344,16 @@ class KnowledgeService:
         async def reconcile() -> None:
             while True:
                 await asyncio.sleep(max(1.0, interval_seconds))
-                await asyncio.to_thread(self.reload)
+                try:
+                    await asyncio.to_thread(self.reload)
+                except Exception as exc:
+                    # Keep the watcher alive for transient file/model failures.
+                    # The persisted status contains only the exception type; do
+                    # not log paths, document contents, or provider messages.
+                    logger.warning(
+                        "knowledge reload failed; watcher will retry",
+                        extra={"extra_fields": {"error_type": type(exc).__name__}},
+                    )
 
         self._watch_task = asyncio.create_task(reconcile())
 
