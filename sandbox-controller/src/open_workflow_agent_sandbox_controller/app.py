@@ -355,9 +355,12 @@ class DockerCliRunner:
             raise ControllerFailure("sandbox_process_error", "Docker CLI failed to start") from exc
         finally:
             self._active.pop(request.execution_id, None)
-            if process is not None and process.returncode is None:
-                await self._force_remove(container_name)
+            if process is not None:
                 await self._terminate_cli(process)
+                # Stop the attached Docker CLI before removing the container.
+                # Removing first can race Docker's --rm lifecycle and leave a
+                # Created container behind when cancellation is immediate.
+                await self._force_remove(container_name)
             if tasks:
                 await self._cancel_tasks(tasks)
             environment_file.unlink(missing_ok=True)
@@ -366,14 +369,14 @@ class DockerCliRunner:
         active = self._active.get(execution_id)
         if active is None:
             return
-        await self._force_remove(active.container_name)
         await self._terminate_cli(active.process)
+        await self._force_remove(active.container_name)
 
     async def shutdown(self) -> None:
         for execution_id, execution in tuple(self._active.items()):
             try:
-                await self._force_remove(execution.container_name)
                 await self._terminate_cli(execution.process)
+                await self._force_remove(execution.container_name)
             finally:
                 self._active.pop(execution_id, None)
 
@@ -511,8 +514,8 @@ class DockerCliRunner:
         container_name: str,
         tasks: list[asyncio.Task[Any]],
     ) -> None:
-        await self._force_remove(container_name)
         await self._terminate_cli(process)
+        await self._force_remove(container_name)
         await self._cancel_tasks(tasks)
 
     async def _force_remove(self, container_name: str) -> None:
