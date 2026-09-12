@@ -51,3 +51,12 @@ def test_docker_controller_removes_unused_cli_plugins_from_base_paths() -> None:
     for plugin in ("docker-compose", "docker-buildx"):
         assert f"/usr/libexec/docker/cli-plugins/{plugin}" in dockerfile
         assert f"/usr/local/libexec/docker/cli-plugins/{plugin}" in dockerfile
+
+
+def test_kubernetes_controller_removes_build_only_python_tooling() -> None:
+    dockerfile = (ROOT / "docker" / "Dockerfile.kubernetes-sandbox-controller").read_text(
+        encoding="utf-8"
+    )
+
+    assert "python -m pip uninstall -y pip setuptools" in dockerfile
+    assert "/usr/local/lib/python3.14/ensurepip" in dockerfile

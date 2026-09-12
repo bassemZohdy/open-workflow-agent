@@ -11,7 +11,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 RUN useradd --uid 65532 --create-home --shell /usr/sbin/nologin controller
 COPY --from=build /wheels /wheels
 RUN python -m pip install --no-index --find-links /wheels open-workflow-agent-kubernetes-sandbox-controller \
-    && rm -rf /wheels
+    # The controller does not install packages at runtime. Remove pip and
+    # setuptools, including pip's vendored msgpack copy, from the final image
+    # so build tooling cannot become permanent scanned attack surface.
+    && python -m pip uninstall -y pip setuptools \
+    && rm -rf /usr/local/lib/python3.14/ensurepip /wheels
 USER 65532:65532
 EXPOSE 8090
 CMD ["uvicorn", "open_workflow_agent_kubernetes_sandbox_controller.app:create_default_app", "--factory", "--host", "127.0.0.1", "--port", "8090"]
