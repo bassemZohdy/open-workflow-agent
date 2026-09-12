@@ -1,5 +1,10 @@
 # Release-readiness checklist
 
+This is a reusable checklist for a future release, not a live project-status
+board. The completed `v0.2.0` release record is in `PROJECT.md`; its checklist
+items remain unchecked here so the document can be copied and evaluated against
+the exact commit for the next release.
+
 Complete this checklist from the exact commit intended for publication. A release is
 not ready when any required gate is missing, stale, or green for a different commit.
 

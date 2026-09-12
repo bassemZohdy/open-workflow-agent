@@ -6,7 +6,7 @@ Thank you for considering a contribution to the Open Workflow Agent.
 
 1. [`Project Definition.md`](Project%20Definition.md) — authoritative architecture and product contract.
 2. [`AGENTS.md`](AGENTS.md) — mandatory repository rules (structure, constraints, verification, security).
-3. [`TODO.md`](TODO.md) — active ordered backlog; pick from the ordered sections and work in milestone order.
+3. [`TODO.md`](TODO.md) — scoped backlog and intentionally deferred work; when active items exist, pick from the ordered sections and work in milestone order.
 4. [`PROJECT.md`](PROJECT.md) — verified implementation status and current acceptance record.
 5. [`docs/development.md`](docs/development.md) — developer guide with the architecture boundary and commands.
 
