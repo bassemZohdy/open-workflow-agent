@@ -302,7 +302,7 @@ docker compose --profile langgraph up --build
 
 Remote CI additionally validates image metadata/size, container acceptance, PostgreSQL persistence, selected CTK coverage, and stop/restart/resume behavior.
 
-Container acceptance verifies internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container. Docker external-sandbox acceptance runs on the self-hosted Docker runner; Kubernetes/OpenShift real-cluster acceptance is tracked separately in `TODO.md` under `DEPLOY-1`.
+Container acceptance verifies internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container. Docker external-sandbox acceptance runs on the self-hosted Docker runner; Kubernetes/OpenShift real-cluster acceptance is recorded separately in `PROJECT.md` under `DEPLOY-1`.
 
 ### Native engine benchmark evidence
 
@@ -352,8 +352,9 @@ context, checks the ServiceAccount's positive and negative RBAC permissions,
 and invokes the controller. The sandbox execution must prove arbitrary
 non-root UID execution, writable `/workspace`, read-only root filesystem, and
 denied cluster egress. A successful local/static check or Kubernetes run does
-not close `DEPLOY-1`; update that item only after this script passes against a
-real OpenShift cluster.
+not close `DEPLOY-1`; the item is now closed because this script passed against
+disposable OpenShift 4.22.1 (CRC). Repeat the run with digest-pinned images
+after platform or controller security changes.
 
 Dependabot opens weekly update PRs for GitHub Actions versions, every `uv.lock`, and the base images in `docker/`; the Security workflow (pip-audit over every locked environment) and the release Trivy gate block publication on known fixable `CRITICAL`/`HIGH` image advisories. When a base bump does not clear an advisory because the upstream image has not been rebuilt yet, the finding is recorded with a dated rationale in `.trivyignore` and must be re-checked on every base refresh; findings in our own code or Python dependencies are never suppressed.
 
