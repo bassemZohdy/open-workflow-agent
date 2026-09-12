@@ -9,7 +9,7 @@ resolution-markers = [
 
 [[package]]
 name = "agent-framework-core"
-version = "1.15.0"
+version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "msgspec" },
@@ -18,9 +18,9 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/01/fa/0dd640aa300790d2eadc6e7d96cdb3906ee19986e29f78e1f2658601e57e/agent_framework_core-1.15.0.tar.gz", hash = "sha256:b6e0f1f0c3f59eec0f1cdd594e3892471a4471593ce48c413f01e2c7bd9d77be", size = 578517, upload-time = "2026-08-21T23:22:48.05Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1d/a6/a47518b61275a7b001d3acebae6857ad98b7d10303ef8d7c9b6546b1a450/agent_framework_core-1.17.0.tar.gz", hash = "sha256:c1b69ab7f496d1ec9ab5dcb0afc5a99e60e5c820f03f5a755a9104fd89d01394", size = 593864, upload-time = "2026-09-03T09:53:46.019Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/ea/38fc231485bc0545b74256bb464523d4c112533e6986cb490b2459dea3cc/agent_framework_core-1.15.0-py3-none-any.whl", hash = "sha256:393e1404a0b4344ee8c18bb435f5ce850ed223063fa1184becbeac99b0652007", size = 635762, upload-time = "2026-08-21T23:22:33.8Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/cb/1fceefa6dc720774fc8180a8651045e583de550b946cc59c291684fcbbf6/agent_framework_core-1.17.0-py3-none-any.whl", hash = "sha256:75958ff692a38bf0c627aaa910bae6c4a89569dfec68e1e79eac8e206d88874d", size = 651715, upload-time = "2026-09-03T09:53:33.222Z" },
 ]
 
 [[package]]
@@ -1339,7 +1339,7 @@ postgres = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agent-framework-core", marker = "extra == 'native'", specifier = "==1.15.0" },
+    { name = "agent-framework-core", marker = "extra == 'native'", specifier = "==1.17.0" },
     { name = "open-workflow-agent", editable = "../../" },
     { name = "open-workflow-agent", extras = ["knowledge"], marker = "extra == 'knowledge'", editable = "../../" },
     { name = "open-workflow-agent", extras = ["model"], marker = "extra == 'model'", editable = "../../" },
