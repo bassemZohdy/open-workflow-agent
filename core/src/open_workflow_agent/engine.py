@@ -6,6 +6,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any
 
+from ._version import __version__
 from .errors import InvocationCancelled, WorkflowExecutionError
 from .lifecycle import (
     INVOCATION_STATES,
@@ -41,7 +42,7 @@ class EngineCapabilities:
     def as_dict(self) -> dict[str, Any]:
         return {
             "runtime": "open-workflow-agent",
-            "runtimeVersion": "0.1.0",
+            "runtimeVersion": __version__,
             "engine": self.engine,
             "workflowDsl": "1.0.3",
             "portableProfile": self.portable_profile,

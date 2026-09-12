@@ -1,6 +1,6 @@
 [project]
 name = "open-workflow-agent-langgraph"
-version = "0.1.0"
+version = "0.2.0"
 description = "LangGraph engine adapter for the Open Workflow Agent"
 license = "MIT"
 license-files = ["../../LICENSE"]

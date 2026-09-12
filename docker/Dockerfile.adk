@@ -39,7 +39,7 @@ RUN mkdir -p /build/opt/models \
 
 FROM ${PYTHON_IMAGE} AS runtime
 
-ARG OWA_VERSION=0.1.0
+ARG OWA_VERSION=0.2.0
 ARG VCS_REF=unknown
 LABEL org.opencontainers.image.title="open-workflow-agent-adk" \
       org.opencontainers.image.version="$OWA_VERSION" \

@@ -13,7 +13,7 @@ You will receive a response within a reasonable time frame. If the issue is conf
 
 ## Supported Versions
 
-The current supported release is **v0.1.0** (container tag `0.1.0`). Security fixes land on `main` first and are rolled into the next patch release; the rolling `latest` and `sha-*` image tags track `main` and are not supported for production.
+The current supported release is **v0.2.0** (container tag `0.2.0`). Security fixes land on `main` first and are rolled into the next patch release; the rolling `latest` and `sha-*` image tags track `main` and are not supported for production.
 
 ## Security Model Summary
 

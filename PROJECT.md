@@ -9,9 +9,10 @@
 
 ## Current Phase — 2026-09-12
 
-`v0.1.0` is the current formal release. `main` contains additional unreleased
-pre-stable work. The next milestone is release hardening plus an explicit A2A
-task-access decision; the ordered tasks are maintained in `TODO.md`.
+`v0.1.0` is the previous formal release. `v0.2.0` is the selected release
+candidate for the principal-bound A2A task-access work now on the release
+branch; the candidate SHA and acceptance evidence are recorded after the
+release gates complete.
 
 The bounded inbound A2A profile is complete end to end: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), principal-bound authenticated task access, waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, resuming sends over the common resume contract, and bounded streaming/resubscription (`SendStreamingMessage`/`SubscribeToTask`) translating common lifecycle events into official status/artifact frames. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The deployment-controlled `traffic_policy` model is implemented with global token-bucket/concurrency limits plus endpoint-prefix and authenticated-principal scopes. External interoperability/conformance evidence is complete for all advertised baselines.
 
@@ -107,6 +108,14 @@ sha256:add38f52c062a01ab81c61962ab609a728e62a367818cc77bff19a6a720d2a89
 ```
 
 Standard ADK/LangGraph images remain roughly 266 MB / 248 MB decimal after the 2026-08-27 dependency refresh and avoid the multi-gigabyte Torch/CUDA path.
+
+## Release Candidate v0.2.0 — 2026-09-12
+
+The selected SemVer release is `v0.2.0`. It contains the bounded A2A task
+ownership contract and synchronized runtime/package metadata. The exact
+candidate SHA, companion workflow runs, published image digests, and rollback
+references will be filled from the verified GitHub release workflow before
+this section is promoted to a formal release record.
 
 ## Verified Kubernetes and OpenShift Sandbox Acceptance — 2026-09-12
 

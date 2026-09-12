@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from open_workflow_agent import __version__
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
@@ -23,5 +24,5 @@ def test_versioned_openapi_spec_matches_runtime(tmp_path: Path) -> None:
         services.close()
 
     assert versioned == runtime
-    assert versioned["info"]["version"] == "0.1.0"
+    assert versioned["info"]["version"] == __version__
     assert "/metrics" in versioned["paths"]

@@ -1422,7 +1422,7 @@ wheels = [
 
 [[package]]
 name = "open-workflow-agent"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "../../" }
 dependencies = [
     { name = "fastapi" },
@@ -1476,7 +1476,7 @@ mutation = [{ name = "mutmut", specifier = "==3.7.0" }]
 
 [[package]]
 name = "open-workflow-agent-langgraph"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "langgraph" },

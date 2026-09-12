@@ -997,7 +997,10 @@ Current formal release:
 v0.1.0
 ```
 
-Current `main` includes unreleased post-v0.1.0 protocol/A2A work.
+The selected next release candidate is `v0.2.0`, containing the principal-bound
+A2A task-access contract and synchronized package/runtime metadata. The exact
+candidate SHA and publication evidence are recorded in `PROJECT.md` after the
+release gates complete.
 
 Verified major delivered areas include:
 

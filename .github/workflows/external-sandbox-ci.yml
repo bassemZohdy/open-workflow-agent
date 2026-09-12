@@ -175,9 +175,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          owa_version="$(python -c 'import tomllib; from pathlib import Path; print(tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"])')"
           timeout --signal=TERM --kill-after=30s 12m \
             docker build \
-              --build-arg OWA_VERSION=0.1.0 \
+              --build-arg OWA_VERSION="$owa_version" \
               --build-arg VCS_REF=${{ github.sha }} \
               --file docker/Dockerfile.${{ matrix.engine }} \
               --tag owa-${{ matrix.engine }}:${{ github.sha }} \

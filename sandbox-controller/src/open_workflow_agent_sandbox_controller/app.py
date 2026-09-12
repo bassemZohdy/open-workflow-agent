@@ -21,6 +21,8 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from . import __version__
+
 _IMMUTABLE_IMAGE = re.compile(r"^(?:.+@sha256:|sha256:)[0-9a-fA-F]{64}$")
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -624,7 +626,7 @@ def create_app(
 
     app = FastAPI(
         title="Open Workflow Agent Sandbox Controller",
-        version="0.1.0",
+        version=__version__,
         lifespan=lifespan,
     )
     app.add_middleware(RequestSizeLimitMiddleware, max_bytes=selected_config.max_input_bytes)

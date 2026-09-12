@@ -24,7 +24,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.adk
       args:
-        OWA_VERSION: ${OWA_VERSION:-0.1.0}
+        OWA_VERSION: ${OWA_VERSION:-0.2.0}
         VCS_REF: ${VCS_REF:-local}
     image: ${ADK_IMAGE:-owa-adk:local}
     depends_on:
@@ -70,7 +70,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.langgraph
       args:
-        OWA_VERSION: ${OWA_VERSION:-0.1.0}
+        OWA_VERSION: ${OWA_VERSION:-0.2.0}
         VCS_REF: ${VCS_REF:-local}
     image: ${LANGGRAPH_IMAGE:-owa-langgraph:local}
     depends_on:

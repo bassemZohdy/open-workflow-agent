@@ -4,7 +4,7 @@
 
 ## Current Phase
 
-**`v0.1.0` is released. The next milestone is release hardening plus an A2A task-access decision; intentionally deferred product scope remains below.**
+**`v0.2.0` is the selected release candidate. A2A task ownership is implemented and verified; exact-commit release gates and publication remain.**
 
 The public contract remains Open Workflow 1.0.3. The runtime uses a framework-neutral common executor and deployment-selected ADK or LangGraph envelopes; it does not claim task-level native compilation or full Open Workflow/A2A conformance.
 
@@ -21,9 +21,9 @@ AsyncAPI, or Agent Framework production packaging into this milestone.
 
 #### P0 — A2A task-access decision and enforcement
 
-- [ ] **A2A-8** — decide and document whether deployments with multiple A2A principals support per-task ownership. The current bounded policy authorizes `tasks.get`/`tasks.cancel` against the shared `tasks` resource; it does not bind a task to its creating principal. Choose one explicit contract: (a) bind task ownership to the authenticated principal and enforce it for get, cancel, subscribe, and resume, or (b) reject multi-principal task access and require a documented trusted single-principal deployment mode. Record the decision in `Project Definition.md`, `PROJECT.md`, `docs/api.md`, and `docs/configuration.md`.
-- [ ] **A2A-9** — implement the boundary selected by `A2A-8` without exposing task existence, credentials, or engine-native state. Apply the same rule to JSON-RPC and HTTP+JSON `GetTask`, `CancelTask`, `SubscribeToTask`, and resuming `SendMessage` paths. Keep the common invocation/task projection authoritative.
-- [ ] **A2A-10** — add deterministic security and contract coverage for the selected boundary: authorized access, cross-principal denial, unknown-task behavior, waiting-task resume, cancellation, subscription, both transports, and sanitized/non-disclosing errors. Run the applicable root and engine suites before closing the tasks.
+- [x] **A2A-8** — decide and document whether deployments with multiple A2A principals support per-task ownership. The selected contract binds task ownership to the authenticated principal and enforces it for get, cancel, subscribe, and resume, with a trusted unauthenticated single-principal mode for ownerless legacy handles. The decision is recorded in `Project Definition.md`, `PROJECT.md`, `docs/api.md`, and `docs/configuration.md`.
+- [x] **A2A-9** — implement the boundary selected by `A2A-8` without exposing task existence, credentials, or engine-native state. The same rule applies to JSON-RPC and HTTP+JSON `GetTask`, `CancelTask`, `SubscribeToTask`, and resuming `SendMessage`, while common invocation/task projection remains authoritative.
+- [x] **A2A-10** — add deterministic security and contract coverage for authorized access, cross-principal denial, unknown-task behavior, cancellation, subscription, both transports, and sanitized/non-disclosing errors; root and engine suites pass. Existing waiting-task resume coverage remains in the common A2A async suite.
 
 #### P1 — Exact-commit release readiness
 

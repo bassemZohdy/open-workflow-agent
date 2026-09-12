@@ -37,11 +37,11 @@ Publication tags are:
 ```text
 latest       latest verified main build
 sha-<sha>    immutable verified source revision
-0.1.0        exact SemVer release, when a matching v0.1.0 release is published
-0.1          minor series, when a matching SemVer release is published
+0.2.0        exact SemVer release, when a matching v0.2.0 release is published
+0.2          minor series, when a matching SemVer release is published
 ```
 
-For production, pin an exact SemVer tag (`0.1.0` or newer) or an image digest rather than `latest`. Both registries receive the same verified build and tags.
+For production, pin an exact SemVer tag (`0.2.0` or newer) or an image digest rather than `latest`. Both registries receive the same verified build and tags.
 
 Images are published only after the full GitHub Actions CI gate succeeds. OCI SBOM/provenance metadata is generated for the published build, and GitHub build provenance attestations are attached to the canonical GHCR image.
 
@@ -105,7 +105,7 @@ docker run -d --name open-workflow-agent-langgraph \
   bzohdy/open-workflow-agent-langgraph:latest
 ```
 
-No source checkout or Docker build is required. Replace `latest` with a release tag (`0.1.0` or newer) or an image digest for production deployments. Use the corresponding `ghcr.io/bassemzohdy/...` image if GHCR is preferred by your platform or supply-chain policy.
+No source checkout or Docker build is required. Replace `latest` with a release tag (`0.2.0` or newer) or an image digest for production deployments. Use the corresponding `ghcr.io/bassemzohdy/...` image if GHCR is preferred by your platform or supply-chain policy.
 
 ## Docker Compose without source checkout
 

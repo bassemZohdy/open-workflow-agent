@@ -44,11 +44,11 @@ ghcr.io/bassemzohdy/open-workflow-agent-langgraph:<tag>
 For the current release:
 
 ```bash
-docker pull bzohdy/open-workflow-agent-adk:0.1.0
-docker pull bzohdy/open-workflow-agent-langgraph:0.1.0
+docker pull bzohdy/open-workflow-agent-adk:0.2.0
+docker pull bzohdy/open-workflow-agent-langgraph:0.2.0
 ```
 
-Every verified `main` build publishes `latest` and an immutable `sha-<sha>` tag to both registries. The formal release `v0.1.0` additionally publishes `0.1.0` and `0.1`. For production, pin an explicit release version or image digest rather than `latest`.
+Every verified `main` build publishes `latest` and an immutable `sha-<sha>` tag to both registries. The formal release `v0.2.0` additionally publishes `0.2.0` and `0.2`. For production, pin an explicit release version or image digest rather than `latest`.
 
 Images are published only after the GitHub Actions quality, engine, CTK, Docker, restart/resume, and persistence gates succeed. Both registries receive the same build and tags. OCI SBOM/provenance metadata is generated during the build, and GitHub build provenance attestations are published against the canonical GHCR image.
 
@@ -78,27 +78,27 @@ The deterministic `fake/default` model lets you validate the runtime without an 
 ADK:
 
 ```bash
-docker pull bzohdy/open-workflow-agent-adk:0.1.0
+docker pull bzohdy/open-workflow-agent-adk:0.2.0
 
 docker run --rm --name open-workflow-agent \
   -p 8080:8080 \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  bzohdy/open-workflow-agent-adk:0.1.0
+  bzohdy/open-workflow-agent-adk:0.2.0
 ```
 
 LangGraph uses the same configuration and mounts; only the image changes:
 
 ```bash
-docker pull bzohdy/open-workflow-agent-langgraph:0.1.0
+docker pull bzohdy/open-workflow-agent-langgraph:0.2.0
 
 docker run --rm --name open-workflow-agent \
   -p 8080:8080 \
   -v "$(pwd)/config:/config:ro" \
   -v "$(pwd)/knowledge:/knowledge:ro" \
   -v "$(pwd)/data:/data" \
-  bzohdy/open-workflow-agent-langgraph:0.1.0
+  bzohdy/open-workflow-agent-langgraph:0.2.0
 ```
 
 If you prefer GHCR, replace the image with the corresponding `ghcr.io/bassemzohdy/...` image and keep the same tag.

@@ -1,6 +1,6 @@
 [project]
 name = "open-workflow-agent"
-version = "0.1.0"
+version = "0.2.0"
 description = "Configuration-driven Open Workflow runtime with interchangeable engines"
 license = "MIT"
 license-files = ["LICENSE"]

@@ -80,7 +80,7 @@ a2a:
   path: /a2a
   agent_name: Open Workflow Agent
   agent_description: Configuration-driven Open Workflow runtime over A2A.
-  agent_version: 0.1.0
+  agent_version: 0.2.0
   public_base_url: null
   max_message_chars: 100000
 

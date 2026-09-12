@@ -280,8 +280,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          owa_version="$(python -c 'import tomllib; from pathlib import Path; print(tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"])')"
           timeout --signal=TERM --kill-after=30s 12m \
-            docker build --build-arg OWA_VERSION=0.1.0 --build-arg VCS_REF=${{ github.sha }} \
+            docker build --build-arg OWA_VERSION="$owa_version" --build-arg VCS_REF=${{ github.sha }} \
             --file docker/Dockerfile.${{ matrix.engine }} \
             --tag owa-${{ matrix.engine }}:${{ github.sha }} .
       - name: Verify image metadata
@@ -290,7 +291,8 @@ jobs:
           set -euo pipefail
           version="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "owa-${{ matrix.engine }}:${{ github.sha }}")"
           revision="$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' "owa-${{ matrix.engine }}:${{ github.sha }}")"
-          test "$version" = "0.1.0"
+          expected_version="$(python -c 'import tomllib; from pathlib import Path; print(tomllib.loads(Path("pyproject.toml").read_text())["project"]["version"])')"
+          test "$version" = "$expected_version"
           test "$revision" = "${{ github.sha }}"
       - name: Enforce image-size gate
         shell: bash
