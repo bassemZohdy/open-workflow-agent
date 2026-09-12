@@ -289,8 +289,10 @@ POST /v1/schedules/{id}/cancel
 GET  /.well-known/agent-card.json  (A2A 1.0.1 bounded profile, optional)
 POST /a2a                      (A2A JSON-RPC binding: SendMessage, optional)
 POST /a2a/message:send         (A2A HTTP+JSON binding, optional)
+POST /a2a/message:stream       (A2A HTTP+JSON streaming, optional)
 GET  /a2a/tasks/{task_id}      (A2A Task retrieval, optional)
 POST /a2a/tasks/{task_id}:cancel (A2A Task cancellation, optional)
+POST /a2a/tasks/{task_id}:subscribe (A2A Task subscription, optional)
 ```
 
 Use `/v1/capabilities` to discover the selected engine/runtime capabilities. The optional inbound A2A boundary targets stable A2A release `1.0.1` and advertises protocol version `1.0`; JSON-RPC uses `SendMessage`, `SendStreamingMessage`, `GetTask`, `SubscribeToTask`, and `CancelTask`, while HTTP+JSON uses `/message:send`, `/message:stream`, `GET /tasks/{id}`, `POST /tasks/{id}:subscribe`, and `POST /tasks/{id}:cancel`. Inbound authentication optionally references a named `bearer` security profile through `a2a.security_profile`, whose declared principal (roles/scopes/audience) is then authorized per skill and operation through `a2a.authorization` allow rules (`message.send`, `tasks.get`, `tasks.cancel`). A2A tasks are a projection over runtime invocations: a waiting workflow appears as `input-required`, which is how durable approvals surface to A2A clients. `SendMessage` follows official async semantics — `configuration.returnImmediately` returns the Task immediately for polling, sends carrying `message.taskId` resume a waiting task through the common resume contract, and streaming/resubscription delivers bounded official status/artifact frames translated from common lifecycle events. Legacy A2A v0.3 discovery/method/Part forms are intentionally not retained. See [api.md](docs/api.md), [protocol baselines](docs/protocol-baselines.md), and [protocol/security decisions](docs/protocol-security-decisions.md).
@@ -335,7 +337,7 @@ ADK and LangGraph are implementation engines, not public application contracts. 
 - [Sandbox execution architecture](docs/sandbox-execution.md) — internal sandbox and external execution backends.
 - [Troubleshooting and compatibility](docs/troubleshooting.md) — FAQ, upgrade notes, and version/compatibility matrix.
 - [External sandbox contract](docs/external-sandbox-contract.md) — backend-neutral sandbox request/result/capability contract and controller boundaries.
-- [A2A/streaming evaluation](docs/a2a-streaming-evaluation.md) — bounded lifecycle SSE baseline and deferred A2A streaming/push scope.
+- [A2A/streaming evaluation](docs/a2a-streaming-evaluation.md) — bounded lifecycle SSE and implemented A2A streaming/resubscription, with push notifications deferred.
 - [Custom catalog functions](docs/custom-catalog-functions.md) — catalog layout, function manifests, deployment trust, and verification.
 - [Engine adapter evaluation](docs/engine-adapter-evaluation.md) — how the Microsoft Agent Framework third engine was selected and its current deferral state.
 - [Project Definition](Project%20Definition.md) — authoritative architecture and product contract.

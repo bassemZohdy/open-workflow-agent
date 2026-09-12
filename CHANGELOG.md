@@ -33,9 +33,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Architecture, contributor, CTK, and README documentation now matches the
+  shipped bounded A2A Task/async/streaming profile and accepted sandbox
+  backends; historical/deferred scope remains explicit.
+- Verification records now reflect the current root suite result of 649 passed,
+  11 skipped, and 90.35% coverage.
 - A2A v0.3 discovery/method/Part compatibility assumptions were removed. The bounded inbound profile now targets A2A release `1.0.1` and advertises protocol version `1.0` only for implemented behavior.
 - The active A2A roadmap now treats persistent A2A Tasks as a projection over common OWA invocation/`ExecutionHandle` state rather than a second workflow or persistence engine.
-- A2A streaming/resubscription is ordered after Task state and will reuse common lifecycle/event infrastructure without exposing engine-native checkpoint/stream objects.
+- A2A streaming/resubscription reuses common lifecycle/event infrastructure without exposing engine-native checkpoint/stream objects.
 - Authentication/authorization is moving from temporary protocol-specific credential fields to reusable named deployment security profiles. A2A inbound bearer authentication is the first adapter wired to `security.profiles` (`a2a.security_profile` replaces `auth_token`). Initial supported mechanisms are `bearer`, `api_key`, `oauth2_client_credentials`, and `mtls`.
 - The remaining ad-hoc credential surfaces were removed: external-catalog authentication now resolves only through `authentication.security_profile` (dropping `bearer_token_env`/`basic_username_env`/`basic_password_env`), and ambient outbound protocol credentials (`OWA_BEARER_TOKEN_ENV`, `OWA_BASIC_USERNAME_ENV`, `OWA_BASIC_PASSWORD_ENV`) were replaced by `protocols.security_profile` (`SECURITY-6`).
 - A2A skill routing and per-principal skill/action authorization are implemented; skills and per-principal authorization are shipped capability rather than backlog.

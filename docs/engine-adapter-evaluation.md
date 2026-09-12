@@ -1,6 +1,6 @@
 # Additional Engine Adapter Evaluation
 
-Status: selection groundwork. The Microsoft Agent Framework native adapter (`engines/agent-framework/`) is merged as an optional package behind `agent-framework-core==1.15.0` with an exact lock; it is not yet a production image/release target (see the intentionally deferred items in `TODO.md` for its remaining production gates).
+Status: optional adapter implemented for CI/evaluation. The Microsoft Agent Framework native adapter (`engines/agent-framework/`) is merged behind `agent-framework-core==1.15.0` with an exact lock; it is not yet a production image/release target (see the intentionally deferred items in `TODO.md` for its remaining production gates).
 
 ## Decision criteria
 
@@ -29,7 +29,7 @@ Current Python package metadata identifies `agent-framework` / `agent-framework-
 
 - validates that the common execution plan is not accidentally shaped only around ADK/LangGraph concepts;
 - provides a third implementation with a different workflow runtime and checkpoint model;
-- has first-class workflow/agent composition and current A2A-facing patterns, useful after the public A2A/streaming boundaries are finalized;
+- has first-class workflow/agent composition and current A2A-facing patterns, useful now that the public bounded A2A/streaming boundaries are finalized;
 - Python support aligns with the existing repository/toolchain;
 - MIT licensing is compatible with an independent optional adapter package.
 
@@ -61,20 +61,19 @@ Pydantic AI is MIT licensed and provides a typed agent runtime with broad provid
 - `pydantic-graph` is primarily a code-defined graph/state-machine library, so it adds less independent production-runtime validation around durable workflow operations;
 - using Pydantic AI itself may duplicate model/provider responsibilities already owned by the common runtime.
 
-## Provisional selection
+## Selection and current status
 
-**Microsoft Agent Framework is the preferred optional third-engine candidate**, subject to a dependency/lock/image-size spike after the sandbox contract and public A2A/streaming boundaries are stable.
+**Microsoft Agent Framework is the preferred optional third-engine candidate** and is merged as an optional, CI-covered adapter. The sandbox contract and public bounded A2A/streaming boundaries are now stable; production image/release status remains intentionally deferred pending the independent dependency, native durability, acceptance, capability, and release gates below.
 
-This is intentionally a selection decision only. Do not add the dependency or advertise the engine until the following gate is met:
+The adapter must not be advertised as a production engine until the following gates are met:
 
-1. Existing runtime production acceptance is recorded as green.
-2. The backend-neutral sandbox contract is stable.
-3. Public A2A/streaming capability boundaries are finalized so engine-native streaming does not redefine the public contract.
-4. A dependency spike proves an independent Microsoft Agent Framework adapter can remain below the project image-size gate without pulling unrelated Azure/provider packages.
+1. Independent native persistence/resume and capability evidence is recorded as green.
+2. A dependency/image-size spike proves the adapter remains below the project image-size gate without pulling unrelated Azure/provider packages.
+3. Hardened-image, runtime acceptance, and release metadata gates are green for any proposed production image.
 
 ## Adapter shape
 
-When implementation starts, use the same repository pattern:
+The merged adapter uses the repository pattern:
 
 ```text
 engines/agent-framework/
@@ -83,10 +82,10 @@ engines/agent-framework/
 └── src/open_workflow_agent_agent_framework/
 ```
 
-and a separate runtime image:
+It intentionally has no production runtime image yet:
 
 ```text
-open-workflow-agent-agent-framework
+production image/release target: deferred
 ```
 
 The adapter must implement the existing `WorkflowEngine` SPI and compile the common `WorkflowPlan`; it must not introduce a second public workflow DSL or a third model/tool configuration contract.

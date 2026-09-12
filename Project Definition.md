@@ -486,6 +486,10 @@ Current bounded server boundary:
 GET  /.well-known/agent-card.json
 POST <configured A2A path>                 JSON-RPC SendMessage
 POST <configured A2A path>/message:send    HTTP+JSON
+POST <configured A2A path>/message:stream  HTTP+JSON streaming
+GET  <configured A2A path>/tasks/{id}      HTTP+JSON Task retrieval
+POST <configured A2A path>/tasks/{id}:cancel
+POST <configured A2A path>/tasks/{id}:subscribe
 ```
 
 Supported transports:
@@ -504,23 +508,24 @@ Current bounded behavior includes:
 ```text
 Agent Card discovery
 synchronous SendMessage
+protocol-native returnImmediately async behavior
+Task projection with get/cancel
+waiting/input-required/resume mapping
+deployment-declared skills and per-principal authorization
 v1 message/Part shapes
 request/message size bounds
 sanitized transport errors
-optional temporary bearer guard
+named-profile bearer authentication
 exact features.a2a capability advertisement
+A2A streaming/resubscription
 ```
 
-Not yet part of the implemented bounded profile:
+Intentionally outside the implemented bounded profile:
 
 ```text
-persistent A2A Tasks
-Task get/cancel
-input-required/resume mapping
-protocol-native async Task-returning behavior
-A2A streaming/resubscription
 push notifications
 broad/full conformance claim
+delegated-user identity/token exchange/consent
 ```
 
 ---
@@ -558,7 +563,7 @@ Common invocation, persistence, resume, cancellation, approval, schedule, and li
 
 Do not create a separate A2A workflow runtime or checkpoint store.
 
-Recommended expansion order:
+Implemented bounded projection path:
 
 ```text
 shared security profiles
@@ -570,6 +575,11 @@ shared security profiles
   -> A2A streaming/resubscription
   -> interoperability/conformance gates
 ```
+
+The path above is complete for the advertised bounded profile. A2A Tasks,
+resume, cancellation, approvals, and lifecycle events continue to reuse the
+common invocation and persistence services; they are not a second workflow
+runtime or checkpoint store.
 
 ---
 
@@ -603,7 +613,9 @@ GET /v1/events/lifecycle/stream
 
 That stream is engine-neutral and includes bounded replay/backpressure/lifetime controls. It is not itself an A2A protocol binding and it does not expose engine-native checkpoints or stream objects.
 
-A2A streaming must be added only after the A2A Task/message/artifact lifecycle contract is stable. It may reuse common stream mechanics but must emit protocol-native A2A updates rather than raw runtime lifecycle events.
+A2A streaming is implemented after the A2A Task/message/artifact lifecycle
+contract. It reuses common stream mechanics but emits protocol-native A2A
+updates rather than raw runtime lifecycle events.
 
 Disconnecting an observation stream must not implicitly cancel an invocation unless the relevant protocol contract explicitly requires cancellation.
 
@@ -625,7 +637,8 @@ bounded retry/dead-letter behavior
 secret-safe logging/observability
 ```
 
-Push notification support is not required to complete the next bounded Task/streaming profile.
+Push notification support is outside the current bounded Task/streaming
+profile and remains a future optional capability.
 
 ---
 
@@ -996,11 +1009,12 @@ The active ordered backlog is maintained only in `TODO.md`.
 
 ---
 
-# 37. Current A2A Completion Path
+# 37. Bounded A2A Profile State
 
-The current A2A transport/server blocker has been removed. The remaining architecture work is the protocol-level lifecycle and security projection.
+The A2A transport/server blocker and the protocol-level lifecycle/security
+projection are complete for the advertised bounded profile.
 
-Current completion path:
+Implemented completion path:
 
 ```text
 shared named security profiles
@@ -1013,7 +1027,11 @@ shared named security profiles
   -> interoperability/conformance gates
 ```
 
-Push notifications remain separate/deferred.
+The bounded profile includes Agent Card discovery, SendMessage, Task
+projection with get/cancel, waiting/input-required and resume mapping,
+protocol-native asynchronous sends, deployment-declared skills,
+per-principal authorization, and bounded streaming/resubscription. It does not
+claim broad/full A2A conformance or implement push notifications.
 
 This sequence keeps A2A in core and reuses common invocation/durability semantics rather than implementing engine-specific A2A code.
 

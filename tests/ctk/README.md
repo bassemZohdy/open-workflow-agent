@@ -31,9 +31,9 @@ remain excluded until their engine-shared contracts are defined.
 The earlier 70-execution pinned upstream subset passed for both engines in GitHub Actions run
 [`32831528433`](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/32831528433). Each engine job uploads test output plus provenance containing
 the repository commit, this pinned upstream CTK commit, and SHA-256 hashes for
-the selected scenario files. Further expansion is deferred to later backlog
-items and must remain limited to scenarios supported by the declared Portable
-Profile. In the current worktree, 26 feature files contain 48 scenarios and
+the selected scenario files. Broader upstream CTK expansion remains
+intentionally deferred and must remain limited to scenarios supported by the
+declared Portable Profile. In the current worktree, 26 feature files contain 48 scenarios and
 `uv run pytest tests/ctk -q` passes 96 executions across the available ADK and
 LangGraph engines. The added cases cover conditional branches, `for` output
 accumulation, task input/output schemas, and `listen` read modes.

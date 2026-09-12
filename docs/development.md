@@ -238,7 +238,7 @@ Do not introduce a second external workflow language and do not fork the Open Wo
 
 The approved roadmap is documented in [sandbox-execution.md](sandbox-execution.md).
 
-The required order is:
+The current execution path is:
 
 ```text
 common SandboxManager/SPI
@@ -249,13 +249,11 @@ InternalSandboxBackend
         +-- run.script
         +-- run.shell
         |
-        v
-external backends later
-        +-- Docker
-        +-- Kubernetes/OpenShift
+        +-- Docker controller backend
+        +-- Kubernetes/OpenShift controller backend
         |
         v
-run.container where supported
+run.container where the selected deployment backend supports it
 ```
 
 The internal backend must work without Docker or Kubernetes. It provides controlled process execution with bounded environment, workspace, input/output, timeout, cancellation, cleanup, and enforceable resource limits.

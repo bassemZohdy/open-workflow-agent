@@ -149,7 +149,7 @@ returnImmediately absent/false
 
 returnImmediately true
   -> return the current Task projection without waiting for terminal completion
-  -> client follows with GetTask and later SubscribeToTask when supported
+  -> client follows with GetTask and SubscribeToTask when supported by the deployment
 ```
 
 OWA must not add a custom `async` flag.

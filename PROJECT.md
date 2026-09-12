@@ -230,7 +230,7 @@ Streaming/resubscription (`SendStreamingMessage` over `message:stream`, `Subscri
 
 Agent Card now advertises `securitySchemes` and `security` requirements when authentication is configured (bearer scheme), conforming to A2A v1 Agent Card specification patterns.
 
-## Remaining A2A Work
+## A2A Deferred Scope
 
 The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining deferred work is listed in `TODO.md`.
 
@@ -334,7 +334,7 @@ The following backlog items are implemented and verified in the current worktree
 - `CI-1a`: documentation-only changes have a lightweight Markdown relative-link workflow, while the full code/test workflow remains path-scoped.
 - `RELEASE-1` progress: the restricted Docker sandbox controller removes its unused Docker Compose and Buildx CLI plugins before image scanning; a focused regression test guards the release-image hardening.
 - `TEST-2`: dependency-free benchmark harness reports compilation latency, sequential invocation latency, and concurrent throughput as JSON.
-- `TEST-3`: core coverage is enforced at 90%; the full locked root suite currently reports 647 passed, 11 skipped, and 90.35% exact coverage, with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
+- `TEST-3`: core coverage is enforced at 90%; the full locked root suite currently reports 649 passed, 11 skipped, and 90.35% exact coverage, with expanded deterministic tests across protocol, catalog, storage, knowledge, lifecycle, sandbox, API-boundary, scheduling, tool, and server paths.
 - `OPS-1`: knowledge watch failures retain safe bounded status, keep the watcher alive for retry, emit safe warning metadata, and surface degraded readiness.
 - `OPS-2`: `docs/release-readiness.md` defines exact-commit, dependency, runtime acceptance, supply-chain, publication, and exception sign-off gates.
 - `TEST-4`: Linux/WSL-compatible mutmut coverage targets the framework-neutral traffic-policy middleware with 13 direct tests; the current 316-mutant baseline kills 272 mutants, records 22 survivors, 18 timeouts, and 4 mutants without test association for future test-strengthening work.
@@ -366,7 +366,7 @@ The following backlog items are implemented and verified in the current worktree
   persistence resources.
 
 The relevant core tests, package builds, lock checks, repository-wide Ruff,
-formatting, and mypy checks passed. The full locked root suite passes with 647
+formatting, and mypy checks passed. The full locked root suite passes with 649
 passed, 11 skipped, and 90.35% exact coverage. The locked ADK and LangGraph
 matrices each pass with 180 tests; the optional Agent Framework matrix passes
 with 258 tests. Native ADK and LangGraph benchmark probes both pass and report

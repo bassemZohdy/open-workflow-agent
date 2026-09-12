@@ -15,7 +15,7 @@ The design must:
 - prevent either engine adapter from invoking arbitrary OS processes directly;
 - provide bounded execution, cancellation, observability, and policy enforcement;
 - distinguish controlled internal execution from strong external isolation;
-- allow stronger Docker/Kubernetes/OpenShift backends later without changing workflow definitions;
+- support optional stronger Docker/Kubernetes/OpenShift backends without changing workflow definitions;
 - fail closed when an execution type or requested capability is not supported.
 
 ## Execution levels
@@ -196,7 +196,7 @@ process network denial  only advertised when actually enforced
 
 A child process must not be described as network-isolated merely because the workflow was not given a network helper.
 
-Strong egress isolation is one reason to select a future external sandbox backend.
+Strong egress isolation is one reason to select an external sandbox backend.
 
 ## Open Workflow routing
 
