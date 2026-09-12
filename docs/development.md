@@ -6,7 +6,7 @@ Before changing architecture or public contracts, read:
 
 1. `Project Definition.md` — authoritative architecture/product contract.
 2. `PROJECT.md` — verified implementation status.
-3. `TODO.md` — scoped backlog, completed-work archive, and deferred work.
+3. `TODO.md` — scoped backlog and deferred work.
 4. `AGENTS.md` — mandatory repository rules.
 5. `docs/sandbox-execution.md` — approved sandbox execution architecture and security boundary.
 

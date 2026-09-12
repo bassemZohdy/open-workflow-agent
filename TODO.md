@@ -1,6 +1,6 @@
 # Open Workflow Agent Backlog
 
-`Project Definition.md` is the architecture/product authority. `PROJECT.md` records verified implementation state. `AGENTS.md` defines repository rules. This file contains the scoped backlog, its completed-work archive, acceptance evidence, and intentionally deferred work.
+`Project Definition.md` is the architecture/product authority. `PROJECT.md` records verified implementation state. `AGENTS.md` defines repository rules. This file contains the scoped backlog and intentionally deferred work.
 
 ## Current Phase
 
@@ -10,25 +10,9 @@ The public contract remains Open Workflow 1.0.3. The runtime uses a framework-ne
 
 ## Active backlog
 
-No active scoped backlog items remain. Verified work is archived below; future work is listed under [Intentionally deferred](#intentionally-deferred).
-
-## Completed scoped work — 2026-09-12
-
-The following items were completed and verified in the current release line. They remain here for traceability while the active section stays reserved for new work.
-
-### P0 — Deployment and repository gates
-
-- **DEPLOY-1** — complete OpenShift-specific SCC/security-context/arbitrary-UID sandbox acceptance against a disposable real OpenShift cluster. The acceptance harness passed on disposable OpenShift 4.22.1 (CRC) with `restricted-v2` injecting UID `1000720000`; it verified controller and sandbox security contexts, namespace-scoped RBAC, default-deny network behavior, workspace writes, read-only roots, and cleanup.
-- **CI-1** — configure repository branch protection to require the lightweight `Docs / Markdown links` check on every pull request, including documentation-only changes. The workflow now reports the check on every pull request; GitHub displays it as `Docs / Markdown links` and exposes the required API context as `Markdown links`, which is verified on `main`.
-- **DEPS-1** — review the six Dependabot updates independently. Pydantic controller updates (#24 and #25), Agent Framework (#26), and base images (#30) passed their applicable gates and were merged. The Actions bundle (#35) was closed because its qemu v4 change failed the release-workflow regression tests; the root bundle (#36) was closed because its lockfile, native, security, and PostgreSQL gates failed. No failing bundle was merged.
-
-### P1 — Portability and conformance evidence
-
-- **TEST-1** — expand the Open Workflow CTK subset to 26 feature files, 48 scenarios, and 96 deterministic ADK/LangGraph executions. Fixtures remain limited to behavior implemented in the common profile, the full-conformance claim remains deferred, and the core coverage gate remains above 90%.
-- **ENGINE-2** — add fair engine-specific evidence for compilation cost, sequential and concurrent throughput, checkpoint growth, interruption/resume behavior, and side-effect replay. `benchmarks/engines.py` reports these separately from the common-core benchmark and the locked engine CI matrix uploads the JSON evidence.
-- **ENGINE-3** — strengthen ADK resume semantics. The adapter explicitly uses replay with stable operation ids; interruption/resume tests and native probes verify repeated side effects reuse the idempotency key, with durable idempotency guidance in the engine documentation.
-
-### P2 — Operations and maintainability
+No active scoped backlog items remain. Verified implementation and acceptance
+evidence is recorded in `PROJECT.md`; future work is listed under
+[Intentionally deferred](#intentionally-deferred).
 
 ## Intentionally deferred
 

@@ -307,7 +307,7 @@ Three execution backends exist behind deployment configuration:
 - **Docker backend** — stronger-isolation external execution through a restricted Unix-socket controller so the main runtime never mounts an unrestricted Docker socket. Production acceptance is recorded green (see `PROJECT.md`).
 - **Kubernetes/OpenShift backend** — controller-held cluster lifecycle permissions with deployment-owned namespace, ServiceAccount, image, resource, secret, and network-policy controls; the main runtime never receives cluster-wide permissions. Kubernetes and OpenShift real-cluster acceptance are recorded in `PROJECT.md`; the advertised boundary remains limited to the verified SCC/arbitrary-UID profile.
 
-See [Sandbox execution architecture](docs/sandbox-execution.md), the [external sandbox contract](docs/external-sandbox-contract.md), and [PROJECT.md](PROJECT.md) for verified backend acceptance. [TODO.md](TODO.md) contains the scoped backlog, completed-work archive, and deferred work.
+See [Sandbox execution architecture](docs/sandbox-execution.md), the [external sandbox contract](docs/external-sandbox-contract.md), and [PROJECT.md](PROJECT.md) for verified backend acceptance. [TODO.md](TODO.md) contains the scoped backlog and deferred work.
 
 ## Runtime model
 
@@ -342,7 +342,7 @@ ADK and LangGraph are implementation engines, not public application contracts. 
 - [Engine adapter evaluation](docs/engine-adapter-evaluation.md) — how the Microsoft Agent Framework third engine was selected and its current deferral state.
 - [Project Definition](Project%20Definition.md) — authoritative architecture and product contract.
 - [PROJECT.md](PROJECT.md) — verified implementation status.
-- [TODO.md](TODO.md) — scoped backlog, completed-work archive, and deferred work.
+- [TODO.md](TODO.md) — scoped backlog and deferred work.
 - [AGENTS.md](AGENTS.md) — mandatory contributor/AI-agent rules.
 - [Contributing](CONTRIBUTING.md) — contribution workflow.
 - [Security policy](SECURITY.md) — private vulnerability reporting and security model.

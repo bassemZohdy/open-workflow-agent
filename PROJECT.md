@@ -4,7 +4,7 @@
 
 - `Project Definition.md` — architecture/product contract.
 - `PROJECT.md` — verified implementation and release state.
-- `TODO.md` — scoped backlog, completed-work archive, and intentionally deferred work.
+- `TODO.md` — scoped backlog and intentionally deferred work.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
 ## Current Phase — 2026-09-12
@@ -375,10 +375,9 @@ documentation relative-link validator also passes.
 
 ## Current Backlog State
 
-The authoritative scoped backlog is `TODO.md`. Completed implementation and
-acceptance items are archived under its `Completed scoped work` section, so no
-active scoped backlog items remain. Future work is listed under intentionally
-deferred scope below.
+The authoritative scoped backlog is `TODO.md`. No active scoped backlog items
+remain. Future work is listed under intentionally deferred scope below; verified
+implementation and acceptance evidence remains in this document.
 
 ## Intentionally Deferred
 
