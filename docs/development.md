@@ -6,7 +6,7 @@ Before changing architecture or public contracts, read:
 
 1. `Project Definition.md` — authoritative architecture/product contract.
 2. `PROJECT.md` — verified implementation status.
-3. `TODO.md` — active ordered backlog.
+3. `TODO.md` — scoped backlog, completed-work archive, and deferred work.
 4. `AGENTS.md` — mandatory repository rules.
 5. `docs/sandbox-execution.md` — approved sandbox execution architecture and security boundary.
 
@@ -362,4 +362,4 @@ Dependabot opens weekly update PRs for GitHub Actions versions, every `uv.lock`,
 
 When changing public configuration, API behavior, supported workflow semantics, deployment requirements, or capabilities, update the corresponding file under `docs/` and keep README quick-start examples valid.
 
-Implementation status belongs in `PROJECT.md`; active work belongs in `TODO.md`; architecture decisions belong in `Project Definition.md` and approved focused architecture documents such as `docs/sandbox-execution.md`. Avoid turning README back into a status log.
+Implementation status belongs in `PROJECT.md`; scoped backlog and deferred work belong in `TODO.md`; architecture decisions belong in `Project Definition.md` and approved focused architecture documents such as `docs/sandbox-execution.md`. Avoid turning README back into a status log.
