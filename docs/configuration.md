@@ -150,6 +150,21 @@ in-process and reset when the runtime restarts; no additional configuration or
 third-party metrics service is required. Protect the endpoint at the deployment edge
 when it is reachable outside a trusted monitoring network.
 
+### Knowledge reload modes
+
+`knowledge.reload.mode` controls when mounted documents are indexed:
+
+- `startup` (default) indexes before readiness is announced;
+- `manual` indexes only when `POST /v1/admin/knowledge/reload` is called;
+- `watch` performs bounded periodic reloads and retries after transient failures.
+
+For watch mode, the runtime keeps only safe operational metadata: the last reload
+timestamp, success state, error type, failure count, and whether the watcher is alive.
+Document paths, contents, provider messages, and credentials are not retained in
+health output or logs. A failed watch reload leaves the existing index available but
+reports the knowledge readiness check as `degraded:reload_failed` until a later
+reload succeeds.
+
 ### Pre-release security migration note
 
 The old single A2A bearer field (`a2a.auth_token`) has been removed. OWA has no backward-compatibility commitment before the product contract stabilizes, so it was replaced rather than preserved as an alias once the shared security-profile implementation landed.

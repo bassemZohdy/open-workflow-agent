@@ -8,25 +8,6 @@
 
 The public contract remains Open Workflow 1.0.3. The runtime uses a framework-neutral common executor and deployment-selected ADK or LangGraph envelopes; it does not claim task-level native compilation or full Open Workflow/A2A conformance.
 
-## Audit snapshot — 2026-09-12
-
-- Latest `main`: `9e4242c` (`test: cover all removed base image CLI plugins`).
-- Open GitHub issues: none; open pull requests: six Dependabot updates.
-- Latest `main` CI and release runs are green. The current root/ADK Dependabot branches
-  fail their lock/repository gates and remain intentionally unmerged.
-- Local CI-shaped root suite: 635 passed, 8 skipped, with knowledge dependencies enabled.
-
-## Completed in this audit
-
-- [x] **FIX-1** — make the default FastEmbed provider lazy with respect to optional NumPy. Minimal/core-only and engine environments can construct `RuntimeServices`; indexing and search fail with a bounded `KnowledgeError` when the knowledge extra is absent.
-- [x] **FIX-2** — include parser, chunking, and embedding identities in knowledge manifest reuse checks so configuration or parser changes trigger re-indexing.
-- [x] **SEC-1** — make deployment-owned authentication and operation/idempotency headers authoritative over workflow/tool payload headers; reject credentials embedded in protocol endpoints.
-- [x] **SEC-2** — harden A2A public-base URL validation against malformed ports, credentials, queries, and fragments; normalize protocol allowlist host matching.
-- [x] **VALIDATE-1** — reject non-positive protocol timeouts before they are reduced to a misleading near-zero network timeout.
-- [x] **DOCS-1** — correct the architecture guide and engine READMEs so sandbox and native-engine claims match the implementation.
-- [x] **CI-1a** — add a lightweight Markdown relative-link workflow for documentation-only changes, while keeping the full code/test workflow scoped to code changes.
-- [x] **RELEASE-1** — remove the unused Docker Compose and Buildx CLI plugins from the restricted Docker sandbox controller image after the merged-head release scan identified fixed gRPC dependency findings in the base-image plugins.
-
 ## Active backlog
 
 ### P0 — Deployment and repository gates
@@ -38,14 +19,10 @@ The public contract remains Open Workflow 1.0.3. The runtime uses a framework-ne
 ### P1 — Portability and conformance evidence
 
 - [ ] **TEST-1** — expand the Open Workflow CTK subset beyond the current 22 feature files, 42 scenarios, and 84 deterministic ADK/LangGraph executions. Add fixtures only for behavior implemented in the common profile, keep the full-conformance claim explicitly deferred, and preserve the 90% core coverage gate.
-- [ ] **ENGINE-1** — formally record the current native execution-envelope architecture as the v0.1.x contract, including its capability/reporting limits; only reopen task-level plan-to-native-node compilation as a separately approved milestone.
 - [ ] **ENGINE-2** — add fair engine-specific evidence for compilation cost, sequential and concurrent throughput, checkpoint growth, interruption/resume behavior, and side-effect replay. Keep common-core benchmark results separate from native-framework comparisons.
 - [ ] **ENGINE-3** — strengthen ADK resume semantics. Prove task-boundary continuation without replay where the framework supports it, or keep replay behavior explicit and add durable idempotency guidance/tests for every side-effecting operation.
 
 ### P2 — Operations and maintainability
-
-- [x] **OPS-1** — make background knowledge-watch failures observable and recoverable: retain the last reload error type and bounded failure count, expose degraded knowledge readiness, log only safe metadata, and retry on the next watch cycle.
-- [x] **OPS-2** — add [the release-readiness checklist](docs/release-readiness.md) covering exact commit metadata, lock checks, core/engine matrices, external-sandbox/PostgreSQL/OpenShift gates, image scans, provenance, and unresolved blockers.
 
 ## Intentionally deferred
 

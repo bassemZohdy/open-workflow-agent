@@ -11,6 +11,12 @@ Readiness flips to `ok` only after startup initialization completes. Common caus
 - **Persistence is unreachable.** If `persistence.datasource` points at PostgreSQL and the database is not reachable, startup fails; check `persistence.datasource` and database connectivity.
 - The process crashed before readiness; check container logs (`docker logs`, `kubectl logs`).
 
+For `knowledge.reload.mode: watch`, a later reload failure does not terminate the
+watcher or discard the last successful index. The next interval retries automatically.
+Readiness reports `degraded:reload_failed`, and logs contain only bounded safe metadata
+such as the exception type. Correct the mounted document/model issue and wait for the
+next cycle, or trigger a manual reload after changing the mode.
+
 ### Configuration validation errors at startup
 
 `invalid runtime configuration` reports pydantic validation details; `configuration root must be an object` means the YAML root is not a mapping. Unknown keys are rejected (fail-closed). Remember the precedence `built-in defaults < YAML < OWA__* environment variables` and that `OWA_CONFIG_FILE` selects the YAML file (default `/config/agent.yaml` in images).

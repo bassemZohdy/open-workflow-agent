@@ -14,7 +14,7 @@ You provide configuration, an optional workflow, optional knowledge, and optiona
 Use Open Workflow Agent when you want to:
 
 - run an AI agent from configuration — no application code, no rebuild to change workflow, knowledge, tools, or providers;
-- expose your agent to other systems over **A2A 1.0.1** (Agent Card discovery, synchronous `message/send`, and task operations) behind a deployment-selected transport;
+- expose your agent to other systems over **A2A 1.0.1** (Agent Card discovery, synchronous and bounded streaming message operations, and task operations) behind a deployment-selected transport;
 - run **durable human-in-the-loop approvals**: workflows pause, operators decide through protected endpoints, and decisions survive restarts;
 - execute **sandboxed operations** (`run.shell`, `run.script`, `run.container`) through one framework-neutral contract with internal, Docker, or Kubernetes/OpenShift isolation backends;
 - schedule workflows (`schedule.after`/`schedule.every`) with durable, restart-safe, at-least-once dispatch;
