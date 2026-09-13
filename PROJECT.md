@@ -220,7 +220,7 @@ Pinned reviewed baselines are machine-readable in `resources/protocol-baselines.
 | Model Context Protocol | `2026-07-28` | bounded common client/tool profile |
 | OpenAPI Specification | `3.2.0` | bounded operation adapter; no full parser/conformance claim |
 | CloudEvents | `1.0.2` | bounded lifecycle events using `specversion: 1.0` |
-| AsyncAPI | `3.1.0` | future binding baseline; not implemented |
+| AsyncAPI | `3.1.0` | future binding baseline; readiness plan exists; not implemented |
 
 A deterministic root test guards baseline drift across the manifest, runtime constants, supported bounded method sets, and documentation. Protocol versions never float automatically at runtime.
 
@@ -458,21 +458,42 @@ with 258 tests. Native ADK and LangGraph benchmark probes both pass and report
 non-zero native checkpoint growth plus stable operation ids across replay. The
 documentation relative-link validator also passes.
 
+## Readiness Foundations — 2026-09-13
+
+Two documentation-only readiness plans apply safe practices without changing
+the current public capability claims:
+
+- The [Agent Framework production-readiness plan](docs/agent-framework-production-readiness.md)
+  defines package isolation, common-plan boundaries, checkpoint security,
+  stable executor identity, native resume evidence, acceptance, and release
+  gates. Agent Framework remains optional CI/evaluation support until an
+  explicit production-support decision is made.
+- The [event integration readiness plan](docs/event-integration-readiness.md)
+  defines the transport-neutral CloudEvents baseline, event identity and
+  schema rules, idempotency, replay, backpressure, security, and the
+  requirements for selecting a concrete transport before AsyncAPI adoption.
+
+No runtime, public DSL, capability, or persistence contract changed as part of
+these readiness foundations.
+
 ## Current Backlog State
 
 The authoritative scoped backlog is `TODO.md`. No active scoped backlog items
 remain: A2A task ownership, exact-commit release readiness, publication, and
 the post-release native-depth decision are complete and evidenced in this
 document. Future work is intentionally deferred until its stated product or
-security prerequisites exist; it is listed below and in `TODO.md`.
+security prerequisites exist. The two safe preparation plans are documented
+above, while implementation remains deferred until their activation criteria
+exist; the scope is listed below and in `TODO.md`.
 
 ## Intentionally Deferred
 
 - A2A push notifications.
 - Broad/full A2A conformance claim until async/streaming/interoperability gates are green.
-- Microsoft Agent Framework production image/release status.
+- [Microsoft Agent Framework production image/release status](docs/agent-framework-production-readiness.md).
 - Multi-tenancy.
 - Delegated-user identity/token exchange/consent inside OWA.
+- [Concrete event integration and AsyncAPI binding](docs/event-integration-readiness.md).
 
 ## Verification Rules
 

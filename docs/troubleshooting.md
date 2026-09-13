@@ -60,6 +60,6 @@ Approval endpoints require the bearer token of the security profile named by `ap
 | Model adapter | LiteLLM (bundled in images; deterministic `fake` provider for tests) |
 | Knowledge embeddings | FastEmbed 0.8.0 / ONNX, `sentence-transformers/all-MiniLM-L6-v2` (384-dim) |
 | Persistence | SQLite (reference) and PostgreSQL via locked `postgres` extras |
-| Engines | ADK and LangGraph (production-accepted); Microsoft Agent Framework adapter (optional, not a release target) |
+| Engines | ADK and LangGraph (production-accepted); Microsoft Agent Framework adapter (optional, not a release target; see the [production-readiness plan](engine-adapter-evaluation.md)) |
 | Sandbox backends | internal (accepted), Docker (accepted), Kubernetes/OpenShift (accepted for the verified real-cluster profile) |
 | Lifecycle streaming | bounded lifecycle SSE (`features.lifecycleStreaming`); not general output streaming |

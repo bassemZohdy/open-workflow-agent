@@ -815,6 +815,14 @@ Durable HITL approvals are implemented as a common persisted layer composed with
 
 Generic eventing remains conceptually separate from durable approval state.
 
+The current event integration baseline is transport-neutral: lifecycle events
+use a bounded CloudEvents-shaped envelope and bounded SSE observation, while
+generic event delivery remains process-local and non-durable. Any future broker
+or external event binding must define its consumer, transport, delivery and
+replay semantics, security policy, payload compatibility, and operational owner
+before it is added to the public capability surface. The detailed activation
+sequence is recorded in `docs/event-integration-readiness.md`.
+
 ---
 
 # 29. Lifecycle Events and Observability

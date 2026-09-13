@@ -149,7 +149,10 @@ https://github.com/cloudevents/spec
 
 ## AsyncAPI Specification — 3.1.0
 
-AsyncAPI `3.1.0` is pinned only as a future binding baseline. OWA does not currently implement or advertise AsyncAPI behavior.
+AsyncAPI `3.1.0` is pinned only as a future binding baseline. OWA does not
+currently implement or advertise AsyncAPI behavior. The transport-neutral
+preparation, event security/delivery rules, and activation criteria are
+maintained in the [event integration readiness plan](event-integration-readiness.md).
 
 Authoritative source:
 

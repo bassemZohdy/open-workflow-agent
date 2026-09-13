@@ -6,7 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-No unreleased changes.
+### Documentation
+
+- Added readiness plans for a future Microsoft Agent Framework production
+  decision and a concrete event integration, covering package isolation,
+  checkpoint security, stable identities, CloudEvents, delivery semantics,
+  replay, backpressure, and the prerequisites for an AsyncAPI binding.
 
 ## [0.2.0] - 2026-09-12
 

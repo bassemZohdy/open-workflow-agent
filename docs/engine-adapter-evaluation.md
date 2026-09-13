@@ -1,6 +1,6 @@
 # Additional Engine Adapter Evaluation
 
-Status: optional adapter implemented for CI/evaluation. The Microsoft Agent Framework native adapter (`engines/agent-framework/`) is merged behind `agent-framework-core==1.15.0` with an exact lock; it is not yet a production image/release target (see the intentionally deferred items in `TODO.md` for its remaining production gates).
+Status: optional adapter implemented for CI/evaluation. The Microsoft Agent Framework native adapter (`engines/agent-framework/`) is merged behind `agent-framework-core==1.15.0` with an exact lock; it is not yet a production image/release target (see the intentionally deferred items in `TODO.md` and the [production-readiness plan](agent-framework-production-readiness.md)).
 
 ## Decision criteria
 
@@ -70,6 +70,9 @@ The adapter must not be advertised as a production engine until the following ga
 1. Independent native persistence/resume and capability evidence is recorded as green.
 2. A dependency/image-size spike proves the adapter remains below the project image-size gate without pulling unrelated Azure/provider packages.
 3. Hardened-image, runtime acceptance, and release metadata gates are green for any proposed production image.
+
+The complete gate sequence and security/durability practices are maintained in
+the [Agent Framework production-readiness plan](agent-framework-production-readiness.md).
 
 ## Adapter shape
 

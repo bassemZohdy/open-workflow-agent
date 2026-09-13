@@ -14,6 +14,14 @@ No active scoped backlog items remain. Completed work and release evidence are
 recorded in `PROJECT.md` and `CHANGELOG.md`. The intentionally deferred scope
 below is not scheduled until its stated product or security prerequisites exist.
 
+## Prepared readiness plans
+
+These plans apply safe engineering practices now without activating a new
+product commitment or advertising unsupported runtime behavior:
+
+- [Agent Framework production-readiness plan](docs/agent-framework-production-readiness.md) — package isolation, native checkpoint/resume security, stable executor identity, acceptance gates, and release evidence.
+- [Event integration readiness plan](docs/event-integration-readiness.md) — transport-neutral CloudEvents rules, idempotency, replay, backpressure, security, and the requirements for a future AsyncAPI binding.
+
 ## Intentionally deferred
 
 ### A2A push notifications
@@ -26,7 +34,7 @@ A broad/full A2A conformance claim remains deferred. The bounded async/streaming
 
 ### Microsoft Agent Framework production status
 
-The optional adapter remains CI-covered but is not a production image/release target. Independent runtime image, hardened-image acceptance, persistence/resume coverage, capability reporting, and release metadata remain deferred.
+The optional adapter remains CI-covered but is not a production image/release target. Independent runtime image, hardened-image acceptance, persistence/resume coverage, capability reporting, and release metadata remain deferred. The safe activation and gate sequence is documented in the [Agent Framework production-readiness plan](docs/agent-framework-production-readiness.md).
 
 ### Multi-tenancy
 
@@ -38,7 +46,7 @@ User delegation, token exchange, and consent are deferred until a concrete enter
 
 ### AsyncAPI implementation
 
-AsyncAPI 3.1.0 is pinned as a future binding baseline but is not implemented. No active work is planned until a concrete event-integration requirement exists.
+AsyncAPI 3.1.0 is pinned as a future binding baseline but is not implemented. No active work is planned until a concrete event-integration requirement exists. The transport-neutral preparation and activation criteria are documented in the [event integration readiness plan](docs/event-integration-readiness.md).
 
 ## Working rules
 

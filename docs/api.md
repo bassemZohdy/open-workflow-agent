@@ -229,6 +229,11 @@ Last-Event-ID    optional replay cursor
 
 This stream carries common lifecycle events only. It is not general output/token streaming and is not itself an A2A binding.
 
+The transport-neutral rules for event identity, schema evolution, idempotency,
+replay, security, and any future AsyncAPI binding are documented in the [event
+integration readiness plan](event-integration-readiness.md). The current API
+does not imply durable broker delivery or exactly-once processing.
+
 ## Approvals (human-in-the-loop)
 
 Durable approval state is disabled until configured:

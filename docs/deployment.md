@@ -500,7 +500,7 @@ CI also validates:
 
 Current bounded features should not be interpreted as broader infrastructure guarantees:
 
-- generic event delivery is process-local and non-durable (durable approval state/replay is a separate bounded mechanism);
+- generic event delivery is process-local and non-durable (durable approval state/replay is a separate bounded mechanism); future external event integrations must follow the [event integration readiness plan](event-integration-readiness.md);
 - lifecycle CloudEvents are a bounded snapshot and the SSE endpoint is bounded to lifecycle events, not a general output stream/broker;
 - scheduling uses single-runtime ownership rather than distributed scheduler ownership;
 - external workflow catalogs are disabled unless a deployment explicitly configures catalog trust policy (HTTPS-only, pinned, allowlisted; see the external catalog section above);
