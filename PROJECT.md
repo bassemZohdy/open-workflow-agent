@@ -11,8 +11,9 @@
 
 `v0.1.0` is the previous formal release. `v0.2.0` is the current formal
 release for the principal-bound A2A task-access work. It was published from
-verified commit `5d1bce6309654c3ada632483fbae71d0404cc33d`; no active scoped
-backlog items remain.
+verified commit `5d1bce6309654c3ada632483fbae71d0404cc33d`. The readiness
+foundation is complete; production Agent Framework support and concrete event
+integration remain activation-gated in `TODO.md`.
 
 The bounded inbound A2A profile is complete end to end: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), principal-bound authenticated task access, waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, resuming sends over the common resume contract, and bounded streaming/resubscription (`SendStreamingMessage`/`SubscribeToTask`) translating common lifecycle events into official status/artifact frames. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The deployment-controlled `traffic_policy` model is implemented with global token-bucket/concurrency limits plus endpoint-prefix and authenticated-principal scopes. External interoperability/conformance evidence is complete for all advertised baselines.
 
@@ -478,22 +479,20 @@ these readiness foundations.
 
 ## Current Backlog State
 
-The authoritative scoped backlog is `TODO.md`. No active scoped backlog items
-remain: A2A task ownership, exact-commit release readiness, publication, and
-the post-release native-depth decision are complete and evidenced in this
-document. Future work is intentionally deferred until its stated product or
-security prerequisites exist. The two safe preparation plans are documented
-above, while implementation remains deferred until their activation criteria
-exist; the scope is listed below and in `TODO.md`.
+The authoritative scoped backlog is `TODO.md`. The readiness foundation is
+complete. The remaining implementation tasks are activation-gated: ENGINE-5
+through ENGINE-8 require an explicit Agent Framework production-support
+decision, while EVENT-1 through EVENT-5 require a concrete event consumer and
+transport. A2A push notifications, broad conformance, multi-tenancy, and
+delegated identity remain intentionally deferred until their separate product
+or security prerequisites exist.
 
 ## Intentionally Deferred
 
 - A2A push notifications.
 - Broad/full A2A conformance claim until async/streaming/interoperability gates are green.
-- [Microsoft Agent Framework production image/release status](docs/agent-framework-production-readiness.md).
 - Multi-tenancy.
 - Delegated-user identity/token exchange/consent inside OWA.
-- [Concrete event integration and AsyncAPI binding](docs/event-integration-readiness.md).
 
 ## Verification Rules
 

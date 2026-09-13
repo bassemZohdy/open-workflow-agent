@@ -21,6 +21,10 @@ explicitly decides that Microsoft Agent Framework is a production-supported
 engine. That decision should identify the intended users, support window,
 deployment environments, compatibility promise, and rollback owner.
 
+The implementation work is tracked as `ENGINE-5` through `ENGINE-8` in
+`TODO.md`. The tasks are deliberately activation-gated; this plan itself does
+not make that product decision.
+
 ## Best-practice baseline
 
 ### Package and dependency isolation

@@ -56,6 +56,10 @@ Best practices provide safe defaults for these decisions, but they cannot
 choose the transport, durability, or ownership model without a real consumer
 and deployment context.
 
+The resulting work is tracked as `EVENT-1` through `EVENT-5` in `TODO.md`.
+`EVENT-1` is the activation gate; the remaining tasks must not be started as
+runtime implementation until that requirement is recorded.
+
 ## AsyncAPI adoption sequence
 
 When the requirements above exist:

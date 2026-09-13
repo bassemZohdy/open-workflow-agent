@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   decision and a concrete event integration, covering package isolation,
   checkpoint security, stable identities, CloudEvents, delivery semantics,
   replay, backpressure, and the prerequisites for an AsyncAPI binding.
+- Expanded `TODO.md` with the ordered `READINESS-1` through `READINESS-3`,
+  `ENGINE-5` through `ENGINE-8`, and `EVENT-1` through `EVENT-5` task map;
+  the foundation tasks are verified and the implementation tracks remain
+  explicitly activation-gated.
 
 ## [0.2.0] - 2026-09-12
 

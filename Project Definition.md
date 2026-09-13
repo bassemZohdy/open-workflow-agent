@@ -1031,6 +1031,11 @@ bounded inbound A2A stable-v1 profile
 optional Microsoft Agent Framework adapter (not a production target)
 ```
 
+Agent Framework production support is an activation-gated product decision,
+not a prerequisite for the core runtime. The safe package, checkpoint,
+security, acceptance, and release sequence is maintained in
+`docs/agent-framework-production-readiness.md`.
+
 The active ordered backlog is maintained only in `TODO.md`.
 
 ---
