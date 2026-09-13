@@ -12,8 +12,9 @@
 `v0.1.0` is the previous formal release. `v0.2.0` is the current formal
 release for the principal-bound A2A task-access work. It was published from
 verified commit `5d1bce6309654c3ada632483fbae71d0404cc33d`. The readiness
-foundation is complete; production Agent Framework support and concrete event
-integration remain activation-gated in `TODO.md`.
+foundation is complete; stronger Agent Framework support and external event
+integration are optional future tracks, not blockers for the current
+open-source core.
 
 The bounded inbound A2A profile is complete end to end: common Task projection with get/cancel, deployment-declared skills, per-principal authorization (`a2a.authorization`), principal-bound authenticated task access, waiting→`input-required` mapping, protocol-native `returnImmediately` async behavior, resuming sends over the common resume contract, and bounded streaming/resubscription (`SendStreamingMessage`/`SubscribeToTask`) translating common lifecycle events into official status/artifact frames. Shared security profiles are wired across all inbound/outbound adapters and every temporary credential field is removed. The deployment-controlled `traffic_policy` model is implemented with global token-bucket/concurrency limits plus endpoint-prefix and authenticated-principal scopes. External interoperability/conformance evidence is complete for all advertised baselines.
 
@@ -467,12 +468,14 @@ the current public capability claims:
 - The [Agent Framework production-readiness plan](docs/agent-framework-production-readiness.md)
   defines package isolation, common-plan boundaries, checkpoint security,
   stable executor identity, native resume evidence, acceptance, and release
-  gates. Agent Framework remains optional CI/evaluation support until an
-  explicit production-support decision is made.
+  gates. Agent Framework remains an optional community adapter; no production
+  image or support commitment is required for the current open-source core.
 - The [event integration readiness plan](docs/event-integration-readiness.md)
   defines the transport-neutral CloudEvents baseline, event identity and
   schema rules, idempotency, replay, backpressure, security, and the
-  requirements for selecting a concrete transport before AsyncAPI adoption.
+  requirements for selecting a concrete transport before any future AsyncAPI
+  adoption. The current process-local event baseline is sufficient for the
+  current core scope.
 
 No runtime, public DSL, capability, or persistence contract changed as part of
 these readiness foundations.
@@ -480,12 +483,13 @@ these readiness foundations.
 ## Current Backlog State
 
 The authoritative scoped backlog is `TODO.md`. The readiness foundation is
-complete. The remaining implementation tasks are activation-gated: ENGINE-5
-through ENGINE-8 require an explicit Agent Framework production-support
-decision, while EVENT-1 through EVENT-5 require a concrete event consumer and
-transport. A2A push notifications, broad conformance, multi-tenancy, and
-delegated identity remain intentionally deferred until their separate product
-or security prerequisites exist.
+complete and there are no active implementation blockers for the current
+open-source core. `ENGINE-5` through `ENGINE-8` are optional Agent Framework
+community-hardening tasks, and `EVENT-1` through `EVENT-5` are optional external
+integration tasks that activate only when a concrete user/deployment
+requirement exists. A2A push notifications, broad conformance, multi-tenancy,
+and delegated identity remain intentionally deferred until their separate
+product or security prerequisites exist.
 
 ## Intentionally Deferred
 

@@ -1,7 +1,8 @@
 # Event Integration Readiness Plan
 
-Status: transport-neutral readiness plan. OWA does not currently implement or
-advertise a durable broker binding or an AsyncAPI document.
+Status: optional transport-neutral readiness plan. OWA does not currently
+implement or advertise a durable broker binding or an AsyncAPI document, and
+neither is required for the current open-source core.
 
 ## Current event boundary
 
@@ -56,9 +57,11 @@ Best practices provide safe defaults for these decisions, but they cannot
 choose the transport, durability, or ownership model without a real consumer
 and deployment context.
 
-The resulting work is tracked as `EVENT-1` through `EVENT-5` in `TODO.md`.
-`EVENT-1` is the activation gate; the remaining tasks must not be started as
-runtime implementation until that requirement is recorded.
+The optional future work is tracked as `EVENT-1` through `EVENT-5` in
+`TODO.md`. `EVENT-1` is the activation gate for that future track; the
+remaining tasks must not be started as runtime implementation until a real
+consumer and requirement are recorded. No event-integration decision is needed
+to use or host the current core.
 
 ## AsyncAPI adoption sequence
 
@@ -87,4 +90,5 @@ the [AsyncAPI 3.1 specification](https://www.asyncapi.com/docs/reference/specifi
 
 The current CloudEvents foundation remains the portable common layer. A future
 transport adapter must preserve that layer and the public Open Workflow
-contract.
+contract, but the current process-local event endpoint remains an adequate
+bounded baseline until a concrete integration need appears.

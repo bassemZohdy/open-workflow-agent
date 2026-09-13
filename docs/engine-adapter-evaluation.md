@@ -1,6 +1,6 @@
 # Additional Engine Adapter Evaluation
 
-Status: optional adapter implemented for CI/evaluation. The Microsoft Agent Framework native adapter (`engines/agent-framework/`) is merged behind `agent-framework-core==1.15.0` with an exact lock; it is not yet a production image/release target (see the intentionally deferred items in `TODO.md` and the [production-readiness plan](agent-framework-production-readiness.md)).
+Status: optional adapter implemented for CI/evaluation/community use. The Microsoft Agent Framework native adapter (`engines/agent-framework/`) is merged behind `agent-framework-core==1.15.0` with an exact lock; it is not a production image/release target, and no such target is required for the current open-source core (see the optional future track in `TODO.md` and the [production-readiness plan](agent-framework-production-readiness.md)).
 
 ## Decision criteria
 
@@ -63,7 +63,7 @@ Pydantic AI is MIT licensed and provides a typed agent runtime with broad provid
 
 ## Selection and current status
 
-**Microsoft Agent Framework is the preferred optional third-engine candidate** and is merged as an optional, CI-covered adapter. The sandbox contract and public bounded A2A/streaming boundaries are now stable; production image/release status remains intentionally deferred pending the independent dependency, native durability, acceptance, capability, and release gates below.
+**Microsoft Agent Framework is the preferred optional third-engine candidate** and is merged as an optional, CI-covered adapter. The sandbox contract and public bounded A2A/streaming boundaries are now stable; stronger image/release support remains optional future work pending the independent dependency, native durability, acceptance, capability, and release gates below.
 
 The adapter must not be advertised as a production engine until the following gates are met:
 

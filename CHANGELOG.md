@@ -14,8 +14,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   replay, backpressure, and the prerequisites for an AsyncAPI binding.
 - Expanded `TODO.md` with the ordered `READINESS-1` through `READINESS-3`,
   `ENGINE-5` through `ENGINE-8`, and `EVENT-1` through `EVENT-5` task map;
-  the foundation tasks are verified and the implementation tracks remain
-  explicitly activation-gated.
+  the foundation tasks are verified. The Agent Framework and external-event
+  tracks are explicitly optional and non-blocking for the current open-source
+  core; they activate only when a concrete maintainer or adopter requirement
+  exists.
 
 ## [0.2.0] - 2026-09-12
 

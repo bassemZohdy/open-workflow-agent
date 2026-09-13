@@ -1,7 +1,8 @@
 # Microsoft Agent Framework Production-Readiness Plan
 
-Status: deferred readiness plan. This document does not advertise Microsoft
-Agent Framework as a production OWA engine.
+Status: optional future hardening plan. This document does not advertise
+Microsoft Agent Framework as a production OWA engine and does not create a
+production-support obligation for the open-source project.
 
 ## Current support boundary
 
@@ -14,16 +15,18 @@ The adapter must not introduce a second public workflow DSL, a third model or
 tool configuration contract, public framework-native checkpoint identifiers,
 or an engine-owned sandbox path.
 
-## Activation condition
+## Optional activation condition
 
-This plan becomes an active implementation milestone only when the project
-explicitly decides that Microsoft Agent Framework is a production-supported
-engine. That decision should identify the intended users, support window,
-deployment environments, compatibility promise, and rollback owner.
+This plan becomes active only if maintainers or adopters explicitly request
+stronger support for Microsoft Agent Framework, such as a separately published
+runtime image, native checkpoint/resume guarantees, or a compatibility promise.
+That request should identify the intended users, deployment environments,
+compatibility promise, and rollback owner. No commercial product decision or
+support window is required for the current open-source core.
 
 The implementation work is tracked as `ENGINE-5` through `ENGINE-8` in
-`TODO.md`. The tasks are deliberately activation-gated; this plan itself does
-not make that product decision.
+`TODO.md`. The tasks are deliberately optional and non-blocking; this plan
+itself does not make that support decision.
 
 ## Best-practice baseline
 
@@ -79,12 +82,14 @@ Before production advertisement, record green evidence for:
 7. documentation, rollback digest, and independent release metadata.
 
 Until every applicable gate is green, the adapter remains optional
-CI/evaluation support and its capability surface remains non-production.
+CI/evaluation/community support and its capability surface remains
+non-production. The core project is complete without these gates.
 
 ## Definition of done
 
-The plan is complete only when the explicit production-support decision is
-recorded in `Project Definition.md` and `PROJECT.md`, all gates above are
-verified on an exact commit, a separately tagged image is published, and the
-support boundary is reflected in the README, troubleshooting, deployment, and
-release documentation.
+If this optional track is activated, it is complete only when the support
+decision is recorded in `Project Definition.md` and `PROJECT.md`, all gates
+above are verified on an exact commit, a separately tagged image is published,
+and the support boundary is reflected in the README, troubleshooting,
+deployment, and release documentation. Without activation, this plan is
+complete as documentation and imposes no release requirement.

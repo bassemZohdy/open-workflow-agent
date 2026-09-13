@@ -1031,10 +1031,17 @@ bounded inbound A2A stable-v1 profile
 optional Microsoft Agent Framework adapter (not a production target)
 ```
 
-Agent Framework production support is an activation-gated product decision,
-not a prerequisite for the core runtime. The safe package, checkpoint,
-security, acceptance, and release sequence is maintained in
+Agent Framework production support is not a prerequisite for the core runtime
+or for hosting this open-source project. The adapter remains an optional
+community/evaluation package; stronger checkpoint, security, acceptance, and
+image support are optional future work maintained in
 `docs/agent-framework-production-readiness.md`.
+
+The current transport-neutral, process-local event baseline is sufficient for
+the open-source core. External durable event delivery and an AsyncAPI binding
+are optional future work and should be activated only by a concrete consumer,
+transport, and deployment requirement documented in
+`docs/event-integration-readiness.md`.
 
 The active ordered backlog is maintained only in `TODO.md`.
 

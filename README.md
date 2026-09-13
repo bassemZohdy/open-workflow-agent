@@ -322,7 +322,7 @@ Configuration + Open Workflow + Knowledge + Memory + Tools
              ADK                 LangGraph
 ```
 
-ADK and LangGraph are implementation engines, not public application contracts. The same mounted configuration and workflow should remain portable when they use capabilities in the common profile. An optional Microsoft Agent Framework adapter exists for evaluation; it is not a production release target.
+ADK and LangGraph are implementation engines, not public application contracts. The same mounted configuration and workflow should remain portable when they use capabilities in the common profile. An optional Microsoft Agent Framework adapter exists for evaluation and community use; it is not a production release target, and a production Agent Framework image is not required for the open-source core.
 
 ## Documentation
 
@@ -340,8 +340,8 @@ ADK and LangGraph are implementation engines, not public application contracts. 
 - [A2A/streaming evaluation](docs/a2a-streaming-evaluation.md) — bounded lifecycle SSE and implemented A2A streaming/resubscription, with push notifications deferred.
 - [Custom catalog functions](docs/custom-catalog-functions.md) — catalog layout, function manifests, deployment trust, and verification.
 - [Engine adapter evaluation](docs/engine-adapter-evaluation.md) — how the Microsoft Agent Framework third engine was selected and its current deferral state.
-- [Agent Framework production-readiness plan](docs/agent-framework-production-readiness.md) — optional-adapter gates for a future production-support decision.
-- [Event integration readiness plan](docs/event-integration-readiness.md) — transport-neutral event, security, delivery, and future AsyncAPI guidance.
+- [Agent Framework production-readiness plan](docs/agent-framework-production-readiness.md) — optional future hardening gates; no production-support commitment is required for the core.
+- [Event integration readiness plan](docs/event-integration-readiness.md) — transport-neutral event, security, delivery, and optional future AsyncAPI guidance.
 - [Project Definition](Project%20Definition.md) — authoritative architecture and product contract.
 - [PROJECT.md](PROJECT.md) — verified implementation status.
 - [TODO.md](TODO.md) — scoped backlog and deferred work.
