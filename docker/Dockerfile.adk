@@ -41,6 +41,8 @@ FROM ${PYTHON_IMAGE} AS runtime
 
 ARG OWA_VERSION=0.2.0
 ARG VCS_REF=unknown
+# Refresh Debian security fixes in the pinned base before publication scanning.
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 LABEL org.opencontainers.image.title="open-workflow-agent-adk" \
       org.opencontainers.image.version="$OWA_VERSION" \
       org.opencontainers.image.revision="$VCS_REF" \
