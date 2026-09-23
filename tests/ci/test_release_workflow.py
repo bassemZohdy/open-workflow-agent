@@ -18,7 +18,7 @@ def test_release_publishes_runtime_images_for_both_architectures() -> None:
     )
     job = workflow["jobs"]["publish"]
 
-    assert any(step.get("uses") == "docker/setup-qemu-action@v3" for step in _steps(job))
+    assert any(step.get("uses") == "docker/setup-qemu-action@v4" for step in _steps(job))
     published = [
         step["with"]
         for step in _steps(job)
@@ -35,7 +35,7 @@ def test_release_publishes_controller_images_for_both_architectures() -> None:
     )
     job = workflow["jobs"]["publish-controllers"]
 
-    assert any(step.get("uses") == "docker/setup-qemu-action@v3" for step in _steps(job))
+    assert any(step.get("uses") == "docker/setup-qemu-action@v4" for step in _steps(job))
     published = [
         step["with"]
         for step in _steps(job)
