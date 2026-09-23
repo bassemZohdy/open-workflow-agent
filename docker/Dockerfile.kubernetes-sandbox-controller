@@ -8,6 +8,8 @@ RUN python -m pip wheel --wheel-dir /wheels /build/controller
 
 FROM python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+# Refresh Debian security fixes in the pinned base before publication scanning.
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
 RUN useradd --uid 65532 --create-home --shell /usr/sbin/nologin controller
 COPY --from=build /wheels /wheels
 RUN python -m pip install --no-index --find-links /wheels open-workflow-agent-kubernetes-sandbox-controller \
