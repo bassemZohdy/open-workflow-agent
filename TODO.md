@@ -41,6 +41,11 @@ Work in order. Evidence and findings are in
   possibility of partial publication if a registry push fails after preflight.
   Run focused workflow tests, docs validation, and CI before closing the
   milestone.
+- [ ] **RELEASE-8** — serialize rolling release runs across source commits and
+  skip a commit superseded on `main` before publication. Check the remote head
+  before and after the companion wait; keep the queue bounded by GitHub Actions
+  and verify that the workflow cannot publish a stale queued run. Document the
+  remaining interval in which `main` can advance after the final head check.
 
 ### Readiness foundation (complete)
 

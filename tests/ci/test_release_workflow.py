@@ -79,6 +79,24 @@ def test_formal_release_waits_for_runtime_and_controller_publication() -> None:
     assert "needs.publish-controllers.result == 'success'" in release["if"]
 
 
+def test_rolling_release_serializes_commits_and_skips_superseded_head() -> None:
+    workflow: dict[str, Any] = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    )
+    assert workflow["concurrency"] == {
+        "group": "release-main",
+        "queue": "max",
+        "cancel-in-progress": False,
+    }
+    prepare = workflow["jobs"]["prepare"]
+    steps = {step["id"]: step for step in _steps(prepare) if "id" in step}
+    assert "git ls-remote origin refs/heads/main" in steps["initial_head"]["run"]
+    assert "git ls-remote origin refs/heads/main" in steps["final_head"]["run"]
+    assert "steps.initial_head.outputs.current_head == 'true'" in steps["gate"]["if"]
+    assert "steps.gate.outputs.companions_ok == 'true'" in steps["final_head"]["if"]
+    assert "steps.final_head.outputs.current_head == 'true'" in prepare["outputs"]["should_publish"]
+
+
 def test_release_publishes_runtime_images_for_both_architectures() -> None:
     workflow: dict[str, Any] = yaml.safe_load(
         (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")

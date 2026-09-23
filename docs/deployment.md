@@ -45,6 +45,13 @@ For production, pin an exact SemVer tag (`0.2.0` or newer) or an image digest ra
 
 Images are published only after CI and the same-commit External Sandbox and PostgreSQL acceptance runs succeed. All four images are scanned on both target platforms before any push. OCI SBOM/provenance metadata is generated for the published build, and GitHub build provenance attestations are attached to the canonical GHCR image. A registry failure during publication can still leave some rolling tags updated; pin the recorded digests when deploying a matched image set.
 
+Release runs are serialized across `main` commits. The workflow skips a
+superseded commit before publication, including commits replaced while it waits
+for companion acceptance. If `main` advances after the final head check, the
+older build can briefly hold `latest` until the newer eligible run finishes.
+If that newer run fails, pin a verified digest rather than assuming `latest`
+matches the repository head.
+
 Before publishing a new version, complete the [release-readiness checklist](release-readiness.md)
 from the exact commit intended for release. It records dependency, engine, sandbox,
 persistence, image-scan, provenance, and unresolved-blocker gates.

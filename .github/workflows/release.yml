@@ -17,7 +17,10 @@ env:
   REGISTRY_NAMESPACE: bassemzohdy
 
 concurrency:
-  group: release-${{ github.event.workflow_run.head_sha }}
+  # A shared queue prevents an older main run from publishing latest after a
+  # newer run. Stale heads are filtered before and after companion acceptance.
+  group: release-main
+  queue: max
   cancel-in-progress: false
 
 jobs:
@@ -30,7 +33,7 @@ jobs:
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
-      should_publish: ${{ steps.gate.outputs.companions_ok == 'true' && steps.release.outputs.should_publish == 'true' }}
+      should_publish: ${{ steps.gate.outputs.companions_ok == 'true' && steps.final_head.outputs.current_head == 'true' && steps.release.outputs.should_publish == 'true' }}
       is_release: ${{ steps.release.outputs.is_release }}
       should_create_release: ${{ steps.release.outputs.should_create_release }}
       tag: ${{ steps.release.outputs.tag }}
@@ -118,11 +121,27 @@ jobs:
           echo "series=$series" >> "$GITHUB_OUTPUT"
           echo "short_sha=${RELEASE_SHA:0:12}" >> "$GITHUB_OUTPUT"
 
+      - name: Skip stale main commit before acceptance wait
+        id: initial_head
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          current_head="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test -n "$current_head"
+          if [[ "$current_head" == "$RELEASE_SHA" ]]; then
+            echo "current_head=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Skipping superseded commit $RELEASE_SHA; main is $current_head"
+          fi
+
       # CI and both companion suites run for every publishable main push.
       # workflow_run can arrive before the companions finish, so wait for
       # successful runs at this exact source commit.
       - name: Require exact-head companion acceptance runs
         id: gate
+        if: steps.initial_head.outputs.current_head == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -135,6 +154,22 @@ jobs:
             --timeout-seconds 1800 \
             external-sandbox-ci.yml postgres-ci.yml
           echo "companions_ok=true" >> "$GITHUB_OUTPUT"
+
+      - name: Skip commit superseded during acceptance wait
+        id: final_head
+        if: steps.gate.outputs.companions_ok == 'true'
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          current_head="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test -n "$current_head"
+          if [[ "$current_head" == "$RELEASE_SHA" ]]; then
+            echo "current_head=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Skipping superseded commit $RELEASE_SHA; main is $current_head"
+          fi
 
   preflight:
     name: Scan ${{ matrix.image }} on ${{ matrix.arch }}

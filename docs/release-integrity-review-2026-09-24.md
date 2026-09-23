@@ -44,10 +44,11 @@ current release; the recent green run is a rolling `main` publication.
 | R3 | High / high | Both publish jobs scan only `linux/amd64` but push `linux/amd64,linux/arm64`; `docs/release-readiness.md` calls for a scan on every target platform. An arm64-specific finding can reach the registry. | Release maintainer: scan all four images on both platforms before pushing; test the complete matrix. |
 | R4 | Medium / high | The `github-release` job needs `prepare` and `publish`, but omits `publish-controllers`. A formal GitHub Release could be created without both controller images. | Release maintainer: include controller publication in the dependency graph and test it. |
 | R5 | Medium / high | `PROJECT.md` records `v0.2.0` digests but not the green rolling maintenance publication at `95aeb02`. `README.md` and `docs/deployment.md` call `sha-*` tags immutable even though a rerun can republish a tag. Deployers need exact digests for stable pinning. | Maintainer: record all four resolved digests and clarify tag/digest wording; verify registry references. |
+| R6 | High / high | Release concurrency is grouped by commit, so two eligible `main` commits can publish at once. A slower older run can update `latest` after a newer run. Exact-head acceptance waits make this race more likely. | Release maintainer: serialize the release workflow across commits, skip a superseded head before and after companion acceptance, and test the queue and guards. |
 
 ## Priority and limits
 
-The ordered remediation is `RELEASE-4` through `RELEASE-7` in `TODO.md`.
+The ordered remediation is `RELEASE-4` through `RELEASE-8` in `TODO.md`.
 It is confined to publication evidence and gates. No Open Workflow schema,
 execution plan, engine checkpoint contract, sandbox policy, or optional
 Agent Framework/event surface should change.
@@ -56,5 +57,9 @@ Preflight scans prevent a *scan failure* from causing partial publication.
 Registry/network failure after preflight can still leave some tags updated;
 the release workflow cannot provide a transaction across GHCR and Docker Hub.
 Deployment should pin digests, and release documentation must state this limit.
+The head can advance after the final freshness check and before a push;
+serialization ensures that a subsequently eligible run follows, but `latest`
+can briefly refer to the older commit. A failed newer run can leave that tag
+behind. Consumers requiring exact provenance should pin a verified digest.
 The project maintainer owns any decision to require a future staging/promotion
 system. That larger change is outside this milestone.
