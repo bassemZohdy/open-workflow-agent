@@ -37,7 +37,9 @@ not ready when any required gate is missing, stale, or green for a different com
 - [ ] Image scan passes for every published image and target platform.
 - [ ] OCI SBOM and provenance/attestation generation succeeds.
 - [ ] Published image tags and digests are recorded in `PROJECT.md`.
-- [ ] Companion acceptance runs cover the exact release commit according to the release workflow.
+- [ ] External Sandbox and PostgreSQL acceptance runs are green at the exact release commit.
+- [ ] Every image/platform scan passes before any registry push; runtime and controller publication finish before GitHub Release creation.
+- [ ] Record the immutable digests for a matched image set; a registry push failure after preflight can still leave some rolling tags updated.
 - [ ] GitHub Release notes and rollback image references are prepared.
 
 ## Exceptions and sign-off

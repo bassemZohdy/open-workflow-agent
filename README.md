@@ -48,9 +48,9 @@ docker pull bzohdy/open-workflow-agent-adk:0.2.0
 docker pull bzohdy/open-workflow-agent-langgraph:0.2.0
 ```
 
-Every verified `main` build publishes `latest` and an immutable `sha-<sha>` tag to both registries. The formal release `v0.2.0` additionally publishes `0.2.0` and `0.2`. For production, pin an explicit release version or image digest rather than `latest`.
+Every verified `main` build publishes `latest` and a source-addressed `sha-<sha>` tag to both registries. A workflow rerun can republish a tag; use an image digest when the deployment needs an immutable reference. The formal release `v0.2.0` additionally publishes `0.2.0` and `0.2`.
 
-Images are published only after the GitHub Actions quality, engine, CTK, Docker, restart/resume, and persistence gates succeed. Both registries receive the same build and tags. OCI SBOM/provenance metadata is generated during the build, and GitHub build provenance attestations are published against the canonical GHCR image.
+Images are published only after the GitHub Actions quality, engine, CTK, Docker, restart/resume, and exact-commit sandbox/PostgreSQL acceptance gates succeed, followed by High/Critical vulnerability scans of all four images on both published architectures. Both registries receive the same build and tags. OCI SBOM/provenance metadata is generated during the build, and GitHub build provenance attestations are published against the canonical GHCR image.
 
 ## 5-minute quick start
 

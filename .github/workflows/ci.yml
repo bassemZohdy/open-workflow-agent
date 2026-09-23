@@ -78,7 +78,7 @@ jobs:
       - name: Validate Docker Compose profiles
         run: docker compose --env-file .env.example --profile adk --profile langgraph config --quiet
       - name: Format
-        run: uv run --locked ruff format --check core engines tests
+        run: uv run --locked ruff format --check ci core engines tests
       - name: Lint
         run: uv run --locked ruff check .
       - name: Check shell acceptance scripts
@@ -89,12 +89,13 @@ jobs:
             bash -n "$script"
           done
       - name: Type check
-        run: >-
-          uv run --locked mypy
-          --package open_workflow_agent
-          --package open_workflow_agent_adk
-          --package open_workflow_agent_langgraph
-          --package open_workflow_agent_agent_framework
+        run: |
+          uv run --locked mypy ci
+          uv run --locked mypy \
+            --package open_workflow_agent \
+            --package open_workflow_agent_adk \
+            --package open_workflow_agent_langgraph \
+            --package open_workflow_agent_agent_framework
       - name: Tests
         shell: bash
         run: |

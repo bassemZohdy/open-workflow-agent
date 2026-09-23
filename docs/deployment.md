@@ -36,20 +36,20 @@ Publication tags are:
 
 ```text
 latest       latest verified main build
-sha-<sha>    immutable verified source revision
+sha-<sha>    source-addressed main build; tag can be republished
 0.2.0        current exact SemVer release
 0.2          current minor series
 ```
 
-For production, pin an exact SemVer tag (`0.2.0` or newer) or an image digest rather than `latest`. Both registries receive the same verified build and tags.
+For production, pin an exact SemVer tag (`0.2.0` or newer) or an image digest rather than `latest`. Use a digest when immutability is required; a rerun can republish `sha-<sha>`. Both registries receive the same verified build and tags.
 
-Images are published only after the full GitHub Actions CI gate succeeds. OCI SBOM/provenance metadata is generated for the published build, and GitHub build provenance attestations are attached to the canonical GHCR image.
+Images are published only after CI and the same-commit External Sandbox and PostgreSQL acceptance runs succeed. All four images are scanned on both target platforms before any push. OCI SBOM/provenance metadata is generated for the published build, and GitHub build provenance attestations are attached to the canonical GHCR image. A registry failure during publication can still leave some rolling tags updated; pin the recorded digests when deploying a matched image set.
 
 Before publishing a new version, complete the [release-readiness checklist](release-readiness.md)
 from the exact commit intended for release. It records dependency, engine, sandbox,
 persistence, image-scan, provenance, and unresolved-blocker gates.
 
-The release workflow publishes multi-platform manifests for `linux/amd64` and `linux/arm64` for both runtime images and both restricted sandbox-controller images. It scans the loadable amd64 image before pushing the verified multi-platform manifest.
+The release workflow publishes multi-platform manifests for `linux/amd64` and `linux/arm64` for both runtime images and both restricted sandbox-controller images. Its preflight scans each image on both platforms before publication starts.
 
 ## Runtime paths
 
@@ -458,13 +458,16 @@ successful push CI on main
    Release workflow
         |
         +-- resolve project version and optional matching SemVer tag
+        +-- wait for same-commit sandbox + PostgreSQL acceptance
+        +-- scan all four images on amd64 + arm64 before any push
         +-- build ADK image once (amd64 + arm64)
         +-- build LangGraph image once (amd64 + arm64)
-        +-- push each build to Docker Hub and GHCR
+        +-- publish runtimes + both restricted controllers
+        +-- push builds to Docker Hub and GHCR
         +-- publish latest + sha-<sha>
         +-- if matching vX.Y.Z exists: also publish X.Y.Z + X.Y
         +-- attach SBOM/provenance; attest canonical GHCR image
-        +-- create GitHub Release for matching SemVer release
+        +-- create GitHub Release only after runtime + controller publication
 ```
 
 Docker Hub publication uses the repository variable `DOCKERHUB_USERNAME` and repository secret `DOCKERHUB_TOKEN`. GHCR publication uses the repository `GITHUB_TOKEN` with package-write permission.

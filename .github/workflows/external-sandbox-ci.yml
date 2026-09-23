@@ -5,26 +5,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - ".github/workflows/external-sandbox-ci.yml"
-      - "core/src/open_workflow_agent/config.py"
-      - "core/src/open_workflow_agent/sandbox/**"
-      - "core/src/open_workflow_agent/sandbox_capabilities.py"
-      - "core/src/open_workflow_agent/services.py"
-      - "sandbox-controller/**"
-      - "kubernetes-sandbox-controller/**"
-      - "deploy/kubernetes/**"
-      - "deploy/openshift/**"
-      - "docker/Dockerfile.sandbox-controller"
-      - "docker/Dockerfile.kubernetes-sandbox-controller"
-      - "docker/Dockerfile.adk"
-      - "docker/Dockerfile.langgraph"
-      - "docker/entrypoint.sh"
-      - "tests/core/test_docker_sandbox_*.py"
-      - "tests/core/test_kubernetes_sandbox_*.py"
-      - "tests/core/test_sandbox_backend_contract.py"
-      - "tests/contract/test_container_sandbox_contract.py"
-      - "tests/ci/docker_external_sandbox_acceptance.sh"
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   pull_request:
     paths:
       - ".github/workflows/external-sandbox-ci.yml"
