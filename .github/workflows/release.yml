@@ -17,7 +17,10 @@ env:
   REGISTRY_NAMESPACE: bassemzohdy
 
 concurrency:
-  group: release-${{ github.event.workflow_run.head_sha }}
+  # A shared queue prevents an older main run from publishing latest after a
+  # newer run. Stale heads are filtered before and after companion acceptance.
+  group: release-main
+  queue: max
   cancel-in-progress: false
 
 jobs:
@@ -30,7 +33,7 @@ jobs:
       github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
-      should_publish: ${{ steps.gate.outputs.companions_ok == 'true' && steps.release.outputs.should_publish == 'true' }}
+      should_publish: ${{ steps.gate.outputs.companions_ok == 'true' && steps.final_head.outputs.current_head == 'true' && steps.release.outputs.should_publish == 'true' }}
       is_release: ${{ steps.release.outputs.is_release }}
       should_create_release: ${{ steps.release.outputs.should_create_release }}
       tag: ${{ steps.release.outputs.tag }}
@@ -118,55 +121,113 @@ jobs:
           echo "series=$series" >> "$GITHUB_OUTPUT"
           echo "short_sha=${RELEASE_SHA:0:12}" >> "$GITHUB_OUTPUT"
 
-      # Publication precondition: the companion acceptance workflows are
-      # path-filtered, so they do not run for every push. Their latest run on
-      # main must be green and cover the release head (ancestor), which proves
-      # the release head did not change their inputs since the last green run.
-      - name: Require green companion acceptance runs
+      - name: Skip stale main commit before acceptance wait
+        id: initial_head
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          current_head="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test -n "$current_head"
+          if [[ "$current_head" == "$RELEASE_SHA" ]]; then
+            echo "current_head=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Skipping superseded commit $RELEASE_SHA; main is $current_head"
+          fi
+
+      # CI and both companion suites run for every publishable main push.
+      # workflow_run can arrive before the companions finish, so wait for
+      # successful runs at this exact source commit.
+      - name: Require exact-head companion acceptance runs
         id: gate
+        if: steps.initial_head.outputs.current_head == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          ok=true
-          gate() {
-            local line conclusion run_sha
-            workflow="$1"
-            line="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" \
-              --branch main --status completed --limit 1 \
-              --json conclusion,headSha --jq '.[0] | "\(.conclusion) \(.headSha)"')"
-            if [[ -z "$line" ]]; then
-              echo "FAIL: no completed $workflow run on main" >&2
-              ok=false
-              return 0
-            fi
-            conclusion="${line%% *}"
-            run_sha="${line##* }"
-            if [[ "$conclusion" != "success" ]]; then
-              echo "FAIL: latest $workflow run on main ($run_sha) is $conclusion" >&2
-              ok=false
-              return 0
-            fi
-            if ! git merge-base --is-ancestor "$run_sha" "$RELEASE_SHA"; then
-              echo "FAIL: latest green $workflow run ($run_sha) does not cover $RELEASE_SHA" >&2
-              ok=false
-              return 0
-            fi
-            echo "OK: $workflow green at $run_sha covers $RELEASE_SHA"
-          }
-          gate external-sandbox-ci.yml
-          gate postgres-ci.yml
-          echo "companions_ok=$ok" >> "$GITHUB_OUTPUT"
-          if [[ "$ok" != "true" ]]; then
-            echo "Publication skipped: companion acceptance gate failed." >&2
+          python -m ci.release_gate \
+            --sha "$RELEASE_SHA" \
+            --repository "$GITHUB_REPOSITORY" \
+            --timeout-seconds 1800 \
+            external-sandbox-ci.yml postgres-ci.yml
+          echo "companions_ok=true" >> "$GITHUB_OUTPUT"
+
+      - name: Skip commit superseded during acceptance wait
+        id: final_head
+        if: steps.gate.outputs.companions_ok == 'true'
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          current_head="$(git ls-remote origin refs/heads/main | cut -f1)"
+          test -n "$current_head"
+          if [[ "$current_head" == "$RELEASE_SHA" ]]; then
+            echo "current_head=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Skipping superseded commit $RELEASE_SHA; main is $current_head"
           fi
+
+  preflight:
+    name: Scan ${{ matrix.image }} on ${{ matrix.arch }}
+    needs: prepare
+    if: needs.prepare.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: adk, arch: amd64, platform: linux/amd64 }
+          - { image: adk, arch: arm64, platform: linux/arm64 }
+          - { image: langgraph, arch: amd64, platform: linux/amd64 }
+          - { image: langgraph, arch: arm64, platform: linux/arm64 }
+          - { image: sandbox-controller, arch: amd64, platform: linux/amd64 }
+          - { image: sandbox-controller, arch: arm64, platform: linux/arm64 }
+          - { image: kubernetes-sandbox-controller, arch: amd64, platform: linux/amd64 }
+          - { image: kubernetes-sandbox-controller, arch: arm64, platform: linux/arm64 }
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Build image locally for scanning
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile.${{ matrix.image }}
+          push: false
+          load: true
+          platforms: ${{ matrix.platform }}
+          tags: owa-${{ matrix.image }}:${{ matrix.arch }}-${{ needs.prepare.outputs.short_sha }}
+          build-args: |
+            OWA_VERSION=${{ needs.prepare.outputs.version }}
+            VCS_REF=${{ github.event.workflow_run.head_sha }}
+          cache-from: type=gha,scope=release-${{ matrix.image }}-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.image }}-${{ matrix.arch }}
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: owa-${{ matrix.image }}:${{ matrix.arch }}-${{ needs.prepare.outputs.short_sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH
 
   publish:
     name: Publish ${{ matrix.engine }} image
-    needs: prepare
-    if: needs.prepare.outputs.should_publish == 'true'
+    needs: [prepare, preflight]
+    if: needs.prepare.outputs.should_publish == 'true' && needs.preflight.result == 'success'
     runs-on: ubuntu-latest
     # The Docker Hub token is long-lived; publication runs inside a protected
     # environment so repository admins can add required reviewers and deployment
@@ -224,33 +285,6 @@ jobs:
             org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
             org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
 
-      - name: Build image locally for scanning
-        id: build-scan
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: docker/Dockerfile.${{ matrix.engine }}
-          push: false
-          load: true
-          platforms: linux/amd64
-          tags: owa-${{ matrix.engine }}:${{ github.sha }}
-          labels: ${{ steps.meta.outputs.labels }}
-          build-args: |
-            OWA_VERSION=${{ needs.prepare.outputs.version }}
-            VCS_REF=${{ github.event.workflow_run.head_sha }}
-          cache-from: type=gha,scope=release-${{ matrix.engine }}
-          cache-to: type=gha,mode=max,scope=release-${{ matrix.engine }}
-
-      - name: Scan image for vulnerabilities
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: owa-${{ matrix.engine }}:${{ github.sha }}
-          format: table
-          exit-code: "1"
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: CRITICAL,HIGH
-
       - name: Build once and push to GHCR and Docker Hub
         id: build
         uses: docker/build-push-action@v7
@@ -264,7 +298,9 @@ jobs:
           build-args: |
             OWA_VERSION=${{ needs.prepare.outputs.version }}
             VCS_REF=${{ github.event.workflow_run.head_sha }}
-          cache-from: type=gha,scope=release-${{ matrix.engine }}
+          cache-from: |
+            type=gha,scope=release-${{ matrix.engine }}-amd64
+            type=gha,scope=release-${{ matrix.engine }}-arm64
           provenance: mode=max
           sbom: true
 
@@ -294,8 +330,8 @@ jobs:
 
   publish-controllers:
     name: Publish sandbox controller images
-    needs: prepare
-    if: needs.prepare.outputs.should_publish == 'true'
+    needs: [prepare, preflight]
+    if: needs.prepare.outputs.should_publish == 'true' && needs.preflight.result == 'success'
     runs-on: ubuntu-latest
     environment: release
     strategy:
@@ -359,29 +395,6 @@ jobs:
             org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
             org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
 
-      - name: Build controller image locally for scanning
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          push: false
-          load: true
-          platforms: linux/amd64
-          tags: owa-${{ matrix.image }}:${{ github.sha }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=release-${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=release-${{ matrix.image }}
-
-      - name: Scan controller image for vulnerabilities
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: owa-${{ matrix.image }}:${{ github.sha }}
-          format: table
-          exit-code: "1"
-          ignore-unfixed: true
-          vuln-type: os,library
-          severity: CRITICAL,HIGH
-
       - name: Push controller image to GHCR
         id: build
         uses: docker/build-push-action@v7
@@ -392,7 +405,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=release-${{ matrix.image }}
+          cache-from: |
+            type=gha,scope=release-${{ matrix.image }}-amd64
+            type=gha,scope=release-${{ matrix.image }}-arm64
           provenance: mode=max
           sbom: true
 
@@ -405,8 +420,11 @@ jobs:
 
   github-release:
     name: Create GitHub Release
-    needs: [prepare, publish]
-    if: needs.prepare.outputs.should_create_release == 'true'
+    needs: [prepare, publish, publish-controllers]
+    if: >-
+      needs.prepare.outputs.should_create_release == 'true' &&
+      needs.publish.result == 'success' &&
+      needs.publish-controllers.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Create release with pull instructions

@@ -164,6 +164,36 @@ Rollback references are the previous formal release images recorded above
 under `Formal Release v0.1.0`; rollback means selecting those immutable image
 digests and reverting the deployment configuration to the prior contract.
 
+## Verified main maintenance publication — 2026-09-24
+
+Commit `95aeb02f991d35bc265467e0e4a03f05e732d9d0` contains the grouped
+dependency updates and Debian runtime-image security fixes. This is a rolling
+`main` image publication, not a new formal release; `v0.2.0` and its tagged
+image digests above remain the current formal release.
+
+| Workflow | Run | Result |
+| --- | ---: | --- |
+| CI | `35933526556` | green |
+| PostgreSQL CI | `35933526627` | green |
+| External Sandbox CI | `35933526511` | green |
+| Release | `35933779422` | success; all four image jobs passed |
+
+Canonical GHCR image references resolved from the published
+`sha-95aeb02f991d` tags:
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk@sha256:746835c1abd2fb81065ffa9fd3e3106d7dd3d3aa5e4700403a3bca283e50dbfe
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph@sha256:e65dacf2bfb6db12afff4de17c6fcc473b779ecf79d5e627dd40cf3d81738f20
+ghcr.io/bassemzohdy/open-workflow-agent-sandbox-controller@sha256:7686bcddb2e98d1f54fae408820982b698f0421c44ed44044d4582d4b2bbd5d0
+ghcr.io/bassemzohdy/open-workflow-agent-kubernetes-sandbox-controller@sha256:6666e22260845bdbacbfb2c1de8913864e8f4d9c628a95d760a4ef46e9de7e5a
+```
+
+The preceding `main` release workflow at `64dc212` failed image
+vulnerability scans for the ADK, LangGraph, and Kubernetes controller images
+while the Docker controller published successfully. The passing maintenance
+run fixed those 13 common Debian OS findings. The publication sequencing
+issue is tracked as `RELEASE-6` in `TODO.md`.
+
 ## Verified Follow-up Work — 2026-09-12 (release)
 
 - `A2A-8` through `A2A-10`: authenticated A2A task ownership is persisted in

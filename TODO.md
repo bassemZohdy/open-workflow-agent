@@ -10,9 +10,42 @@ The public contract remains Open Workflow 1.0.3. The runtime uses a framework-ne
 
 ## Active backlog
 
-There are no active implementation blockers for the current open-source core
-scope. The verified runtime, ADK/LangGraph engines, bounded A2A profile, and
-current process-local event baseline remain the supported project surface.
+The verified runtime, ADK/LangGraph engines, bounded A2A profile, and current
+process-local event baseline remain the supported project surface. The
+2026-09-24 release review found a bounded maintenance milestone in the
+publication pipeline; it does not activate an optional product track.
+
+### P0 — Release integrity maintenance
+
+Work in order. Evidence and findings are in
+[the release integrity review](docs/release-integrity-review-2026-09-24.md).
+
+- [x] **RELEASE-4** — record the verified 2026-09-24 maintenance publication
+  at commit `95aeb02` in `PROJECT.md`: exact green CI/companion/release
+  runs and immutable GHCR digests for all four images. Keep `v0.2.0` as the
+  current formal release and distinguish its tag from rolling `sha-*` tags.
+- [ ] **RELEASE-5** — require exact-head External Sandbox and PostgreSQL
+  acceptance before publishing a `main` commit. Ensure those workflows run
+  for every publishable `main` push; wait for their same-commit conclusions
+  with a finite deadline and fail closed on failure, absence, or timeout.
+  Verify success, failure, and delayed-run decisions deterministically.
+- [ ] **RELEASE-6** — preflight all four images on both `linux/amd64` and
+  `linux/arm64` with the existing High/Critical OS/library scan before any
+  registry push. A failed platform scan must prevent every publish job.
+  Preserve independent ADK/LangGraph images, controller boundaries, and
+  SBOM/provenance gates. Verify the job dependency graph and both-platform
+  scan matrix.
+- [ ] **RELEASE-7** — make GitHub Release creation depend on successful
+  runtime *and* controller publication. Update deployment/release wording to
+  describe exact commit acceptance, both-platform scans, and the remaining
+  possibility of partial publication if a registry push fails after preflight.
+  Run focused workflow tests, docs validation, and CI before closing the
+  milestone.
+- [ ] **RELEASE-8** — serialize rolling release runs across source commits and
+  skip a commit superseded on `main` before publication. Check the remote head
+  before and after the companion wait; keep the queue bounded by GitHub Actions
+  and verify that the workflow cannot publish a stale queued run. Document the
+  remaining interval in which `main` can advance after the final head check.
 
 ### Readiness foundation (complete)
 

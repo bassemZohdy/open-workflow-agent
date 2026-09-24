@@ -5,28 +5,9 @@ on:
   push:
     branches:
       - main
-    paths:
-      - ".github/workflows/postgres-ci.yml"
-      - "core/src/open_workflow_agent/persistence.py"
-      - "core/src/open_workflow_agent/storage.py"
-      - "core/src/open_workflow_agent/services.py"
-      - "core/src/open_workflow_agent/config.py"
-      - "core/src/open_workflow_agent/approvals.py"
-      - "core/src/open_workflow_agent/scheduling.py"
-      - "engines/adk/src/open_workflow_agent_adk/__init__.py"
-      - "engines/adk/src/open_workflow_agent_adk/native.py"
-      - "engines/langgraph/src/open_workflow_agent_langgraph/__init__.py"
-      - "engines/langgraph/src/open_workflow_agent_langgraph/native.py"
-      - "tests/core/test_postgres_persistence.py"
-      - "docker/Dockerfile.adk"
-      - "docker/Dockerfile.langgraph"
-      - "pyproject.toml"
-      - "core/pyproject.toml"
-      - "engines/adk/pyproject.toml"
-      - "engines/langgraph/pyproject.toml"
-      - "uv.lock"
-      - "engines/adk/uv.lock"
-      - "engines/langgraph/uv.lock"
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   pull_request:
     paths:
       - ".github/workflows/postgres-ci.yml"
