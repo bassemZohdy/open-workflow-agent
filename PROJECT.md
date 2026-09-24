@@ -7,7 +7,7 @@
 - `TODO.md` — scoped backlog and intentionally deferred work.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current Phase — 2026-09-12
+## Current Phase — 2026-09-24
 
 `v0.1.0` is the previous formal release. `v0.2.0` is the current formal
 release for the principal-bound A2A task-access work. It was published from
@@ -192,7 +192,46 @@ The preceding `main` release workflow at `64dc212` failed image
 vulnerability scans for the ADK, LangGraph, and Kubernetes controller images
 while the Docker controller published successfully. The passing maintenance
 run fixed those 13 common Debian OS findings. The publication sequencing
-issue is tracked as `RELEASE-6` in `TODO.md`.
+issue was resolved by the verified release integrity maintenance below.
+
+## Verified release integrity maintenance — 2026-09-24
+
+PR [#48](https://github.com/bassemZohdy/open-workflow-agent/pull/48) merged as
+`8369b025657614e71cc7cb4baf2e508f3d8271b3`. This is a rolling `main`
+publication, not a new formal release. `v0.2.0` remains the current formal
+release.
+
+| Workflow | Run | Result |
+| --- | ---: | --- |
+| CI | `35936514346` | green |
+| PostgreSQL CI | `35936514236` | green at the exact commit |
+| External Sandbox CI | `35936514292` | green at the exact commit |
+| Release | `35936756631` | success; all eight image/platform preflight scans and all four publish jobs passed |
+
+The Release prepare job accepted only those exact-commit companion runs. The
+workflow serialized publication across source commits and verified the current
+`main` head before and after the acceptance wait. It ran High/Critical OS and
+library scans for all four images on both `linux/amd64` and `linux/arm64`
+before any registry push. Runtime and controller publish jobs completed with
+provenance attestations. The formal GitHub Release job now requires both
+runtime and controller publication.
+
+The following canonical GHCR digest references were resolved from
+`sha-8369b0256576`. The same four index digests and both platform manifests
+were independently verified at Docker Hub under `docker.io/bzohdy/`.
+
+```text
+ghcr.io/bassemzohdy/open-workflow-agent-adk@sha256:32bc89bfd913e1d58c6f94bcb27fa8017e38ab28ae45f9b91fe9e43774441231
+ghcr.io/bassemzohdy/open-workflow-agent-langgraph@sha256:2f3c3300619fe8fea24f4bc85a0f0049b88b00be2beccbcd5270d16e1d38fe39
+ghcr.io/bassemzohdy/open-workflow-agent-sandbox-controller@sha256:a01ee8d170ad9a122d9523e9c61453972fdee668641a33a2bfe7e91e90dc883a
+ghcr.io/bassemzohdy/open-workflow-agent-kubernetes-sandbox-controller@sha256:46261f984bfd1652686202b55a55a5cb7f857b20060fed5f02989136ec23521e
+```
+
+The live release run proves the success path and the publication order. The
+deterministic tests cover failed, missing, delayed, and ancestor-only
+companion runs plus the scan dependency graph. A registry failure after
+preflight can still leave some rolling tags updated. Digests remain the stable
+deployment reference.
 
 ## Verified Follow-up Work — 2026-09-12 (release)
 
