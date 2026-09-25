@@ -20,7 +20,7 @@ dependencies = [
 dev = [
   "pytest==9.1.1",
   "pytest-asyncio==1.4.0",
-  "ruff==0.16.7",
+  "ruff==0.16.8",
   "mypy==2.3.1",
   "types-jsonschema==4.26.0.20260518",
   "types-PyYAML==6.0.12.20260815",
@@ -31,13 +31,13 @@ mutation = [
 ]
 
 [project.optional-dependencies]
-model = ["litellm==1.101.0"]
+model = ["litellm==1.102.0"]
 knowledge = [
   "fastembed==0.8.0",
   "numpy==2.5.3",
-  "pypdf==6.18.1",
+  "pypdf==6.19.0",
 ]
-postgres = ["psycopg[binary]==3.3.5"]
+postgres = ["psycopg[binary]==3.3.6"]
 
 [build-system]
 requires = ["hatchling"]
