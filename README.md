@@ -353,3 +353,9 @@ ADK and LangGraph are implementation engines, not public application contracts. 
 ## Development
 
 Source checkout is only needed when contributing to or customizing the runtime. See [docs/development.md](docs/development.md) for local development, tests, and image builds.
+
+## Predecessor consolidation
+
+[Agent-runtime consolidation gates](docs/agent-runtime-consolidation.md)
+track legacy presets, source/license preservation and package compatibility.
+They do not extend the advertised runtime contract or mark a migration complete.
