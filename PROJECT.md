@@ -22,7 +22,7 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
-### S1-07 reusable definitions and resource identity — local verification
+### S1-07 reusable definitions and resource identity — 2026-10-11 (verified)
 
 Core resolves reusable task functions, named errors, catch retry policies and
 task/workflow timeouts into separate immutable execution definitions. Original
@@ -89,12 +89,24 @@ configuration, with missing profiles rejected before requests and credentials
 bound to the catalog host. Imported A2A tasks also now share inline OWS method
 translation before wire dispatch. The packaged catalog check includes both
 legacy registration and frozen schema-resource resolution; its program passed
-locally. Exact remote acceptance for these fixes is pending. Ruff, formatting, strict mypy,
+locally. Exact remote acceptance is green at `f7be5d115e337c551686a8cdebc62284329e9805`.
+Both packaged ADK/LangGraph images passed catalog/resource, internal sandbox,
+embedded-default, startup and restart/resume acceptance. Ruff, formatting, strict mypy,
 five core/runtime locks, documentation links and root/core builds passed.
 Authentication, secrets, extensions, full reliability/proposed inventory tests
-and independent JS retain later-stage ownership. S1-07 remains unchecked
-pending exact remote acceptance of the resource/reference revision. No release
-is published.
+and independent JS retain later-stage ownership. S1-07 is verified at its
+recorded Python resolution/admission scope; full proposed inventory criteria
+remain unclaimed. No release is published.
+
+| Gate | Run | Result |
+| --- | --- | --- |
+| CI | [38145342408](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38145342408) | success |
+| CI (push) | [38145338954](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38145338954) | success |
+| External Sandbox CI | [38145342355](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38145342355) | success |
+| PostgreSQL CI | [38145342373](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38145342373) | success |
+| Agent Framework CI (optional) | [38145342274](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38145342274) | success |
+| Security | [38145342415](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38145342415) | success |
+| Docs | [38145342449](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38145342449) | success |
 
 
 ### S1-06 embedded/bootstrap defaults — 2026-10-11 (verified)

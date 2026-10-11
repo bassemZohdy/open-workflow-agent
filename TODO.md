@@ -28,7 +28,10 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 - [x] **S1-06** (M) — Provide one-container embedded defaults; separate workflow behavior from external bootstrap/provider settings.
   Verified at `c2094a0`: [embedded bootstrap defaults](docs/embedded-bootstrap.md) and
   [acceptance evidence](PROJECT.md#s1-06-embeddedbootstrap-defaults--2026-10-11-verified).
-- [ ] **S1-07** (M) — Complete reusable definitions, imports, references, validation, version resolution and safe serialization.
+- [x] **S1-07** (M) — Complete reusable definitions, imports, references, validation, version resolution and safe serialization.
+  Verified at `f7be5d1`: [reusable resolution](docs/reusable-definitions.md),
+  [schema resources](docs/schema-resources.md) and
+  [acceptance evidence](PROJECT.md#s1-07-reusable-definitions-and-resource-identity--2026-10-11-verified).
 - [ ] **S1-08** (M) — Verify the current implementation against every tracked feature before claiming it complete.
 - [ ] **MIG-02** (S) — Archive the three preserved predecessors after consolidation is merged; currently requires user action.
 
