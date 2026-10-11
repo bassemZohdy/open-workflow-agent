@@ -16,6 +16,7 @@ from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
 from .memory import MemoryService
 from .metrics import Metrics, MetricsEventSink
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
+from .ownership import ExecutionOwnershipStore
 from .persistence import InvocationStore
 from .protocols import ProtocolServices, workflow_protocol_payload
 from .sandbox import InternalSandboxBackend, SandboxBackend, SandboxManager
@@ -123,6 +124,7 @@ class RuntimeServices:
         )
         self.memory = MemoryService(str(memory_database) if memory_database else None)
         self.invocations = InvocationStore(invocation_path)
+        self.execution_ownership = ExecutionOwnershipStore(invocation_path)
         self.fork_decisions = ForkDecisionStore(invocation_path)
         self.effect_journal = EffectJournal(invocation_path)
         self.schedules = ScheduleStore(invocation_path)
@@ -230,6 +232,7 @@ class RuntimeServices:
         self.memory.close()
         self.schedules.close()
         self.invocations.close()
+        self.execution_ownership.close()
         self.fork_decisions.close()
         self.effect_journal.close()
         self.approvals.close()

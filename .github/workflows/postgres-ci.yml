@@ -42,6 +42,7 @@ on:
       - "tests/contract/test_effect_recovery.py"
       - "tests/contract/test_invocation_writes.py"
       - "tests/core/test_invocation_store_writes.py"
+      - "tests/core/test_execution_ownership.py"
       - "tests/core/test_postgres_persistence.py"
       - "docker/Dockerfile.adk"
       - "docker/Dockerfile.langgraph"
@@ -100,7 +101,8 @@ jobs:
         run: |
           set -euo pipefail
           timeout --signal=TERM --kill-after=30s 5m \
-            uv run --locked --extra knowledge --extra postgres pytest tests/core/test_postgres_persistence.py -vv --durations=20
+            uv run --locked --extra knowledge --extra postgres pytest tests/core/test_postgres_persistence.py \
+            tests/core/test_execution_ownership.py -vv --durations=20
       - name: Verify native LangGraph task checkpoints and interrupted restart
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
