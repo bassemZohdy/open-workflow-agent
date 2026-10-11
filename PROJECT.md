@@ -22,6 +22,28 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
+### S1-08 current implementation audit — local verification
+
+The [implementation audit](docs/current-implementation-audit.md) covers all
+658 tracked feature IDs against active code and actual assertion scope, with
+77 source/test evidence groups and independent language outcomes. It preserves
+all original research fields, 443 proposed full acceptance tests and 774
+structural constraints. It records 171 qualified subsets, 156 partial outcomes,
+35 behavior mismatches, 197 parent/admission rejections, 27 inert fields,
+9 private native uses and 63 unimplemented public features. These are audit
+outcomes, not full feature-completion counts. Independent JS remains absent.
+
+Four audit-integrity and two consolidation-integrity checks pass. Gap probes
+pass six admission checks and reproduce five expected assertion failures in
+the root and independent ADK/LangGraph environments; optional Agent Framework
+reproduces six failures including its own fork result. Unmarked execution
+confirms failures at ordered fork output, OpenAPI request routing, HTTP binary
+raw output and null event-data assertions. Strict AssertionError-only xfails
+retain S2-01/S2-05/S3-03 repair owners and never count as implemented features.
+Ruff, formatting and Markdown links pass. S1-08 awaits remote acceptance of the
+audit artifact/checks before its checkbox closes. The reviewed implementation
+baseline remains the exact green `f7be5d1`; no runtime capability changed here.
+
 ### S1-07 reusable definitions and resource identity — 2026-10-11 (verified)
 
 Core resolves reusable task functions, named errors, catch retry policies and
