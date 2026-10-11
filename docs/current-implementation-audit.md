@@ -9,13 +9,14 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`8da4de3`, which retains the verified fork, original-input and terminal-record
-corrections and adds common leaf-call action receipts. Completed outcomes are
+`31f64ac`, which retains the verified fork, original-input, terminal-record and
+leaf-call corrections and adds conditional common state writes. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
-competitive actions cannot establish a winner. Full local suites passed; exact
-GitHub runtime/database gates passed at `f63b801`; Security failed and its parser
-defect requires correction. Full new-head acceptance remains pending. Recovery, action idempotency and lifecycle
+competitive actions cannot establish a winner. Stale writes cannot replace newer
+records or terminal outcomes, and stale state conflicts stop retry/fork routing.
+Full local suites passed; exact new-source GitHub/database acceptance is pending.
+The prior leaf-call and corrected dependency gates passed at `fc53574`. Recovery, action idempotency and lifecycle
 remain partial. S2-03 remains open for broader effects, fenced ownership and
 native checkpoint consistency.
 
@@ -32,7 +33,7 @@ to its immutable artifact. Historical green gates do not qualify changed code.
 Historical successful Security jobs used a parser that missed nested advisory
 records and therefore do not prove absence of fixable dependency advisories.
 The source-scoped behavioral results remain independently recorded. See the
-[dependency audit correction](../PROJECT.md#dependency-audit-correction--2026-10-11-under-verification).
+[dependency audit correction](../PROJECT.md#dependency-audit-correction--2026-10-11-verified).
 
 ## Outcomes
 
@@ -69,7 +70,7 @@ not be read as current delivery status.
 | --- | --- | --- |
 | Ordered fork output and collisions | Ordered branch arrays, isolated exports, explicit jq aggregation and failure cleanup pass shared fixtures. SQLite/PostgreSQL native fork restart and exact runtime GitHub gates pass; additional shared output restart passes every adapter | S2-01 verified; full criteria remain S4-03/S4-04 |
 | Competitive fork durability | First observed completion, cancellation intents and distinct occurrence identity are persisted. SQLite/PostgreSQL replay preserves values/null/fault/end and repeated occurrences without branch calls on both principal adapters and the optional common bridge. All exact acceptance gates passed. External-action reconciliation/compensation is not established | S2-02 verified; general effects S2-03/S2-08; full criteria S4-03/S4-04 |
-| Native checkpoint recovery | Original input, resume values and atomic terminal outcomes have verified acceptance. Leaf-call intents/outcomes reconcile before-native-commit interruption on SQLite and configured PostgreSQL; repeated occurrences remain distinct. Uncertain actions and request changes stop recovery without retry or a fabricated fork winner. Full new-head acceptance awaits the corrected dependency audit; fenced ownership, broader effects, native consistency and legacy migration remain open | S2-03 in progress; migration S2-09 |
+| Native checkpoint recovery | Original input, resume values, atomic terminal outcomes and leaf-call receipts have bounded SQLite/PostgreSQL acceptance. Conditional common writes retain newer records against stale workers; conflicts stop retry or a fabricated fork winner. New-source database gates are pending. Exclusive execution ownership, native checkpoint fencing/consistency, broader effects and legacy migration remain open | S2-03 in progress; migration S2-09 |
 | Action idempotency and compensation | A080 is partial: selected call receipts prevent completed replay and block uncertain actions. A079 remains unimplemented: no compensation/saga state machine exists. Run/event/child effects, redrive, ambiguous outcome resolution, full process-crash criteria and exactly-once external actions remain unqualified | S2-03, S2-08; full criteria S4-03/S4-04 |
 | Retry and timeout declarations | Predicates/count/basic backoff work; jitter and duration limits are inert, and original deadlines are not persisted | S2-04 |
 | Events and timers | Active process-local listeners and persisted after/every schedules exist; durable general inbox/outbox/timers/correlation/cron/on are missing. Explicit null event data is omitted | S2-05, S2-06 |

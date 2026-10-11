@@ -41,6 +41,36 @@ value. A successful null result therefore does not request a second portable
 execution. If the SDK does not call the callback, the existing envelope recovery
 path remains; general pending side-effect reconciliation is still required.
 
+## Conditional common state writes
+
+Common invocation writes compare the exact loaded snapshot and a private
+generation. A return from running through waiting to running invalidates old
+snapshots. A stale writer cannot replace a newer record; repeated terminal
+writes retain the first output/error, including successful null. Failed SQLite
+commits leave both the durable record and local snapshot unchanged. The
+generation stays in common storage and is absent from public invocation and
+A2A projections. This is common metadata bookkeeping, not a native checkpoint.
+
+Late native completion or failure reloads a committed terminal outcome instead
+of overwriting it. An active-state conflict stops the old executor; it cannot
+adopt the newer nonterminal state to manufacture a fault or enter ordinary
+task/catch retries. Competitive branches propagate the conflict without a
+winner. A conflict during action dispatch leaves its intent unresolved.
+Loaded operator handles coordinate with the original in-process handle, and a
+terminal commit during operator refresh wins without another transition.
+
+[Store writer fixtures](../tests/core/test_invocation_store_writes.py) cover
+independent/simultaneous writers, repeated states, terminal null/error retention,
+immutable identity, legacy metadata and sanitized corruption errors.
+[Shared worker fixtures](../tests/contract/test_invocation_writes.py) execute
+late outcomes, loaded operator handles and conflict routing through independent
+SDK environments. Their PostgreSQL equivalents are wired into the same
+configured gate; new-source database acceptance is pending.
+
+These guards do not exclude competing executions, renew a durable execution
+lease or atomically fence native checkpoint writes. Exclusive ownership and
+native consistency remain S2-03 work.
+
 ## Evidence and remaining work
 
 The verified private action journal foundation retains
@@ -52,7 +82,7 @@ datasource. All exact foundation gates passed at `d197fa1`, including the actual
 PostgreSQL value/null/fault store fixtures. This storage acceptance does not
 establish recovery leases or exactly-once actions.
 
-The leaf-call integration follow-up is under verification. Protocol calls,
+The selected leaf-call integration passed all exact gates at `fc53574`. Protocol calls,
 catalog leaves and prepared imported calls save an intent before dispatch and
 save a value/null/fault receipt before returning to native task execution.
 Replay reuses the first outcome when the prepared request digest matches.

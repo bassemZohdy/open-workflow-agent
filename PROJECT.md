@@ -22,7 +22,7 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
-### Dependency audit correction — 2026-10-11 (under verification)
+### Dependency audit correction — 2026-10-11 (verified)
 
 The historical dependency audit parser read the top-level report instead of
 `dependencies[].vulns[]`. Earlier successful Security jobs remain historical
@@ -54,7 +54,20 @@ tests, 163 skips, three known expected gaps and 91.79% coverage. Independent
 native/shared/CTK suites pass ADK 695 (122 skips), LangGraph 708 (129 skips) and
 optional Agent Framework 945 (185 skips), each retaining the same three gaps.
 Formatting, lint, strict typing, all four locks, all five package builds and
-documentation checks pass. Exact new-head GitHub acceptance remains pending.
+documentation checks pass. All exact `fc53574` gates passed: [CI
+38161547695](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38161547695),
+[push CI 38161544737](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38161544737),
+[PostgreSQL 38161547613](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38161547613),
+[external sandbox 38161547672](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38161547672),
+[optional Agent Framework 38161547666](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38161547666),
+[Security 38161547761](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38161547761),
+[push Security 38161544729](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38161544729)
+and [Docs 38161547668](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38161547668).
+Linux root passed 1,407 tests with 159 skips, three expected gaps and 91.82%
+coverage. All six downloaded Linux reports contain zero known advisories across
+71 root, 109 ADK, 96 LangGraph, 74 optional Agent Framework and 13/16 controller
+dependencies; platform dependency counts differ from Windows. The configured
+PostgreSQL matrix and both runtime-image restart jobs passed.
 The patched versions are confirmed by the
 [urllib3 release](https://github.com/urllib3/urllib3/releases/tag/2.8.0),
 [multidict advisory](https://github.com/aio-libs/multidict/security/advisories/GHSA-54p9-h82j-f925)
@@ -176,10 +189,37 @@ external sandbox, optional Agent Framework and documentation passed. The
 configured PostgreSQL suite passed nine store cases, native LangGraph
 checkpoint tests passed 10 with eight skips, and shared recovery passed 61
 on each principal adapter and 59 with two native-boundary skips on the optional
-bridge. Security failed and its parser defect requires the separate correction
-above; full new-head acceptance remains pending.
+bridge. Security failed; the separate correction and full leaf-call acceptance
+passed at `fc53574`, as recorded above.
 Executable run, event and child operations are not
 covered by this leaf-call follow-up; broader effect reconciliation remains open.
+
+The next source at `31f64ac` adds conditional common invocation writes. Each
+write compares its loaded durable snapshot and a private generation. A
+running/waiting/running cycle cannot restore an old writer's authority. Stale
+writes leave the newer record intact, and duplicate terminal writes retain the
+first null/value/error. A late native result returns another worker's committed
+terminal outcome; stale resume reads completion before dispatch. Loaded operator
+handles coordinate with the original in-process handle, including a terminal
+commit during refresh. Changed active state stops execution without adopting a
+new writer's authority, entering retry/catch or establishing a fork winner.
+A state conflict during dispatch leaves its uncertain action intent pending.
+Common identity fields remain immutable; corrupt metadata has sanitized errors.
+Legacy rows without the write generation or creator field remain readable,
+without adding an original-input migration guarantee.
+
+Before these guards, deterministic probes reproduced 13 common-store failures,
+20 cross-adapter state failures, and four retry/fork propagation failures.
+Frozen-source full local validation passes 1,461 root tests, 202 skips, three
+expected gaps and 91.84% coverage. Independent native/shared/CTK suites pass
+ADK 729 (156 skips), LangGraph 742 (163 skips) and optional Agent Framework
+996 (236 skips), each with the same three gaps. Focused store/lifecycle/worker
+tests pass 78 with 34 unconfigured database skips. Formatting, lint, strict
+typing, four locks, five builds and documentation checks pass. Five new
+PostgreSQL store cases and the same shared worker assertions are wired into the
+configured gate; exact new-source GitHub/database acceptance remains pending.
+Conditional metadata writes are not an exclusive execution lease or an atomic
+fence around native checkpoint writes.
 
 S2-03 stays open. This fix does not reconcile all native/common invocation or
 side-effect records. General pending-effect reconciliation, fenced recovery ownership,

@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Verified bounded resume-value, original-input, terminal-record and journal-storage behavior. Leaf-call receipt integration has local and configured PostgreSQL proof; full new-head acceptance awaits the corrected dependency gate. Fenced ownership and native consistency remain open.",
+          "scope": "Selected input/terminal/journal/leaf-call foundations and corrected dependency acceptance are verified. Conditional common writes have full local proof and pending exact new-source database gates. Durable exclusive ownership, native checkpoint consistency and broader effects remain open.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -65166,8 +65166,8 @@
             "Keep later retry/deadline, durable event/timer, child workflow, compensation and version-migration tasks open."
           ],
           "action_dispatch_followup": {
-            "status": "Under verification",
-            "commit": null,
+            "status": "Verified selected leaf-call integration at fc53574; full S2-03 remains open",
+            "commit": "fc535749561a7f2c03a8b919a3bd5176a07e5f32",
             "scope": "Leaf protocol/catalog and prepared imported calls retain intents and reuse value/null/fault receipts before native task commit. Occurrence identity distinguishes repeated reusable calls. Changed requests, uncertain intents and failed outcome writes stop recovery without normal task/catch retry. Uncertain competitive branches do not establish a winner.",
             "code": "core/src/open_workflow_agent/workflow.py",
             "tests": [
@@ -65180,7 +65180,7 @@
               "unresolved_catch_retry": 2,
               "uncertain_fork_and_retry": 4
             },
-            "remaining": "Exact corrected-gate GitHub acceptance; executable run, event and child operations; fenced invocation ownership, checkpoint consistency, ambiguous outcome resolution, stronger idempotency/compensation, full proposed criteria and JavaScript.",
+            "remaining": "Executable run/event/child effects, durable exclusive execution ownership, native checkpoint consistency/fencing, ambiguous outcomes, stronger idempotency/compensation, process-crash/full proposed criteria and JS.",
             "local_validation": {
               "root": {
                 "passed": 1377,
@@ -65221,11 +65221,51 @@
               "shared_langgraph_passed": 61,
               "shared_agent_framework_passed": 59,
               "shared_agent_framework_skipped": 2
+            },
+            "remote_acceptance": {
+              "commit": "fc535749561a7f2c03a8b919a3bd5176a07e5f32",
+              "runtime_source": "8da4de3cebfb988206ae28f8eb59187c754fa2a7",
+              "result": "Success",
+              "runs": {
+                "ci_pr": 38161547695,
+                "ci_push": 38161544737,
+                "postgresql": 38161547613,
+                "external_sandbox": 38161547672,
+                "agent_framework_optional": 38161547666,
+                "security_pr": 38161547761,
+                "security_push": 38161544729,
+                "docs": 38161547668
+              },
+              "linux_root": {
+                "passed": 1407,
+                "skipped": 159,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.82
+              },
+              "remote_security_dependency_counts": {
+                "root": 71,
+                "adk": 109,
+                "langgraph": 96,
+                "agent_framework_optional": 74,
+                "sandbox_controller": 13,
+                "kubernetes_sandbox_controller": 16
+              },
+              "remote_known_advisories": 0,
+              "postgresql": {
+                "store_passed": 9,
+                "native_langgraph_passed": 10,
+                "native_langgraph_skipped": 8,
+                "shared_adk_passed": 61,
+                "shared_langgraph_passed": 61,
+                "shared_agent_framework_passed": 59,
+                "shared_agent_framework_skipped": 2
+              },
+              "scope": "Selected leaf-call recovery and corrected dependency gate, not full S2-03 or full conformance."
             }
           },
           "dependency_gate_qualification": "Historical Security jobs used a defective top-level report parser. Independently recorded behavioral tests remain source-scoped; dependency safety requires the corrected gate and fresh reports.",
           "dependency_gate_correction": {
-            "status": "Local validation passed; exact new-head GitHub acceptance pending",
+            "status": "Verified at fc53574; old Security successes remain qualified as defective-parser results",
             "old_report_negative_probes": {
               "adk_fixable_advisories_missed": 4,
               "langgraph_fixable_advisories_missed": 3,
@@ -65258,7 +65298,88 @@
               "agent_framework_passed": 945,
               "agent_framework_skipped": 185,
               "expected_assertion_failures_per_environment": 3
+            },
+            "remote_acceptance": {
+              "commit": "fc535749561a7f2c03a8b919a3bd5176a07e5f32",
+              "runtime_source": "8da4de3cebfb988206ae28f8eb59187c754fa2a7",
+              "result": "Success",
+              "runs": {
+                "ci_pr": 38161547695,
+                "ci_push": 38161544737,
+                "postgresql": 38161547613,
+                "external_sandbox": 38161547672,
+                "agent_framework_optional": 38161547666,
+                "security_pr": 38161547761,
+                "security_push": 38161544729,
+                "docs": 38161547668
+              },
+              "linux_root": {
+                "passed": 1407,
+                "skipped": 159,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.82
+              },
+              "remote_security_dependency_counts": {
+                "root": 71,
+                "adk": 109,
+                "langgraph": 96,
+                "agent_framework_optional": 74,
+                "sandbox_controller": 13,
+                "kubernetes_sandbox_controller": 16
+              },
+              "remote_known_advisories": 0,
+              "postgresql": {
+                "store_passed": 9,
+                "native_langgraph_passed": 10,
+                "native_langgraph_skipped": 8,
+                "shared_adk_passed": 61,
+                "shared_langgraph_passed": 61,
+                "shared_agent_framework_passed": 59,
+                "shared_agent_framework_skipped": 2
+              },
+              "scope": "Selected leaf-call recovery and corrected dependency gate, not full S2-03 or full conformance."
             }
+          },
+          "conditional_invocation_write_followup": {
+            "commit": "31f64ac5ba42dc9f62da887e9f013c6330688aff",
+            "status": "Local validation passed; exact new-source GitHub/PostgreSQL acceptance pending",
+            "scope": "Conditional common state writes and terminal reconciliation. No durable execution lease, native checkpoint fence or S2-03 completion.",
+            "negative_probes": {
+              "invocation_store_writes": 13,
+              "cross_worker_state": 20,
+              "state_conflict_retry_and_fork_propagation": 4
+            },
+            "local_root": {
+              "passed": 1461,
+              "skipped": 202,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.84,
+              "commit": "31f64ac5ba42dc9f62da887e9f013c6330688aff"
+            },
+            "native_matrices": {
+              "commit": "31f64ac5ba42dc9f62da887e9f013c6330688aff",
+              "adk": {
+                "passed": 729,
+                "skipped": 156,
+                "expected_assertion_failures": 3
+              },
+              "langgraph": {
+                "passed": 742,
+                "skipped": 163,
+                "expected_assertion_failures": 3
+              },
+              "agent_framework_optional": {
+                "passed": 996,
+                "skipped": 236,
+                "expected_assertion_failures": 3
+              }
+            },
+            "tests": [
+              "tests/core/test_invocation_store_writes.py",
+              "tests/contract/test_invocation_writes.py",
+              "tests/core/test_postgres_persistence.py"
+            ],
+            "remaining": "Durable execution leases/fences, native checkpoint consistency, hard-process-crash qualification and broader effects remain open."
           }
         }
       },

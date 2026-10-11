@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "reviewed_implementation_commit": "8da4de3cebfb988206ae28f8eb59187c754fa2a7",
+  "reviewed_implementation_commit": "31f64ac5ba42dc9f62da887e9f013c6330688aff",
   "acceptance_record_commit": null,
   "purpose": "Exhaustive current implementation audit, not a full conformance certificate or feature completion claim",
   "review_method": "Each semantic construct and schema parent was compared with active admission/execution/native code and existing assertion scope. Missing/inert/mismatched behavior retains explicit owners. Source/API availability and copied material are not runtime proof.",
@@ -23,85 +23,78 @@
   "schema_constraint_status": "774 structural inventory constraints remain separate from runtime behavior and complete schema execution coverage",
   "acceptance": {
     "local_root": {
-      "passed": 1377,
-      "skipped": 163,
+      "passed": 1461,
+      "skipped": 202,
       "expected_assertion_failures": 3,
-      "coverage_percent": 91.79,
-      "commit": "8da4de3cebfb988206ae28f8eb59187c754fa2a7"
+      "coverage_percent": 91.84,
+      "commit": "31f64ac5ba42dc9f62da887e9f013c6330688aff"
     },
     "native_matrices": {
-      "commit": "8da4de3cebfb988206ae28f8eb59187c754fa2a7",
+      "commit": "31f64ac5ba42dc9f62da887e9f013c6330688aff",
       "adk": {
-        "passed": 695,
-        "skipped": 122,
+        "passed": 729,
+        "skipped": 156,
         "expected_assertion_failures": 3
       },
       "langgraph": {
-        "passed": 708,
-        "skipped": 129,
+        "passed": 742,
+        "skipped": 163,
         "expected_assertion_failures": 3
       },
       "agent_framework_optional": {
-        "passed": 945,
-        "skipped": 185,
+        "passed": 996,
+        "skipped": 236,
         "expected_assertion_failures": 3
       }
     },
     "negative_probes": {
-      "action_replay": 8,
-      "unresolved_catch_retry": 2,
-      "uncertain_fork_and_retry": 4
+      "invocation_store_writes": 13,
+      "cross_worker_state": 20,
+      "state_conflict_retry_and_fork_propagation": 4
     },
-    "scope": "Leaf-call action receipts and recovery guards. No full action idempotency/compensation or S2-03 completion.",
-    "remote_status": "At f63b8018ee95fb91297cdb8d495926dd52f44c4b both CI runs, PostgreSQL, external sandbox, optional Agent Framework and Docs passed. Security failed; its parser missed nested advisories. Corrected dependency gate and patched lock acceptance are pending; historical successful Security jobs do not prove absence of fixable advisories.",
-    "dependency_gate_qualification": "Historical Security jobs used a defective top-level report parser. Independently recorded behavioral tests remain source-scoped; dependency safety requires the corrected gate and fresh reports.",
-    "dependency_gate_correction": {
-      "status": "Local validation passed; exact new-head GitHub acceptance pending",
-      "old_report_negative_probes": {
-        "adk_fixable_advisories_missed": 4,
-        "langgraph_fixable_advisories_missed": 3,
-        "fresh_root_pypdf_fixable_advisories": 3
+    "prior_action_and_dependency_acceptance": {
+      "commit": "fc535749561a7f2c03a8b919a3bd5176a07e5f32",
+      "runtime_source": "8da4de3cebfb988206ae28f8eb59187c754fa2a7",
+      "result": "Success",
+      "runs": {
+        "ci_pr": 38161547695,
+        "ci_push": 38161544737,
+        "postgresql": 38161547613,
+        "external_sandbox": 38161547672,
+        "agent_framework_optional": 38161547666,
+        "security_pr": 38161547761,
+        "security_push": 38161544729,
+        "docs": 38161547668
       },
-      "parser_tests_passed": 26,
-      "workflow_script_boundary_cases_passed": 6,
-      "patched_versions": {
-        "urllib3": "2.8.0",
-        "multidict": "6.9.1",
-        "pypdf": "6.19.0"
+      "linux_root": {
+        "passed": 1407,
+        "skipped": 159,
+        "expected_assertion_failures": 3,
+        "coverage_percent": 91.82
       },
-      "fresh_local_dependencies_audited": {
-        "root": 74,
-        "adk": 112,
-        "langgraph": 99,
-        "agent_framework_optional": 77,
+      "remote_security_dependency_counts": {
+        "root": 71,
+        "adk": 109,
+        "langgraph": 96,
+        "agent_framework_optional": 74,
         "sandbox_controller": 13,
         "kubernetes_sandbox_controller": 16
       },
-      "fresh_local_known_advisories": 0,
-      "patched_local_regression": {
-        "root_passed": 1403,
-        "root_skipped": 163,
-        "root_coverage_percent": 91.79,
-        "adk_passed": 695,
-        "adk_skipped": 122,
-        "langgraph_passed": 708,
-        "langgraph_skipped": 129,
-        "agent_framework_passed": 945,
-        "agent_framework_skipped": 185,
-        "expected_assertion_failures_per_environment": 3
-      }
+      "remote_known_advisories": 0,
+      "postgresql": {
+        "store_passed": 9,
+        "native_langgraph_passed": 10,
+        "native_langgraph_skipped": 8,
+        "shared_adk_passed": 61,
+        "shared_langgraph_passed": 61,
+        "shared_agent_framework_passed": 59,
+        "shared_agent_framework_skipped": 2
+      },
+      "scope": "Selected leaf-call recovery and corrected dependency gate, not full S2-03 or full conformance."
     },
-    "postgresql_action_dispatch": {
-      "commit": "f63b8018ee95fb91297cdb8d495926dd52f44c4b",
-      "run": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38160101730",
-      "store_passed": 9,
-      "native_langgraph_passed": 10,
-      "native_langgraph_skipped": 8,
-      "shared_adk_passed": 61,
-      "shared_langgraph_passed": 61,
-      "shared_agent_framework_passed": 59,
-      "shared_agent_framework_skipped": 2
-    }
+    "dependency_gate_qualification": "Historical Security jobs used a defective top-level report parser. Independently recorded behavioral tests remain source-scoped; dependency safety requires the corrected gate and fresh reports.",
+    "scope": "Conditional common state writes and terminal reconciliation. No durable execution lease, native checkpoint fence or S2-03 completion.",
+    "remote_status": "Exact new source GitHub/PostgreSQL acceptance pending; earlier green runs qualify their immutable source."
   },
   "evidence_groups": {
     "loading": {
@@ -1028,8 +1021,8 @@
     },
     "lifecycle": {
       "outcome": "partial",
-      "observed": "Common invocation transitions cover running/waiting/completed/faulted/cancelled; active cancellation drains waits/operations and emits common events. Terminal outcomes include their result/error in one common update and survive interrupted or late native finalization. Deterministically injected late native resume values/faults preserve committed common cancellation; no cross-worker ownership guarantee follows.",
-      "remaining_scope": "General suspended/manual-pause control, durable cancellation/termination policies and full crash recovery are not implemented.",
+      "observed": "Common invocation transitions cover running/waiting/completed/faulted/cancelled; active cancellation drains waits/operations and emits common events. Terminal outcomes include their result/error in one common update and survive interrupted or late native finalization. Deterministically injected late native resume values/faults preserve committed common cancellation; no cross-worker ownership guarantee follows. Conditional common state generations reject stale writers and retain first terminal results. Fresh operator handles coordinate with their existing active handle, including a terminal commit during refresh. Other-worker completion/cancellation/fault wins over late native results. This does not establish exclusive cross-worker execution ownership.",
+      "remaining_scope": "General suspended/manual-pause control, durable cancellation/termination policies and full crash recovery are not implemented. Durable exclusive execution ownership and native checkpoint fences remain unqualified.",
       "remediation_tasks": [
         "S2-03",
         "S2-08",
@@ -1051,6 +1044,10 @@
         {
           "path": "core/src/open_workflow_agent/persistence.py",
           "symbol": "InvocationStore.update"
+        },
+        {
+          "path": "core/src/open_workflow_agent/persistence.py",
+          "symbol": "InvocationStore.refresh"
         }
       ],
       "tests": [
@@ -1069,6 +1066,22 @@
         {
           "path": "tests/contract/test_checkpoint_recovery.py",
           "symbol": "test_late_native_resume_result_preserves_committed_cancellation"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_other_workers_terminal_outcome_survives_late_native_execution"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_operator_loaded_handle_controls_the_existing_active_invocation"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_stale_resume_handle_reads_committed_completion_before_native_dispatch"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_terminal_commit_during_operator_refresh_wins_without_another_transition"
         }
       ],
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
@@ -1247,8 +1260,8 @@
     },
     "recovery": {
       "outcome": "partial",
-      "observed": "Private native LangGraph scope checkpoints skip completed calls. First raw workflow input is separately retained across common-store connections and envelope restart; all six empty/false resume inputs retain original null/false/object/array input and transformation. Terminal status/output/error are stored together before adapter finalization. Fresh services preserve values/null/faults across interruption and late adapter results; successful ADK null callback completion no longer requests another portable execution. Common leaf-call receipts retain the first request digest, owner and value/null/fault outcome before native task commit. Restart reuses completed outcomes and rejects changed requests or uncertain pending intents without dispatch. Recovery failures bypass task/catch retries; uncertain competitive branches drain siblings without establishing a winner. Repeated reusable calls retain distinct occurrences.",
-      "remaining_scope": "Executable run, event and child operations, global fenced recovery ownership, missing/inconsistent native checkpoints and ambiguous outcome resolution remain open. Legacy input migration has no new guarantee. New action-dispatch PostgreSQL acceptance is pending; prior input/terminal and journal-store gates passed. Full proposed criteria, history/migration and independent JS remain open.",
+      "observed": "Private native LangGraph scope checkpoints skip completed calls. First raw workflow input is separately retained across common-store connections and envelope restart; all six empty/false resume inputs retain original null/false/object/array input and transformation. Terminal status/output/error are stored together before adapter finalization. Fresh services preserve values/null/faults across interruption and late adapter results; successful ADK null callback completion no longer requests another portable execution. Common leaf-call receipts retain the first request digest, owner and value/null/fault outcome before native task commit. Restart reuses completed outcomes and rejects changed requests or uncertain pending intents without dispatch. Recovery failures bypass task/catch retries; uncertain competitive branches drain siblings without establishing a winner. Repeated reusable calls retain distinct occurrences. Common invocation writes compare the exact loaded snapshot and private generation. Independent stale writers cannot replace committed state, including a return to running. Duplicate terminal writes retain the first null/value/error. Late native execution returns another worker's committed terminal outcome; stale resume reads completion before native dispatch. Loaded operator handles coordinate with the original in-process handle. Conflicts cannot enter retry/catch or establish a fork winner, and dispatch conflicts leave uncertain action intents pending.",
+      "remaining_scope": "Durable exclusive execution ownership/leases, native checkpoint fencing and missing/inconsistent native checkpoints, executable run/event/child effects and ambiguous outcomes remain open. New conditional-write PostgreSQL gates are wired but pending. Prior leaf-call and corrected dependency acceptance passed at fc53574. Legacy input migration, full process-crash criteria, history/migration and independent JS remain unqualified.",
       "remediation_tasks": [
         "S2-03",
         "S2-09",
@@ -1306,6 +1319,10 @@
         {
           "path": "core/src/open_workflow_agent/workflow.py",
           "symbol": "WorkflowExecutor._run_competing_fork"
+        },
+        {
+          "path": "core/src/open_workflow_agent/persistence.py",
+          "symbol": "InvocationStore.refresh"
         }
       ],
       "tests": [
@@ -1368,9 +1385,73 @@
         {
           "path": "tests/contract/test_effect_recovery.py",
           "symbol": "test_action_receipt_write_failure_does_not_enter_workflow_retry"
+        },
+        {
+          "path": "tests/core/test_invocation_store_writes.py",
+          "symbol": "test_stale_writer_cannot_replace_committed_terminal_state"
+        },
+        {
+          "path": "tests/core/test_invocation_store_writes.py",
+          "symbol": "test_return_to_running_does_not_restore_an_old_writers_authority"
+        },
+        {
+          "path": "tests/core/test_invocation_store_writes.py",
+          "symbol": "test_two_simultaneous_writers_retain_exactly_one_terminal_outcome"
+        },
+        {
+          "path": "tests/core/test_invocation_store_writes.py",
+          "symbol": "test_duplicate_terminal_write_keeps_the_first_output_and_error"
+        },
+        {
+          "path": "tests/core/test_invocation_store_writes.py",
+          "symbol": "test_legacy_row_without_write_generation_or_creator_remains_readable"
+        },
+        {
+          "path": "tests/core/test_invocation_store_writes.py",
+          "symbol": "test_conditional_write_cannot_rebind_invocation_identity"
+        },
+        {
+          "path": "tests/core/test_invocation_store_writes.py",
+          "symbol": "test_stale_executor_cannot_refresh_nonterminal_state_to_acquire_write_authority"
+        },
+        {
+          "path": "tests/core/test_invocation_store_writes.py",
+          "symbol": "test_corrupt_invocation_records_fail_with_a_sanitized_common_error"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_other_workers_terminal_outcome_survives_late_native_execution"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_operator_loaded_handle_controls_the_existing_active_invocation"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_stale_resume_handle_reads_committed_completion_before_native_dispatch"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_changed_active_state_stops_stale_execution_without_retry_or_terminal_write"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_dispatch_state_conflict_leaves_an_uncertain_action_intent_without_retry"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_terminal_commit_during_operator_refresh_wins_without_another_transition"
+        },
+        {
+          "path": "tests/core/test_postgres_persistence.py",
+          "symbol": "test_postgres_stale_write_generation_and_first_terminal_outcome"
+        },
+        {
+          "path": "tests/core/test_postgres_persistence.py",
+          "symbol": "test_postgres_two_simultaneous_invocation_writers_retain_one_outcome"
         }
       ],
-      "test_scope": "Frozen local full regressions and shared before-native-commit/ambiguous-commit/retry/fork fixtures through independent SDK environments. Configured PostgreSQL cases are wired and pending. This proves selected leaf-call reconciliation, not exactly-once external actions or recovery leases."
+      "test_scope": "Frozen full local regressions plus independent SDK execution and common-store writer races. Same configured PostgreSQL assertions are wired and pending. Conditional metadata writes are not a durable exclusive execution lease or an atomic native checkpoint fence."
     },
     "migration": {
       "outcome": "unimplemented",
@@ -2604,8 +2685,8 @@
     },
     "action_receipts": {
       "outcome": "partial",
-      "observed": "Common leaf-call first-owner intents and first value/null/fault outcomes survive reopening and interruption before native task commit. Request changes, unresolved intent owners and failed outcome writes stop replay without duplicate dispatch or task/catch retry. Private occurrence identity distinguishes repeated reusable calls; public operation keys retain their existing meaning.",
-      "remaining_scope": "No general exactly-once external-action guarantee, redrive, compensation or termination state machine. Executable run, event and child effects, ambiguous external outcomes, fenced invocation ownership, full proposed criteria and independent JS remain unqualified. New PostgreSQL dispatch gates pending.",
+      "observed": "Common leaf-call first-owner intents and first value/null/fault outcomes survive reopening and interruption before native task commit. Request changes, unresolved intent owners and failed outcome writes stop replay without duplicate dispatch or task/catch retry. Private occurrence identity distinguishes repeated reusable calls; public operation keys retain their existing meaning. A common state conflict during dispatch leaves an unresolved intent and cannot enter retry routing.",
+      "remaining_scope": "No general exactly-once external-action guarantee, redrive, compensation or termination state machine. Executable run, event and child effects, ambiguous external outcomes, fenced invocation ownership, full proposed criteria and independent JS remain unqualified. Prior leaf dispatch gates passed at fc53574; new conditional state-write database gates are pending.",
       "remediation_tasks": [
         "S2-03",
         "S2-08",
@@ -2649,6 +2730,14 @@
         {
           "path": "tests/contract/test_effect_recovery.py",
           "symbol": "test_action_receipt_write_failure_does_not_enter_workflow_retry"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_changed_active_state_stops_stale_execution_without_retry_or_terminal_write"
+        },
+        {
+          "path": "tests/contract/test_invocation_writes.py",
+          "symbol": "test_dispatch_state_conflict_leaves_an_uncertain_action_intent_without_retry"
         }
       ],
       "test_scope": "Shared SQLite and configured PostgreSQL assertions, actual independent native SDK environments and separate journal store fixtures. Local PostgreSQL skips are not acceptance."
@@ -16799,16 +16888,16 @@
     "core/src/open_workflow_agent/catalog.py": "84dc1aa4c20fe543d982b20283aab7bf68ab7f9a80e70318971738ac21557faa",
     "core/src/open_workflow_agent/definitions.py": "8da00d8ef717c688462b09696d50f6957b962fc90aa45585c9b52104887065c7",
     "core/src/open_workflow_agent/effects.py": "98c8b3f4b1fb950e9eb6ed3c361d483426b503c1daaed640e035327980241114",
-    "core/src/open_workflow_agent/engine.py": "4cb285d4efff6422e7400ab5c5aa865f8d7efef5507f01ba1f3e5ad0fd0c9147",
-    "core/src/open_workflow_agent/errors.py": "b1f718d2ab04d6c8acd60bba47f39139660bc688deb7f1eeaf51d0bd35de306e",
+    "core/src/open_workflow_agent/engine.py": "219ef37f9e4af9ca253985cf8edab0a01e971e69d39249488c49e567fce3fb29",
+    "core/src/open_workflow_agent/errors.py": "822b0f793d28aab2674654e0a4d3ab47a180e595e5292b5ebc241733631f65c1",
     "core/src/open_workflow_agent/events.py": "de8b1a59b0ea3903b3c18766e31e061f2c014ea38140c48ef3262da6df733a67",
     "core/src/open_workflow_agent/expressions.py": "636b7f7157dfaefd1e2a526855e73b7e764100e86a09dd810043aff2dcedf555",
     "core/src/open_workflow_agent/external_catalog.py": "65fbd1d9ce7bab4cd4c0c894d0235cc2f5b79d94f438759044a3bcc6e0630269",
     "core/src/open_workflow_agent/forks.py": "aa69a7821f6d118a9fba2622bd6b7f09436a864a2954ef8e926385bb76dccc97",
-    "core/src/open_workflow_agent/lifecycle.py": "4ded49a2189ab7d949f3d28eaa62c9b1a5f09ccd00f36e29b2469ab4ce04386d",
+    "core/src/open_workflow_agent/lifecycle.py": "faa9bc75d7accb89fd6129fa78aa8b7777883ff25bb8c229b9117619d0cac5ca",
     "core/src/open_workflow_agent/metrics.py": "ae77ce4fb502ac7e45783a3553256a3d867216fdedacfa4b57944f2391ab730d",
     "core/src/open_workflow_agent/observability.py": "dcc23fa1bd4e84cb4bcb0f2db5758e483a4d6cf24b7f85c4be80e9f7e434c7c9",
-    "core/src/open_workflow_agent/persistence.py": "57b20bfe4dfb5c482bb9fe275fff8ed27bf42f143c2bba745c686536fca2a1c7",
+    "core/src/open_workflow_agent/persistence.py": "4b1fc430bee4bcb36b6438e66e247b06c4c0185c8b87539ee0e0f586e9410206",
     "core/src/open_workflow_agent/protocols.py": "58de0b788c8c057ce4d68fc70e9bd5cd4d0f6e7280be3a55a21e446e5b55a737",
     "core/src/open_workflow_agent/resources.py": "940d169d815db3aa52b39a9b2ef797f380f808907969cc6b1ea8346fbf7a46b7",
     "core/src/open_workflow_agent/sandbox/executor.py": "5b7781c38b8b8810d86b88739a4da0e2f7bb0f98e879dabaea3434a5d3845548",
@@ -16817,7 +16906,7 @@
     "core/src/open_workflow_agent/security.py": "8ff318e0a96e8a54b833abc279d5a43f1a574d5f3ecca6c2a3c3856e564c566a",
     "core/src/open_workflow_agent/services.py": "0e4025e4cbf243fdc2048fe99c92ee56c1dffc8aaae7ce0e8337eef3f9400913",
     "core/src/open_workflow_agent/versions.py": "c1654fcf4326705628b9e2aa4983af5a5d038915afa0e911b63c2dff712e31d5",
-    "core/src/open_workflow_agent/workflow.py": "d48a225ad69e25f2aa56668d79c030b3a53c3b2cebf17a970711b1fd98461447",
+    "core/src/open_workflow_agent/workflow.py": "f350288ab2116225dc410a5ffb028ed2a78fe0114e19cd1f805782e909349e14",
     "core/src/open_workflow_agent/workflow_catalog.py": "eef1ccfaa2238c25f6c9b5378475b8d105da9373697c09dec58596a192f6321a",
     "engines/adk/src/open_workflow_agent_adk/__init__.py": "87dde2286486d64a8efb64e921300af42283fa5098022788214438ec3fac2e66",
     "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "3358b9015a4e28d742a3bae05d1d93794a638b7510d10928025145c1c4c018c7",
@@ -16836,6 +16925,7 @@
     "tests/contract/test_eventing.py": "6c75d914574ae12a25d860e7ae5c618abd2acb1da36399d9abd404898b09ef26",
     "tests/contract/test_fork_results.py": "5f414fca4e9a29bc1a693d27ca0ce0600a0bd90b11a373d5fcf9f6546f86cb7a",
     "tests/contract/test_implementation_audit_gaps.py": "6c44d34efd00b0221770a219d212048b37fa62092a5840289e0a79462b9b7ad1",
+    "tests/contract/test_invocation_writes.py": "5f184a140af005f3db5401d0ff6121400d90ac71f0bdd7f6f7b25637d330cd16",
     "tests/contract/test_jq_portability.py": "6f953d921345c712ec472f040a36d9346233ea7b405b08b6af034ac84391c75e",
     "tests/contract/test_operator_lifecycle.py": "91d6eea1378769efca0cf74ce4242a77cae6e59e91b2655337ca67f9e243627e",
     "tests/contract/test_reusable_definitions.py": "cc6ed66bce68278088af449a63b880096c75755650fbaa4b99671feb9d188f41",
@@ -16851,10 +16941,11 @@
     "tests/core/test_fork.py": "4effe82efbdc812b546b8e3cab38d51fe20d613926edceac638168fb9a61fa27",
     "tests/core/test_fork_decisions.py": "edda71c33ba4c69979dd95f778afcd7acb197671083038a046c1c57982942ee7",
     "tests/core/test_invocation_inputs.py": "f5ad56c52ae5f9d9977b4981c1e66c36a6d544af2c5ab26b766f4cea3af1c690",
+    "tests/core/test_invocation_store_writes.py": "c7d85386d8f323140c956afb7ba413cabd5fff5bc2fd9b3d7d49c74bb07fcf34",
     "tests/core/test_lifecycle.py": "77284929b7c478c6296b37a5aeb39871d063ece7d428b8273e333b0b34352f64",
     "tests/core/test_metrics.py": "849dad8e0308ff6262cf2da1a4bb9b1a224a2dfb92fe2ac46ce670c833436072",
     "tests/core/test_observability.py": "62045b6f53fba0eac7616fb0a19ae981dd780e4ffc6de9b56e8eff8da7fa3f06",
-    "tests/core/test_postgres_persistence.py": "d1a2cf876a73026cb23263124bc141ddfb039ba5a41427cd33b304f69f8dcb77",
+    "tests/core/test_postgres_persistence.py": "6d62689f2e7b9c8f3a7e7120d45e981c459b276a6a73faab297f666cb26c983a",
     "tests/core/test_protocols.py": "2dcb17cb0e111901cdb85eea44edb7f7762c3c3106dd9387b9219efdf0701681",
     "tests/core/test_sandbox_validation.py": "fe06321287414eb1b0808600c38d31a0641b117097500862b5d9b7a18f0877a8",
     "tests/core/test_security.py": "ebb77bd3bea00c442d2f23ca1a214e4616e1d8d3c056155266c06626a0607044",
@@ -17375,11 +17466,134 @@
           }
         }
       }
+    },
+    {
+      "artifact_commit": "fc535749561a7f2c03a8b919a3bd5176a07e5f32",
+      "path": "resources/compatibility/implementation-audit.json",
+      "reviewed_implementation_commit": "8da4de3cebfb988206ae28f8eb59187c754fa2a7",
+      "acceptance_record_commit": null,
+      "acceptance": {
+        "local_root": {
+          "passed": 1377,
+          "skipped": 163,
+          "expected_assertion_failures": 3,
+          "coverage_percent": 91.79,
+          "commit": "8da4de3cebfb988206ae28f8eb59187c754fa2a7"
+        },
+        "native_matrices": {
+          "commit": "8da4de3cebfb988206ae28f8eb59187c754fa2a7",
+          "adk": {
+            "passed": 695,
+            "skipped": 122,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 708,
+            "skipped": 129,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 945,
+            "skipped": 185,
+            "expected_assertion_failures": 3
+          }
+        },
+        "negative_probes": {
+          "action_replay": 8,
+          "unresolved_catch_retry": 2,
+          "uncertain_fork_and_retry": 4
+        },
+        "scope": "Leaf-call action receipts and recovery guards. No full action idempotency/compensation or S2-03 completion.",
+        "remote_status": "At f63b8018ee95fb91297cdb8d495926dd52f44c4b both CI runs, PostgreSQL, external sandbox, optional Agent Framework and Docs passed. Security failed; its parser missed nested advisories. Corrected dependency gate and patched lock acceptance are pending; historical successful Security jobs do not prove absence of fixable advisories.",
+        "dependency_gate_qualification": "Historical Security jobs used a defective top-level report parser. Independently recorded behavioral tests remain source-scoped; dependency safety requires the corrected gate and fresh reports.",
+        "dependency_gate_correction": {
+          "status": "Local validation passed; exact new-head GitHub acceptance pending",
+          "old_report_negative_probes": {
+            "adk_fixable_advisories_missed": 4,
+            "langgraph_fixable_advisories_missed": 3,
+            "fresh_root_pypdf_fixable_advisories": 3
+          },
+          "parser_tests_passed": 26,
+          "workflow_script_boundary_cases_passed": 6,
+          "patched_versions": {
+            "urllib3": "2.8.0",
+            "multidict": "6.9.1",
+            "pypdf": "6.19.0"
+          },
+          "fresh_local_dependencies_audited": {
+            "root": 74,
+            "adk": 112,
+            "langgraph": 99,
+            "agent_framework_optional": 77,
+            "sandbox_controller": 13,
+            "kubernetes_sandbox_controller": 16
+          },
+          "fresh_local_known_advisories": 0,
+          "patched_local_regression": {
+            "root_passed": 1403,
+            "root_skipped": 163,
+            "root_coverage_percent": 91.79,
+            "adk_passed": 695,
+            "adk_skipped": 122,
+            "langgraph_passed": 708,
+            "langgraph_skipped": 129,
+            "agent_framework_passed": 945,
+            "agent_framework_skipped": 185,
+            "expected_assertion_failures_per_environment": 3
+          }
+        },
+        "postgresql_action_dispatch": {
+          "commit": "f63b8018ee95fb91297cdb8d495926dd52f44c4b",
+          "run": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38160101730",
+          "store_passed": 9,
+          "native_langgraph_passed": 10,
+          "native_langgraph_skipped": 8,
+          "shared_adk_passed": 61,
+          "shared_langgraph_passed": 61,
+          "shared_agent_framework_passed": 59,
+          "shared_agent_framework_skipped": 2
+        }
+      },
+      "audit_acceptance": {
+        "commit": null,
+        "result": "Pending",
+        "scope": "Fresh source/audit integrity and exact new gates pending; immutable earlier snapshots are retained."
+      },
+      "outcome_counts": {
+        "qualified_subset": 181,
+        "unimplemented": 62,
+        "partial": 150,
+        "rejected": 197,
+        "inert": 27,
+        "behavior_mismatch": 32,
+        "internal_only": 9
+      },
+      "gap_probes": {
+        "path": "tests/contract/test_implementation_audit_gaps.py",
+        "passed": 8,
+        "expected_assertion_failures": 3,
+        "unexpected_passes": 0,
+        "scope": "Ordered fork probes now pass; OpenAPI, raw binary and null event-data assertion failures retain strict expected-failure markers and repair owners.",
+        "independent_environments": {
+          "adk": {
+            "passed": 8,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 8,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 9,
+            "expected_assertion_failures": 3
+          }
+        }
+      }
     }
   ],
   "audit_acceptance": {
     "commit": null,
     "result": "Pending",
-    "scope": "Fresh source/audit integrity and exact new gates pending; immutable earlier snapshots are retained."
+    "scope": "Fresh source/audit integrity and exact new source acceptance pending; earlier snapshots remain immutable."
   }
 }
