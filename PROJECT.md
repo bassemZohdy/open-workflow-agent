@@ -425,10 +425,10 @@ of Boolean stop/exit/end flags that disagree with pending task routing. Source
 when workflow end is already set. The focused suite passes 41 (37 skips), and
 the full independent LangGraph native/shared/CTK regression passes 815
 (270 skips, three gaps). Formatting, lint, strict package/fixture typing and
-LangGraph wheel/sdist/source-byte checks pass. Fresh configured and remote
-acceptance of these routing changes is pending.
+LangGraph wheel/sdist/source-byte checks pass. Actual `6af95cf` routing
+acceptance and its separate PR benchmark failure are recorded below.
 
-Separate actual SDK probes demonstrate a remaining native/common receipt gap:
+Historical actual SDK probes at `e61c6a5` demonstrate a native/common receipt gap:
 after a checkpoint passes the first fake HTTP call and waits, deleting or changing
 its common completed receipt still permits recovery. Both cases complete and
 dispatch the next call, with history `/once`, `/next`, while changing the common
@@ -437,6 +437,54 @@ known durable receipt. Checkpoint dependencies on common receipts must be
 verified before recovery admission. Missing non-self cursor and payload/common receipt
 consistency remain open. A cancelled child can legitimately lack its first
 checkpoint, so a declared cursor alone does not establish corruption.
+
+At `6af95cf`, six exact gates succeed: push CI, PostgreSQL, external sandbox,
+optional Agent Framework, Security and Docs. [PR CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38176500015)
+passes ADK native/shared and CTK steps, then fails its 10-iteration/concurrency-4
+ADK benchmark while storing common invocation status. Its LangGraph native job
+is cancelled and its image jobs are skipped. This revision is not all-gates green.
+The separate [push CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38176495800)
+passes both actual forced-stop restart steps with production lease expiry.
+[PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38176500068)
+passes 133 LangGraph/108 ADK shared recovery cases, 81 common-store cases,
+92 optional bridge cases with seven skips, 10 separate native LangGraph cases
+with eight skips, and both runtime images. Linux root passes 1,548/382/three
+gaps/91.83%; native ADK 684 and LangGraph 719 plus 96 CTK each; Windows root/native
+460/12 and 313/87; optional Agent Framework 1,043/416/three gaps. All six actual
+downloaded [Security reports](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38176500028)
+contain zero known advisories. Raw historical acceptance snapshots remain unchanged.
+
+Source `9755e96` records immutable common receipt references inside SDK-owned
+state. LangGraph checks a snapshot/counters/routing checksum and receipt
+references; ADK retains sequenced native metadata events and awaits receipt/wait
+persistence before advancing common state. Recovery rejects missing, changed or
+pending receipts before another fake external call or common invocation mutation.
+Identical shared root/nested value/null/fault cases pass on both engines. Their
+missing-receipt assertion fails against exact prior `6af95cf` source on both SDKs.
+A valid waiting fork followed by a sibling receipt remains recoverable; deleting
+that sibling receipt rejects recovery. Native state and SQL remain SDK-owned.
+The digests establish consistency, not checkpoint authentication or exactly-once
+external actions. Configured PostgreSQL cases are wired and await fresh acceptance.
+
+The ADK SQLite reader runs through the existing storage worker. A controlled
+actual SQLite read/fenced SDK commit reproduces the old lock cycle: a synchronous
+common write fails with the reader on the main loop and succeeds with the worker.
+Both assertions pass. The corrected actual native benchmark passes ten iterations
+at concurrency four and interruption recovery executes its external action once.
+The prior CI failure remains recorded; this local result does not qualify fresh CI.
+
+Frozen regression passes core 1,544/484/three tracked gaps with 91.46% coverage,
+LangGraph native/shared/CTK 839/342/three gaps and optional Agent Framework
+1,043/512/three gaps. Initial ADK native/shared/CTK passes 806/360/three gaps;
+after the ADK waiting-history correction and added fork fixture, its final full
+rerun passes 808/366/three gaps. Unchanged LangGraph passes the new fork focus
+2/6; final ADK receipt/fork/reader focus passes 28/78. Core and other adapters
+remain identical to their frozen full-regression sources. Formatting, lint,
+strict 66-package-source and three-fixture typing, five wheel/sdist builds and
+current wheel Python/pinned-schema bytes pass. ADK is rebuilt after its final
+condition change. Optional Agent Framework remains qualified only through its
+common bridge. Fresh exact-source GitHub/Windows/configured PostgreSQL acceptance
+and complete native/common invocation/payload/cursor reconciliation remain open.
 
 S2-03 stays open. This fix does not reconcile all native/common invocation or
 side-effect records. General pending-effect reconciliation, full native state

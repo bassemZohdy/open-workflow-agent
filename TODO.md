@@ -73,9 +73,15 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   local checks and full ADK regression; all seven gates pass at `4058895`, with
   127 configured LangGraph and 108 ADK recovery cases. Boolean terminal controls
   contradicting native routing are rejected at `e61c6a5`; full local LangGraph
-  regression passes, with fresh configured acceptance pending. Native recovery
-  still accepts a missing/changed receipt for a call already passed by its
-  checkpoint. That reconciliation gap and full native/common consistency remain open.
+  regression passes; `6af95cf` routing/PostgreSQL/push image gates pass, while
+  PR CI fails its ADK storage benchmark. Source `9755e96` binds native progress
+  to common receipts and drains ADK SQLite reads through the existing worker.
+  Shared root/nested value/null/fault and waiting-fork receipt checks pass on both
+  principal SDKs. Full frozen core/LangGraph/optional regression passes; final
+  ADK native/shared/CTK passes 808/366/three tracked gaps and its benchmark passes.
+  Missing-receipt assertions fail on prior source on both SDKs. Fresh configured
+  and exact-source remote acceptance, cursor reconciliation and complete
+  native/common invocation/payload consistency remain open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.

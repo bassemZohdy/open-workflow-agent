@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Reject stop, scope-exit or workflow-end flags that disagree with saved task routing. Native task completion routes immediately to END when workflow end is already set, preserving terminal control semantics. A native root checkpoint already passed the first HTTP call before waiting. Deleting or changing its common completed receipt is not reconciled on recovery. Record and verify checkpoint dependencies on common action receipts before recovery admission, including missing/changed outcomes and payload consistency.",
+          "scope": "Native adapters retain immutable references to terminal common receipts and validate them before recovery admission. LangGraph binds receipt references to its saved snapshot/counters/routing checksum. ADK retains sequenced SDK metadata events, awaits native receipt/wait persistence and permits later sibling receipts while a branch remains waiting. Core owns neither SDK state nor SDK SQL. Digests detect disagreement; they are not checkpoint authentication or proof of exactly-once execution. Fresh exact-source seven-gate and configured PostgreSQL acceptance, missing non-self cursor reconciliation and complete native/common payload/invocation consistency remain open. No general pending-intent resolution, compensation, migration, JavaScript or full conformance claim.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -66027,7 +66027,7 @@
           },
           "native_routing_consistency_followup": {
             "commit": "e61c6a56c55fd1052b3be931955ad0e3e4d049e1",
-            "status": "Local native/shared/CTK regression verified; fresh remote acceptance pending",
+            "status": "Bounded routing acceptance verified at 6af95cf; PR CI benchmark fails",
             "source_file_sha256": {
               "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "6e495919d4b8d8a6f179f630a0dab4a58a9ba80896875cf6a0e22ff2537b801d",
               "tests/contract/test_native_state_consistency.py": "267ad07224864cf6977f0d53928238bf2642cddace6312f85e0c12eb23845919"
@@ -66044,7 +66044,69 @@
               "expected_assertion_failures": 3
             },
             "quality_checks": "Formatting, lint, strict 66-package-source and fixture typing, LangGraph wheel/sdist build and current adapter source-byte checks pass.",
-            "remaining": "Fresh configured and remote routing acceptance; missing non-self scope cursor and native/common receipt/data consistency remain open. No broader pending-effect resolution, compensation, migration, JavaScript or full conformance claim."
+            "remaining": "Full native/common consistency remains open; subsequent receipt bindings and native-reader correction need fresh acceptance.",
+            "remote_commit": "6af95cfd53381f86cc65c19063635a524d4fc215",
+            "remote_runs": {
+              "38176500056": "success",
+              "38176500028": "success",
+              "38176500060": "success",
+              "38176500054": "success",
+              "38176500068": "success",
+              "38176500015": "failure",
+              "38176495800": "success"
+            },
+            "linux_root": {
+              "passed": 1548,
+              "skipped": 382,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.83
+            },
+            "linux_native": {
+              "adk": {
+                "passed": 684,
+                "skipped": 288,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "langgraph": {
+                "passed": 719,
+                "skipped": 270,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "agent_framework_optional": {
+                "passed": 1043,
+                "skipped": 416,
+                "expected_assertion_failures": 3
+              }
+            },
+            "windows": {
+              "root_passed": 460,
+              "root_skipped": 12,
+              "native_passed": 313,
+              "native_skipped": 87
+            },
+            "postgresql": {
+              "store_passed": 81,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_langgraph_passed": 133,
+              "shared_adk_passed": 108,
+              "shared_agent_framework_passed": 92,
+              "shared_agent_framework_skipped": 7,
+              "both_runtime_image_jobs": "Success"
+            },
+            "main_push_forced_stop_images": "Both actual restart steps pass; PR image jobs are skipped after the ADK benchmark failure",
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0,
+            "failure": "PR CI native ADK/shared and CTK steps pass, then its 10-iteration/concurrency-4 benchmark fails storing common invocation status. LangGraph native is cancelled and PR image jobs are skipped. The separate push CI succeeds. This revision is not all-gates green."
           },
           "native_common_receipt_reconciliation_probe": {
             "commit": "e61c6a56c55fd1052b3be931955ad0e3e4d049e1",
@@ -66052,6 +66114,83 @@
             "scope": "A native root checkpoint already passed the first HTTP call before waiting. Deleting or changing its common completed receipt is not reconciled on recovery.",
             "observed": "Both cases complete, execute the next fake HTTP call and change the common invocation. Call history is /once then /next; this does not repeat /once but accepts disagreement with its known durable receipt.",
             "remaining": "Record and verify checkpoint dependencies on common action receipts before recovery admission, including missing/changed outcomes and payload consistency."
+          },
+          "native_receipt_dependencies_followup": {
+            "commit": "9755e96cef402d674e51335e99327f2cb84ce895",
+            "status": "Local bounded receipt consistency and native-reader regression verified; fresh remote acceptance pending",
+            "source_file_sha256": {
+              "core/src/open_workflow_agent/effects.py": "21f91c93c14c41f2b056ab2e0f6840f03927605e014bde57902ec198b9b12046",
+              "core/src/open_workflow_agent/workflow.py": "7d377da599f07b6fbfd131fe7bfeef663634c42e7322480ac3a8c86e578046ca",
+              "engines/adk/src/open_workflow_agent_adk/__init__.py": "bfbe5e39b5a44c37c1d9ae6e65ae2d74d5c92b284713d46f3ea26a6700527998",
+              "engines/adk/src/open_workflow_agent_adk/native.py": "4c7b642f2c82bb3eb7168a3cfa5b06f22b766013816ebd546283330b9161b8dc",
+              "engines/langgraph/src/open_workflow_agent_langgraph/__init__.py": "9139b480d2e1c866a7a62377c9830ec5022d2c7b56acd8e9378db29fca46f463",
+              "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "a31613970926be1a7acc79d0bc0189e82e7b9fa2ac94ecd8c5cf626275805a6c",
+              "engines/langgraph/src/open_workflow_agent_langgraph/native.py": "d4460844a51501a2297ae3523ef1a6dc4a4f934b5b02ad89064fd6fecbfad9ee",
+              "tests/adk/test_native_read_drain.py": "d5149b0493807226a9b72362e270277e4a05724701facbf14ec7d723b566f1f7",
+              "tests/contract/test_native_receipt_consistency.py": "3f413b3b965837788cd2031e5f1d0f083f572e8fb2393a287c4b0e2e6e52df2d",
+              "tests/contract/test_native_receipt_fork_consistency.py": "5caab6b53afcb2549ed2fd869431718ac078cf70c9ed6da2f84a5e37aac3f11c",
+              ".github/workflows/ci.yml": "efccd7c4479e9ce30b00e04b3db46b5bb43e01b428d5f7c134cd4a72af33feff",
+              ".github/workflows/postgres-ci.yml": "de1859e593a7d0fb506ce0ad79244859bbd3d18ea4d67599c00ec543614ca0c2"
+            },
+            "scope": "Native adapters retain immutable references to terminal common receipts and validate them before recovery admission. LangGraph binds receipt references to its saved snapshot/counters/routing checksum. ADK retains sequenced SDK metadata events, awaits native receipt/wait persistence and permits later sibling receipts while a branch remains waiting. Core owns neither SDK state nor SDK SQL. Digests detect disagreement; they are not checkpoint authentication or proof of exactly-once execution.",
+            "shared_fixture": "Identical root/nested value/null/fault recovery cases on both principal SDKs reject missing, changed and pending receipts before another fake external call or common invocation mutation. Clean receipts recover without repeating their first call. Configured PostgreSQL cases are wired but not locally qualified.",
+            "negative_probes": "The missing-receipt admission assertion fails on exact prior 6af95cf source on both actual SDKs. A separate actual ADK fork probe reproduces rejection of a valid wait followed by a sibling receipt before the waiting-history correction.",
+            "local_root": {
+              "passed": 1544,
+              "skipped": 484,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.46
+            },
+            "local_adk_native_shared_ctk": {
+              "passed": 808,
+              "skipped": 366,
+              "expected_assertion_failures": 3
+            },
+            "local_langgraph_native_shared_ctk": {
+              "passed": 839,
+              "skipped": 342,
+              "expected_assertion_failures": 3
+            },
+            "local_agent_framework_optional_native_shared_ctk": {
+              "passed": 1043,
+              "skipped": 512,
+              "expected_assertion_failures": 3
+            },
+            "local_focus_adk": {
+              "passed": 28,
+              "skipped": 78
+            },
+            "local_focus_langgraph_fork": {
+              "passed": 2,
+              "skipped": 6
+            },
+            "regression_scope": "Four complete regressions ran on identical frozen sources. Only ADK waiting-history admission and a shared fork fixture changed afterward: the final full ADK rerun and focused unchanged LangGraph fork checks pass. Core/other adapters retain the complete frozen regression. Optional Agent Framework receipts exercise the common bridge; its native checkpoint durability remains unqualified.",
+            "native_read_drain": "A controlled actual SQLite reader and fenced SDK commit reproduce the previous main-loop lock cycle. The synchronous common write fails before the reader is moved to the existing worker, and succeeds afterward. Both assertions pass. SDK formats and SQL remain SDK-owned.",
+            "adk_benchmark": {
+              "concurrency": 4,
+              "concurrent_seconds_total": 0.7591224999632686,
+              "concurrent_throughput_per_second": 5.269241789294279,
+              "engine": "adk",
+              "engine_compile_seconds_per_iteration": 6.100046448409557e-07,
+              "engine_compile_seconds_total": 6.100046448409557e-06,
+              "interruption_resume": {
+                "operation_ids": [
+                  "a90a0526-109e-45a7-ad68-b312d77a6e82:/do/0/side_effect"
+                ],
+                "side_effect_calls": 1,
+                "status": "completed",
+                "unique_operation_ids": 1
+              },
+              "iterations": 10,
+              "native_available": true,
+              "native_checkpoint_bytes_after": 73728,
+              "native_checkpoint_bytes_before": 0,
+              "native_checkpoint_bytes_delta": 73728,
+              "sequential_seconds_per_invocation": 0.24324373999843374,
+              "sequential_seconds_total": 2.4324373999843374
+            },
+            "quality_checks": "Formatting, lint, strict 66-package-source and three-fixture typing pass. Five wheel/sdist builds and current Python source/pinned-schema bytes pass; ADK is rebuilt after its final condition change.",
+            "remaining": "Fresh exact-source seven-gate and configured PostgreSQL acceptance, missing non-self cursor reconciliation and complete native/common payload/invocation consistency remain open. No general pending-intent resolution, compensation, migration, JavaScript or full conformance claim."
           }
         }
       },
