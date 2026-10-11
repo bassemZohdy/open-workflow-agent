@@ -1,8 +1,12 @@
 """Workflow action ownership and receipts survive common-store contention/reopening."""
 
+import hashlib
+import json
+import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from threading import Barrier
+from uuid import uuid4
 
 import pytest
 from open_workflow_agent.catalog import FakeModel
@@ -10,6 +14,8 @@ from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import (
     EffectIdentity,
     EffectJournal,
+    EffectReceipt,
+    ReceiptDependency,
     effect_request_digest,
 )
 from open_workflow_agent.errors import ExpressionError, WorkflowExecutionError
@@ -290,3 +296,70 @@ def test_request_digest_has_stable_object_order_and_rejects_non_json():
     assert effect_request_digest("http", {}) != effect_request_digest("mcp", {})
     with pytest.raises(ExpressionError):
         effect_request_digest("http", float("nan"))
+
+
+def test_existing_non_child_native_digest_retains_original_receipt_format():
+    legacy = {
+        "request_digest": _digest(),
+        "owner": "owner",
+        "status": "completed",
+        "output": {"known": True},
+        "error": None,
+        "error_status_code": None,
+        "operation_id": "operation",
+    }
+    original = hashlib.sha256(
+        json.dumps(
+            legacy, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+        ).encode()
+    ).hexdigest()
+    assert (
+        ReceiptDependency.capture(_identity(), EffectReceipt(**legacy)).receipt_digest == original
+    )
+
+
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+def test_effect_index_and_intent_admission_rollback_together(tmp_path, monkeypatch, backend):
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+    journal = EffectJournal(datasource or tmp_path / "runtime.sqlite3")
+    identity = replace(_identity(), invocation_id=str(uuid4()))
+    execute = journal.connection.execute
+
+    def fail_intent(_connection, sql, *args, **kwargs):
+        if "INSERT INTO workflow_effects(" in sql:
+            raise RuntimeError("injected intent write failure")
+        return execute(sql, *args, **kwargs)
+
+    try:
+        with monkeypatch.context() as patch:
+            patch.setattr(type(journal.connection), "execute", fail_intent)
+            with pytest.raises(WorkflowExecutionError, match="intent could not be stored"):
+                journal.begin(identity, _digest(), "owner")
+        assert journal.get(identity) is None
+        assert (
+            journal.connection.execute(
+                "SELECT identity FROM workflow_effect_invocations WHERE identity = ?",
+                (identity.key,),
+            ).fetchall()
+            == []
+        )
+    finally:
+        journal.close()
+
+
+def test_invocation_reconciliation_is_scoped_and_rejects_missing_admitted_receipt():
+    journal = EffectJournal()
+    other = replace(_identity(), invocation_id="other")
+    try:
+        for identity in (_identity(), other):
+            journal.begin(identity, _digest(), "owner")
+            journal.finish(identity, "owner", output=None)
+        journal.connection.execute("DELETE FROM workflow_effects WHERE identity = ?", (other.key,))
+        journal.connection.commit()
+        journal.verify_invocation("invocation", "fingerprint")
+        with pytest.raises(WorkflowExecutionError, match="could not be reconciled"):
+            journal.verify_invocation("other", "fingerprint")
+    finally:
+        journal.close()

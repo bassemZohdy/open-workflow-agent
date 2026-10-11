@@ -26,7 +26,13 @@ from referencing.jsonschema import DRAFT202012
 from ._version import __version__
 from .catalog import CatalogContext, FunctionCatalog
 from .definitions import definition_at_pointer, resolve_reusable_components
-from .effects import EffectIdentity, EffectJournal, EffectReceipt, effect_request_digest
+from .effects import (
+    ChildInvocationDependency,
+    EffectIdentity,
+    EffectJournal,
+    EffectReceipt,
+    effect_request_digest,
+)
 from .errors import (
     ExpressionError,
     InvocationCancelled,
@@ -45,6 +51,7 @@ from .forks import ForkDecision, ForkIdentity
 from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
 from .ownership import ExecutionLease
+from .persistence import ExecutionHandle
 from .protocols import PROTOCOL_DATA_FIELDS
 from .resources import SchemaResource, materialize_schema_resources
 from .resources import schema_registry as build_schema_registry
@@ -1820,6 +1827,7 @@ class WorkflowExecutor:
         dispatch: Callable[[], Awaitable[Any]],
         *,
         operation: str | None = None,
+        child_dependency: Callable[[], ChildInvocationDependency] | None = None,
     ) -> Any:
         journal = getattr(self.services, "effect_journal", None)
         if journal is None:
@@ -1875,12 +1883,16 @@ class WorkflowExecutor:
                 )
             )
             error._operation_id = error._operation_id or self._operation_id(state)
-            receipt = self._store_effect_outcome(journal, identity, owner, state, error=error)
+            receipt = self._store_effect_outcome(
+                journal, identity, owner, state, error=error, child_dependency=child_dependency
+            )
             await self._notify_receipt(state, identity, receipt)
             if error is exc:
                 raise
             raise error from exc
-        receipt = self._store_effect_outcome(journal, identity, owner, state, output=result)
+        receipt = self._store_effect_outcome(
+            journal, identity, owner, state, output=result, child_dependency=child_dependency
+        )
         await self._notify_receipt(state, identity, receipt)
         return self._effect_result(receipt)
 
@@ -1937,6 +1949,7 @@ class WorkflowExecutor:
         *,
         output: Any = None,
         error: OwaError | None = None,
+        child_dependency: Callable[[], ChildInvocationDependency] | None = None,
     ) -> EffectReceipt:
         try:
             return journal.finish(
@@ -1946,6 +1959,7 @@ class WorkflowExecutor:
                 error=error.as_dict() if error else None,
                 error_status_code=error.status_code if error else None,
                 operation_id=error._operation_id if error else self._operation_id(state),
+                child_invocation=child_dependency() if child_dependency else None,
             )
         except WorkflowExecutionError as exc:
             raise _EffectRecoveryRequired(
@@ -2259,6 +2273,25 @@ class WorkflowExecutor:
             else copy.deepcopy(state.data)
         )
         task_reference = str(state.variables.get("_task_reference", "unknown-task"))
+        child_id: str | None = None
+
+        def observe_child(child: ExecutionHandle) -> None:
+            nonlocal child_id
+            if (
+                child_id is not None
+                or child.parent_invocation_id != state.metadata["invocation_id"]
+                or child.parent_task_reference != task_reference
+                or child.workflow_fingerprint != plan.fingerprint
+            ):
+                raise WorkflowExecutionError("child invocation identity is inconsistent")
+            child_id = child.invocation_id
+
+        def capture_child() -> ChildInvocationDependency:
+            if child_id is None:
+                raise WorkflowExecutionError("child invocation recovery binding is unavailable")
+            return ChildInvocationDependency.capture(self.services.invocations, child_id)
+
+        child_context = {**state.metadata, "_child_invocation_observer": observe_child}
         # The resolved definition, not just its catalog label, determines the
         # child action request. Native progress may lag a known child outcome.
         operation = "run:workflow"
@@ -2266,8 +2299,9 @@ class WorkflowExecutor:
             operation,
             {"workflow_fingerprint": plan.fingerprint, "input": child_input},
             state,
-            lambda: runner(plan, child_input, state.metadata, task_reference),
+            lambda: runner(plan, child_input, child_context, task_reference),
             operation=operation,
+            child_dependency=capture_child,
         )
 
     async def _run_emit(self, definition: Any, state: ExecutionState) -> Any:

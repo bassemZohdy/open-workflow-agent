@@ -126,7 +126,7 @@ class RuntimeServices:
         self.invocations = InvocationStore(invocation_path)
         self.execution_ownership = ExecutionOwnershipStore(invocation_path)
         self.fork_decisions = ForkDecisionStore(invocation_path)
-        self.effect_journal = EffectJournal(invocation_path)
+        self.effect_journal = EffectJournal(invocation_path, invocations=self.invocations)
         self.schedules = ScheduleStore(invocation_path)
         self.catalog = FunctionCatalog.default(
             self.model, instruction=self.agent_instruction, services=self

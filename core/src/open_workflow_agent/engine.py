@@ -206,6 +206,9 @@ class WorkflowEngine:
             parent_task_reference=task_reference,
             owner_principal=parent_handle.owner_principal,
         )
+        observer = parent_context.get("_child_invocation_observer")
+        if observer is not None:
+            observer(child)
         try:
             result = await self.invoke(workflow, child, input_data)
         except asyncio.CancelledError:
@@ -443,7 +446,14 @@ class WorkflowEngine:
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
         self._verify_execution_engine(handle)
         self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
-        return self.services.invocations.read_input(handle)
+        original_input = self.services.invocations.read_input(handle)
+        try:
+            self.services.effect_journal.verify_invocation(handle.invocation_id, plan.fingerprint)
+        except WorkflowExecutionError:
+            raise InvocationStateError(
+                "workflow action recovery evidence is unavailable or inconsistent"
+            ) from None
+        return original_input
 
     def _record_result(
         self,
