@@ -19,7 +19,11 @@ Feature: Data Transform Tasks
             from: ${ .value }
             schema:
               document:
-                type: integer
+                type: object
+                required: [value]
+                properties:
+                  value:
+                    type: integer
           set:
             doubled: ${ . }
           output:

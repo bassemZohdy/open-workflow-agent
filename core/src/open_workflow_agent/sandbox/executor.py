@@ -38,7 +38,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             environment=self._environment(definition, state),
             script_language=str(definition.get("language", "")),
             script_code=cast(str | None, definition.get("code")),
-            invocation_id=cast(str | None, state.context.get("invocation_id")),
+            invocation_id=cast(str | None, state.metadata.get("invocation_id")),
             task_reference=cast(str | None, state.variables.get("_task_reference")),
         )
         return await self._execute_sandbox(request, state)
@@ -53,7 +53,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             arguments=self._arguments(definition, state),
             stdin=self._stdin(definition, state),
             environment=self._environment(definition, state),
-            invocation_id=cast(str | None, state.context.get("invocation_id")),
+            invocation_id=cast(str | None, state.metadata.get("invocation_id")),
             task_reference=cast(str | None, state.variables.get("_task_reference")),
         )
         return await self._execute_sandbox(request, state)
@@ -69,7 +69,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             arguments=self._arguments(definition, state),
             stdin=self._stdin(definition, state),
             environment=self._environment(definition, state),
-            invocation_id=cast(str | None, state.context.get("invocation_id")),
+            invocation_id=cast(str | None, state.metadata.get("invocation_id")),
             task_reference=cast(str | None, state.variables.get("_task_reference")),
         )
         return await self._execute_sandbox(request, state)
@@ -176,6 +176,6 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
 
     @staticmethod
     def _execution_id(state: ExecutionState) -> str:
-        invocation = state.context.get("invocation_id", "unknown-invocation")
+        invocation = state.metadata.get("invocation_id", "unknown-invocation")
         reference = state.variables.get("_task_reference", "unknown-task")
         return f"{invocation}:{reference}:{uuid4().hex[:12]}"

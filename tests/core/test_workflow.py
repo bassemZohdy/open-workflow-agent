@@ -405,7 +405,13 @@ async def test_workflow_and_task_input_output_schemas_are_enforced(services):
                 "task": {
                     "input": {
                         "from": "${ .value }",
-                        "schema": {"document": {"type": "integer"}},
+                        "schema": {
+                            "document": {
+                                "type": "object",
+                                "properties": {"value": {"type": "integer"}},
+                                "required": ["value"],
+                            }
+                        },
                     },
                     "set": {"result": "${ . }"},
                     "output": {

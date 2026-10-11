@@ -43,6 +43,7 @@ jobs:
           tests/core/test_workflow.py
           tests/core/test_sandbox_validation.py
           tests/contract/test_jq_portability.py
+          tests/contract/test_data_pipeline.py
           tests/contract/test_definition_admission.py
 
   manifests:

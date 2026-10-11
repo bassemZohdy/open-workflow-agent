@@ -45,9 +45,9 @@ class _Program(Protocol):
     def input_value(self, value: Any) -> Iterator[Any]: ...
 
 
-def validate_expression_data(value: Any, *, depth: int = 0) -> None:
+def validate_expression_data(value: Any, *, depth: int = 0, max_depth: int = 64) -> None:
     """Use finite JSON values and an explicit interoperable integer range."""
-    invalid = depth > 64
+    invalid = depth > max_depth
     if value is None or isinstance(value, (str, bool)):
         pass
     elif isinstance(value, int):
@@ -60,11 +60,11 @@ def validate_expression_data(value: Any, *, depth: int = 0) -> None:
         invalid |= any(not isinstance(key, str) for key in value)
         if not invalid:
             for item in value.values():
-                validate_expression_data(item, depth=depth + 1)
+                validate_expression_data(item, depth=depth + 1, max_depth=max_depth)
     elif isinstance(value, list):
         if not invalid:
             for item in value:
-                validate_expression_data(item, depth=depth + 1)
+                validate_expression_data(item, depth=depth + 1, max_depth=max_depth)
     else:
         invalid = True
     if invalid:
@@ -228,15 +228,9 @@ def _bindings(variables: Mapping[str, Any]) -> dict[str, Any]:
             continue
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key) or key == "ENV":
             raise ExpressionError("invalid expression variable binding")
-        if key == "context" and isinstance(value, Mapping):
-            # Until S1-03 separates workflow context from runtime control state,
-            # private lifecycle/handle values must never cross the jq boundary.
-            value = {
-                name: item
-                for name, item in value.items()
-                if name not in {"_lifecycle", "_invocation_handle"}
-            }
-        validate_expression_data(value)
+        # Descriptor wrappers surround independently bounded raw input and
+        # definitions. Do not count those wrappers against the user-data limit.
+        validate_expression_data(value, max_depth=68 if key in {"workflow", "task"} else 64)
         result[key] = copy.deepcopy(value)
     return result
 
@@ -310,7 +304,8 @@ class ExpressionEvaluator:
 
     def _evaluate_atom(self, expression: str, data: Any, variables: Mapping[str, Any]) -> Any:
         validate_expression_data(data)
-        bindings = _bindings(variables)
+        used = {token[1:] for token, _ in _tokens(expression) if token.startswith("$")}
+        bindings = _bindings({key: value for key, value in variables.items() if key in used})
         program = _compile(expression, bindings)
         missing = object()
         failed = False

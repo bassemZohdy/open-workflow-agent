@@ -37,9 +37,10 @@ catch bindings. Invalid syntax and unknown variables fail before invocation
 or effects and retain the task pointer. Literal schemas, metadata and script
 source are not expression slots. Sandboxed arguments, stdin and environment
 values use the same evaluator and JSON string conversion. Credentials remain
-deployment-owned references. Descriptors beyond the currently available
-input/context/event bindings remain a tracked data-flow gap rather than
-fabricated values; unsupported variables fail compilation.
+deployment-owned references. The [data pipeline](workflow-data-flow.md)
+defines phase-specific input/output/context and runtime/workflow/task
+descriptor arguments. Unsupported authorization/secrets arguments fail
+compilation until their deployment/security contracts are implemented.
 
 Ambient environment access (`env`, `$ENV`), input streams, diagnostic writes,
 process control, module imports/metadata and wall-clock `now` are disabled.

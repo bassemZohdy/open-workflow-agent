@@ -303,7 +303,9 @@ def test_multiline_comments_strings_and_local_variables_are_parsed_as_jq():
     assert evaluator.evaluate("${ $_local }", {}, variables={"_local": 2}) == 2
     assert (
         evaluator.evaluate(
-            "${ $context._user }", {}, variables={"context": {"_user": 3, "_lifecycle": object()}}
+            "${ $context._user }",
+            {},
+            variables={"context": {"_user": 3, "_lifecycle": "ordinary data"}},
         )
         == 3
     )
@@ -362,3 +364,24 @@ async def test_named_loop_bindings_are_available_to_the_pinned_evaluator(service
     )
     assert result["color"] == "b"
     assert result["position"] == 1
+
+
+def test_descriptor_wrappers_do_not_reduce_the_user_input_depth_limit():
+    data = "leaf"
+    for _ in range(64):
+        data = [data]
+    evaluator = ExpressionEvaluator()
+    variables = {"workflow": {"input": data}, "task": {"input": data}}
+    assert evaluator.evaluate("${ $workflow.input }", data, variables=variables) == data
+    assert evaluator.evaluate("${ $task.input }", data, variables=variables) == data
+    with pytest.raises(ExpressionError):
+        evaluator.evaluate("${ . }", [data], variables=variables)
+
+
+def test_unused_descriptor_values_are_not_native_jq_arguments():
+    assert (
+        ExpressionEvaluator().evaluate(
+            "${ .value }", {"value": 2}, variables={"workflow": {"input": object()}}
+        )
+        == 2
+    )

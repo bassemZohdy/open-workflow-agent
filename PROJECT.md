@@ -65,7 +65,7 @@ PostgreSQL acceptance were verified in remote CI. No release, image publication,
 schema modification, broader conformance claim or later-stage delivery is
 recorded by this work.
 
-### S1-02 expression work — local validation; remote acceptance pending
+### S1-02 expression work — 2026-10-11 (verified)
 
 Core now uses `jq==1.12.0` (bundled jq 1.8.2) in every dependency environment.
 Strict/loose recognition, scoped syntax admission, native jq operators and
@@ -103,6 +103,34 @@ syntax is documented; proposed inventory tests and JS delivery are unclaimed.
 | Docs | [38133078048](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38133078048) | success |
 
 CI root validation passed 855 tests, 10 skipped, with 91.07% coverage. All native/CTK, Windows, mutation, manifests, runtime-image, external-sandbox and persistence gates passed. This qualifies the jq foundation; S1-03 data-flow/descriptors and all later stages remain open. No release was published.
+
+### S1-03 data-flow work — remote acceptance pending
+
+Core now validates raw workflow/task input before transformation, executes
+task bodies on local transformed data, validates transformed output, and
+evaluates exports against that output before replacing context. Context is
+any admitted JSON type and is separate from invocation identity/lifecycle
+metadata. Nested tasks preserve parent descriptors; sequential loop exports
+carry forward; fork inputs/bindings are copied. Skips bypass all data stages
+and operation effects. Runtime/workflow/task/time descriptors and expression
+phase scope are implemented; authorization/secrets remain rejected pending
+their security contracts. [Data-flow semantics](docs/workflow-data-flow.md)
+records the pipeline and the later-stage boundaries.
+
+Independent native adapter/contract/CTK matrices passed: ADK 327,
+LangGraph 326 and optional Agent Framework 435. The focused pipeline,
+jq and lifecycle suite passed 184 tests; the final pipeline fixture
+passes 61 tests after adding descriptor-definition assertions. Ruff,
+formatting, strict mypy, all four lock checks, Markdown links and
+root/standalone-core builds passed. Windows CI now includes pipeline
+fixtures alongside jq/admission checks.
+
+Contract validation caught a retry-event identity regression caused by
+task-local descriptors. Retry events now derive the failing child reference
+from the common error and preserve its side-effect operation id. The official
+schema and frozen source snapshots are unchanged. S1-03 remains open until
+exact-commit remote acceptance; later transitions, fork aggregation/reducers,
+recovery, proposed-test inventory and JS delivery remain unclaimed.
 
 The runtime pipeline is:
 

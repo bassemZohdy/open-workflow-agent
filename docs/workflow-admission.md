@@ -18,8 +18,9 @@ mutating their source or a returned source copy.
 
 `evaluate.language` supports only `jq`. Both `strict` (default) and `loose`
 modes use the same pinned jq implementation. See [expression semantics](workflow-expressions.md)
-for recognition, types, errors and execution limits. Data-flow ordering and
-descriptor gaps remain tracked by S1-03; jq support does not close those gaps.
+for recognition, types, errors and execution limits. The
+[data pipeline](workflow-data-flow.md) documents schema/transformation/export
+ordering and descriptor scope separately from jq syntax.
 
 Currently rejected reusable components are `use.authentications`, `errors`,
 `extensions`, `functions`, `retries`, `secrets` and `timeouts`. Named errors

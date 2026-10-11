@@ -12,13 +12,16 @@ import re
 import time
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, NoReturn, cast
+from uuid import uuid4
 
 import yaml
 from jsonschema import Draft202012Validator
 
+from ._version import __version__
 from .catalog import CatalogContext, FunctionCatalog
 from .errors import (
     ExpressionError,
@@ -256,7 +259,8 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
     evaluator = ExpressionEvaluator(
         mode=cast(ExpressionMode, workflow.get("evaluate", {}).get("mode", "strict"))
     )
-    variables = {"input", "context", "event", "resume_input"}
+    globals_ = {"workflow", "runtime"}
+    ambient = globals_ | {"context", "event", "resume_input"}
 
     def check(value: Any, scope: set[str], reference: str) -> None:
         try:
@@ -264,34 +268,70 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
         except ExpressionError as exc:
             raise ExpressionError(exc.message, details={"reference": reference}) from exc
 
-    def data_slots(value: Mapping[str, Any], scope: set[str], reference: str) -> None:
-        for section, field_name in (("input", "from"), ("output", "as"), ("export", "as")):
-            declaration = value.get(section)
-            if isinstance(declaration, Mapping) and field_name in declaration:
-                check(declaration[field_name], scope, f"{reference}/{section}/{field_name}")
+    def binding(name: str, reference: str) -> str:
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) or name in {
+            "ENV",
+            "input",
+            "output",
+            "context",
+            "task",
+            "workflow",
+            "runtime",
+            "authorization",
+            "secrets",
+            "event",
+            "resume_input",
+            "_task_reference",
+            "_task_name",
+        }:
+            raise WorkflowSemanticError(
+                "invalid or reserved expression binding", details={"reference": reference}
+            )
+        return name
+
+    def data_slot(
+        value: Mapping[str, Any], section: str, slot: str, scope: set[str], reference: str
+    ) -> None:
+        declaration = value.get(section)
+        if isinstance(declaration, Mapping) and slot in declaration:
+            check(declaration[slot], scope, f"{reference}/{section}/{slot}")
 
     def tasks(task_list: Any, scope: set[str], prefix: str) -> None:
         for reference, definition in _walk_tasks(task_list, prefix=prefix):
-            data_slots(definition, scope, reference)
-            for key in ("if", "set", "with", "wait", "while"):
+            raw_scope = scope | {"task"}
+            body_scope = raw_scope | {"input"}
+            data_slot(definition, "input", "from", raw_scope, reference)
+            data_slot(definition, "output", "as", body_scope, reference)
+            data_slot(definition, "export", "as", body_scope | {"output"}, reference)
+            check(definition.get("if"), raw_scope, f"{reference}/if")
+            for key in ("set", "with", "wait"):
                 if key in definition:
-                    check(definition[key], scope, f"{reference}/{key}")
+                    check(definition[key], body_scope, f"{reference}/{key}")
             loop = definition.get("for")
+            loop_scope = scope
             if isinstance(loop, Mapping):
-                check(loop.get("in"), scope, f"{reference}/for/in")
+                item = binding(str(loop.get("each", "item")), f"{reference}/for/each")
+                index = binding(str(loop.get("at", "index")), f"{reference}/for/at")
+                if item == index:
+                    raise WorkflowSemanticError(
+                        "loop item and index bindings must differ", details={"reference": reference}
+                    )
+                loop_scope = scope | {item, index}
+                check(loop.get("in"), body_scope, f"{reference}/for/in")
+            check(definition.get("while"), body_scope | loop_scope, f"{reference}/while")
             for case in definition.get("switch", []):
                 if isinstance(case, Mapping):
                     for name, case_definition in case.items():
                         if isinstance(case_definition, Mapping):
                             check(
                                 case_definition.get("when"),
-                                scope,
+                                body_scope,
                                 f"{reference}/switch/{name}/when",
                             )
             for key, member in (("emit", "event"), ("listen", "to"), ("raise", "error")):
                 declaration = definition.get(key)
                 if isinstance(declaration, Mapping):
-                    check(declaration.get(member), scope, f"{reference}/{key}/{member}")
+                    check(declaration.get(member), body_scope, f"{reference}/{key}/{member}")
             run = definition.get("run")
             if isinstance(run, Mapping):
                 for kind, configuration in run.items():
@@ -299,29 +339,31 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
                         continue
                     for slot in ("input", "stdin", "environment", "arguments"):
                         if slot in configuration:
-                            check(configuration[slot], scope, f"{reference}/run/{kind}/{slot}")
+                            check(configuration[slot], body_scope, f"{reference}/run/{kind}/{slot}")
             catch = definition.get("catch")
+            catch_scope = scope
             if isinstance(catch, Mapping):
-                catch_scope = scope | {str(catch.get("as", "error"))}
+                name = binding(str(catch.get("as", "error")), f"{reference}/catch/as")
+                catch_scope = scope | {name}
                 for slot in ("when", "exceptWhen"):
-                    check(catch.get(slot), catch_scope, f"{reference}/catch/{slot}")
+                    check(catch.get(slot), body_scope | catch_scope, f"{reference}/catch/{slot}")
                 retry = catch.get("retry")
                 if isinstance(retry, Mapping):
                     for slot in ("when", "exceptWhen"):
-                        check(retry.get(slot), catch_scope, f"{reference}/catch/retry/{slot}")
+                        check(
+                            retry.get(slot),
+                            body_scope | catch_scope,
+                            f"{reference}/catch/retry/{slot}",
+                        )
             for suffix, nested in _task_scopes(definition):
-                child_scope = scope
-                if suffix == "do" and isinstance(loop, Mapping):
-                    child_scope = scope | {
-                        str(loop.get("each", "item")),
-                        str(loop.get("at", "index")),
-                    }
-                if suffix == "catch/do" and isinstance(catch, Mapping):
-                    child_scope = scope | {str(catch.get("as", "error"))}
+                child_scope = loop_scope if suffix == "do" and isinstance(loop, Mapping) else scope
+                if suffix == "catch/do":
+                    child_scope = catch_scope
                 tasks(nested, child_scope, f"{reference}/{suffix}")
 
-    data_slots(workflow, variables, "")
-    tasks(workflow.get("do", []), variables, "/do")
+    data_slot(workflow, "input", "from", globals_, "")
+    data_slot(workflow, "output", "as", globals_ | {"context"}, "")
+    tasks(workflow.get("do", []), ambient, "/do")
 
 
 def _unsupported(feature: str, reference: str) -> NoReturn:
@@ -578,15 +620,31 @@ def _path_get(value: Any, path: str) -> Any:
     return current
 
 
+def _date_time_descriptor() -> dict[str, Any]:
+    current = datetime.now(UTC)
+    delta = current - datetime(1970, 1, 1, tzinfo=UTC)
+    seconds = delta.days * 86400 + delta.seconds
+    return {
+        "iso8601": current.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+        "epoch": {"seconds": seconds, "milliseconds": seconds * 1000 + delta.microseconds // 1000},
+    }
+
+
+@dataclass(frozen=True, slots=True)
+class _SkippedTask:
+    data: Any
+
+
 @dataclass(slots=True)
 class ExecutionState:
     data: Any
     outputs: dict[str, Any] = field(default_factory=dict)
     variables: dict[str, Any] = field(default_factory=dict)
-    context: dict[str, Any] = field(default_factory=dict)
+    context: Any = field(default_factory=dict)
     jump_to: str | None = None
     stop: bool = False
     expressions: ExpressionEvaluator | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class WorkflowExecutor:
@@ -607,28 +665,57 @@ class WorkflowExecutor:
     def _expressions(self, state: ExecutionState) -> ExpressionEvaluator:
         return state.expressions or self.expressions
 
+    def _copy_state(self, state: ExecutionState) -> ExecutionState:
+        child = ExecutionState(
+            data=copy.deepcopy(state.data),
+            outputs=copy.deepcopy(state.outputs),
+            variables=copy.deepcopy(state.variables),
+            context=copy.deepcopy(state.context),
+            expressions=self._expressions(state),
+            metadata=dict(state.metadata),
+        )
+        child.variables["context"] = child.context
+        return child
+
     async def execute(
         self, plan: WorkflowPlan, input_data: Any, *, metadata: dict[str, Any] | None = None
     ) -> Any:
         workflow = plan.source
         metadata = dict(metadata or {})
         metadata.setdefault("_lifecycle", LifecycleControl())
+        metadata.setdefault("invocation_id", str(uuid4()))
+        metadata.setdefault("workflow_name", plan.name)
+        metadata.setdefault("workflow_version", plan.version)
         event_context = {
-            "invocation_id": metadata.get("invocation_id"),
-            "session_id": metadata.get("session_id"),
-            "workflow_name": plan.name,
-            "workflow_version": plan.version,
-            "engine": metadata.get("engine"),
-            "parent_invocation_id": metadata.get("parent_invocation_id"),
-            "parent_task_reference": metadata.get("parent_task_reference"),
+            key: metadata.get(key)
+            for key in (
+                "invocation_id",
+                "session_id",
+                "workflow_name",
+                "workflow_version",
+                "engine",
+                "parent_invocation_id",
+                "parent_task_reference",
+            )
         }
         started = time.perf_counter()
         self._emit("WorkflowStarted", {**event_context, "status": "running"})
-        context = metadata
         state = ExecutionState(
             data=copy.deepcopy(input_data),
-            context=context,
-            variables={"context": context, "input": copy.deepcopy(input_data)},
+            metadata=metadata,
+            variables={
+                "runtime": {
+                    "name": "open-workflow-agent",
+                    "version": __version__,
+                    "metadata": {"engine": metadata.get("engine")},
+                },
+                "workflow": {
+                    "id": metadata["invocation_id"],
+                    "definition": workflow,
+                    "input": copy.deepcopy(input_data),
+                    "startedAt": _date_time_descriptor(),
+                },
+            },
             expressions=ExpressionEvaluator(
                 mode=cast(ExpressionMode, workflow.get("evaluate", {}).get("mode", "strict"))
             ),
@@ -636,24 +723,40 @@ class WorkflowExecutor:
         try:
             validate_expression_data(input_data)
             self._validate_data_schema(workflow.get("input"), input_data, "workflow input")
-            initial_data = input_data
             input_spec = workflow.get("input")
             if isinstance(input_spec, Mapping) and "from" in input_spec:
-                initial_data = self._expressions(state).evaluate(input_spec["from"], input_data)
-                state.data = copy.deepcopy(initial_data)
+                state.data = self._expressions(state).evaluate(
+                    input_spec["from"], input_data, variables=state.variables
+                )
+            state.context = copy.deepcopy(state.data)
+            state.variables["context"] = state.context
             workflow_timeout = _duration_seconds(workflow.get("timeout"))
             if workflow_timeout is None:
-                await self._run_tasks(plan.source.get("do", []), state)
+                await self._run_tasks(workflow.get("do", []), state)
             else:
                 try:
                     await asyncio.wait_for(
-                        self._run_tasks(plan.source.get("do", []), state), workflow_timeout
+                        self._run_tasks(workflow.get("do", []), state), workflow_timeout
                     )
                 except TimeoutError as exc:
                     raise WorkflowExecutionError(
-                        "workflow timed out",
-                        details={"timeout_seconds": workflow_timeout},
+                        "workflow timed out", details={"timeout_seconds": workflow_timeout}
                     ) from exc
+            output = workflow.get("output")
+            output_variables = {
+                key: value
+                for key, value in state.variables.items()
+                if key in {"context", "workflow", "runtime"}
+            }
+            result = (
+                self._expressions(state).evaluate(
+                    output["as"], state.data, variables=output_variables
+                )
+                if isinstance(output, Mapping) and "as" in output
+                else copy.deepcopy(state.data)
+            )
+            validate_expression_data(result)
+            self._validate_data_schema(output, result, "workflow output")
         except InvocationCancelled as exc:
             self._set_invocation_status(state, "cancelled")
             self._emit(
@@ -679,15 +782,6 @@ class WorkflowExecutor:
                 },
             )
             raise
-        output = plan.source.get("output")
-        if isinstance(output, Mapping) and "as" in output:
-            result = self._expressions(state).evaluate(
-                output["as"], state.data, variables=state.variables
-            )
-        else:
-            result = state.data
-        validate_expression_data(result)
-        self._validate_data_schema(output, result, "workflow output")
         self._emit(
             "WorkflowCompleted",
             {
@@ -712,22 +806,40 @@ class WorkflowExecutor:
             name, definition = next(iter(item.items()))
             if not isinstance(definition, Mapping):
                 raise WorkflowExecutionError(f"task {name} definition must be an object")
-            before = copy.deepcopy(state.data)
             reference = f"{prefix}/{index}/{name}"
-            state.variables["_task_reference"] = reference
-            state.variables["_task_name"] = str(name)
+            local = self._copy_state(state)
+            for key in ("input", "output", "task"):
+                local.variables.pop(key, None)
+            local.variables.update(
+                {
+                    "_task_reference": reference,
+                    "_task_name": str(name),
+                    "task": {
+                        "name": str(name),
+                        "reference": reference,
+                        "definition": copy.deepcopy(definition),
+                        "input": copy.deepcopy(state.data),
+                        "startedAt": _date_time_descriptor(),
+                    },
+                }
+            )
             task_started = time.perf_counter()
             self._emit(
-                "TaskStarted",
-                {**self._task_event(reference, name, state), "status": "running"},
+                "TaskStarted", {**self._task_event(reference, name, local), "status": "running"}
             )
             try:
-                result = await self._run_with_policy(str(name), definition, state, reference)
+                result = await self._run_with_policy(str(name), definition, local, reference)
+                skipped = isinstance(result, _SkippedTask)
+                output = (
+                    copy.deepcopy(result.data)
+                    if skipped
+                    else self._apply_task_data(definition, result, local)
+                )
             except InvocationCancelled as exc:
                 self._emit(
                     "TaskCancelled",
                     {
-                        **self._task_event(reference, name, state),
+                        **self._task_event(reference, name, local),
                         "duration": time.perf_counter() - task_started,
                         "status": "cancelled",
                         "reason": exc.details.get("reason", "cancelled"),
@@ -750,7 +862,7 @@ class WorkflowExecutor:
                 self._emit(
                     "TaskFaulted",
                     {
-                        **self._task_event(reference, name, state),
+                        **self._task_event(reference, name, local),
                         "duration": time.perf_counter() - task_started,
                         "status": "faulted",
                         "error": _error_details(exc),
@@ -768,14 +880,21 @@ class WorkflowExecutor:
                 ):
                     raise
                 raise WorkflowExecutionError(
-                    f"task {name} failed: {exc}", details={"task": name}
+                    f"task {name} failed", details={"task": str(name)}
                 ) from exc
-            state.outputs[str(name)] = result
-            state.data = self._apply_task_data(definition, result, before, state)
+            local.outputs[str(name)] = copy.deepcopy(output)
+            state.outputs = local.outputs
+            state.data = copy.deepcopy(output)
+            state.context = copy.deepcopy(local.context)
+            state.variables["context"] = state.context
+            for key in ("event", "resume_input"):
+                if key in local.variables:
+                    state.variables[key] = copy.deepcopy(local.variables[key])
+            state.jump_to, state.stop = local.jump_to, local.stop
             self._emit(
                 "TaskCompleted",
                 {
-                    **self._task_event(reference, name, state),
+                    **self._task_event(reference, name, local),
                     "duration": time.perf_counter() - task_started,
                     "status": "completed",
                 },
@@ -797,8 +916,7 @@ class WorkflowExecutor:
                 )
                 if target_index is None:
                     raise WorkflowExecutionError(
-                        f"task transition target not found: {target}",
-                        details={"task": str(name)},
+                        f"task transition target not found: {target}", details={"task": str(name)}
                     )
                 index = target_index
                 continue
@@ -820,7 +938,11 @@ class WorkflowExecutor:
         timeout = definition.get("timeout")
         timeout_seconds = _duration_seconds(timeout)
         last_error: Exception | None = None
+        raw_input = copy.deepcopy(state.data)
         for attempt in range(max(1, attempts)):
+            state.data = copy.deepcopy(raw_input)
+            state.variables.pop("input", None)
+            state.variables.pop("output", None)
             try:
                 self._token(state).checkpoint()
                 self._emit(
@@ -868,18 +990,18 @@ class WorkflowExecutor:
         if "if" in definition and not self._expressions(state).condition(
             definition["if"], state.data, variables=state.variables
         ):
-            return state.data
-        task_input = state.data
+            return _SkippedTask(copy.deepcopy(state.data))
+        raw_input = copy.deepcopy(state.data)
         input_spec = definition.get("input")
-        if isinstance(input_spec, Mapping) and "from" in input_spec:
-            task_input = self._expressions(state).evaluate(
-                input_spec["from"], state.data, variables=state.variables
+        self._validate_data_schema(input_spec, raw_input, f"task {name} input")
+        task_input = (
+            self._expressions(state).evaluate(
+                input_spec["from"], raw_input, variables=state.variables
             )
-        elif input_spec is not None and not isinstance(input_spec, Mapping):
-            task_input = self._expressions(state).evaluate(
-                input_spec, state.data, variables=state.variables
-            )
-        self._validate_data_schema(input_spec, task_input, f"task {name} input")
+            if isinstance(input_spec, Mapping) and "from" in input_spec
+            else raw_input
+        )
+        state.data = copy.deepcopy(task_input)
         state.variables["input"] = copy.deepcopy(task_input)
         if "set" in definition:
             return self._expressions(state).evaluate(
@@ -955,12 +1077,15 @@ class WorkflowExecutor:
                         delay = _retry_delay(catch_retry, attempt)
                         if delay:
                             await self._token(state).sleep(delay)
+                        failed_reference = str(
+                            error.get("details", {}).get("instance", task_reference)
+                        )
                         self._emit(
                             "TaskRetried",
                             {
                                 **self._task_event(
-                                    str(state.variables.get("_task_reference", "unknown-task")),
-                                    state.variables.get("_task_name", name),
+                                    failed_reference,
+                                    failed_reference.rsplit("/", 1)[-1],
                                     state,
                                 ),
                                 "status": "retrying",
@@ -1043,7 +1168,7 @@ class WorkflowExecutor:
             model=self.services.model,
             agent_instruction=getattr(self.services, "agent_instruction", ""),
             services=self.services,
-            metadata=state.context,
+            metadata=state.metadata,
         )
         return await self.catalog.call(call, payload, context)
 
@@ -1105,17 +1230,13 @@ class WorkflowExecutor:
         body = _task_body(definition.get("do", definition.get("body", [])))
         results: list[Any] = []
         for index, value in enumerate(values):
-            child = ExecutionState(
-                copy.deepcopy(state.data),
-                dict(state.outputs),
-                dict(state.variables),
-                dict(state.context),
-                expressions=self._expressions(state),
-            )
+            child = self._copy_state(state)
             child.variables[variable] = value
             child.variables[str(configuration.get("at", "index"))] = index
             await self._run_tasks(body, child, prefix=self._nested_prefix(child, "do"))
             state.data = child.data
+            state.context = copy.deepcopy(child.context)
+            state.variables["context"] = state.context
             results.append(child.data)
         if definition.get("output") == "array":
             return results
@@ -1132,13 +1253,7 @@ class WorkflowExecutor:
             raise WorkflowSemanticError("fork branches must be a list")
 
         async def run_branch(index: int, branch: Any) -> Any:
-            child = ExecutionState(
-                copy.deepcopy(state.data),
-                dict(state.outputs),
-                dict(state.variables),
-                dict(state.context),
-                expressions=self._expressions(state),
-            )
+            child = self._copy_state(state)
             await self._run_tasks(
                 _task_body(branch.get("do", branch) if isinstance(branch, Mapping) else branch),
                 child,
@@ -1189,7 +1304,7 @@ class WorkflowExecutor:
             else copy.deepcopy(state.data)
         )
         task_reference = str(state.variables.get("_task_reference", "unknown-task"))
-        return await runner(plan, child_input, state.context, task_reference)
+        return await runner(plan, child_input, state.metadata, task_reference)
 
     async def _run_emit(self, definition: Any, state: ExecutionState) -> Any:
         if self.services is None or not hasattr(self.services, "event_bus"):
@@ -1291,8 +1406,8 @@ class WorkflowExecutor:
 
     @staticmethod
     def _default_event_source(state: ExecutionState) -> str:
-        name = state.context.get("workflow_name", "workflow")
-        version = state.context.get("workflow_version", "1.0.0")
+        name = state.metadata.get("workflow_name", "workflow")
+        version = state.metadata.get("workflow_version", "1.0.0")
         return f"urn:open-workflow-agent:{name}:{version}"
 
     @staticmethod
@@ -1306,27 +1421,30 @@ class WorkflowExecutor:
             state.jump_to = transition
 
     def _apply_task_data(
-        self, definition: Mapping[str, Any], result: Any, before: Any, state: ExecutionState
+        self, definition: Mapping[str, Any], result: Any, state: ExecutionState
     ) -> Any:
         validate_expression_data(result)
-        output = result
+        task = state.variables.get("task")
+        if isinstance(task, dict):
+            task["output"] = copy.deepcopy(result)
         output_spec = definition.get("output")
-        if isinstance(output_spec, Mapping) and "as" in output_spec:
-            output = self._expressions(state).evaluate(
-                output_spec["as"], result, variables=state.variables
-            )
+        output = (
+            self._expressions(state).evaluate(output_spec["as"], result, variables=state.variables)
+            if isinstance(output_spec, Mapping) and "as" in output_spec
+            else copy.deepcopy(result)
+        )
         self._validate_data_schema(output_spec, output, "task output")
+        state.variables["output"] = copy.deepcopy(output)
         export_spec = definition.get("export")
-        if isinstance(export_spec, Mapping) and "as" in export_spec:
-            exported = self._expressions(state).evaluate(
-                export_spec["as"], result, variables=state.variables
-            )
-            state.context = _merge(state.context, exported)
-            state.variables["context"] = state.context
-            self._validate_data_schema(export_spec, exported, "task export")
-        if isinstance(output, Mapping) and isinstance(before, Mapping):
-            return dict(output)
-        return output
+        exported = (
+            self._expressions(state).evaluate(export_spec["as"], output, variables=state.variables)
+            if isinstance(export_spec, Mapping) and "as" in export_spec
+            else copy.deepcopy(state.context)
+        )
+        self._validate_data_schema(export_spec, exported, "task export")
+        state.context = copy.deepcopy(exported)
+        state.variables["context"] = state.context
+        return copy.deepcopy(output)
 
     def _validate_data_schema(self, specification: Any, value: Any, label: str) -> None:
         if not isinstance(specification, Mapping):
@@ -1339,20 +1457,26 @@ class WorkflowExecutor:
             return
         errors = sorted(
             Draft202012Validator(document).iter_errors(value),
-            key=lambda error: list(error.path),
+            key=lambda error: tuple(str(part) for part in error.path),
         )
         if errors:
             first = errors[0]
             path = "/".join(str(item) for item in first.path) or "root"
             raise WorkflowSemanticError(
-                f"{label} schema validation failed at {path}: {first.message}"
+                f"{label} schema validation failed at {path}",
+                details={
+                    "path": path,
+                    "validator": str(first.validator),
+                    "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+                    "status": 400,
+                },
             )
 
     def _emit(self, event_type: str, payload: dict[str, Any]) -> None:
         self.event_sink.emit(WorkflowEvent(event_type=event_type, **payload))
 
     def _control(self, state: ExecutionState) -> LifecycleControl | None:
-        control = state.context.get("_lifecycle")
+        control = state.metadata.get("_lifecycle")
         return control if isinstance(control, LifecycleControl) else None
 
     @staticmethod
@@ -1373,12 +1497,12 @@ class WorkflowExecutor:
         return await control.token.await_operation(operation)
 
     def _set_invocation_status(self, state: ExecutionState, status: str) -> None:
-        handle = state.context.get("_invocation_handle")
+        handle = state.metadata.get("_invocation_handle")
         if handle is not None and self.services is not None:
             self.services.invocations.update(handle, status=status)
 
     def _task_event(self, reference: str, name: Any, state: ExecutionState) -> dict[str, Any]:
-        context = state.context
+        context = state.metadata
         return {
             "invocation_id": context.get("invocation_id"),
             "session_id": context.get("session_id"),
@@ -1387,14 +1511,14 @@ class WorkflowExecutor:
             "task_name": str(name),
             "task_reference": reference,
             "engine": context.get("engine"),
-            "operation_id": self._operation_id(state),
+            "operation_id": f"{context.get('invocation_id', 'unknown-invocation')}:{reference}",
             "parent_invocation_id": context.get("parent_invocation_id"),
             "parent_task_reference": context.get("parent_task_reference"),
         }
 
     @staticmethod
     def _operation_id(state: ExecutionState) -> str:
-        invocation = state.context.get("invocation_id", "unknown-invocation")
+        invocation = state.metadata.get("invocation_id", "unknown-invocation")
         reference = state.variables.get("_task_reference", "unknown-task")
         return f"{invocation}:{reference}"
 
