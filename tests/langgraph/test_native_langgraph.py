@@ -14,9 +14,10 @@ from open_workflow_agent_langgraph.native import LANGGRAPH_AVAILABLE, LangGraphF
 
 
 @pytest.mark.asyncio
-async def test_native_langgraph_functional_invocation(tmp_path):
+async def test_native_langgraph_task_graph_invocation(tmp_path):
     if not LANGGRAPH_AVAILABLE:
         pytest.skip("langgraph optional dependency is not installed")
+    pytest.importorskip("langgraph.checkpoint.sqlite.aio")
     services = RuntimeServices(
         RuntimeConfig(), model=FakeModel({"response": "native"}), database_root=tmp_path
     )
@@ -51,6 +52,7 @@ async def test_native_langgraph_functional_invocation(tmp_path):
 async def test_native_langgraph_interrupted_resume_preserves_operation_identity(tmp_path):
     if not LANGGRAPH_AVAILABLE:
         pytest.skip("langgraph optional dependency is not installed")
+    pytest.importorskip("langgraph.checkpoint.sqlite.aio")
     workflow = {
         "document": {
             "dsl": "1.0.3",
@@ -123,6 +125,7 @@ async def test_native_langgraph_interrupted_resume_preserves_operation_identity(
 async def test_fresh_native_sqlite_storage_allows_concurrent_first_invocations(tmp_path):
     if not LANGGRAPH_AVAILABLE:
         pytest.skip("langgraph optional dependency is not installed")
+    pytest.importorskip("langgraph.checkpoint.sqlite.aio")
     adapter = LangGraphFunctionalAdapter(str(tmp_path / "fresh.sqlite"))
     entered = 0
     all_entered = asyncio.Event()

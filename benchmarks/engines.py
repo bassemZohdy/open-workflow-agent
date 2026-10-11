@@ -180,6 +180,8 @@ async def run_engine_benchmark(
         services = RuntimeServices(config, model=FakeModel(), database_root=database_root)
         engine = engine_type()
         await engine.initialize(services)
+        if hasattr(engine.native, "task_nodes_available"):
+            native_available = engine.native.task_nodes_available
         native_database = services.engine_database_path(engine_name)
         before_checkpoint = _database_size(native_database)
         try:

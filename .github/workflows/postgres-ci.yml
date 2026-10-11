@@ -89,7 +89,7 @@ jobs:
         run: |
           set -euo pipefail
           timeout --signal=TERM --kill-after=30s 5m \
-            uv run --directory engines/langgraph --locked --extra knowledge --extra sqlite --extra postgres \
+            uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/langgraph/test_native_task_graph.py -vv --durations=20
 
   postgres-runtime:

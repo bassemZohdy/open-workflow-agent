@@ -8,7 +8,7 @@ from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.workflow import WorkflowPlan
 
 from .agent import LangGraphAgentFactory
-from .native import LANGGRAPH_AVAILABLE, NATIVE_SCOPE_STEP_LIMIT, LangGraphFunctionalAdapter
+from .native import NATIVE_SCOPE_STEP_LIMIT, LangGraphFunctionalAdapter
 
 
 class LangGraphWorkflowEngine(PortableWorkflowEngine):
@@ -41,14 +41,16 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             engine=self.engine_name,
             resume=True,
             streaming=False,
-            native_task_nodes=LANGGRAPH_AVAILABLE,
-            native_scope_step_limit=NATIVE_SCOPE_STEP_LIMIT if LANGGRAPH_AVAILABLE else None,
+            native_task_nodes=self.native.task_nodes_available,
+            native_scope_step_limit=NATIVE_SCOPE_STEP_LIMIT
+            if self.native.task_nodes_available
+            else None,
         )
 
     async def invoke(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> InvocationResult:
-        if not self.native.checkpointer and not self.native.database_path:
+        if not self.native.task_nodes_available:
             return await super().invoke(workflow, invocation, input_data)
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
@@ -93,7 +95,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         active_result = await self._resume_active_or_terminal(handle, resume_input)
         if active_result is not None:
             return active_result
-        if not self.native.checkpointer and not self.native.database_path:
+        if not self.native.task_nodes_available:
             return await PortableWorkflowEngine.resume(self, handle, resume_input, plan)
         if handle.status == "waiting":
             self._restart_resume_inputs[handle.invocation_id] = resume_input

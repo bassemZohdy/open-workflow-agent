@@ -99,6 +99,9 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
         if datasource
         else RuntimeConfig()
     )
+    pytest.importorskip(
+        "langgraph.checkpoint.postgres.aio" if datasource else "langgraph.checkpoint.sqlite.aio"
+    )
     database_root = None if datasource else tmp_path
     calls = []
 
@@ -171,6 +174,7 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
 
 
 async def test_concurrent_invocations_in_one_session_have_independent_native_checkpoints(services):
+    pytest.importorskip("langgraph.checkpoint.sqlite.aio")
     engine = LangGraphWorkflowEngine()
     await engine.initialize(services)
     plan = _plan([{"echo": {"set": {"id": "${ .id }"}}}])

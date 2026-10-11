@@ -39,7 +39,11 @@ passed 28 tests. Completed fork branch caches cannot advance a sibling's
 occurrence cursor on replay. Native failures are sanitized into common errors.
 Ruff, formatting, strict typing, all four locks, documentation links and
 root/core package builds passed. Independent native/contract/CTK matrices
-passed: ADK 389, LangGraph 395, optional Agent Framework 526. Exact remote
+passed: ADK 389, LangGraph 395, optional Agent Framework 526; the final
+LangGraph backend-selection revision passed 396 tests with 3 unconfigured
+PostgreSQL skips. A fresh SDK-only environment without SQLite passed 8 tests
+with 10 explicit backend/dependency skips. PostgreSQL CI separately exercises
+its saver without installing SQLite. Exact remote
 acceptance is pending; S1-05 remains unchecked. Full crash recovery,
 ordered fork reducers, durable winners/waits/events, historical checkpoint
 migration and independent JS qualification remain staged work.

@@ -1,4 +1,4 @@
-"""Optional LangGraph Functional API bridge with native checkpoint storage."""
+"""Native LangGraph task execution and legacy Functional API helpers."""
 
 from __future__ import annotations
 
@@ -19,15 +19,18 @@ _NULL_INPUT = b"owa/null-input/v1"
 
 try:
     from langgraph.checkpoint.memory import InMemorySaver
-    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
     from langgraph.func import entrypoint
 
     LANGGRAPH_AVAILABLE = True
 except ImportError:  # pragma: no cover - exercised only without optional dependency
     InMemorySaver = None  # type: ignore[assignment,misc]
-    AsyncSqliteSaver = None  # type: ignore[assignment,misc]
     entrypoint = None  # type: ignore[assignment]
     LANGGRAPH_AVAILABLE = False
+
+try:
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+except ImportError:  # pragma: no cover - optional SQLite extra
+    AsyncSqliteSaver = None  # type: ignore[assignment,misc]
 
 try:
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -36,13 +39,23 @@ except ImportError:  # pragma: no cover - optional PostgreSQL extra
 
 
 class LangGraphFunctionalAdapter:
-    """Compile the common runner as a native Functional API entrypoint."""
+    """Execute native task scopes; preserve direct Functional API callers."""
 
     def __init__(self, database_path: str | None = None) -> None:
         self.database_path = database_path
         self.checkpointer = InMemorySaver() if LANGGRAPH_AVAILABLE and InMemorySaver else None
         self._prepared_database_path: str | None = None
         self._preparation_lock = asyncio.Lock()
+
+    @property
+    def task_nodes_available(self) -> bool:
+        if not LANGGRAPH_AVAILABLE:
+            return False
+        if not self.database_path:
+            return True
+        if is_postgresql_datasource(self.database_path):
+            return AsyncPostgresSaver is not None
+        return AsyncSqliteSaver is not None
 
     async def prepare_storage(self) -> None:
         """Let the native saver initialize WAL before concurrent first writers."""
@@ -83,7 +96,7 @@ class LangGraphFunctionalAdapter:
         *,
         thread_id: str,
     ) -> Any:
-        if not LANGGRAPH_AVAILABLE:
+        if not self.task_nodes_available:
             return await runner(input_data)
         if isinstance(input_data, bytes) and input_data == _NULL_INPUT:
             validate_expression_data(input_data)
@@ -119,7 +132,7 @@ class LangGraphFunctionalAdapter:
         resume: bool = False,
     ) -> Any:
         """Run each derived task as a native node with private scope checkpoints."""
-        if not LANGGRAPH_AVAILABLE:
+        if not self.task_nodes_available:
             return await executor.execute(plan, input_data, metadata=metadata)
         from .graph import LangGraphScopeExecutor
 
@@ -158,7 +171,7 @@ class LangGraphFunctionalAdapter:
         *,
         thread_id: str,
     ) -> Any:
-        if not LANGGRAPH_AVAILABLE:
+        if not self.task_nodes_available:
             return await runner(resume_input)
         await self.prepare_storage()
         from langgraph.types import Command

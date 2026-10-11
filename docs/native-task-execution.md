@@ -24,8 +24,10 @@ channels and graph objects are absent from public results and lifecycle
 records. Native storage/graph failures become sanitized common errors.
 `features.nativeTaskExecution` reports actual native node availability and the
 1,000,000-step native guard per scope; this guard is not an OWS language limit.
-Minimal environments without the optional native saver retain the common
-interpreter and report native nodes unavailable.
+Minimal environments without the selected optional native saver retain the
+common interpreter and report native nodes unavailable. Native SDK and saver
+availability are checked independently: PostgreSQL needs its own saver,
+without requiring SQLite to be installed.
 
 Native checkpoints are committed synchronously between tasks. On restart the
 adapter resumes pending native tasks using their stored data and original
