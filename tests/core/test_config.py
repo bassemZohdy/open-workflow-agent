@@ -16,7 +16,7 @@ from open_workflow_agent.config import (
 
 def test_defaults_when_no_file_exists(tmp_path: Path) -> None:
     config = RuntimeConfig.from_file(tmp_path / "missing.yaml")
-    assert config.model.provider == "litellm"
+    assert config.model.provider == "fake"
     assert config.model.name == "fake/default"
     assert config.sandbox.enabled is False
     assert config.approvals.enabled is False
@@ -298,3 +298,54 @@ def test_sandbox_controller_validation_rejects_unsafe_values(
 def test_sandbox_validation_rejects_unsafe_values(payload: dict[str, object], message: str) -> None:
     with pytest.raises(ValueError, match=message):
         SandboxConfig.model_validate(payload)
+
+
+@pytest.mark.parametrize(
+    "name,provider",
+    [
+        ("fake/default", "fake"),
+        ("fake/test", "fake"),
+        ("openai/gpt-test", "litellm"),
+        ("ollama/local-test", "litellm"),
+    ],
+)
+def test_model_only_bootstrap_infers_provider_without_changing_explicit_selection(
+    tmp_path, name, provider
+):
+    path = tmp_path / "agent.yaml"
+    path.write_text(f"model:\n  name: {name}\n", encoding="utf-8")
+    config = RuntimeConfig.from_file(path)
+    assert config.model.provider == provider
+    assert config.model.name == name
+    explicit = RuntimeConfig.model_validate(
+        {"model": {"provider": "litellm", "name": "fake/default"}}
+    )
+    assert explicit.model.provider == "litellm"
+
+
+def test_model_only_environment_selects_external_bootstrap_binding(tmp_path, monkeypatch):
+    monkeypatch.setenv("OWA__MODEL__NAME", "openai/gpt-test")
+    config = RuntimeConfig.from_file(tmp_path / "absent.yaml")
+    assert config.model.provider == "litellm"
+    assert config.model.name == "openai/gpt-test"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "model:\n  provider: fake\n  options: bootstrap-secret-value\n",
+        "model:\n  options: {api_key: bootstrap-secret-value\n",
+    ],
+)
+def test_bootstrap_validation_errors_exclude_input_values_and_yaml_source(tmp_path, source):
+    import json
+    import traceback
+
+    from open_workflow_agent.errors import ConfigurationError
+
+    file = tmp_path / "invalid.yaml"
+    file.write_text(source, encoding="utf-8")
+    with pytest.raises(ConfigurationError) as error:
+        RuntimeConfig.from_file(file)
+    assert "bootstrap-secret-value" not in json.dumps(error.value.as_dict())
+    assert "bootstrap-secret-value" not in "".join(traceback.format_exception(error.value))

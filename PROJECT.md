@@ -22,6 +22,33 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
+### S1-06 embedded/bootstrap defaults — remote acceptance pending
+
+Repository Compose now starts only the selected engine with embedded SQLite;
+local PostgreSQL moves to an explicit `compose.postgres.yaml` override that
+retains its service/volume names and readiness dependency. Existing PostgreSQL
+deployments must keep that override; switching files performs no migration.
+No configuration/model binding selects the deterministic fake model and the
+generated agent workflow. Model-only external bindings still infer LiteLLM,
+and explicit provider selections are preserved. Bootstrap validation errors
+omit rejected values/YAML source and suppress sensitive exception tracebacks.
+[Bootstrap ownership and compatibility](docs/embedded-bootstrap.md) distinguish
+workflow behavior/fingerprints from provider/storage/deployment bindings and
+keep proposed inventory settings inactive.
+
+Local root validation: 989 passed, 24 skipped, 91.30% core coverage. Independent
+native/contract/CTK matrices: ADK 393; LangGraph 400 with 3 unconfigured
+PostgreSQL skips; optional Agent Framework 532. Both Compose configurations
+validate locally, and each base engine selection resolves to exactly one
+runtime service. Shell syntax, Ruff, formatting, strict mypy, all four locks,
+documentation links and root/core builds passed. Shared tests prove
+no-configuration invocation/restart and unchanged fingerprints across
+bootstrap model bindings. CI now checks both Compose selections and each
+runtime image without config/workflow/knowledge mounts or model credentials,
+including restart on its embedded data volume. Exact remote acceptance is
+pending; S1-06 remains unchecked. No release is published.
+
+
 ### S1-05 native task execution — 2026-10-11 (verified)
 
 The LangGraph adapter now lowers immutable derived scopes into native

@@ -57027,8 +57027,33 @@
         "module": "M12",
         "description": "Provide one-container embedded defaults; separate workflow behavior from external bootstrap/provider settings.",
         "effort": "M",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "In progress",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "scope": "Existing strict bootstrap contract and model-only bindings retained; default source-built runtime/Compose selects embedded SQLite and deterministic fake/default without credentials. External PostgreSQL remains opt-in with preserved legacy Compose volume/service names; proposed configuration inventory does not become active. Exact remote acceptance pending.",
+          "tests": [
+            "tests/core/test_config.py",
+            "tests/contract/test_embedded_bootstrap.py",
+            "tests/ci/container_embedded_defaults_acceptance.sh",
+            ".github/workflows/ci.yml"
+          ],
+          "local_root": {
+            "passed": 989,
+            "skipped": 24,
+            "coverage_percent": 91.3
+          },
+          "native_matrices": {
+            "adk": 393,
+            "langgraph": {
+              "passed": 400,
+              "skipped": 3
+            },
+            "agent_framework_optional": 532
+          },
+          "compose_validation": "Embedded and optional PostgreSQL configurations valid; each selected base profile resolves to exactly one runtime",
+          "remote_acceptance": "Pending",
+          "full_conformance": false
+        }
       },
       {
         "id": "S1-07",

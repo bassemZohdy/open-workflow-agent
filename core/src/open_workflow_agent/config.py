@@ -24,10 +24,21 @@ class StrictModel(BaseModel):
 
 
 class ModelConfig(StrictModel):
-    provider: str = "litellm"
+    provider: str = "fake"
     name: str = "fake/default"
     temperature: float = 0.0
     options: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def infer_default_provider(cls, value: Any) -> Any:
+        # Preserve the model-only configuration contract for real providers;
+        # the packaged fake namespace is usable without external credentials.
+        if isinstance(value, dict) and "provider" not in value:
+            name = value.get("name", "fake/default")
+            provider = "fake" if isinstance(name, str) and name.startswith("fake/") else "litellm"
+            return {**value, "provider": provider}
+        return value
 
 
 class AgentConfig(StrictModel):
@@ -727,15 +738,20 @@ class RuntimeConfig(StrictModel):
                 if not isinstance(loaded, dict):
                     raise ConfigurationError("configuration root must be an object")
                 raw = loaded
-            except yaml.YAMLError as exc:
-                raise ConfigurationError(f"invalid YAML configuration: {exc}") from exc
+            except yaml.YAMLError:
+                raise ConfigurationError("invalid YAML configuration") from None
         _apply_environment(raw)
         try:
             return cls.model_validate(raw)
         except ValidationError as exc:
             raise ConfigurationError(
-                "invalid runtime configuration", details={"errors": exc.errors()}
-            ) from exc
+                "invalid runtime configuration",
+                details={
+                    "errors": exc.errors(
+                        include_input=False, include_context=False, include_url=False
+                    )
+                },
+            ) from None
 
 
 def _apply_environment(target: dict[str, Any]) -> None:

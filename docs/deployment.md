@@ -318,6 +318,8 @@ For Kubernetes/OpenShift, use the Ollama service URL reachable from the pod inst
 
 For other LiteLLM providers, set `model.name` to the provider prefix/model identifier and inject the provider-specific environment variables required by LiteLLM. For custom/OpenAI-compatible endpoints, `model.options` can carry `api_key`, `api_base`, and `api_version`; prefer supplying those through `OWA__MODEL__OPTIONS__...` environment variables/secrets rather than committed YAML.
 
+Repository Compose builds use embedded SQLite and start only the selected engine by default. Optional local PostgreSQL uses `-f compose.yaml -f compose.postgres.yaml`; existing PostgreSQL deployments must keep that override and their original volumes. See [bootstrap/default boundaries](embedded-bootstrap.md).
+
 Repository-local Compose usage is documented by `.env.example`. It passes the local `.env` through to the runtime container so provider-specific LiteLLM environment variables are available:
 
 ```bash

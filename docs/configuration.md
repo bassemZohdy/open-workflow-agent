@@ -8,7 +8,7 @@ Configuration precedence is:
 built-in defaults < YAML file < environment variables
 ```
 
-The default YAML path is `/config/agent.yaml`; override it with `OWA_CONFIG_FILE`.
+The default bootstrap YAML path is `/config/agent.yaml`; override it with `OWA_CONFIG_FILE`. See [embedded defaults and workflow/bootstrap ownership](embedded-bootstrap.md). No file selects the local fake model and generated agent workflow in the staged source build. Validation errors omit rejected input values and YAML source.
 
 ## Environment overrides
 
@@ -261,6 +261,8 @@ traffic_policy:
 A security profile answers who the caller is and what it may do; traffic policy answers how much traffic may be admitted. Global limits apply to every HTTP request when enabled. The longest matching endpoint prefix and the authenticated principal's configured scope add further admission limits. Principal scopes use the identity declared by the named `server.api_security_profile` or `a2a.security_profile`; unauthenticated requests use no configured principal scope.
 
 ## `model`
+
+When `model.provider` is omitted, `fake/` names select the deterministic fake adapter and other names select LiteLLM. Explicit provider selection is preserved. A missing model block selects `fake/default` in the staged source build.
 
 For deterministic validation without a provider API:
 

@@ -257,6 +257,8 @@ MODEL_NAME=ollama/<local-model-name>
 OWA__MODEL__OPTIONS__API_BASE=http://host.docker.internal:11434
 ```
 
+Repository Compose builds use embedded SQLite and start only the selected engine by default. Optional local PostgreSQL uses `-f compose.yaml -f compose.postgres.yaml`; existing PostgreSQL deployments must keep that override and their original volumes. See [bootstrap/default boundaries](docs/embedded-bootstrap.md).
+
 `compose.yaml` passes the local `.env` through to the runtime container so LiteLLM can read provider-specific variables. `.env` is ignored by git; use deployment secrets rather than `.env` in production.
 
 For another LiteLLM provider, set `MODEL_NAME=<provider-prefix>/<model>` and add the provider-specific environment variables to `.env`. Custom/OpenAI-compatible endpoints can use `OWA__MODEL__OPTIONS__API_KEY`, `OWA__MODEL__OPTIONS__API_BASE`, and `OWA__MODEL__OPTIONS__API_VERSION`.

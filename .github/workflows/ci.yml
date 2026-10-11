@@ -107,8 +107,12 @@ jobs:
         run: uv sync --locked --extra knowledge
       - name: Check root lock
         run: uv lock --check
-      - name: Validate Docker Compose profiles
-        run: docker compose --env-file .env.example --profile adk --profile langgraph config --quiet
+      - name: Validate embedded and optional PostgreSQL Compose profiles
+        run: |
+          docker compose --env-file .env.example --profile adk --profile langgraph config --quiet
+          docker compose --env-file .env.example -f compose.yaml -f compose.postgres.yaml --profile adk --profile langgraph config --quiet
+          test "$(docker compose --env-file .env.example --profile adk config --services)" = adk
+          test "$(docker compose --env-file .env.example --profile langgraph config --services)" = langgraph
       - name: Format
         run: uv run --locked ruff format --check ci core engines tests
       - name: Lint
@@ -358,6 +362,14 @@ jobs:
             bash tests/ci/container_sandbox_image_acceptance.sh \
             "${{ matrix.engine }}" "owa-${{ matrix.engine }}:${{ github.sha }}" \
             "${{ matrix.sandbox_port }}"
+      - name: One-container embedded defaults without configuration or credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 5m \
+            bash tests/ci/container_embedded_defaults_acceptance.sh \
+            "${{ matrix.engine }}" "owa-${{ matrix.engine }}:${{ github.sha }}" \
+            "${{ matrix.port }}"
       - name: Container startup, health, capabilities, invocation, and knowledge
         shell: bash
         run: |
