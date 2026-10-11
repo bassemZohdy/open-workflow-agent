@@ -1,0 +1,19 @@
+document:
+  dsl: '1.0.3'
+  namespace: fixtures
+  name: switch
+  version: '1.0.0'
+do:
+  - route:
+      switch:
+        - 'yes':
+            when: '${ .enabled = true }'
+            then: enabled
+        - default:
+            then: disabled
+  - enabled:
+      set:
+        result: '"enabled"'
+  - disabled:
+      set:
+        result: '"disabled"'

@@ -1,0 +1,13 @@
+{
+  "http": "mocked response",
+  "grpc": {"message": "Hello Ada"},
+  "switch": "enabled",
+  "fork": {"left": "done", "right": "done"},
+  "try": "yes",
+  "wait": null,
+  "for": [1, 2, 3],
+  "emit": {"type": "fixtures.demo"},
+  "listen": {"value": "hello"},
+  "run-script": "fixture\n",
+  "subflow": "child output"
+}

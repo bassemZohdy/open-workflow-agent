@@ -1,0 +1,58 @@
+name: Extended checks
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      benchmark-iterations:
+        description: Number of benchmark iterations
+        required: false
+        default: "10"
+        type: string
+      benchmark-max-p99-ms:
+        description: Maximum allowed p99 latency in milliseconds
+        required: false
+        default: "5000"
+        type: string
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-owf
+        with:
+          python-version: "3.12"
+      - name: Run benchmark
+        run: |
+          uv run python -m openworkflow_adk.devtools.benchmark \
+            --iterations "$BENCH_ITERATIONS" --max-p99-ms "$BENCH_MAX_P99_MS"
+        env:
+          BENCH_ITERATIONS: ${{ inputs.benchmark-iterations }}
+          BENCH_MAX_P99_MS: ${{ inputs.benchmark-max-p99-ms }}
+
+  mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-owf
+        with:
+          python-version: "3.12"
+      - run: uv run mutmut run --max-children 2 > /tmp/owf-mutmut.log 2>&1
+      - run: uv run python scripts/check_mutation_score.py /tmp/owf-mutmut.log

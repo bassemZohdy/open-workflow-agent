@@ -1,0 +1,24 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: multi-agent
+  version: '1.0.0'
+do:
+  - draft:
+      wait:
+        seconds: 0
+      metadata:
+        adk:
+          agent:
+            model: gemini-2.5-flash
+            instruction: Draft a concise response.
+            output_key: draft
+  - review:
+      wait:
+        seconds: 0
+      metadata:
+        adk:
+          agent:
+            model: gemini-2.5-flash
+            instruction: Review and improve {draft}.
+            output_key: reviewed

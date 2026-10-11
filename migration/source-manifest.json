@@ -1,0 +1,3456 @@
+{
+  "version": 1,
+  "recorded_at": "2026-10-11",
+  "canonical_repository": "bassemZohdy/open-workflow-agent",
+  "canonical_baseline": "1d048badc5b51aa3a917cf97ae738ce163a72858",
+  "private_source": {
+    "repository": "bassemZohdy/specs-agent-platform",
+    "visibility": "private",
+    "disposition": "Locally reviewed; public source transfer awaits explicit approval; do not archive before transfer disposition is settled"
+  },
+  "sources": [
+    {
+      "repository": "bassemZohdy/open-workflow-agent-adk",
+      "revision": "48db0cf5e1a1d3202cbbec6021736e1d89e94cd0",
+      "license": "Apache-2.0",
+      "visibility": "public",
+      "archive_status": "Pending",
+      "tracked_file_count": 284,
+      "refs": [
+        {
+          "ref": "refs/heads/codex/agent-runtime-migration-gates",
+          "sha": "fca70bd2678c291748aec141b5d0929183e890b8"
+        },
+        {
+          "ref": "refs/heads/codex/repair-adk-lock-canary",
+          "sha": "2c82b9d9b7eb752646a44f9fc7efeda91001098b"
+        },
+        {
+          "ref": "refs/heads/dependabot/github_actions/astral-sh/setup-uv-10.0.1",
+          "sha": "6609d92a45bba5b837c526f69cbe549533be0b5e"
+        },
+        {
+          "ref": "refs/heads/dependabot/github_actions/codecov/codecov-action-7.0.0",
+          "sha": "d2f5f96a2628645e047cf093d9b436857634bf1a"
+        },
+        {
+          "ref": "refs/heads/dependabot/github_actions/github/codeql-action/analyze-4.37.8",
+          "sha": "0b96a68c2a066e380e447edc60c8150a22ab60eb"
+        },
+        {
+          "ref": "refs/heads/dependabot/github_actions/github/codeql-action/init-4.37.8",
+          "sha": "6f74e170eba034dde1df03ea3d0b2e2ddea0624c"
+        },
+        {
+          "ref": "refs/heads/dependabot/github_actions/github/codeql-action/upload-sarif-4.37.8",
+          "sha": "450d2e7f5f83dc1a8bfa1820fe25a89dd93269c5"
+        },
+        {
+          "ref": "refs/heads/main",
+          "sha": "48db0cf5e1a1d3202cbbec6021736e1d89e94cd0"
+        },
+        {
+          "ref": "refs/pull/1/head",
+          "sha": "0905cb295579583faee70a2d06736e4d8a62883e"
+        },
+        {
+          "ref": "refs/pull/10/head",
+          "sha": "d2f5f96a2628645e047cf093d9b436857634bf1a"
+        },
+        {
+          "ref": "refs/pull/10/merge",
+          "sha": "9cd5f94704309203788f3d2e16cd8cd73a3414a1"
+        },
+        {
+          "ref": "refs/pull/11/head",
+          "sha": "6609d92a45bba5b837c526f69cbe549533be0b5e"
+        },
+        {
+          "ref": "refs/pull/11/merge",
+          "sha": "3ce11fb2b0707a5bf1f1863482adc829b7f88ff7"
+        },
+        {
+          "ref": "refs/pull/12/head",
+          "sha": "0b96a68c2a066e380e447edc60c8150a22ab60eb"
+        },
+        {
+          "ref": "refs/pull/12/merge",
+          "sha": "1c6d250dfe80c6427d1e6d17c5fce0ef208940e1"
+        },
+        {
+          "ref": "refs/pull/13/head",
+          "sha": "450d2e7f5f83dc1a8bfa1820fe25a89dd93269c5"
+        },
+        {
+          "ref": "refs/pull/13/merge",
+          "sha": "5dfe708b54a68c2929d408ca5d83db79c76745e6"
+        },
+        {
+          "ref": "refs/pull/14/head",
+          "sha": "6f74e170eba034dde1df03ea3d0b2e2ddea0624c"
+        },
+        {
+          "ref": "refs/pull/14/merge",
+          "sha": "0f235dc8f70418c57bef350301c23a1eeecb5f3a"
+        },
+        {
+          "ref": "refs/pull/15/head",
+          "sha": "2c82b9d9b7eb752646a44f9fc7efeda91001098b"
+        },
+        {
+          "ref": "refs/pull/15/merge",
+          "sha": "937f3af3a3b45802006ebb50f9f1d7b41eacabfa"
+        },
+        {
+          "ref": "refs/pull/16/head",
+          "sha": "fca70bd2678c291748aec141b5d0929183e890b8"
+        },
+        {
+          "ref": "refs/pull/16/merge",
+          "sha": "06afdea9414405425241b16c9c4f068ed8724d5a"
+        },
+        {
+          "ref": "refs/pull/2/head",
+          "sha": "338ebaca22a129fc7c8ac2987122c753808332f7"
+        },
+        {
+          "ref": "refs/pull/3/head",
+          "sha": "1c74d71d73d5b9604c5c428034a5152bf1a3cbbd"
+        },
+        {
+          "ref": "refs/pull/4/head",
+          "sha": "f873806e27794b1f37cd2e42bea695330a2a3fd3"
+        },
+        {
+          "ref": "refs/pull/5/head",
+          "sha": "f217cc37c461df710649784c07bed2975d6fb569"
+        },
+        {
+          "ref": "refs/pull/6/head",
+          "sha": "4ffcbbf3965f1b9eff1276f628b8822bfc5057f3"
+        },
+        {
+          "ref": "refs/pull/7/head",
+          "sha": "c2c07cac30db930f777d1eb7c79a4bcf411759b1"
+        },
+        {
+          "ref": "refs/pull/8/head",
+          "sha": "974cc85e28b8e6e9ce4b04b4fb9d063994f6f8d1"
+        },
+        {
+          "ref": "refs/pull/9/head",
+          "sha": "a85c24ad998033db54d9a9f5c7a5c6234a4ca5ce"
+        },
+        {
+          "ref": "refs/tags/v0.1.0",
+          "sha": "4dc9f1e6d80aa727a6c249021a005b460a92731a"
+        },
+        {
+          "ref": "refs/tags/v0.2.0",
+          "sha": "7d6357a529e8c997187337aefd41e44c7ce29ecf"
+        }
+      ],
+      "files": [
+        {
+          "path": ".claude/settings.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9671e391e90966cf1c5dc603e9c214cefe6b9f22",
+          "destination": "migration/reference/open-workflow-agent-adk/.claude/settings.json.source",
+          "sha256": "2b7892838f694aa3876d774e5862e7c3fee44213ce0aa5e2f44a58d2d73320da",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".claude/skills/spec-drift-check/SKILL.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e51248f2b362858aae1023e9922836f87e47fadf",
+          "destination": "migration/reference/open-workflow-agent-adk/.claude/skills/spec-drift-check/SKILL.md.source",
+          "sha256": "3d88e707dc85808253a2992b91a393ae72c531a31d2a4ba93fa6661b6aec92e3",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".dockerignore",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ba655d01cf757afaf0c4582f8dc966b3fdd2ca64",
+          "destination": "migration/reference/open-workflow-agent-adk/.dockerignore.source",
+          "sha256": "4c7b9b33a7ad5f5801758f72fe2a07bbd70355994a4def7bc880a88800185926",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".env.example",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ff927baad5c0c50446a46e99d171de14f8787a30",
+          "destination": "migration/reference/open-workflow-agent-adk/.env.example.source",
+          "sha256": "71c4509e922555a401915072260755dfc4381a493313e1581adeb9b31f273e17",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".github/actions/setup-owf/action.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "97feb4c576839544edd9b7f983d2d0a1146f3c75",
+          "destination": "migration/reference/open-workflow-agent-adk/.github/actions/setup-owf/action.yml.source",
+          "sha256": "140d479ff5eeafa812244571ec394a433e9e36871563172bc3864e91965335fb",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".github/dependabot.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9b2b80a72b0c994c9b7177f57a2d0351d7e18c12",
+          "destination": "migration/reference/open-workflow-agent-adk/.github/dependabot.yml.source",
+          "sha256": "a1cc7034a5a3b280d74df7c51d2737f0e6a2532f682c809515feedf00a7c0310",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".github/workflows/canary.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "dc7dea79de641fe2a1ad955042aa248a537b2ad8",
+          "destination": "migration/reference/open-workflow-agent-adk/.github/workflows/canary.yml.source",
+          "sha256": "ab2b54bb837f4e10ea14a8482d5ac827d61fea227f177c8d1799028dfec3f7bd",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2837992fdcd94483ec645e83c22df8bdb35f4a66",
+          "destination": "migration/reference/open-workflow-agent-adk/.github/workflows/ci.yml.source",
+          "sha256": "b44483e00f4323000972abee819761c3d846b229dd9ae61d754730e6e511d474",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".github/workflows/codeql.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "73d17b1d415f52d70c3f2df6710dcb191a6e87d0",
+          "destination": "migration/reference/open-workflow-agent-adk/.github/workflows/codeql.yml.source",
+          "sha256": "f297839b414ba4a524026a46975c396be2ebbcb34f13ca190603f1524f5bb018",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".github/workflows/dependency-review.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f9c2f9d1f835449b6e135cd74e2dc26c75a56f8a",
+          "destination": "migration/reference/open-workflow-agent-adk/.github/workflows/dependency-review.yml.source",
+          "sha256": "ee6e8686b17fd2814dd6c43e40e016ffa353ac842544328fd61018c9078437dc",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".github/workflows/extended.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e76166b71aa4344c05fdb91aea1789c2c39bde03",
+          "destination": "migration/reference/open-workflow-agent-adk/.github/workflows/extended.yml.source",
+          "sha256": "aa4820e66f8357738dcc966f656869d3298c318dd5ba666d96728754fadafbd6",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".github/workflows/release.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f0158fd013c4d1d60576e0603cb2dc402036276f",
+          "destination": "migration/reference/open-workflow-agent-adk/.github/workflows/release.yml.source",
+          "sha256": "2d99f03476ed128cbfe9928d0258057e6e98f7315bbfa9ed19bde57b21d03f64",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".gitignore",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8f1a76cf95a15749341e8d18da746514d0871da4",
+          "destination": "migration/reference/open-workflow-agent-adk/.gitignore.source",
+          "sha256": "3a4f2209252b6787e37ba7a94bd4f647e631a72e8f97d032f0d2fa06dd5fc83f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".vscode/openworkflow.code-snippets",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "cbc3d7864941b318289c4b2668c427054ef0eb6f",
+          "destination": "migration/reference/open-workflow-agent-adk/.vscode/openworkflow.code-snippets.source",
+          "sha256": "0ffddeadb71abee23627b2188f7ad27882399096fe163b1c72d80df6b07d8f9f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".vscode/settings.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a6b41dd75aee6ad9baa1ce6e48aa2274c04b109f",
+          "destination": "migration/reference/open-workflow-agent-adk/.vscode/settings.json.source",
+          "sha256": "44231a2fea30f308866f91d622b7d41059578f3de2a52a3f7721e55e5776f616",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": ".yamllint",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ff1dd831552f513afeb3e910145cd2a952ba7e5b",
+          "destination": "migration/reference/open-workflow-agent-adk/.yamllint.source",
+          "sha256": "e30179033e1a8b47ce01e7c41267d28b06e4c8da7417fc7cab3ec1abc4e359d7",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "AGENTS.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c8fe1ebc5a7f6cd1fbfb74e5c31fdb02653ade20",
+          "destination": "migration/reference/open-workflow-agent-adk/AGENTS.md.source",
+          "sha256": "e8bc4cf9bcdaf232940227c3044adc026e574dcadf11f22ee0865643fc161a49",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "0649159a0cac144b74a6d8d4e94fad0ca0198183",
+          "destination": "migration/reference/open-workflow-agent-adk/CHANGELOG.md.source",
+          "sha256": "2fd2475e9eeef53eab689645f261cac693389094452acae03f799d6182ef33a5",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "CLAUDE.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "02f19c1a61d75da8d74817ab374dde2e81b980a8",
+          "destination": "migration/reference/open-workflow-agent-adk/CLAUDE.md.source",
+          "sha256": "0475d26166f839d3c48ec858600b1d04cf26b64ce24495c95a03aca73b593c89",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "49c3e41600e71dba32e8a2d220efc1fdd85eeb7b",
+          "destination": "migration/reference/open-workflow-agent-adk/CONTRIBUTING.md.source",
+          "sha256": "d74f2ba013261b5d878a43b023a82905a5966f6bec3b52c469c42fc96c1da355",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "Dockerfile",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "0d268e2cd41eecbabe4ff2ba03b3375ddeb035af",
+          "destination": "migration/reference/open-workflow-agent-adk/Dockerfile.source",
+          "sha256": "262fb42af111243322af5c7063b6dd374da09b3710259581bcad33b09628c38a",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "LICENSE",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "712f32389ec8e04434989dd8110a6b6948bad826",
+          "destination": "migration/reference/open-workflow-agent-adk/LICENSE",
+          "sha256": "7ba5977265a0932db6fdb61f98e23a864cbe74dc4b1bcc03e95b6967bc0872da",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "README.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "0774b8663ed4b1bed8b5440ff036bf09b76097d7",
+          "destination": "migration/reference/open-workflow-agent-adk/README.md.source",
+          "sha256": "cb62e87809733276b47cde8f3201c616690f28bec057d95778773b8a2eec9926",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "TODO.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ff064a234839c5410f788a38c0f749b4e0134dc2",
+          "destination": "migration/reference/open-workflow-agent-adk/TODO.md.source",
+          "sha256": "cb5a8d08723fbb57c2a92b3a1c8e274622fdaf48574f2c71ef52350e4b5be3c3",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docker-compose.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8413e5a0667be3cc8f23756a77ebcf0cd58774cd",
+          "destination": "migration/reference/open-workflow-agent-adk/docker-compose.yml.source",
+          "sha256": "6ac29e5932893782579f63881c4030ee9b1edb5b47962001d02b06dc0c8ac8de",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/decisions/0001-agent-characteristics-key.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a42f7e89098677d494647acde6b8ade5ca14691a",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/decisions/0001-agent-characteristics-key.md.source",
+          "sha256": "962fa557d0bffd1d2004864e91ef7d674b53c975e8d2f55005b582b04d41611d",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/decisions/0002-jsonata-engine.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "212b1da3be2fcdec02d981b347c472dd6c57fc38",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/decisions/0002-jsonata-engine.md.source",
+          "sha256": "c95acda999a468133681c53e0cc5b5e07c7f93c2a366d34f06de29efd261b828",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/decisions/0003-fork-compete.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ebb8f9a02890712775fb973f5a768fc58f0781b4",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/decisions/0003-fork-compete.md.source",
+          "sha256": "156b644d2841b17452bd9937c15eaac3933ca91dc8781a393a649b95be700ebd",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/decisions/0004-try-catch.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4492f8e52f7cf6412e71212d4218c4499a0328fe",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/decisions/0004-try-catch.md.source",
+          "sha256": "cfd9f06feab77760551070e3a9b58983da517db4a334a609bc89ad09889c0c6f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/decisions/0005-model-reference.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "360744643de3eac05b6afc30010ae864f0b07c81",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/decisions/0005-model-reference.md.source",
+          "sha256": "14cb0da6a979813d62c01f7cfb25efb24162b2d2edc30c61537bb86997d6cb58",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/decisions/0006-memory-backends.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "1dbae3f922b38f8b971159feadb1b2c4468ad192",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/decisions/0006-memory-backends.md.source",
+          "sha256": "345c6c89eb657267ac8377cc2c0580eebde40ea59277e3a3dbee85638bb132e9",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/decisions/0007-provider-adapters.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f88611fa0d7484c511873fe56513abea690f52ad",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/decisions/0007-provider-adapters.md.source",
+          "sha256": "010fa06dc7717f18b64ab0bd5e651bbd9f6b92e2a10945e61cfd1e52762e5c2a",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/decisions/0008-workflow-flavors.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9f2995439ea61456a6009f2c68b546b81ea5109e",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/decisions/0008-workflow-flavors.md.source",
+          "sha256": "0e19cd6119fa85bed66868c353eec2321c68768840728ec36eaeff0b4a0a360a",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/decisions/0009-postgres-backend.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "073ef85cc5630744b0cf36109ad2d045b612b13b",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/decisions/0009-postgres-backend.md.source",
+          "sha256": "0b9b3cc2b4615ba626a6f503468c5f0b47b8b36b2a12993d0cb77e6330f53a3e",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/decisions/0010-security-hardening.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "59ce607234ba5041ebec47e18869a08c7807b6b2",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/decisions/0010-security-hardening.md.source",
+          "sha256": "0930700b943256abf3a2c329590a002649276cb309a5b229375bb5b0899dce10",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/flavors.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "fda627505a913de101ef9217870717376f30f060",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/flavors.md.source",
+          "sha256": "2627a288f065c4d2b07d9858e6e13b01a1ddd4e2d680a62f543f0ab9a3289b6f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/guides/editor-integration.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c18b1d34b87e70f1a3112ba889d09afcec9654c7",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/guides/editor-integration.md.source",
+          "sha256": "220f757078b754d848b9d5a5a82eeee50b4ae4f1b5d8b543f82bf4f6db32b54e",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/guides/generation.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2d40b66c7593f99b32e3615a719c7b1dbf76a9c5",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/guides/generation.md.source",
+          "sha256": "3557cd5ac73f7b39524c2ed01a66cb1f2130aab448d55241505a1223612fcd20",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/guides/upstream-sync.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "40b04527ad6cf5ac579e1f06d6f654db17811127",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/guides/upstream-sync.md.source",
+          "sha256": "c3bb11e0565ca1f92ce5f85f7e96a02f69d4b4f432bcfb362a34e5fb2eb55226",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/index.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e76845704fc435e626b05e317fc49ae9005b178d",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/index.md.source",
+          "sha256": "a4304014a166a36de9a01abf4d7b431f3156f96ba6ac699703dd91f1174caa9d",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/proposals/0001-agent-characteristics-upstream.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "53afe1819e9e0dbc7cf9297deb85fd95366007b1",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/proposals/0001-agent-characteristics-upstream.md.source",
+          "sha256": "18cbb37163b40ad4b13de608baca50cef51f1acac268dd22b8e5dae6f111d1cc",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/proposals/0002-conformance-review.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e27bb69db67b987deb2ad1bb6e3cccbae9cb16db",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/proposals/0002-conformance-review.md.source",
+          "sha256": "1e15a4fb693c2f32007657111f38914c9f2a8cc06734a4dd1f4331fb880fb5df",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/reference/architecture.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2004c3debcfc0da2fd5442ed5b436a54e0244dfb",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/reference/architecture.md.source",
+          "sha256": "b099237db02b18f8514033a345fdbd73bd92bcb7d1d42821978c24bdc148fdcc",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/reference/configuration.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "bd25e874a236e90683b1ec780e3a6cf348d8fb33",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/reference/configuration.md.source",
+          "sha256": "d4e911739b3343bc7fe8b7968ca459768db4de13fa9510a9dd0de6f242f3aae1",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/reference/extended.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8933819697185314b7fbd32390c1e5d8f3e13916",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/reference/extended.md.source",
+          "sha256": "606f140eb7f856011cff754c2c61980e3c8b4239df8a5fbd15a72d23ee89b3ae",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/reference/extension-spec.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "0391ae2b511a164e4efda5b4b33dacdf7c314cde",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/reference/extension-spec.md.source",
+          "sha256": "b3d3c1916d49b204d32b19375fdac4b5d373ef4ce9c443d22fdb29793b9a1bf4",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/reference/extension-versioning.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f062047f6957da1e6455a1a58ce0520c061833b8",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/reference/extension-versioning.md.source",
+          "sha256": "3dd6f58515ea671551d62d38cfa142a9f6e3460a147895aa377df298c28c6791",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/reference/security.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3655077149c33958fe167e521279474f2534c206",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/reference/security.md.source",
+          "sha256": "9ce97d0240cf7b9d17872814d0137846812efce229cdec59e2c9ec28d29b8480",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/reference/support-window.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "cb8ead7476b5a3b2a915d574c723f2b7959f5110",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/reference/support-window.md.source",
+          "sha256": "1c810f7c6b6a4d278667564c92c89fbeac03ea111159d53806c2197b094e644c",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/reference/task-coverage.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4fbc27fda9e5ca5d62b266084a821198982e3419",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/reference/task-coverage.md.source",
+          "sha256": "03b7abbe1e7783becbf3dfd653f8fe34e59eefdcb1d94d9016990372f0f683f8",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/reference/type-discipline.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "815168f9a3ae7bd622b4f52f42632c677611747d",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/reference/type-discipline.md.source",
+          "sha256": "e88105f872d07c0f14723bb86224f567ffbe32b9d486456b6baab5de8b49b392",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "docs/schema/agent-characteristics.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f83198e3c021e3fa34011730f9583ae4635b1e19",
+          "destination": "migration/reference/open-workflow-agent-adk/docs/schema/agent-characteristics.json.source",
+          "sha256": "5ca5b225cbd5a44ecfb27fa4bfc8a1436ce5d281dba69c0f258e6c0e4cadec05",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "examples/README.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "736a8b5e5c2b23af8ab1a4b4d0ec2326be04b703",
+          "destination": "migration/reference/open-workflow-agent-adk/examples/README.md.source",
+          "sha256": "c6d636aad3be718b69189871e13b76b88960bf67b08e4ac07e6acd822e91d2e8",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "examples/approval.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8ef3f1ed8d3f13900c4e69f2dff18762b93d0016",
+          "destination": "migration/reference/open-workflow-agent-adk/examples/approval.yaml.source",
+          "sha256": "bdfd36eb979aa0e11de608b35bcbead24932ddee582506aa069305be4ff4ed34",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "examples/echo.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4dd2924c848ce39d0b3e4b16ef36c9d46241cc85",
+          "destination": "migration/reference/open-workflow-agent-adk/examples/echo.yaml.source",
+          "sha256": "8c11832afa877a1b07d1aa17df6db95ea62d2c34150830d664f8ddfdafea20e3",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "examples/gallery.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "959564a9359c192ee238d9e2ae143d95cf752e3a",
+          "destination": "migration/reference/open-workflow-agent-adk/examples/gallery.json.source",
+          "sha256": "249d4397ecc9da214c6527ca371c04068a575558201202048f150ca1f1cfbcce",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "examples/hello.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ebde0392c9d77610ee72868801ebbb578855d324",
+          "destination": "migration/reference/open-workflow-agent-adk/examples/hello.yaml.source",
+          "sha256": "9c0be191eb817556c7568d0fa33a596638921173a903a2b25e61bc79f104a556",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "examples/multi-agent.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "66009e88c37bcd6388cacedc0df7cf85877705dc",
+          "destination": "migration/reference/open-workflow-agent-adk/examples/multi-agent.yaml.source",
+          "sha256": "4fd2a7deac2b6f760d5b0128ab80b1063835fe5acc0e8f0f1058833961d0fff7",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "examples/rag.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "1e46e05bd6725cf747d8cf48e756991bd22fee90",
+          "destination": "migration/reference/open-workflow-agent-adk/examples/rag.yaml.source",
+          "sha256": "d0116ecee2dd536f164a68c49e7084b7b367810c42ec5d7193ae7e1cd16bb10b",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "pyproject.toml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ba446bedf6d97ea58d17fd44886e807991e0ca23",
+          "destination": "migration/reference/open-workflow-agent-adk/pyproject.toml.source",
+          "sha256": "4dd4973dbcbe93cf4b92eca1d2dae55164dc400a438280d57b34186217ccacd5",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "scripts/README.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e98ae445f2d6a1b58b960177e91d94e7546d3d65",
+          "destination": "migration/reference/open-workflow-agent-adk/scripts/README.md.source",
+          "sha256": "25b86cc323a1014e4528909de9057a8c5cec747fa2756ab56cb1293c9d00c417",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "scripts/check_mutation_score.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ee52edef0bce4d5665c844691902d54ae8c56c6b",
+          "destination": "migration/reference/open-workflow-agent-adk/scripts/check_mutation_score.py.source",
+          "sha256": "f23ca86d897111e042b152ccf04298092dbb3f64b50f2131175239502afc0c9d",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "scripts/fetch_schema.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "59ac144f8719c1339249bb7d2b989ce61158adbf",
+          "destination": "migration/reference/open-workflow-agent-adk/scripts/fetch_schema.py.source",
+          "sha256": "ef01a0c56c3ee6b4abc1370a28a39a716fef02ff6c403cc1ff3e5c13fc83887b",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "13cf5048865e535e36526fe49a7d68b0d8210ca9",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/__init__.py.source",
+          "sha256": "315656efa0c9a681bc01337c9cabff09921b4550551557731048f76b95247412",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/_utils.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "52083e11d64ef7d6b62d8ae6b11aac76a5cb4beb",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/_utils.py.source",
+          "sha256": "e924f4642eba7dd3278e164ba9f6a1cd846d3a41d75c93bbbc3dab5ce46de9e8",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/adk_compat.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "bc463524420c5da2e4eb080954dd6ce11a8fa58b",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/adk_compat.py.source",
+          "sha256": "d1d48bf53390793e2e3ee4f466fda5dfd7f276b26980ad960018601a8f0a5b09",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/cli.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4a6aecce846b46962413b72b756ea7615825edf8",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/cli.py.source",
+          "sha256": "3882028ee2fdd60cce4abba6095c295a2f5958009b5263b7569c59dc60c7f932",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/config.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a29754e7505864d19301117d401efe9f90794b4b",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/config.py.source",
+          "sha256": "cf44e2be7b5e9d9456c8c1875be5aba5019c36459aa73fe5b602557bbcd7e109",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/devtools/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/devtools/__init__.py.source",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/devtools/benchmark.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e3dea9388331249c4a7d50f146deff863181eb87",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/devtools/benchmark.py.source",
+          "sha256": "2d43eea9b7ce3845d35b3ec69269520e11003608209e5e97c2204353fbe730f6",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/devtools/diagnostics.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3f42ab8379f79e8b3eb4e67778c750bfecd7a364",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/devtools/diagnostics.py.source",
+          "sha256": "dd6402bb21217a629fff7a3c238118b4cd2d5f4799517b63d9e4dacad986c989",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/devtools/diagnostics_server.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b254803eb21538514c44466b8f1d9a67ad18e6e6",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/devtools/diagnostics_server.py.source",
+          "sha256": "2564d924f01f061c6c95b2091ee8b738cc15c20161d1c92bbdf322f2f1144a21",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/devtools/generation.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "34f6bcb02c78a1e09b185c8781d338f2da86eadd",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/devtools/generation.py.source",
+          "sha256": "cbedd80fc1ec6b7ad7cee473015267af818e17ff07b1d0f6143ed74dc1ea7e77",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/devtools/optimization.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "192b4db0f19c5c7283e00faf71362f23f2dd0c1e",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/devtools/optimization.py.source",
+          "sha256": "21a3b4e889365f4d254a27eea6597f1e8405a8f419746e119c686db52636ebd0",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/devtools/patterns.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a2e993adaa4e6f36d96f9c261c10753c35aebc5e",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/devtools/patterns.py.source",
+          "sha256": "55cba21b292cc698910bcd8e0e1daa41713997caddd4c2ed029b5d76c89c51f9",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/devtools/plugins.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d5a23aeec752d09f83efa33600fe48a3801b782d",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/devtools/plugins.py.source",
+          "sha256": "501c2fad2b2158be19f2b78e88a4eda0a8e1d3b13b0e542be4cc883e451b57d2",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/devtools/portability.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a1f72b61972207b3190335559beca2f2ad1ba36f",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/devtools/portability.py.source",
+          "sha256": "051ceaba1716f09276023b20c6598261f830e8b494ed26e0c85bd1ccf9dd4b8d",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/devtools/usage.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "78c7c0d2bb58afda687bfb434a2793dd38e3e963",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/devtools/usage.py.source",
+          "sha256": "dec389a3d380fdb582f335a9d425e54bca94b39db1c8509201d3154993eee1cd",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/devtools/visual.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5d0f533881bd554b3c1f34adac42fc9c39297e43",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/devtools/visual.py.source",
+          "sha256": "746493a9bddcc2ccaaa9cad0b0fb8dfeb70ae4112083e9e801c60a1e81e63def",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/durations.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f77f79d6488f1b8f2f9667eb5b77dc5c9b39a570",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/durations.py.source",
+          "sha256": "2e7f938163846c1c7bd55d9d79e4d3dda20568967d528f08cbc6f85350d7ed94",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/errors.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "1a9d6da6a467c45b752db7b78d1ef3ad04022809",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/errors.py.source",
+          "sha256": "f0555c566cc9adefc545e2f7e2e6278783112c8146052db592803827c8eae7f3",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/expressions.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3edccbf6547fead4f82d7fe91e0f6622b87fae50",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/expressions.py.source",
+          "sha256": "6d1c5a957470e8a5833abbff8184cda2c5bffac2813c764f7b4c2eb73c99424c",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/internal.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2412b36da1ed6429b28df8295de2c023ebe002ff",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/internal.py.source",
+          "sha256": "942d3700776a228286f595cb7e1862f5e615bab11d4ddd686079c045e79f417e",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/interop/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/interop/__init__.py.source",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/interop/exports.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "1d5cafca62064fb6e5a15e26eedec4dd5f38547d",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/interop/exports.py.source",
+          "sha256": "e2268a2a0fe99b8b676ab038bceb14f12e844deefad90ceb0e5bc68dced97d34",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/interop/importers.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "457b19248928ade62563859f4f37267e7c4939f2",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/interop/importers.py.source",
+          "sha256": "63cc9a9156aa623fd5fb580c39f0297ba2321208c4fce918d9b18d1e0ff90900",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/interop/openapi.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b7201f45589570d7ea3bd574f0e8c74786c44106",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/interop/openapi.py.source",
+          "sha256": "ab1092167d6da0e528c2430e39435a8668dab339fe9ba5d2af2ebffd318951c8",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/loader.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9537be83f33ea4710219f7ba9ede2b71659d5483",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/loader.py.source",
+          "sha256": "d028b0b86369e559c5ae2cc66a8b921134313a6802a4955e859051bf1cf5abbe",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/models.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5e5ed1cdb0fdc061218eb12405e068f724787f17",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/models.py.source",
+          "sha256": "5b208da894980e756bbb227fc0130201feb3b5e671c2625082fa1ed50e4369a2",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "dfb46c446b51679961d4c5469c14d59fa2af1a0c",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/__init__.py.source",
+          "sha256": "81c449a33831c552fab1bfb2bba603f88dfadeff0286d39efac3a8e20e1a5927",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/backpressure.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "cc8f121da1aff023a12b207f8fb183baf5e67922",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/backpressure.py.source",
+          "sha256": "56c57f6fc79e4eadbc2389a73c58f70c932e3691f9e40d4452377df939059119",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/health.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "07a077152d2ff7878c31933d6967df0c303ca8f1",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/health.py.source",
+          "sha256": "e044016e60ac6cc5594a27fe195b19756c6ceace72c4f568f5f9a43130d4fdea",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/history.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6e42b3896be53d0327deea38b69b096d9682036d",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/history.py.source",
+          "sha256": "89a0da3695dd53e98f1b21044835fe8f9b240c54c9aefec56566d1811157e5f5",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/logging.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "aa91d33b8656bd3b031701ba2e47d710505d1ad1",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/logging.py.source",
+          "sha256": "f95aa5f5663a158903c913ed21a3e546bf8b30d97f1f56523f3dbcbbc192086a",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/management.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "fadaacbf61059f51ea9774b028bda5cbf2f43651",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/management.py.source",
+          "sha256": "308929affd356bf5985f523874bdff10a8ff5061424deb7bcdcd466765f57702",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/memoization.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d03883f2483ca068578cc129b4d747e40f4106bb",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/memoization.py.source",
+          "sha256": "c3b491dac8afd25dc0c6a28ae868ea17f7701b566e2f4c38216f4846f4848219",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/polling_worker.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "0af7c6e7087016c1545fa561cecf0f30062f9e14",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/polling_worker.py.source",
+          "sha256": "d006bc1debb23ee036351eedacd3ce8d79843c51bfc1699fac2e65a6ca9583c3",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/postgres_history.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9886d729cd44926d48c2cbeebf4bfab8d9ebe487",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/postgres_history.py.source",
+          "sha256": "2392abe50f5fe335aa23d704ea87a1e64d9f5cec25ed8c195947de1bac8db593",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/replay.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2c496982cb1ab9a316cb7cb623805b82c5d23fa2",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/replay.py.source",
+          "sha256": "99e76ca6f5ef9c46328145de036c338100252135e6729c744a538e1305f8c9ae",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/schedule.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5c086b9debd8f8e79e7fa4c068ec2c79316ea927",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/schedule.py.source",
+          "sha256": "b250d1338780b0e434d6186b99b0ece23c9f337238c68f034dbb7ba0bbb46a53",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/suspension.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4c82286ac9d072f89e15a92cc00daf465a08486b",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/suspension.py.source",
+          "sha256": "d2da077c22c36c2e8e5b84915c53ea96c4b9cf4a05ad071008f904c97d3fb939",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/telemetry.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "0c4702fe94816d0f5bc6990fd035443b3acbea38",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/telemetry.py.source",
+          "sha256": "650ace918acb3970b4bc19490d00746098cb7bbadcf83b8908ac9e14b6f7e92a",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/ops/worker.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "58aa50b090c748824e927751d41a2328d668333d",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/ops/worker.py.source",
+          "sha256": "2edf05c7061a8a5e8535b89d4e9482b399a821e9078929294692e42d57d8b126",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/py.typed",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/py.typed.source",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/registry.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ebb6fe38e12a9c2a7af04ebcd89c7ff6cf0b1e8c",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/registry.py.source",
+          "sha256": "00b5af63e2b8f2972d87980d3d92d12253ff761c9f98cf40c181d0fd78b6c1e0",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/resources/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c00450cea90317c018b1f1b7e66923b339c4e1f3",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/resources/__init__.py.source",
+          "sha256": "70132ffc67c896d5f781e9a7a951624539aa209726bf9f7b6792334d0e5bc9de",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/resources/broker.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6b56083964d3cb6b01074de154414387118cca5f",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/resources/broker.py.source",
+          "sha256": "65d344e60de396a40403a99923b29bfc7cd9742071df6d505f8ca35b863006e6",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/resources/catalog.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "443cbf1c517fc3cb945211934015e1675cd61625",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/resources/catalog.py.source",
+          "sha256": "4313cec1e859870553c3a4f724138ed937d114e09a59321e05b4fe10b189b033",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/resources/memory.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c3730b2fbdb9c8674c5ebbfd70a9a791628a8c78",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/resources/memory.py.source",
+          "sha256": "e87f7119c8c7deb3cac5d067594a385757c85a8e6cdd1c9e4f1ac19233f72833",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/resources/providers.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "aeb5a9f98b7ee8a062108395060becce54696040",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/resources/providers.py.source",
+          "sha256": "54799faab55cc4885e85dca2568851e2518c4702d42f50aa16c8d5970383ed21",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/resources/templates.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b7e82a1a4dcafba192dd80bf1fa9f12d677f3816",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/resources/templates.py.source",
+          "sha256": "faf017b14a4467e4cc109ffb3e239e96c60422588435103a631c4386615686a3",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/run_config.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c18b8a3e5eb5b10c0a2d3410064cda833226fb09",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/run_config.py.source",
+          "sha256": "598d94ed1d059af125e55567b8eaccbdbf5d855d7ce5d76ccb29e273569cd01f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/runtime.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b2d7f7094d4a3825c8b6581bfeb63da1af29e73f",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/runtime.py.source",
+          "sha256": "ab482b2b26ca67aed088d0b787d0600ccd3ad0d9d4e4961c276d64dac6ed9cf8",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/schema/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "44b36e4c0a0f25f80a5b376805b204732b6c8b15",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/schema/__init__.py.source",
+          "sha256": "968235619334b1a26ec8c080f59ce4f25bb3a29f06dec3586e656f9d656cfd45",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/schema/vendor/1.0.3/workflow.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "63f23a15880ae6d4b8cfdf950071b98fe79ae68d",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/schema/vendor/1.0.3/workflow.json.source",
+          "sha256": "17ff9c7fbf9a829b181d5b5284776aa930aecd892968e367f211729b3f5ff062",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/schema/vendor/1.0.3/workflow.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "adc380a38246c059ee84bd6995a10a53175e3334",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/schema/vendor/1.0.3/workflow.yaml.source",
+          "sha256": "628f83fa5cf3473929bcc47f1541556ca6799d3f9d602b5928f264e4a7a76742",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/security/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9ae30cd954d79338626215879118fd08d19d94fe",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/security/__init__.py.source",
+          "sha256": "e5cead34ac461ba91149c487ce1dfa64f7085d166c48b7bafdaf889fa9708b2e",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/security/access.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2bd38502253e3fdda4bce6cba9dc473f15f8ed0f",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/security/access.py.source",
+          "sha256": "d8a2d9e0df917f8405807048d6f81e881bce67905b5773e93ee7826b5b9ce245",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/security/audit.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "24dc054b8b52ac3a38efd9fa172317579c059ac3",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/security/audit.py.source",
+          "sha256": "317940c1f92e21edaddc7263df465c18bff99fb595a4097334bd14658e93e3f2",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/security/auth.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3c8c266382f7468ea422f312158292b55f659214",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/security/auth.py.source",
+          "sha256": "4fc2d5d13bcf01df24776c69987e5a7f55949f971c8fa4ce2041e272e07b9943",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/security/security.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "08ee7850b9f9b8fc882b51236727a06aa9c08c2e",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/security/security.py.source",
+          "sha256": "049d3b07511cbe2c68a3785f73ddd55368dbe62c1adb1f96435e67a8094c1147",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/security/sso.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6b7332b4a90b059a86301cd5651937d3b5b12a55",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/security/sso.py.source",
+          "sha256": "5bcfd0280c5c91410ce12d7adde7733589ca671e1be75edc63495df700fad4fc",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/server.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "96bd522c20128647e29e920d7fe3be1acea0cc6e",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/server.py.source",
+          "sha256": "29f327d976c2a64c9bdb2dd5e71f24bfcad706c0853fbb9acbb7a21541386fa8",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/state.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b6f925eaf165fdc759e5346db3351a008fcc93d4",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/state.py.source",
+          "sha256": "5439780182de5e011b37ec7c0b9d46936ba8bb7ba9016c6927f9fa49f68debd2",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/suspension.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "30152744bff58ddcc29306e9a892da03d1a7ab02",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/suspension.py.source",
+          "sha256": "f9f00e109e4216f46864fdb90fbfda7186a942b617603bed9c134a654a0f0068",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tasks/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b90eb7a625215bcb5c010f923a1fc8c684383641",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tasks/__init__.py.source",
+          "sha256": "fcec8437c33ffbe7f9613b8a797f8dd6d30e235a0288eb9c03b87019151ab8cd",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tasks/agent.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b91c0e03a7c1aa77a08dca1e436567928fc25803",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tasks/agent.py.source",
+          "sha256": "af5c1f3e8c4318fbdb6ecc1cbd7bcd61c0008f3c701743a30a72e5a1186e5bc2",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tasks/base_semantics.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c8e5fc3571dc0dd4e61ef643c910960d7e40b31a",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tasks/base_semantics.py.source",
+          "sha256": "9609272d53cc4abd6f2956b34c20becadf374c2f08355db7bc9ae8ab30f7e295",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tasks/call.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ba6e28aea914f4d54c103affa45defc5dc5a792b",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tasks/call.py.source",
+          "sha256": "b2c6713d4ad5914a082892c1d08aaf2b61fbeeb52a1541eb158860438108feae",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tasks/common.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ce3423c0a7b773891eb73fd04bf8f18cac23e570",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tasks/common.py.source",
+          "sha256": "b1bd314a9acebba9b2e9a8c7a203c6e3a7be9177d9ac7602f8c1625e16064f6a",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tasks/control_flow.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f9026a218ff350cdace9991b13f659a1a8a64e68",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tasks/control_flow.py.source",
+          "sha256": "164404bd14d2bd23ecdea99e1880a0ebcea0752950fb9b7f00b9bf48203527c8",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tasks/events.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "15b3f57f7a895ab0ac313a45382eea2ea17e7554",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tasks/events.py.source",
+          "sha256": "d9ddf3e77640c3e6a2b871808ca338d93e958066be1fb05d359d47553a74ca07",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tasks/run.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "21d119c38af6ec47cd1af2699f9a796c7fe0d9c5",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tasks/run.py.source",
+          "sha256": "296edc85c0b12094233b5c70f5e4fa951a09d3fd51eb32d20b34cc980853def4",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tasks/simple.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7928915e68afeb3a86b7e469cac837fab5d1bcfc",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tasks/simple.py.source",
+          "sha256": "33ce7bdbbebf55249c7d85c8155634937a68112bc7b0545516ccf04330903477",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5d1bb7afbcf62c517fd19f8731ff96e6cee890ee",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/__init__.py.source",
+          "sha256": "fcab4a25f7ef0938d95bbe0ab639617e19413402d3c0a4f00c5672eef990648b",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/benchmark.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "1111302b86f24e4b756a80733ac9d41b949eaaf3",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/benchmark.py.source",
+          "sha256": "debdd7f02a97cd950495a4f23db1b178b6e0009faa8207e188e078cd439d9ff3",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/diagnostics.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "fee1c074c18f64da5e91846e715411625bff04f1",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/diagnostics.py.source",
+          "sha256": "c8cdbb6cfe1c8a37e0f8a46fff1267cb5b2691b9cf572b8959084c86918edfab",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/diagnostics_server.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c6915aaaed714aee4ee1f3ff648776884157c698",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/diagnostics_server.py.source",
+          "sha256": "b2b852941822de8889f99f6a923dac66dc5fe278eb30a204b473376f64a17dab",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/exports.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "31e013adb6425ae0e38c8393ed0c7757d92df087",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/exports.py.source",
+          "sha256": "599aef501d1e7897c9884f7008d177e7fac4ff68ad03e76f02781b47810f50b6",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/generation.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "927fd07092a6c81f0acebc1e78b6e237d2968da7",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/generation.py.source",
+          "sha256": "85659bdbd18c7049849ac5f105e9810aa43aa262961b45ef32732d4e447c7a77",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/importers.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5b124f1efe4205aea20c99b39e02ffd1e8501028",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/importers.py.source",
+          "sha256": "6a95518da30134343707f5cbf9e65b01e3a25c66a8763831c35a40dd01a40264",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/openapi.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "88b9d4a814a1360df6e6d3d2caec9aa30370a0c0",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/openapi.py.source",
+          "sha256": "b78088c1ad46c1afd821f2c38493db3700f0fcd58a1c659a76578c2c170fb8b8",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/optimization.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ef262f58dd1477aefcd32a992ad17a048d0f5518",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/optimization.py.source",
+          "sha256": "c8c74115756a0ba85d41209e5048b8d34f8498c87199d99e2a0e7114490cef6a",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/patterns.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a11c851484ae45558530b7f66943924ae4df69c9",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/patterns.py.source",
+          "sha256": "a441d500e9a239f274cee165546c10840c4f9b60e45ed6b4810c29fe42563c7d",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/plugins.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7b6daf5940e82ae17db6eae089f8cd78244faf2d",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/plugins.py.source",
+          "sha256": "3b69b19415175107ad54f6ded1244ae397f4c93ee54f4285e8d4aa8bc0515ad6",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/portability.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "886defa97859493a3786b1ddb5682a7299962c3e",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/portability.py.source",
+          "sha256": "400fe0c96e113cdc6ba9478c57a4c45fed2056ab91de7a38d511264f04e5a940",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/registry.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b9dadb09d18e49ab7123fd89361da5a436005c87",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/registry.py.source",
+          "sha256": "62cf94c148ffb6a4a8d16609116e4c390206473bfcb8d21ed0a103d3135bc494",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/usage.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6ffcf94a78be137975ddad7a2dcccf9cb07dd114",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/usage.py.source",
+          "sha256": "19972e3496f197bb705771d1cc60532c7cb255d4b0c55425158dfca434a471c7",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/tools/visual.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d0277e901d6c11688e01cc0991d9173107d4ce29",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/tools/visual.py.source",
+          "sha256": "2b6fa80883c61029d65328afa74bbe485d53a4bd6ea4aeaa2134c71ab54f449e",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "src/openworkflow_adk/translator.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f4b211149cdf04f72bc827e1b37bdc116e77f0f0",
+          "destination": "migration/reference/open-workflow-agent-adk/src/openworkflow_adk/translator.py.source",
+          "sha256": "7e2c8442842acc7fcff687bb88e78bd818ac1433568e391efc5fe59ad4d3d42e",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e87bbe7b1e0723cfc0d26ca71f7fe29da688b54f",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/__init__.py.source",
+          "sha256": "d558903bb63ded4ddbb0b0fafee03dad232856e2d984eee2477a3ffd6da271c6",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/conftest.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "307c214481000eded39b03545dbc355d82206504",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/conftest.py.source",
+          "sha256": "0b207f93abd33081fdea770063c3af85519894717b21cca720b837fd3b1659bf",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "897f1e13ef7b5ed5e5a260603365ad595148f7ec",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/__init__.py.source",
+          "sha256": "afa57e82ddd437d5d8127e6bdddbae79d13d8a4be90f1349a872d31355d3c138",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_adk_evaluation.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2d4fc86b4c272f960bafe25d06c94204ca526cd1",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_adk_evaluation.py.source",
+          "sha256": "5fa2a85a6a0c2c2a07ba76f5ef30db3b81a400e98ce3dc927ce717ec5c676b50",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_agent_builder.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d9617adcaedd43bb87296df554f43bf3a962f370",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_agent_builder.py.source",
+          "sha256": "a74ec80e435d30743dc41455047fc6d93c7607270d1c5989f16306cad9035009",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_agent_routing.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ed9d131078e86a67419a57fd1a0e884719feb383",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_agent_routing.py.source",
+          "sha256": "bb1b555223caf498bf3775749acd63f45a9019099f5b447c1b8055ebc7104b41",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_agent_runtime.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "67a7c624c143250ef5a74c725d6cf9e5f8ac0f42",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_agent_runtime.py.source",
+          "sha256": "a6d00e6cfe410b16f64c83a8fde3ed197d7a3ac21c7f534f4ef343049b4ee7ee",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_agent_teams.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a2a98ccdb16ec9c4da74a0d405adcbe97a49d4be",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_agent_teams.py.source",
+          "sha256": "dbab361832253aeda5aaf5e621a4767ac362dd89e9924724d86f4223d9777b2d",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_config.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "50d0945721f7e11f1daf9711d065327e17be55ad",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_config.py.source",
+          "sha256": "a53f6a42aa01cf0365fd03b1a2ef13a4850a9d88da90ab9519f480220026e1e5",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_control_flow.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "32149f6d08d4f549385645942959caad702ff624",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_control_flow.py.source",
+          "sha256": "283b9a93989b7a4bd15ca61ce1cbe52411a8887bc5f0e651afd76b30c61fa637",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_document_io.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d574874ba03f52c61eecd0cc03c1d02874b3be25",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_document_io.py.source",
+          "sha256": "b2e88f4ee2f1791e6303d11a5272be7a4db7d86bf75d2badcb345e3fce7a0985",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_errors.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "929c4a712c46a1019825fbc8022e83c30fc6982a",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_errors.py.source",
+          "sha256": "dab2bcee848529a08b6c924ae95456ec016c8af30c4222d905f0fe917a2e2b25",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_expression_properties.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3cd8b8ddc1e0202d9eb2119877fc9c49a8bddb16",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_expression_properties.py.source",
+          "sha256": "465983db5dff64c4d567dc8e16f46a54f84f26e6cb2aa739ae3852dbdf57d761",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_expressions.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4c49f835f38712496b636a044679e552a211c174",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_expressions.py.source",
+          "sha256": "6e66bd8206253d9f26cba9d014db8355c42b092c818a3a254b31889f3d923cc4",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_extensions.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9760812ad48a28ad4525dc3338526b8bda99e4a8",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_extensions.py.source",
+          "sha256": "b982ddc69326654af4275c750b85cbee7584c231d3f489d5b5af3c5ee9649d86",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_fixtures.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7755967db03af47ac978149b5b2b4e2637ce41fa",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_fixtures.py.source",
+          "sha256": "aee5ddf6d03c7d7bca74842bd943372d01db50a07e7e7447f41289f94449d26c",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_fork.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "1c5224dfeddfd1d4d013d1d6cf2a88269a5165c0",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_fork.py.source",
+          "sha256": "e5a435ea951c1b6a31723f3e576f6dcc38c1f80192fbdc82b87aa1d81d7b05c6",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_human_input.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c8d5e1d4a2fd8ba510f2d98cd28eb9937b953822",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_human_input.py.source",
+          "sha256": "5a3cbd99279ebd6bf6d5b034694097b40c3a9f529a32985c93ee459cb175f1ab",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_interop.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d65a93c22a2b2f748bb86d96ba97ad253be1c4dc",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_interop.py.source",
+          "sha256": "f9ea126c3118e6d78a47da0cdf920f7d6526954425fb70ffcd411a9bb37352b1",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_listen_consume.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7d056392dab75088e9de1bcad1c3315437f25dd8",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_listen_consume.py.source",
+          "sha256": "66ed34484ac943489a31281799fe2f0e20575a037fc2e6be741e33ff3e1f7138",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_listen_raw.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a92ac5e8e13b859ab5c21c06dbcbe3ed04cea7f8",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_listen_raw.py.source",
+          "sha256": "d6885563dc858850093925a0a5b6d360b2ed7595d803b699e0e9cc3ad1c7d4b0",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_loader.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "faafb947ff4572adfecf951d2f1e1be46fd93de7",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_loader.py.source",
+          "sha256": "ea48dfe5601f1e65ef731a6101341ef18485649a53cb51a2eea91ab93669d066",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_memory_service_discovery.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b948834a8038a456b8ac62c4d1b133ba229b16ce",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_memory_service_discovery.py.source",
+          "sha256": "9b7e3a8919c2f29a6e3aa83c6a18de9aa9d796fa643b6ac62477c5ecc9cfdde1",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_models.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e88142eac99403d03f635dc462abb34aa7f6eb18",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_models.py.source",
+          "sha256": "6385aabd3a8a2c6acace40405529f75764137331331af4aaf74ae1c5c5d93896",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_multimodal.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "79f004fda215538e374fbac62a8c33e147806f2c",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_multimodal.py.source",
+          "sha256": "4172a6ca974aa7b7bd2743c1b5bde4797ccaf616bac53a2ca3f6afd9bf10c05c",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_named_functions.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8fe6688bc98566053638fce0ab7bd9d6ef24bfd3",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_named_functions.py.source",
+          "sha256": "ae8a64c0f46c4296d54e94b081f999089f19162f949fe74192ecd184b7bc6ae4",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_nested_execution.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4c6b64459b19356613645f7151ee40a86684b9b8",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_nested_execution.py.source",
+          "sha256": "f104dc23474839b138f355e35a71741f9b77e8845f839bf30bc1a9777a4b3199",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_raise_reusable.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4b5031f9e9afd6515f815cbe47ae94f20208f0bb",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_raise_reusable.py.source",
+          "sha256": "666eaef78842cc310ff6fe12c369a3e0ea5bcc87583059fed13fa0506697a9d4",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_retry_policies.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7320586c93271f7af8388bc5a1ba207e9e412672",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_retry_policies.py.source",
+          "sha256": "c7aa7cddb3fa40586d0970582c0ccebd5714f0086e3e4a2d9795bbee5f784007",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_run_config.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f2e574a4d29af0246a7634241afbf1b732a80589",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_run_config.py.source",
+          "sha256": "ed35d3eb264b521f3006e9fb825b7d700be6e31e7e296dfa6c25d6e2cc1ccf64",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_run_handlers.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "85546b094eb9155720a97a8b6ef8a71c044e7b73",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_run_handlers.py.source",
+          "sha256": "89ed699c13fa4e24c443616478ec4f9404b390e84ee27a5cabc504d580a38dfb",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_self_healing.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c3b6a4b2d75177ec15df0113bb8a3dea9e46cf40",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_self_healing.py.source",
+          "sha256": "5323565ceacb47b2419bf3ae3c70165cdb281efd1a4afd97b42a2a61456f9a68",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_smoke.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8eb857392ed8b9828ed3c0705ae53ac7d9b4db57",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_smoke.py.source",
+          "sha256": "2b9878906fbe6b8449bca3af2f4299e579e3ea381f5c91c906cdbc64c0256345",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_state.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "297246a07e1776165f866d67ea2e478ae59026c5",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_state.py.source",
+          "sha256": "90599bc5c821a4bbad481507ded8ffe580f90ed8d219578e6d42f3699383afd0",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_subflow.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8d21158fc6cb1ef1c2f8d789fd1bfc20f34f5d9c",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_subflow.py.source",
+          "sha256": "2e2672904b623c3219ac9eeb9a1f129c2a1fcf0f6577947c6196ef3c9498a9f2",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_switch.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3ff7324e02d4425be5c5456bd07a2c488d96857d",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_switch.py.source",
+          "sha256": "5384a9bbc76367eb4ac020e71d67efced08a7121f7f1fc6a71e0c189e24a873b",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_task_base_semantics.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "89e6b62f02fca538fe738bf6ac54c812408b75f9",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_task_base_semantics.py.source",
+          "sha256": "88ff8640e5a0fb36a33274d3c1e1587e096bddf82b677a9aadfa772d07284664",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_translator.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "fc4682138e142b4c4fce0739826f04b309e38ca6",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_translator.py.source",
+          "sha256": "0c399789a034226b4af68915dfb07fc21ecf7f724a913343a5d466461fae8a09",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/core/test_typed_model_coverage.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b52a55d2e35ceded129f945f7df673a8eae60799",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/core/test_typed_model_coverage.py.source",
+          "sha256": "7bdd37cbc3758767a61cf4ce3db38a11698a0a716e70f9ecde1311a8c071407d",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/data/adk-evaluation.test.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "575fdd83ae3fbf753197ffcd0c668b1368b47b5c",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/data/adk-evaluation.test.json.source",
+          "sha256": "30d732a1601e6a5516d114b0fddf1eed429191c72c01848a5ff6007b0c271b85",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/data/hostile_expressions.txt",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b162c08575ca10857b0278351f057abf2e268f77",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/data/hostile_expressions.txt.source",
+          "sha256": "4dfddf173fbb057921c2999642d6afd67a8787cb86ea210176e0481732e5d100",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/data/test_config.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c37f95f01b11d7afcb084ed7f501d291d1fe915f",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/data/test_config.json.source",
+          "sha256": "7da18aa8bcc589b2bbd60112966ab3815935a54c632cbebaa4601adc8f39ff4f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/eval/eval_agent.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b851450c18316d88ecc328a50725dcb0f3d8abec",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/eval/eval_agent.py.source",
+          "sha256": "6a1b576e286290976a9e60c8957f344eb03d02450182b2599cf72e475df349a0",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/emit.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f6421e1e27e3d63fc57d2340a0165a5ef5cda6da",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/emit.yaml.source",
+          "sha256": "dda6f530b23b82fe7eb296d5cbdaa129f1a250acc59f2214ef37544be3edda6f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/expected.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8efad328f4494d673d279a75d4d848cb660649c5",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/expected.json.source",
+          "sha256": "b2634977a7b54f80bc39a5ba56b2a56ea8a8319b1ce5be1e300d0d3e06395ba6",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/for.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "da174d3ee89aa9c24a75e89a724c0c8ca7a32812",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/for.yaml.source",
+          "sha256": "f0941677f2786b5bc9d75c0b56f12032aa4fdc1b062ca04636eec9f2b7d7c6c6",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/fork.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c6ef1efb642744b89b70d3fc4453e6d80865486a",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/fork.yaml.source",
+          "sha256": "27a252c7edcbfb9adf4777466f5b2f39ecb7e592d59ea8e40a0eeafd68f15e4b",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/grpc.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "78044dc7d80a56fe6201306d23d3503ea56a4483",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/grpc.yaml.source",
+          "sha256": "17684f56a11c1bc51b7c892bed96bea8efe8e7ecf516396b8d6154e9fb0f8b43",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/http.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e058191548f97418500d337ca7744239cfe5296b",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/http.yaml.source",
+          "sha256": "90f1303d1fb98a02bc13a2250ed2c1962cadce8c59bce9ef2f73e31c44360b23",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/listen.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5fff123cef3ddcf966cc081499875e9bb60e5ae5",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/listen.yaml.source",
+          "sha256": "a2394635f650c0191d1e2342ab108a9d20e2483c5dedeada71c9105317fcd7b9",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/raise.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "60948f4f8623a730f6f6c855d75fa8319e5d573e",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/raise.yaml.source",
+          "sha256": "aac63dd3362eb8f4df21b90bfcf205abc29e9f998445b0303f6604caff65b7bd",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/run-script.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "77e08c728b29e3fea4be05fd679fef0fb973572c",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/run-script.yaml.source",
+          "sha256": "5bf6ea5fe0bdf21aaece727710bdd529fd28b7ce2b676819ab05e5a179a8ba13",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/subflow-child.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "1006ac40e4b289c1b60fb39519d310bb44d6070a",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/subflow-child.yaml.source",
+          "sha256": "d0481f53c72420b0c92773980753f45f75bed7d0feb0580fe6cd532dac6fca4a",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/subflow.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "900814569d018d51bd14b83f68c62c84b662a3c9",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/subflow.yaml.source",
+          "sha256": "df19b699dfa3fd6fcc6125a0e536a551ddc5e72612c652573b7c5b5f5143d2b7",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/switch.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "aa3178e07a9d25ae487042b71dfbe721184441da",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/switch.yaml.source",
+          "sha256": "3c6189607dac28ac279fc64bb12095d1acf7249cdea315454fc1a3d0b40fc4fa",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/try.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9cdac7ddc69118e11920e2243a48bf337d7e705a",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/try.yaml.source",
+          "sha256": "32cde5f8c5977f6291a4509424ebb25e5237904aa8f0482db88c6fcf2fecb8cd",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/fixtures/wait.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "0d43f1d439c067adf686d06425ba9ef2cde152dc",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/fixtures/wait.yaml.source",
+          "sha256": "65c50631052f9de92d9aeeac79489251f44e6e6fa110adbafea801c6d1949457",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3ccef89c6613b651d3ca6cf7574978536c1301ae",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/__init__.py.source",
+          "sha256": "efff9811ce3556aa36c6ac33deba67025ea859123ba73b42d5a6fbc65f16623d",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_backpressure.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "05e81189b18d39cf124e27092c524754da6c6564",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_backpressure.py.source",
+          "sha256": "0ab313d8909b594a21244e0d075dfd12fe5be4eeac97b61ce6c02e034e384254",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_checkpoints.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5bcef7b1eaaabd805ebe0f4f882c9b6c5b6c9380",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_checkpoints.py.source",
+          "sha256": "69145fb78fb0f21b75f9e12ec20766fdd087d139fabbc91a4891fd910ce6aa88",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_health.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "301a2b65f0a1c0d7d947a9c62b19995d0287f917",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_health.py.source",
+          "sha256": "69500e478ab0336c3778799a188cefa7e95b301d5bbc26238f5cc75b5e9a49b1",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_history.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "77e2218b12c52ad37863fe63c13a986eebf3b184",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_history.py.source",
+          "sha256": "b917a554ae138de8a4392d180320ead01b0e99e02ecf7c4f13475bf4a40a77a7",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_host.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ee60b3b94bf0ef6bf17acc1b74b634889e8ce843",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_host.py.source",
+          "sha256": "c7df1e29dd64129c12d5873ecc79da9ccca00a999c6ace0ce4dc62a07cd8e206",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_management.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "eaaca4061bc4e6d9b2dd34cf7ccb9e35b40c08b5",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_management.py.source",
+          "sha256": "e46090acd00b0dddfe828eb059077a3c14f05afb5e5eb27256c6ffc10e02d326",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_memoization.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5697aec79e31d13b90fdfc0bab570ead069247a1",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_memoization.py.source",
+          "sha256": "51bfcad89b5e95f7221fddb4845eb60f4996b2672c7f65b28d3fa4309ecc19fb",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_polling_worker.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ebf44164c35bd3e4676712f6fdc8e0b1dd9ef5c2",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_polling_worker.py.source",
+          "sha256": "16f938bb954e9f44624d6ced47b49a31f64cb4580e24406dc99ae2c0607e9a7a",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_postgres_history.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "51a36605c179f5457c555507364f6fa77ddd921f",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_postgres_history.py.source",
+          "sha256": "00814815f2c981365ff94fb874ba7e6cbe85ac8504e7b85edc80df1dbebcbe14",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_replay.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ca1cae54ea27c59066b16f681d13affafedf658b",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_replay.py.source",
+          "sha256": "0f89ae36223dedca8e04f868223c4c435a024364bebd0b2586235961cf3f1286",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_replay_determinism.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4e81d251a4a38864bfe0bbae1f8b5f00a485043a",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_replay_determinism.py.source",
+          "sha256": "497df82c986f140eb1a9d12f2ac5ca5626c0879532e6e9bb2ccc4db3b74112a2",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_resume.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c73f910fc1622d5f18afb281fa8dda61714c3557",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_resume.py.source",
+          "sha256": "e8bd57a325b36244cec3aca86eba3b2fe791b277bd19f23454ed78c3e5ff532a",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_runtime_backend.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "283f9852a74d00128646f4bd5abf71628c457a0a",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_runtime_backend.py.source",
+          "sha256": "54a227c84a80d5aa0767d45bf2980c785d1148bcac4c6ea82ea76586acb8ed9e",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_schedule.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d3706b011bda15dcac4f31f619b32f890b65f828",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_schedule.py.source",
+          "sha256": "e6733ea2f3da5fae420c808071f130a5bb5b4bb4b00c641d8581008d07a40a8c",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_session_backend.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6c9c3bb111d6efa2aeca670648dc20851cec24b7",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_session_backend.py.source",
+          "sha256": "29b0953c7ecd42e30041f6da27f47f31d5de2cfbec9f3c83eb3d56a5031d2b6f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_session_persistence.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "921366aba95a5b702f47f8cb558a09056537d306",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_session_persistence.py.source",
+          "sha256": "c9f550eb3ca8097ebdc7d0208587944813782977ac08769e0fa911f6ef650d2e",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_suspension.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e8fe3f48c0837d923994b94f220503ed0ffe8c75",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_suspension.py.source",
+          "sha256": "3037974226ea67391577a42b857c47d7ef84667a40abddf73b235751be5aff3b",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_telemetry.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d2cba476ef806a9d60db764fd43eb00578689274",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_telemetry.py.source",
+          "sha256": "4c74bf6007301710719bfa1ff2a35250ac86a9de6d2998f2aeee9a3c27e9b92e",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/ops/test_worker.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c7d27de8a448f9f4c3402d3f24cd26efeab68229",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/ops/test_worker.py.source",
+          "sha256": "8f682468aea0909ffb3cb337ddd7b5f20aaab84dd84684cb4482d3d152a3334f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d2200b80a4e176f63e75613aeb65dad4bffd32b4",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/__init__.py.source",
+          "sha256": "8a44cef89f2f7fd9fab83fc891be4214bf661e803bf77271d43e2f024799d762",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/conftest.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "12684c680f1181751d0a7f2a132efeaeea79395d",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/conftest.py.source",
+          "sha256": "37fa5c164c0332e2acccc2195f8ccea9ef3008901bf444fc7b6d62c9751c69e1",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_asyncapi.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ae577e0f1daa38d8fb1ec59f3bc3360774ab9e41",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_asyncapi.py.source",
+          "sha256": "fc56c2c2fe95196ed30db34432b666c1bf7fa9b63573d8e4644e8c3b3afc9d69",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_broker.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7b40117eb554d324f0b48a3636623a857d71fae4",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_broker.py.source",
+          "sha256": "1e2ce99d88caee9de25d0153e98f290b981e3ecbf241af741e81b9cbb915454f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_broker_adapters.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "1cfc0019a998b79648db731a333be9b28cfd4004",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_broker_adapters.py.source",
+          "sha256": "172334143c6682ce2f7673bde2002054b9ccfb11026fab642dbbce73e90f65ca",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_catalog.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "dcac0d05153907e280e1458c02ad754f53bfa7f1",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_catalog.py.source",
+          "sha256": "bd79eb41444883baa959dc116ed942f49e5b9684591a489a8364d03bf876e084",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_grpc.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8e41ca60d4dd6fe6a2e79b6c64f61b0960978653",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_grpc.py.source",
+          "sha256": "20e74d699e33dac45fc747b8895ce4dd86c36033e7ae85eab9f77d4e7b3aafc8",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_http_runtime.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "0b6b25dceb0f618721858e7abd6990ed4260e587",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_http_runtime.py.source",
+          "sha256": "f15ba3b408179ef78603ef36c013f4df5a9147b04339cb53e62f46c81b72e0ae",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_listen.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "67cedd8678ca6cbad65811e7230585ad01f9da13",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_listen.py.source",
+          "sha256": "554f522a07736838a2816f43bc379d959860e00b67d320309bfaaa61b0b84907",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_memory.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "aa3e5ee93de7d5320c40d6e924c887d0851ec3ba",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_memory.py.source",
+          "sha256": "8cc95a3b101411a07b296b286bb53bc55151f052d9e336e4b1820b81ecd8c4f3",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_memory_adapters.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "566b510dcaa1bfd690da558b70e99e597a99bbef",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_memory_adapters.py.source",
+          "sha256": "aabcb226a7455954c2f60fc6d6b9a8d6bb88a45bf0a868f18fc59dc15c691d0b",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_memory_agent_tool.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2238414d79b79f9cc8cbbed1d992e9554016fb9a",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_memory_agent_tool.py.source",
+          "sha256": "a87daf272c49d3f7d8772173e9acac811557dc7fbfeb0db25edba0885f2549be",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_memory_integration.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d2f1cb185eecc6d32084df02818db63d7cb05854",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_memory_integration.py.source",
+          "sha256": "c37acf1cb3403dc255e1d9a1f7a1a2eff88d9de128cc6c5006b8c49f7f658cc3",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_memory_runtime.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3a76627345fc38340020700d5975bd03a709d354",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_memory_runtime.py.source",
+          "sha256": "a60c064709fa0f2c7c292f6cdb3a69feeb9872c1b4c701b46a375e6b489870de",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_memory_vertex.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e4bc8a4662887626d229734c5d397dbbe95bbb0a",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_memory_vertex.py.source",
+          "sha256": "926a52003927c418d8400032fce78402b5a22756d2a35913ed09589c17f3de69",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_openapi.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3f2097d0b740f264d4ec02b8a8888ffb2c41a0e6",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_openapi.py.source",
+          "sha256": "fa69120ba95f9ae2d2ec9d622dd12fd9401802282d244c31d10ee92e9d7125be",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_protocol_calls.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a7c6dcb8e32fb7a028968db0fcfbc747ed792927",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_protocol_calls.py.source",
+          "sha256": "bf3cb711c446e49f7d535b1163bba97afd71d020cab6516f3a9b2bd75de22db1",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_provider_adapters.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8e5de5c852fe8a8237a5a039bc56e201190b8359",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_provider_adapters.py.source",
+          "sha256": "971585d6baa8795cf2985534b3d912794ffb7d1da2cb757d48274fc5ee272a5f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_provider_memory_config.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "dc73122ccf499a969525083906e7957984c85af8",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_provider_memory_config.py.source",
+          "sha256": "24d0f147fc7a3ac9a0fe9eeb231187f3b37720eb2ad46618f560564aaea31e77",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_provider_validation.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8840cea9fbc836aa4c7b1e9564e7439e4a49921a",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_provider_validation.py.source",
+          "sha256": "6dea3831139bdaff6b803d799eff97d242e8bd7586d595d3fae183962d669dbe",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_providers.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "fff4fcf4a1eaae3077f55af0e0f90430c1cd787c",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_providers.py.source",
+          "sha256": "cbf211c6606dda5be2c23b7e1653837fd7a1853c40786f840340994ef30ba9bb",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/resources/test_templates.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2a6161891f4dac7bf893f86901a615dc213a5134",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/resources/test_templates.py.source",
+          "sha256": "d649a4a25e19c071feb6cf18bc5857267cb15b69f4a30eed6e80161c5271f0f8",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/security/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e1e9c129a40f6cd656633ac7005cb579b54c8a60",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/security/__init__.py.source",
+          "sha256": "ece75a05c1f3df326bccdf2dbca61a84cee85447f63572310eec3380a0275671",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/security/test_access_audit.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ac70ea1a902beb404bcc87bce92dda4026f61a92",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/security/test_access_audit.py.source",
+          "sha256": "77cb5aa0f9aacd2b121ff069d1e534abf51b8563c4e29bdb7b545563b5238a3f",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/security/test_auth.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4e918a6d71c122b2333dc1d04469f3a9347b0795",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/security/test_auth.py.source",
+          "sha256": "624e59b2478aca77ee188cac5d2b017ee77bf20f19b19bc3b411e9160899713b",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/security/test_auth_variants.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "89dd4cc09e9712b1d08da5c71837a982a65e554d",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/security/test_auth_variants.py.source",
+          "sha256": "a91ae4fd134484b24a99b90b060550d55b408f163cf97ef4c56ba30776bbf925",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/security/test_expression_safety.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8cfc0631bcf9b9eff678a1ef7dace79dc1cc04c7",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/security/test_expression_safety.py.source",
+          "sha256": "b1352db233c18042211c24f86ae260a38281fa26038151f9f8eb15c2d7beea63",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/security/test_hardening.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a8031acb85d83cf9c6226a5268d8ca9c73e718bb",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/security/test_hardening.py.source",
+          "sha256": "e686341aba20fbc65e4af61371f04e2860a4e065ddc41f2dfaf195735e344d02",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/security/test_logging_redaction.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4fef7ef859f99a5a2770d5ad6c60b3545d8cf72e",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/security/test_logging_redaction.py.source",
+          "sha256": "b888cf553628c36abcef04978861c58418f9cb6163521ab6894590374f47b7ca",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/security/test_sandbox.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8af23c1d770fe0fd93c077352ad6656c506e2f6c",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/security/test_sandbox.py.source",
+          "sha256": "c1d2b40e46450450ced924632833fc72408ff52ccdb06ce96e433e64b0febfe5",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/security/test_security.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2170ebfd527936f3e9de0bb2dbc592c9d33a8f28",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/security/test_security.py.source",
+          "sha256": "f9a71ebc63c66d78ea61652c0d86455d3d8843f7d6dc7083de28c1a6e511bbb2",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/security/test_sso.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "76326b4d88b277a70b00bb564ad54091138e800e",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/security/test_sso.py.source",
+          "sha256": "ca592fc9cf7c70f781e9a771d24c22efe3adc2243eabe9d38c0edc0ff6742348",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tasks/test_call.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "18c794f0de0a60c1bb0919d2bb97134ed5b53f29",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tasks/test_call.py.source",
+          "sha256": "60600ae214ce42e7710911ae88e0d52c4680be8a89fc9e9cb2798c196e2a9dc5",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/test_fixture_e2e.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "851fc6ce926eb68174d88ce75349412544de3c6d",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/test_fixture_e2e.py.source",
+          "sha256": "9ce0e6627ddc5243bda4a5e2a9ecb3e883fcdb9301ecce57d6201d5d48b09e3a",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/test_public_api.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ca7d1a6579cfd4ca2b4eea6e1f8b44362f03e2fc",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/test_public_api.py.source",
+          "sha256": "0b8ac126ad900a042febd7362b4ff8ca1e1f7f9f916a4955b16c4911f0f35eb8",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6caafc9189e0b4d6b4300d8911637285ffaededb",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/__init__.py.source",
+          "sha256": "9a25fb283dfe497b4b1fb1d0a13e68f7f936abee5b972cfbc99ee8a36ee4aa04",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_benchmark.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b16bda75b1a6e98cf2f7d520ebff41fe6506a36a",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_benchmark.py.source",
+          "sha256": "f851700bc3fc2810ddf91a71c084929cca2c87f1f5a08c199d8fc0d7d6868387",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_cli.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "08a32ec1ff9f4dd8575f75ff1aeeeb3efc9dbdb4",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_cli.py.source",
+          "sha256": "5f23a0a8aceca048bfe13132fbf8b040167af6c0939e42dcbbdd6479de68b7b3",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_cli_harness.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "432111843432b695ebe84e621b0ed0476da9e903",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_cli_harness.py.source",
+          "sha256": "08a14b034d385999e1bd0276ae41dfcd3b1385f58893b85429c77143e2644e0d",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_cli_worker.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "fe524af41560db37efb4e414de6a95c80713c4e0",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_cli_worker.py.source",
+          "sha256": "6ab200b7b22d0920c1215965ccf21d56214fe46d469e777fc4175182bca69265",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_diagnostics.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3dbdd0cefa97e9ccf8c3bd474b8fa67f0573f694",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_diagnostics.py.source",
+          "sha256": "c373a8a451e10c275b16446119dde13fca3fccf28805ae669868b3ffef55ede5",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_diagnostics_server.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8e638b08d47748142f3fea06f64da18017617c40",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_diagnostics_server.py.source",
+          "sha256": "91b7b19fc405a98542f7953db2e12a62e7b2e24e545a1b3a87faf52cbdf4c341",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_exports.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e185dcb5c4d7e77c1b9133e1ec9094adea999c8a",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_exports.py.source",
+          "sha256": "4b3a25be098ec92f91beb29e9ea9e653624d4dc842072bec0a5691cda07df03b",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_generation.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d498ef98dd99e56d67e9e5d4a9ae8dc302c36f16",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_generation.py.source",
+          "sha256": "e2fd5c0536c864c00354e45d0cd6449e9dfa89aa97ae63b801925b347b1a9aa1",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_imports.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a0f9ea628063009a83b0af3c388db180d014b9cf",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_imports.py.source",
+          "sha256": "ad3168e5bc96ba5c8fea93600a048f79099385b61b64d9a9545f2ae59725aced",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_metrics.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9ba579e2e714553163cb84af7a139fd8ce8099ce",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_metrics.py.source",
+          "sha256": "3380a7ab6943d04f2ecdc585e924aabe8d9c36052b2c5042d81eed43cf5fe003",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_openapi.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "516f51ee2e57e4961e9eb8a74fa41066848a044c",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_openapi.py.source",
+          "sha256": "b4da1e796c71bcfafc9d03e85f41fec81087569c5bb377b5eef3aa6ba8dcd390",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_optimization.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a878042cb2147881f7744180ae837332e87476d7",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_optimization.py.source",
+          "sha256": "5b8d7173ebc22c90df0a780377333e81ffa9862d4b88e7cc99b019b376bd9928",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_patterns.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "98e4874925c99066aebdaa8db5f88e2ecd03d4dc",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_patterns.py.source",
+          "sha256": "70e367d8bd7a52fd4f81b73449848af249b4a054f9a5a529e785f8fc7e0a41bc",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_plugins.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "499690211d926749a2f454f839554db4e28dbee7",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_plugins.py.source",
+          "sha256": "0de3ca42b8a29346640973046990b65b07cd62933b68c8298a428daa1577b6f4",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_plugins_usage.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "dad7c6e87d9decf184bf380628561306926f7078",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_plugins_usage.py.source",
+          "sha256": "acbcebc4cf135463a450dbeb35a9e420a5670525204fb45c478d9eabeac70ed0",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_portability.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ba231e8cb1f3ca6cd22474ac2075ad1b725893e6",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_portability.py.source",
+          "sha256": "4189eae122298480bff99d24d76867b479dfee550ad23d54da7303ffa0284552",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_server.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6d031fdd4707caf49b23a0772f1e0cedcedc7e2d",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_server.py.source",
+          "sha256": "b8715a1aefdc47ce0325737dd081911fcb21856704740d411e81bfa1a9ab5486",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_tool_registry.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "fb79243e9301078a1d4f0939e6313c3f0b85d8ae",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_tool_registry.py.source",
+          "sha256": "9712daf6e9074ef3e536de6bd903ad4e9406c115c670a6973e7871f7994fa5e3",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_visual.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a6d7be496753bb5a54b0318acbe6f55d711e58a3",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_visual.py.source",
+          "sha256": "d05cb54aa38c4c57e97c7bf51da81b479c031a7b1bd9c57583aea1567da5c6f2",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "tests/tools/test_workflow_search.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "868fa04041d0b0893256b80121bef90235d9c9d6",
+          "destination": "migration/reference/open-workflow-agent-adk/tests/tools/test_workflow_search.py.source",
+          "sha256": "033ddfad5a97c521e279b54a2264ec01e15abf6c0877b7e7ee3bd9becae7dc82",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        },
+        {
+          "path": "uv.lock",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f00898fce38467554323831701c54e5b899777fa",
+          "destination": "migration/reference/open-workflow-agent-adk/uv.lock.source",
+          "sha256": "1ed4a4ce8d7fd25d40293dcd85a5544c18b8e0f10b56f4df12a02fd6e67ad85e",
+          "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
+        }
+      ]
+    },
+    {
+      "repository": "bassemZohdy/generic-agent-lang",
+      "revision": "00dafe26f8ddc72f191ea585547972e892a7afff",
+      "license": null,
+      "visibility": "public",
+      "archive_status": "Pending",
+      "tracked_file_count": 102,
+      "refs": [
+        {
+          "ref": "refs/heads/codex/agent-runtime-migration-gates",
+          "sha": "e5d84bacb76809dbf892cc257c5d58d470056626"
+        },
+        {
+          "ref": "refs/heads/main",
+          "sha": "00dafe26f8ddc72f191ea585547972e892a7afff"
+        },
+        {
+          "ref": "refs/pull/1/head",
+          "sha": "e5d84bacb76809dbf892cc257c5d58d470056626"
+        },
+        {
+          "ref": "refs/pull/1/merge",
+          "sha": "942da9ee75dee6af07473ecb873e495fe8c6eac0"
+        }
+      ],
+      "files": [
+        {
+          "path": ".env.example",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "05a118bb6972cee4eeaa471a36f763f75924a0c1",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": ".gitignore",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c3ae7158cf39b831b0d1d9304d6f0d07d47bff4d",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e6c685907bf4468525ce44e8ce42e6e0e1bf9103",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "Dockerfile",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "050ec03e126ced94b7958950a545163a50660c88",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "README.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3b4e41351b75e0c8c6bf145fd20680ee78f5b167",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "TODO.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3eab3b3cfe0dfc1df9ec1c84163a901404dad171",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "docker-compose.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "24fc5d5897d20af2e0d75b75eb221275a4132e45",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "docs/ADR-001-generic-runtime-architecture.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6e1ae4ca98a91e5079329006b830ef219127732b",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "docs/ADR-002-use-case-taxonomy.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f848709192b43ccf163a1b06ad39edba60544a98",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "docs/ADR-003-langgraph-state-graph-architecture.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "806d1352991d3c2d279fe234ced13c4801bdeafc",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "docs/ADR-004-pluggable-code-execution.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "07a846e4afd499983ede21806b22bd4ea4e71f04",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "docs/ARCHITECTURE.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7a1f560042ccd45105542bb4635a03263a801d5e",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "examples/approval-gate.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "da789f651003428af6d13ef1a8bf0191f178a3a5",
+          "disposition": "Retained at origin; unsafe approval behavior excluded from canonical execution"
+        },
+        {
+          "path": "examples/assistant.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ed7be3e0e126c8c0bb3bec2dccf321175a66c806",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "examples/expert-dispatch.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e7ae783ca515d0fc7ac123f28e63d36f4bdb453f",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "examples/multi-perspective.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c29dc9e2b501dac35b2c6eca9dedb442fbb05c16",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "examples/pipeline.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "da5eb06fac5d37f27eda6bf018358f6d6515580c",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "examples/plan-and-execute.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a9bf186c946b70c5a55b8044bb765a9326187b8b",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "examples/refine-until-good.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7d755e3ddc0f7baa363012f69d2fb84a6a941809",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "examples/team-coordinator.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "fa65eb1c9dbe631f4ffd61a13a6f204fc6a29650",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "keycloak/realm-basic-agent-dev.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4d100575712af9a0381a0266c457eb9e0db0808f",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "keycloak/realm-basic-agent.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "05abc01c5be655dd0f0b1ebaa5660b64ae9612d8",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "pyproject.toml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "987dcef57860432b3d84e7fe473c8a76ba09f7d1",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "skills/status-check/SKILL.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "cca1ce36ec8ba52c697a8c15f80bbe769abe779f",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "cae86d209480f5916b786f844ba3a5b191c323ad",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/agent.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "39624d93a8aaa12781b85d71f3b2847222197fc1",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/auth/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f64b719f7465a88d98a34e7bfe4a38c404773a28",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/auth/core.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a07d85464eed4cbcac38961368d8c43b0f19d184",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/auth/gateway.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ddf355d2d0671e3e8b73170e4a734fdb7dda2cc2",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/auth/middleware.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "cb92fd59dd77a9fb582157ac71cdbc7587d3e5fc",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/config/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7c539502ab1631bafee2d974a51a4a0e07d1c822",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/config/loader.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b0408f6050da57765fa85ec3e7e70e129335d0db",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/config/schema.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8e92d553f8395c07c2120f0da996f5f61965548b",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/config/settings.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b6db33954fdb241aa136987d1720d642ec303715",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/domain/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "935de7ac2779b9f3953cf109eab92d3d39ec2ca6",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/domain/context.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5d1644acf2c801ac6dad2b84569169797ea651f0",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/domain/schemas.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "79985865f1b1a9c7d9727e58ba956ef3c5b2bc2f",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/domain/state.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8a4b8709072e23af7621319f623205f302365832",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/execution/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6c00e17bdf92168c894f0565d612acf4db9818bf",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/execution/base.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "012040128fef69e1536542528b3a46dae1c25cae",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/execution/resolver.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "64a09f92a8bcac2a83c425e9240ea36bc779e5b8",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/execution/sandbox.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "40432f29cbb0be92fdf69cbf3d8bd9908ed6457f",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/graphs/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "df409f0705e5ccc2e1d518da02e6c91fc79e0422",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/graphs/base.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c2ac2256e823c3ade616c401232fe730ed822e31",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/graphs/direct.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "83eb5f1dcb2d2f0ec479b3efc9bdd04a0992007b",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/graphs/evaluator_optimizer.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2c2c03655ba048ffd7a4a9206c398c1e17a34793",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/graphs/human_in_loop.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ba27a0b5e9dfe633585f064a72b9aee3b148df26",
+          "disposition": "Retained at origin; unsafe approval behavior excluded from canonical execution"
+        },
+        {
+          "path": "src/generic_agent/graphs/parallel.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "66ae38ac327fca091c75c1151708768fdc75d5bb",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/graphs/planner_executor.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "acdfe76649a8f1e349a7fd5d400b8a4e17cbe116",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/graphs/registry.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d7ea3762553523eb9d58a2ef01698e64384e8e02",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/graphs/router.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "1d04be3ee0f64710cebe9ad15149cade641a3688",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/graphs/sequential.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "19befc2518d173c32b62729731b2afc65b2dee9d",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/graphs/supervisor.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c7457af6e39c602179535271062a10bbb868861a",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/interfaces/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8682133762584fd15f1b8b7c05ceebb54c790d52",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/interfaces/cli.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f98b89e40be78e9601fab9d1fa30ddb429e3f05e",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/interfaces/live.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c5fd6221900f090379d9051cb103f807fc3a9747",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/interfaces/mcp.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8d11b68b6adcb0de45be1dcaf7747608d5a3bb24",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/interfaces/rest.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8b638bc9d0c365a46f136ee71bd806a9b501de88",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/interfaces/service.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ed9bc565c65277ef25166bfd72bc30fa7d5fc560",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/models/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "cd9d8ae3944f8c7b5937db695cdd04836dd15788",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/models/factory.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6cb6ad970956bbfd69591529411e25e1f4799cd9",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/telemetry/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f478bdb2bebc1d4d55ba5b25d6ef0f1b25f4148a",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/telemetry/tracing.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "cc9db43b8194d9d2a705cd9516d42e78435c4bed",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/tools/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c26fb925d5454b0763a1256bc052e8ed4a4a15ec",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/tools/approval.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "dbd20dae63835a0aa1c13b4312098c2678b3512c",
+          "disposition": "Retained at origin; unsafe approval behavior excluded from canonical execution"
+        },
+        {
+          "path": "src/generic_agent/tools/audit.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7a2857a5d4e23cf51c59c297fcc87437f4ef153d",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/tools/knowledge.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ea9d16824fda9cf92ded775863e7ce85b4e87f6b",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/tools/mcp_client.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e4e819bd9e42906299d19ab5ec902ac5a83dec94",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/tools/openapi.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "cb16c525312fd78106e95a167e6dce0926c63d4c",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/tools/registry.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5262c6acd68da1a406db4ee50003814f5f0dda95",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/tools/search.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9894e26b48d0f0185814e05567575f65c4ab0ea8",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/tools/skills.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3fd05c84ab6e557d81f0e9bec6f3f193c7d34754",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/use_cases/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "eb2503a0274e80d2bd417e3e51fd70de8b44371c",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/use_cases/approval_gate.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "87117d73c13fd0e085fa2f6866ebead71cd8c4bc",
+          "disposition": "Retained at origin; unsafe approval behavior excluded from canonical execution"
+        },
+        {
+          "path": "src/generic_agent/use_cases/assistant.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2a21ea4a1a56634abb90be18c893ee022719a41d",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/use_cases/base.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c21378839ac6ada06ce0eff041715c095c104009",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/use_cases/expert_dispatch.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ba583cd631b6f5666642ae609d0852ca8f3c6216",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/use_cases/multi_perspective.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ef283ecde6d2562f633cacf3e64ec4dd407d7591",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/use_cases/pipeline.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "838f82a54b00b9ce1f07e3f34fd8514ecc8b8698",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/use_cases/plan_and_execute.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "24976f2d02495cbb18be97d8b76b8e275ae194a7",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/use_cases/refine_until_good.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "721bd10edff7f93f7ca8615e8ae0373ca85f77de",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/use_cases/registry.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d750a3b391b7d45acae3f6d6dcaba057741fd820",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/use_cases/team_coordinator.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c3f96e2ae780dba6089003893c815739a072760c",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "src/generic_agent/util.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ef566c601fe90591e76d4c33a0de967b3159d610",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/conftest.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b279d0a42ea8bb0dc39f18880be1d0e5df803820",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/fakes.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e325ca7bdd23d4a24a3bf97e4fa56984ad15c1f0",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_auth.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "cb1a1907db15c68adf5b04bd8d3bd6a1bc06bf24",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_auth_coverage.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6c94c1464ba40b103a8c84831a12221e508ce5e2",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_code_execution_coverage.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b1097eb7e0b944279d7883211a79983da9ae63ef",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_config.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "605c4ea315d4d8dae41609040b8afaae5033e840",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_coverage_boost.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "bda1110f62244952c252a6e79d069a122d445dc9",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_execution.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ffa4c101ff7f8fab7525218a050a7a756e159466",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_integration.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6a2e6b124ac10cf8996b2b4b24d14f502d57513f",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_live_api.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6b8f4f678eec70257550a9dd415a1e387172a149",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_models.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "03666ea14400faa2b52e1a7315e16bebcfa2c468",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_rest_api.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c4a00641b7140a0a8be2997b4020dc698a2475bb",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_rest_streaming_coverage.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "501764d72279905368d1f2af0d0df6517e816c5a",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_runtime.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3afa7e971767aee40cac05ce8bf05a2f2287b8ef",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_strategies.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "65bebfce8a48717a0274a26d04edb25ca2e679fa",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_tools.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "dd0bd5c6d65ce53a98e032ad76e24dd9c82c53a5",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "tests/test_use_cases.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b63070edcc4e823a677a7e111fa125bc3651f3a2",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        },
+        {
+          "path": "uv.lock",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ae4f2dab8e05c890b331c23cf8e2d5819680c2de",
+          "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        }
+      ]
+    }
+  ],
+  "policy": "Archiving retains history, releases, branches and source. It does not prove API migration, consumer migration or implementation conformance."
+}

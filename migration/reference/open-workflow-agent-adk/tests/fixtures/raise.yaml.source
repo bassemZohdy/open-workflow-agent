@@ -1,0 +1,12 @@
+document:
+  dsl: '1.0.3'
+  namespace: fixtures
+  name: raise
+  version: '1.0.0'
+do:
+  - fail:
+      raise:
+        error:
+          type: https://fixtures.example/errors/failure
+          status: 500
+          title: Fixture failure

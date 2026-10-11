@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openworkflow-adk.example/schema/adk-metadata.json",
+  "title": "OpenWorkflow ADK metadata extension",
+  "description": "ADK-specific configuration stored in OpenWorkflow metadata containers.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "agent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["use"],
+              "properties": {"use": {"type": "string", "minLength": 1}}
+            }
+          ]
+        },
+        "name": {"type": "string"},
+        "description": {"type": "string"},
+        "instruction": {"type": "string"},
+        "tools": {"type": "array"},
+        "generate_content_config": {"type": ["object", "null"]},
+        "output_key": {"type": ["string", "null"]},
+        "memory": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["use"],
+          "properties": {"use": {"type": "string", "minLength": 1}}
+        },
+        "provider": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["use"],
+          "properties": {"use": {"type": "string", "minLength": 1}}
+        },
+        "sub_agents": {"type": "array"},
+        "request_input": {"type": ["object", "null"]}
+      }
+    },
+    "self_heal": {"type": "object"},
+    "models": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "model": {"type": "string"},
+          "provider": {
+            "oneOf": [
+              {"type": "string"},
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["use"],
+                "properties": {"use": {"type": "string"}}
+              }
+            ]
+          },
+          "generate_content_config": {"type": "object"},
+          "output_schema": {},
+          "display_name": {"type": "string"},
+          "description": {"type": "string"}
+        }
+      }
+    },
+    "providers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "api_key": {"type": "string"},
+          "base_url": {"type": "string"},
+          "project": {"type": "string"},
+          "location": {"type": "string"}
+        }
+      }
+    },
+    "memories": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": {"type": "string"},
+          "connection_string": {"type": "string"},
+          "index_name": {"type": "string"}
+        }
+      }
+    }
+  }
+}

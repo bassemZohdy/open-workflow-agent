@@ -1,0 +1,11 @@
+document:
+  dsl: '1.0.3'
+  namespace: fixtures
+  name: run-script
+  version: '1.0.0'
+do:
+  - script:
+      run:
+        script:
+          language: python
+          code: print('fixture')

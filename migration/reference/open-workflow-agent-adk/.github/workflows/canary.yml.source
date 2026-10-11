@@ -1,0 +1,44 @@
+name: ADK Canary
+
+# Runs the full test suite against the latest google-adk release each night so
+# drift in the private workflow APIs consumed through adk_compat.py (C24.19) is
+# detected before it reaches users. Failures here are informational: the pinned
+# compatibility matrix in ci.yml remains the release gate.
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  canary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - name: Install uv
+        run: pip install uv
+      - name: Sync with latest google-adk (unpinned)
+        run: |
+          uv sync --all-extras
+          uv pip install --reinstall --upgrade "google-adk"
+          uv run python -c "
+          import importlib.metadata as m
+          print('google-adk', m.version('google-adk'))
+          "
+      - name: Run unit suite against latest ADK
+        run: uv run pytest -m "not integration" -q
+      - name: Report drift on failure
+        if: failure()
+        run: |
+          echo "::warning::The latest google-adk release broke the " \
+            "compatibility seam (adk_compat.py)."
+          echo "Inspect the failing imports above and update " \
+            "src/openworkflow_adk/adk_compat.py."

@@ -1,0 +1,10 @@
+document:
+  dsl: '1.0.3'
+  namespace: patterns
+  name: assistant
+  version: '1.0.0'
+do:
+  - respond:
+      call: agent:1.0.0@default
+      with:
+        input: ${ .question }

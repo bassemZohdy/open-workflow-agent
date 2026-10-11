@@ -1267,3 +1267,12 @@ agent.yaml
 remain stable when deployment changes from one supported engine image to another, provided the workflow uses capabilities in the common portable profile.
 
 That portability, backed by explicit capabilities and shared contract tests, is the defining product contract of Open Workflow Agent.
+
+
+# Accepted staged consolidation — 2026-10-11
+
+This accepted roadmap expands the earlier completed core scope. Use `open-workflow-agent` as the canonical home for useful work from `specs-agent-platform`, `open-workflow-agent-adk` and `generic-agent-lang`. Preserve provenance and do not activate unsafe or semantically incorrect reference implementations. Private-source transfer and missing license grants require explicit disposition. Archive the named sources after consolidation/preservation checks.
+
+Reuse native LangGraph graphs, tasks, routing and checkpoints wherever OWS behavior can be preserved. Core retains a typed immutable internal plan, shared semantics and services; native state stays engine-private. Default deployment is one container with embedded storage. External providers, databases and event transports are configurable alternatives. Workflow/task behavior belongs in workflow YAML/JSON; environment preparation, storage/provider bindings, credentials and bootstrap defaults belong in separate runtime configuration.
+
+Keep the official schema unchanged. Versioned custom metadata extensions may express native capabilities; reject unsupported required features and declare portability limits. Implement in stages with the full inventory from day one and independent Python/JS status. `TODO.md` and `resources/compatibility/feature-tracker.json` define the expanded work. Earlier no-native-lowering/no-extension deferrals are superseded as roadmap restrictions, not statements of shipped behavior. Imported source and proposed tests do not prove implementation.

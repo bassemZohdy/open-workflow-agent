@@ -1,0 +1,14 @@
+document:
+  dsl: '1.0.3'
+  namespace: fixtures
+  name: subflow
+  version: '1.0.0'
+do:
+  - child:
+      run:
+        workflow:
+          namespace: fixtures
+          name: child
+          version: '1.0.0'
+          input:
+            value: '${ .value }'

@@ -1,0 +1,26 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: approval
+  version: '1.0.0'
+do:
+  - waitForApproval:
+      listen:
+        to:
+          one:
+            with:
+              type: approval.completed
+        read: data
+  - route:
+      switch:
+        - approved:
+            when: '${ .approved = true }'
+            then: accepted
+        - default:
+            then: rejected
+  - accepted:
+      set:
+        decision: '"accepted"'
+  - rejected:
+      set:
+        decision: '"rejected"'

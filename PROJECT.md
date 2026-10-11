@@ -551,14 +551,28 @@ these readiness foundations.
 
 ## Current Backlog State
 
-The authoritative scoped backlog is `TODO.md`. The readiness foundation is
-complete and there are no active implementation blockers for the current
-open-source core. `ENGINE-5` through `ENGINE-8` are optional Agent Framework
-community-hardening tasks, and `EVENT-1` through `EVENT-5` are optional external
-integration tasks that activate only when a concrete user/deployment
-requirement exists. A2A push notifications, broad conformance, multi-tenancy,
-and delegated identity remain intentionally deferred until their separate
-product or security prerequisites exist.
+The authoritative backlog is `TODO.md`. The earlier core/readiness foundation
+remains complete at its recorded scope. The accepted 2026-10-11 consolidation
+roadmap adds staged work and full tracking; runtime claims expand only after
+verification. `ENGINE-5` through `ENGINE-8`, `EVENT-1` through `EVENT-5`, push
+notifications, multi-tenancy and delegated identity stay visible conditional work.
+
+## Canonical repository consolidation — 2026-10-11
+
+This repository is the selected implementation home. All 284 tracked files of
+the public standalone ADK predecessor are preserved as frozen Apache references;
+selected fixtures are adapted for canonical contract verification. Independent
+assistant/pipeline recipes and an eight-family catalog preserve useful patterns
+without copying unlicensed source. Private `specs-agent-platform` publication and
+repository archiving remain pending. The full tracker records 658 features, 443
+proposed tests and 774 schema constraints. This is source consolidation and gap
+tracking, not completed native lowering or full OWS/LangGraph conformance.
+
+Local consolidation validation passed: 679 root tests passed, 8 skipped, with
+90.47% core coverage; the 16 added fixture/tracker checks passed. Repository Ruff,
+formatting, strict mypy and Markdown links passed. These selected fixture runs
+use canonical ADK/LangGraph adapters in the root environment, not proof of new
+native compiler behavior or JS parity. Remote CI remains a publication gate.
 
 ## Intentionally Deferred
 

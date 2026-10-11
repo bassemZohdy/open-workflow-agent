@@ -1,0 +1,44 @@
+services:
+  owf-adk:
+    build: .
+    command: ["run", "/docs/echo.yaml", "--input", "{}"]
+    volumes:
+      - ./examples:/docs:ro
+    environment:
+      WORKFLOW_HTTP__TIMEOUT: "10"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    depends_on:
+      - echo
+
+  echo:
+    image: mendhak/http-https-echo:37
+    environment:
+      HTTP_PORT: "8080"
+    ports:
+      - "8080:8080"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+
+  broker:
+    image: redis:7-alpine
+    profiles: ["broker"]
+    ports:
+      - "6379:6379"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /data

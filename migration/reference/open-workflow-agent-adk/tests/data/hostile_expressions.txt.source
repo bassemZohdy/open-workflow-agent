@@ -1,0 +1,7 @@
+# Dynamic execution must remain disabled.
+$eval("1 + 1")
+$function("return 1")
+
+# Deep and expensive-looking expressions must be rejected or bounded.
+((((((((((((((((((((((((((((((((((((((((((((((((((((1)))))))))))))))))))))))))))))))))))))))))))))))))))
+$reduce([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], function($a, $b) { $a + $b }, 0)

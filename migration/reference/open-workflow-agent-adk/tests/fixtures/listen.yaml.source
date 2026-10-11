@@ -1,0 +1,13 @@
+document:
+  dsl: '1.0.3'
+  namespace: fixtures
+  name: listen
+  version: '1.0.0'
+do:
+  - waitForEvent:
+      listen:
+        to:
+          one:
+            with:
+              type: fixtures.demo
+        read: data
