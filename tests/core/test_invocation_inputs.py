@@ -102,6 +102,41 @@ def test_unavailable_storage_has_common_recovery_error():
         store.bind_input(handle, {})
 
 
+@pytest.mark.parametrize("original", [None, False, 0, "", [], {"original": [1, 2]}])
+def test_recovery_input_reads_existing_binding_without_a_resume_write(tmp_path, original):
+    path = tmp_path / "runtime.sqlite3"
+    first = InvocationStore(path)
+    handle = _handle(first)
+    first.bind_input(handle, original)
+    first.close()
+    reopened = InvocationStore(path)
+    try:
+        before = reopened.connection.execute(
+            "SELECT payload FROM invocation_inputs WHERE invocation_id = ?", (handle.invocation_id,)
+        ).fetchone()[0]
+        assert reopened.read_input(handle) == original
+        assert (
+            reopened.connection.execute(
+                "SELECT payload FROM invocation_inputs WHERE invocation_id = ?",
+                (handle.invocation_id,),
+            ).fetchone()[0]
+            == before
+        )
+    finally:
+        reopened.close()
+
+
+def test_missing_recovery_input_cannot_create_a_new_binding():
+    store = InvocationStore()
+    handle = _handle(store)
+    try:
+        with pytest.raises(WorkflowExecutionError, match="invocation input could not be recovered"):
+            store.read_input(handle)
+        assert store.connection.execute("SELECT COUNT(*) FROM invocation_inputs").fetchone()[0] == 0
+    finally:
+        store.close()
+
+
 def test_failed_terminal_commit_preserves_running_handle_and_persisted_result(
     tmp_path, monkeypatch
 ):

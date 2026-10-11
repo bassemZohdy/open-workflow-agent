@@ -7,7 +7,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from ._version import __version__
-from .errors import InvocationCancelled, InvocationStateConflict, WorkflowExecutionError
+from .errors import (
+    InvocationCancelled,
+    InvocationStateConflict,
+    InvocationStateError,
+    WorkflowExecutionError,
+)
 from .lifecycle import (
     INVOCATION_STATES,
     TERMINAL_INVOCATION_STATES,
@@ -175,6 +180,7 @@ class WorkflowEngine:
         active_result = await self._resume_active_or_terminal(handle, resume_input)
         if active_result is not None:
             return active_result
+        await self._verify_resume_state(handle, plan)
         if handle.status == "waiting":
             self._restart_resume_inputs[handle.invocation_id] = resume_input
             self.services.invocations.update(handle, status="running")
@@ -294,6 +300,12 @@ class WorkflowEngine:
     ) -> Any:
         self.services.invocations.verify_fingerprint(invocation, workflow.fingerprint)
         return self.services.invocations.bind_input(invocation, input_data)
+
+    async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
+        if handle.engine != self.engine_name:
+            raise InvocationStateError("invocation belongs to a different engine")
+        self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+        return self.services.invocations.read_input(handle)
 
     def _record_result(
         self,

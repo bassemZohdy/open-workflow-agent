@@ -36,6 +36,41 @@ def test_postgres_datasource_normalization_and_engine_namespace() -> None:
     assert "owa_langgraph%2Cpublic" in namespaced
 
 
+@pytest.mark.parametrize("original", [None, False, 0, "", [], {"original": [1, 2]}])
+def test_postgres_recovery_reads_input_without_creating_a_replacement(original):
+    url = _postgres_url()
+    pytest.importorskip("psycopg")
+    first = InvocationStore(url)
+    handle = first.create(
+        engine="test",
+        session_id=None,
+        user_id=None,
+        workflow_name="input-read",
+        workflow_version="1.0.0",
+        workflow_fingerprint="definition",
+    )
+    first.bind_input(handle, original)
+    first.close()
+    reopened = InvocationStore(url)
+    try:
+        assert reopened.read_input(handle) == original
+        reopened.connection.execute(
+            "DELETE FROM invocation_inputs WHERE invocation_id = ?", (handle.invocation_id,)
+        )
+        reopened.connection.commit()
+        with pytest.raises(WorkflowExecutionError, match="invocation input could not be recovered"):
+            reopened.read_input(handle)
+        assert (
+            reopened.connection.execute(
+                "SELECT COUNT(*) FROM invocation_inputs WHERE invocation_id = ?",
+                (handle.invocation_id,),
+            ).fetchone()[0]
+            == 0
+        )
+    finally:
+        reopened.close()
+
+
 @pytest.mark.parametrize("outcome", ["value", "null", "fault", "cancelled"])
 def test_postgres_stale_write_generation_and_first_terminal_outcome(outcome):
     url = _postgres_url()

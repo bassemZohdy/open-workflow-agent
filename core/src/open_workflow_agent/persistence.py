@@ -111,6 +111,19 @@ class InvocationStore:
                 (handle.invocation_id, handle.workflow_fingerprint, encoded),
             )
             self.connection.commit()
+            return self.read_input(handle)
+        except WorkflowDefinitionChanged:
+            raise
+        except Exception:
+            try:
+                self.connection.raw.rollback()
+            except Exception:
+                pass
+            raise WorkflowExecutionError("invocation input could not be recovered") from None
+
+    def read_input(self, handle: ExecutionHandle) -> Any:
+        """Read an existing binding without creating one from a resume message."""
+        try:
             row = self.connection.execute(
                 "SELECT fingerprint, payload FROM invocation_inputs WHERE invocation_id = ?",
                 (handle.invocation_id,),

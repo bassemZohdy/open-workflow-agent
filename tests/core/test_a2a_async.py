@@ -264,13 +264,15 @@ async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
     async with app.router.lifespan_context(app):
         plan = app.state.a2a_skill_plans["echo"]
         handle = services.invocations.create(
-            engine="adk",
+            engine=app.state.engine.engine_name,
             session_id=None,
             user_id=None,
             workflow_name=plan.name,
             workflow_version=plan.version,
             workflow_fingerprint=plan.fingerprint,
         )
+        # Emulate an executed invocation, including its original input binding.
+        services.invocations.bind_input(handle, {"original": "first message"})
         services.invocations.update(handle, status="waiting")
 
         transport = httpx.ASGITransport(app=app)

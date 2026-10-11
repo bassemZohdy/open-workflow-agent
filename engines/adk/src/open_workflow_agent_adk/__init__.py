@@ -3,12 +3,12 @@
 from typing import Any
 
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
-from open_workflow_agent.errors import InvocationCancelled
+from open_workflow_agent.errors import InvocationCancelled, InvocationStateError
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.workflow import WorkflowPlan
 
 from .agent import AdkAgentFactory
-from .native import NativeAdkRunner
+from .native import ADK_AVAILABLE, NativeAdkRunner
 
 
 class AdkWorkflowEngine(PortableWorkflowEngine):
@@ -95,6 +95,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         active_result = await self._resume_active_or_terminal(handle, resume_input)
         if active_result is not None:
             return active_result
+        await self._verify_resume_state(handle, plan)
         if not self.native.available:
             return await PortableWorkflowEngine.resume(self, handle, resume_input, plan)
         if handle.status == "waiting":
@@ -161,6 +162,22 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 self._finish_active(handle, result)
             else:
                 self._active.pop(handle.invocation_id, None)
+
+    async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
+        workflow_input = await super()._verify_resume_state(handle, plan)
+        if ADK_AVAILABLE and not self.native.available:
+            raise InvocationStateError(
+                "native execution state is unavailable; recovery is required"
+            )
+        if self.native.available:
+            await self.native.admit_resume(
+                workflow_input,
+                session_id=handle.session_id,
+                user_id=handle.user_id,
+                invocation_id=handle.engine_execution_reference,
+                database_path=self._session_database_path(),
+            )
+        return workflow_input
 
 
 __all__ = ["AdkWorkflowEngine"]

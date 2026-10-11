@@ -6,7 +6,7 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from open_workflow_agent.errors import OwaError, WorkflowExecutionError
+from open_workflow_agent.errors import InvocationStateError, OwaError, WorkflowExecutionError
 from open_workflow_agent.expressions import validate_expression_data
 from open_workflow_agent.storage import is_postgresql_datasource
 from open_workflow_agent.workflow import WorkflowExecutor, WorkflowPlan
@@ -140,7 +140,7 @@ class LangGraphFunctionalAdapter:
 
         async def run(saver: Any) -> Any:
             scopes = LangGraphScopeExecutor(plan, saver, invocation_id, resume=resume)
-            raw_input = await scopes.original_input() if resume else input_data
+            raw_input = await scopes.original_input(input_data) if resume else input_data
             try:
                 return await executor.execute(
                     plan, raw_input, metadata=metadata, scope_executor=scopes
@@ -150,6 +150,26 @@ class LangGraphFunctionalAdapter:
             except Exception:
                 raise WorkflowExecutionError("native task execution failed") from None
 
+        return await self._with_saver(run)
+
+    async def admit_resume(
+        self, plan: WorkflowPlan, invocation_id: str, workflow_input: Any
+    ) -> None:
+        from .graph import LangGraphScopeExecutor
+
+        async def validate(saver: Any) -> None:
+            scopes = LangGraphScopeExecutor(plan, saver, invocation_id, resume=True)
+            await scopes.original_input(workflow_input)
+
+        try:
+            await self.prepare_storage()
+            await self._with_saver(validate)
+        except OwaError:
+            raise
+        except Exception:
+            raise InvocationStateError("native execution state could not be recovered") from None
+
+    async def _with_saver(self, run: Callable[[Any], Awaitable[Any]]) -> Any:
         if self.database_path and is_postgresql_datasource(self.database_path):
             if AsyncPostgresSaver is None:
                 raise RuntimeError(

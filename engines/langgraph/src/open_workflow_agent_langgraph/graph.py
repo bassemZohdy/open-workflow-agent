@@ -8,7 +8,8 @@ import json
 from typing import Any, TypedDict, cast
 
 from langgraph.graph import END, START, StateGraph
-from open_workflow_agent.errors import OwaError, WorkflowExecutionError
+from open_workflow_agent.errors import InvocationStateError, OwaError, WorkflowExecutionError
+from open_workflow_agent.expressions import validate_expression_data
 from open_workflow_agent.workflow import (
     ExecutionState,
     ScopePlan,
@@ -112,15 +113,25 @@ class LangGraphScopeExecutor:
             "recursion_limit": NATIVE_SCOPE_STEP_LIMIT,
         }
 
-    async def original_input(self) -> Any:
-        checkpoint = await self.saver.aget_tuple(self.checkpoint_config("/do", 1))
-        if checkpoint is None:
-            raise WorkflowExecutionError(
-                "native task checkpoint is unavailable for this invocation"
-            )
-        channels = checkpoint.checkpoint["channel_values"]
-        value = json.loads(channels["snapshot"])
-        return copy.deepcopy(value["variables"]["workflow"]["input"])
+    async def original_input(self, expected_input: Any) -> Any:
+        try:
+            checkpoint = await self.saver.aget_tuple(self.checkpoint_config("/do", 1))
+            if checkpoint is None:
+                raise ValueError("checkpoint is absent")
+            channels = checkpoint.checkpoint["channel_values"]
+            value = json.loads(channels["snapshot"])
+            stored_input = value["variables"]["workflow"]["input"]
+            validate_expression_data(stored_input)
+            validate_expression_data(expected_input)
+            if json.dumps(stored_input, sort_keys=True, allow_nan=False) != json.dumps(
+                expected_input, sort_keys=True, allow_nan=False
+            ):
+                raise ValueError("original input disagrees")
+            return copy.deepcopy(stored_input)
+        except Exception:
+            raise InvocationStateError(
+                "native execution state is unavailable or inconsistent; recovery is required"
+            ) from None
 
     def _read(self, native: _GraphState, state: ExecutionState, reference: str) -> None:
         _restore(native["snapshot"], state)

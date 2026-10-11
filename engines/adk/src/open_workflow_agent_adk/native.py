@@ -10,6 +10,8 @@ from contextlib import aclosing, closing
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunsplit
 
+from open_workflow_agent.errors import InvocationStateError
+from open_workflow_agent.expressions import validate_expression_data
 from open_workflow_agent.storage import is_postgresql_datasource
 
 try:
@@ -81,27 +83,7 @@ class NativeAdkRunner:
     def __init__(self) -> None:
         self.available = ADK_AVAILABLE
 
-    async def invoke(
-        self,
-        runner: Callable[[Any], Awaitable[Any]],
-        input_data: Any,
-        *,
-        session_id: str,
-        user_id: str | None,
-        database_path: str | None = None,
-        invocation_id: str | None = None,
-    ) -> Any:
-        if (
-            not ADK_AVAILABLE
-            or Runner is None
-            or InMemorySessionService is None
-            or FunctionNode is None
-            or Context is None
-            or types is None
-        ):
-            raise RuntimeError("google-adk 2.x is not installed")
-        app_name = "open-workflow-agent"
-        user = user_id or "owa-user"
+    def _session_service(self, database_path: str | None) -> Any:
         if database_path and is_postgresql_datasource(database_path):
             if _DatabaseSessionService is None:
                 raise RuntimeError("PostgreSQL ADK persistence requires google-adk[db] and asyncpg")
@@ -117,33 +99,120 @@ class NativeAdkRunner:
                     parsed.fragment,
                 )
             )
-            sessions = _DatabaseSessionService(
-                db_url,
-                connect_args={"server_settings": {"search_path": "owa_adk,public"}},
+            return _DatabaseSessionService(
+                db_url, connect_args={"server_settings": {"search_path": "owa_adk,public"}}
             )
-        elif database_path and SqliteSessionService is not None:
-            sessions = _ClosingSqliteSessionService(database_path)
-        else:
-            sessions = InMemorySessionService()
+        if database_path and SqliteSessionService is not None:
+            return _ClosingSqliteSessionService(database_path)
+        if InMemorySessionService is None:
+            raise RuntimeError("google-adk 2.x is not installed")
+        return InMemorySessionService()
+
+    @staticmethod
+    async def _close_sessions(sessions: Any) -> None:
+        try:
+            close = getattr(sessions, "close", None)
+            if close is not None:
+                await close()
+        except Exception:
+            raise InvocationStateError("native execution state could not be released") from None
+
+    @staticmethod
+    def _validate_resume_session(session: Any, invocation_id: str, workflow_input: Any) -> None:
+        try:
+            if session is None:
+                raise ValueError("session is absent")
+            for event in session.events:
+                if event.invocation_id == invocation_id and event.author == "user":
+                    parts = event.content.parts if event.content else None
+                    if parts is None or len(parts) != 1 or not isinstance(parts[0].text, str):
+                        raise ValueError("original input is absent")
+                    saved = json.loads(parts[0].text)
+                    validate_expression_data(saved)
+                    validate_expression_data(workflow_input)
+                    if json.dumps(saved, sort_keys=True, allow_nan=False) != json.dumps(
+                        workflow_input, sort_keys=True, allow_nan=False
+                    ):
+                        raise ValueError("original input disagrees")
+                    return
+            raise ValueError("invocation is absent")
+        except Exception:
+            raise InvocationStateError(
+                "native execution state is unavailable or inconsistent; recovery is required"
+            ) from None
+
+    async def admit_resume(
+        self,
+        workflow_input: Any,
+        *,
+        session_id: str,
+        user_id: str | None,
+        invocation_id: str,
+        database_path: str | None = None,
+    ) -> None:
+        sessions = None
+        try:
+            sessions = self._session_service(database_path)
+            session = await sessions.get_session(
+                app_name="open-workflow-agent", user_id=user_id or "owa-user", session_id=session_id
+            )
+            self._validate_resume_session(session, invocation_id, workflow_input)
+        except InvocationStateError:
+            raise
+        except Exception:
+            raise InvocationStateError("native execution state could not be recovered") from None
+        finally:
+            if sessions is not None:
+                await self._close_sessions(sessions)
+
+    async def invoke(
+        self,
+        runner: Callable[[Any], Awaitable[Any]],
+        input_data: Any,
+        *,
+        session_id: str,
+        user_id: str | None,
+        database_path: str | None = None,
+        invocation_id: str | None = None,
+        _resume: bool = False,
+    ) -> Any:
+        if (
+            not ADK_AVAILABLE
+            or Runner is None
+            or InMemorySessionService is None
+            or FunctionNode is None
+            or Context is None
+            or types is None
+        ):
+            raise RuntimeError("google-adk 2.x is not installed")
+        app_name = "open-workflow-agent"
+        user = user_id or "owa-user"
+        sessions = self._session_service(database_path)
         existing = await sessions.get_session(
             app_name=app_name,
             user_id=user,
             session_id=session_id,
         )
+        if _resume:
+            try:
+                self._validate_resume_session(existing, invocation_id or "", input_data)
+            except InvocationStateError:
+                await self._close_sessions(sessions)
+                raise
         if existing is None:
             await sessions.create_session(
                 app_name=app_name,
                 user_id=user,
                 session_id=session_id,
-                state={"owa_input": input_data},
+                state={},
             )
-        else:
-            existing.state["owa_input"] = input_data
 
         result_value: Any = None
 
         async def root_node(ctx: Context) -> Any:
-            node_input = ctx.state.get("owa_input", {})
+            # A session can contain several invocations. Session-wide state is
+            # not an input binding for this native invocation.
+            node_input = input_data
 
             async def dynamic_node(node_input: Any) -> Any:
                 nonlocal result_value
@@ -186,7 +255,10 @@ class NativeAdkRunner:
                     if getattr(event, "output", None) is not None:
                         output = event.output
         finally:
-            await framework_runner.close()
+            try:
+                await framework_runner.close()
+            finally:
+                await self._close_sessions(sessions)
         return output if output is not None else result_value
 
     async def resume(
@@ -207,4 +279,5 @@ class NativeAdkRunner:
             user_id=user_id,
             invocation_id=invocation_id,
             database_path=database_path,
+            _resume=True,
         )

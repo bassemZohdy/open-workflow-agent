@@ -36,6 +36,7 @@ on:
       - "tests/contract/test_schema_resources.py"
       - "tests/contract/test_competitive_forks.py"
       - "tests/contract/test_checkpoint_recovery.py"
+      - "tests/contract/test_recovery_admission.py"
       - "tests/contract/test_effect_recovery.py"
       - "tests/contract/test_invocation_writes.py"
       - "tests/core/test_invocation_store_writes.py"
@@ -119,6 +120,7 @@ jobs:
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
+            ../../tests/contract/test_recovery_admission.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
             -k 'postgresql and langgraph' -vv --durations=20
@@ -133,6 +135,7 @@ jobs:
             uv run --directory engines/adk --locked --exact --extra native --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
+            ../../tests/contract/test_recovery_admission.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
             -k 'postgresql and adk' -vv --durations=20
@@ -147,6 +150,7 @@ jobs:
             uv run --directory engines/agent-framework --locked --exact --extra native --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
+            ../../tests/contract/test_recovery_admission.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
             -k 'postgresql and agent-framework' -vv --durations=20

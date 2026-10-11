@@ -3,12 +3,17 @@
 from typing import Any
 
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
-from open_workflow_agent.errors import InvocationCancelled, OwaError, WorkflowExecutionError
+from open_workflow_agent.errors import (
+    InvocationCancelled,
+    InvocationStateError,
+    OwaError,
+    WorkflowExecutionError,
+)
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.workflow import WorkflowPlan
 
 from .agent import LangGraphAgentFactory
-from .native import NATIVE_SCOPE_STEP_LIMIT, LangGraphFunctionalAdapter
+from .native import LANGGRAPH_AVAILABLE, NATIVE_SCOPE_STEP_LIMIT, LangGraphFunctionalAdapter
 
 
 class LangGraphWorkflowEngine(PortableWorkflowEngine):
@@ -96,6 +101,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         active_result = await self._resume_active_or_terminal(handle, resume_input)
         if active_result is not None:
             return active_result
+        workflow_input = await self._verify_resume_state(handle, plan)
         if not self.native.task_nodes_available:
             return await PortableWorkflowEngine.resume(self, handle, resume_input, plan)
         if handle.status == "waiting":
@@ -109,7 +115,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             output = await self.native.execute_plan(
                 self.executor,
                 plan,
-                resume_input,
+                workflow_input,
                 metadata=self._metadata(plan, handle, active),
                 invocation_id=handle.invocation_id,
                 resume=True,
@@ -140,6 +146,16 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 self._finish_active(handle, result)
             else:
                 self._active.pop(handle.invocation_id, None)
+
+    async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
+        workflow_input = await super()._verify_resume_state(handle, plan)
+        if LANGGRAPH_AVAILABLE and not self.native.task_nodes_available:
+            raise InvocationStateError(
+                "native execution state is unavailable; recovery is required"
+            )
+        if self.native.task_nodes_available:
+            await self.native.admit_resume(plan, handle.invocation_id, workflow_input)
+        return workflow_input
 
 
 __all__ = ["LangGraphWorkflowEngine"]
