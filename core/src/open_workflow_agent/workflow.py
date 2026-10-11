@@ -1818,17 +1818,13 @@ class WorkflowExecutor:
         payload: Any,
         state: ExecutionState,
         dispatch: Callable[[], Awaitable[Any]],
+        *,
+        operation: str | None = None,
     ) -> Any:
         journal = getattr(self.services, "effect_journal", None)
         if journal is None:
             return await dispatch()
-        identity = EffectIdentity(
-            str(state.metadata["invocation_id"]),
-            str(state.metadata["_workflow_fingerprint"]),
-            str(state.variables.get("_execution_reference", state.variables["_task_reference"])),
-            state.execution_path,
-            "call:" + call,
-        )
+        identity = self._effect_identity(state, operation or "call:" + call)
         # Each dispatch attempt gets a fresh private owner. Recovery never adopts
         # an earlier pending intent: its external outcome may be ambiguous.
         owner = str(uuid4())
@@ -1887,6 +1883,16 @@ class WorkflowExecutor:
         receipt = self._store_effect_outcome(journal, identity, owner, state, output=result)
         await self._notify_receipt(state, identity, receipt)
         return self._effect_result(receipt)
+
+    @staticmethod
+    def _effect_identity(state: ExecutionState, operation: str) -> EffectIdentity:
+        return EffectIdentity(
+            str(state.metadata["invocation_id"]),
+            str(state.metadata["_workflow_fingerprint"]),
+            str(state.variables.get("_execution_reference", state.variables["_task_reference"])),
+            state.execution_path,
+            operation,
+        )
 
     @staticmethod
     async def _notify_receipt(

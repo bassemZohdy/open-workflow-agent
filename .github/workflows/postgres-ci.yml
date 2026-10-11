@@ -53,6 +53,7 @@ on:
       - "tests/contract/test_native_receipt_consistency.py"
       - "tests/contract/test_native_receipt_fork_consistency.py"
       - "tests/contract/test_native_scope_dependencies.py"
+      - "tests/contract/test_sandbox_effect_recovery.py"
       - "tests/core/test_postgres_persistence.py"
       - "docker/Dockerfile.adk"
       - "docker/Dockerfile.langgraph"
@@ -143,10 +144,11 @@ jobs:
             ../../tests/contract/test_native_receipt_consistency.py \
             ../../tests/contract/test_native_receipt_fork_consistency.py \
             ../../tests/contract/test_native_scope_dependencies.py \
+            ../../tests/contract/test_sandbox_effect_recovery.py \
             ../../tests/contract/test_process_crash_recovery.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
-            -k 'postgresql and langgraph' -vv --durations=20
+            -k 'postgresql and (langgraph or completed_native_scope_dependencies)' -vv --durations=20
       - name: Verify competitive fork and invocation recovery on native ADK with PostgreSQL
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
@@ -168,6 +170,7 @@ jobs:
             ../../tests/contract/test_process_crash_recovery.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
+            ../../tests/contract/test_sandbox_effect_recovery.py \
             -k 'postgresql and adk' -vv --durations=20
       - name: Verify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL
         env:
@@ -186,6 +189,7 @@ jobs:
             ../../tests/contract/test_process_crash_recovery.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
+            ../../tests/contract/test_sandbox_effect_recovery.py \
             -k 'postgresql and agent-framework' -vv --durations=20
 
   postgres-runtime:

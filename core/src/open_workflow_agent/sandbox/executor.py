@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Mapping
+from dataclasses import asdict
 from typing import Any, cast
-from uuid import uuid4
 
 from ..errors import SandboxPolicyError, WorkflowSemanticError
 from ..expressions import expression_string
@@ -31,7 +32,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError("run.script must be an object")
         request = SandboxExecutionRequest(
-            execution_id=self._execution_id(state),
+            execution_id=self._execution_id(state, "script"),
             kind="script",
             arguments=self._arguments(definition, state),
             stdin=self._stdin(definition, state),
@@ -47,7 +48,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError("run.shell must be an object")
         request = SandboxExecutionRequest(
-            execution_id=self._execution_id(state),
+            execution_id=self._execution_id(state, "shell"),
             kind="shell",
             command=str(definition.get("command", "")),
             arguments=self._arguments(definition, state),
@@ -62,7 +63,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError("run.container must be an object")
         request = SandboxExecutionRequest(
-            execution_id=self._execution_id(state),
+            execution_id=self._execution_id(state, "container"),
             kind="container",
             image=str(definition.get("image", "")),
             command=(str(definition["command"]) if definition.get("command") else None),
@@ -85,18 +86,25 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             **self._task_event(reference, name, state),
             "execution_id": request.execution_id,
         }
-        self._emit("SandboxExecutionStarted", {**event, "status": "running"})
-        self._emit(
-            "TaskProgress",
-            {
-                **event,
-                "status": "running",
-                "progress": {"phase": "sandbox_start"},
-            },
-        )
-        try:
+
+        async def dispatch() -> dict[str, Any]:
+            self._emit("SandboxExecutionStarted", {**event, "status": "running"})
+            self._emit(
+                "TaskProgress",
+                {**event, "status": "running", "progress": {"phase": "sandbox_start"}},
+            )
             result = await self._await_with_cancellation(
                 self.services.sandbox.execute(request), state
+            )
+            return asdict(cast(SandboxExecutionResult, result))
+
+        try:
+            # Secret references stay references. Only the request digest is
+            # retained, never the request or resolved deployment environment.
+            prepared = json.loads(json.dumps(asdict(request), allow_nan=False))
+            operation = "run:" + request.kind
+            result = await self._run_effect(
+                operation, prepared, state, dispatch, operation=operation
             )
         except asyncio.CancelledError:
             self._emit(
@@ -119,7 +127,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
                 },
             )
             raise
-        typed_result = cast(SandboxExecutionResult, result)
+        typed_result = SandboxExecutionResult(**result)
         self._emit(
             "SandboxExecutionCompleted",
             {
@@ -174,8 +182,8 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             result.append((str(name), expression_string(evaluated)))
         return tuple(result)
 
-    @staticmethod
-    def _execution_id(state: ExecutionState) -> str:
+    def _execution_id(self, state: ExecutionState, kind: str) -> str:
         invocation = state.metadata.get("invocation_id", "unknown-invocation")
         reference = state.variables.get("_task_reference", "unknown-task")
-        return f"{invocation}:{reference}:{uuid4().hex[:12]}"
+        occurrence = self._effect_identity(state, "run:" + kind).key[:12]
+        return f"{invocation}:{reference}:{occurrence}"
