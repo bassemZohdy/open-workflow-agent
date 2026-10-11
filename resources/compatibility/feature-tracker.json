@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Native adapters retain immutable references to terminal common receipts and validate them before recovery admission. LangGraph binds receipt references to its saved snapshot/counters/routing checksum. ADK retains sequenced SDK metadata events, awaits native receipt/wait persistence and permits later sibling receipts while a branch remains waiting. Core owns neither SDK state nor SDK SQL. Digests detect disagreement; they are not checkpoint authentication or proof of exactly-once execution. Fresh exact-source seven-gate and configured PostgreSQL acceptance, missing non-self cursor reconciliation and complete native/common payload/invocation consistency remain open. No general pending-intent resolution, compensation, migration, JavaScript or full conformance claim.",
+          "scope": "Completed native scopes publish immutable checkpoint dependencies into subsequent SDK-owned state. Admission verifies each required scope exists, has terminal routing and agrees with its retained digest. The native consistency checksum includes receipt/scope dependencies as well as snapshot/counters/routing. Core owns no native checkpoint state or SQL. Fresh exact-source seven-gate and configured PostgreSQL acceptance and complete native/common invocation/payload consistency remain open. Private binding version 2 is not an old-checkpoint migration guarantee; S2-09 retains that owner. No general pending-effect resolution, compensation, JavaScript or full conformance claim.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -66117,7 +66117,7 @@
           },
           "native_receipt_dependencies_followup": {
             "commit": "9755e96cef402d674e51335e99327f2cb84ce895",
-            "status": "Local bounded receipt consistency and native-reader regression verified; fresh remote acceptance pending",
+            "status": "Bounded receipt/native-reader acceptance verified at c276f40",
             "source_file_sha256": {
               "core/src/open_workflow_agent/effects.py": "21f91c93c14c41f2b056ab2e0f6840f03927605e014bde57902ec198b9b12046",
               "core/src/open_workflow_agent/workflow.py": "7d377da599f07b6fbfd131fe7bfeef663634c42e7322480ac3a8c86e578046ca",
@@ -66190,7 +66190,93 @@
               "sequential_seconds_total": 2.4324373999843374
             },
             "quality_checks": "Formatting, lint, strict 66-package-source and three-fixture typing pass. Five wheel/sdist builds and current Python source/pinned-schema bytes pass; ADK is rebuilt after its final condition change.",
-            "remaining": "Fresh exact-source seven-gate and configured PostgreSQL acceptance, missing non-self cursor reconciliation and complete native/common payload/invocation consistency remain open. No general pending-intent resolution, compensation, migration, JavaScript or full conformance claim."
+            "remaining": "This qualifies bounded receipt consistency and the native-reader correction. Full native/common consistency remains open; subsequent completed-scope dependencies need fresh acceptance. The prior 6af95cf benchmark failure remains recorded.",
+            "remote_commit": "c276f40cb875b815eddd8e35fedfecd3c3ff9acb",
+            "remote_runs": {
+              "38179200495": "success",
+              "38179200516": "success",
+              "38179200475": "success",
+              "38179200484": "success",
+              "38179200396": "success",
+              "38179200384": "success",
+              "38179197842": "success"
+            },
+            "linux_root": {
+              "passed": 1548,
+              "skipped": 488,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.49
+            },
+            "linux_native": {
+              "adk": {
+                "passed": 712,
+                "skipped": 366,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "langgraph": {
+                "passed": 745,
+                "skipped": 348,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "agent_framework_optional": {
+                "passed": 1043,
+                "skipped": 520,
+                "expected_assertion_failures": 3
+              }
+            },
+            "windows": {
+              "root_passed": 460,
+              "root_skipped": 12,
+              "native_passed": 339,
+              "native_skipped": 165
+            },
+            "postgresql": {
+              "store_passed": 81,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_langgraph_passed": 159,
+              "shared_adk_passed": 134,
+              "shared_agent_framework_passed": 92,
+              "shared_agent_framework_skipped": 7,
+              "both_runtime_image_jobs": "Success"
+            },
+            "main_ci_forced_stop_images": "Both principal SDK restart steps pass in both actual main CI runs with production lease expiry",
+            "adk_and_langgraph_remote_benchmarks": "Success in both main CI runs",
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0
+          },
+          "native_completed_scope_dependencies_followup": {
+            "commit": "968ec8fe1f030fe85533c1b97e7729080105f742",
+            "status": "Local bounded completed-scope consistency verified; fresh remote acceptance pending",
+            "source_file_sha256": {
+              "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "169a340bf2ed762a1bc04720ca092935feb13f1c87882c0a1b4793d7087b7c82",
+              "tests/contract/test_native_scope_dependencies.py": "2437c0a0e9900bf89f1a5e8c55b5de431e3661b954e1c8bce783c3cd7af4dc8e",
+              ".github/workflows/ci.yml": "511e2904aae758760004f92cd9ae2446d338bf117c5957318d78f11cf2cfc162",
+              ".github/workflows/postgres-ci.yml": "a10ceb1e716dc769cacebb18884d7a4d9c9e629cdde3d01f757deecf19d42447"
+            },
+            "scope": "Completed native scopes publish immutable checkpoint dependencies into subsequent SDK-owned state. Admission verifies each required scope exists, has terminal routing and agrees with its retained digest. The native consistency checksum includes receipt/scope dependencies as well as snapshot/counters/routing. Core owns no native checkpoint state or SQL.",
+            "negative_probes": "Actual recovery accepts deletion of a completed nested checkpoint at c276f40 and changes common state while dispatching the next fake HTTP call. Two actual prior-source assertions fail: deleted completed scope and internally consistent changed child payload/checksum. The new dependency check rejects both before dispatch or common mutation.",
+            "local_focus": {
+              "passed": 65,
+              "skipped": 117
+            },
+            "local_langgraph_native_shared_ctk": {
+              "passed": 850,
+              "skipped": 357,
+              "expected_assertion_failures": 3
+            },
+            "fixture_scope": "Nested completed scopes, earlier completed loop occurrences, and a cancelled competing child whose cursor advanced before its first SDK checkpoint. A missing cancelled/uncompleted child remains valid; the completed winner remains required. SQLite and configured PostgreSQL fixtures use actual SDK deletion/serialization; PostgreSQL acceptance is pending.",
+            "quality_checks": "Formatting, lint, strict 66-package-source and fixture typing, LangGraph wheel/sdist build and current wheel source/pinned-schema bytes pass. Runtime/test source stays frozen during native checks.",
+            "remaining": "Fresh exact-source seven-gate and configured PostgreSQL acceptance and complete native/common invocation/payload consistency remain open. Private binding version 2 is not an old-checkpoint migration guarantee; S2-09 retains that owner. No general pending-effect resolution, compensation, JavaScript or full conformance claim."
           }
         }
       },

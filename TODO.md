@@ -79,9 +79,14 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   Shared root/nested value/null/fault and waiting-fork receipt checks pass on both
   principal SDKs. Full frozen core/LangGraph/optional regression passes; final
   ADK native/shared/CTK passes 808/366/three tracked gaps and its benchmark passes.
-  Missing-receipt assertions fail on prior source on both SDKs. Fresh configured
-  and exact-source remote acceptance, cursor reconciliation and complete
-  native/common invocation/payload consistency remain open.
+  Missing-receipt assertions fail on prior source on both SDKs. All seven
+  `c276f40` gates pass, including both main CI force-stop images and PostgreSQL
+  159 LangGraph/134 ADK recovery cases. Source `968ec8f` binds completed scope
+  checkpoints to later native progress. Deleted or consistently changed child
+  checkpoints reject recovery; a cancelled child without its first checkpoint
+  remains valid. Focus passes 65/117 and full LangGraph native/shared/CTK passes
+  850/357/three tracked gaps. Fresh configured/exact-source scope acceptance and
+  complete native/common invocation/payload consistency remain open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.

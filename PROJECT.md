@@ -486,6 +486,45 @@ condition change. Optional Agent Framework remains qualified only through its
 common bridge. Fresh exact-source GitHub/Windows/configured PostgreSQL acceptance
 and complete native/common invocation/payload/cursor reconciliation remain open.
 
+All seven exact `c276f40` receipt/native-reader gates pass:
+[PR CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38179200484),
+[push CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38179197842),
+[PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38179200384),
+[external sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38179200475),
+[optional Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38179200516),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38179200396)
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38179200495).
+Both main CI runs pass both forced-stop image restarts with production lease
+expiry and both native benchmark probes. PostgreSQL passes 159 LangGraph/134
+ADK shared recovery cases, 81 common-store cases, 92 optional bridge cases with
+seven skips, 10 separate LangGraph cases with eight skips, and both runtime
+images. Linux root passes 1,548/488/three gaps/91.49%; native ADK 712 and
+LangGraph 745 plus 96 CTK each; Windows root/native pass 460/12 and 339/165;
+optional Agent Framework passes 1,043/520/three gaps. All six actual downloaded
+dependency reports contain zero known advisories. The earlier `6af95cf` PR
+benchmark failure remains recorded. These results qualify the receipt/native-reader
+source, and do not qualify subsequent scope dependency changes.
+
+An actual SDK probe at `c276f40` still accepts deletion of a completed nested
+scope checkpoint, dispatches the next fake HTTP call and changes common state.
+Source `968ec8f` retains immutable completed-scope dependencies in later native
+state and verifies their presence, terminal routing and digest before admission.
+Its consistency checksum includes receipt/scope references. Two prior-source
+assertions fail for a deleted checkpoint and for an internally consistent child
+payload/checksum change. Both now reject recovery without dispatch or common
+mutation. Nested scopes and earlier loop occurrences are covered. A cancelled
+competing child may retain a cursor without its first checkpoint; the fixture
+proves that legitimate absence remains valid while its completed winner stays
+required. Checkpoint state and SQL remain engine-owned.
+
+The focus passes 65/117 and full LangGraph native/shared/CTK regression passes
+850/357/three tracked gaps. Formatting, lint, strict package/fixture typing,
+LangGraph wheel/sdist and current wheel-source/pinned-schema checks pass on frozen
+source. Core, ADK and optional adapters remain unchanged from their separately
+qualified receipt/native-reader source. Private binding version 2 introduces no
+old-checkpoint migration guarantee. Fresh configured/remote acceptance and complete
+native/common invocation/payload consistency remain open.
+
 S2-03 stays open. This fix does not reconcile all native/common invocation or
 side-effect records. General pending-effect reconciliation, full native state
 consistency and configured acceptance of the new validation still require work.
