@@ -40223,7 +40223,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40242,6 +40242,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40263,7 +40282,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40282,6 +40301,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40303,7 +40341,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40322,6 +40360,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40343,7 +40400,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40362,6 +40419,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40383,7 +40459,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40402,6 +40478,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40423,7 +40518,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40442,6 +40537,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40463,7 +40577,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40482,6 +40596,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40503,7 +40636,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40522,6 +40655,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40543,7 +40695,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40562,6 +40714,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40743,7 +40914,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40762,6 +40933,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40783,7 +40973,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40802,6 +40992,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40823,7 +41032,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40842,6 +41051,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -40943,7 +41171,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -40962,6 +41190,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -43727,7 +43974,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -43746,6 +43993,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -43767,7 +44033,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -43786,6 +44052,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -43807,7 +44092,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -43826,6 +44111,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -43847,7 +44151,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -43866,6 +44170,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -43887,7 +44210,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -43906,6 +44229,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -43927,7 +44269,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -43946,6 +44288,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -43967,7 +44328,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -43986,6 +44347,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -44007,7 +44387,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -44026,6 +44406,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -44047,7 +44446,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -44066,6 +44465,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -44087,7 +44505,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -44106,6 +44524,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -44127,7 +44564,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -44146,6 +44583,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -44167,7 +44623,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -44186,6 +44642,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -44207,7 +44682,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -44226,6 +44701,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -44327,7 +44821,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -44346,6 +44840,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -44367,7 +44880,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -44386,6 +44899,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -44407,7 +44939,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -44426,6 +44958,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -44480,7 +45031,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -44499,6 +45050,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -44608,7 +45178,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -44627,6 +45197,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -45281,7 +45870,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -45300,6 +45889,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -45321,7 +45929,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -45340,6 +45948,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -45361,7 +45988,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -45380,6 +46007,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -51557,7 +52203,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -51576,6 +52222,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -51597,7 +52262,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -51616,6 +52281,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -51637,7 +52321,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -51656,6 +52340,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -51677,7 +52380,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -51696,6 +52399,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -51717,7 +52439,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -51736,6 +52458,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -51757,7 +52498,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -51776,6 +52517,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -52127,7 +52887,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -52146,6 +52906,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -52167,7 +52946,7 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -52186,6 +52965,25 @@
               "Agent Framework CI (optional)": 38133078074,
               "Security": 38133078050,
               "Docs": 38133078048
+            }
+          },
+          {
+            "task_id": "S1-03",
+            "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+            "scope": "Raw input validation precedes transformation; task-local transformed input/raw-output descriptors; transformed output validation/export/context replacement; copied branch input and metadata separation. This qualifies the bounded Python profile, not all proposed inventory tests, advanced fork/reducer/security/protocol contracts or JS.",
+            "tests": [
+              "tests/contract/test_data_pipeline.py",
+              "tests/core/test_expressions.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38134434733,
+              "CI (push)": 38134431996,
+              "External Sandbox CI": 38134434744,
+              "PostgreSQL CI": 38134434680,
+              "Agent Framework CI (optional)": 38134434696,
+              "Security": 38134434712,
+              "Docs": 38134434699
             }
           }
         ]
@@ -54774,8 +55572,45 @@
         "module": "M02",
         "description": "Fix input/output/export ordering, context replacement, task-local data and immutable branch input.",
         "effort": "M",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d",
+          "scope": "Python bounded input/output/export pipeline, task-local descriptors and immutable branch input; advanced reducers/security/protocol schemas and independent JS/proposed tests remain tracked",
+          "tests": [
+            "tests/contract/test_data_pipeline.py",
+            "tests/core/test_expressions.py",
+            "tests/contract/test_operator_lifecycle.py"
+          ],
+          "local_root": {
+            "passed": 914,
+            "skipped": 14,
+            "coverage_percent": 91.07
+          },
+          "native_matrices": {
+            "adk": 327,
+            "langgraph": 326,
+            "agent_framework_optional": 435
+          },
+          "final_shared_pipeline_tests": 61,
+          "ci_root": {
+            "passed": 918,
+            "skipped": 10,
+            "coverage_percent": 91.1
+          },
+          "ci_shared_contract": 225,
+          "runs": {
+            "CI": 38134434733,
+            "CI (push)": 38134431996,
+            "External Sandbox CI": 38134434744,
+            "PostgreSQL CI": 38134434680,
+            "Agent Framework CI (optional)": 38134434696,
+            "Security": 38134434712,
+            "Docs": 38134434699
+          },
+          "remote_acceptance": "All success",
+          "full_conformance": false
+        }
       },
       {
         "id": "S1-04",

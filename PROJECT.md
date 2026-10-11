@@ -104,7 +104,7 @@ syntax is documented; proposed inventory tests and JS delivery are unclaimed.
 
 CI root validation passed 855 tests, 10 skipped, with 91.07% coverage. All native/CTK, Windows, mutation, manifests, runtime-image, external-sandbox and persistence gates passed. This qualifies the jq foundation; S1-03 data-flow/descriptors and all later stages remain open. No release was published.
 
-### S1-03 data-flow work — remote acceptance pending
+### S1-03 data-flow work — 2026-10-11 (verified)
 
 Core now validates raw workflow/task input before transformation, executes
 task bodies on local transformed data, validates transformed output, and
@@ -128,9 +128,27 @@ fixtures alongside jq/admission checks.
 Contract validation caught a retry-event identity regression caused by
 task-local descriptors. Retry events now derive the failing child reference
 from the common error and preserve its side-effect operation id. The official
-schema and frozen source snapshots are unchanged. S1-03 remains open until
-exact-commit remote acceptance; later transitions, fork aggregation/reducers,
+schema and frozen source snapshots are unchanged. Exact-commit remote acceptance
+is green at `56e9f2c4b14c7cec2ad6ab4f3bb68accb5e2fc6d`. Later transitions, fork aggregation/reducers,
 recovery, proposed-test inventory and JS delivery remain unclaimed.
+
+Local root validation passed 914 tests, 14 skips and 91.07% coverage.
+Remote root passed 918 tests, 10 skips and 91.10% coverage; its shared
+contract run passed 225 tests.
+
+| Gate | Run | Result |
+| --- | --- | --- |
+| CI | [38134434733](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38134434733) | success |
+| CI (push) | [38134431996](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38134431996) | success |
+| External Sandbox CI | [38134434744](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38134434744) | success |
+| PostgreSQL CI | [38134434680](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38134434680) | success |
+| Agent Framework CI (optional) | [38134434696](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38134434696) | success |
+| Security | [38134434712](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38134434712) | success |
+| Docs | [38134434699](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38134434699) | success |
+
+Both native/CTK, runtime-image, external-sandbox and native PostgreSQL gates
+passed, along with Windows, mutation, manifests, security and docs. No
+release or broader conformance claim was published.
 
 The runtime pipeline is:
 
