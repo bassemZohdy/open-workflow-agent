@@ -60,6 +60,7 @@ jobs:
           ../../tests/contract/test_reusable_definitions.py
           ../../tests/contract/test_catalog_bindings.py
           ../../tests/contract/test_schema_resources.py
+          ../../tests/contract/test_process_crash_recovery.py
 
   manifests:
     name: Validate deployment manifests
