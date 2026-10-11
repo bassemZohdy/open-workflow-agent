@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "reviewed_implementation_commit": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+  "reviewed_implementation_commit": "68722d3aae5f8d9b5421abd5d3ab4f1ed2a61cb0",
   "acceptance_record_commit": null,
   "purpose": "Exhaustive current implementation audit, not a full conformance certificate or feature completion claim",
   "review_method": "Each semantic construct and schema parent was compared with active admission/execution/native code and existing assertion scope. Missing/inert/mismatched behavior retains explicit owners. Source/API availability and copied material are not runtime proof.",
@@ -132,8 +132,43 @@
       "scope": "Selected leaf-call recovery and corrected dependency gate, not full S2-03 or full conformance."
     },
     "dependency_gate_qualification": "Historical Security jobs used a defective top-level report parser. Independently recorded behavioral tests remain source-scoped; dependency safety requires the corrected gate and fresh reports.",
-    "scope": "Read-only original-input recovery and initial native session/root-checkpoint input admission. Shared-session input bindings remain invocation-specific. No execution lease, checkpoint fence or full S2-03 completion.",
-    "remote_status": "Fresh source GitHub/configured PostgreSQL acceptance pending; the conditional-write source passed all seven gates at 6954db8."
+    "scope": "Read-only original-input recovery and initial native session/root-checkpoint input admission. Shared-session input bindings remain invocation-specific. No execution lease, checkpoint fence or full S2-03 completion. Selected actual OS process crash boundaries have separate local SQLite proof at 68722d3; full-suite results retain their unchanged runtime baseline 58516fb.",
+    "remote_status": "New-source GitHub/configured PostgreSQL acceptance pending. Latest observation of b9a2b31 had five successful gates and two CI parents running; subsequent GitHub connection errors prevent confirming completion.",
+    "forced_process_crash_followup": {
+      "commit": "68722d3aae5f8d9b5421abd5d3ab4f1ed2a61cb0",
+      "runtime_source": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+      "backend": "sqlite",
+      "local": {
+        "adk": {
+          "passed": 8,
+          "skipped": 24,
+          "native_checkpoint_qualification": true
+        },
+        "langgraph": {
+          "passed": 8,
+          "skipped": 24,
+          "native_checkpoint_qualification": true
+        },
+        "agent_framework_optional": {
+          "passed": 8,
+          "skipped": 40,
+          "native_checkpoint_qualification": false
+        }
+      },
+      "status": "Local focused proof passed; new-source GitHub/PostgreSQL acceptance pending",
+      "tests": [
+        "tests/contract/test_process_crash_recovery.py"
+      ],
+      "worker": "tests/contract/_process_recovery_worker.py",
+      "boundaries": [
+        "native wait with null resume",
+        "completed value/null/fault receipt before native task commit",
+        "external action committed with unresolved pending receipt",
+        "common terminal value/null/fault before native finalization"
+      ],
+      "scope": "Owned OS worker is forcibly killed without graceful cleanup, then a distinct process recovers persisted original input and first outcomes without repeating fake external dispatch. Optional Agent Framework qualifies its common bridge only.",
+      "remaining": "Configured PostgreSQL and new-source Linux/Windows gates are pending. Durable exclusive ownership, native checkpoint fences, full nested consistency, ambiguous effect resolution, full proposed criteria and independent JS remain unqualified."
+    }
   },
   "evidence_groups": {
     "loading": {
@@ -1060,8 +1095,8 @@
     },
     "lifecycle": {
       "outcome": "partial",
-      "observed": "Common invocation transitions cover running/waiting/completed/faulted/cancelled; active cancellation drains waits/operations and emits common events. Terminal outcomes include their result/error in one common update and survive interrupted or late native finalization. Deterministically injected late native resume values/faults preserve committed common cancellation; no cross-worker ownership guarantee follows. Conditional common state generations reject stale writers and retain first terminal results. Fresh operator handles coordinate with their existing active handle, including a terminal commit during refresh. Other-worker completion/cancellation/fault wins over late native results. This does not establish exclusive cross-worker execution ownership. Principal native recovery rejects invalid initial input/native bindings before accepting a status transition.",
-      "remaining_scope": "General suspended/manual-pause control, durable cancellation/termination policies and full crash recovery are not implemented. Durable exclusive execution ownership and native checkpoint fences remain unqualified.",
+      "observed": "Common invocation transitions cover running/waiting/completed/faulted/cancelled; active cancellation drains waits/operations and emits common events. Terminal outcomes include their result/error in one common update and survive interrupted or late native finalization. Deterministically injected late native resume values/faults preserve committed common cancellation; no cross-worker ownership guarantee follows. Conditional common state generations reject stale writers and retain first terminal results. Fresh operator handles coordinate with their existing active handle, including a terminal commit during refresh. Other-worker completion/cancellation/fault wins over late native results. This does not establish exclusive cross-worker execution ownership. Principal native recovery rejects invalid initial input/native bindings before accepting a status transition. Selected SQLite boundaries survive an actual forced OS process stop followed by recovery in a distinct process; saved value/null/fault outcomes and pending action records are retained without repeat external dispatch.",
+      "remaining_scope": "General suspended/manual-pause control, durable cancellation/termination policies and full crash recovery are not implemented. Durable exclusive execution ownership and native checkpoint fences remain unqualified. Selected local OS crash proof does not establish complete crash recovery, exclusive execution ownership or native write fences.",
       "remediation_tasks": [
         "S2-03",
         "S2-08",
@@ -1125,9 +1160,13 @@
         {
           "path": "tests/contract/test_recovery_admission.py",
           "symbol": "test_invalid_recovery_state_is_rejected_before_execution_or_state_change"
+        },
+        {
+          "path": "tests/contract/test_process_crash_recovery.py",
+          "symbol": "test_forced_process_stop_recovers_committed_state_without_repeating_actions"
         }
       ],
-      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
+      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted Eight forced process cases passed independently per principal SDK and optional common bridge. PostgreSQL and new-source remote gates remain pending; optional Agent Framework native durability is not qualified."
     },
     "pause": {
       "outcome": "unimplemented",
@@ -1303,8 +1342,8 @@
     },
     "recovery": {
       "outcome": "partial",
-      "observed": "Private native LangGraph scope checkpoints skip completed calls. First raw workflow input is separately retained across common-store connections and envelope restart; all six empty/false resume inputs retain original null/false/object/array input and transformation. Terminal status/output/error are stored together before adapter finalization. Fresh services preserve values/null/faults across interruption and late adapter results; successful ADK null callback completion no longer requests another portable execution. Common leaf-call receipts retain the first request digest, owner and value/null/fault outcome before native task commit. Restart reuses completed outcomes and rejects changed requests or uncertain pending intents without dispatch. Recovery failures bypass task/catch retries; uncertain competitive branches drain siblings without establishing a winner. Repeated reusable calls retain distinct occurrences. Common invocation writes compare the exact loaded snapshot and private generation. Independent stale writers cannot replace committed state, including a return to running. Duplicate terminal writes retain the first null/value/error. Late native execution returns another worker's committed terminal outcome; stale resume reads completion before native dispatch. Loaded operator handles coordinate with the original in-process handle. Conflicts cannot enter retry/catch or establish a fork winner, and dispatch conflicts leave uncertain action intents pending. Fresh recovery reads the existing original-input binding without inserting resume data. Principal native adapters require matching original input and an existing ADK invocation event or LangGraph root checkpoint before changing common status. Missing/deleted native records, missing/changed input and unavailable installed native persistence reject admission. ADK selects input per invocation rather than session-wide state; two invocations sharing a session retain independent original inputs.",
-      "remaining_scope": "Durable exclusive execution ownership/leases and atomic native checkpoint fencing remain open. Initial session/root-input checks do not establish complete nested checkpoint consistency or atomic common/native reconciliation. New admission PostgreSQL acceptance is pending. Conditional writes passed at 6954db8. Executable run/event/child effects, ambiguous outcomes, forced process-crash qualification, legacy input/version migration, full proposed criteria and independent JS remain unqualified.",
+      "observed": "Private native LangGraph scope checkpoints skip completed calls. First raw workflow input is separately retained across common-store connections and envelope restart; all six empty/false resume inputs retain original null/false/object/array input and transformation. Terminal status/output/error are stored together before adapter finalization. Fresh services preserve values/null/faults across interruption and late adapter results; successful ADK null callback completion no longer requests another portable execution. Common leaf-call receipts retain the first request digest, owner and value/null/fault outcome before native task commit. Restart reuses completed outcomes and rejects changed requests or uncertain pending intents without dispatch. Recovery failures bypass task/catch retries; uncertain competitive branches drain siblings without establishing a winner. Repeated reusable calls retain distinct occurrences. Common invocation writes compare the exact loaded snapshot and private generation. Independent stale writers cannot replace committed state, including a return to running. Duplicate terminal writes retain the first null/value/error. Late native execution returns another worker's committed terminal outcome; stale resume reads completion before native dispatch. Loaded operator handles coordinate with the original in-process handle. Conflicts cannot enter retry/catch or establish a fork winner, and dispatch conflicts leave uncertain action intents pending. Fresh recovery reads the existing original-input binding without inserting resume data. Principal native adapters require matching original input and an existing ADK invocation event or LangGraph root checkpoint before changing common status. Missing/deleted native records, missing/changed input and unavailable installed native persistence reject admission. ADK selects input per invocation rather than session-wide state; two invocations sharing a session retain independent original inputs. Selected SQLite boundaries survive an actual forced OS process stop followed by recovery in a distinct process; saved value/null/fault outcomes and pending action records are retained without repeat external dispatch.",
+      "remaining_scope": "Durable exclusive execution ownership/leases and atomic native checkpoint fencing remain open. Initial session/root-input checks do not establish complete nested checkpoint consistency or atomic common/native reconciliation. New admission PostgreSQL acceptance is pending. Conditional writes passed at 6954db8. Executable run/event/child effects, ambiguous outcomes, broader forced process-crash qualification, legacy input/version migration, full proposed criteria and independent JS remain unqualified. Selected local OS crash proof does not establish complete crash recovery, exclusive execution ownership or native write fences.",
       "remediation_tasks": [
         "S2-03",
         "S2-09",
@@ -1540,9 +1579,13 @@
         {
           "path": "tests/adk/test_adk_adapter.py",
           "symbol": "test_native_admission_storage_failures_use_common_sanitized_errors"
+        },
+        {
+          "path": "tests/contract/test_process_crash_recovery.py",
+          "symbol": "test_forced_process_stop_recovers_committed_state_without_repeating_actions"
         }
       ],
-      "test_scope": "Actual principal SDK missing/deleted native records and original-input mismatch fixtures, shared-session restart and frozen full local suites. Matching PostgreSQL fixtures are wired and pending. The optional common bridge has an explicit native-admission skip. These are initial input-binding admission checks, not durable leases, complete checkpoint validation or native write fences."
+      "test_scope": "Actual principal SDK missing/deleted native records and original-input mismatch fixtures, shared-session restart and frozen full local suites. Matching PostgreSQL fixtures are wired and pending. The optional common bridge has an explicit native-admission skip. These are initial input-binding admission checks, not durable leases, complete checkpoint validation or native write fences. Eight forced process cases passed independently per principal SDK and optional common bridge. PostgreSQL and new-source remote gates remain pending; optional Agent Framework native durability is not qualified."
     },
     "migration": {
       "outcome": "unimplemented",
@@ -2776,8 +2819,8 @@
     },
     "action_receipts": {
       "outcome": "partial",
-      "observed": "Common leaf-call first-owner intents and first value/null/fault outcomes survive reopening and interruption before native task commit. Request changes, unresolved intent owners and failed outcome writes stop replay without duplicate dispatch or task/catch retry. Private occurrence identity distinguishes repeated reusable calls; public operation keys retain their existing meaning. A common state conflict during dispatch leaves an unresolved intent and cannot enter retry routing.",
-      "remaining_scope": "No general exactly-once external-action guarantee, redrive, compensation or termination state machine. Executable run, event and child effects, ambiguous external outcomes, fenced invocation ownership, full proposed criteria and independent JS remain unqualified. Prior leaf dispatch gates passed at fc53574; new conditional state-write database gates are pending.",
+      "observed": "Common leaf-call first-owner intents and first value/null/fault outcomes survive reopening and interruption before native task commit. Request changes, unresolved intent owners and failed outcome writes stop replay without duplicate dispatch or task/catch retry. Private occurrence identity distinguishes repeated reusable calls; public operation keys retain their existing meaning. A common state conflict during dispatch leaves an unresolved intent and cannot enter retry routing. Selected SQLite boundaries survive an actual forced OS process stop followed by recovery in a distinct process; saved value/null/fault outcomes and pending action records are retained without repeat external dispatch.",
+      "remaining_scope": "No general exactly-once external-action guarantee, redrive, compensation or termination state machine. Executable run, event and child effects, ambiguous external outcomes, fenced invocation ownership, full proposed criteria and independent JS remain unqualified. Prior leaf dispatch gates passed at fc53574; new conditional state-write database gates are pending. Selected local OS crash proof does not establish complete crash recovery, exclusive execution ownership or native write fences.",
       "remediation_tasks": [
         "S2-03",
         "S2-08",
@@ -2829,9 +2872,13 @@
         {
           "path": "tests/contract/test_invocation_writes.py",
           "symbol": "test_dispatch_state_conflict_leaves_an_uncertain_action_intent_without_retry"
+        },
+        {
+          "path": "tests/contract/test_process_crash_recovery.py",
+          "symbol": "test_forced_process_stop_recovers_committed_state_without_repeating_actions"
         }
       ],
-      "test_scope": "Shared SQLite and configured PostgreSQL assertions, actual independent native SDK environments and separate journal store fixtures. Local PostgreSQL skips are not acceptance."
+      "test_scope": "Shared SQLite and configured PostgreSQL assertions, actual independent native SDK environments and separate journal store fixtures. Local PostgreSQL skips are not acceptance. Eight forced process cases passed independently per principal SDK and optional common bridge. PostgreSQL and new-source remote gates remain pending; optional Agent Framework native durability is not qualified."
     }
   },
   "features": [
@@ -17004,6 +17051,7 @@
     "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "455c2bacd15b98e69b4ef080084a6a0b316bd19880b990958014684fb2aeeb36",
     "engines/langgraph/src/open_workflow_agent_langgraph/native.py": "9348e1861daf13a7fc80e6165f24c6c378161e9887abceae879810a4e25d4726",
     "tests/adk/test_adk_adapter.py": "b0ad35c5151ee7fd0f5b485653c5adddb829182ae0c0de4072205458ce9d3bfa",
+    "tests/contract/_process_recovery_worker.py": "5a510eb9b8c05b5045099619ddbbcb56704c00f0435c0eb6636127add1169485",
     "tests/contract/test_catalog_bindings.py": "92f619a91d0d2de0e54b3d1a137abeb8c02c1c6753930e28d7f07dd104228bef",
     "tests/contract/test_checkpoint_recovery.py": "ebb62d387023154a7f09b1db0fe7b177111c08d1b339591f0aa77fbcb255cfe6",
     "tests/contract/test_cloud_events.py": "db37015b35d525268aae32c261d91839ab9c5b4834450a74e0eacbb5664cdbcc",
@@ -17021,6 +17069,7 @@
     "tests/contract/test_invocation_writes.py": "5f184a140af005f3db5401d0ff6121400d90ac71f0bdd7f6f7b25637d330cd16",
     "tests/contract/test_jq_portability.py": "6f953d921345c712ec472f040a36d9346233ea7b405b08b6af034ac84391c75e",
     "tests/contract/test_operator_lifecycle.py": "91d6eea1378769efca0cf74ce4242a77cae6e59e91b2655337ca67f9e243627e",
+    "tests/contract/test_process_crash_recovery.py": "91eb0f8cfccf7943f422a59ca21d93430da34d658e220aa5c27ef6e15c24d76d",
     "tests/contract/test_recovery_admission.py": "1e460abc4c56e64b43c64a1a8924991971028e67e1e3704754fa39950abf8b82",
     "tests/contract/test_reusable_definitions.py": "cc6ed66bce68278088af449a63b880096c75755650fbaa4b99671feb9d188f41",
     "tests/contract/test_sandbox_contract.py": "93d427f5637ebdf135c6166dbad67e6099c0f6aa095d5e5e41676cf0ec0c9437",
@@ -17799,11 +17848,166 @@
           }
         }
       }
+    },
+    {
+      "artifact_commit": "b9a2b31107da047b834987c896a8ad155daad60f",
+      "path": "resources/compatibility/implementation-audit.json",
+      "reviewed_implementation_commit": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+      "acceptance_record_commit": null,
+      "acceptance": {
+        "local_root": {
+          "passed": 1473,
+          "skipped": 230,
+          "expected_assertion_failures": 3,
+          "coverage_percent": 91.83,
+          "commit": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7"
+        },
+        "native_matrices": {
+          "commit": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+          "adk": {
+            "passed": 739,
+            "skipped": 173,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 749,
+            "skipped": 180,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 999,
+            "skipped": 269,
+            "expected_assertion_failures": 3
+          }
+        },
+        "negative_probes": {
+          "native_input_binding_admission": 8,
+          "shared_adk_session_input": 1,
+          "native_cleanup_error_boundary": 1
+        },
+        "prior_conditional_invocation_write_acceptance": {
+          "commit": "6954db892aa7a787794b2cb2fa25cfd0f9316882",
+          "runtime_source": "31f64ac5ba42dc9f62da887e9f013c6330688aff",
+          "result": "Success",
+          "runs": {
+            "ci_pr": 38163682555,
+            "ci_push": 38163678738,
+            "postgresql": 38163682598,
+            "external_sandbox": 38163682554,
+            "agent_framework_optional": 38163682536,
+            "security_pr": 38163682524,
+            "docs": 38163682518
+          },
+          "linux_root": {
+            "passed": 1465,
+            "skipped": 198,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.87
+          },
+          "postgresql": {
+            "store_passed": 14,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_adk_passed": 78,
+            "shared_langgraph_passed": 78,
+            "shared_agent_framework_passed": 76,
+            "shared_agent_framework_skipped": 2
+          },
+          "remote_security_dependency_counts": {
+            "root": 71,
+            "adk": 109,
+            "langgraph": 96,
+            "agent_framework_optional": 74,
+            "sandbox_controller": 13,
+            "kubernetes_sandbox_controller": 16
+          },
+          "remote_known_advisories": 0,
+          "scope": "Conditional common state writes and first-terminal reconciliation; not execution leases or native checkpoint fencing."
+        },
+        "prior_action_and_dependency_acceptance": {
+          "commit": "fc535749561a7f2c03a8b919a3bd5176a07e5f32",
+          "runtime_source": "8da4de3cebfb988206ae28f8eb59187c754fa2a7",
+          "result": "Success",
+          "runs": {
+            "ci_pr": 38161547695,
+            "ci_push": 38161544737,
+            "postgresql": 38161547613,
+            "external_sandbox": 38161547672,
+            "agent_framework_optional": 38161547666,
+            "security_pr": 38161547761,
+            "security_push": 38161544729,
+            "docs": 38161547668
+          },
+          "linux_root": {
+            "passed": 1407,
+            "skipped": 159,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.82
+          },
+          "remote_security_dependency_counts": {
+            "root": 71,
+            "adk": 109,
+            "langgraph": 96,
+            "agent_framework_optional": 74,
+            "sandbox_controller": 13,
+            "kubernetes_sandbox_controller": 16
+          },
+          "remote_known_advisories": 0,
+          "postgresql": {
+            "store_passed": 9,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_adk_passed": 61,
+            "shared_langgraph_passed": 61,
+            "shared_agent_framework_passed": 59,
+            "shared_agent_framework_skipped": 2
+          },
+          "scope": "Selected leaf-call recovery and corrected dependency gate, not full S2-03 or full conformance."
+        },
+        "dependency_gate_qualification": "Historical Security jobs used a defective top-level report parser. Independently recorded behavioral tests remain source-scoped; dependency safety requires the corrected gate and fresh reports.",
+        "scope": "Read-only original-input recovery and initial native session/root-checkpoint input admission. Shared-session input bindings remain invocation-specific. No execution lease, checkpoint fence or full S2-03 completion.",
+        "remote_status": "Fresh source GitHub/configured PostgreSQL acceptance pending; the conditional-write source passed all seven gates at 6954db8."
+      },
+      "audit_acceptance": {
+        "commit": null,
+        "result": "Pending",
+        "scope": "New-source audit integrity and GitHub/database acceptance pending; historical snapshots remain unchanged."
+      },
+      "outcome_counts": {
+        "qualified_subset": 181,
+        "unimplemented": 62,
+        "partial": 150,
+        "rejected": 197,
+        "inert": 27,
+        "behavior_mismatch": 32,
+        "internal_only": 9
+      },
+      "gap_probes": {
+        "path": "tests/contract/test_implementation_audit_gaps.py",
+        "passed": 8,
+        "expected_assertion_failures": 3,
+        "unexpected_passes": 0,
+        "scope": "Ordered fork probes now pass; OpenAPI, raw binary and null event-data assertion failures retain strict expected-failure markers and repair owners.",
+        "independent_environments": {
+          "adk": {
+            "passed": 8,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 8,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 9,
+            "expected_assertion_failures": 3
+          }
+        }
+      }
     }
   ],
   "audit_acceptance": {
     "commit": null,
     "result": "Pending",
-    "scope": "New-source audit integrity and GitHub/database acceptance pending; historical snapshots remain unchanged."
+    "scope": "New crash fixture source integrity and remote acceptance pending; prior raw acceptance snapshots retained unchanged."
   }
 }

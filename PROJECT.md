@@ -255,6 +255,22 @@ configured PostgreSQL acceptance for this source remains pending. These are
 initial input-binding admission checks, not complete nested checkpoint
 validation, an execution lease or atomic native checkpoint fencing.
 
+Test-only source `68722d3` adds actual forced OS process-stop fixtures. At eight
+selected boundaries, an owning test kills its runtime worker without graceful
+cleanup, then starts a distinct process against the same persisted state.
+SQLite proof passed eight cases independently in ADK and LangGraph and eight
+on the optional Agent Framework common bridge (24/24/40 explicit skips).
+The fixtures preserve original input, null/value/fault outcomes, unchanged
+action receipts and duplicate terminal results. A separate fake external store
+has no deduplication: its call count confirms that recovery does not repeat the
+action, including an unresolved pending receipt. The optional bridge results do
+not qualify Agent Framework native checkpoint durability. Matching PostgreSQL
+and Windows fixtures are wired; their fresh remote acceptance remains pending.
+Strict fixture typing, formatting, lint and audit checks passed. Full-suite
+counts above retain the unchanged runtime source `58516fb`; these new focused
+cases are separate proof. GitHub connection errors currently prevent confirming
+the last two CI parents at `b9a2b31`; five other gates were observed successful.
+
 S2-03 stays open. This fix does not reconcile all native/common invocation or
 side-effect records. General pending-effect reconciliation, fenced recovery ownership,
 missing or inconsistent native checkpoint recovery and broader configured

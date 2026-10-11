@@ -9,7 +9,7 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`58516fb`, which retains the verified fork, original-input, terminal-record,
+`68722d3`, with unchanged runtime source `58516fb`, which retains the verified fork, original-input, terminal-record,
 leaf-call and conditional common write corrections. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
@@ -22,6 +22,12 @@ records, missing/changed original input and unavailable installed native
 persistence reject admission. ADK invocations sharing a session retain distinct
 original inputs. Admission storage/cleanup errors are sanitized.
 Full local suites passed; exact new-source GitHub/database acceptance is pending.
+Separate test-only proof at `68722d3` passed eight actual forced OS process-stop
+cases per principal SDK and optional common bridge on SQLite. Recovery in a
+distinct process preserves first outcomes and existing receipts without repeating
+fake external dispatch. Optional Agent Framework native durability and fresh
+configured PostgreSQL/remote gates remain unqualified. These focused results do
+not replace the full-suite baseline recorded at `58516fb`.
 The conditional-write gates passed at `6954db8`; prior leaf-call and corrected
 dependency gates passed at `fc53574`. Recovery, action idempotency and lifecycle
 remain partial. S2-03 remains open for broader effects, fenced ownership and

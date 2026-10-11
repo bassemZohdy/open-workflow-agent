@@ -97,6 +97,20 @@ or establish exclusive execution ownership. Those remain S2-03 requirements.
 
 ## Evidence and remaining work
 
+The [forced process fixtures](../tests/contract/test_process_crash_recovery.py)
+at `68722d3` kill an owned OS runtime worker without graceful cleanup and recover
+in a distinct process. Eight SQLite cases passed independently in each principal
+SDK environment and in the optional common bridge: native wait with null resume,
+value/null/fault receipts before native task commit, an unresolved receipt after
+fake external dispatch, and terminal value/null/fault before native finalization.
+The fake external store has no deduplication; the unchanged call count verifies
+that recovery does not repeat an action. Original input, first terminal results,
+duplicate results and existing action records are preserved. The optional bridge
+does not qualify Agent Framework native checkpoint durability. Configured
+PostgreSQL and new-source Linux/Windows gates remain pending. This selected
+boundary proof does not establish exclusive recovery ownership, native write
+fences, complete nested consistency or resolution of ambiguous external effects.
+
 The verified private action journal foundation retains
 a first-owner intent and the first completed value/null/fault outcome on the
 common datasource, with stable private occurrence identity and a request digest.

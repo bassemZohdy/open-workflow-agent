@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Input/terminal/journal/leaf-call foundations and conditional common writes are verified. Initial native/input-binding admission has full local proof and pending new-source database gates. Exclusive execution ownership, atomic native checkpoint fencing/full consistency, forced process-crash qualification and broader effects remain open.",
+          "scope": "Input/terminal/journal/leaf-call foundations and conditional common writes are verified. Initial native/input-binding admission has full local proof; selected OS process crash boundaries have focused SQLite proof. New-source GitHub/PostgreSQL gates, exclusive execution ownership, atomic native checkpoint fencing/full consistency and broader effects remain open.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -65460,6 +65460,41 @@
               "tests/core/test_postgres_persistence.py"
             ],
             "remaining": "Durable exclusive execution ownership/leases and atomic native checkpoint fencing remain open. Initial session/root-input checks do not establish complete nested checkpoint consistency or atomic common/native reconciliation. New admission PostgreSQL acceptance is pending. Conditional writes passed at 6954db8. Executable run/event/child effects, ambiguous outcomes, forced process-crash qualification, legacy input/version migration, full proposed criteria and independent JS remain unqualified."
+          },
+          "forced_process_crash_followup": {
+            "commit": "68722d3aae5f8d9b5421abd5d3ab4f1ed2a61cb0",
+            "runtime_source": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+            "backend": "sqlite",
+            "local": {
+              "adk": {
+                "passed": 8,
+                "skipped": 24,
+                "native_checkpoint_qualification": true
+              },
+              "langgraph": {
+                "passed": 8,
+                "skipped": 24,
+                "native_checkpoint_qualification": true
+              },
+              "agent_framework_optional": {
+                "passed": 8,
+                "skipped": 40,
+                "native_checkpoint_qualification": false
+              }
+            },
+            "status": "Local focused proof passed; new-source GitHub/PostgreSQL acceptance pending",
+            "tests": [
+              "tests/contract/test_process_crash_recovery.py"
+            ],
+            "worker": "tests/contract/_process_recovery_worker.py",
+            "boundaries": [
+              "native wait with null resume",
+              "completed value/null/fault receipt before native task commit",
+              "external action committed with unresolved pending receipt",
+              "common terminal value/null/fault before native finalization"
+            ],
+            "scope": "Owned OS worker is forcibly killed without graceful cleanup, then a distinct process recovers persisted original input and first outcomes without repeating fake external dispatch. Optional Agent Framework qualifies its common bridge only.",
+            "remaining": "Configured PostgreSQL and new-source Linux/Windows gates are pending. Durable exclusive ownership, native checkpoint fences, full nested consistency, ambiguous effect resolution, full proposed criteria and independent JS remain unqualified."
           }
         }
       },

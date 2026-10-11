@@ -59,7 +59,8 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   Leaf-call action receipts and corrected dependency validation are verified at
   `fc53574`; conditional invocation writes passed all gates at `6954db8`.
   Initial native/input-binding admission at `58516fb` has full local proof;
-  fresh GitHub/database acceptance is pending. Durable exclusive recovery
+  eight forced process-stop cases per SDK/common bridge passed locally at
+  `68722d3`. Fresh GitHub/database acceptance is pending. Durable exclusive recovery
   ownership, atomic native checkpoint fencing and full native consistency remain open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
