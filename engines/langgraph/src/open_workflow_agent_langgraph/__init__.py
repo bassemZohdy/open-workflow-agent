@@ -55,6 +55,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
         try:
+            input_data = self._prepare_workflow_input(workflow, invocation, input_data)
             output = await self.native.execute_plan(
                 self.executor,
                 workflow,
@@ -113,7 +114,11 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 invocation_id=handle.invocation_id,
                 resume=True,
             )
-            result = self._record_result(handle, status="completed", output=output)
+            result = (
+                self._stored_result(handle)
+                if active.control.token.cancelled or handle.status == "cancelled"
+                else self._record_result(handle, status="completed", output=output)
+            )
             return result
         except InvocationCancelled as exc:
             result = self._record_result(handle, status="cancelled", error=exc.as_dict())
@@ -124,7 +129,11 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 if isinstance(exc, OwaError)
                 else WorkflowExecutionError("native execution failed").as_dict()
             )
-            result = self._record_result(handle, status="faulted", error=error)
+            result = (
+                self._stored_result(handle)
+                if handle.status == "cancelled"
+                else self._record_result(handle, status="faulted", error=error)
+            )
             return result
         finally:
             if result is not None:

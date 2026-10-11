@@ -270,6 +270,12 @@ class WorkflowEngine:
             "_lifecycle": active.control,
         }
 
+    def _prepare_workflow_input(
+        self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
+    ) -> Any:
+        self.services.invocations.verify_fingerprint(invocation, workflow.fingerprint)
+        return self.services.invocations.bind_input(invocation, input_data)
+
     def _record_result(
         self,
         handle: ExecutionHandle,
@@ -280,6 +286,8 @@ class WorkflowEngine:
     ) -> InvocationResult:
         if status not in INVOCATION_STATES:
             raise ValueError(f"unsupported invocation status: {status}")
+        if handle.status in TERMINAL_INVOCATION_STATES:
+            return self._stored_result(handle)
         self.services.invocations.update(handle, status=status, output=output, error=error)
         return InvocationResult(handle.invocation_id, handle.session_id, status, output, error)
 
@@ -307,6 +315,7 @@ class PortableWorkflowEngine(WorkflowEngine):
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
         try:
+            input_data = self._prepare_workflow_input(workflow, invocation, input_data)
             output = await self.executor.execute(
                 workflow,
                 input_data,

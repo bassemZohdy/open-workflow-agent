@@ -39,12 +39,44 @@ failures and 91.76% coverage. Independent native/shared/CTK suites pass ADK 611
 (26 skips), LangGraph 624 (33 skips) and optional Agent Framework 821 (39 skips),
 with the same three expected gap failures. Formatting, lint, strict typing, all
 four locks, all five builds, documentation links and six inventory/source checks
-pass. Exact revision GitHub acceptance is still pending.
+pass. All exact `f2943c6` GitHub gates passed: [CI
+38155232592](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38155232592),
+[push CI 38155229075](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38155229075),
+[PostgreSQL 38155232567](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38155232567),
+[external sandbox 38155232510](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38155232510),
+[Agent Framework 38155232603](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38155232603),
+[security 38155232528](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38155232528)
+and [documentation 38155232566](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38155232566).
+
+The next follow-up passes broad local verification. A private common input table
+retains the first raw input by invocation and fingerprint, separately from
+resume messages. Terminal status, output and common error are written together
+before adapter finalization. In-memory handles change only after a successful
+store commit. Completed results and structured errors survive interruption
+before native finalization, and late adapter values/faults preserve committed
+terminal outcomes. The native ADK resume callback records completion separately
+from its JSON result so successful null does not trigger a second execution.
+Deterministic late-native-result probes preserve committed cancellation.
+
+The shared recovery matrix now covers SQLite and configured PostgreSQL, all
+six empty/false resume values against null/false/object/array original inputs,
+workflow input transformation, duplicate terminal resume, successful null
+completion, and value/null/fault finalization boundaries. Store fixtures prove
+first binding across connections/reopening, rejected non-JSON data, definition
+identity, corrupt records and a failed SQLite commit. Frozen-source verification
+passes 1,319 root tests with 136 skips, three known expected gap failures and
+91.73% coverage. Independent native/shared/CTK suites pass ADK 671 (98 skips),
+LangGraph 684 (105 skips) and optional Agent Framework 909 (149 skips), each with
+the same three expected gap failures. Formatting, lint, strict typing, all locks,
+five builds, documentation links and six inventory/source checks pass. These
+additions await exact revision GitHub/database acceptance; configured database
+skips do not prove acceptance. See [recovery boundaries](docs/checkpoint-recovery.md).
 
 S2-03 stays open. This fix does not reconcile all native/common invocation or
-side-effect records. Original input recovery, explicit null task results,
-interruption between effect completion and native checkpoint commit, and
-configured database acceptance still require work. Later-stage retry/deadline,
+side-effect records. General pending-effect receipts, fenced recovery ownership,
+missing or inconsistent native checkpoint recovery and configured database
+acceptance still require work. Legacy rows without an original-input record
+have no new migration guarantee. Later-stage retry/deadline,
 timer/event, child workflow, compensation and version migration owners remain
 unchanged; no stronger recovery or exactly-once guarantee is advertised.
 

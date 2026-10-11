@@ -49,6 +49,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
         try:
+            input_data = self._prepare_workflow_input(workflow, invocation, input_data)
             output = await self.native.invoke(
                 lambda value: self.executor.execute(
                     workflow,
@@ -104,29 +105,41 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         active = self._begin_active(handle)
         result: InvocationResult | None = None
         try:
+            workflow_input = self._prepare_workflow_input(plan, handle, resume_input)
+            execution_completed = False
+            execution_output: Any = None
 
             async def execute_workflow(value: Any) -> Any:
-                return await self.executor.execute(
+                nonlocal execution_completed, execution_output
+                execution_output = await self.executor.execute(
                     plan,
                     value,
                     metadata=self._metadata(plan, handle, active),
                 )
+                execution_completed = True
+                return execution_output
 
             output = await self.native.resume(
                 execute_workflow,
-                resume_input,
+                workflow_input,
                 session_id=handle.session_id,
                 user_id=handle.user_id,
                 invocation_id=handle.engine_execution_reference,
                 database_path=self._session_database_path(),
             )
-            if output is None:
+            if execution_completed:
+                output = execution_output
+            elif output is None:
                 # ADK 2.x can complete a resumed dynamic node without
-                # surfacing its returned value after a process restart. Keep
-                # the native resume attempt, then recover the public result
-                # through the same portable plan contract.
-                output = await execute_workflow(resume_input)
-            result = self._record_result(handle, status="completed", output=output)
+                # calling the portable runner after restart. Recover through
+                # the same plan only when no callback completion was observed;
+                # a completed callback may validly return JSON null.
+                output = await execute_workflow(workflow_input)
+            result = (
+                self._stored_result(handle)
+                if active.control.token.cancelled or handle.status == "cancelled"
+                else self._record_result(handle, status="completed", output=output)
+            )
             return result
         except InvocationCancelled as exc:
             result = self._record_result(handle, status="cancelled", error=exc.as_dict())
@@ -137,7 +150,11 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 if hasattr(exc, "as_dict")
                 else {"code": "workflow_execution_error", "message": str(exc), "details": {}}
             )
-            result = self._record_result(handle, status="faulted", error=error)
+            result = (
+                self._stored_result(handle)
+                if handle.status == "cancelled"
+                else self._record_result(handle, status="faulted", error=error)
+            )
             return result
         finally:
             if result is not None:

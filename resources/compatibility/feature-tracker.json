@@ -65066,14 +65066,41 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Fresh-runtime JSON resume input preservation; broader native/common invocation and side-effect reconciliation remains open.",
+          "scope": "Verified JSON resume input wake-up; original workflow input and atomic terminal-result recovery are under verification. Broader native/common invocation and side-effect reconciliation remains open.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
-          "local_full_verification": "Frozen source: root 1244 passed, 61 skipped, 3 expected gap failures, 91.76% coverage. Independent native/shared/CTK: ADK 611 passed/26 skipped; LangGraph 624 passed/33 skipped; optional Agent Framework 821 passed/39 skipped, each with 3 expected gap failures. Formatting, lint, strict typing, four locks, five builds, documentation links and six inventory/source checks pass. Exact revision GitHub gates remain pending.",
+          "local_full_verification": "Initial f2943c6 wake-up fix: root 1244 passed, 61 skipped, 3 expected gap failures, 91.76% coverage. Independent native/shared/CTK: ADK 611 passed/26 skipped; LangGraph 624 passed/33 skipped; optional Agent Framework 821 passed/39 skipped, each with 3 expected gap failures. Formatting, lint, strict typing, four locks, five builds, documentation links and six inventory/source checks passed.",
+          "initial_resume_acceptance": {
+            "commit": "f2943c6cd793d5b9d6d54ae33a0aefbe3c80e513",
+            "runs": {
+              "CI": 38155232592,
+              "CI (push)": 38155229075,
+              "PostgreSQL CI": 38155232567,
+              "External Sandbox CI": 38155232510,
+              "Agent Framework CI (optional)": 38155232603,
+              "Security": 38155232528,
+              "Docs": 38155232566
+            },
+            "result": "All success; qualifies the wake-up fix only"
+          },
+          "current_followup": {
+            "scope": "Private first-input binding, atomic terminal status/output/error, adapter finalization reconciliation, null completion receipt and committed cancellation preservation.",
+            "tests": [
+              "tests/core/test_invocation_inputs.py",
+              "tests/contract/test_checkpoint_recovery.py",
+              "tests/core/test_postgres_persistence.py"
+            ],
+            "negative_probes": "Original input replacement: 2 root failures. Native ADK successful null: 1 failure before callback receipt. Terminal status without value/error: 4 failures and 2 null passes. Late native fault/value overwrite: 12 failures before terminal reconciliation.",
+            "targeted_root": "87 passed, 72 unconfigured PostgreSQL skips; includes 15 common-store cases.",
+            "full_local_validation": "Frozen-source root: 1319 passed, 136 skipped, 3 expected gap failures, 91.73% coverage. Independent native/shared/CTK: ADK 671 passed/98 skipped; LangGraph 684 passed/105 skipped; optional Agent Framework 909 passed/149 skipped, each with 3 expected gap failures. Format/lint/typing, four locks, five builds, docs links and six audit/source checks passed. Exact new GitHub/database gates remain pending.",
+            "documentation": "docs/checkpoint-recovery.md"
+          },
           "remaining": [
             "Reconcile native completion/checkpoint state with common invocation records after interruption.",
-            "Preserve original workflow input and recorded side-effect results during fresh-service recovery, including null outputs.",
+            "Reconcile pending and completed side-effect records with native state during fresh-service recovery.",
+            "Fence recovery ownership and prove missing/inconsistent native checkpoint handling.",
+            "Do not infer compatible migration for legacy rows lacking original-input records.",
             "Verify crash boundaries and repeated task occurrences on embedded and configured PostgreSQL backends.",
             "Keep later retry/deadline, durable event/timer, child workflow, compensation and version-migration tasks open."
           ]

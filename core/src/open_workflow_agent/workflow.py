@@ -1236,8 +1236,9 @@ class WorkflowExecutor:
             )
             validate_expression_data(result)
             self._validate_data_schema(output, result, "workflow output", state)
+            self._set_invocation_status(state, "completed", output=result, error=None)
         except InvocationCancelled as exc:
-            self._set_invocation_status(state, "cancelled")
+            self._set_invocation_status(state, "cancelled", output=None, error=_error_details(exc))
             self._emit(
                 "WorkflowCancelled",
                 {
@@ -1250,7 +1251,7 @@ class WorkflowExecutor:
             )
             raise
         except Exception as exc:
-            self._set_invocation_status(state, "faulted")
+            self._set_invocation_status(state, "faulted", output=None, error=_error_details(exc))
             self._emit(
                 "WorkflowFaulted",
                 {
@@ -1269,7 +1270,6 @@ class WorkflowExecutor:
                 "status": "completed",
             },
         )
-        self._set_invocation_status(state, "completed")
         return result
 
     async def _run_tasks(
@@ -2271,10 +2271,10 @@ class WorkflowExecutor:
             return await operation
         return await control.token.await_operation(operation)
 
-    def _set_invocation_status(self, state: ExecutionState, status: str) -> None:
+    def _set_invocation_status(self, state: ExecutionState, status: str, **changes: Any) -> None:
         handle = state.metadata.get("_invocation_handle")
         if handle is not None and self.services is not None:
-            self.services.invocations.update(handle, status=status)
+            self.services.invocations.update(handle, status=status, **changes)
 
     def _task_event(self, reference: str, name: Any, state: ExecutionState) -> dict[str, Any]:
         context = state.metadata

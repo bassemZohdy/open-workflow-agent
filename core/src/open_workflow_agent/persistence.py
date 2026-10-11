@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from .errors import InvocationStateError, WorkflowDefinitionChanged
+from .errors import InvocationStateError, WorkflowDefinitionChanged, WorkflowExecutionError
+from .expressions import validate_expression_data
 from .lifecycle import VALID_INVOCATION_TRANSITIONS
 from .storage import StorageConnection, open_storage
 
@@ -41,7 +42,45 @@ class InvocationStore:
             """CREATE TABLE IF NOT EXISTS invocations (
             invocation_id TEXT PRIMARY KEY, payload TEXT NOT NULL, status TEXT NOT NULL)"""
         )
+        self.connection.execute(
+            """CREATE TABLE IF NOT EXISTS invocation_inputs (
+            invocation_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, payload TEXT NOT NULL)"""
+        )
         self.connection.commit()
+
+    def bind_input(self, handle: ExecutionHandle, input_data: Any) -> Any:
+        """Retain the first raw workflow input separately from resume messages."""
+
+        validate_expression_data(input_data)
+        try:
+            encoded = json.dumps(input_data, ensure_ascii=False, allow_nan=False)
+            self.connection.execute(
+                """INSERT INTO invocation_inputs(invocation_id, fingerprint, payload)
+                VALUES (?, ?, ?) ON CONFLICT(invocation_id) DO NOTHING""",
+                (handle.invocation_id, handle.workflow_fingerprint, encoded),
+            )
+            self.connection.commit()
+            row = self.connection.execute(
+                "SELECT fingerprint, payload FROM invocation_inputs WHERE invocation_id = ?",
+                (handle.invocation_id,),
+            ).fetchone()
+            if row is None:
+                raise ValueError("invocation input is absent")
+            if row[0] != handle.workflow_fingerprint:
+                raise WorkflowDefinitionChanged(
+                    "persisted workflow input belongs to a different definition"
+                )
+            value = json.loads(row[1])
+            validate_expression_data(value)
+            return value
+        except WorkflowDefinitionChanged:
+            raise
+        except Exception:
+            try:
+                self.connection.raw.rollback()
+            except Exception:
+                pass
+            raise WorkflowExecutionError("invocation input could not be recovered") from None
 
     def create(
         self,
@@ -96,14 +135,24 @@ class InvocationStore:
                 f"invalid invocation transition: {handle.status} -> {requested_status}",
                 details={"from": handle.status, "to": requested_status},
             )
-        for key, value in changes.items():
-            if hasattr(handle, key):
-                setattr(handle, key, value)
-        self.connection.execute(
-            "UPDATE invocations SET payload = ?, status = ? WHERE invocation_id = ?",
-            (json.dumps(asdict(handle)), handle.status, handle.invocation_id),
-        )
-        self.connection.commit()
+        known_changes = {key: value for key, value in changes.items() if hasattr(handle, key)}
+        candidate = replace(handle, **known_changes)
+        try:
+            updated = self.connection.execute(
+                "UPDATE invocations SET payload = ?, status = ? WHERE invocation_id = ?",
+                (json.dumps(asdict(candidate)), candidate.status, candidate.invocation_id),
+            )
+            if updated.rowcount != 1:
+                raise ValueError("invocation is absent")
+            self.connection.commit()
+        except Exception:
+            try:
+                self.connection.raw.rollback()
+            except Exception:
+                pass
+            raise WorkflowExecutionError("invocation state could not be stored") from None
+        for key, value in known_changes.items():
+            setattr(handle, key, value)
         return handle
 
     def verify_fingerprint(self, handle: ExecutionHandle, fingerprint: str) -> None:

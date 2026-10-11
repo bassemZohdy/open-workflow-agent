@@ -54,7 +54,8 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   [acceptance evidence](PROJECT.md#s2-02-competitive-fork-decisions--2026-10-11-verified).
   General pending effects/compensation and full native/JS/proposed criteria retain later-stage owners.
 - [ ] **S2-03** (L) — Prove native checkpoint recovery and reconcile native state with common invocation/side-effect records.
-  JSON resume-value preservation is under verification; broader reconciliation remains open.
+  JSON resume-value preservation is verified at `f2943c6`; original-input and
+  terminal-result recovery are under verification. General effect reconciliation remains open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.

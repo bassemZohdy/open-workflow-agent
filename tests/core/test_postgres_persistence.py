@@ -32,6 +32,40 @@ def test_postgres_datasource_normalization_and_engine_namespace() -> None:
     assert "owa_langgraph%2Cpublic" in namespaced
 
 
+@pytest.mark.parametrize("original", [None, False, {"raw": [1, 2]}])
+def test_postgres_raw_input_and_terminal_result_survive_reopening(original) -> None:
+    url = _postgres_url()
+    pytest.importorskip("psycopg")
+    first = InvocationStore(url)
+    second = InvocationStore(url)
+    handle = first.create(
+        engine="test",
+        session_id=None,
+        user_id=None,
+        workflow_name="input-recovery",
+        workflow_version="1.0.0",
+        workflow_fingerprint="fingerprint",
+    )
+    try:
+        assert first.bind_input(handle, original) == original
+        assert second.bind_input(handle, {"resume": True}) == original
+        first.update(handle, status="completed", output={"original": original})
+        saved = second.get(handle.invocation_id)
+        assert saved is not None and saved.status == "completed"
+        assert saved.output == {"original": original}
+    finally:
+        first.close()
+        second.close()
+    reopened = InvocationStore(url)
+    try:
+        saved = reopened.get(handle.invocation_id)
+        assert saved is not None and saved.status == "completed"
+        assert saved.output == {"original": original}
+        assert reopened.bind_input(saved, {"new": True}) == original
+    finally:
+        reopened.close()
+
+
 def test_postgres_fork_decision_claim_and_cleanup_survive_independent_connections() -> None:
     url = _postgres_url()
     pytest.importorskip("psycopg")
