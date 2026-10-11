@@ -1893,11 +1893,6 @@ class WorkflowExecutor:
             await asyncio.gather(*branch_tasks, ending, return_exceptions=True)
             if joined is not None:
                 await asyncio.gather(joined, return_exceptions=True)
-        if results and all(isinstance(result, Mapping) for result in results):
-            merged = dict(state.data) if isinstance(state.data, Mapping) else {}
-            for result in results:
-                merged.update(result)
-            return merged
         return results
 
     async def _run_subworkflow(self, definition: Any, state: ExecutionState) -> Any:

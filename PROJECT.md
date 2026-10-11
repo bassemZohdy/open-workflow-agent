@@ -22,6 +22,35 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
+### S2-01 ordered fork results — in progress
+
+Noncompetitive fork returns the declaration-ordered array of all branch
+outputs, retaining overlapping keys and JSON null/scalar/list/object values.
+Original input is no longer implicitly merged. Existing assertions that
+encoded merged output now follow the pinned OWS rule. Common output/export
+can explicitly aggregate results or merge objects through jq; branch-local
+exports remain isolated from siblings and parent context. See
+[fork behavior and migration](docs/workflow-forks.md).
+
+Local full validation passes 1,153 root tests with 30 skips, three expected
+protocol/event failures and 91.67% coverage. Independent engine suites pass
+539 ADK tests, 549 LangGraph tests (six unconfigured PostgreSQL skips), and
+713 optional Agent Framework tests, each with three expected gap failures.
+These full runs precede the additional failure/recovery fixtures, which pass
+separately: 16 shared fork executions on each principal adapter, 24 on optional
+Agent Framework, and 27 LangGraph fork/native executions with seven local
+PostgreSQL skips. Two pinned native SDK checks also prove that default concurrent
+same-key writes fail and an explicit append reducer retains both values; these
+primitive checks do not implement public native metadata extensions.
+
+The desired ordered-fork audit probe now passes without an expected-failure
+marker. Branch failure drains siblings before returning the common error.
+Real SQLite restart retains ordered branch outputs without replaying completed
+calls; the same PostgreSQL case awaits its configured GitHub gate. Formatting,
+lint and all five dependency locks pass. GitHub acceptance is pending; S2-01
+remains unchecked. The S1-08 audit retains its pinned historical baseline until
+the affected implementation outcomes and acceptance are refreshed.
+
 ### S1-08 current implementation audit — 2026-10-11 (verified)
 
 The [implementation audit](docs/current-implementation-audit.md) covers all

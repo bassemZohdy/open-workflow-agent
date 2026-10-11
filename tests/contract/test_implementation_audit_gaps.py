@@ -32,11 +32,6 @@ def _workflow(task: dict[str, Any]) -> dict[str, Any]:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("engine_name,engine_type", engine_cases())
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="S2-01: fork must retain ordered object branch results",
-)
 async def test_noncompetitive_fork_preserves_ordered_object_results(
     services, engine_name, engine_type
 ):

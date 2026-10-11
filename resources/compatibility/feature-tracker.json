@@ -63876,8 +63876,60 @@
         "module": "M04",
         "description": "Preserve ordered fork results, branch isolation, reducers and state-collision behavior.",
         "effort": "M",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "In progress",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "scope": "Noncompetitive declaration-ordered arrays for every JSON branch output, branch input/context isolation and explicit common jq aggregation instead of implicit object merging. Declared native channels/reducers and independent JS remain their later-stage owners. Full milestone acceptance pending.",
+          "tests": [
+            "tests/contract/test_fork_results.py",
+            "tests/contract/test_implementation_audit_gaps.py",
+            "tests/contract/test_data_pipeline.py",
+            "tests/contract/test_reusable_definitions.py",
+            "tests/core/test_workflow.py",
+            "tests/contract/test_contract.py",
+            "tests/langgraph/test_native_task_graph.py",
+            "tests/langgraph/test_native_state_collisions.py"
+          ],
+          "local_focused": {
+            "passed": 201,
+            "remaining_expected_gap_failures": 3
+          },
+          "new_shared_fork_executions": 16,
+          "full_conformance": false,
+          "local_full_root": {
+            "passed": 1153,
+            "skipped": 30,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.67,
+            "scope": "Full run before additional failure/recovery fixtures; additions separately qualified"
+          },
+          "local_native_suites": {
+            "adk": {
+              "passed": 539,
+              "expected_assertion_failures": 3
+            },
+            "langgraph": {
+              "passed": 549,
+              "skipped": 6,
+              "expected_assertion_failures": 3
+            },
+            "agent_framework_optional": {
+              "passed": 713,
+              "expected_assertion_failures": 3
+            }
+          },
+          "additional_focused": {
+            "shared_root": 16,
+            "shared_adk": 16,
+            "shared_langgraph_and_native": {
+              "passed": 27,
+              "skipped": 7
+            },
+            "shared_agent_framework_optional": 24,
+            "native_collision_and_reducer_primitives": 2
+          },
+          "remote_acceptance": "Pending; exact new implementation must pass before milestone closure"
+        }
       },
       {
         "id": "S2-02",

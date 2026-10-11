@@ -253,7 +253,7 @@ async def test_reusable_operation_ids_are_distinct_for_parallel_call_sites(
     )
     result = await _invoke(services, engine_name, engine_type, workflow, {})
     assert result.status == "completed", result.error
-    assert result.output["branch"] in {"left", "right"}
+    assert result.output == [{"branch": "left"}, {"branch": "right"}]
     assert len(calls) == len(set(calls)) == 2
 
 

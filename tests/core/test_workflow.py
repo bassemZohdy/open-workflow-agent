@@ -246,9 +246,7 @@ async def test_plan_executes_set_switch_for_fork_and_calls(services):
     }
     executor = WorkflowExecutor(services.catalog, services=services)
     result = await executor.execute(compile_workflow(workflow), {})
-    assert result["left"] == 1
-    assert result["right"] == 2
-    assert result["label"] == "called"
+    assert result == [{"left": 1}, {"right": 2}]
 
 
 @pytest.mark.asyncio

@@ -380,3 +380,115 @@ async def test_completed_fork_branch_does_not_advance_pending_sibling_cursor_on_
     finally:
         running.cancel()
         await asyncio.gather(running, return_exceptions=True)
+
+
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_restart_preserves_ordered_fork_results_and_completed_branch_effects(
+    tmp_path, backend
+):
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
+
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+    module = pytest.importorskip(
+        "langgraph.checkpoint.postgres.aio" if datasource else "langgraph.checkpoint.sqlite.aio"
+    )
+    saver_type = module.AsyncPostgresSaver if datasource else module.AsyncSqliteSaver
+    config = (
+        RuntimeConfig.model_validate({"persistence": {"datasource": datasource}})
+        if datasource
+        else RuntimeConfig()
+    )
+    database_root = None if datasource else tmp_path
+    calls = []
+
+    async def handler(request):
+        calls.append((request.url.path, request.headers["Idempotency-Key"]))
+        return httpx.Response(200, json={"shared": request.url.path.lstrip("/")})
+
+    def action(branch):
+        return {
+            "call": "http",
+            "with": {"method": "POST", "endpoint": f"https://service.test/{branch}"},
+        }
+
+    plan = _plan(
+        [
+            {
+                "fanout": {
+                    "fork": {
+                        "branches": [
+                            {"completed": action("completed")},
+                            {
+                                "pending": {
+                                    "do": [
+                                        {"action": action("pending")},
+                                        {"pause": {"wait": {"seconds": 300}}},
+                                    ]
+                                }
+                            },
+                        ]
+                    }
+                }
+            }
+        ]
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=database_root)
+    services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
+    services.tools.protocols = services.protocols
+    engine = LangGraphWorkflowEngine()
+    await engine.initialize(services)
+    handle = _handle(services, plan)
+    driver = LangGraphScopeExecutor(plan, None, handle.invocation_id)
+    completed_scope = driver.scopes["/do/0/fanout/fork/branches/0"]
+    running = asyncio.create_task(engine.invoke(plan, handle, {"original": True}))
+    try:
+        async with asyncio.timeout(10):
+            async with saver_type.from_conn_string(engine.native.database_path) as probe:
+                await probe.setup()
+                driver = LangGraphScopeExecutor(plan, probe, handle.invocation_id)
+                graph = driver.compile_scope(
+                    completed_scope, engine.executor, ExecutionState(data={})
+                )
+                while True:
+                    saved = await graph.aget_state(
+                        driver.checkpoint_config(completed_scope.reference, 1)
+                    )
+                    if saved.values and not saved.next and handle.status == "waiting":
+                        break
+                    if running.done():
+                        pytest.fail(str(running.result()))
+                    await asyncio.sleep(0.01)
+                assert json.loads(saved.values["snapshot"])["data"] == {"shared": "completed"}
+        running.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await running
+    finally:
+        running.cancel()
+        await asyncio.gather(running, return_exceptions=True)
+        services.close()
+
+    restarted = RuntimeServices(config, model=FakeModel(), database_root=database_root)
+    restarted.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
+    restarted.tools.protocols = restarted.protocols
+    resumed_engine = LangGraphWorkflowEngine()
+    await resumed_engine.initialize(restarted)
+    persisted = restarted.invocations.get(handle.invocation_id)
+    assert persisted is not None and persisted.status == "waiting"
+    expected = [{"shared": "completed"}, {"shared": "pending"}]
+    try:
+        result = await asyncio.wait_for(resumed_engine.resume(persisted, {}, plan), timeout=10)
+        assert result.status == "completed", result.error
+        assert result.output == expected
+        assert sorted(path for path, _ in calls) == ["/completed", "/pending"]
+        assert len({operation_id for _, operation_id in calls}) == 2
+        async with saver_type.from_conn_string(resumed_engine.native.database_path) as probe:
+            await probe.setup()
+            driver = LangGraphScopeExecutor(plan, probe, handle.invocation_id)
+            root = driver.scopes["/do"]
+            graph = driver.compile_scope(root, resumed_engine.executor, ExecutionState(data={}))
+            saved = await graph.aget_state(driver.checkpoint_config("/do", 1))
+            assert json.loads(saved.values["snapshot"])["data"] == expected
+    finally:
+        restarted.close()

@@ -98,7 +98,7 @@ def _expected(fixture_name: str, input_data: dict[str, object]) -> object:
     if fixture_name == "for":
         return {"last": 2}
     if fixture_name == "fork":
-        return {**input_data, "left": True, "right": True}
+        return [{"left": True}, {"right": True}]
     if fixture_name == "sequence":
         return {"answer": "hello"}
     if fixture_name == "data-transform":

@@ -328,10 +328,10 @@ async def test_branch_payload_and_context_are_immutable_snapshots(
     data = {"values": [1]}
     result, _ = await _invoke(services, engine_name, engine_type, workflow, data)
     assert result.status == "completed", result.error
-    assert {name: result.output[name] for name in ("left", "right")} == {
-        name: {"branch": name, "values": [1], "context": {"values": [1]}}
+    assert result.output == [
+        {name: {"branch": name, "values": [1], "context": {"values": [1]}}}
         for name in ("left", "right")
-    }
+    ]
     assert data == {"values": [1]}
 
 
