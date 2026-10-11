@@ -166,7 +166,12 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 "native execution state is unavailable; recovery is required"
             )
         if self.native.task_nodes_available:
-            await self.native.admit_resume(plan, handle.invocation_id, workflow_input)
+            await self.native.admit_resume(
+                plan,
+                handle.invocation_id,
+                workflow_input,
+                effect_journal=self.services.effect_journal,
+            )
         return workflow_input
 
 

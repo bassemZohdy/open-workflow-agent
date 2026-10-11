@@ -106,6 +106,73 @@ class EffectReceipt:
             raise ValueError("workflow effect operation identity is invalid")
 
 
+@dataclass(frozen=True, slots=True)
+class ReceiptDependency:
+    """An immutable reference to a common receipt, stored by a native adapter."""
+
+    identity: EffectIdentity
+    receipt_digest: str
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.identity, EffectIdentity)
+            or not isinstance(self.receipt_digest, str)
+            or not re.fullmatch(r"[a-f0-9]{64}", self.receipt_digest)
+        ):
+            raise ValueError("workflow receipt dependency is invalid")
+
+    @classmethod
+    def capture(cls, identity: EffectIdentity, receipt: EffectReceipt) -> ReceiptDependency:
+        if receipt.status == "pending":
+            raise ValueError("an unresolved intent is not a completed receipt dependency")
+        return cls(identity, cls._digest(receipt))
+
+    @staticmethod
+    def _digest(receipt: EffectReceipt) -> str:
+        encoded = json.dumps(
+            asdict(receipt),
+            sort_keys=True,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        )
+        return hashlib.sha256(encoded.encode()).hexdigest()
+
+    @classmethod
+    def from_value(cls, value: Any) -> ReceiptDependency:
+        if not isinstance(value, dict) or set(value) != {"identity", "receipt_digest"}:
+            raise ValueError("workflow receipt dependency fields are invalid")
+        raw = value["identity"]
+        if not isinstance(raw, dict) or set(raw) != {
+            "invocation_id",
+            "workflow_fingerprint",
+            "task_reference",
+            "occurrence",
+            "operation",
+        }:
+            raise ValueError("workflow receipt identity fields are invalid")
+        path = raw["occurrence"]
+        if not isinstance(path, list) or any(
+            not isinstance(item, list) or len(item) != 2 for item in path
+        ):
+            raise ValueError("workflow receipt occurrence is invalid")
+        identity = EffectIdentity(**{**raw, "occurrence": tuple(tuple(item) for item in path)})
+        if not isinstance(value["receipt_digest"], str):
+            raise ValueError("workflow receipt dependency digest is invalid")
+        return cls(identity, value["receipt_digest"])
+
+    def verify(self, journal: EffectJournal) -> None:
+        receipt = journal.get(self.identity)
+        if (
+            receipt is None
+            or receipt.status == "pending"
+            or self._digest(receipt) != self.receipt_digest
+        ):
+            raise WorkflowExecutionError(
+                "workflow action receipt dependency is unavailable or inconsistent"
+            )
+
+
 class EffectJournal:
     """First-owner intent and immutable outcome receipts on the common datasource.
 

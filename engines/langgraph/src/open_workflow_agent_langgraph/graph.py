@@ -5,9 +5,16 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from dataclasses import asdict
 from typing import Any, TypedDict, cast
 
 from langgraph.graph import END, START, StateGraph
+from open_workflow_agent.effects import (
+    EffectIdentity,
+    EffectJournal,
+    EffectReceipt,
+    ReceiptDependency,
+)
 from open_workflow_agent.errors import InvocationStateError, OwaError, WorkflowExecutionError
 from open_workflow_agent.expressions import validate_expression_data
 from open_workflow_agent.workflow import (
@@ -25,6 +32,7 @@ class _GraphState(TypedDict):
     snapshot: str
     counters: str
     next_node: str
+    receipt_bindings: str
 
 
 def _node_name(task: TaskPlan) -> str:
@@ -154,12 +162,20 @@ class LangGraphScopeExecutor:
     """Lower immutable scopes to native graphs without a public plan format."""
 
     def __init__(
-        self, plan: WorkflowPlan, saver: Any, invocation_id: str, *, resume: bool = False
+        self,
+        plan: WorkflowPlan,
+        saver: Any,
+        invocation_id: str,
+        *,
+        resume: bool = False,
+        effect_journal: EffectJournal | None = None,
     ) -> None:
         self.plan = plan
         self.saver = saver
         self.invocation_id = invocation_id
         self.resume = resume
+        self.effect_journal = effect_journal
+        self.receipts: dict[str, ReceiptDependency] = {}
         self.scopes = {scope.reference: scope for scope in plan.scopes}
         self.counters: dict[str, int] = {}
         self.task_references = {
@@ -216,6 +232,53 @@ class LangGraphScopeExecutor:
                 "native execution state is unavailable or inconsistent; recovery is required"
             ) from None
 
+    async def record_effect_receipt(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:
+        dependency = ReceiptDependency.capture(identity, receipt)
+        existing = self.receipts.get(identity.key)
+        if existing is not None and existing != dependency:
+            raise InvocationStateError("native receipt dependency changed")
+        self.receipts[identity.key] = dependency
+
+    @staticmethod
+    def _state_digest(native: dict[str, Any]) -> str:
+        value = [
+            _native_json(native["snapshot"]),
+            _native_json(native["counters"]),
+            native["next_node"],
+        ]
+        return hashlib.sha256(_json_identity(value).encode()).hexdigest()
+
+    def _validate_receipts(self, native: dict[str, Any]) -> None:
+        bindings = _native_json(native["receipt_bindings"])
+        if (
+            not isinstance(bindings, dict)
+            or set(bindings) != {"version", "state_digest", "receipts"}
+            or type(bindings["version"]) is not int
+            or bindings["version"] != 1
+            or bindings["state_digest"] != self._state_digest(native)
+            or not isinstance(bindings["receipts"], list)
+        ):
+            raise ValueError("native receipt bindings disagree with saved state")
+        seen: set[str] = set()
+        for value in bindings["receipts"]:
+            dependency = ReceiptDependency.from_value(value)
+            identity = dependency.identity
+            if (
+                identity.invocation_id != self.invocation_id
+                or identity.workflow_fingerprint != self.plan.fingerprint
+                or identity.task_reference not in self.task_references
+                or identity.key in seen
+                or self.effect_journal is None
+            ):
+                raise ValueError("native receipt dependency identity is inconsistent")
+            seen.add(identity.key)
+            existing = self.receipts.get(identity.key)
+            if existing is None:
+                dependency.verify(self.effect_journal)
+            elif existing != dependency:
+                raise ValueError("native receipt dependency changed")
+            self.receipts[identity.key] = dependency
+
     def _validate_native(
         self, native: Any, reference: str, occurrence: int
     ) -> tuple[dict[str, Any], dict[str, int]]:
@@ -266,6 +329,7 @@ class LangGraphScopeExecutor:
                 raise ValueError("native workflow input is inconsistent")
             if _json_identity(variables["context"]) != _json_identity(value["context"]):
                 raise ValueError("native context binding is inconsistent")
+            self._validate_receipts(native)
             return value, cast(dict[str, int], counters)
         except Exception:
             raise InvocationStateError(
@@ -300,11 +364,21 @@ class LangGraphScopeExecutor:
                 self.counters[key] = max(self.counters.get(key, 0), value)
 
     def _write(self, state: ExecutionState, next_node: str = END) -> _GraphState:
-        return {
+        native: _GraphState = {
             "snapshot": _snapshot(state),
             "counters": json.dumps(self.counters),
             "next_node": next_node,
+            "receipt_bindings": "",
         }
+        native["receipt_bindings"] = json.dumps(
+            {
+                "version": 1,
+                "state_digest": self._state_digest(dict(native)),
+                "receipts": [asdict(self.receipts[key]) for key in sorted(self.receipts)],
+            },
+            allow_nan=False,
+        )
+        return native
 
     def compile_scope(
         self, scope: ScopePlan, executor: WorkflowExecutor, prototype: ExecutionState

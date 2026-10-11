@@ -68,6 +68,8 @@ jobs:
           ../../tests/contract/test_action_execution_authority.py
           ../../tests/contract/test_native_checkpoint_fencing.py
           ../../tests/contract/test_native_state_consistency.py
+          ../../tests/contract/test_native_receipt_consistency.py
+          ../../tests/contract/test_native_receipt_fork_consistency.py
 
   manifests:
     name: Validate deployment manifests

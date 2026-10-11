@@ -13,7 +13,7 @@ from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.workflow import WorkflowPlan
 
 from .agent import AdkAgentFactory
-from .native import ADK_AVAILABLE, NativeAdkRunner
+from .native import ADK_AVAILABLE, AdkRecoveryContext, NativeAdkRunner
 
 
 class AdkWorkflowEngine(PortableWorkflowEngine):
@@ -60,17 +60,19 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         result: InvocationResult | None = None
         try:
             input_data = self._prepare_workflow_input(workflow, invocation, input_data)
+            metadata = self._metadata(workflow, invocation, active)
             output = await self.native.invoke(
                 lambda value: self.executor.execute(
                     workflow,
                     value,
-                    metadata=self._metadata(workflow, invocation, active),
+                    metadata=metadata,
                 ),
                 input_data,
                 session_id=invocation.session_id,
                 user_id=invocation.user_id,
                 invocation_id=invocation.engine_execution_reference,
                 database_path=self._session_database_path(),
+                _recovery_context=self._recovery_context(workflow, invocation, metadata),
                 _execution_fence=self.services.execution_ownership.native_fence(
                     self._execution_leases[invocation.invocation_id]
                 ),
@@ -122,13 +124,14 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
             workflow_input = self._prepare_workflow_input(plan, handle, resume_input)
             execution_completed = False
             execution_output: Any = None
+            metadata = self._metadata(plan, handle, active)
 
             async def execute_workflow(value: Any) -> Any:
                 nonlocal execution_completed, execution_output
                 execution_output = await self.executor.execute(
                     plan,
                     value,
-                    metadata=self._metadata(plan, handle, active),
+                    metadata=metadata,
                 )
                 execution_completed = True
                 return execution_output
@@ -140,6 +143,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 user_id=handle.user_id,
                 invocation_id=handle.engine_execution_reference,
                 database_path=self._session_database_path(),
+                _recovery_context=self._recovery_context(plan, handle, metadata),
                 _execution_fence=self.services.execution_ownership.native_fence(
                     self._execution_leases[handle.invocation_id]
                 ),
@@ -192,8 +196,32 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 user_id=handle.user_id,
                 invocation_id=handle.engine_execution_reference,
                 database_path=self._session_database_path(),
+                _recovery_context=self._recovery_context(
+                    plan, handle, {}, require_waiting=handle.status == "waiting"
+                ),
             )
         return workflow_input
+
+    def _recovery_context(
+        self,
+        plan: WorkflowPlan,
+        handle: ExecutionHandle,
+        metadata: dict[str, Any],
+        *,
+        require_waiting: bool = False,
+    ) -> AdkRecoveryContext:
+        return AdkRecoveryContext(
+            invocation_id=handle.invocation_id,
+            workflow_fingerprint=plan.fingerprint,
+            task_references=frozenset(
+                task.execution_reference or task.reference
+                for scope in plan.scopes
+                for task in scope.tasks
+            ),
+            journal=self.services.effect_journal,
+            metadata=metadata,
+            require_waiting=require_waiting,
+        )
 
 
 __all__ = ["AdkWorkflowEngine"]

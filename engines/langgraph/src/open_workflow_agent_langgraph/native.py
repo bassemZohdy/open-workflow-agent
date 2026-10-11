@@ -231,11 +231,20 @@ class LangGraphFunctionalAdapter:
         await self.prepare_storage()
 
         async def run(saver: Any) -> Any:
-            scopes = LangGraphScopeExecutor(plan, saver, invocation_id, resume=resume)
+            scopes = LangGraphScopeExecutor(
+                plan,
+                saver,
+                invocation_id,
+                resume=resume,
+                effect_journal=getattr(executor.services, "effect_journal", None),
+            )
             raw_input = await scopes.original_input(input_data) if resume else input_data
             try:
                 return await executor.execute(
-                    plan, raw_input, metadata=metadata, scope_executor=scopes
+                    plan,
+                    raw_input,
+                    metadata={**metadata, "_effect_receipt_observer": scopes.record_effect_receipt},
+                    scope_executor=scopes,
                 )
             except OwaError:
                 raise
@@ -245,12 +254,19 @@ class LangGraphFunctionalAdapter:
         return await self._with_saver(run, _execution_fence=_execution_fence)
 
     async def admit_resume(
-        self, plan: WorkflowPlan, invocation_id: str, workflow_input: Any
+        self,
+        plan: WorkflowPlan,
+        invocation_id: str,
+        workflow_input: Any,
+        *,
+        effect_journal: Any = None,
     ) -> None:
         from .graph import LangGraphScopeExecutor
 
         async def validate(saver: Any) -> None:
-            scopes = LangGraphScopeExecutor(plan, saver, invocation_id, resume=True)
+            scopes = LangGraphScopeExecutor(
+                plan, saver, invocation_id, resume=True, effect_journal=effect_journal
+            )
             await scopes.original_input(workflow_input)
 
         try:

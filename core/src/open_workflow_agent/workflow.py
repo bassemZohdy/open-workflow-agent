@@ -1697,6 +1697,7 @@ class WorkflowExecutor:
                 definition["wait"], state.data, variables=state.variables
             )
             seconds = max(0.0, min(_duration_seconds(wait_value) or 0, 300.0))
+            await self._notify_waiting(state)
             self._set_invocation_status(state, "waiting")
             task_reference = str(state.variables.get("_task_reference", "unknown-task"))
             wait_event = {
@@ -1842,6 +1843,7 @@ class WorkflowExecutor:
         except WorkflowExecutionError as exc:
             raise _EffectRecoveryRequired(exc.message, details=exc.details) from exc
         if receipt.status != "pending":
+            await self._notify_receipt(state, identity, receipt)
             return self._effect_result(receipt)
         if receipt.owner != owner:
             raise _EffectRecoveryRequired(
@@ -1877,13 +1879,48 @@ class WorkflowExecutor:
                 )
             )
             error._operation_id = error._operation_id or self._operation_id(state)
-            self._store_effect_outcome(journal, identity, owner, state, error=error)
+            receipt = self._store_effect_outcome(journal, identity, owner, state, error=error)
+            await self._notify_receipt(state, identity, receipt)
             if error is exc:
                 raise
             raise error from exc
-        return self._effect_result(
-            self._store_effect_outcome(journal, identity, owner, state, output=result)
-        )
+        receipt = self._store_effect_outcome(journal, identity, owner, state, output=result)
+        await self._notify_receipt(state, identity, receipt)
+        return self._effect_result(receipt)
+
+    @staticmethod
+    async def _notify_receipt(
+        state: ExecutionState, identity: EffectIdentity, receipt: EffectReceipt
+    ) -> None:
+        # Native adapters own the persistence of these opaque receipt links.
+        # Core keeps no native checkpoint or copy of native execution state.
+        observer = state.metadata.get("_effect_receipt_observer")
+        if observer is None:
+            return
+        try:
+            await observer(identity, receipt)
+        except InvocationStateConflict:
+            raise
+        except Exception:
+            raise _EffectRecoveryRequired(
+                "workflow action recovery evidence could not be retained",
+                details={"instance": state.variables.get("_task_reference")},
+            ) from None
+
+    @staticmethod
+    async def _notify_waiting(state: ExecutionState) -> None:
+        observer = state.metadata.get("_waiting_checkpoint_observer")
+        if observer is None:
+            return
+        try:
+            await observer()
+        except InvocationStateConflict:
+            raise
+        except Exception:
+            raise _EffectRecoveryRequired(
+                "workflow waiting recovery evidence could not be retained",
+                details={"instance": state.variables.get("_task_reference")},
+            ) from None
 
     def _store_effect_outcome(
         self,
@@ -2269,6 +2306,7 @@ class WorkflowExecutor:
             raise WorkflowSemanticError(f"unsupported listen read mode: {read}")
         task_reference = str(state.variables.get("_task_reference", "unknown-task"))
         task_name = state.variables.get("_task_name", "listen")
+        await self._notify_waiting(state)
         self._set_invocation_status(state, "waiting")
         waiting_event = {
             **self._task_event(task_reference, task_name, state),

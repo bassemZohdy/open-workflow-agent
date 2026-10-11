@@ -2,15 +2,23 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import sqlite3
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import aclosing, asynccontextmanager, closing
+from dataclasses import asdict, dataclass
 from importlib import import_module
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunsplit
 
+from open_workflow_agent.effects import (
+    EffectIdentity,
+    EffectJournal,
+    EffectReceipt,
+    ReceiptDependency,
+)
 from open_workflow_agent.errors import InvocationStateConflict, InvocationStateError
 from open_workflow_agent.expressions import validate_expression_data
 from open_workflow_agent.ownership import (
@@ -51,6 +59,117 @@ except ImportError:  # pragma: no cover - optional ADK db extra
 # honors the propagated idempotency key.
 ADK_RESUME_STRATEGY = "replay_with_stable_operation_ids"
 
+_RECEIPT_AUTHOR = "owa_receipt_dependencies"
+
+
+@dataclass(frozen=True, slots=True)
+class AdkRecoveryContext:
+    """Private common identity and receipt service; the SDK owns saved events."""
+
+    invocation_id: str
+    workflow_fingerprint: str
+    task_references: frozenset[str]
+    journal: EffectJournal
+    metadata: dict[str, Any]
+    require_waiting: bool = False
+
+
+class _ReceiptEvents:
+    def __init__(self, context: AdkRecoveryContext) -> None:
+        self.context = context
+        self.sequence = 0
+        self.dependencies: dict[str, ReceiptDependency] = {}
+        self.lock = asyncio.Lock()
+
+    def restore(self, session: Any, invocation_id: str) -> None:
+        frames = [
+            event.custom_metadata
+            for event in session.events
+            if event.invocation_id == invocation_id and event.author == _RECEIPT_AUTHOR
+        ]
+        if not frames:
+            raise ValueError("native receipt events are absent")
+        waiting = False
+        for frame in sorted(frames, key=lambda item: item["sequence"]):
+            if not isinstance(frame, dict) or set(frame) != {
+                "version",
+                "invocation_id",
+                "workflow_fingerprint",
+                "sequence",
+                "phase",
+                "receipts",
+            }:
+                raise ValueError("native receipt event fields are invalid")
+            if (
+                type(frame["version"]) is not int
+                or frame["version"] != 1
+                or type(frame["sequence"]) is not int
+                or frame["sequence"] != self.sequence + 1
+                or frame["invocation_id"] != self.context.invocation_id
+                or frame["workflow_fingerprint"] != self.context.workflow_fingerprint
+                or frame["phase"] not in {"running", "receipt", "waiting"}
+                or not isinstance(frame["receipts"], list)
+            ):
+                raise ValueError("native receipt event identity is invalid")
+            dependencies: dict[str, ReceiptDependency] = {}
+            for raw in frame["receipts"]:
+                dependency = ReceiptDependency.from_value(raw)
+                identity = dependency.identity
+                if (
+                    identity.invocation_id != self.context.invocation_id
+                    or identity.workflow_fingerprint != self.context.workflow_fingerprint
+                    or identity.task_reference not in self.context.task_references
+                    or identity.key in dependencies
+                ):
+                    raise ValueError("native receipt dependency identity is invalid")
+                dependencies[identity.key] = dependency
+            if any(dependencies.get(key) != value for key, value in self.dependencies.items()):
+                raise ValueError("native receipt dependency history disagrees")
+            self.dependencies = dependencies
+            self.sequence = frame["sequence"]
+            if frame["phase"] == "running":
+                waiting = False
+            elif frame["phase"] == "waiting":
+                waiting = True
+        # An independent fork branch may finish an action after a sibling
+        # enters a durable wait. Its later receipt preserves that wait.
+        if self.context.require_waiting and not waiting:
+            raise ValueError("native waiting event is absent")
+        for dependency in self.dependencies.values():
+            dependency.verify(self.context.journal)
+
+    async def publish(
+        self,
+        sessions: Any,
+        session: Any,
+        invocation_id: str,
+        phase: str,
+        identity: EffectIdentity | None = None,
+        receipt: EffectReceipt | None = None,
+    ) -> None:
+        async with self.lock:
+            if identity is not None and receipt is not None:
+                dependency = ReceiptDependency.capture(identity, receipt)
+                existing = self.dependencies.get(identity.key)
+                if existing is not None and existing != dependency:
+                    raise InvocationStateError("native receipt dependency changed")
+                self.dependencies[identity.key] = dependency
+            frame = {
+                "version": 1,
+                "invocation_id": self.context.invocation_id,
+                "workflow_fingerprint": self.context.workflow_fingerprint,
+                "sequence": self.sequence + 1,
+                "phase": phase,
+                "receipts": [asdict(self.dependencies[key]) for key in sorted(self.dependencies)],
+            }
+            event = import_module("google.adk.events").Event(
+                invocation_id=invocation_id,
+                author=_RECEIPT_AUTHOR,
+                custom_metadata=frame,
+            )
+            await sessions.append_event(session=session, event=event)
+            self.sequence += 1
+
 
 def _native_input_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
@@ -73,6 +192,13 @@ if SqliteSessionService is not None:
         """
 
         _execution_fence: NativeWriteFence | None = None
+
+        async def get_session(self, *args: Any, **kwargs: Any) -> Any:
+            # A native read can hold a SQLite reader lock across awaits. Drain
+            # it independently of synchronous common-store writes on the main
+            # loop, so a fenced native commit can obtain its final write lock.
+            original = super().get_session
+            return await run_native_storage_write(lambda: original(*args, **kwargs))
 
         async def create_session(self, *args: Any, **kwargs: Any) -> Any:
             original = super().create_session
@@ -258,6 +384,7 @@ class NativeAdkRunner:
         user_id: str | None,
         invocation_id: str,
         database_path: str | None = None,
+        _recovery_context: AdkRecoveryContext | None = None,
     ) -> None:
         sessions = None
         try:
@@ -266,6 +393,8 @@ class NativeAdkRunner:
                 app_name="open-workflow-agent", user_id=user_id or "owa-user", session_id=session_id
             )
             self._validate_resume_session(session, invocation_id, workflow_input)
+            if _recovery_context is not None:
+                _ReceiptEvents(_recovery_context).restore(session, invocation_id)
         except InvocationStateError:
             raise
         except Exception:
@@ -285,6 +414,7 @@ class NativeAdkRunner:
         invocation_id: str | None = None,
         _resume: bool = False,
         _execution_fence: NativeWriteFence | None = None,
+        _recovery_context: AdkRecoveryContext | None = None,
     ) -> Any:
         if (
             not ADK_AVAILABLE
@@ -298,6 +428,7 @@ class NativeAdkRunner:
         app_name = "open-workflow-agent"
         user = user_id or "owa-user"
         sessions = self._session_service(database_path)
+        receipt_events = _ReceiptEvents(_recovery_context) if _recovery_context else None
         postgresql = bool(database_path and is_postgresql_datasource(database_path))
         if not postgresql:
             sessions._execution_fence = _execution_fence
@@ -316,6 +447,8 @@ class NativeAdkRunner:
                     sessions._native_write_factory = lambda: self._session_service(database_path)
             if _resume:
                 self._validate_resume_session(existing, invocation_id or "", input_data)
+                if receipt_events is not None:
+                    receipt_events.restore(existing, invocation_id or "")
             if existing is None:
                 await sessions.create_session(
                     app_name=app_name,
@@ -333,6 +466,23 @@ class NativeAdkRunner:
             # A session can contain several invocations. Session-wide state is
             # not an input binding for this native invocation.
             node_input = input_data
+            if receipt_events is not None and _recovery_context is not None:
+
+                async def receipt_observer(
+                    identity: EffectIdentity, receipt: EffectReceipt
+                ) -> None:
+                    await receipt_events.publish(
+                        sessions, ctx.session, invocation_id or "", "receipt", identity, receipt
+                    )
+
+                async def waiting_observer() -> None:
+                    await receipt_events.publish(
+                        sessions, ctx.session, invocation_id or "", "waiting"
+                    )
+
+                _recovery_context.metadata["_effect_receipt_observer"] = receipt_observer
+                _recovery_context.metadata["_waiting_checkpoint_observer"] = waiting_observer
+                await receipt_events.publish(sessions, ctx.session, invocation_id or "", "running")
 
             async def dynamic_node(node_input: Any) -> Any:
                 nonlocal result_value
@@ -391,6 +541,7 @@ class NativeAdkRunner:
         invocation_id: str,
         database_path: str | None = None,
         _execution_fence: NativeWriteFence | None = None,
+        _recovery_context: AdkRecoveryContext | None = None,
     ) -> Any:
         """Resume an ADK invocation using its persisted native invocation id."""
         return await self.invoke(
@@ -402,4 +553,5 @@ class NativeAdkRunner:
             database_path=database_path,
             _resume=True,
             _execution_fence=_execution_fence,
+            _recovery_context=_recovery_context,
         )
