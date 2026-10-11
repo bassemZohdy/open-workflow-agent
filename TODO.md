@@ -32,8 +32,13 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   Verified at `f7be5d1`: [reusable resolution](docs/reusable-definitions.md),
   [schema resources](docs/schema-resources.md) and
   [acceptance evidence](PROJECT.md#s1-07-reusable-definitions-and-resource-identity--2026-10-11-verified).
-- [ ] **S1-08** (M) — Verify the current implementation against every tracked feature before claiming it complete.
-- [ ] **MIG-02** (S) — Archive the three preserved predecessors after consolidation is merged; currently requires user action.
+- [x] **S1-08** (M) — Verify the current implementation against every tracked feature before claiming it complete.
+  Verified at `a1cbae8`: [all 658 implementation outcomes](docs/current-implementation-audit.md)
+  and [acceptance evidence](PROJECT.md#s1-08-current-implementation-audit--2026-10-11-verified).
+  Audit completion does not close the remaining feature gaps or proposed full acceptance tests.
+- [x] **MIG-02** (S) — Archive the three preserved predecessors after consolidation is merged.
+  All three archived states confirmed against GitHub metadata; source preservation checks pass.
+  See [archive and rollback](docs/agent-runtime-consolidation.md#archive-and-rollback).
 
 ## Stage 2 — Reliable execution and recovery
 

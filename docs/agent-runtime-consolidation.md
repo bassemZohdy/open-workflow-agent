@@ -8,7 +8,7 @@ Accepted on 2026-10-11: maintain `open-workflow-agent` as the main repository, c
 | generic-agent-lang | All 102 file hashes and refs indexed; eight pattern families tracked; independent assistant/pipeline OWS recipes | No detected license grant; source stays at origin; unsafe approval excluded |
 | specs-agent-platform | All 109 pinned tracked files imported as Apache references after explicit transfer authorization | Native compiler integration and semantic/checkpoint corrections remain staged work |
 
-Pinned public revisions, refs and every file disposition are in [the source manifest](../migration/source-manifest.json). The [reference guide](../migration/README.md) explains provenance. Frozen code is not installed, packaged or imported as a second engine. Source repositories have not yet been archived. Keep their histories, releases, branches and useful open PRs; do not delete them.
+Pinned public revisions, refs and every file disposition are in [the source manifest](../migration/source-manifest.json). The [reference guide](../migration/README.md) explains provenance. Frozen code is not installed, packaged or imported as a second engine. GitHub metadata confirms all three named source repositories are archived. Their histories, releases, branches and useful open PRs remain preserved.
 
 The imported ADK expression engines, direct execution paths, custom checkpoint/history services and legacy package identity require reconciliation before production use. Adapted fixtures identify changes and retain Apache attribution. Canonical tests prove only the selected fixture behavior, not full predecessor API compatibility.
 
@@ -39,4 +39,14 @@ Standalone Apache `open-workflow-agent-adk` v0.2.1 imports `openworkflow_adk`; t
 
 Archive after reviewed material/disposition is published and preservation checks pass. GitHub archival is reversible and retains source history. It freezes maintenance; it does not assert that all legacy features are implemented here. Existing pinned releases remain available; unarchive if old-boundary maintenance is needed.
 
-Private-source publication was authorized after the explicit visibility question and is completed in this consolidation. The source remains private at origin. The GitHub connector has no archive action, and the permitted browser fallback is not authenticated; archival currently needs the user to perform the action. Never report archival complete until repository metadata confirms it.
+Private-source publication was authorized after the explicit visibility question
+and is completed in this consolidation. On 2026-10-11, repository metadata
+confirmed `isArchived=true` for
+[open-workflow-agent-adk](https://github.com/bassemZohdy/open-workflow-agent-adk),
+[generic-agent-lang](https://github.com/bassemZohdy/generic-agent-lang) and
+[specs-agent-platform](https://github.com/bassemZohdy/specs-agent-platform).
+The first two remain public and the specs origin remains private. The source
+manifest records the verification time and metadata; the two preservation
+checks still verify exact Apache file bytes and the unlicensed-source boundary.
+No new archive action or visibility change was needed. MIG-02 is verified;
+archival does not claim that the remaining staged runtime work is complete.

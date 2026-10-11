@@ -1511,12 +1511,28 @@
         {
           "path": "core/src/open_workflow_agent/a2a_tasks.py",
           "symbol": "project_a2a_task"
+        },
+        {
+          "path": "core/src/open_workflow_agent/a2a.py",
+          "symbol": "_task_owner_matches"
         }
       ],
       "tests": [
         {
           "path": "tests/core/test_security.py",
           "symbol": "test_static_profile_principal_keeps_roles_scopes_and_audience_distinct"
+        },
+        {
+          "path": "tests/core/test_a2a_task_routes.py",
+          "symbol": "test_authenticated_a2a_task_access_is_bound_to_creator"
+        },
+        {
+          "path": "tests/core/test_security_oauth2_mtls.py",
+          "symbol": "test_oauth2_token_caching"
+        },
+        {
+          "path": "tests/core/test_security_oauth2_mtls.py",
+          "symbol": "test_mtls_client_cert_returns_certificate_and_key"
         }
       ],
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
@@ -1591,6 +1607,10 @@
         {
           "path": "core/src/open_workflow_agent/observability.py",
           "symbol": "WorkflowEvent.to_cloud_event"
+        },
+        {
+          "path": "core/src/open_workflow_agent/metrics.py",
+          "symbol": "MetricsEventSink"
         }
       ],
       "tests": [
@@ -1601,6 +1621,10 @@
         {
           "path": "tests/core/test_observability.py",
           "symbol": "test_lifecycle_events_trace_success_and_task_reference"
+        },
+        {
+          "path": "tests/core/test_metrics.py",
+          "symbol": "test_metrics_registry_renders_lifecycle_and_histogram_samples"
         }
       ],
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
@@ -1721,6 +1745,10 @@
         {
           "path": "core/src/open_workflow_agent/a2a.py",
           "symbol": "mount_a2a"
+        },
+        {
+          "path": "core/src/open_workflow_agent/a2a_tasks.py",
+          "symbol": "project_a2a_task"
         }
       ],
       "tests": [
@@ -1731,6 +1759,10 @@
         {
           "path": "tests/core/test_protocols.py",
           "symbol": "test_official_protocol_shapes_and_operation_headers"
+        },
+        {
+          "path": "tests/core/test_a2a_task_routes.py",
+          "symbol": "test_jsonrpc_get_task_projects_common_invocation_state"
         }
       ],
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
@@ -1779,6 +1811,14 @@
         {
           "path": "tests/core/test_protocols.py",
           "symbol": "test_protocol_baselines_reject_legacy_versions_and_streaming_aliases"
+        },
+        {
+          "path": "tests/core/test_a2a_streaming.py",
+          "symbol": "test_streaming_message_waits_through_input_required"
+        },
+        {
+          "path": "tests/core/test_a2a_streaming.py",
+          "symbol": "test_resubscribe_streams_existing_task_and_rejects_unknown"
         }
       ],
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
@@ -16428,10 +16468,39 @@
     "tests/core/test_sandbox_validation.py": "fe06321287414eb1b0808600c38d31a0641b117097500862b5d9b7a18f0877a8",
     "tests/core/test_security.py": "ebb77bd3bea00c442d2f23ca1a214e4616e1d8d3c056155266c06626a0607044",
     "tests/core/test_workflow_catalog.py": "e6ef50d8fa6a7cd7648d6bb56dd1c05ec4aa8279fb326582e1358727deac173b",
-    "tests/langgraph/test_native_task_graph.py": "0191272a76498f225c4ce5bca90fa3fac4d767769b21b91fc994a9d91716437d"
+    "tests/langgraph/test_native_task_graph.py": "0191272a76498f225c4ce5bca90fa3fac4d767769b21b91fc994a9d91716437d",
+    "tests/core/test_a2a_task_routes.py": "6e873d3c555843f3eb63f74e3f5de3714f6149c51a967de85c247ddd7c0e74bb",
+    "tests/core/test_a2a_streaming.py": "49fc4eff9d1eba010e66981726fb83e825560861a3128bc0dbd529010478db53",
+    "tests/core/test_security_oauth2_mtls.py": "2c5511081d600c71552d4c443cc8a4ba27e26ab5ffd8867378d9a58af6a36b99",
+    "core/src/open_workflow_agent/metrics.py": "ae77ce4fb502ac7e45783a3553256a3d867216fdedacfa4b57944f2391ab730d",
+    "tests/core/test_metrics.py": "849dad8e0308ff6262cf2da1a4bb9b1a224a2dfb92fe2ac46ce670c833436072"
   },
   "audit_integrity_checks": {
     "passed": 4,
     "scope": "Exhaustive IDs, active symbols, retained criteria and ownership; not runtime qualification"
+  },
+  "audit_acceptance": {
+    "commit": "a1cbae83e2a973e48be1afa893d1bac24fd7b8ac",
+    "runs": {
+      "CI": 38146714092,
+      "CI (push)": 38146711017,
+      "External Sandbox CI": 38146714047,
+      "PostgreSQL CI": 38146714069,
+      "Agent Framework CI (optional)": 38146714162,
+      "Security": 38146714020,
+      "Docs": 38146714075
+    },
+    "result": "All success",
+    "ci_root": {
+      "passed": 1141,
+      "skipped": 26,
+      "expected_assertion_failures": 5,
+      "coverage_percent": 91.69
+    },
+    "ci_shared_contract": {
+      "passed": 421,
+      "expected_assertion_failures": 5
+    },
+    "scope": "Audit artifact/checks plus all required regression gates; existing baseline source/test anchors remain qualified only at their stated assertion scope"
   }
 }

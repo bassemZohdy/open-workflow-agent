@@ -22,7 +22,7 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
-### S1-08 current implementation audit — local verification
+### S1-08 current implementation audit — 2026-10-11 (verified)
 
 The [implementation audit](docs/current-implementation-audit.md) covers all
 658 tracked feature IDs against active code and actual assertion scope, with
@@ -40,9 +40,23 @@ reproduces six failures including its own fork result. Unmarked execution
 confirms failures at ordered fork output, OpenAPI request routing, HTTP binary
 raw output and null event-data assertions. Strict AssertionError-only xfails
 retain S2-01/S2-05/S3-03 repair owners and never count as implemented features.
-Ruff, formatting and Markdown links pass. S1-08 awaits remote acceptance of the
-audit artifact/checks before its checkbox closes. The reviewed implementation
-baseline remains the exact green `f7be5d1`; no runtime capability changed here.
+Ruff, formatting and Markdown links pass. Exact audit acceptance is green at
+`a1cbae83e2a973e48be1afa893d1bac24fd7b8ac`: CI root reports 1141 passed,
+26 skipped, 5 expected failures and 91.69% coverage; shared contracts report
+421 passed and 5 expected failures. Both native/CTK and packaged runtime images,
+Windows, mutation, manifests, PostgreSQL, external sandbox, optional Agent
+Framework, security and docs passed. The reviewed runtime baseline remains
+`f7be5d1`; no runtime capability changed in the audit.
+
+| Gate | Run | Result |
+| --- | --- | --- |
+| CI | [38146714092](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38146714092) | success |
+| CI (push) | [38146711017](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38146711017) | success |
+| External Sandbox CI | [38146714047](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38146714047) | success |
+| PostgreSQL CI | [38146714069](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38146714069) | success |
+| Agent Framework CI (optional) | [38146714162](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38146714162) | success |
+| Security | [38146714020](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38146714020) | success |
+| Docs | [38146714075](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38146714075) | success |
 
 ### S1-07 reusable definitions and resource identity — 2026-10-11 (verified)
 
@@ -942,8 +956,9 @@ selected fixtures are adapted for canonical contract verification. Independent
 assistant/pipeline recipes and an eight-family catalog preserve useful patterns
 without copying unlicensed source. All 109 Apache files of `specs-agent-platform`
 are now imported as references after the user authorized the explained
-private-to-public transfer. The origin remains private. Archival remains pending
-and currently needs user action because the browser is not authenticated. The full tracker records 658 features, 443
+private-to-public transfer. The origin remains private. GitHub metadata now
+confirms all three named predecessors are archived; MIG-02 source-preservation
+checks pass. The full tracker records 658 features, 443
 proposed tests and 774 schema constraints. This is source consolidation and gap
 tracking, not completed native lowering or full OWS/LangGraph conformance.
 
