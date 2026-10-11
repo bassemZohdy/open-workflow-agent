@@ -40,6 +40,18 @@ references. Missing or non-schema targets fail admission; runtime validation
 has no network retriever. `referencing==0.37.0` is an explicit pinned dependency;
 the standalone core lock also now includes its already-required jq pin.
 
+Deployment-approved Draft 2020-12 schema resources now require exact HTTPS
+document URLs and mandatory SHA-256 pins, independent of catalog trust. The
+asynchronous compilers freeze a bounded reference closure into workflow identity;
+root/reusable/imported input, output and export validate against captured content
+without runtime retrieval. Credentials remain deployment-owned and host-bound.
+Revoked trust/pins fail before effects. Conflicting identifiers fail admission;
+cache revalidation preserves original-byte digest checks. Safe JSON/YAML loading
+bounds source and expanded bytes/nodes/depth, including aliases before object
+construction. Sandbox admission walks actual task definitions; application data
+and schema constants containing `run` retain their literal meaning. See
+[schema resource policy](docs/schema-resources.md).
+
 Asynchronous compilers capture immutable external catalog content/URI/digest
 in the plan fingerprint. Application text cannot trigger imports, another
 compilation cannot replace captured content, and execution rechecks deployment
@@ -54,21 +66,27 @@ Local workflow versions use SemVer precedence, reject ambiguous build ties
 and cannot overwrite an existing identity with changed content. See the
 [qualified resolution contract](docs/reusable-definitions.md).
 
-Final local root validation passed 1071 tests, 28 skips and 91.56% core coverage.
-Independent native/contract/CTK matrices passed ADK 463, LangGraph 472 with
-5 unconfigured PostgreSQL skips and optional Agent Framework 620. Imported
+Final local root validation passed 1122 tests, 30 skips and 91.62% core coverage.
+Independent native/contract/CTK matrices passed ADK 514, LangGraph 524 with
+6 unconfigured PostgreSQL skips and optional Agent Framework 679. Imported
 protocol tasks share inline validation, input/output/export, condition, timeout
 and control-flow semantics. Native SQLite/PostgreSQL recovery fixtures include
-an imported task scope; legacy registered calls preserve context and end/exit
+an imported task scope and a captured schema resource; legacy registered calls preserve context and end/exit
 behavior through the common pipeline. Reusable script/shell fixtures pass
 through the existing SandboxManager on both independent principal engines.
-The previous revision `792df13` passed all remote gates; exact remote acceptance
-for this final imported-task fix is pending. Ruff, formatting, strict mypy,
+The previous revision `0c113c0` passed all remote gates, including
+[CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38142313655),
+[external sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38142313774),
+[PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38142313682),
+[optional Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38142313598),
+[security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38142313636)
+and [documentation](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38142313732).
+Exact remote acceptance for the schema resource revision is pending. Ruff, formatting, strict mypy,
 five core/runtime locks, documentation links and root/core builds passed.
 Authentication, secrets, extensions, full reliability/proposed inventory tests
 and independent JS retain later-stage ownership. S1-07 remains unchecked
-pending exact remote acceptance and the remaining resource/reference coverage
-review. No release is published.
+pending exact remote acceptance of the resource/reference revision. No release
+is published.
 
 
 ### S1-06 embedded/bootstrap defaults — 2026-10-11 (verified)

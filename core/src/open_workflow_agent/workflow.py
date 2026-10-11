@@ -11,7 +11,7 @@ import os
 import re
 import time
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
@@ -41,6 +41,9 @@ from .expressions import ExpressionMode, validate_expression_data
 from .external_catalog import ResolvedCatalogFunction, parse_catalog_function_reference
 from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
+from .protocols import PROTOCOL_DATA_FIELDS
+from .resources import SchemaResource, materialize_schema_resources
+from .resources import schema_registry as build_schema_registry
 from .workflow_profile import SCHEMA_SHA256, WORKFLOW_DSL
 
 DEFAULT_WORKFLOW: dict[str, Any] = {
@@ -89,6 +92,36 @@ class _NoCancellationToken:
 class _WorkflowLoader(yaml.SafeLoader):
     """Reject ambiguous duplicate keys instead of silently overwriting tasks."""
 
+    def construct_document(self, node: yaml.Node) -> Any:
+        budget = [0, 0]
+
+        def check(value: yaml.Node, depth: int, parents: frozenset[int]) -> None:
+            if depth > 64 or id(value) in parents:
+                raise WorkflowSchemaError(
+                    "workflow must be acyclic JSON data with depth at most 64"
+                )
+            budget[0] += 1
+            if isinstance(value, yaml.ScalarNode):
+                try:
+                    budget[1] += len(value.value.encode("utf-8")) + 2
+                except UnicodeEncodeError:
+                    raise WorkflowSchemaError("workflow scalar must be valid UTF-8") from None
+            else:
+                budget[1] += 2
+            if budget[0] > 100000 or budget[1] > 16000000:
+                raise WorkflowSchemaError("workflow YAML expansion exceeds its node or byte limit")
+            active = parents | {id(value)}
+            if isinstance(value, yaml.MappingNode):
+                for key, item in value.value:
+                    check(key, depth + 1, active)
+                    check(item, depth + 1, active)
+            elif isinstance(value, yaml.SequenceNode):
+                for item in value.value:
+                    check(item, depth + 1, active)
+
+        check(node, 0, frozenset())
+        return super().construct_document(node)
+
     def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict[Any, Any]:
         self.flatten_mapping(node)
         result: dict[Any, Any] = {}
@@ -101,18 +134,44 @@ class _WorkflowLoader(yaml.SafeLoader):
 
 
 def _validate_json_value(
-    value: Any, *, depth: int = 0, parents: frozenset[int] = frozenset()
+    value: Any,
+    *,
+    depth: int = 0,
+    parents: frozenset[int] = frozenset(),
+    _budget: list[int] | None = None,
 ) -> None:
+    budget = [0, 0] if _budget is None else _budget
+    budget[0] += 1
+    if isinstance(value, (Mapping, list)):
+        budget[1] += 2
+    else:
+        try:
+            budget[1] += len(json.dumps(value, ensure_ascii=False).encode("utf-8")) + 1
+        except (TypeError, ValueError, UnicodeEncodeError):
+            raise WorkflowSchemaError(
+                "workflow value cannot be serialized as finite UTF-8 JSON"
+            ) from None
+    if budget[0] > 100000 or budget[1] > 16000000:
+        raise WorkflowSchemaError("workflow JSON expansion exceeds its node or byte limit")
     if depth > 64 or id(value) in parents:
         raise WorkflowSchemaError("workflow must be acyclic JSON data with depth at most 64")
     if isinstance(value, Mapping):
         for key, item in value.items():
+            budget[0] += 1
             if not isinstance(key, str):
                 raise WorkflowSchemaError("workflow mapping keys must be strings")
-            _validate_json_value(item, depth=depth + 1, parents=parents | {id(value)})
+            try:
+                budget[1] += len(json.dumps(key, ensure_ascii=False).encode("utf-8")) + 2
+            except UnicodeEncodeError:
+                raise WorkflowSchemaError("workflow keys must be valid UTF-8 strings") from None
+            _validate_json_value(
+                item, depth=depth + 1, parents=parents | {id(value)}, _budget=budget
+            )
     elif isinstance(value, list):
         for item in value:
-            _validate_json_value(item, depth=depth + 1, parents=parents | {id(value)})
+            _validate_json_value(
+                item, depth=depth + 1, parents=parents | {id(value)}, _budget=budget
+            )
     elif value is None or isinstance(value, (str, bool, int)):
         return
     elif isinstance(value, float) and math.isfinite(value):
@@ -133,15 +192,26 @@ def load_workflow(source: str | Path | Mapping[str, Any]) -> dict[str, Any]:
     return load_workflow_text(raw)
 
 
-def load_workflow_text(raw: str) -> dict[str, Any]:
-    """Parse workflow/resource text with the same safe JSON and ambiguity rules."""
+def load_json_value(raw: str) -> Any:
+    """Load JSON-compatible YAML without ambiguous keys or native objects."""
+    try:
+        if len(raw.encode("utf-8")) > 16000000:
+            raise WorkflowSchemaError("workflow source exceeds its byte limit")
+    except UnicodeEncodeError:
+        raise WorkflowSchemaError("workflow source must be valid UTF-8") from None
     try:
         loaded = yaml.load(raw, Loader=_WorkflowLoader)
-    except (yaml.YAMLError, RecursionError):
+    except (yaml.YAMLError, RecursionError, ValueError):
         raise WorkflowSchemaError("invalid workflow YAML") from None
+    _validate_json_value(loaded)
+    return loaded
+
+
+def load_workflow_text(raw: str) -> dict[str, Any]:
+    """Parse workflow/resource text with the same safe JSON and ambiguity rules."""
+    loaded = load_json_value(raw)
     if not isinstance(loaded, dict):
         raise WorkflowSchemaError("workflow root must be an object")
-    _validate_json_value(loaded)
     return loaded
 
 
@@ -195,8 +265,10 @@ def validate_capabilities(
     trusted_catalogs: Mapping[str, Any] | None = None,
     _prefix: str = "/do",
     _indexed: bool = True,
+    _resource_preflight: bool = False,
+    _schema_registry: Registry[Any] | None = None,
 ) -> None:
-    _validate_definition_profile(workflow)
+    _validate_definition_profile(workflow, _resource_preflight, _schema_registry)
     _validate_catalog_capability(workflow, trusted_catalogs=trusted_catalogs)
     use = workflow.get("use")
     catalogs = use.get("catalogs") if isinstance(use, Mapping) else None
@@ -218,7 +290,7 @@ def validate_capabilities(
         seen.add(name)
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError(f"task {reference} must be an object")
-        _validate_data_profile(definition, reference)
+        _validate_data_profile(definition, reference, _resource_preflight, _schema_registry)
         _validate_transitions(definition, reference, scope_names)
         if isinstance(definition.get("timeout"), str):
             _unsupported("named timeout", f"{reference}/timeout")
@@ -264,6 +336,8 @@ def validate_capabilities(
                 trusted_catalogs=trusted_catalogs,
                 _prefix=f"{reference}/{suffix}",
                 _indexed=not suffix.startswith("fork/branches/"),
+                _resource_preflight=_resource_preflight,
+                _schema_registry=_schema_registry,
             )
         if "emit" in definition:
             _validate_emit_capability(definition["emit"], reference)
@@ -280,6 +354,8 @@ def validate_capabilities(
                 trusted_catalogs=trusted_catalogs,
                 _prefix="/use/functions",
                 _indexed=False,
+                _resource_preflight=_resource_preflight,
+                _schema_registry=_schema_registry,
             )
         validate_expression_profile(workflow)
 
@@ -429,7 +505,11 @@ def _validate_protocol_authentication(value: Any, reference: str) -> None:
             _validate_protocol_authentication(item, path)
 
 
-def _validate_definition_profile(workflow: Mapping[str, Any]) -> None:
+def _validate_definition_profile(
+    workflow: Mapping[str, Any],
+    resource_preflight: bool = False,
+    registry: Registry[Any] | None = None,
+) -> None:
     evaluation = workflow.get("evaluate", {})
     if isinstance(evaluation, Mapping):
         if evaluation.get("language", "jq") != "jq":
@@ -454,23 +534,33 @@ def _validate_definition_profile(workflow: Mapping[str, Any]) -> None:
         ):
             if use.get(key):
                 _unsupported(f"reusable {key}", f"/use/{key}")
-    _validate_data_profile(workflow, "")
+    _validate_data_profile(workflow, "", resource_preflight, registry)
     timeout = workflow.get("timeout")
     if isinstance(timeout, str):
         _unsupported("named timeout", "/timeout")
 
 
-def _validate_data_profile(definition: Mapping[str, Any], reference: str) -> None:
+def _validate_data_profile(
+    definition: Mapping[str, Any],
+    reference: str,
+    resource_preflight: bool = False,
+    registry: Registry[Any] | None = None,
+) -> None:
     for name in ("input", "output", "export"):
         spec = definition.get(name)
         schema = spec.get("schema") if isinstance(spec, Mapping) else None
         if not isinstance(schema, Mapping):
             continue
         path = f"{reference}/{name}/schema"
-        if "resource" in schema:
-            _unsupported("external data schema", f"{path}/resource")
         if schema.get("format", "json") not in {"json", "json:2020-12"}:
             _unsupported("data schema format", f"{path}/format")
+        if "resource" in schema:
+            if not resource_preflight:
+                _unsupported("external data schema", f"{path}/resource")
+            from .resources import resource_uri
+
+            resource_uri(schema["resource"])
+            continue
         document = schema.get("document")
         if not isinstance(document, (Mapping, bool)):
             _unsupported("non-JSON data schema", f"{path}/document")
@@ -482,10 +572,15 @@ def _validate_data_profile(definition: Mapping[str, Any], reference: str) -> Non
             raise WorkflowSemanticError(
                 "invalid inline data schema", details={"reference": path}
             ) from exc
-        _validate_schema_references(document, f"{path}/document")
+        _validate_schema_references(document, f"{path}/document", registry, resource_preflight)
 
 
-def _validate_schema_references(value: Any, reference: str) -> None:
+def _validate_schema_references(
+    value: Any,
+    reference: str,
+    registry: Registry[Any] | None = None,
+    allow_external: bool = False,
+) -> None:
     # Traverse schema resources, rather than arbitrary JSON values: const,
     # examples and defaults may contain ordinary data fields named $ref.
     locations: dict[int, str] = {}
@@ -501,7 +596,7 @@ def _validate_schema_references(value: Any, reference: str) -> None:
 
     locate(value, reference)
     root = DRAFT202012.create_resource(value)
-    resolver = Registry().resolver_with_root(root)
+    resolver = (registry or Registry()).resolver_with_root(root)
 
     def walk(resource: Resource[Any], current: Any) -> None:
         document = resource.contents
@@ -517,13 +612,15 @@ def _validate_schema_references(value: Any, reference: str) -> None:
             item = document.get(key)
             if not isinstance(item, str):
                 continue
-            if not item.startswith("#"):
-                _unsupported("external schema reference", f"{path}/{key}")
             try:
                 target = current.lookup(item).contents
                 if not isinstance(target, (Mapping, bool)):
                     raise ValueError("reference target is not a schema")
             except Exception:
+                if not item.startswith("#"):
+                    if allow_external:
+                        continue
+                    _unsupported("external schema reference", f"{path}/{key}")
                 raise WorkflowSemanticError(
                     "unresolved or invalid inline schema reference",
                     details={"reference": f"{path}/{key}"},
@@ -610,12 +707,58 @@ async def resolve_and_compile_workflow(
 
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
-    validate_capabilities(resolve_reusable_components(workflow), trusted_catalogs=trusted_catalogs)
+    enabled = bool(getattr(getattr(resolver, "schemas", None), "enabled", False))
+    validate_capabilities(
+        resolve_reusable_components(workflow),
+        trusted_catalogs=trusted_catalogs,
+        _resource_preflight=enabled,
+    )
+    imports, resources = await resolve_workflow_dependencies(workflow, resolver, catalog)
+    effective = (
+        materialize_schema_resources(resolve_reusable_components(workflow))
+        if resources
+        else resolve_reusable_components(workflow)
+    )
+    validate_capabilities(
+        effective,
+        trusted_catalogs=trusted_catalogs,
+        _schema_registry=build_schema_registry(resources),
+    )
+    return normalize_workflow(workflow, imports=imports, resources=resources)
+
+
+async def resolve_workflow_dependencies(
+    workflow: Mapping[str, Any], resolver: Any, catalog: FunctionCatalog
+) -> tuple[tuple[ResolvedCatalogFunction, ...], tuple[SchemaResource, ...]]:
+    enabled = bool(getattr(getattr(resolver, "schemas", None), "enabled", False))
     resolve_functions = getattr(resolver, "resolve_functions", None)
-    imports = await resolve_functions(workflow, catalog) if callable(resolve_functions) else ()
-    if not callable(resolve_functions):
+    if callable(resolve_functions):
+        imports = (
+            await resolve_functions(workflow, catalog, _resource_preflight=True)
+            if enabled
+            else await resolve_functions(workflow, catalog)
+        )
+    else:
         await resolver.resolve_workflow(workflow, catalog)
-    return normalize_workflow(workflow, imports=imports)
+        imports = ()
+    resources = await resolver.schemas.resolve(workflow, imports) if enabled else ()
+    if resources:
+        imports = tuple(
+            replace(
+                item,
+                execution_definition_json=json.dumps(
+                    materialize_schema_resources(
+                        {"do": [{item.reference: item.execution_definition}]}
+                    )["do"][0][item.reference],
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=False,
+                    allow_nan=False,
+                ),
+            )
+            for item in imports
+        )
+    return tuple(imports), tuple(resources)
 
 
 @dataclass(frozen=True, slots=True)
@@ -649,6 +792,7 @@ class WorkflowPlan:
     scopes: tuple[ScopePlan, ...] = ()
     execution_json: str | None = None
     imports: tuple[ResolvedCatalogFunction, ...] = ()
+    resources: tuple[SchemaResource, ...] = ()
 
     @property
     def source(self) -> dict[str, Any]:
@@ -663,7 +807,7 @@ class WorkflowPlan:
         import hashlib
 
         content = self.source_json
-        if self.imports:
+        if self.imports or self.resources:
             content = json.dumps(
                 {
                     "source": self.source,
@@ -677,6 +821,16 @@ class WorkflowPlan:
                         }
                         for item in self.imports
                     ],
+                    **(
+                        {
+                            "resources": [
+                                {"uri": item.uri, "digest": item.digest, "document": item.document}
+                                for item in self.resources
+                            ]
+                        }
+                        if self.resources
+                        else {}
+                    ),
                 },
                 sort_keys=True,
                 separators=(",", ":"),
@@ -690,9 +844,12 @@ def normalize_workflow(
     workflow: Mapping[str, Any],
     *,
     imports: tuple[ResolvedCatalogFunction, ...] = (),
+    resources: tuple[SchemaResource, ...] = (),
 ) -> WorkflowPlan:
     _validate_json_value(workflow)
     effective = resolve_reusable_components(workflow)
+    if resources:
+        effective = materialize_schema_resources(effective)
     functions = effective.get("use", {}).get("functions", {})
     imported_functions = {item.reference: item.execution_definition for item in imports}
     document = workflow["document"]
@@ -821,6 +978,7 @@ def normalize_workflow(
             effective, sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ),
         imports=imports,
+        resources=resources,
     )
 
 
@@ -983,6 +1141,7 @@ class WorkflowExecutor:
         }
         metadata["_functions"] = workflow.get("use", {}).get("functions", {})
         metadata["_imports"] = {item.reference: item for item in plan.imports}
+        metadata["_schema_registry"] = build_schema_registry(plan.resources)
         metadata["_catalog_tasks"] = {
             task.execution_reference: metadata["_imports"][task.name]
             for scope in plan.scopes
@@ -1029,8 +1188,14 @@ class WorkflowExecutor:
             ),
         )
         try:
+            if plan.resources:
+                if self.services is None:
+                    raise UnsupportedWorkflowFeature(
+                        "captured schema resources require deployment trust"
+                    )
+                self.services.external_catalogs.schemas.verify(plan.resources)
             validate_expression_data(input_data)
-            self._validate_data_schema(workflow.get("input"), input_data, "workflow input")
+            self._validate_data_schema(workflow.get("input"), input_data, "workflow input", state)
             input_spec = workflow.get("input")
             if isinstance(input_spec, Mapping) and "from" in input_spec:
                 state.data = self._expressions(state).evaluate(
@@ -1064,7 +1229,7 @@ class WorkflowExecutor:
                 else copy.deepcopy(state.data)
             )
             validate_expression_data(result)
-            self._validate_data_schema(output, result, "workflow output")
+            self._validate_data_schema(output, result, "workflow output", state)
         except InvocationCancelled as exc:
             self._set_invocation_status(state, "cancelled")
             self._emit(
@@ -1355,7 +1520,7 @@ class WorkflowExecutor:
             return _SkippedTask(copy.deepcopy(state.data))
         raw_input = copy.deepcopy(state.data)
         input_spec = definition.get("input")
-        self._validate_data_schema(input_spec, raw_input, f"task {name} input")
+        self._validate_data_schema(input_spec, raw_input, f"task {name} input", state)
         task_input = (
             self._expressions(state).evaluate(
                 input_spec["from"], raw_input, variables=state.variables
@@ -1565,7 +1730,11 @@ class WorkflowExecutor:
             if resolver is None:
                 raise WorkflowExecutionError("external catalog resolver is unavailable")
             return await resolver.invoke_prepared(
-                imported, call, payload, mode=self._expressions(state).mode
+                imported,
+                call,
+                payload,
+                mode=self._expressions(state).mode,
+                registry=state.metadata.get("_schema_registry"),
             )
         if call in {"http", "mcp", "a2a", "openapi"}:
             if self.services is None:
@@ -1891,7 +2060,7 @@ class WorkflowExecutor:
             if isinstance(output_spec, Mapping) and "as" in output_spec
             else copy.deepcopy(result)
         )
-        self._validate_data_schema(output_spec, output, "task output")
+        self._validate_data_schema(output_spec, output, "task output", state)
         state.variables["output"] = copy.deepcopy(output)
         export_spec = definition.get("export")
         exported = (
@@ -1899,12 +2068,14 @@ class WorkflowExecutor:
             if isinstance(export_spec, Mapping) and "as" in export_spec
             else copy.deepcopy(state.context)
         )
-        self._validate_data_schema(export_spec, exported, "task export")
+        self._validate_data_schema(export_spec, exported, "task export", state)
         state.context = copy.deepcopy(exported)
         state.variables["context"] = state.context
         return copy.deepcopy(output)
 
-    def _validate_data_schema(self, specification: Any, value: Any, label: str) -> None:
+    def _validate_data_schema(
+        self, specification: Any, value: Any, label: str, state: ExecutionState | None = None
+    ) -> None:
         if not isinstance(specification, Mapping):
             return
         schema = specification.get("schema")
@@ -1914,7 +2085,12 @@ class WorkflowExecutor:
         if not isinstance(document, (Mapping, bool)):
             return
         errors = sorted(
-            Draft202012Validator(document, registry=Registry()).iter_errors(value),
+            Draft202012Validator(
+                document,
+                registry=state.metadata.get("_schema_registry", Registry())
+                if state
+                else Registry(),
+            ).iter_errors(value),
             key=lambda error: tuple(str(part) for part in error.path),
         )
         if errors:
@@ -2056,7 +2232,12 @@ def _resolve_protocol_endpoints(
 
     def resolve(value: Any, key: str | None = None) -> Any:
         if isinstance(value, Mapping):
-            return {name: resolve(item, str(name)) for name, item in value.items()}
+            return {
+                name: copy.deepcopy(item)
+                if name in PROTOCOL_DATA_FIELDS or name == "headers"
+                else resolve(item, str(name))
+                for name, item in value.items()
+            }
         if isinstance(value, list):
             return [resolve(item, key) for item in value]
         if key not in endpoint_keys or not isinstance(value, str):

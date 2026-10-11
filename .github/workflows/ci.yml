@@ -48,6 +48,7 @@ jobs:
           tests/contract/test_reusable_definitions.py
           tests/contract/test_catalog_bindings.py
           tests/contract/test_schema_reference_closure.py
+          tests/contract/test_schema_resources.py
           tests/contract/test_definition_admission.py
       - name: Verify native task checkpoints and routing on Windows
         run: >-
@@ -58,6 +59,7 @@ jobs:
           ../../tests/contract/test_data_pipeline.py
           ../../tests/contract/test_reusable_definitions.py
           ../../tests/contract/test_catalog_bindings.py
+          ../../tests/contract/test_schema_resources.py
 
   manifests:
     name: Validate deployment manifests

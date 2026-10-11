@@ -35,8 +35,22 @@ def workflow_profile() -> dict[str, Any]:
         },
         "dataSchemas": {
             "dialect": "2020-12",
-            "references": "network-free inline resource closure",
-            "externalResources": False,
+            "references": "network-free captured resource closure",
+            "externalResources": True,
+            "resourceTrust": {
+                "enabledByDefault": False,
+                "endpointApproval": "exact HTTPS URL",
+                "integrity": "deployment SHA-256 pin required",
+            },
+            "resourceDocumentLimit": 32,
+            "resourceClosureByteLimit": 16_000_000,
+            "runtimeRetrieval": False,
+        },
+        "serialization": {
+            "nodeLimit": 100_000,
+            "byteLimit": 16_000_000,
+            "depthLimit": 64,
+            "encoding": "UTF-8 JSON",
         },
         "expressions": {
             "language": "jq",

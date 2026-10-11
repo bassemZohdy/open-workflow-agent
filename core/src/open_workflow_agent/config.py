@@ -157,11 +157,37 @@ class ExternalCatalogConfig(StrictModel):
         return self
 
 
+class ExternalResourceConfig(ExternalCatalogConfig):
+    """Exact schema URLs and mandatory digest pins; independent catalog trust."""
+
+    require_integrity_pin: Literal[True] = True
+
+    @field_validator("allowed_endpoints")
+    @classmethod
+    def validate_allowed_endpoints(cls, value: list[str]) -> list[str]:
+        endpoints = [endpoint.strip() for endpoint in value]
+        if len(set(endpoints)) != len(endpoints):
+            raise ValueError("schema resource endpoints must be unique")
+        for endpoint in endpoints:
+            parsed = urlparse(endpoint)
+            if (
+                parsed.scheme != "https"
+                or not parsed.hostname
+                or parsed.username
+                or parsed.password
+                or parsed.fragment
+                or any(char.isspace() for char in endpoint)
+            ):
+                raise ValueError("schema resource endpoints must be exact HTTPS document URLs")
+        return endpoints
+
+
 class WorkflowConfig(StrictModel):
     path: str | None = None
     definition: dict[str, Any] | None = None
     catalog: list[dict[str, Any]] = Field(default_factory=list)
     external_catalogs: dict[str, ExternalCatalogConfig] = Field(default_factory=dict)
+    external_resources: dict[str, ExternalResourceConfig] = Field(default_factory=dict)
 
 
 class ReloadConfig(StrictModel):

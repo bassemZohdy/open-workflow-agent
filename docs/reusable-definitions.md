@@ -36,7 +36,10 @@ encoded tokens, anchors, dynamic anchors and nested inline resource identifiers
 are checked for a complete network-free closure during admission. Missing or
 non-schema targets fail admission. Runtime validation has no remote retriever.
 Fields named `$ref` in schema `const`/examples/default data remain ordinary
-data. External schema resources/references and other dialects are rejected.
+data. Deployment-approved external resources use the same captured, offline
+closure; see [schema resource policy](schema-resources.md). Other dialects are
+rejected. Safe JSON/YAML loading bounds both source size and expanded data;
+alias expansion is checked before YAML construction.
 
 Deployment-trusted external catalogs still require HTTPS, allowed hosts,
 bounded responses/timeouts, TLS verification, no redirects and deployment
@@ -73,6 +76,6 @@ overwritten with different executable content. A2A skill name selection still
 requires a unique registered name.
 
 Validation lives in the shared reusable-definition, catalog-binding and
-schema-reference-closure fixtures, local catalog tests and native LangGraph
+schema-reference-closure/resource fixtures, local catalog tests and native LangGraph
 restart tests. Independent JS, proposed inventory tests and full OWS
 conformance remain unqualified.

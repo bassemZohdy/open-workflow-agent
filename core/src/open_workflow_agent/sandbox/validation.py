@@ -11,11 +11,15 @@ from ..catalog import FunctionCatalog
 from ..config import SandboxConfig
 from ..definitions import resolve_reusable_components
 from ..errors import UnsupportedWorkflowFeature, WorkflowSemanticError
+from ..resources import materialize_schema_resources, schema_registry
 from ..workflow import (
     WorkflowPlan,
+    _task_scopes,
+    _walk_tasks,
     generate_default_workflow,
     load_workflow,
     normalize_workflow,
+    resolve_workflow_dependencies,
     validate_capabilities,
     validate_expression_profile,
     validate_schema,
@@ -28,11 +32,18 @@ def validate_sandbox_capabilities(
     *,
     sandbox: SandboxConfig,
     trusted_catalogs: Mapping[str, Any] | None = None,
+    _resource_preflight: bool = False,
+    _schema_registry: Any = None,
 ) -> None:
     effective = resolve_reusable_components(workflow)
     rewritten = copy.deepcopy(effective)
     _rewrite_executable_runs(rewritten, sandbox=sandbox, reference="")
-    validate_capabilities(rewritten, trusted_catalogs=trusted_catalogs)
+    validate_capabilities(
+        rewritten,
+        trusted_catalogs=trusted_catalogs,
+        _resource_preflight=_resource_preflight,
+        _schema_registry=_schema_registry,
+    )
     validate_expression_profile(effective)
 
 
@@ -58,31 +69,42 @@ async def resolve_and_compile_sandbox_workflow(
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
-    validate_sandbox_capabilities(workflow, sandbox=sandbox, trusted_catalogs=trusted_catalogs)
-    resolve_functions = getattr(resolver, "resolve_functions", None)
-    imports = await resolve_functions(workflow, catalog) if callable(resolve_functions) else ()
-    if not callable(resolve_functions):
-        await resolver.resolve_workflow(workflow, catalog)
-    return normalize_workflow(workflow, imports=imports)
+    enabled = bool(getattr(getattr(resolver, "schemas", None), "enabled", False))
+    validate_sandbox_capabilities(
+        workflow, sandbox=sandbox, trusted_catalogs=trusted_catalogs, _resource_preflight=enabled
+    )
+    imports, resources = await resolve_workflow_dependencies(workflow, resolver, catalog)
+    effective = materialize_schema_resources(workflow) if resources else workflow
+    validate_sandbox_capabilities(
+        effective,
+        sandbox=sandbox,
+        trusted_catalogs=trusted_catalogs,
+        _schema_registry=schema_registry(resources),
+    )
+    return normalize_workflow(workflow, imports=imports, resources=resources)
 
 
 def _rewrite_executable_runs(value: Any, *, sandbox: SandboxConfig, reference: str) -> None:
-    if isinstance(value, list):
-        for index, item in enumerate(value):
-            _rewrite_executable_runs(item, sandbox=sandbox, reference=f"{reference}/{index}")
-        return
     if not isinstance(value, dict):
         return
-    run = value.get("run")
-    if isinstance(run, Mapping):
-        run_reference = reference or "/run"
-        replacement = _validate_executable_run(run, sandbox=sandbox, reference=run_reference)
-        if replacement is not None:
-            value["run"] = replacement
-    for key, item in list(value.items()):
-        if key == "run":
-            continue
-        _rewrite_executable_runs(item, sandbox=sandbox, reference=f"{reference}/{key}")
+
+    def tasks(items: Any, path: str, indexed: bool = True) -> None:
+        for task_reference, definition in _walk_tasks(items, prefix=path, indexed=indexed):
+            run = definition.get("run")
+            if isinstance(run, Mapping):
+                replacement = _validate_executable_run(
+                    run, sandbox=sandbox, reference=task_reference
+                )
+                if replacement is not None:
+                    definition["run"] = replacement
+            for suffix, children in _task_scopes(definition):
+                tasks(
+                    children, f"{task_reference}/{suffix}", not suffix.startswith("fork/branches/")
+                )
+
+    tasks(value.get("do", []), f"{reference}/do")
+    for name, definition in value.get("use", {}).get("functions", {}).items():
+        tasks([{name: definition}], f"{reference}/use/functions", False)
 
 
 def _validate_executable_run(

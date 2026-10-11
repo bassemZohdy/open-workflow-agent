@@ -22,11 +22,13 @@ from .errors import OwaError, ToolError, UnsupportedWorkflowFeature, WorkflowSch
 from .expressions import ExpressionEvaluator, ExpressionMode
 from .observability import EventSink, WorkflowEvent
 from .protocols import (
+    PROTOCOL_DATA_FIELDS,
     AuthenticationProvider,
     HttpClient,
     ProtocolServices,
     resolve_public_addresses_async,
 )
+from .resources import SchemaResourceResolver
 from .security import ProfileAuthentication, SecurityConfig
 from .versions import version_precedence
 
@@ -105,11 +107,16 @@ class ExternalCatalogResolver:
         http: HttpClient | None = None,
         event_sink: EventSink | None = None,
         security: SecurityConfig | None = None,
+        resource_policies: Mapping[str, ExternalCatalogConfig] | None = None,
     ) -> None:
         self.policies = dict(policies or {})
         self.http = http
         self.event_sink = event_sink
         self.security = security
+        self.schemas = SchemaResourceResolver(
+            resource_policies or {},
+            self._schema_client,
+        )
         self._cache: dict[str, _CachedResource] = {}
         self._registered_bindings: dict[str, ResolvedCatalogFunction] = {}
         self._resolved: dict[str, set[str]] = {}
@@ -128,6 +135,8 @@ class ExternalCatalogResolver:
         self,
         workflow: Mapping[str, Any],
         catalog: FunctionCatalog,
+        *,
+        _resource_preflight: bool = False,
     ) -> tuple[ResolvedCatalogFunction, ...]:
         """Validate trust and return invocation-independent immutable content."""
 
@@ -182,7 +191,11 @@ class ExternalCatalogResolver:
             evaluation = workflow.get("evaluate", {})
             components = workflow.get("use", {})
             _validate_function_definition(
-                resource.definition, reference, evaluation=evaluation, components=components
+                resource.definition,
+                reference,
+                evaluation=evaluation,
+                components=components,
+                _resource_preflight=_resource_preflight,
             )
             binding = ResolvedCatalogFunction(
                 reference.value,
@@ -288,6 +301,7 @@ class ExternalCatalogResolver:
         payload: Any,
         *,
         mode: ExpressionMode = "strict",
+        registry: Any = None,
     ) -> Any:
         """Dispatch an evaluated protocol payload under current deployment trust."""
         reference = parse_catalog_function_reference(binding.reference)
@@ -305,7 +319,10 @@ class ExternalCatalogResolver:
             )
         self._verify_pin(binding.digest, policy, binding.reference, binding.resource_uri)
         expected_call, _ = _validate_function_definition(
-            binding.execution_definition, reference, evaluation={"mode": mode}
+            binding.execution_definition,
+            reference,
+            evaluation={"mode": mode},
+            _schema_registry=registry,
         )
         if call != expected_call:
             raise UnsupportedWorkflowFeature("captured catalog protocol does not match dispatch")
@@ -372,32 +389,42 @@ class ExternalCatalogResolver:
             )
         return policy
 
-    def _client(self, policy: ExternalCatalogConfig, *, auth_host: str | None = None) -> HttpClient:
-        if self.http is not None:
-            if self.http.transport is not None:
-                return self.http
-            return HttpClient(
-                timeout=self.http.timeout,
-                max_response_bytes=self.http.max_response_bytes,
-                verify_tls=True,
-                follow_redirects=False,
-                allowed_hosts=self.http.allowed_hosts,
-                authentication=self.http.authentication,
-                destination_resolver=lambda endpoint: _resolve_external_destination(
-                    endpoint, policy
-                ),
-            )
-        auth = policy.authentication
-        authentication: AuthenticationProvider | None = _authentication(auth, self.security)
-        if authentication is not None and auth_host:
-            authentication = _HostBoundAuthentication(authentication, auth_host)
+    def _schema_client(self, policy: ExternalCatalogConfig, uri: str) -> HttpClient:
+        base = self._client(policy, auth_host=urlparse(uri).hostname)
+        authentication = (
+            _authentication(policy.authentication, self.security) or base.authentication
+        )
+        if authentication is not None:
+            authentication = _HostBoundAuthentication(authentication, urlparse(uri).hostname or "")
         return HttpClient(
             timeout=policy.timeout_seconds,
             max_response_bytes=policy.max_response_bytes,
+            allowed_hosts=set(policy.allowed_hosts),
+            authentication=authentication,
+            transport=base.transport,
+            destination_resolver=lambda endpoint: _resolve_external_destination(endpoint, policy),
+        )
+
+    def _client(self, policy: ExternalCatalogConfig, *, auth_host: str | None = None) -> HttpClient:
+        auth = policy.authentication
+        authentication: AuthenticationProvider | None = _authentication(auth, self.security)
+        if authentication is None and self.http is not None:
+            authentication = self.http.authentication
+        if authentication is not None and auth_host:
+            authentication = _HostBoundAuthentication(authentication, auth_host)
+        return HttpClient(
+            timeout=min(policy.timeout_seconds, self.http.timeout)
+            if self.http
+            else policy.timeout_seconds,
+            max_response_bytes=min(policy.max_response_bytes, self.http.max_response_bytes)
+            if self.http
+            else policy.max_response_bytes,
             verify_tls=True,
             follow_redirects=False,
             allowed_hosts=set(policy.allowed_hosts),
             authentication=authentication,
+            transport=self.http.transport if self.http else None,
+            destination_resolver=lambda endpoint: _resolve_external_destination(endpoint, policy),
         )
 
     async def _fetch(
@@ -638,6 +665,8 @@ def _validate_function_definition(
     *,
     evaluation: Mapping[str, Any] | None = None,
     components: Mapping[str, Any] | None = None,
+    _resource_preflight: bool = False,
+    _schema_registry: Any = None,
 ) -> tuple[str, Any]:
     arguments = definition.get("with")
     if isinstance(arguments, Mapping) and "$ref" in arguments:
@@ -679,7 +708,9 @@ def _validate_function_definition(
                 )
             }
         ]
-        validate_capabilities(workflow)
+        validate_capabilities(
+            workflow, _resource_preflight=_resource_preflight, _schema_registry=_schema_registry
+        )
     except WorkflowSchemaError:
         raise WorkflowSchemaError(
             "invalid external catalog task definition", details={"function": reference.value}
@@ -734,6 +765,8 @@ def _validate_invocation_endpoints(
     endpoint_keys = {"endpoint", "server", "uri", "url"}
     if isinstance(value, Mapping):
         for name, item in value.items():
+            if name in PROTOCOL_DATA_FIELDS or name == "headers":
+                continue
             _validate_invocation_endpoints(item, policy, key=str(name))
     elif isinstance(value, list):
         for item in value:
@@ -748,6 +781,8 @@ async def _validate_invocation_destinations(
     endpoint_keys = {"endpoint", "server", "uri", "url"}
     if isinstance(value, Mapping):
         for name, item in value.items():
+            if name in PROTOCOL_DATA_FIELDS or name == "headers":
+                continue
             await _validate_invocation_destinations(item, policy, client, key=str(name))
     elif isinstance(value, list):
         for item in value:
@@ -837,6 +872,8 @@ def _public_ip(host: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | Non
 def _contains_sensitive_header(value: Any) -> bool:
     if isinstance(value, Mapping):
         for key, item in value.items():
+            if key in PROTOCOL_DATA_FIELDS:
+                continue
             if str(key).lower() in {"authorization", "proxy-authorization", "cookie"}:
                 return True
             if _contains_sensitive_header(item):

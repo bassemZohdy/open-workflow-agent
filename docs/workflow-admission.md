@@ -11,7 +11,10 @@ Admission order is JSON-compatible loading, official schema validation,
 profile/deployment capability validation, then immutable normalization.
 YAML and JSON preserve declaration order and have the same admitted data.
 Duplicate mapping keys, non-string keys, cyclic aliases, non-finite numbers,
-Python objects and nesting deeper than 64 levels are rejected. Task names
+Python objects and nesting deeper than 64 levels are rejected. Source and
+expanded JSON have a 16,000,000-byte ceiling and expanded data is bounded to
+100,000 nodes, including mapping keys. YAML aliases are checked before object
+construction. Task names
 must be unique within their scope. Document identity, title, summary, tags
 and metadata survive normalization; clients cannot mutate the plan by
 mutating their source or a returned source copy.
@@ -36,8 +39,11 @@ in S4-01.
 Data schemas support inline JSON Schema 2020-12 (`json` or `json:2020-12`),
 including boolean schemas and a verified inline fragment/anchor reference
 closure. Malformed schemas or missing/non-schema reference targets fail
-admission. Runtime validation has no network retriever. External schema resources/references and other
-formats fail the capability gate without a network request. Credentials
+admission. Runtime validation has no network retriever. External schema resources
+and references require exact deployment-approved HTTPS URLs and SHA-256 pins,
+and are captured during asynchronous compilation. They are disabled by default;
+see [schema resource policy](schema-resources.md). Other formats fail the capability
+gate without a network request. Credentials
 are supplied through runtime security profiles, never ordinary workflows.
 Inline OWS endpoint authentication policies are rejected because the common
 protocol clients cannot interpret them. A field named `authentication` inside

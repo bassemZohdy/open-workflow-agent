@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import os
 
@@ -86,7 +87,7 @@ async def test_native_scope_has_individual_nodes_conditional_edges_and_private_j
     assert not hasattr(result, "snapshot")
 
 
-@pytest.mark.parametrize("scope", ["root", "do", "for", "function", "import"])
+@pytest.mark.parametrize("scope", ["root", "do", "for", "function", "import", "schema"])
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_restart_resumes_pending_native_task_without_replaying_completed_call(
     tmp_path, scope, backend
@@ -105,8 +106,13 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
     database_root = None if datasource else tmp_path
     calls = []
     catalog_fetches = []
+    schema_fetches = []
+    schema_bytes = b'{"type":"object"}'
 
     async def handler(request):
+        if request.url.host == "schemas.test":
+            schema_fetches.append(request)
+            return httpx.Response(200, content=schema_bytes)
         if request.url.host == "catalog.test":
             catalog_fetches.append(request)
             return httpx.Response(
@@ -133,7 +139,7 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
     ]
     tasks = (
         body
-        if scope == "root"
+        if scope in {"root", "schema"}
         else [{"parent": {"do": body, **({"for": {"in": "${ [1] }"}} if scope == "for" else {})}}]
     )
     plan = _plan(tasks)
@@ -143,6 +149,30 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
         workflow["do"] = [{"parent": {"call": "reusable"}}]
         plan = compile_workflow(workflow)
     services = RuntimeServices(config, model=FakeModel(), database_root=database_root)
+    if scope == "schema":
+        from open_workflow_agent.config import ExternalCatalogConfig
+        from open_workflow_agent.external_catalog import ExternalCatalogResolver
+        from open_workflow_agent.workflow import resolve_and_compile_workflow
+
+        uri = "https://schemas.test/object.json"
+        workflow = generate_default_workflow()
+        workflow["input"] = {"schema": {"resource": {"endpoint": uri}}}
+        workflow["do"] = body
+        resolver = ExternalCatalogResolver(
+            {},
+            resource_policies={
+                "schema": ExternalCatalogConfig(
+                    allowed_hosts=["schemas.test"],
+                    allowed_endpoints=[uri],
+                    integrity_pins={uri: hashlib.sha256(schema_bytes).hexdigest()},
+                )
+            },
+            http=HttpClient(transport=httpx.MockTransport(handler)),
+        )
+        services.external_catalogs = resolver
+        plan = await resolve_and_compile_workflow(
+            workflow, resolver=resolver, catalog=services.catalog
+        )
     if scope == "import":
         from open_workflow_agent.config import ExternalCatalogConfig
         from open_workflow_agent.external_catalog import ExternalCatalogResolver
@@ -181,7 +211,7 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
             f"{handle.invocation_id}:"
             + (
                 "/do/0/sideEffect"
-                if scope == "root"
+                if scope in {"root", "schema"}
                 else "/do/0/sideEffect/call/echo:1.0.0@trusted"
                 if scope == "import"
                 else "/do/0/parent/call/reusable/do/0/sideEffect"
@@ -200,6 +230,12 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
     restarted = RuntimeServices(config, model=FakeModel(), database_root=database_root)
     if scope == "import":
         restarted.external_catalogs = resolver
+    if scope == "schema":
+        restarted.external_catalogs = ExternalCatalogResolver(
+            {},
+            resource_policies=resolver.schemas.policies,
+            http=HttpClient(transport=httpx.MockTransport(handler)),
+        )
     restarted.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
     restarted.tools.protocols = restarted.protocols
     resumed_engine = LangGraphWorkflowEngine()
@@ -216,6 +252,8 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
         assert len(calls) == 1
         if scope == "import":
             assert len(catalog_fetches) == 1
+        if scope == "schema":
+            assert len(schema_fetches) == 1
         assert not any(
             event.task_reference and event.task_reference.endswith("/sideEffect")
             for event in restarted.events.events

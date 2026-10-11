@@ -68,7 +68,10 @@ class RuntimeServices:
         raw_event_bus = event_bus or InMemoryEventBus()
         self.workflow_catalog = WorkflowCatalog()
         self.external_catalogs = ExternalCatalogResolver(
-            config.workflow.external_catalogs, event_sink=self.events, security=config.security
+            config.workflow.external_catalogs,
+            event_sink=self.events,
+            security=config.security,
+            resource_policies=config.workflow.external_resources,
         )
         self.workflow_runner: Any = None
         self.protocols = ProtocolServices(

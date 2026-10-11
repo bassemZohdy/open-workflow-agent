@@ -41,6 +41,24 @@ A2A_METHODS = frozenset(
     }
 )
 OUTPUT_MODES = frozenset({"raw", "content", "response"})
+PROTOCOL_DATA_FIELDS = frozenset(
+    {
+        "body",
+        "arguments",
+        "parameters",
+        "params",
+        "message",
+        "input",
+        "query",
+        "metadata",
+        "example",
+        "examples",
+        "default",
+        "components",
+        "paths",
+        "responses",
+    }
+)
 
 
 class AuthenticationProvider(Protocol):
@@ -82,6 +100,7 @@ class HttpClient:
         output: str = "content",
         request_timeout: float | None = None,
         allow_not_modified: bool = False,
+        _return_response: bool = False,
         **kwargs: Any,
     ) -> Any:
         self._check_endpoint(endpoint)
@@ -107,7 +126,7 @@ class HttpClient:
             if request_timeout is not None:
                 timeout = min(timeout, max(0.001, request_timeout))
             request_transport = self.transport
-            trust_env = True
+            trust_env = self.destination_resolver is None
             if self.destination_resolver is not None and self.transport is None:
                 addresses = await self.destination_resolver(endpoint)
                 request_transport = _pinned_transport(
@@ -158,7 +177,7 @@ class HttpClient:
                             "detail": response.text[:1024],
                         },
                     )
-                return _format_response(response, output)
+                return response if _return_response else _format_response(response, output)
         except ToolError:
             raise
         except httpx.HTTPError as exc:

@@ -91,11 +91,21 @@ def test_sandbox_validation_rewrites_nested_runs_and_environment_policy():
     workflow = {
         "do": [
             {"execute": {"run": {"script": {"language": "python", "code": "print(1)"}}}},
-            {"nested": [{"run": {"script": {"language": "python", "code": "print(2)"}}}]},
+            {
+                "nested": {
+                    "do": [
+                        {"execute": {"run": {"script": {"language": "python", "code": "print(2)"}}}}
+                    ]
+                }
+            },
         ]
     }
     _rewrite_executable_runs(workflow, sandbox=config, reference="")
     assert workflow["do"][0]["execute"]["run"]["workflow"]["name"] == "sandbox-placeholder"
+    assert (
+        workflow["do"][1]["nested"]["do"][0]["execute"]["run"]["workflow"]["name"]
+        == "sandbox-placeholder"
+    )
 
     with pytest.raises(WorkflowSemanticError, match="environment must be an object"):
         _validate_environment([], config, "/run")
