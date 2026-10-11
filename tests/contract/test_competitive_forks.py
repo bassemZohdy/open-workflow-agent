@@ -52,6 +52,27 @@ def _race():
     }
 
 
+def _configuration(tmp_path, backend):
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+    return (
+        RuntimeConfig.model_validate({"persistence": {"datasource": datasource}})
+        if datasource
+        else RuntimeConfig(),
+        None if datasource else tmp_path,
+    )
+
+
+def _existing_keys(services):
+    return {
+        row[0]
+        for row in services.fork_decisions.connection.execute(
+            "SELECT identity FROM competitive_fork_decisions"
+        ).fetchall()
+    }
+
+
 async def _engine(services, name, engine_type, plan):
     engine = engine_type()
     await engine.initialize(services)
@@ -84,6 +105,7 @@ async def test_later_declared_first_completion_is_recorded_and_loser_cleanup_is_
 ):
     slow_started = asyncio.Event()
     slow_drained = asyncio.Event()
+    loser_effects = []
 
     async def call(protocol, payload):
         assert protocol == "http"
@@ -91,6 +113,7 @@ async def test_later_declared_first_completion_is_recorded_and_loser_cleanup_is_
             slow_started.set()
             try:
                 await asyncio.Event().wait()
+                loser_effects.append("committed")
             finally:
                 # Cleanup may itself yield. A second cancellation must not
                 # interrupt it after the winner has already cancelled losers.
@@ -107,6 +130,7 @@ async def test_later_declared_first_completion_is_recorded_and_loser_cleanup_is_
     try:
         result = await asyncio.wait_for(engine.invoke(plan, handle, {}), timeout=20)
         assert slow_drained.is_set()
+        assert loser_effects == []
         decisions = _decisions(services)
         assert len(decisions) == 1
         decision, drained = decisions[0]
@@ -275,6 +299,162 @@ async def test_restart_without_a_decision_can_choose_a_new_winner(
         assert sorted(calls) == ["fast", "slow"]
         decision, receipt = _decisions(restarted)[0]
         assert decision["winner"] == 1 and receipt == 1
+    finally:
+        await resumed_engine.shutdown()
+        restarted.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", engine_cases())
+@pytest.mark.parametrize("outer_competes", [False, True])
+async def test_end_outside_a_competitive_scope_drains_it_without_choosing_its_winner(
+    services, engine_name, engine_type, outer_competes
+):
+    started = set()
+    drained = set()
+    ready = asyncio.Event()
+
+    async def call(protocol, payload):
+        branch = payload["body"]["branch"]
+        if branch == "finish":
+            await ready.wait()
+            return {"ended": True}
+        started.add(branch)
+        if len(started) == 2:
+            ready.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            drained.add(branch)
+
+    services.call_protocol = call
+    finish = _call("finish")
+    finish["then"] = "end"
+    plan = _plan(
+        [
+            {
+                "outer": {
+                    "fork": {
+                        "compete": outer_competes,
+                        "branches": [{"nested": {"do": [_race()]}}, {"finish": finish}],
+                    }
+                }
+            },
+            {"never": _call("never")},
+        ]
+    )
+    engine, handle = await _engine(services, engine_name, engine_type, plan)
+    try:
+        result = await asyncio.wait_for(engine.invoke(plan, handle, {}), timeout=20)
+        assert result.status == "completed", result.error
+        assert result.output == {"ended": True}
+        assert drained == {"slow", "fast"}
+        decisions = _decisions(services)
+        assert len(decisions) == int(outer_competes)
+        if outer_competes:
+            decision, receipt = decisions[0]
+            assert decision["status"] == "ended" and decision["winner"] == 1 and receipt == 1
+    finally:
+        await engine.shutdown()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", engine_cases())
+@pytest.mark.parametrize("style", ["inline", "reusable", "nested", "transition", "catch_retry"])
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_repeated_race_restart_keeps_occurrences_and_never_repeats_committed_branches(
+    tmp_path, engine_name, engine_type, style, backend, monkeypatch
+):
+    config, database_root = _configuration(tmp_path, backend)
+    services = RuntimeServices(config, model=FakeModel(), database_root=database_root)
+    existing_keys = _existing_keys(services)
+    started = [asyncio.Event(), asyncio.Event()]
+    calls = []
+    original_mark = services.fork_decisions.mark_drained
+
+    async def call(protocol, payload):
+        index = len(calls)
+        if payload["body"]["branch"] == "slow":
+            started[index].set()
+            await asyncio.Event().wait()
+        await started[index].wait()
+        calls.append(index)
+        if style == "catch_retry" and index == 0:
+            raise WorkflowExecutionError("first attempt failed")
+        return {"iteration": index + 1}
+
+    def interrupt_second_occurrence(identity):
+        decision = services.fork_decisions.get(identity)
+        if decision.output == {"iteration": 2}:
+            running.cancel()
+            raise asyncio.CancelledError
+        original_mark(identity)
+
+    race = _race()
+    functions = None
+    if style == "transition":
+        tasks = [
+            race,
+            {
+                "repeat": {
+                    "switch": [
+                        {"again": {"when": "${ .iteration < 2 }", "then": "race"}},
+                        {"done": {"then": "end"}},
+                    ]
+                }
+            },
+        ]
+    elif style == "catch_retry":
+        tasks = [
+            {"recover": {"try": [race], "catch": {"retry": {"limit": {"attempt": {"count": 1}}}}}}
+        ]
+    else:
+        body = [race]
+        if style == "reusable":
+            functions = {"contest": race["race"]}
+            body = [{"invoke": {"call": "contest"}}]
+        elif style == "nested":
+            body = [{"outer": {"fork": {"compete": True, "branches": [{"inner": {"do": body}}]}}}]
+        tasks = [{"loop": {"for": {"in": [0, 1]}, "do": body}}]
+    plan = _plan(tasks, functions)
+    services.call_protocol = call
+    monkeypatch.setattr(services.fork_decisions, "mark_drained", interrupt_second_occurrence)
+    engine, handle = await _engine(services, engine_name, engine_type, plan)
+    running = asyncio.create_task(engine.invoke(plan, handle, {}))
+    try:
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(running, timeout=20)
+        assert calls == [0, 1]
+        recorded = _decisions(services, existing_keys)
+        expected_count = 3 if style == "nested" else 2
+        assert len(recorded) == expected_count
+        assert any(receipt == 1 for _, receipt in recorded)
+        assert any(receipt == 0 for _, receipt in recorded)
+    finally:
+        running.cancel()
+        await asyncio.gather(running, return_exceptions=True)
+        await engine.shutdown()
+        services.close()
+
+    restarted = RuntimeServices(config, model=FakeModel(), database_root=database_root)
+    resumed_engine = engine_type()
+    await resumed_engine.initialize(restarted)
+    persisted = restarted.invocations.get(handle.invocation_id)
+    assert persisted is not None and persisted.status == "running"
+
+    async def forbidden_call(protocol, payload):
+        pytest.fail("repeated-race restart must preserve every committed occurrence")
+
+    restarted.call_protocol = forbidden_call
+    try:
+        result = await asyncio.wait_for(resumed_engine.resume(persisted, {}, plan), timeout=20)
+        assert result.status == "completed", result.error
+        assert result.output == {"iteration": 2}
+        after = _decisions(restarted, existing_keys)
+        assert all(receipt == 1 for _, receipt in after)
+        assert len(after) == (4 if style == "nested" else 2)
+        for decision, _ in recorded:
+            assert decision in [d for d, _ in after]
     finally:
         await resumed_engine.shutdown()
         restarted.close()
@@ -465,24 +645,11 @@ async def test_winning_error_retains_its_declared_ows_status_for_catch_filtering
 async def test_restart_after_winner_commit_replays_decision_without_starting_either_branch(
     tmp_path, engine_name, engine_type, winner_outcome, backend, interruption, monkeypatch
 ):
-    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
-    if backend == "postgresql" and not datasource:
-        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
-    config = (
-        RuntimeConfig.model_validate({"persistence": {"datasource": datasource}})
-        if datasource
-        else RuntimeConfig()
-    )
-    database_root = None if datasource else tmp_path
+    config, database_root = _configuration(tmp_path, backend)
     services = RuntimeServices(config, model=FakeModel(), database_root=database_root)
     # Configured PostgreSQL tests share a database with other integration cases.
     # Compare only decisions created by this test; never erase another record.
-    existing_keys = {
-        row[0]
-        for row in services.fork_decisions.connection.execute(
-            "SELECT identity FROM competitive_fork_decisions"
-        ).fetchall()
-    }
+    existing_keys = _existing_keys(services)
     slow_started = asyncio.Event()
     cleanup_started = asyncio.Event()
     slow_drained = asyncio.Event()
