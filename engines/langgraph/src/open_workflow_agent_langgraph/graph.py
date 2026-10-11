@@ -57,8 +57,78 @@ def _snapshot(state: ExecutionState) -> str:
     )
 
 
-def _restore(snapshot: str, state: ExecutionState) -> None:
-    value = json.loads(snapshot)
+def _json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate native snapshot field")
+        result[key] = value
+    return result
+
+
+def _native_json(value: Any) -> Any:
+    if not isinstance(value, str):
+        raise ValueError("native snapshot must be JSON text")
+    decoded = json.loads(value, object_pairs_hook=_json_object)
+    validate_expression_data(decoded)
+    return decoded
+
+
+def _json_identity(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False)
+
+
+def _decode_snapshot(snapshot: str) -> dict[str, Any]:
+    value = _native_json(snapshot)
+    fields = {
+        "data",
+        "outputs",
+        "variables",
+        "context",
+        "jump_to",
+        "stop",
+        "scope_exit",
+        "transition_selected",
+        "ended",
+        "end_output",
+        "end_context",
+        "task_visits",
+        "execution_path",
+    }
+    if not isinstance(value, dict) or set(value) != fields:
+        raise ValueError("native snapshot fields are unavailable")
+    if not isinstance(value["outputs"], dict) or not isinstance(value["variables"], dict):
+        raise ValueError("native snapshot task dictionaries are invalid")
+    if any(
+        type(value[key]) is not bool
+        for key in ("stop", "scope_exit", "transition_selected", "ended")
+    ):
+        raise ValueError("native snapshot control flags are invalid")
+    if value["jump_to"] is not None and not isinstance(value["jump_to"], str):
+        raise ValueError("native snapshot transition is invalid")
+    visits, path = value["task_visits"], value["execution_path"]
+    if not isinstance(visits, dict) or any(
+        not key or type(visit) is not int or visit < 1 for key, visit in visits.items()
+    ):
+        raise ValueError("native snapshot task visits are invalid")
+    if not isinstance(path, list) or any(
+        not isinstance(item, list)
+        or len(item) != 2
+        or not isinstance(item[0], str)
+        or not item[0]
+        or type(item[1]) is not int
+        or item[1] < 1
+        for item in path
+    ):
+        raise ValueError("native snapshot execution path is invalid")
+    return cast(dict[str, Any], value)
+
+
+def _restore(
+    snapshot: str, state: ExecutionState, *, decoded: dict[str, Any] | None = None
+) -> None:
+    # Validate the whole snapshot before changing any live execution state.
+    value = _decode_snapshot(snapshot) if decoded is None else decoded
     for key in (
         "data",
         "outputs",
@@ -71,10 +141,8 @@ def _restore(snapshot: str, state: ExecutionState) -> None:
     ):
         setattr(state, key, value[key])
     state.variables["context"] = state.context
-    state.task_visits = value.get("task_visits", {})
-    state.execution_path = tuple(
-        (ref, visit) for ref, visit in value.get("execution_path", state.execution_path)
-    )
+    state.task_visits = value["task_visits"]
+    state.execution_path = tuple((ref, visit) for ref, visit in value["execution_path"])
     if value["ended"] and not state.flow.ended.is_set():
         state.flow.output = value["end_output"]
         state.flow.context = value["end_context"]
@@ -94,6 +162,19 @@ class LangGraphScopeExecutor:
         self.resume = resume
         self.scopes = {scope.reference: scope for scope in plan.scopes}
         self.counters: dict[str, int] = {}
+        self.task_references = {
+            task.execution_reference or task.reference
+            for scope in plan.scopes
+            for task in scope.tasks
+        }
+        source_references = {task.reference for scope in plan.scopes for task in scope.tasks}
+        self.policy_references = {
+            f"{reference}/{suffix}"
+            for reference in self.task_references | source_references
+            for suffix in ("@attempt", "@catch-attempt")
+        }
+        self._definition_json = _json_identity(plan.source)
+        self._expected_input_json: str | None = None
 
     def checkpoint_config(self, reference: str, occurrence: int) -> dict[str, Any]:
         identity = json.dumps(
@@ -115,27 +196,99 @@ class LangGraphScopeExecutor:
 
     async def original_input(self, expected_input: Any) -> Any:
         try:
+            validate_expression_data(expected_input)
+            self._expected_input_json = _json_identity(expected_input)
             checkpoint = await self.saver.aget_tuple(self.checkpoint_config("/do", 1))
             if checkpoint is None:
                 raise ValueError("checkpoint is absent")
             channels = checkpoint.checkpoint["channel_values"]
-            value = json.loads(channels["snapshot"])
+            value, _ = self._validate_native(channels, "/do", 1)
             stored_input = value["variables"]["workflow"]["input"]
             validate_expression_data(stored_input)
-            validate_expression_data(expected_input)
             if json.dumps(stored_input, sort_keys=True, allow_nan=False) != json.dumps(
                 expected_input, sort_keys=True, allow_nan=False
             ):
                 raise ValueError("original input disagrees")
+            await self._validate_saved_scopes()
             return copy.deepcopy(stored_input)
         except Exception:
             raise InvocationStateError(
                 "native execution state is unavailable or inconsistent; recovery is required"
             ) from None
 
+    def _validate_native(
+        self, native: Any, reference: str, occurrence: int
+    ) -> tuple[dict[str, Any], dict[str, int]]:
+        try:
+            if not isinstance(native, dict) or reference not in self.scopes:
+                raise ValueError("native scope channels are invalid")
+            value = _decode_snapshot(native["snapshot"])
+            counters = _native_json(native["counters"])
+            if (
+                not isinstance(counters, dict)
+                or any(
+                    key not in self.scopes or type(count) is not int or count < 1
+                    for key, count in counters.items()
+                )
+                or counters.get(reference) != occurrence
+            ):
+                raise ValueError("native scope occurrence is inconsistent")
+            scope = self.scopes[reference]
+            if native["next_node"] not in {END, *(_node_name(task) for task in scope.tasks)}:
+                raise ValueError("native routing target is inconsistent")
+            if value["jump_to"] is not None and value["jump_to"] not in {
+                task.name for task in scope.tasks
+            }:
+                raise ValueError("native task transition is inconsistent")
+            if set(value["task_visits"]) - self.task_references:
+                raise ValueError("native task occurrence belongs to another plan")
+            for task_reference, visit in value["execution_path"]:
+                if task_reference in self.task_references:
+                    if visit > value["task_visits"].get(task_reference, 0):
+                        raise ValueError("native execution path is ahead of task visits")
+                elif task_reference not in self.policy_references:
+                    raise ValueError("native execution path belongs to another plan")
+            variables = value["variables"]
+            workflow = variables["workflow"]
+            if not isinstance(workflow, dict) or workflow["id"] != self.invocation_id:
+                raise ValueError("native workflow identity is inconsistent")
+            if _json_identity(workflow["definition"]) != self._definition_json:
+                raise ValueError("native workflow definition is inconsistent")
+            if (
+                self._expected_input_json is not None
+                and _json_identity(workflow["input"]) != self._expected_input_json
+            ):
+                raise ValueError("native workflow input is inconsistent")
+            if _json_identity(variables["context"]) != _json_identity(value["context"]):
+                raise ValueError("native context binding is inconsistent")
+            return value, cast(dict[str, int], counters)
+        except Exception:
+            raise InvocationStateError(
+                "native execution state is unavailable or inconsistent; recovery is required"
+            ) from None
+
+    async def _validate_saved_scopes(self) -> None:
+        # Read only this invocation's derived scope keys through the SDK. This
+        # traverses stored occurrences, including a child still pending beneath
+        # an older parent checkpoint. No checkpoint or occurrence is recreated.
+        pending = {(reference, 1) for reference in self.scopes}
+        inspected: set[tuple[str, int]] = set()
+        while pending:
+            reference, occurrence = pending.pop()
+            inspected.add((reference, occurrence))
+            checkpoint = await self.saver.aget_tuple(self.checkpoint_config(reference, occurrence))
+            if checkpoint is None:
+                continue
+            _, counters = self._validate_native(
+                checkpoint.checkpoint["channel_values"], reference, occurrence
+            )
+            candidates = {(reference, occurrence + 1), *counters.items()}
+            pending.update(candidates - inspected)
+
     def _read(self, native: _GraphState, state: ExecutionState, reference: str) -> None:
-        _restore(native["snapshot"], state)
-        for key, value in json.loads(native["counters"]).items():
+        decoded, counters = self._validate_native(native, reference, self.counters[reference])
+        _restore(native["snapshot"], state, decoded=decoded)
+        for key, value in counters.items():
             # A completed branch cannot advance a sibling's occurrence cursor
             # during parent replay. The parent checkpoint owns those cursors.
             if key == reference or key.startswith(reference + "/"):
