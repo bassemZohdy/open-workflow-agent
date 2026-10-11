@@ -58,9 +58,16 @@ LangGraph and 108 ADK configured recovery cases and both PostgreSQL/main CI
 forced-stop images. Source `e61c6a5` additionally rejects Boolean terminal
 controls that disagree with task routing, after six actual prior failures.
 Its full local LangGraph regression passes 815 (270 skips, three gaps); fresh
-configured acceptance is pending. Actual SDK probes still accept missing or
+configured acceptance was pending at that source. Historical SDK probes accept missing or
 changed common receipts after a native-completed call, then dispatch the next
-call and change invocation state. Receipt dependency reconciliation remains open.
+call and change invocation state. Receipt dependencies at `9755e96` subsequently
+reject that disagreement on both principal SDKs; all exact `c276f40` gates pass.
+Completed-scope dependencies at `968ec8f` pass local/Windows/native checks, but
+the PostgreSQL gate at `ac478e1` deselects nine new scope cases. Successful jobs
+do not qualify those missing cases. Source `3df61f6` corrects the actual selector,
+adds real collection guards, and extends common receipts to existing sandbox
+operations. Its focused principal suites pass; fresh full/configured acceptance
+is recorded in the manifest and [PROJECT.md](../PROJECT.md).
 Full local frozen
 results and the final
 PostgreSQL-only ADK adjustment retain their exact scopes in the manifest.
@@ -68,7 +75,7 @@ The conditional-write gates passed at `6954db8`; prior leaf-call and corrected
 dependency gates passed at `fc53574`. Recovery, action idempotency and lifecycle
 remain partial. S2-03 remains open for broader effects and full native checkpoint
 consistency. Selected LangGraph snapshot checks do not establish all ADK private
-state, missing-cursor or well-typed native/common receipt reconciliation. No full feature outcome
+state or complete native/common invocation/payload reconciliation. No full feature outcome
 or independent JavaScript qualification is promoted by this bounded proof.
 
 Earlier competitive runtime, fixture/audit and all three common PostgreSQL

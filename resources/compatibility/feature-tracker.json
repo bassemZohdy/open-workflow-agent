@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Completed native scopes publish immutable checkpoint dependencies into subsequent SDK-owned state. Admission verifies each required scope exists, has terminal routing and agrees with its retained digest. The native consistency checksum includes receipt/scope dependencies as well as snapshot/counters/routing. Core owns no native checkpoint state or SQL. Fresh exact-source seven-gate and configured PostgreSQL acceptance and complete native/common invocation/payload consistency remain open. Private binding version 2 is not an old-checkpoint migration guarantee; S2-09 retains that owner. No general pending-effect resolution, compensation, JavaScript or full conformance claim.",
+          "scope": "The common sandbox executor records a private intent before dispatch and value/fault receipts before native task progress. Script, shell and container replay reuse known outcomes, reject changed prepared requests and stop at uncertain intents. Execution identity is stable per private occurrence while retry attempts stay distinct. All actual dispatch remains through SandboxManager; deployment policy, enforced isolation profiles and public capabilities are unchanged. Fresh exact-source seven-gate and configured sandbox/scope acceptance, event/child operation receipts and complete native/common consistency remain open. General ambiguous-outcome resolution, compensation, migration, JavaScript and full conformance retain their owners. Fakes qualify common dispatch behavior, not stronger isolation or real-cluster acceptance.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -66256,7 +66256,7 @@
           },
           "native_completed_scope_dependencies_followup": {
             "commit": "968ec8fe1f030fe85533c1b97e7729080105f742",
-            "status": "Local bounded completed-scope consistency verified; fresh remote acceptance pending",
+            "status": "SQLite/native/Windows bounded scope consistency verified; PostgreSQL scope cases were deselected",
             "source_file_sha256": {
               "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "169a340bf2ed762a1bc04720ca092935feb13f1c87882c0a1b4793d7087b7c82",
               "tests/contract/test_native_scope_dependencies.py": "2437c0a0e9900bf89f1a5e8c55b5de431e3661b954e1c8bce783c3cd7af4dc8e",
@@ -66276,7 +66276,120 @@
             },
             "fixture_scope": "Nested completed scopes, earlier completed loop occurrences, and a cancelled competing child whose cursor advanced before its first SDK checkpoint. A missing cancelled/uncompleted child remains valid; the completed winner remains required. SQLite and configured PostgreSQL fixtures use actual SDK deletion/serialization; PostgreSQL acceptance is pending.",
             "quality_checks": "Formatting, lint, strict 66-package-source and fixture typing, LangGraph wheel/sdist build and current wheel source/pinned-schema bytes pass. Runtime/test source stays frozen during native checks.",
-            "remaining": "Fresh exact-source seven-gate and configured PostgreSQL acceptance and complete native/common invocation/payload consistency remain open. Private binding version 2 is not an old-checkpoint migration guarantee; S2-09 retains that owner. No general pending-effect resolution, compensation, JavaScript or full conformance claim."
+            "remaining": "Actual configured completed-scope acceptance and full native/common consistency remain open. Seven successful jobs do not imply coverage of deselected requirements.",
+            "remote_commit": "ac478e17c9626501b062fe7cae9b46a85aaeaded",
+            "remote_runs": {
+              "38180361574": "success",
+              "38180361571": "success",
+              "38180361580": "success",
+              "38180361598": "success",
+              "38180361576": "success",
+              "38180361586": "success",
+              "38180357460": "success"
+            },
+            "linux_root": {
+              "passed": 1548,
+              "skipped": 506,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.49
+            },
+            "linux_native": {
+              "adk": {
+                "passed": 712,
+                "skipped": 384,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "langgraph": {
+                "passed": 754,
+                "skipped": 357,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "agent_framework_optional": {
+                "passed": 1043,
+                "skipped": 538,
+                "expected_assertion_failures": 3
+              }
+            },
+            "windows": {
+              "root_passed": 460,
+              "root_skipped": 12,
+              "native_passed": 348,
+              "native_skipped": 174
+            },
+            "postgresql": {
+              "store_passed": 81,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_langgraph_passed": 159,
+              "shared_adk_passed": 134,
+              "shared_agent_framework_passed": 92,
+              "shared_agent_framework_skipped": 7,
+              "completed_scope_cases_executed": 0,
+              "completed_scope_cases_deselected": 9,
+              "both_runtime_image_jobs": "Success"
+            },
+            "coverage_limit": "The PostgreSQL command includes the scope fixture, but its original langgraph keyword filter selects none of that fixture. The 159 cases are existing coverage; none qualify completed-scope PostgreSQL corruption. Current source corrects the actual selector and verifies nine scope cases through real pytest collection.",
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0
+          },
+          "sandbox_receipt_recovery_followup": {
+            "commit": "3df61f685ea14a8fe996da88bea052f2fad71163",
+            "status": "Local sandbox receipt regression and actual selector correction verified; fresh remote acceptance pending",
+            "source_file_sha256": {
+              "core/src/open_workflow_agent/workflow.py": "cfd7d179a571ac51f3bda03f29ba2e0721828be94c3899357ed67536f49a2a8b",
+              "core/src/open_workflow_agent/sandbox/executor.py": "9e48b15494897c85be5b01a1b86c13646f70f1c9358ba33f45c88f676f09edbe",
+              "tests/contract/test_sandbox_effect_recovery.py": "b001a3eae51e47fa2147c3785f25fa19269b69fe1025ee0af99abde4e11e6476",
+              "tests/ci/test_postgres_recovery_selection.py": "b57628fe8448ae2f5a873acbb9d799ab328eaeaa22c48a938820da6e4a1d86a1",
+              ".github/workflows/ci.yml": "43d4997b40258b147e0b87bfa5ce2ddc0b825bde7ae6bb10118ac8f8d6fa9d65",
+              ".github/workflows/postgres-ci.yml": "14f208e176cf0434a461eb29129458aee10c817ee93cd13f748ee94c2f575214"
+            },
+            "scope": "The common sandbox executor records a private intent before dispatch and value/fault receipts before native task progress. Script, shell and container replay reuse known outcomes, reject changed prepared requests and stop at uncertain intents. Execution identity is stable per private occurrence while retry attempts stay distinct. All actual dispatch remains through SandboxManager; deployment policy, enforced isolation profiles and public capabilities are unchanged.",
+            "negative_probe": "Actual prior native LangGraph interruption before task commit causes the sandbox fake to execute twice. Its unchanged call-count assertion fails; recorded-outcome replay now retains one execution.",
+            "full_regression": {
+              "root": {
+                "passed": 1583,
+                "skipped": 546,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.5
+              },
+              "adk": {
+                "passed": 844,
+                "skipped": 420,
+                "expected_assertion_failures": 3
+              },
+              "lg": {
+                "passed": 886,
+                "skipped": 393,
+                "expected_assertion_failures": 3
+              },
+              "af": {
+                "passed": 1097,
+                "skipped": 592,
+                "expected_assertion_failures": 3
+              }
+            },
+            "local_focus": {
+              "adk": {
+                "passed": 49,
+                "skipped": 36
+              },
+              "langgraph": {
+                "passed": 49,
+                "skipped": 36
+              }
+            },
+            "selection_guard": "Three tests run actual PostgreSQL keyword expressions through real pytest collection: nine completed-scope cases, eighteen LangGraph sandbox cases and eighteen ADK sandbox cases are selected. The optional bridge command includes the sandbox fixture separately.",
+            "quality_checks": "Formatting, lint, strict 66-package-source and fixture/CI typing, five wheel/sdist builds and current wheel source/pinned-schema bytes pass on frozen runtime/test source.",
+            "remaining": "Fresh exact-source seven-gate and configured sandbox/scope acceptance, event/child operation receipts and complete native/common consistency remain open. General ambiguous-outcome resolution, compensation, migration, JavaScript and full conformance retain their owners. Fakes qualify common dispatch behavior, not stronger isolation or real-cluster acceptance."
           }
         }
       },

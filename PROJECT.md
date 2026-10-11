@@ -525,6 +525,33 @@ qualified receipt/native-reader source. Private binding version 2 introduces no
 old-checkpoint migration guarantee. Fresh configured/remote acceptance and complete
 native/common invocation/payload consistency remain open.
 
+All seven `ac478e1` jobs succeed. Actual PostgreSQL logs show 159 LangGraph and
+134 ADK shared cases, but the original keyword filter deselects all nine new
+completed-scope cases. Those jobs do not qualify PostgreSQL scope consistency.
+Source `3df61f6` corrects the actual selection expression. Three collection
+checks prove that the configured commands select nine completed-scope cases and
+eighteen sandbox recovery cases for each principal SDK.
+
+The same source adds private common receipts around existing sandbox dispatch.
+An interruption after a completed sandbox operation but before native task
+progress previously dispatched it twice; the prior-source assertion fails on
+the actual count. Script, shell and container value/fault receipts now retain
+one dispatch across fresh recovery; uncertain intents and changed prepared
+requests reject another dispatch. Execution identity remains stable per private
+occurrence, while explicit retries keep distinct attempts. Dispatch still uses
+SandboxManager. Deployment policy, capabilities and enforced isolation remain
+unchanged. Deterministic fake backends qualify recovery behavior, not stronger
+isolation or real-cluster deployment acceptance.
+
+All four full regressions pass on frozen runtime/test source: core 1,583/546/
+three tracked gaps with 91.50% coverage, ADK 844/420, LangGraph 886/393 and
+optional Agent Framework 1,097/592, each with three tracked gaps. Both principal
+SDK focus suites pass 49/36. Formatting, lint, strict package/fixture/CI typing,
+five wheel/sdist builds and current wheel-source/pinned-schema bytes pass.
+Fresh exact-source GitHub and configured PostgreSQL acceptance are pending.
+Event/child operation receipts and complete native/common consistency remain
+open; the existing event bus has no new durable delivery guarantee.
+
 S2-03 stays open. This fix does not reconcile all native/common invocation or
 side-effect records. General pending-effect reconciliation, full native state
 consistency and configured acceptance of the new validation still require work.

@@ -177,14 +177,47 @@ At `e61c6a5`, stop/exit/end flags must agree with saved task routing. Native tas
 completion routes immediately to END when workflow end is already set. Six
 prior Boolean-control probes fail; the focused suite passes 41 (37 skips),
 and full LangGraph native/shared/CTK regression passes 815 (270 skips, three
-gaps). Fresh configured/remote qualification is pending.
+gaps). Routing acceptance and its separate ADK benchmark failure are recorded
+at `6af95cf`; later receipt/native-reader source passed all gates at `c276f40`.
 
-Native/common receipt reconciliation remains an actual gap. After the first
+Historical probes at `e61c6a5` demonstrate a native/common receipt gap. After the first
 fake HTTP call is native-completed and the workflow waits, deleting or changing
 its common receipt still lets recovery complete and dispatch the next call.
 The observed history is `/once`, `/next`; the first call is not repeated, but
 known receipt disagreement is accepted. Recovery must verify checkpoint
 dependencies on existing common receipts before accepting an invocation change.
+
+Source `9755e96` stores immutable common receipt dependencies inside native
+state. Both principal SDKs reject missing, changed or pending receipts before
+another action or common invocation update. Identical root/nested value/null/fault
+fixtures pass. ADK stores sequenced receipt/wait events and drains SQLite reads
+through its existing native storage worker; a later sibling receipt preserves an
+existing wait. All seven exact `c276f40` gates pass, including 159 LangGraph/134
+ADK configured recovery cases and both actual runtime images in both main CI runs.
+
+Source `968ec8f` also binds completed LangGraph scope checkpoints to later
+native progress. Deleted or internally consistent changed children reject
+admission; earlier loop occurrences remain required. A cancelled child with an
+entered cursor but no first checkpoint remains valid. Local native/shared/CTK
+passes 850/357/three tracked gaps. At `ac478e1`, all seven jobs succeed, including
+Windows and actual image restarts, but its PostgreSQL keyword filter deselects
+the nine new scope cases. Those successful jobs do not qualify PostgreSQL scope
+corruption recovery. Source `3df61f6` corrects the real selector and verifies the
+selected cases through actual pytest collection. Fresh configured acceptance
+is required. Native formats/SQL remain engine-owned; binding version 2 introduces
+no older-checkpoint migration guarantee.
+
+The common sandbox executor at `3df61f6` extends action receipts to existing
+deployment-enabled script, shell and container operations. It records an intent
+before dispatch and a known value/fault outcome before native task progress.
+Replay retains known outcomes, blocks changed requests and refuses to redispatch
+an uncertain intent. Execution identity is stable per private occurrence;
+explicit retry attempts remain distinct. Both principal focused suites pass
+49 checks with 36 local PostgreSQL skips, including existing execution/lifecycle
+parity. All dispatch still uses `SandboxManager`; policy and capabilities are
+unchanged. The receipt fixture uses deterministic fakes, so it establishes neither
+stronger isolation nor real-cluster acceptance. Fresh full/configured acceptance
+is recorded in [PROJECT.md](../PROJECT.md).
 
 The verified private action journal foundation retains
 a first-owner intent and the first completed value/null/fault outcome on the
@@ -217,8 +250,9 @@ before an outcome is available. They cover values/null/faults, changed requests,
 duplicate terminal resume, repeated reusable calls, pending actions inside
 retry/competitive scopes, and failed receipt writes. SQLite and configured
 PostgreSQL share the same assertions in independent SDK environments.
-Executable run, event and child operations, recovery leases, and general
-pending-outcome resolution remain open; no broader capability is advertised.
+Executable run receipts and execution ownership have subsequent evidence above.
+Event/child operation receipts and general ambiguous-outcome resolution remain
+open; no broader capability is advertised.
 
 [Journal fixtures](../tests/core/test_effect_journal.py) cover owner contention,
 reopening, first outcomes, source/occurrence separation, common errors, corrupt

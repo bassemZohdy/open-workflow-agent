@@ -85,8 +85,16 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   checkpoints to later native progress. Deleted or consistently changed child
   checkpoints reject recovery; a cancelled child without its first checkpoint
   remains valid. Focus passes 65/117 and full LangGraph native/shared/CTK passes
-  850/357/three tracked gaps. Fresh configured/exact-source scope acceptance and
-  complete native/common invocation/payload consistency remain open.
+  850/357/three tracked gaps. All seven `ac478e1` jobs succeed, but their
+  PostgreSQL filter deselects all nine completed-scope cases; those cases remain
+  unqualified. Source `3df61f6` corrects the selector and checks actual collection.
+  Common sandbox receipts preserve known script/shell/container outcomes across
+  native recovery and stop changed requests or uncertain intents before another
+  dispatch. Frozen full core passes 1,583/546/three tracked gaps with 91.50%
+  coverage; ADK 844/420, LangGraph 886/393 and optional Agent Framework
+  1,097/592 each retain three tracked gaps. Focus passes 49/36 on each principal
+  SDK. Fresh configured/exact-source sandbox/scope acceptance, event/child
+  operation receipts and complete native/common consistency remain open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
