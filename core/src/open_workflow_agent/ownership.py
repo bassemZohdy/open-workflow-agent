@@ -74,6 +74,11 @@ class ExecutionOwnershipStore:
             else "((julianday('now') - 2440587.5) * 86400.0)"
         )
 
+    @property
+    def _live_expiry(self) -> str:
+        # Reject non-finite/corrupt expiry, including PostgreSQL's NaN ordering.
+        return f"expires_at > {self._clock} AND expires_at <= {self._clock} + 3600"
+
     @staticmethod
     def _duration(seconds: float) -> float:
         if (
@@ -138,7 +143,7 @@ class ExecutionOwnershipStore:
             row = self.connection.execute(
                 f"""UPDATE invocation_ownership SET expires_at = {self._clock} + ?
                 WHERE invocation_id = ? AND engine = ? AND fingerprint = ?
-                AND owner = ? AND generation = ? AND expires_at > {self._clock}
+                AND owner = ? AND generation = ? AND {self._live_expiry}
                 RETURNING invocation_id, engine, fingerprint, owner, generation, expires_at""",
                 (duration, *self._identity(lease)),
             ).fetchone()
@@ -167,7 +172,7 @@ class ExecutionOwnershipStore:
                 f"""SELECT invocation_id, engine, fingerprint, owner, generation, expires_at
                 FROM invocation_ownership WHERE invocation_id = ? AND engine = ?
                 AND fingerprint = ? AND owner = ? AND generation = ?
-                AND expires_at > {self._clock}""",
+                AND {self._live_expiry}""",
                 self._identity(lease),
             ).fetchone()
             current = self._lease(row) if row is not None else None
@@ -185,7 +190,7 @@ class ExecutionOwnershipStore:
             row = self.connection.execute(
                 f"""UPDATE invocation_ownership SET expires_at = 0
                 WHERE invocation_id = ? AND engine = ? AND fingerprint = ?
-                AND owner = ? AND generation = ? AND expires_at > {self._clock}
+                AND owner = ? AND generation = ? AND {self._live_expiry}
                 RETURNING generation""",
                 self._identity(lease),
             ).fetchone()

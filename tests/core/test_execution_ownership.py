@@ -126,8 +126,9 @@ def test_expiry_does_not_allow_identity_rebinding(datasource: str, changed: str)
     try:
         old = store.acquire(handle)
         _expire(store, handle)
+        changes: dict[str, Any] = {changed: "different"}
         with pytest.raises(InvocationStateConflict):
-            store.acquire(replace(handle, **{changed: "different"}))
+            store.acquire(replace(handle, **changes))
         new = store.acquire(handle)
         assert new.generation == old.generation + 1
     finally:
@@ -241,5 +242,29 @@ def test_clock_skew_does_not_grant_execution_ownership(
             with pytest.raises(InvocationStateConflict):
                 store.renew(lease)
             assert other.acquire(handle).generation == lease.generation + 1
+    finally:
+        store.close()
+        other.close()
+
+
+@pytest.mark.parametrize("operation", ["verify", "renew", "release"])
+def test_corrupt_infinite_expiry_cannot_be_adopted_or_repaired(
+    datasource: str, operation: str
+) -> None:
+    handle = _handle(datasource)
+    store = ExecutionOwnershipStore(datasource)
+    try:
+        lease = store.acquire(handle)
+        store.connection.execute(
+            "UPDATE invocation_ownership SET expires_at = ? WHERE invocation_id = ?",
+            (float("inf"), handle.invocation_id),
+        )
+        store.connection.commit()
+        with pytest.raises(InvocationStateConflict):
+            getattr(store, operation)(lease)
+        assert store.connection.execute(
+            "SELECT expires_at FROM invocation_ownership WHERE invocation_id = ?",
+            (handle.invocation_id,),
+        ).fetchone()[0] == float("inf")
     finally:
         store.close()
