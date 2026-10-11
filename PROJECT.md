@@ -22,6 +22,32 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
+### S2-03 checkpoint recovery — 2026-10-11 (in progress)
+
+Fresh-runtime tests reproduce a common resume defect: a submitted JSON null was
+treated as absent input, leaving a recovered wait asleep. The common lifecycle
+now checks whether an input was submitted separately from its value. The shared
+fixture verifies null, false, zero, empty string, empty array and empty object,
+including reopening services and duplicate terminal resume.
+
+Targeted local validation passes 31 root and independent native ADK tests,
+42 independent native LangGraph tests with seven database skips, and 46 optional
+Agent Framework tests. These counts include the existing lifecycle suite; the
+LangGraph run also includes native task checkpoint tests. Frozen-source broad
+validation passes 1,244 root tests with 61 skips, three known expected gap
+failures and 91.76% coverage. Independent native/shared/CTK suites pass ADK 611
+(26 skips), LangGraph 624 (33 skips) and optional Agent Framework 821 (39 skips),
+with the same three expected gap failures. Formatting, lint, strict typing, all
+four locks, all five builds, documentation links and six inventory/source checks
+pass. Exact revision GitHub acceptance is still pending.
+
+S2-03 stays open. This fix does not reconcile all native/common invocation or
+side-effect records. Original input recovery, explicit null task results,
+interruption between effect completion and native checkpoint commit, and
+configured database acceptance still require work. Later-stage retry/deadline,
+timer/event, child workflow, compensation and version migration owners remain
+unchanged; no stronger recovery or exactly-once guarantee is advertised.
+
 ### S2-02 competitive fork decisions — 2026-10-11 (verified)
 
 The common runtime now composes an embedded decision store using its existing

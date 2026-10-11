@@ -221,9 +221,8 @@ class WorkflowEngine:
             task=asyncio.current_task(),
             result=asyncio.get_running_loop().create_future(),
         )
-        restart_input = self._restart_resume_inputs.pop(handle.invocation_id, None)
-        if restart_input is not None:
-            active.control.request_resume(restart_input)
+        if handle.invocation_id in self._restart_resume_inputs:
+            active.control.request_resume(self._restart_resume_inputs.pop(handle.invocation_id))
         self._active[handle.invocation_id] = active
         return active
 
