@@ -404,8 +404,37 @@ with 22 skips; full independent ADK native/shared/CTK regression passes 780
 (276 skips, three tracked gaps). Formatting, lint, strict package/two-fixture
 typing and ADK wheel/sdist build/source checks pass. LangGraph runtime is
 unchanged from `556da47`; its full 809-case local baseline remains source-scoped.
-Fresh configured PostgreSQL and all seven remote gates remain pending for the
-correction. Missing non-self cursor reconciliation and well-typed payload/common receipt
+All seven exact `4058895` gates pass: [PR CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38175692483),
+[push CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38175689112),
+[PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38175692473),
+[external sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38175692651),
+[optional Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38175692469),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38175692465)
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38175692474).
+PostgreSQL passes 127 LangGraph and 108 ADK shared recovery cases, 81 common
+store cases, 92 optional bridge cases (seven skips), 10 separate LangGraph
+cases (eight skips), and both runtime images. Both main CI forced-stop restart
+steps pass. Linux root passes 1,548 (370 skips, three gaps, 91.83%); native ADK
+684 and LangGraph 713 plus 96 CTK each. Windows root/native pass 460/12 and
+307/81; six actual downloaded dependency reports contain zero known advisories.
+Historical `fc54600` failed mutations remain recorded with their source scope.
+
+Six additional actual SQLite root/nested probes reproduce recovery acceptance
+of Boolean stop/exit/end flags that disagree with pending task routing. Source
+`e61c6a5` rejects that inconsistency and routes native completion directly to END
+when workflow end is already set. The focused suite passes 41 (37 skips), and
+the full independent LangGraph native/shared/CTK regression passes 815
+(270 skips, three gaps). Formatting, lint, strict package/fixture typing and
+LangGraph wheel/sdist/source-byte checks pass. Fresh configured and remote
+acceptance of these routing changes is pending.
+
+Separate actual SDK probes demonstrate a remaining native/common receipt gap:
+after a checkpoint passes the first fake HTTP call and waits, deleting or changing
+its common completed receipt still permits recovery. Both cases complete and
+dispatch the next call, with history `/once`, `/next`, while changing the common
+invocation. They do not repeat `/once`, but they accept disagreement with its
+known durable receipt. Checkpoint dependencies on common receipts must be
+verified before recovery admission. Missing non-self cursor and payload/common receipt
 consistency remain open. A cancelled child can legitimately lack its first
 checkpoint, so a declared cursor alone does not establish corruption.
 

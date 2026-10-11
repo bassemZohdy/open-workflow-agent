@@ -168,7 +168,23 @@ first-event validator. At `005ab5b`, all input events for the specific native
 invocation must match its common binding and have unambiguous finite JSON.
 Matching replay messages and unrelated session invocations remain valid.
 The focus passes 12 cases (22 skips); full ADK native/shared/CTK regression
-passes 780 (276 skips, three gaps). Fresh configured acceptance is pending.
+passes 780 (276 skips, three gaps). All seven exact `4058895` gates pass,
+including 127 configured LangGraph and 108 ADK recovery cases, both PostgreSQL
+images and both main CI forced-stop images. Historical fixture failures retain
+their source scope.
+
+At `e61c6a5`, stop/exit/end flags must agree with saved task routing. Native task
+completion routes immediately to END when workflow end is already set. Six
+prior Boolean-control probes fail; the focused suite passes 41 (37 skips),
+and full LangGraph native/shared/CTK regression passes 815 (270 skips, three
+gaps). Fresh configured/remote qualification is pending.
+
+Native/common receipt reconciliation remains an actual gap. After the first
+fake HTTP call is native-completed and the workflow waits, deleting or changing
+its common receipt still lets recovery complete and dispatch the next call.
+The observed history is `/once`, `/next`; the first call is not repeated, but
+known receipt disagreement is accepted. Recovery must verify checkpoint
+dependencies on existing common receipts before accepting an invocation change.
 
 The verified private action journal foundation retains
 a first-owner intent and the first completed value/null/fault outcome on the

@@ -9,7 +9,7 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`005ab5b`, which retains the verified fork, original-input, terminal-record,
+`e61c6a5`, which retains the verified fork, original-input, terminal-record,
 leaf-call and conditional common write corrections. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
@@ -53,7 +53,14 @@ the fixture and re-reads the exact altered checkpoint. It also rejects ADK
 contradictory later input events and malformed/duplicate-key native input JSON,
 while accepting matching repeats and preserving shared-session identity.
 Focused checks pass; the full ADK native/shared/CTK suite passes 780 with 276
-skips and three gaps. Fresh configured and remote acceptance is pending.
+skips and three gaps. All seven exact `4058895` gates pass, including 127
+LangGraph and 108 ADK configured recovery cases and both PostgreSQL/main CI
+forced-stop images. Source `e61c6a5` additionally rejects Boolean terminal
+controls that disagree with task routing, after six actual prior failures.
+Its full local LangGraph regression passes 815 (270 skips, three gaps); fresh
+configured acceptance is pending. Actual SDK probes still accept missing or
+changed common receipts after a native-completed call, then dispatch the next
+call and change invocation state. Receipt dependency reconciliation remains open.
 Full local frozen
 results and the final
 PostgreSQL-only ADK adjustment retain their exact scopes in the manifest.
