@@ -8,7 +8,10 @@ import json
 
 import pytest
 from engine_cases import engine_cases
+from open_workflow_agent.catalog import FakeModel
+from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import WorkflowExecutionError
+from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
 
@@ -324,3 +327,75 @@ async def test_failed_fork_drains_sibling_before_returning_common_error(
         assert sibling_drained.is_set()
     finally:
         await engine.shutdown()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", engine_cases())
+async def test_restart_preserves_ordered_fork_output_on_each_adapter(
+    tmp_path, engine_name, engine_type
+):
+    plan = compile_workflow(
+        _workflow(
+            [
+                {
+                    "parallel": {
+                        "fork": {
+                            "branches": [
+                                {"first": {"set": {"shared": "first"}}},
+                                {
+                                    "second": {
+                                        "do": [
+                                            {"value": {"set": {"shared": "second"}}},
+                                            {"pause": {"wait": {"seconds": 300}}},
+                                        ]
+                                    }
+                                },
+                            ]
+                        }
+                    }
+                }
+            ]
+        )
+    )
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    engine = engine_type()
+    await engine.initialize(services)
+    handle = services.invocations.create(
+        engine=engine_name,
+        session_id=None,
+        user_id=None,
+        workflow_name=plan.name,
+        workflow_version=plan.version,
+        workflow_fingerprint=plan.fingerprint,
+    )
+    running = asyncio.create_task(engine.invoke(await engine.compile(plan), handle, {}))
+    try:
+        async with asyncio.timeout(20):
+            while handle.status != "waiting":
+                if running.done():
+                    pytest.fail(str(running.result()))
+                await asyncio.sleep(0.01)
+        running.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await running
+    finally:
+        running.cancel()
+        await asyncio.gather(running, return_exceptions=True)
+        await engine.shutdown()
+        services.close()
+
+    restarted = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    resumed_engine = engine_type()
+    await resumed_engine.initialize(restarted)
+    persisted = restarted.invocations.get(handle.invocation_id)
+    assert persisted is not None and persisted.status == "waiting"
+    try:
+        result = await asyncio.wait_for(resumed_engine.resume(persisted, {}, plan), timeout=20)
+        assert result.status == "completed", result.error
+        expected = [{"shared": "first"}, {"shared": "second"}]
+        assert result.output == expected
+        stored = restarted.invocations.get(handle.invocation_id)
+        assert stored is not None and stored.status == "completed" and stored.output == expected
+    finally:
+        await resumed_engine.shutdown()
+        restarted.close()
