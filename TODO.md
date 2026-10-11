@@ -58,10 +58,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   terminal-result recovery at `6840605`, and journal storage at `d197fa1`.
   Leaf-call action receipts and corrected dependency validation are verified at
   `fc53574`; conditional invocation writes passed all gates at `6954db8`.
-  Initial native/input-binding admission at `58516fb` has full local proof;
-  eight forced process-stop cases per SDK/common bridge passed locally at
-  `68722d3`. Fresh GitHub/database acceptance is pending. Durable exclusive recovery
-  ownership, atomic native checkpoint fencing and full native consistency remain open.
+  Initial native/input-binding admission passed all gates at `b9a2b31`;
+  eight forced process-stop cases per SDK/common bridge passed SQLite/PostgreSQL
+  acceptance at `ef29f23`. Private expiring ownership storage at `75fbc0d`
+  has local proof and pending fresh database gates. Runtime ownership admission,
+  atomic native checkpoint fencing and full native consistency remain open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.

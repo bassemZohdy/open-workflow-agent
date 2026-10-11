@@ -250,8 +250,13 @@ Frozen-source full local validation passed 1,473 root tests, 230 skips, three
 expected gaps and 91.83% coverage. Independent native/shared/CTK suites passed
 ADK 739 (173 skips), LangGraph 749 (180 skips) and optional Agent Framework
 999 (269 skips), each with the same three gaps. Formatting, lint, strict typing,
-four locks, five builds and documentation checks pass. Fresh GitHub and
-configured PostgreSQL acceptance for this source remains pending. These are
+four locks, five builds and documentation checks pass. All seven GitHub gates
+passed at `b9a2b31`, including configured PostgreSQL admission fixtures.
+The Linux root passed 1,477 tests (226 skips, three gaps, 91.86% coverage);
+PostgreSQL passed 20 store cases, 84 shared cases per principal adapter and
+77 on the optional bridge (seven native-admission/boundary skips). Both packaged
+PostgreSQL restart jobs passed, and all six security reports had zero known
+advisories. These are
 initial input-binding admission checks, not complete nested checkpoint
 validation, an execution lease or atomic native checkpoint fencing.
 
@@ -264,12 +269,38 @@ The fixtures preserve original input, null/value/fault outcomes, unchanged
 action receipts and duplicate terminal results. A separate fake external store
 has no deduplication: its call count confirms that recovery does not repeat the
 action, including an unresolved pending receipt. The optional bridge results do
-not qualify Agent Framework native checkpoint durability. Matching PostgreSQL
-and Windows fixtures are wired; their fresh remote acceptance remains pending.
+not qualify Agent Framework native checkpoint durability. All seven gates
+passed at `ef29f23`, including the matching PostgreSQL and Windows fixtures.
+PostgreSQL passed 92 shared cases per principal adapter and 85 on the optional
+bridge (seven skips), with both packaged runtime restarts successful. The
+Windows native job passed 255 cases (31 explicit skips). Linux root passed
+1,477 (258 skips, three gaps, 91.86%); all six security reports had zero known
+advisories.
 Strict fixture typing, formatting, lint and audit checks passed. Full-suite
 counts above retain the unchanged runtime source `58516fb`; these new focused
-cases are separate proof. GitHub connection errors currently prevent confirming
-the last two CI parents at `b9a2b31`; five other gates were observed successful.
+cases are separate proof. Earlier connection errors have been resolved; the
+input-admission and forced-process source gates are now confirmed complete.
+
+Private ownership storage at `75fbc0d` uses the common datasource's clock for
+atomic expiring claims, renewal and release, retaining generation tokens across
+reacquisition. Independent connections reject competing or stale owners, host
+clock skew cannot grant ownership, and failed SQLite commits retain the previous
+record. A corrupt infinite-expiry probe exposed unsafe renewal in the first
+foundation; the corrected guard rejects verify/renew/release without repairing
+the record. RuntimeServices composes and closes this separate common service.
+This is storage foundation: invocation/resume admission, heartbeat supervision
+and atomic common/native write fencing do not use it yet. A deterministic
+two-runtime probe confirms that both still enter the same invocation.
+
+Corrected-source full root validation passed 1,498 tests, 274 skips and three
+expected gaps at 91.89% coverage. Its focused ownership suite passed 25 with
+12 unconfigured PostgreSQL skips. The independent native/shared/CTK regression
+baseline at `f00a7a0` passed ADK 747 (197 skips), LangGraph 757 (204 skips) and
+optional Agent Framework 1,007 (309 skips), each with three expected gaps.
+Adapters and service composition are unchanged by the subsequent unused-store
+expiry guard and fixture typing correction. Formatting, lint, strict package/CI
+and fixture typing, four locks, five builds and artifact checks pass. Fresh
+GitHub/configured PostgreSQL acceptance for the ownership source remains pending.
 
 S2-03 stays open. This fix does not reconcile all native/common invocation or
 side-effect records. General pending-effect reconciliation, fenced recovery ownership,

@@ -9,7 +9,7 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`68722d3`, with unchanged runtime source `58516fb`, which retains the verified fork, original-input, terminal-record,
+`75fbc0d`, which retains the verified fork, original-input, terminal-record,
 leaf-call and conditional common write corrections. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
@@ -21,13 +21,20 @@ LangGraph checkpoint input before a status transition. Missing/deleted native
 records, missing/changed original input and unavailable installed native
 persistence reject admission. ADK invocations sharing a session retain distinct
 original inputs. Admission storage/cleanup errors are sanitized.
-Full local suites passed; exact new-source GitHub/database acceptance is pending.
+Initial native input admission passed all seven gates at `b9a2b31`.
 Separate test-only proof at `68722d3` passed eight actual forced OS process-stop
 cases per principal SDK and optional common bridge on SQLite. Recovery in a
 distinct process preserves first outcomes and existing receipts without repeating
-fake external dispatch. Optional Agent Framework native durability and fresh
-configured PostgreSQL/remote gates remain unqualified. These focused results do
+fake external dispatch. Optional Agent Framework native durability remains
+unqualified. Configured PostgreSQL and Linux/Windows gates subsequently passed
+at `ef29f23`. These focused results do
 not replace the full-suite baseline recorded at `58516fb`.
+Private database-clock ownership storage is composed into RuntimeServices but
+does not yet guard execution or native writes. Local contention/expiry/failure
+fixtures passed 25 cases with 12 PostgreSQL skips. The corrected full root at
+`75fbc0d` passed 1,498 (274 skips, three gaps, 91.89% coverage); native regression
+matrices retain their separate `f00a7a0` baseline. Fresh ownership-source gates
+remain pending. A two-runtime probe confirms concurrent admission remains open.
 The conditional-write gates passed at `6954db8`; prior leaf-call and corrected
 dependency gates passed at `fc53574`. Recovery, action idempotency and lifecycle
 remain partial. S2-03 remains open for broader effects, fenced ownership and

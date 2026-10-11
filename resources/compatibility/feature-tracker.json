@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Input/terminal/journal/leaf-call foundations and conditional common writes are verified. Initial native/input-binding admission has full local proof; selected OS process crash boundaries have focused SQLite proof. New-source GitHub/PostgreSQL gates, exclusive execution ownership, atomic native checkpoint fencing/full consistency and broader effects remain open.",
+          "scope": "Private database-clock claims, renewal, release and retained generations across connections. RuntimeServices owns composition/cleanup. Execution admission, heartbeat supervision and atomic common/native write fencing are not integrated. Initial native/input admission and selected process-crash source gates passed; full S2-03 remains open.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -65422,7 +65422,7 @@
           },
           "native_input_admission_followup": {
             "commit": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
-            "status": "Full local validation passed; fresh GitHub/PostgreSQL acceptance pending",
+            "status": "Verified at b9a2b31 for initial native/input binding admission",
             "scope": "Read-only original-input recovery and initial native session/root-checkpoint input admission. Shared-session input bindings remain invocation-specific. No execution lease, checkpoint fence or full S2-03 completion.",
             "negative_probes": {
               "native_input_binding_admission": 8,
@@ -65459,7 +65459,46 @@
               "tests/core/test_invocation_inputs.py",
               "tests/core/test_postgres_persistence.py"
             ],
-            "remaining": "Durable exclusive execution ownership/leases and atomic native checkpoint fencing remain open. Initial session/root-input checks do not establish complete nested checkpoint consistency or atomic common/native reconciliation. New admission PostgreSQL acceptance is pending. Conditional writes passed at 6954db8. Executable run/event/child effects, ambiguous outcomes, forced process-crash qualification, legacy input/version migration, full proposed criteria and independent JS remain unqualified."
+            "remaining": "Execution admission/heartbeat integration, lease-loss cancellation and atomic common/native write fences remain open. Initial input admission and selected SQLite/PostgreSQL OS crash boundaries passed all gates at b9a2b31/ef29f23. Full nested consistency, broader effects, legacy migration, full proposed criteria and independent JS remain unqualified.",
+            "remote_acceptance": {
+              "commit": "b9a2b31107da047b834987c896a8ad155daad60f",
+              "result": "Success",
+              "runs": {
+                "ci_pr": 38165502013,
+                "ci_push": 38165496479,
+                "postgresql": 38165501863,
+                "security_pr": 38165501873,
+                "external_sandbox": 38165501903,
+                "agent_framework_optional": 38165501878,
+                "docs": 38165501890
+              },
+              "linux_root": {
+                "passed": 1477,
+                "skipped": 226,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.86
+              },
+              "postgresql": {
+                "store_passed": 20,
+                "native_langgraph_passed": 10,
+                "native_langgraph_skipped": 8,
+                "shared_adk_passed": 84,
+                "shared_langgraph_passed": 84,
+                "shared_agent_framework_passed": 77,
+                "shared_agent_framework_skipped": 7
+              },
+              "remote_security_dependency_counts": {
+                "dependency-audit-adk": 109,
+                "dependency-audit-agent-framework": 74,
+                "dependency-audit-kubernetes-sandbox-controller": 16,
+                "dependency-audit-langgraph": 96,
+                "dependency-audit-root": 71,
+                "dependency-audit-sandbox-controller": 13
+              },
+              "remote_known_advisories": 0,
+              "runtime_source": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+              "scope": "Existing original input and initial ADK invocation/root LangGraph input admission, not full nested consistency or exclusive execution ownership."
+            }
           },
           "forced_process_crash_followup": {
             "commit": "68722d3aae5f8d9b5421abd5d3ab4f1ed2a61cb0",
@@ -65482,7 +65521,7 @@
                 "native_checkpoint_qualification": false
               }
             },
-            "status": "Local focused proof passed; new-source GitHub/PostgreSQL acceptance pending",
+            "status": "Verified at ef29f23 for the selected boundaries; no full S2-03 or optional native durability claim",
             "tests": [
               "tests/contract/test_process_crash_recovery.py"
             ],
@@ -65494,7 +65533,63 @@
               "common terminal value/null/fault before native finalization"
             ],
             "scope": "Owned OS worker is forcibly killed without graceful cleanup, then a distinct process recovers persisted original input and first outcomes without repeating fake external dispatch. Optional Agent Framework qualifies its common bridge only.",
-            "remaining": "Configured PostgreSQL and new-source Linux/Windows gates are pending. Durable exclusive ownership, native checkpoint fences, full nested consistency, ambiguous effect resolution, full proposed criteria and independent JS remain unqualified."
+            "remaining": "Selected SQLite/PostgreSQL and Linux/Windows crash boundaries passed at ef29f23. Durable exclusive ownership, native checkpoint fences, full nested consistency, ambiguous effect resolution, full proposed criteria and independent JS remain unqualified.",
+            "remote_acceptance": {
+              "commit": "ef29f23a8c3504a2e5b888119195a7be04aa2b00",
+              "result": "Success",
+              "runs": {
+                "ci_pr": 38166819912,
+                "ci_push": 38166816341,
+                "postgresql": 38166819900,
+                "security_pr": 38166819956,
+                "external_sandbox": 38166819907,
+                "agent_framework_optional": 38166819944,
+                "docs": 38166819917
+              },
+              "linux_root": {
+                "passed": 1477,
+                "skipped": 258,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.86
+              },
+              "postgresql": {
+                "store_passed": 20,
+                "native_langgraph_passed": 10,
+                "native_langgraph_skipped": 8,
+                "shared_adk_passed": 92,
+                "shared_langgraph_passed": 92,
+                "shared_agent_framework_passed": 85,
+                "shared_agent_framework_skipped": 7
+              },
+              "remote_security_dependency_counts": {
+                "dependency-audit-adk": 109,
+                "dependency-audit-agent-framework": 74,
+                "dependency-audit-kubernetes-sandbox-controller": 16,
+                "dependency-audit-langgraph": 96,
+                "dependency-audit-root": 71,
+                "dependency-audit-sandbox-controller": 13
+              },
+              "remote_known_advisories": 0,
+              "fixture_source": "68722d3aae5f8d9b5421abd5d3ab4f1ed2a61cb0",
+              "runtime_source": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+              "scope": "Eight selected actual OS process crash boundaries per principal SDK and optional common bridge across SQLite/PostgreSQL. Optional Agent Framework native durability remains unqualified."
+            }
+          },
+          "execution_ownership_storage_foundation": {
+            "commit": "75fbc0d7bdfb242c4e8b92490a57627f85aa6a0c",
+            "status": "Local ownership storage foundation verified; new-source GitHub/PostgreSQL acceptance pending",
+            "scope": "Private database-clock claims, renewal, release and retained generations across connections. RuntimeServices owns composition/cleanup. Execution admission, heartbeat supervision and atomic common/native write fencing are not integrated.",
+            "tests": [
+              "tests/core/test_execution_ownership.py"
+            ],
+            "local_targeted": {
+              "passed": 25,
+              "skipped": 12
+            },
+            "negative_probe": "A corrupted infinite SQLite expiry could be renewed at f00a7a0; 75fbc0d rejects verify/renew/release without changing it.",
+            "runtime_admission_probe": "Two independent common runtimes enter the same invocation at 75fbc0d; ownership storage is not integrated with execution admission.",
+            "composition_probe": "Independent RuntimeServices share the ownership record and close their owned storage connections.",
+            "remaining": "Runtime invocation/resume ownership and heartbeat integration, lease-loss cancellation, atomic common/native write fencing and complete native consistency remain open."
           }
         }
       },

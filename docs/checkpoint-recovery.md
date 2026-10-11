@@ -90,7 +90,7 @@ and checkpoint format. Shared-session restart fixtures verify both results.
 actual principal SDKs and have the same configured PostgreSQL assertions.
 The optional Agent Framework common bridge explicitly skips native admission
 qualification. Full local suites passed at `58516fb`; fresh GitHub and configured
-database acceptance are pending.
+database acceptance subsequently passed all seven gates at `b9a2b31`.
 These checks validate initial input bindings. They do not validate every nested
 checkpoint field, atomically reconcile common/native state, fence native writes
 or establish exclusive execution ownership. Those remain S2-03 requirements.
@@ -107,9 +107,23 @@ The fake external store has no deduplication; the unchanged call count verifies
 that recovery does not repeat an action. Original input, first terminal results,
 duplicate results and existing action records are preserved. The optional bridge
 does not qualify Agent Framework native checkpoint durability. Configured
-PostgreSQL and new-source Linux/Windows gates remain pending. This selected
+PostgreSQL and Linux/Windows gates passed at `ef29f23`. This selected
 boundary proof does not establish exclusive recovery ownership, native write
 fences, complete nested consistency or resolution of ambiguous external effects.
+
+The [private ownership store](../core/src/open_workflow_agent/ownership.py) at
+`75fbc0d` atomically claims, renews and releases expiring common records using
+the database clock. Generation tokens survive release/reacquisition, and stale
+owners cannot verify, renew or release a successor's record. Corrupt infinite
+expiry fails closed. [Store fixtures](../tests/core/test_execution_ownership.py)
+cover independent/simultaneous connections, expiry/reopening, identity rebinding,
+forged tokens, host-clock skew, invalid durations and failed SQLite commits.
+Local focused proof passed 25 cases with 12 unconfigured PostgreSQL skips;
+matching configured cases are wired and pending. RuntimeServices composes and
+closes the store, but execution admission and native writes do not use it yet.
+A two-runtime probe still enters the same invocation twice. Runtime integration,
+heartbeat supervision, lease-loss cancellation and atomic common/native fences
+remain required before claiming exclusive execution ownership.
 
 The verified private action journal foundation retains
 a first-owner intent and the first completed value/null/fault outcome on the
