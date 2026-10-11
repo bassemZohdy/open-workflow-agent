@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 
 import httpx
 import pytest
@@ -111,7 +112,7 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
         else [{"parent": {"do": body, **({"for": {"in": "${ [1] }"}} if scope == "for" else {})}}]
     )
     plan = _plan(tasks)
-    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    services = RuntimeServices(config, model=FakeModel(), database_root=database_root)
     services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
     services.tools.protocols = services.protocols
     engine = LangGraphWorkflowEngine()
@@ -136,7 +137,7 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
         await asyncio.gather(running, return_exceptions=True)
         services.close()
 
-    restarted = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    restarted = RuntimeServices(config, model=FakeModel(), database_root=database_root)
     restarted.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
     restarted.tools.protocols = restarted.protocols
     resumed_engine = LangGraphWorkflowEngine()
