@@ -25,7 +25,9 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 - [x] **S1-05** (L) — Compile individual tasks and routing to native LangGraph nodes/tasks; keep native checkpoints private.
   Verified at `6a3afd7`: [native task execution](docs/native-task-execution.md) and
   [acceptance evidence](PROJECT.md#s1-05-native-task-execution--2026-10-11-verified).
-- [ ] **S1-06** (M) — Provide one-container embedded defaults; separate workflow behavior from external bootstrap/provider settings.
+- [x] **S1-06** (M) — Provide one-container embedded defaults; separate workflow behavior from external bootstrap/provider settings.
+  Verified at `c2094a0`: [embedded bootstrap defaults](docs/embedded-bootstrap.md) and
+  [acceptance evidence](PROJECT.md#s1-06-embeddedbootstrap-defaults--2026-10-11-verified).
 - [ ] **S1-07** (M) — Complete reusable definitions, imports, references, validation, version resolution and safe serialization.
 - [ ] **S1-08** (M) — Verify the current implementation against every tracked feature before claiming it complete.
 - [ ] **MIG-02** (S) — Archive the three preserved predecessors after consolidation is merged; currently requires user action.

@@ -22,7 +22,7 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
-### S1-06 embedded/bootstrap defaults — remote acceptance pending
+### S1-06 embedded/bootstrap defaults — 2026-10-11 (verified)
 
 Repository Compose now starts only the selected engine with embedded SQLite;
 local PostgreSQL moves to an explicit `compose.postgres.yaml` override that
@@ -46,7 +46,21 @@ no-configuration invocation/restart and unchanged fingerprints across
 bootstrap model bindings. CI now checks both Compose selections and each
 runtime image without config/workflow/knowledge mounts or model credentials,
 including restart on its embedded data volume. Exact remote acceptance is
-pending; S1-06 remains unchecked. No release is published.
+green at `c2094a08fcd4eb90c5f9a085a0428157e5f23717`. CI root validation passed 993 tests,
+20 skips and 91.33% core coverage; the shared contract suite passed 291 tests.
+Both native/CTK, Windows, mutation, manifests, runtime images, PostgreSQL,
+external sandbox, optional Agent Framework, security and docs gates passed.
+No release is published.
+
+| Gate | Run | Result |
+| --- | --- | --- |
+| CI | [38138927650](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38138927650) | success |
+| CI (push) | [38138925253](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38138925253) | success |
+| External Sandbox CI | [38138927659](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38138927659) | success |
+| PostgreSQL CI | [38138927624](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38138927624) | success |
+| Agent Framework CI (optional) | [38138927646](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38138927646) | success |
+| Security | [38138927657](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38138927657) | success |
+| Docs | [38138927625](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38138927625) | success |
 
 
 ### S1-05 native task execution — 2026-10-11 (verified)

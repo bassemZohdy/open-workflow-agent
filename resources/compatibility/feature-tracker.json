@@ -57027,10 +57027,10 @@
         "module": "M12",
         "description": "Provide one-container embedded defaults; separate workflow behavior from external bootstrap/provider settings.",
         "effort": "M",
-        "status": "In progress",
+        "status": "Complete",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "evidence": {
-          "scope": "Existing strict bootstrap contract and model-only bindings retained; default source-built runtime/Compose selects embedded SQLite and deterministic fake/default without credentials. External PostgreSQL remains opt-in with preserved legacy Compose volume/service names; proposed configuration inventory does not become active. Exact remote acceptance pending.",
+          "scope": "Existing strict bootstrap contract and model-only bindings retained; default source-built runtime/Compose selects embedded SQLite and deterministic fake/default without credentials. External PostgreSQL remains opt-in with preserved legacy Compose volume/service names; proposed configuration inventory does not become active.",
           "tests": [
             "tests/core/test_config.py",
             "tests/contract/test_embedded_bootstrap.py",
@@ -57051,8 +57051,24 @@
             "agent_framework_optional": 532
           },
           "compose_validation": "Embedded and optional PostgreSQL configurations valid; each selected base profile resolves to exactly one runtime",
-          "remote_acceptance": "Pending",
-          "full_conformance": false
+          "remote_acceptance": "All success",
+          "full_conformance": false,
+          "commit": "c2094a08fcd4eb90c5f9a085a0428157e5f23717",
+          "ci_root": {
+            "passed": 993,
+            "skipped": 20,
+            "coverage_percent": 91.33
+          },
+          "ci_shared_contract": 291,
+          "runs": {
+            "CI": 38138927650,
+            "CI (push)": 38138925253,
+            "External Sandbox CI": 38138927659,
+            "PostgreSQL CI": 38138927624,
+            "Agent Framework CI (optional)": 38138927646,
+            "Security": 38138927657,
+            "Docs": 38138927625
+          }
         }
       },
       {
