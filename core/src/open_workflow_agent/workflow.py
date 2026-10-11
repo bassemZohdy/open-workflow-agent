@@ -2259,7 +2259,16 @@ class WorkflowExecutor:
             else copy.deepcopy(state.data)
         )
         task_reference = str(state.variables.get("_task_reference", "unknown-task"))
-        return await runner(plan, child_input, state.metadata, task_reference)
+        # The resolved definition, not just its catalog label, determines the
+        # child action request. Native progress may lag a known child outcome.
+        operation = "run:workflow"
+        return await self._run_effect(
+            operation,
+            {"workflow_fingerprint": plan.fingerprint, "input": child_input},
+            state,
+            lambda: runner(plan, child_input, state.metadata, task_reference),
+            operation=operation,
+        )
 
     async def _run_emit(self, definition: Any, state: ExecutionState) -> Any:
         if self.services is None or not hasattr(self.services, "event_bus"):
@@ -2275,13 +2284,26 @@ class WorkflowExecutor:
         )
         if not isinstance(evaluated, Mapping):
             raise WorkflowSemanticError("emit event.with must evaluate to an object")
-        try:
-            envelope = await self.services.event_bus.publish(
-                evaluated,
-                default_source=self._default_event_source(state),
-            )
-        except ValueError as exc:
-            raise WorkflowSemanticError(str(exc)) from exc
+        default_source = self._default_event_source(state)
+
+        async def dispatch() -> dict[str, Any]:
+            try:
+                envelope = await self.services.event_bus.publish(
+                    evaluated, default_source=default_source
+                )
+            except ValueError as exc:
+                raise WorkflowSemanticError(str(exc)) from exc
+            return cast(dict[str, Any], envelope.as_dict())
+
+        # Retaining a publish acknowledgement prevents replay of a known
+        # publication. It does not establish durable delivery to listeners.
+        envelope = await self._run_effect(
+            "emit",
+            {"properties": evaluated, "default_source": default_source},
+            state,
+            dispatch,
+            operation="emit",
+        )
         task_reference = str(state.variables.get("_task_reference", "unknown-task"))
         task_name = state.variables.get("_task_name", "emit")
         self._emit(
@@ -2289,8 +2311,8 @@ class WorkflowExecutor:
             {
                 **self._task_event(task_reference, task_name, state),
                 "status": "completed",
-                "event_id": envelope.id,
-                "event_name": envelope.type,
+                "event_id": envelope["id"],
+                "event_name": envelope["type"],
             },
         )
         return state.data
