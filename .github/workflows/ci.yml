@@ -70,6 +70,7 @@ jobs:
           ../../tests/contract/test_native_state_consistency.py
           ../../tests/contract/test_native_receipt_consistency.py
           ../../tests/contract/test_native_receipt_fork_consistency.py
+          ../../tests/contract/test_native_scope_dependencies.py
 
   manifests:
     name: Validate deployment manifests

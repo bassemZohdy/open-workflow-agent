@@ -52,6 +52,7 @@ on:
       - "tests/contract/test_adk_native_event_consistency.py"
       - "tests/contract/test_native_receipt_consistency.py"
       - "tests/contract/test_native_receipt_fork_consistency.py"
+      - "tests/contract/test_native_scope_dependencies.py"
       - "tests/core/test_postgres_persistence.py"
       - "docker/Dockerfile.adk"
       - "docker/Dockerfile.langgraph"
@@ -141,6 +142,7 @@ jobs:
             ../../tests/contract/test_native_state_consistency.py \
             ../../tests/contract/test_native_receipt_consistency.py \
             ../../tests/contract/test_native_receipt_fork_consistency.py \
+            ../../tests/contract/test_native_scope_dependencies.py \
             ../../tests/contract/test_process_crash_recovery.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \

@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 from dataclasses import asdict
 from typing import Any, TypedDict, cast
 
@@ -176,6 +177,8 @@ class LangGraphScopeExecutor:
         self.resume = resume
         self.effect_journal = effect_journal
         self.receipts: dict[str, ReceiptDependency] = {}
+        self.completed_scopes: dict[tuple[str, int], str] = {}
+        self._required_scopes: dict[tuple[str, int], str] = {}
         self.scopes = {scope.reference: scope for scope in plan.scopes}
         self.counters: dict[str, int] = {}
         self.task_references = {
@@ -241,20 +244,25 @@ class LangGraphScopeExecutor:
 
     @staticmethod
     def _state_digest(native: dict[str, Any]) -> str:
+        bindings = _native_json(native["receipt_bindings"])
         value = [
             _native_json(native["snapshot"]),
             _native_json(native["counters"]),
             native["next_node"],
+            bindings["receipts"],
+            bindings["scopes"],
         ]
         return hashlib.sha256(_json_identity(value).encode()).hexdigest()
 
-    def _validate_receipts(self, native: dict[str, Any]) -> None:
+    def _validate_receipts(
+        self, native: dict[str, Any], counters: dict[str, int], reference: str, occurrence: int
+    ) -> None:
         bindings = _native_json(native["receipt_bindings"])
         if (
             not isinstance(bindings, dict)
-            or set(bindings) != {"version", "state_digest", "receipts"}
+            or set(bindings) != {"version", "state_digest", "receipts", "scopes"}
             or type(bindings["version"]) is not int
-            or bindings["version"] != 1
+            or bindings["version"] != 2
             or bindings["state_digest"] != self._state_digest(native)
             or not isinstance(bindings["receipts"], list)
         ):
@@ -278,6 +286,36 @@ class LangGraphScopeExecutor:
             elif existing != dependency:
                 raise ValueError("native receipt dependency changed")
             self.receipts[identity.key] = dependency
+        if not isinstance(bindings["scopes"], list):
+            raise ValueError("native completed scope dependencies are invalid")
+        seen_scopes: set[tuple[str, int]] = set()
+        for item in bindings["scopes"]:
+            if not isinstance(item, dict) or set(item) != {
+                "reference",
+                "occurrence",
+                "state_digest",
+            }:
+                raise ValueError("native completed scope dependency fields are invalid")
+            ref, visit, digest = item["reference"], item["occurrence"], item["state_digest"]
+            if (
+                not isinstance(ref, str)
+                or ref not in self.scopes
+                or type(visit) is not int
+                or visit < 1
+                or visit > counters.get(ref, 0)
+                or (ref, visit) == (reference, occurrence)
+                or (ref, visit) in seen_scopes
+                or not isinstance(digest, str)
+                or not re.fullmatch(r"[a-f0-9]{64}", digest)
+            ):
+                raise ValueError("native completed scope dependency identity is invalid")
+            key = (ref, visit)
+            seen_scopes.add(key)
+            expected = self._required_scopes.get(key)
+            if expected is not None and expected != digest:
+                raise ValueError("native completed scope dependencies disagree")
+            self._required_scopes[key] = digest
+            self.completed_scopes[key] = digest
 
     def _validate_native(
         self, native: Any, reference: str, occurrence: int
@@ -329,7 +367,7 @@ class LangGraphScopeExecutor:
                 raise ValueError("native workflow input is inconsistent")
             if _json_identity(variables["context"]) != _json_identity(value["context"]):
                 raise ValueError("native context binding is inconsistent")
-            self._validate_receipts(native)
+            self._validate_receipts(native, counters, reference, occurrence)
             return value, cast(dict[str, int], counters)
         except Exception:
             raise InvocationStateError(
@@ -342,17 +380,24 @@ class LangGraphScopeExecutor:
         # an older parent checkpoint. No checkpoint or occurrence is recreated.
         pending = {(reference, 1) for reference in self.scopes}
         inspected: set[tuple[str, int]] = set()
+        observed: dict[tuple[str, int], tuple[str, str]] = {}
         while pending:
             reference, occurrence = pending.pop()
             inspected.add((reference, occurrence))
             checkpoint = await self.saver.aget_tuple(self.checkpoint_config(reference, occurrence))
             if checkpoint is None:
                 continue
-            _, counters = self._validate_native(
-                checkpoint.checkpoint["channel_values"], reference, occurrence
+            channels = checkpoint.checkpoint["channel_values"]
+            _, counters = self._validate_native(channels, reference, occurrence)
+            observed[(reference, occurrence)] = (
+                self._state_digest(channels),
+                channels["next_node"],
             )
-            candidates = {(reference, occurrence + 1), *counters.items()}
+            candidates = {(reference, occurrence + 1), *counters.items(), *self._required_scopes}
             pending.update(candidates - inspected)
+        for key, digest in self._required_scopes.items():
+            if observed.get(key) != (digest, END):
+                raise ValueError("native completed scope checkpoint is absent or inconsistent")
 
     def _read(self, native: _GraphState, state: ExecutionState, reference: str) -> None:
         decoded, counters = self._validate_native(native, reference, self.counters[reference])
@@ -363,22 +408,36 @@ class LangGraphScopeExecutor:
             if key == reference or key.startswith(reference + "/"):
                 self.counters[key] = max(self.counters.get(key, 0), value)
 
-    def _write(self, state: ExecutionState, next_node: str = END) -> _GraphState:
+    def _write(self, state: ExecutionState, next_node: str = END, *, reference: str) -> _GraphState:
         native: _GraphState = {
             "snapshot": _snapshot(state),
             "counters": json.dumps(self.counters),
             "next_node": next_node,
             "receipt_bindings": "",
         }
-        native["receipt_bindings"] = json.dumps(
-            {
-                "version": 1,
-                "state_digest": self._state_digest(dict(native)),
-                "receipts": [asdict(self.receipts[key]) for key in sorted(self.receipts)],
-            },
-            allow_nan=False,
-        )
+        bindings = {
+            "version": 2,
+            "state_digest": "",
+            "receipts": [asdict(self.receipts[key]) for key in sorted(self.receipts)],
+            "scopes": [
+                {"reference": ref, "occurrence": visit, "state_digest": digest}
+                for (ref, visit), digest in sorted(self.completed_scopes.items())
+                if visit <= self.counters.get(ref, 0)
+                and (ref, visit) != (reference, self.counters[reference])
+            ],
+        }
+        native["receipt_bindings"] = json.dumps(bindings, allow_nan=False)
+        bindings["state_digest"] = self._state_digest(dict(native))
+        native["receipt_bindings"] = json.dumps(bindings, allow_nan=False)
         return native
+
+    def _record_completed_scope(self, native: _GraphState, reference: str, occurrence: int) -> None:
+        key = (reference, occurrence)
+        digest = self._state_digest(dict(native))
+        existing = self.completed_scopes.get(key)
+        if existing is not None and existing != digest:
+            raise InvocationStateError("native completed scope checkpoint changed")
+        self.completed_scopes[key] = digest
 
     def compile_scope(
         self, scope: ScopePlan, executor: WorkflowExecutor, prototype: ExecutionState
@@ -392,7 +451,7 @@ class LangGraphScopeExecutor:
                 self._read(native, state, scope.reference)
                 if state.flow.ended.is_set():
                     state.stop = True
-                    return self._write(state)
+                    return self._write(state, reference=scope.reference)
                 executor._token(state).checkpoint()
                 await executor._run_task_item(
                     task.name,
@@ -406,7 +465,7 @@ class LangGraphScopeExecutor:
                 if state.jump_to is not None and not halted:
                     target = names[state.jump_to]
                 state.jump_to = None
-                return self._write(state, target)
+                return self._write(state, target, reference=scope.reference)
 
             return execute
 
@@ -450,12 +509,15 @@ class LangGraphScopeExecutor:
         self.counters[prefix] = occurrence
         config = self.checkpoint_config(prefix, occurrence)
         graph = self.compile_scope(scope, executor, state)
-        native_input: _GraphState | None = self._write(state)
+        native_input: _GraphState | None = self._write(state, reference=prefix)
         if prefix != "/do" or self.resume:
             saved = await graph.aget_state(config)
             if saved.values:
                 if not saved.next:
                     self._read(cast(_GraphState, saved.values), state, prefix)
+                    self._record_completed_scope(
+                        cast(_GraphState, saved.values), prefix, occurrence
+                    )
                     state.scope_exit = False
                     return
                 native_input = None
@@ -476,4 +538,5 @@ class LangGraphScopeExecutor:
                 "native task execution failed", details={"reference": prefix}
             ) from None
         self._read(cast(_GraphState, result), state, prefix)
+        self._record_completed_scope(cast(_GraphState, result), prefix, occurrence)
         state.scope_exit = False
