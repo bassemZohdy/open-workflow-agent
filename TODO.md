@@ -49,6 +49,8 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   Public native channel/reducer extensions remain S4-01/S4-02; full proposed
   criteria and independent JS qualification remain S4-03/S4-04.
 - [ ] **S2-02** (L) — Implement first-completed competitive forks, durable winner selection and loser cancellation.
+  In progress: [executor and validation evidence](PROJECT.md#s2-02-competitive-fork-decisions--in-progress).
+  Local suites pass; remaining recovery cases and fresh configured/remote acceptance precede closure.
 - [ ] **S2-03** (L) — Prove native checkpoint recovery and reconcile native state with common invocation/side-effect records.
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.

@@ -64589,48 +64589,88 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "evidence": {
-          "scope": "Common atomic winner/cancellation-intent store and runtime datasource composition; fork executor integration and native occurrence/restart proof pending. No execution-level durable competitive capability is claimed.",
+          "scope": "Completion-time durable winner and cancellation intents; private occurrence coordinates; loser draining and fresh-service replay under acceptance. S2-02 remains open.",
           "tests": [
             "tests/core/test_fork_decisions.py",
-            "tests/core/test_postgres_persistence.py"
+            "tests/core/test_postgres_persistence.py",
+            "tests/contract/test_competitive_forks.py",
+            "tests/core/test_fork.py"
           ],
-          "local_store_cases": 16,
+          "local_store_cases": 17,
           "focused_service_bootstrap_and_forks": {
             "passed": 54,
             "skipped": 3
           },
           "pending": [
-            "first observed completion order",
-            "stable repeated/nested/retry occurrence identity",
-            "persisted winner before loser cancellation",
-            "restart during cleanup before parent native commit",
-            "independent engine shared acceptance",
-            "configured PostgreSQL decision fixture",
-            "full root coverage and exact GitHub gates"
+            "Native replay after a previous completed repeated-race occurrence",
+            "End originating outside a competitive scope",
+            "Configured native PostgreSQL restart fixtures",
+            "Affected feature audit refresh at the verified executor commit",
+            "Fresh exact GitHub integration acceptance gates"
           ],
           "full_conformance": false,
           "local_full_root": {
-            "passed": 1173,
-            "skipped": 35,
+            "passed": 1218,
+            "skipped": 51,
             "expected_assertion_failures": 3,
-            "coverage_percent": 91.67
+            "coverage_percent": 91.72
           },
           "local_native": {
             "adk": {
-              "passed": 543,
+              "passed": 585,
+              "skipped": 16,
               "expected_assertion_failures": 3
             },
             "langgraph": {
-              "passed": 556,
-              "skipped": 7,
+              "passed": 598,
+              "skipped": 23,
               "expected_assertion_failures": 3
             },
             "agent_framework_optional": {
-              "passed": 719,
+              "passed": 782,
+              "skipped": 24,
               "expected_assertion_failures": 3
             }
           },
-          "validation": "Local full root/native suites, builds and strict typing pass; new PostgreSQL/remote acceptance and execution integration pending"
+          "validation": "Frozen full local root/native/shared/CTK suites, five builds, locks, strict typing, formatting, lint and links pass. Configured database/remote acceptance and remaining recovery cases pending.",
+          "foundation_validation": {
+            "commit": "7f82470c794e6584302fb828164a7c14c003cd31",
+            "local_full_root": {
+              "passed": 1173,
+              "skipped": 35,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.67
+            },
+            "local_native": {
+              "adk": {
+                "passed": 543,
+                "expected_assertion_failures": 3
+              },
+              "langgraph": {
+                "passed": 556,
+                "skipped": 7,
+                "expected_assertion_failures": 3
+              },
+              "agent_framework_optional": {
+                "passed": 719,
+                "expected_assertion_failures": 3
+              }
+            },
+            "github_acceptance": {
+              "ci": 38149999427,
+              "postgresql": 38149999424,
+              "external_sandbox": 38149999595,
+              "agent_framework": 38149999413,
+              "security": 38149999431,
+              "docs": 38149999416
+            },
+            "status": "All foundation gates passed; these do not qualify the later executor integration."
+          },
+          "local_competitive_contracts": {
+            "root_and_principal_environments": 42,
+            "optional_environment": 63,
+            "configured_postgresql": "Pending; skips are not acceptance evidence."
+          }
         }
       },
       {
@@ -64649,7 +64689,10 @@
         "description": "Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.",
         "effort": "M",
         "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "known_issues": [
+          "Built-in OwaError status_code is absent from _error_details/as_dict, so catch.errors.with.status cannot use the _catch_matches fallback unless details.status is explicitly declared. Declared OWS error status filtering works; private fork error replay retains the common status code."
+        ]
       },
       {
         "id": "S2-05",

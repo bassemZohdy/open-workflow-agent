@@ -146,3 +146,26 @@ def test_runtime_composes_durable_decisions_with_common_storage_and_closes_them(
         assert reopened.fork_decisions.get(_identity()) == decision
     finally:
         reopened.close()
+
+
+def test_corrupt_nonfinite_stored_output_is_rejected_before_replay():
+    import json
+
+    store = ForkDecisionStore()
+    try:
+        store.claim(_identity(), _decision())
+        row = store.connection.execute(
+            "SELECT payload FROM competitive_fork_decisions WHERE identity = ?",
+            (_identity().key,),
+        ).fetchone()
+        payload = json.loads(row[0])
+        payload["output"] = float("nan")
+        store.connection.execute(
+            "UPDATE competitive_fork_decisions SET payload = ? WHERE identity = ?",
+            (json.dumps(payload), _identity().key),
+        )
+        store.connection.commit()
+        with pytest.raises(WorkflowExecutionError, match="decision could not be read"):
+            store.get(_identity())
+    finally:
+        store.close()

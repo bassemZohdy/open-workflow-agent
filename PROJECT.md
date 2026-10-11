@@ -31,20 +31,47 @@ reopening; invocation, frozen workflow identity, resolved task call site and
 execution occurrences separate races. Cleanup receipts remain separate from
 winner data. Native checkpoint state stays engine-private.
 
-Sixteen local store/composition cases pass, including simultaneous SQLite
-connections, JSON null/fault/end outcomes, invalid output, corrupt/closed storage,
-identity separation and runtime reopening. A configured PostgreSQL counterpart
-is added to its existing integration gate. Focused service/bootstrap/fork
-regressions pass 54 tests with three unconfigured PostgreSQL skips. Formatting,
-lint and strict core typing pass. Executor integration, occurrence persistence,
-completion ordering, native restart/loser cleanup and full acceptance remain
-pending. Full local validation passes 1,173 root tests with 35 skips, three
-expected protocol/event failures and 91.67% coverage. Independent native suites
-pass ADK 543, LangGraph 556 (seven PostgreSQL skips) and optional Agent Framework
-719 tests, each retaining three expected gap failures. All package typing (64
-source files), builds, formatting, lint and links pass. This store is not yet
-used by fork execution, and no durable competitive fork capability is advertised
-from the component tests. Exact new GitHub storage acceptance remains pending.
+The storage foundation at `7f82470` passed 1,173 local root tests with 35 skips,
+three expected protocol/event failures and 91.67% coverage. Independent native
+suites passed ADK 543, LangGraph 556 (seven PostgreSQL skips) and optional Agent
+Framework 719 tests. All required exact foundation GitHub gates passed: [CI
+38149999427](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149999427),
+[PostgreSQL 38149999424](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149999424),
+[external sandbox 38149999595](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149999595),
+[Agent Framework 38149999413](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149999413),
+[security 38149999431](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149999431),
+and [documentation 38149999416](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149999416).
+
+Executor integration is now under local verification. It records the first
+observed branch completion before cancelling losers, including explicit null,
+common errors and workflow end, and checks saved decisions before starting
+branches on replay. Private occurrence coordinates distinguish loop, reusable,
+nested and catch-retry executions; LangGraph persists them in native snapshots.
+The simultaneous-ready fixture reproduces declaration-order winner selection
+on the prior implementation and passes with completion-time recording.
+Shared fixtures exercise fresh-service restart before a cleanup receipt and
+while loser cleanup is interrupted. The latter caught and corrected end-branch
+cancellation before the LangGraph winner checkpoint had finished.
+
+Configured PostgreSQL restart fixtures are now included for independent native
+ADK and LangGraph environments. Fresh full local validation passes 1,218 root
+tests with 51 skips, three expected gap failures and 91.72% coverage. Independent
+native/shared/CTK suites pass ADK 585 (16 skips), LangGraph 598 (23 skips) and
+optional Agent Framework 782 (24 skips), retaining the same three expected gap
+failures. The competitive fixtures pass 42 principal/root executions and 63 in
+the optional environment; local PostgreSQL cases await a configured database.
+Seventeen store cases and the simultaneous-ready/common-error replay probes
+pass. Interruption before any decision restarts with a new winner, and repeated
+transitions retain distinct decisions on every adapter. All locks, five package
+builds, formatting, lint, strict typing and documentation links pass.
+
+Native recovery of repeated races after a prior completed occurrence, an end
+originating outside a competitive scope, configured PostgreSQL restart and
+fresh exact GitHub integration gates remain pending. The affected feature audit
+also awaits the verified executor commit. S2-02 stays open. These records do not establish
+general pending-effect reconciliation, exactly-once external actions, durable
+timers, native metadata extensions or full conformance. A separate observed
+built-in error-status catch fallback gap remains tracked for S2-04.
 
 ### S2-01 ordered fork results — 2026-10-11 (verified)
 

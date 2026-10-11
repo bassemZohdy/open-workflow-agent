@@ -47,6 +47,7 @@ class ForkDecision:
     operation_id: str | None
     cancellation_intents: tuple[int, ...]
     drained: bool = False
+    error_status_code: int | None = None
 
     def __post_init__(self) -> None:
         if type(self.winner) is not int or self.winner < 0:
@@ -55,6 +56,10 @@ class ForkDecision:
             raise ValueError("competitive fork decision status is invalid")
         if (self.status == "faulted") != (self.error is not None):
             raise ValueError("competitive fork fault decisions require an error")
+        if self.error_status_code is not None and (
+            type(self.error_status_code) is not int or not 100 <= self.error_status_code <= 599
+        ):
+            raise ValueError("competitive fork common error status is invalid")
         if len(set(self.cancellation_intents)) != len(self.cancellation_intents) or any(
             type(index) is not int or index < 0 or index == self.winner
             for index in self.cancellation_intents
@@ -84,6 +89,8 @@ class ForkDecisionStore:
             if row[1] not in (0, 1):
                 raise ValueError("competitive fork cleanup receipt is invalid")
             payload = json.loads(row[0])
+            for name in ("output", "context", "error"):
+                validate_expression_data(payload[name])
             payload["cancellation_intents"] = tuple(payload["cancellation_intents"])
             payload["drained"] = bool(row[1])
             return ForkDecision(**payload)
@@ -97,7 +104,8 @@ class ForkDecisionStore:
             payload = asdict(decision)
             payload.pop("drained")
             payload["cancellation_intents"] = list(decision.cancellation_intents)
-            validate_expression_data(payload)
+            for name in ("output", "context", "error"):
+                validate_expression_data(payload[name])
             encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False, sort_keys=True)
             self.connection.execute(
                 """INSERT INTO competitive_fork_decisions(identity, payload, drained)

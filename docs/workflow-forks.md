@@ -55,3 +55,32 @@ verify default same-key collision rejection and explicit append aggregation
 in the pinned SDK. They do not expose those channels as workflow metadata.
 S2-01 acceptance is recorded in
 [PROJECT.md](../PROJECT.md#s2-01-ordered-fork-results--2026-10-11-verified).
+
+## Competitive fork integration under verification
+
+The S2-02 implementation records the first completion observed by the executor.
+The pinned specification defines one winning branch output; the backlog requires
+first-completed selection. An observed branch fault is therefore a faulted
+winner, and JSON null is a completed winner. There is no first-success fallback.
+When branch completions are ready together, the first committed decision is
+retained; declaration order does not replace it.
+
+The private common decision records output or error, original task diagnostics,
+workflow-end status and loser cancellation intents before cancellation. On
+replay, the executor reads that decision before scheduling either branch.
+Invocation, frozen workflow fingerprint, resolved call site and ancestor/attempt
+occurrences identify separate races. Native checkpoint state stays private to
+each engine. No public plan or workflow schema change is involved.
+
+Loser tasks are cancelled and awaited, including cleanup that yields. A separate
+receipt records draining. After process interruption, a saved winner survives
+without restarting its losing branch. Cancellation and a cleanup receipt do not
+undo a committed external action or prove distributed compensation. General
+pending-action recovery remains S2-03/S2-08.
+
+The [competitive fixtures](../tests/contract/test_competitive_forks.py) exercise
+completion order, fault/null/end, cancellation before a winner, losing waits,
+loop/reusable/nested/retry identity and fresh-service replay at cleanup
+boundaries. Configured PostgreSQL fixtures are in its integration gate. S2-02
+remains open until its remaining failure/restart cases and fresh acceptance
+gates pass; see [current evidence](../PROJECT.md#s2-02-competitive-fork-decisions--in-progress).

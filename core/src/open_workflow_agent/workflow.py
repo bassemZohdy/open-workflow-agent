@@ -39,6 +39,7 @@ from .errors import (
 from .expressions import ExpressionEvaluator as ExpressionEvaluator
 from .expressions import ExpressionMode, validate_expression_data
 from .external_catalog import ResolvedCatalogFunction, parse_catalog_function_reference
+from .forks import ForkDecision, ForkIdentity
 from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
 from .protocols import PROTOCOL_DATA_FIELDS
@@ -1089,6 +1090,8 @@ class ExecutionState:
     flow: _FlowControl = field(default_factory=_FlowControl)
     branch_owners: tuple[asyncio.Task[Any], ...] = ()
     scope_executor: ScopeExecutor | None = None
+    task_visits: dict[str, int] = field(default_factory=dict)
+    execution_path: tuple[tuple[str, int], ...] = ()
 
 
 class WorkflowExecutor:
@@ -1120,6 +1123,8 @@ class WorkflowExecutor:
             flow=state.flow,
             branch_owners=state.branch_owners,
             scope_executor=state.scope_executor,
+            task_visits=dict(state.task_visits),
+            execution_path=state.execution_path,
         )
         child.variables["context"] = child.context
         return child
@@ -1134,6 +1139,7 @@ class WorkflowExecutor:
     ) -> Any:
         workflow = plan.execution_source
         metadata = dict(metadata or {})
+        metadata["_workflow_fingerprint"] = plan.fingerprint
         metadata["_source_references"] = {
             task.execution_reference or task.reference: task.reference
             for scope in plan.scopes
@@ -1329,7 +1335,11 @@ class WorkflowExecutor:
         *,
         execution_reference: str | None = None,
     ) -> None:
+        resolved_reference = execution_reference or reference
+        visit = state.task_visits.get(resolved_reference, 0) + 1
+        state.task_visits[resolved_reference] = visit
         local = self._copy_state(state)
+        local.execution_path += ((resolved_reference, visit),)
         imported = local.metadata.get("_catalog_tasks", {}).get(execution_reference or reference)
         for key in ("input", "output", "task"):
             local.variables.pop(key, None)
@@ -1429,6 +1439,7 @@ class WorkflowExecutor:
             raise failure from exc
         local.outputs[str(name)] = copy.deepcopy(output)
         state.outputs = local.outputs
+        state.task_visits = local.task_visits
         state.data = copy.deepcopy(output)
         state.context = copy.deepcopy(local.context)
         state.variables["context"] = state.context
@@ -1466,7 +1477,9 @@ class WorkflowExecutor:
         timeout_seconds = _duration_seconds(timeout)
         last_error: Exception | None = None
         raw_input = copy.deepcopy(state.data)
+        execution_path = state.execution_path
         for attempt in range(max(1, attempts)):
+            state.execution_path = execution_path + ((f"{reference}/@attempt", attempt + 1),)
             state.data = copy.deepcopy(raw_input)
             state.variables.pop("input", None)
             state.variables.pop("output", None)
@@ -1609,7 +1622,11 @@ class WorkflowExecutor:
                 return state.data
             catch_retry = catch.get("retry") if isinstance(catch, Mapping) else None
             attempts = _retry_attempts(catch_retry)
+            execution_path = state.execution_path
             for attempt in range(attempts):
+                state.execution_path = execution_path + (
+                    (f"{task_reference}/@catch-attempt", attempt + 1),
+                )
                 try:
                     await self._run_tasks(
                         _task_body(definition["try"]),
@@ -1815,6 +1832,7 @@ class WorkflowExecutor:
                 break
             await self._run_tasks(body, child, prefix=self._nested_prefix(child, "do"))
             state.data = child.data
+            state.task_visits = child.task_visits
             state.context = copy.deepcopy(child.context)
             state.variables["context"] = state.context
             results.append(child.data)
@@ -1834,6 +1852,8 @@ class WorkflowExecutor:
             branches = definition
         if not isinstance(branches, list):
             raise WorkflowSemanticError("fork branches must be a list")
+        if compete:
+            return await self._run_competing_fork(branches, state)
 
         async def run_branch(index: int, branch: Any) -> Any:
             child = self._copy_state(state)
@@ -1855,17 +1875,10 @@ class WorkflowExecutor:
             asyncio.create_task(run_branch(index, branch)) for index, branch in enumerate(branches)
         ]
         ending = asyncio.create_task(state.flow.ended.wait())
-        joined = None if compete else asyncio.gather(*branch_tasks)
+        joined = asyncio.gather(*branch_tasks)
         try:
-            if compete and not branch_tasks:
-                return state.data
-            watched: set[asyncio.Future[Any]]
-            if compete:
-                watched = set(branch_tasks)
-            else:
-                assert joined is not None
-                watched = {joined}
-            done, _ = await asyncio.wait(watched | {ending}, return_when=asyncio.FIRST_COMPLETED)
+            watched: set[asyncio.Future[Any]] = {joined, ending}
+            await asyncio.wait(watched, return_when=asyncio.FIRST_COMPLETED)
             if state.flow.ended.is_set():
                 for branch_task in branch_tasks:
                     if branch_task not in state.flow.owners:
@@ -1882,18 +1895,147 @@ class WorkflowExecutor:
                 state.context = copy.deepcopy(state.flow.context)
                 state.variables["context"] = state.context
                 return copy.deepcopy(state.flow.output)
-            if compete:
-                return next(task for task in branch_tasks if task in done).result()
-            assert joined is not None
             results = joined.result()
         finally:
             for pending in (*branch_tasks, ending):
                 if not pending.done():
                     pending.cancel()
             await asyncio.gather(*branch_tasks, ending, return_exceptions=True)
-            if joined is not None:
-                await asyncio.gather(joined, return_exceptions=True)
+            await asyncio.gather(joined, return_exceptions=True)
         return results
+
+    async def _run_competing_fork(self, branches: list[Any], state: ExecutionState) -> Any:
+        if not branches:
+            return state.data
+        store = getattr(self.services, "fork_decisions", None)
+        if store is None:
+            raise WorkflowExecutionError("competitive fork decision service is unavailable")
+        identity = ForkIdentity(
+            str(state.metadata["invocation_id"]),
+            str(state.metadata["_workflow_fingerprint"]),
+            str(state.variables["_execution_reference"]),
+            state.execution_path,
+        )
+        recorded = store.get(identity)
+        if recorded is not None:
+            self._token(state).checkpoint()
+            if not recorded.drained:
+                store.mark_drained(identity)
+            return self._fork_decision_result(recorded, state)
+
+        completion: asyncio.Future[ForkDecision] = asyncio.get_running_loop().create_future()
+        branch_tasks: list[asyncio.Task[Any]] = []
+
+        def cancel_siblings(owner: asyncio.Task[Any]) -> None:
+            for pending in branch_tasks:
+                if pending is not owner and not pending.done() and not pending.cancelling():
+                    pending.cancel()
+
+        async def run_branch(index: int, branch: Any) -> None:
+            nonlocal recorded
+            child = self._copy_state(state)
+            owner = asyncio.current_task()
+            assert owner is not None
+            child.branch_owners += (owner,)
+            error: OwaError | None = None
+            try:
+                await self._run_tasks(
+                    _task_body(branch),
+                    child,
+                    prefix=self._nested_prefix(child, f"fork/branches/{index}"),
+                    indexed=False,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                error = (
+                    exc
+                    if isinstance(exc, OwaError)
+                    else WorkflowExecutionError("competitive fork branch failed")
+                )
+            if completion.done():
+                return
+            if state.flow.ended.is_set() and owner not in state.flow.owners:
+                return
+            try:
+                self._token(state).checkpoint()
+                ended = state.flow.ended.is_set() and owner in state.flow.owners
+                decision = ForkDecision(
+                    winner=index,
+                    status="faulted" if error else "ended" if ended else "completed",
+                    output=copy.deepcopy(child.data) if error is None else None,
+                    context=copy.deepcopy(child.context),
+                    error=copy.deepcopy(error.as_dict()) if error else None,
+                    operation_id=error._operation_id if error else self._operation_id(child),
+                    cancellation_intents=tuple(i for i in range(len(branches)) if i != index),
+                    error_status_code=error.status_code if error else None,
+                )
+                recorded = store.claim(identity, decision)
+                completion.set_result(recorded)
+            except Exception as exc:
+                completion.set_exception(exc)
+            finally:
+                cancel_siblings(owner)
+
+        branch_tasks = [
+            asyncio.create_task(run_branch(index, branch)) for index, branch in enumerate(branches)
+        ]
+        ending = asyncio.create_task(state.flow.ended.wait())
+        try:
+            watched: set[asyncio.Future[Any]] = {completion, ending}
+            await asyncio.wait(watched, return_when=asyncio.FIRST_COMPLETED)
+            if state.flow.ended.is_set() and not completion.done():
+                if not any(branch_task in state.flow.owners for branch_task in branch_tasks):
+                    # End belongs to an enclosing/sibling scope. This race has
+                    # no winner and is drained by the finally block below.
+                    return state.data
+                # The ending branch may still be saving its native checkpoint.
+                # Commit its decision before cancelling any losing branch.
+                decision = await completion
+            else:
+                decision = completion.result()
+        finally:
+            for pending in (*branch_tasks, ending):
+                if not pending.done() and not pending.cancelling():
+                    pending.cancel()
+            await asyncio.gather(*branch_tasks, ending, return_exceptions=True)
+            # Retrieve any storage failure even when cancellation interrupted the
+            # parent, avoiding an abandoned exception on its completion future.
+            if completion.done() and not completion.cancelled():
+                completion.exception()
+            if recorded is not None:
+                store.mark_drained(identity)
+        self._token(state).checkpoint()
+        handle = state.metadata.get("_invocation_handle")
+        if handle is not None and handle.status == "waiting":
+            self._set_invocation_status(state, "running")
+        return self._fork_decision_result(decision, state)
+
+    @staticmethod
+    def _fork_decision_result(decision: ForkDecision, state: ExecutionState) -> Any:
+        if decision.error is not None:
+            error_type = (
+                InvocationCancelled
+                if decision.error["code"] == InvocationCancelled.code
+                else WorkflowExecutionError
+            )
+            error = error_type(
+                decision.error["message"], details=copy.deepcopy(decision.error["details"])
+            )
+            error.code = decision.error["code"]
+            if decision.error_status_code is not None:
+                error.status_code = decision.error_status_code
+            error._operation_id = decision.operation_id
+            raise error
+        if decision.status == "ended":
+            state.flow.output = copy.deepcopy(decision.output)
+            state.flow.context = copy.deepcopy(decision.context)
+            state.flow.owners = state.branch_owners
+            state.flow.ended.set()
+            state.stop = True
+            state.context = copy.deepcopy(decision.context)
+            state.variables["context"] = state.context
+        return copy.deepcopy(decision.output)
 
     async def _run_subworkflow(self, definition: Any, state: ExecutionState) -> Any:
         if self.services is None or not hasattr(self.services, "workflow_catalog"):

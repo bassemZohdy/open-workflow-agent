@@ -31,6 +31,7 @@ on:
       - "core/src/open_workflow_agent/workflow_catalog.py"
       - "tests/langgraph/test_native_task_graph.py"
       - "tests/contract/test_schema_resources.py"
+      - "tests/contract/test_competitive_forks.py"
       - "tests/core/test_postgres_persistence.py"
       - "docker/Dockerfile.adk"
       - "docker/Dockerfile.langgraph"
@@ -98,6 +99,28 @@ jobs:
           timeout --signal=TERM --kill-after=30s 5m \
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/langgraph/test_native_task_graph.py -vv --durations=20
+      - name: Verify competitive fork replay on native LangGraph with PostgreSQL
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 5m \
+            uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
+            -k 'postgresql and langgraph' -vv --durations=20
+      - name: Verify competitive fork replay on native ADK with PostgreSQL
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 5m \
+            uv run --directory engines/adk --locked --exact --extra native --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
+            -k 'postgresql and adk' -vv --durations=20
 
   postgres-runtime:
     name: PostgreSQL persistence ${{ matrix.engine }} acceptance

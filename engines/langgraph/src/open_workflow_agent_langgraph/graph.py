@@ -47,6 +47,8 @@ def _snapshot(state: ExecutionState) -> str:
             "ended": state.flow.ended.is_set(),
             "end_output": state.flow.output,
             "end_context": state.flow.context,
+            "task_visits": state.task_visits,
+            "execution_path": state.execution_path,
         },
         ensure_ascii=False,
         allow_nan=False,
@@ -68,6 +70,10 @@ def _restore(snapshot: str, state: ExecutionState) -> None:
     ):
         setattr(state, key, value[key])
     state.variables["context"] = state.context
+    state.task_visits = value.get("task_visits", {})
+    state.execution_path = tuple(
+        (ref, visit) for ref, visit in value.get("execution_path", state.execution_path)
+    )
     if value["ended"] and not state.flow.ended.is_set():
         state.flow.output = value["end_output"]
         state.flow.context = value["end_context"]
