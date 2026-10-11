@@ -3,7 +3,12 @@
 from typing import Any
 
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
-from open_workflow_agent.errors import InvocationCancelled, InvocationStateError
+from open_workflow_agent.errors import (
+    InvocationCancelled,
+    InvocationStateError,
+    OwaError,
+    WorkflowExecutionError,
+)
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.workflow import WorkflowPlan
 
@@ -44,8 +49,13 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
     async def invoke(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> InvocationResult:
+        return await super().invoke(workflow, invocation, input_data)
+
+    async def _invoke_owned(
+        self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
+    ) -> InvocationResult:
         if not self.native.available:
-            return await super().invoke(workflow, invocation, input_data)
+            return await super()._invoke_owned(workflow, invocation, input_data)
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
         try:
@@ -61,6 +71,9 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 user_id=invocation.user_id,
                 invocation_id=invocation.engine_execution_reference,
                 database_path=self._session_database_path(),
+                _execution_fence=self.services.execution_ownership.native_fence(
+                    self._execution_leases[invocation.invocation_id]
+                ),
             )
             if active.control.token.cancelled or invocation.status == "cancelled":
                 result = self._stored_result(invocation)
@@ -73,8 +86,8 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         except Exception as exc:
             error = (
                 exc.as_dict()
-                if hasattr(exc, "as_dict")
-                else {"code": "workflow_execution_error", "message": str(exc), "details": {}}
+                if isinstance(exc, OwaError)
+                else WorkflowExecutionError("native execution failed").as_dict()
             )
             result = (
                 self._stored_result(invocation)
@@ -86,18 +99,18 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
             if result is not None:
                 self._finish_active(invocation, result)
             else:
-                self._active.pop(invocation.invocation_id, None)
+                self._abandon_active(invocation)
 
     async def resume(
         self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
     ) -> InvocationResult:
-        self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
-        active_result = await self._resume_active_or_terminal(handle, resume_input)
-        if active_result is not None:
-            return active_result
-        await self._verify_resume_state(handle, plan)
+        return await super().resume(handle, resume_input, plan)
+
+    async def _resume_owned(
+        self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
+    ) -> InvocationResult:
         if not self.native.available:
-            return await PortableWorkflowEngine.resume(self, handle, resume_input, plan)
+            return await super()._resume_owned(handle, resume_input, plan)
         if handle.status == "waiting":
             self._restart_resume_inputs[handle.invocation_id] = resume_input
             self.services.invocations.update(handle, status="running")
@@ -127,6 +140,9 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 user_id=handle.user_id,
                 invocation_id=handle.engine_execution_reference,
                 database_path=self._session_database_path(),
+                _execution_fence=self.services.execution_ownership.native_fence(
+                    self._execution_leases[handle.invocation_id]
+                ),
             )
             if execution_completed:
                 output = execution_output
@@ -148,8 +164,8 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         except Exception as exc:
             error = (
                 exc.as_dict()
-                if hasattr(exc, "as_dict")
-                else {"code": "workflow_execution_error", "message": str(exc), "details": {}}
+                if isinstance(exc, OwaError)
+                else WorkflowExecutionError("native execution failed").as_dict()
             )
             result = (
                 self._stored_result(handle)
@@ -161,7 +177,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
             if result is not None:
                 self._finish_active(handle, result)
             else:
-                self._active.pop(handle.invocation_id, None)
+                self._abandon_active(handle)
 
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
         workflow_input = await super()._verify_resume_state(handle, plan)

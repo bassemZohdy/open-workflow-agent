@@ -3,11 +3,23 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
 from typing import Any
 
-from open_workflow_agent.errors import InvocationStateError, OwaError, WorkflowExecutionError
+from open_workflow_agent.errors import (
+    InvocationStateConflict,
+    InvocationStateError,
+    OwaError,
+    WorkflowExecutionError,
+)
 from open_workflow_agent.expressions import validate_expression_data
+from open_workflow_agent.ownership import (
+    NativeWriteFence,
+    install_sqlite_native_fence,
+    run_native_storage_write,
+    translate_native_fence_error,
+)
 from open_workflow_agent.storage import is_postgresql_datasource
 from open_workflow_agent.workflow import WorkflowExecutor, WorkflowPlan
 
@@ -36,6 +48,85 @@ try:
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 except ImportError:  # pragma: no cover - optional PostgreSQL extra
     AsyncPostgresSaver = None  # type: ignore[assignment,misc]
+
+
+if AsyncSqliteSaver is not None:
+
+    class _FencedAsyncSqliteSaver(AsyncSqliteSaver):  # type: ignore[misc]
+        async def _write(self, method: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
+            await self.setup()
+            async with self.lock:
+
+                async def write() -> Any:
+                    # The shared SDK connection is protected by the parent
+                    # saver lock. The SDK operation gets a loop-local lock;
+                    # its original transaction and serialization stay intact.
+                    worker = AsyncSqliteSaver(self.conn, serde=self.serde)
+                    worker.is_setup = True
+                    try:
+                        return await getattr(worker, method)(*args, **kwargs)
+                    except BaseException as exc:
+                        await self.conn.rollback()
+                        translate_native_fence_error(exc)
+                        raise
+
+                return await run_native_storage_write(write)
+
+        async def aput(self, *args: Any, **kwargs: Any) -> Any:
+            return await self._write("aput", args, kwargs)
+
+        async def aput_writes(self, *args: Any, **kwargs: Any) -> None:
+            await self._write("aput_writes", args, kwargs)
+
+        async def adelete_thread(self, *args: Any, **kwargs: Any) -> None:
+            await self._write("adelete_thread", args, kwargs)
+
+
+if AsyncPostgresSaver is not None:
+
+    class _FencedAsyncPostgresSaver(AsyncPostgresSaver):  # type: ignore[misc]
+        _execution_fence: NativeWriteFence | None = None
+        _native_write_database: str | None = None
+
+        async def _write(self, method: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
+            if self._native_write_database is None:
+                return await getattr(super(), method)(*args, **kwargs)
+            database = self._native_write_database
+            async with self.lock:
+
+                async def write() -> Any:
+                    async with _FencedAsyncPostgresSaver.from_conn_string(database) as worker:
+                        worker._execution_fence = self._execution_fence
+                        return await getattr(worker, method)(*args, **kwargs)
+
+                return await run_native_storage_write(write)
+
+        async def aput(self, *args: Any, **kwargs: Any) -> Any:
+            return await self._write("aput", args, kwargs)
+
+        async def aput_writes(self, *args: Any, **kwargs: Any) -> None:
+            await self._write("aput_writes", args, kwargs)
+
+        async def adelete_thread(self, *args: Any, **kwargs: Any) -> None:
+            await self._write("adelete_thread", args, kwargs)
+
+        @asynccontextmanager
+        async def _cursor(self, *, pipeline: bool = False) -> AsyncIterator[Any]:
+            # Native mutation methods request pipeline=True. Retain the SDK's
+            # cursor lock and SQL, while committing this batch in one guarded
+            # transaction instead of committing individual pipeline statements.
+            async with super()._cursor(pipeline=False) as cursor:
+                if self._execution_fence is None or not pipeline:
+                    yield cursor
+                    return
+                async with cursor.connection.transaction():
+                    statement, values = self._execution_fence.postgresql_guard()
+                    await cursor.execute(statement.replace("?", "%s"), values)
+                    if await cursor.fetchone() is None:
+                        raise InvocationStateConflict(
+                            "invocation execution ownership has expired or changed"
+                        )
+                    yield cursor
 
 
 class LangGraphFunctionalAdapter:
@@ -130,6 +221,7 @@ class LangGraphFunctionalAdapter:
         metadata: dict[str, Any],
         invocation_id: str,
         resume: bool = False,
+        _execution_fence: NativeWriteFence | None = None,
     ) -> Any:
         """Run each derived task as a native node with private scope checkpoints."""
         if not self.task_nodes_available:
@@ -150,7 +242,7 @@ class LangGraphFunctionalAdapter:
             except Exception:
                 raise WorkflowExecutionError("native task execution failed") from None
 
-        return await self._with_saver(run)
+        return await self._with_saver(run, _execution_fence=_execution_fence)
 
     async def admit_resume(
         self, plan: WorkflowPlan, invocation_id: str, workflow_input: Any
@@ -169,19 +261,39 @@ class LangGraphFunctionalAdapter:
         except Exception:
             raise InvocationStateError("native execution state could not be recovered") from None
 
-    async def _with_saver(self, run: Callable[[Any], Awaitable[Any]]) -> Any:
+    async def _with_saver(
+        self,
+        run: Callable[[Any], Awaitable[Any]],
+        *,
+        _execution_fence: NativeWriteFence | None = None,
+    ) -> Any:
         if self.database_path and is_postgresql_datasource(self.database_path):
             if AsyncPostgresSaver is None:
                 raise RuntimeError(
                     "PostgreSQL LangGraph persistence requires langgraph-checkpoint-postgres"
                 )
-            async with AsyncPostgresSaver.from_conn_string(self.database_path) as saver:
+            async with _FencedAsyncPostgresSaver.from_conn_string(self.database_path) as saver:
                 await saver.setup()
+                saver._execution_fence = _execution_fence
+                if _execution_fence is not None:
+                    saver._native_write_database = self.database_path
                 return await run(saver)
         if self.database_path and AsyncSqliteSaver is not None:
-            async with AsyncSqliteSaver.from_conn_string(self.database_path) as sqlite_saver:
-                await sqlite_saver.setup()
-                return await run(sqlite_saver)
+            async with _FencedAsyncSqliteSaver.from_conn_string(self.database_path) as sqlite_saver:
+                await run_native_storage_write(sqlite_saver.setup)
+                if _execution_fence is not None:
+                    await install_sqlite_native_fence(
+                        sqlite_saver.conn,
+                        _execution_fence,
+                        native_database=self.database_path,
+                        tables=("checkpoints", "writes"),
+                    )
+                try:
+                    return await run(sqlite_saver)
+                except BaseException as exc:
+                    await sqlite_saver.conn.rollback()
+                    translate_native_fence_error(exc)
+                    raise
         return await run(self.checkpointer)
 
     async def resume(

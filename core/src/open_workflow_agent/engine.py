@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 
@@ -11,6 +13,7 @@ from .errors import (
     InvocationCancelled,
     InvocationStateConflict,
     InvocationStateError,
+    OwaError,
     WorkflowExecutionError,
 )
 from .lifecycle import (
@@ -20,6 +23,7 @@ from .lifecycle import (
     LifecycleControl,
 )
 from .observability import WorkflowEvent
+from .ownership import ExecutionLease
 from .persistence import ExecutionHandle
 from .sandbox import SandboxWorkflowExecutor
 from .services import RuntimeServices
@@ -115,10 +119,67 @@ class InvocationResult:
 
 class WorkflowEngine:
     engine_name = "base"
+    _execution_ownership_seconds: float = 30
 
     def __init__(self) -> None:
         self._active: dict[str, ActiveInvocation] = {}
         self._restart_resume_inputs: dict[str, Any] = {}
+        self._execution_leases: dict[str, ExecutionLease] = {}
+        self._ownership_tasks: dict[str, asyncio.Task[Any]] = {}
+
+    async def _wait_for_ownership_renewal(self) -> None:
+        await asyncio.sleep(self._execution_ownership_seconds / 3)
+
+    @asynccontextmanager
+    async def _own_execution(self, handle: ExecutionHandle) -> AsyncIterator[None]:
+        store = self.services.execution_ownership
+        lease = store.acquire(handle, seconds=self._execution_ownership_seconds)
+        self._execution_leases[handle.invocation_id] = lease
+        handle._execution_lease = lease
+        owner_task = asyncio.current_task()
+        if owner_task is not None:
+            self._ownership_tasks[handle.invocation_id] = owner_task
+        lost: OwaError | None = None
+
+        async def renew() -> None:
+            nonlocal lease, lost
+            try:
+                while True:
+                    await self._wait_for_ownership_renewal()
+                    lease = store.renew(lease, seconds=self._execution_ownership_seconds)
+                    self._execution_leases[handle.invocation_id] = lease
+                    handle._execution_lease = lease
+            except Exception as error:
+                lost = (
+                    error
+                    if isinstance(error, OwaError)
+                    else InvocationStateError("execution ownership renewal failed")
+                )
+                if owner_task is not None:
+                    owner_task.cancel()
+
+        heartbeat = asyncio.create_task(renew())
+        try:
+            yield
+            store.verify(lease)
+        except asyncio.CancelledError:
+            if lost is not None:
+                raise InvocationStateConflict(
+                    "invocation execution ownership was lost; recovery is required"
+                ) from None
+            raise
+        finally:
+            heartbeat.cancel()
+            await asyncio.gather(heartbeat, return_exceptions=True)
+            self._execution_leases.pop(handle.invocation_id, None)
+            self._ownership_tasks.pop(handle.invocation_id, None)
+            handle._execution_lease = None
+            try:
+                store.release(lease)
+            except OwaError:
+                # Expiry, another owner or unavailable storage cannot justify a
+                # fresh state write. A failed release expires naturally.
+                pass
 
     async def initialize(self, services: RuntimeServices) -> None:
         self.services = services
@@ -168,7 +229,37 @@ class WorkflowEngine:
     async def compile(self, plan: WorkflowPlan) -> WorkflowPlan:
         return plan
 
+    def _verify_execution_engine(self, handle: ExecutionHandle) -> None:
+        # Preserve stored common-reference identities across recovery.
+        reference_alias = self.engine_name == "base" and handle.engine in {"portable", "reference"}
+        if handle.engine != self.engine_name and not reference_alias:
+            raise InvocationStateError("invocation belongs to a different engine")
+
     async def invoke(
+        self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
+    ) -> InvocationResult:
+        self.services.invocations.verify_fingerprint(invocation, workflow.fingerprint)
+        self._verify_execution_engine(invocation)
+        self.services.invocations.refresh(invocation)
+        if invocation.status in TERMINAL_INVOCATION_STATES:
+            return self._stored_result(invocation)
+        active = self._active.get(invocation.invocation_id)
+        if active is not None:
+            return await asyncio.shield(active.result)
+        try:
+            async with self._own_execution(invocation):
+                self.services.invocations.refresh(invocation)
+                if invocation.status in TERMINAL_INVOCATION_STATES:
+                    return self._stored_result(invocation)
+                return await self._invoke_owned(workflow, invocation, input_data)
+        except InvocationStateConflict as error:
+            try:
+                self.services.invocations.refresh(invocation, terminal_only=True)
+            except InvocationStateConflict:
+                raise error from None
+            return self._stored_result(invocation)
+
+    async def _invoke_owned(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> InvocationResult:
         raise NotImplementedError
@@ -177,16 +268,33 @@ class WorkflowEngine:
         self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
     ) -> InvocationResult:
         self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+        self._verify_execution_engine(handle)
         active_result = await self._resume_active_or_terminal(handle, resume_input)
         if active_result is not None:
             return active_result
-        await self._verify_resume_state(handle, plan)
+        try:
+            async with self._own_execution(handle):
+                self.services.invocations.refresh(handle)
+                if handle.status in TERMINAL_INVOCATION_STATES:
+                    return self._stored_result(handle)
+                await self._verify_resume_state(handle, plan)
+                return await self._resume_owned(handle, resume_input, plan)
+        except InvocationStateConflict as error:
+            try:
+                self.services.invocations.refresh(handle, terminal_only=True)
+            except InvocationStateConflict:
+                raise error from None
+            return self._stored_result(handle)
+
+    async def _resume_owned(
+        self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
+    ) -> InvocationResult:
         if handle.status == "waiting":
             self._restart_resume_inputs[handle.invocation_id] = resume_input
             self.services.invocations.update(handle, status="running")
         if handle.status != "running":
             return self._stored_result(handle)
-        return await self.invoke(plan, handle, resume_input)
+        return await self._invoke_owned(plan, handle, resume_input)
 
     async def cancel(
         self, handle: ExecutionHandle, *, operation_id: str | None = None
@@ -205,7 +313,26 @@ class WorkflowEngine:
         if owned_handle.status in TERMINAL_INVOCATION_STATES:
             self.services.invocations.refresh(handle)
             return self._stored_result(handle)
-        self.services.invocations.update(owned_handle, status="cancelled", error=error.as_dict())
+        # An authorized operator cancellation is a control write, not another
+        # execution by the active worker. Keep the worker's private token on its
+        # handle while committing through a freshly loaded control handle.
+        control_handle = self.services.invocations.get(handle.invocation_id)
+        if control_handle is None:
+            raise InvocationStateError("invocation state is unavailable")
+        if control_handle.status in TERMINAL_INVOCATION_STATES:
+            self.services.invocations.refresh(owned_handle)
+            self.services.invocations.refresh(handle)
+            return self._stored_result(control_handle)
+        try:
+            self.services.invocations.update(
+                control_handle, status="cancelled", error=error.as_dict()
+            )
+        except InvocationStateConflict:
+            self.services.invocations.refresh(control_handle, terminal_only=True)
+            self.services.invocations.refresh(owned_handle)
+            self.services.invocations.refresh(handle)
+            return self._stored_result(control_handle)
+        self.services.invocations.refresh(owned_handle)
         if owned_handle is not handle:
             self.services.invocations.refresh(handle)
         if active is not None:
@@ -246,6 +373,18 @@ class WorkflowEngine:
         active = self._active.pop(handle.invocation_id, None)
         if active is not None and not active.result.done():
             active.result.set_result(result)
+
+    def _abandon_active(self, handle: ExecutionHandle) -> None:
+        active = self._active.pop(handle.invocation_id, None)
+        if active is not None and not active.result.done():
+            active.result.set_exception(
+                InvocationStateConflict(
+                    "invocation execution was interrupted; recovery is required"
+                )
+            )
+            # Coalesced callers can still await the future. Consume the error
+            # when there are no such callers so cleanup never leaves a warning.
+            active.result.exception()
 
     async def _resume_active_or_terminal(
         self, handle: ExecutionHandle, resume_input: Any
@@ -302,8 +441,7 @@ class WorkflowEngine:
         return self.services.invocations.bind_input(invocation, input_data)
 
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
-        if handle.engine != self.engine_name:
-            raise InvocationStateError("invocation belongs to a different engine")
+        self._verify_execution_engine(handle)
         self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
         return self.services.invocations.read_input(handle)
 
@@ -330,6 +468,14 @@ class WorkflowEngine:
         return EngineCapabilities(engine=self.engine_name)
 
     async def shutdown(self) -> None:
+        tasks = {
+            active.task
+            for active in self._active.values()
+            if active.task is not None and active.task is not asyncio.current_task()
+        } | {task for task in self._ownership_tasks.values() if task is not asyncio.current_task()}
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
         sandbox = getattr(self.services, "sandbox", None)
         if sandbox is not None:
             await sandbox.shutdown()
@@ -345,6 +491,16 @@ class PortableWorkflowEngine(WorkflowEngine):
         )
 
     async def invoke(
+        self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
+    ) -> InvocationResult:
+        return await super().invoke(workflow, invocation, input_data)
+
+    async def resume(
+        self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
+    ) -> InvocationResult:
+        return await super().resume(handle, resume_input, plan)
+
+    async def _invoke_owned(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> InvocationResult:
         active = self._begin_active(invocation)
@@ -387,9 +543,4 @@ class PortableWorkflowEngine(WorkflowEngine):
             if result is not None:
                 self._finish_active(invocation, result)
             else:
-                self._active.pop(invocation.invocation_id, None)
-
-    async def resume(
-        self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
-    ) -> InvocationResult:
-        return await super().resume(handle, resume_input, plan)
+                self._abandon_active(invocation)

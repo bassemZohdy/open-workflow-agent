@@ -6,7 +6,7 @@ import json
 import uuid
 from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .errors import (
     InvocationStateConflict,
@@ -17,6 +17,9 @@ from .errors import (
 from .expressions import validate_expression_data
 from .lifecycle import TERMINAL_INVOCATION_STATES, VALID_INVOCATION_TRANSITIONS
 from .storage import StorageConnection, open_storage
+
+if TYPE_CHECKING:
+    from .ownership import ExecutionLease
 
 
 @dataclass(slots=True)
@@ -40,6 +43,9 @@ class ExecutionHandle:
     owner_principal: str | None = None
     # Exact durable snapshot for conditional writes; private runtime bookkeeping.
     _persisted_payload: str | None = field(default=None, init=False, repr=False, compare=False)
+    _execution_lease: ExecutionLease | None = field(
+        default=None, init=False, repr=False, compare=False
+    )
 
 
 def _public_fields(handle: ExecutionHandle) -> dict[str, Any]:
@@ -237,11 +243,41 @@ class InvocationStore:
             return self.refresh(handle, terminal_only=True)
         try:
             encoded = _encode_handle(candidate)
-            updated = self.connection.execute(
-                """UPDATE invocations SET payload = ?, status = ?
-                WHERE invocation_id = ? AND status = ? AND payload = ?""",
-                (encoded, candidate.status, candidate.invocation_id, original["status"], expected),
+            statement = """UPDATE invocations SET payload = ?, status = ?
+                WHERE invocation_id = ? AND status = ? AND payload = ?"""
+            parameters: tuple[Any, ...] = (
+                encoded,
+                candidate.status,
+                candidate.invocation_id,
+                original["status"],
+                expected,
             )
+            lease = handle._execution_lease
+            if lease is not None:
+                from .ownership import execution_write_guard
+
+                if (
+                    lease.invocation_id != handle.invocation_id
+                    or lease.engine != handle.engine
+                    or lease.workflow_fingerprint != handle.workflow_fingerprint
+                ):
+                    raise InvocationStateConflict("invocation execution ownership is inconsistent")
+                guard, owner_parameters = execution_write_guard(self.connection, lease)
+                if self.connection.is_postgresql:
+                    # Lock the ownership row through this state transaction;
+                    # an expiry/takeover cannot cross the guarded common write.
+                    statement = (
+                        f"WITH valid_execution_owner AS MATERIALIZED ({guard}) "
+                        + statement
+                        + " AND EXISTS (SELECT 1 FROM valid_execution_owner)"
+                    )
+                    parameters = (*owner_parameters, *parameters)
+                else:
+                    # A single SQLite UPDATE holds the shared database writer
+                    # lock until commit, including evaluation of this guard.
+                    statement += f" AND EXISTS ({guard})"
+                    parameters = (*parameters, *owner_parameters)
+            updated = self.connection.execute(statement, parameters)
             if updated.rowcount != 1:
                 raise InvocationStateConflict("invocation state has changed; reload before retry")
             self.connection.commit()

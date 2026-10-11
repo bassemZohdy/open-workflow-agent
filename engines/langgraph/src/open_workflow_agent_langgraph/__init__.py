@@ -55,8 +55,13 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
     async def invoke(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> InvocationResult:
+        return await super().invoke(workflow, invocation, input_data)
+
+    async def _invoke_owned(
+        self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
+    ) -> InvocationResult:
         if not self.native.task_nodes_available:
-            return await super().invoke(workflow, invocation, input_data)
+            return await super()._invoke_owned(workflow, invocation, input_data)
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
         try:
@@ -67,6 +72,9 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 input_data,
                 metadata=self._metadata(workflow, invocation, active),
                 invocation_id=invocation.invocation_id,
+                _execution_fence=self.services.execution_ownership.native_fence(
+                    self._execution_leases[invocation.invocation_id]
+                ),
             )
             if active.control.token.cancelled or invocation.status == "cancelled":
                 result = self._stored_result(invocation)
@@ -92,18 +100,19 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             if result is not None:
                 self._finish_active(invocation, result)
             else:
-                self._active.pop(invocation.invocation_id, None)
+                self._abandon_active(invocation)
 
     async def resume(
         self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
     ) -> InvocationResult:
-        self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
-        active_result = await self._resume_active_or_terminal(handle, resume_input)
-        if active_result is not None:
-            return active_result
-        workflow_input = await self._verify_resume_state(handle, plan)
+        return await super().resume(handle, resume_input, plan)
+
+    async def _resume_owned(
+        self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
+    ) -> InvocationResult:
+        workflow_input = self.services.invocations.read_input(handle)
         if not self.native.task_nodes_available:
-            return await PortableWorkflowEngine.resume(self, handle, resume_input, plan)
+            return await super()._resume_owned(handle, resume_input, plan)
         if handle.status == "waiting":
             self._restart_resume_inputs[handle.invocation_id] = resume_input
             self.services.invocations.update(handle, status="running")
@@ -119,6 +128,9 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 metadata=self._metadata(plan, handle, active),
                 invocation_id=handle.invocation_id,
                 resume=True,
+                _execution_fence=self.services.execution_ownership.native_fence(
+                    self._execution_leases[handle.invocation_id]
+                ),
             )
             result = (
                 self._stored_result(handle)
@@ -145,7 +157,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             if result is not None:
                 self._finish_active(handle, result)
             else:
-                self._active.pop(handle.invocation_id, None)
+                self._abandon_active(handle)
 
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
         workflow_input = await super()._verify_resume_state(handle, plan)

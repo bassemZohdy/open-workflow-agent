@@ -16,7 +16,7 @@ import httpx
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity
-from open_workflow_agent.errors import OwaError
+from open_workflow_agent.errors import InvocationStateConflict, OwaError
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
@@ -52,6 +52,9 @@ async def run(directory: Path, mode: str) -> None:
     }[engine_name]
     engine = getattr(importlib.import_module(module), class_name)()
     await engine.initialize(services)
+    # Keep real database-clock expiry in the force-kill test without waiting a
+    # production lease interval at each independently selected crash boundary.
+    engine._execution_ownership_seconds = 2
     available = (
         engine.native.task_nodes_available
         if engine_name == "langgraph"
@@ -195,9 +198,17 @@ async def run(directory: Path, mode: str) -> None:
                 ready()
             await running
         else:
-            result = await engine.resume(
-                handle, None if boundary == "wait" else {"resume": "different"}, plan
-            )
+            async with asyncio.timeout(15):
+                while True:
+                    try:
+                        result = await engine.resume(
+                            handle, None if boundary == "wait" else {"resume": "different"}, plan
+                        )
+                        break
+                    except InvocationStateConflict:
+                        # The killed owner cannot renew. Recovery must wait for
+                        # actual expiry rather than deleting its durable claim.
+                        await asyncio.sleep(0.05)
             duplicate = await engine.resume(handle, {"duplicate": True}, plan)
             saved_handle = services.invocations.get(handle.invocation_id)
             if saved_handle is None:

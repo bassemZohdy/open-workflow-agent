@@ -5,13 +5,20 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
-from collections.abc import Awaitable, Callable
-from contextlib import aclosing, closing
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import aclosing, asynccontextmanager, closing
+from importlib import import_module
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunsplit
 
-from open_workflow_agent.errors import InvocationStateError
+from open_workflow_agent.errors import InvocationStateConflict, InvocationStateError
 from open_workflow_agent.expressions import validate_expression_data
+from open_workflow_agent.ownership import (
+    NativeWriteFence,
+    install_sqlite_native_fence,
+    run_native_storage_write,
+    translate_native_fence_error,
+)
 from open_workflow_agent.storage import is_postgresql_datasource
 
 try:
@@ -56,6 +63,43 @@ if SqliteSessionService is not None:
         All session/checkpoint operations remain native ADK behavior.
         """
 
+        _execution_fence: NativeWriteFence | None = None
+
+        async def create_session(self, *args: Any, **kwargs: Any) -> Any:
+            original = super().create_session
+            if self._execution_fence is None:
+                return await original(*args, **kwargs)
+            return await run_native_storage_write(lambda: original(*args, **kwargs))
+
+        async def append_event(self, *args: Any, **kwargs: Any) -> Any:
+            original = super().append_event
+            if self._execution_fence is None:
+                return await original(*args, **kwargs)
+            return await run_native_storage_write(lambda: original(*args, **kwargs))
+
+        async def delete_session(self, *args: Any, **kwargs: Any) -> Any:
+            original = super().delete_session
+            if self._execution_fence is None:
+                return await original(*args, **kwargs)
+            return await run_native_storage_write(lambda: original(*args, **kwargs))
+
+        @asynccontextmanager
+        async def _get_db_connection(self) -> AsyncIterator[Any]:
+            async with super()._get_db_connection() as db:
+                if self._execution_fence is not None:
+                    await install_sqlite_native_fence(
+                        db,
+                        self._execution_fence,
+                        native_database=self._db_path,
+                        tables=("app_states", "user_states", "sessions", "events"),
+                    )
+                try:
+                    yield db
+                except BaseException as exc:
+                    await db.rollback()
+                    translate_native_fence_error(exc)
+                    raise
+
         def _is_migration_needed(self) -> bool:
             if not os.path.exists(self._db_path):
                 return False
@@ -72,6 +116,58 @@ if SqliteSessionService is not None:
                     return "event_data" not in columns
             except sqlite3.Error as exc:
                 raise RuntimeError("unable to inspect ADK session schema") from exc
+
+
+if _DatabaseSessionService is not None:
+
+    class _FencedDatabaseSessionService(_DatabaseSessionService):  # type: ignore[misc]
+        _execution_fence: NativeWriteFence | None = None
+        _native_write_factory: Callable[[], Any] | None = None
+
+        async def _write(self, method: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
+            if self._native_write_factory is None:
+                return await getattr(super(), method)(*args, **kwargs)
+            factory = self._native_write_factory
+
+            async def write() -> Any:
+                worker = factory()
+                worker._execution_fence = self._execution_fence
+                try:
+                    return await getattr(worker, method)(*args, **kwargs)
+                finally:
+                    await worker.close()
+
+            return await run_native_storage_write(write)
+
+        async def create_session(self, *args: Any, **kwargs: Any) -> Any:
+            return await self._write("create_session", args, kwargs)
+
+        async def append_event(self, *args: Any, **kwargs: Any) -> Any:
+            return await self._write("append_event", args, kwargs)
+
+        async def delete_session(self, *args: Any, **kwargs: Any) -> Any:
+            return await self._write("delete_session", args, kwargs)
+
+        @asynccontextmanager
+        async def _rollback_on_exception_session(
+            self, *, read_only: bool = False
+        ) -> AsyncIterator[Any]:
+            async with super()._rollback_on_exception_session(read_only=read_only) as session:
+                if self._execution_fence is not None and not read_only:
+                    statement, values = self._execution_fence.postgresql_guard()
+                    parameters = {}
+                    for index, value in enumerate(values):
+                        name = f"owa_owner_{index}"
+                        statement = statement.replace("?", f":{name}", 1)
+                        parameters[name] = value
+                    row = await session.execute(
+                        import_module("sqlalchemy").text(statement), parameters
+                    )
+                    if row.first() is None:
+                        raise InvocationStateConflict(
+                            "invocation execution ownership has expired or changed"
+                        )
+                yield session
 
 
 class NativeAdkRunner:
@@ -99,7 +195,7 @@ class NativeAdkRunner:
                     parsed.fragment,
                 )
             )
-            return _DatabaseSessionService(
+            return _FencedDatabaseSessionService(
                 db_url, connect_args={"server_settings": {"search_path": "owa_adk,public"}}
             )
         if database_path and SqliteSessionService is not None:
@@ -175,6 +271,7 @@ class NativeAdkRunner:
         database_path: str | None = None,
         invocation_id: str | None = None,
         _resume: bool = False,
+        _execution_fence: NativeWriteFence | None = None,
     ) -> Any:
         if (
             not ADK_AVAILABLE
@@ -188,24 +285,34 @@ class NativeAdkRunner:
         app_name = "open-workflow-agent"
         user = user_id or "owa-user"
         sessions = self._session_service(database_path)
-        existing = await sessions.get_session(
-            app_name=app_name,
-            user_id=user,
-            session_id=session_id,
-        )
-        if _resume:
-            try:
-                self._validate_resume_session(existing, invocation_id or "", input_data)
-            except InvocationStateError:
-                await self._close_sessions(sessions)
-                raise
-        if existing is None:
-            await sessions.create_session(
+        postgresql = bool(database_path and is_postgresql_datasource(database_path))
+        if not postgresql:
+            sessions._execution_fence = _execution_fence
+        try:
+            existing = await sessions.get_session(
                 app_name=app_name,
                 user_id=user,
                 session_id=session_id,
-                state={},
             )
+            if postgresql:
+                # Initial reads may prepare the SDK's schema metadata. Do not
+                # hold the common ownership row on the main loop during that
+                # schema-only transaction. Actual mutations use SDK workers.
+                sessions._execution_fence = _execution_fence
+                if _execution_fence is not None:
+                    sessions._native_write_factory = lambda: self._session_service(database_path)
+            if _resume:
+                self._validate_resume_session(existing, invocation_id or "", input_data)
+            if existing is None:
+                await sessions.create_session(
+                    app_name=app_name,
+                    user_id=user,
+                    session_id=session_id,
+                    state={},
+                )
+        except BaseException:
+            await self._close_sessions(sessions)
+            raise
 
         result_value: Any = None
 
@@ -270,6 +377,7 @@ class NativeAdkRunner:
         user_id: str | None,
         invocation_id: str,
         database_path: str | None = None,
+        _execution_fence: NativeWriteFence | None = None,
     ) -> Any:
         """Resume an ADK invocation using its persisted native invocation id."""
         return await self.invoke(
@@ -280,4 +388,5 @@ class NativeAdkRunner:
             invocation_id=invocation_id,
             database_path=database_path,
             _resume=True,
+            _execution_fence=_execution_fence,
         )

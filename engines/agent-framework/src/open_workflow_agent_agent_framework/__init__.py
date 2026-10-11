@@ -25,8 +25,13 @@ class AgentFrameworkWorkflowEngine(PortableWorkflowEngine):
     async def invoke(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> InvocationResult:
+        return await super().invoke(workflow, invocation, input_data)
+
+    async def _invoke_owned(
+        self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
+    ) -> InvocationResult:
         if not self.native.available:
-            return await super().invoke(workflow, invocation, input_data)
+            return await super()._invoke_owned(workflow, invocation, input_data)
 
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
@@ -64,7 +69,7 @@ class AgentFrameworkWorkflowEngine(PortableWorkflowEngine):
             if result is not None:
                 self._finish_active(invocation, result)
             else:
-                self._active.pop(invocation.invocation_id, None)
+                self._abandon_active(invocation)
 
 
 __all__ = ["AgentFrameworkWorkflowEngine"]
