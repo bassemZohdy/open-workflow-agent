@@ -353,15 +353,45 @@ ADK 775 (223 skips), LangGraph 785 (230 skips) and optional Agent Framework
 all locks, five package builds, current-source wheel/schema checks and
 audit/documentation checks pass. The four actual restart-poll harness scenarios
 prove eventual success, unrelated conflict and server-error rejection, and a
-bounded failure when ownership never expires. Fresh configured PostgreSQL
-action/fork guards and production forced-stop image acceptance remain pending.
-The machine-readable audit binds this follow-up separately by source file
-hashes; the reviewed `b2dfc5c` results and image failure remain historical proof.
+bounded failure when ownership never expires. All seven exact `2acf632` gates
+passed: [PR CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38173674509),
+[push CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38173670848),
+[PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38173674499),
+[external sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38173674571),
+[optional Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38173674497),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38173674526)
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38173674506).
+Both main CI Docker stop/restart/resume steps pass with actual production lease
+expiry. PostgreSQL passes 81 common-store cases, 103 per principal SDK, 92 optional
+bridge cases (seven skips), 10 separate LangGraph cases (eight skips), and both
+runtime images. Linux root passes 1,548 (312 skips, three gaps, 91.83% coverage);
+native suites pass ADK 679 and LangGraph 689 plus 96 CTK each. Windows passes 460
+root (12 skips) and 283 native cases (57 skips). All six actual downloaded
+dependency reports contain zero known advisories across 71/109/96/74 runtime
+and 13/16 controller dependencies. Historical `b2dfc5c` image failures remain
+recorded with their source scope.
+
+Two actual SQLite root/nested corruption probes on the prior LangGraph code
+fail to reject malformed outputs. Source `556da47` validates SDK-owned snapshots
+before common resume admission and before changing live execution state. It
+checks finite JSON with unique keys, required fields/control types, task and
+scope identities, self occurrence, execution paths, original input, workflow
+definition and context binding. Read-only SDK traversal validates stored nested
+occurrences while preserving engine-owned serialization and checkpoint SQL.
+The shared fixture passes 24 actual SQLite cases, including clean recovery and
+eleven corruptions per root/nested scope. Full independent LangGraph
+native/shared/CTK regression passes 809 (254 skips, three tracked gaps).
+Formatting, lint, strict package/fixture typing and the LangGraph wheel/sdist
+build pass; wheel bytes match current adapter code. Fresh GitHub/configured
+PostgreSQL acceptance for this source is pending. ADK private state validation,
+missing non-self cursor reconciliation and well-typed payload/common receipt
+consistency remain open. A cancelled child can legitimately lack its first
+checkpoint, so a declared cursor alone does not establish corruption.
 
 S2-03 stays open. This fix does not reconcile all native/common invocation or
-side-effect records. General pending-effect reconciliation, final fenced recovery acceptance,
-missing or inconsistent native checkpoint recovery and broader configured
-database acceptance still require work. Legacy rows without an original-input record
+side-effect records. General pending-effect reconciliation, full native state
+consistency and configured acceptance of the new validation still require work.
+Legacy rows without an original-input record
 have no new migration guarantee. Later-stage retry/deadline,
 timer/event, child workflow, compensation and version migration owners remain
 unchanged; no stronger recovery or exactly-once guarantee is advertised.

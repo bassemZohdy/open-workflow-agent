@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Private invocation/resume admission, local caller coalescing, renewal/loss/shutdown supervision and common/native storage transaction fencing. Native SQL, checkpoint formats and engine state remain SDK-owned. Action/fork admission generation guards and their fresh acceptance, complete nested native/common consistency, ambiguous effects, full proposed criteria and independent JavaScript remain unqualified. Optional Agent Framework common bridge proof does not establish native checkpoint durability.",
+          "scope": "Action intent insertion/replay and fork winner/drain progress lock valid execution authority through commit. Existing first-dispatch owners can retain truthful external outcomes after expiry. Standalone unowned storage contracts remain compatible. Validate actual SDK-owned root and stored nested scope snapshots before common resume admission: finite unambiguous JSON, exact field/control types, plan/task/scope identities and self occurrence, execution path visits, workflow input/definition and context binding. Restore validates whole snapshots before live-state changes. Configured PostgreSQL and fresh remote acceptance are pending for this source. ADK private state validation, missing non-self scope cursor/native/common receipt reconciliation and well-typed payload consistency remain open. Cancellation may legitimately leave a declared child occurrence without a first checkpoint. No second checkpoint engine, schema change, migration or full recovery qualification.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -65727,7 +65727,7 @@
             "remaining": "Action/fork admission generation guards and their fresh acceptance, complete nested native/common consistency, ambiguous effects, full proposed criteria and independent JavaScript remain unqualified. Optional Agent Framework common bridge proof does not establish native checkpoint durability."
           },
           "action_progress_admission_followup": {
-            "status": "Local frozen-source regression verified; fresh GitHub PostgreSQL and image acceptance pending",
+            "status": "Verified bounded authority and actual production-expiry image recovery at 2acf632",
             "parent_commit": "b2dfc5c451b94e0d8d1848e404b46e80d7b06dd3",
             "source_scope": "Follow-up artifact runtime, fixture and CI Git file contents are bound below by SHA-256. The reviewed b2 source and its two failed main CI gates retain separate evidence.",
             "source_file_sha256": {
@@ -65768,7 +65768,100 @@
             "local_lock_proof": "SQLite guarded progress transaction blocks a competing ownership write through commit, then permits it. Matching PostgreSQL lock-timeout proof is wired for the fresh database gate, not counted as local acceptance.",
             "image_acceptance_correction": "Wait for the persisted waiting boundary before forced stop, then retry only the exact live-owner conflict until real production lease expiry. No deletion/shortening of a production lease. Four deterministic actual-poll harness scenarios pass: eventual success, unrelated conflict rejection, server failure rejection, bounded never-expiring failure.",
             "quality_checks": "Formatting, lint, strict package/CI/new-fixture typing, four locks, five builds, all five current-source wheel checks, pinned official schema bytes, six audit/tracker checks and Markdown links pass.",
-            "remaining": "Fresh configured PostgreSQL and forced-stop runtime-image acceptance; full nested native/common consistency, general pending effect reconciliation, and full S2-03 acceptance remain open. No compensation, migration, JavaScript or full conformance claim."
+            "remaining": "Full native/common consistency and broader pending effects remain open; bounded generation guards and production-expiry image recovery are verified. No compensation, migration, JavaScript or full conformance claim.",
+            "commit": "2acf632f0efaf55d7c9c3211278e9f16c6c45a47",
+            "remote_runs": {
+              "38173674509": "success",
+              "38173674526": "success",
+              "38173674506": "success",
+              "38173674571": "success",
+              "38173674499": "success",
+              "38173674497": "success",
+              "38173670848": "success"
+            },
+            "linux_root": {
+              "passed": 1548,
+              "skipped": 312,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.83
+            },
+            "linux_shared": {
+              "passed": 653,
+              "skipped": 240,
+              "expected_assertion_failures": 3
+            },
+            "linux_native": {
+              "adk": {
+                "passed": 679,
+                "skipped": 223,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "langgraph": {
+                "passed": 689,
+                "skipped": 230,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "agent_framework_optional": {
+                "passed": 1043,
+                "skipped": 346,
+                "expected_assertion_failures": 3
+              }
+            },
+            "windows": {
+              "root_passed": 460,
+              "root_skipped": 12,
+              "native_passed": 283,
+              "native_skipped": 57
+            },
+            "postgresql": {
+              "store_passed": 81,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_adk_passed": 103,
+              "shared_langgraph_passed": 103,
+              "shared_agent_framework_passed": 92,
+              "shared_agent_framework_skipped": 7,
+              "both_runtime_image_jobs": "Success"
+            },
+            "main_ci_forced_stop_images": {
+              "Docker adk acceptance": "Success with actual production lease expiry",
+              "Docker langgraph acceptance": "Success with actual production lease expiry"
+            },
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0
+          },
+          "native_checkpoint_consistency_followup": {
+            "commit": "556da47a422f51fe61b9e7f15e68291ac1ce4101",
+            "status": "Local native SQLite regression verified; fresh GitHub and configured PostgreSQL acceptance pending",
+            "source_file_sha256": {
+              "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "2ab2df39c4b9217bb79b8c7e0e6c3cdaa2614faa20a77d0443fb875a6272dc8d",
+              "tests/contract/test_native_state_consistency.py": "4351e16332bd7bebf92539660bca5bdbe61f91fafe0b698160d847f6761f2224",
+              ".github/workflows/ci.yml": "335cc449517c31141aa363baae5b3d392a30906c87c7dcf12d9623ea2d96a1ec",
+              ".github/workflows/postgres-ci.yml": "d80d7a0ffada088f1b4d5b2ebb8ab07631941f763aef8bf19dd4f9ede17e89fe"
+            },
+            "scope": "Validate actual SDK-owned root and stored nested scope snapshots before common resume admission: finite unambiguous JSON, exact field/control types, plan/task/scope identities and self occurrence, execution path visits, workflow input/definition and context binding. Restore validates whole snapshots before live-state changes.",
+            "negative_probe": "Two actual root/nested SQLite corruption probes on prior code fail to reject malformed outputs. No dispatch count is asserted from those failing probes.",
+            "local_native_sqlite_cases": 24,
+            "local_focus": {
+              "passed": 35,
+              "skipped": 31
+            },
+            "local_langgraph_native_shared_ctk": {
+              "passed": 809,
+              "skipped": 254,
+              "expected_assertion_failures": 3
+            },
+            "quality_checks": "Formatting, lint, strict 66-package-source typing and new fixture typing pass. LangGraph wheel/sdist build passes; wheel code bytes match current adapter source.",
+            "remaining": "Configured PostgreSQL and fresh remote acceptance are pending for this source. ADK private state validation, missing non-self scope cursor/native/common receipt reconciliation and well-typed payload consistency remain open. Cancellation may legitimately leave a declared child occurrence without a first checkpoint. No second checkpoint engine, schema change, migration or full recovery qualification."
           }
         }
       },

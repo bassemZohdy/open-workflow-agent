@@ -9,7 +9,7 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`b2dfc5c`, which retains the verified fork, original-input, terminal-record,
+`556da47`, which retains the verified fork, original-input, terminal-record,
 leaf-call and conditional common write corrections. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
@@ -38,14 +38,21 @@ jobs pass. Linux root passes 1,536 cases (300 skips, three gaps, 91.87%);
 Windows root/native suites and principal native/CTK suites pass. Six fresh
 dependency reports contain zero known advisories. Both main CI image restart
 gates fail immediate resume with a live killed-owner lease; their ADK image
-jobs are cancelled. Production-expiry-aware image acceptance and action/fork
-admission guards are being validated. Full local frozen results and the final
+jobs are cancelled. At `2acf632`, production-expiry-aware image acceptance and
+action/fork admission guards pass all seven exact gates, including both main CI
+forced-stop images and configured PostgreSQL. Six actual dependency reports
+contain zero known advisories. Source `556da47` adds actual LangGraph root and
+nested snapshot validation before common resume admission. Two prior corruption
+probes fail; 24 local SQLite clean/corrupt cases and the 809-case full native,
+shared and CTK regression pass, with 254 skips and three known gaps. Its fresh
+GitHub and configured PostgreSQL acceptance remains pending. Full local frozen
+results and the final
 PostgreSQL-only ADK adjustment retain their exact scopes in the manifest.
 The conditional-write gates passed at `6954db8`; prior leaf-call and corrected
 dependency gates passed at `fc53574`. Recovery, action idempotency and lifecycle
-remain partial. S2-03 remains open for final fenced execution acceptance,
-broader effects and full native checkpoint consistency. Initial input-binding
-checks do not establish nested checkpoint validation. No full feature outcome
+remain partial. S2-03 remains open for broader effects and full native checkpoint
+consistency. Selected LangGraph snapshot checks do not establish all ADK private
+state, missing-cursor or well-typed native/common receipt reconciliation. No full feature outcome
 or independent JavaScript qualification is promoted by this bounded proof.
 
 Earlier competitive runtime, fixture/audit and all three common PostgreSQL
@@ -98,7 +105,7 @@ not be read as current delivery status.
 | --- | --- | --- |
 | Ordered fork output and collisions | Ordered branch arrays, isolated exports, explicit jq aggregation and failure cleanup pass shared fixtures. SQLite/PostgreSQL native fork restart and exact runtime GitHub gates pass; additional shared output restart passes every adapter | S2-01 verified; full criteria remain S4-03/S4-04 |
 | Competitive fork durability | First observed completion, cancellation intents and distinct occurrence identity are persisted. SQLite/PostgreSQL replay preserves values/null/fault/end and repeated occurrences without branch calls on both principal adapters and the optional common bridge. All exact acceptance gates passed. External-action reconciliation/compensation is not established | S2-02 verified; general effects S2-03/S2-08; full criteria S4-03/S4-04 |
-| Native checkpoint recovery | Original input, resume values, terminal outcomes and leaf-call receipts have bounded SQLite/PostgreSQL acceptance. Runtime admission and common/native transaction fencing pass local, Windows and PostgreSQL fixtures. Main CI image restart still needs actual lease-expiry acceptance; action/fork guards, nested consistency, broader effects and legacy migration remain open | S2-03 in progress; migration S2-09 |
+| Native checkpoint recovery | Original input, resume values, terminal outcomes and leaf-call receipts have bounded SQLite/PostgreSQL acceptance. Runtime admission, common/native transaction fencing and action/fork guards pass native, Windows and PostgreSQL fixtures; both main CI images pass actual lease-expiry recovery. Selected root/nested LangGraph snapshot checks pass local regression and await configured acceptance. Full native/common consistency, broader effects and legacy migration remain open | S2-03 in progress; migration S2-09 |
 | Action idempotency and compensation | A080 is partial: selected call receipts prevent completed replay and block uncertain actions. A079 remains unimplemented: no compensation/saga state machine exists. Run/event/child effects, redrive, ambiguous outcome resolution, full process-crash criteria and exactly-once external actions remain unqualified | S2-03, S2-08; full criteria S4-03/S4-04 |
 | Retry and timeout declarations | Predicates/count/basic backoff work; jitter and duration limits are inert, and original deadlines are not persisted | S2-04 |
 | Events and timers | Active process-local listeners and persisted after/every schedules exist; durable general inbox/outbox/timers/correlation/cron/on are missing. Explicit null event data is omitted | S2-05, S2-06 |

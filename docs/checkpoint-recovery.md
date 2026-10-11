@@ -132,13 +132,30 @@ connections or releasing authority. The shared runtime and actual native
 writer fixtures prove stale writes cannot cross a takeover, on SQLite and
 configured PostgreSQL; Windows fixtures also pass.
 
-The full PostgreSQL gate and both PostgreSQL images pass. Both main CI image
+At `b2dfc5c`, the full PostgreSQL gate and both PostgreSQL images pass. Both main CI image
 restart gates fail immediate resume with HTTP 409 while a forcibly killed
 owner's lease is still live. Their root, Windows, native and CTK jobs pass.
 Expiry-aware image acceptance waits for the real production lease and rejects
-other errors; fresh acceptance remains pending. Action intents and fork progress
-are also being fenced. Truthful outcomes from the original dispatch owner
-must remain recordable after expiry, without authorizing another action.
+other errors. This correction and action intent/fork progress commit guards pass
+all seven exact `2acf632` gates, including both main CI forced-stop images and
+configured PostgreSQL. Truthful outcomes from the original dispatch owner
+remain recordable after expiry, without authorizing another action. The shared
+[authority fixtures](../tests/contract/test_action_execution_authority.py) and
+[transaction fixtures](../tests/core/test_action_progress_ownership.py) verify
+these distinct cases. Prior failed image runs remain historical evidence.
+
+At `556da47`, LangGraph validates actual SDK-owned root and stored nested
+snapshots before common resume admission. Finite JSON, duplicate keys, required
+field/control types, plan/task/scope identities and self occurrences, execution
+paths, workflow input/definition and context binding are checked before live
+state changes. Two prior actual root/nested corruption probes fail; the
+[consistency fixture](../tests/contract/test_native_state_consistency.py) now
+passes 24 SQLite cases, including clean recovery. Full local native/shared/CTK
+regression passes 809, with 254 skips and three known gaps. Fresh configured
+PostgreSQL and remote qualification are pending. This validates selected stored
+fields; it does not reconcile all well-typed data with action receipts or prove
+that every declared child cursor must have a checkpoint. Cancelled children can
+legitimately lack a first checkpoint. ADK private state validation remains open.
 
 The verified private action journal foundation retains
 a first-owner intent and the first completed value/null/fault outcome on the
@@ -194,7 +211,7 @@ into the configured database gate for both principal adapters and the optional
 common Agent Framework bridge. Local database skips are not database acceptance.
 
 See [current validation](../PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
-General pending effects, final ownership acceptance and missing/inconsistent native
+General pending effects and complete missing/inconsistent native
 checkpoints remain open in S2-03. Retry/deadline, durable event/timer, child
 workflow, compensation/idempotency and migration retain S2-04 through S2-09.
 Full proposed criteria, public native extensions and JavaScript qualification
