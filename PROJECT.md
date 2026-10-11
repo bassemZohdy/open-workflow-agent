@@ -383,8 +383,29 @@ eleven corruptions per root/nested scope. Full independent LangGraph
 native/shared/CTK regression passes 809 (254 skips, three tracked gaps).
 Formatting, lint, strict package/fixture typing and the LangGraph wheel/sdist
 build pass; wheel bytes match current adapter code. Fresh GitHub/configured
-PostgreSQL acceptance for this source is pending. ADK private state validation,
-missing non-self cursor reconciliation and well-typed payload/common receipt
+PostgreSQL acceptance for this source initially failed at `fc54600`: all 22
+corruption cases update zero blob rows because the installed SDK inlines these
+primitive JSON-text channels in checkpoint JSONB. The two clean cases and 103
+existing shared cases pass; subsequent ADK/optional and PostgreSQL image steps
+do not run. Six other exact gates pass, including both main CI forced-stop
+images. Linux root passes 1,548 (360 skips, three gaps, 91.83%); LangGraph passes
+713 plus 96 CTK (254 skips), and Windows native passes 307 (81 skips). All six
+downloaded dependency reports contain zero known advisories. These failed
+mutation probes do not qualify corrupted PostgreSQL checkpoint recovery.
+
+Source `005ab5b` corrects the fixture to mutate the SDK's inline JSONB channel
+and re-read the exact checkpoint to verify the altered value. The SQLite
+recheck passes 24 cases with 24 unconfigured database skips. A separate actual
+ADK probe reproduces acceptance of a contradictory later input event for the
+same native invocation. The adapter now validates every such input, rejects
+malformed or duplicate-key JSON and retains matching replay messages. Shared
+session invocations remain separate. The focused recovery run passes 12 cases
+with 22 skips; full independent ADK native/shared/CTK regression passes 780
+(276 skips, three tracked gaps). Formatting, lint, strict package/two-fixture
+typing and ADK wheel/sdist build/source checks pass. LangGraph runtime is
+unchanged from `556da47`; its full 809-case local baseline remains source-scoped.
+Fresh configured PostgreSQL and all seven remote gates remain pending for the
+correction. Missing non-self cursor reconciliation and well-typed payload/common receipt
 consistency remain open. A cancelled child can legitimately lack its first
 checkpoint, so a declared cursor alone does not establish corruption.
 

@@ -152,10 +152,23 @@ state changes. Two prior actual root/nested corruption probes fail; the
 [consistency fixture](../tests/contract/test_native_state_consistency.py) now
 passes 24 SQLite cases, including clean recovery. Full local native/shared/CTK
 regression passes 809, with 254 skips and three known gaps. Fresh configured
-PostgreSQL and remote qualification are pending. This validates selected stored
+PostgreSQL corruption qualification fails at `fc54600` because the fixture
+targets blob rows while the SDK inlines primitive channels in checkpoint JSONB.
+Its six other gates, including both main CI forced-stop images, pass. At
+`005ab5b`, the fixture targets the actual inline field and re-reads the exact
+checkpoint to prove mutation. SQLite recheck passes 24 cases with 24 database
+skips; fresh configured acceptance is pending. This validates selected stored
 fields; it does not reconcile all well-typed data with action receipts or prove
 that every declared child cursor must have a checkpoint. Cancelled children can
-legitimately lack a first checkpoint. ADK private state validation remains open.
+legitimately lack a first checkpoint.
+
+The [ADK event fixture](../tests/contract/test_adk_native_event_consistency.py)
+reproduces acceptance of a contradictory later native input event on the prior
+first-event validator. At `005ab5b`, all input events for the specific native
+invocation must match its common binding and have unambiguous finite JSON.
+Matching replay messages and unrelated session invocations remain valid.
+The focus passes 12 cases (22 skips); full ADK native/shared/CTK regression
+passes 780 (276 skips, three gaps). Fresh configured acceptance is pending.
 
 The verified private action journal foundation retains
 a first-owner intent and the first completed value/null/fault outcome on the

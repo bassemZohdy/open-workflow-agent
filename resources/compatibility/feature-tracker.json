@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Action intent insertion/replay and fork winner/drain progress lock valid execution authority through commit. Existing first-dispatch owners can retain truthful external outcomes after expiry. Standalone unowned storage contracts remain compatible. Validate actual SDK-owned root and stored nested scope snapshots before common resume admission: finite unambiguous JSON, exact field/control types, plan/task/scope identities and self occurrence, execution path visits, workflow input/definition and context binding. Restore validates whole snapshots before live-state changes. Configured PostgreSQL and fresh remote acceptance are pending for this source. ADK private state validation, missing non-self scope cursor/native/common receipt reconciliation and well-typed payload consistency remain open. Cancellation may legitimately leave a declared child occurrence without a first checkpoint. No second checkpoint engine, schema change, migration or full recovery qualification.",
+          "scope": "ADK reads every saved user input for the specific native invocation, rejects contradictory/malformed or duplicate-key JSON, and accepts repeated matching inputs. Unrelated session invocations remain separate. PostgreSQL corruption fixture updates actual SDK-inline primitive channels and re-reads the exact checkpoint to prove mutation; SQLite keeps SDK serialization. Fresh configured PostgreSQL and seven GitHub gates for this source; missing non-self cursor and well-typed native/common receipt consistency remain open. No general ambiguous-effect resolution, compensation, migration, JavaScript or full conformance claim.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -65841,7 +65841,7 @@
           },
           "native_checkpoint_consistency_followup": {
             "commit": "556da47a422f51fe61b9e7f15e68291ac1ce4101",
-            "status": "Local native SQLite regression verified; fresh GitHub and configured PostgreSQL acceptance pending",
+            "status": "Local, native, Windows and image checks pass at fc54600; PostgreSQL corruption fixture fails before mutation",
             "source_file_sha256": {
               "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "2ab2df39c4b9217bb79b8c7e0e6c3cdaa2614faa20a77d0443fb875a6272dc8d",
               "tests/contract/test_native_state_consistency.py": "4351e16332bd7bebf92539660bca5bdbe61f91fafe0b698160d847f6761f2224",
@@ -65861,7 +65861,100 @@
               "expected_assertion_failures": 3
             },
             "quality_checks": "Formatting, lint, strict 66-package-source typing and new fixture typing pass. LangGraph wheel/sdist build passes; wheel code bytes match current adapter source.",
-            "remaining": "Configured PostgreSQL and fresh remote acceptance are pending for this source. ADK private state validation, missing non-self scope cursor/native/common receipt reconciliation and well-typed payload consistency remain open. Cancellation may legitimately leave a declared child occurrence without a first checkpoint. No second checkpoint engine, schema change, migration or full recovery qualification."
+            "remaining": "Fresh configured acceptance of corrected corruption fixture; all-event ADK input checks; full native/common consistency remain open.",
+            "remote_commit": "fc54600db3bb45ebfcd36b741fc5174142fa994f",
+            "remote_runs": {
+              "38174918205": "success",
+              "38174918209": "success",
+              "38174918271": "failure",
+              "38174918180": "success",
+              "38174918227": "success",
+              "38174918185": "success",
+              "38174915227": "success"
+            },
+            "linux_root": {
+              "passed": 1548,
+              "skipped": 360,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.83
+            },
+            "linux_shared": {
+              "passed": 653,
+              "skipped": 288,
+              "expected_assertion_failures": 3
+            },
+            "linux_native": {
+              "adk": {
+                "passed": 679,
+                "skipped": 271,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "langgraph": {
+                "passed": 713,
+                "skipped": 254,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "agent_framework_optional": {
+                "passed": 1043,
+                "skipped": 394,
+                "expected_assertion_failures": 3
+              }
+            },
+            "windows": {
+              "root_passed": 460,
+              "root_skipped": 12,
+              "native_passed": 307,
+              "native_skipped": 81
+            },
+            "postgresql": {
+              "store_passed": 81,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_langgraph_passed": 105,
+              "shared_langgraph_failed": 22,
+              "both_runtime_image_jobs": "Not run after common-store job failure",
+              "adk_shared": "Not run after preceding failure",
+              "optional_bridge": "Not run after preceding failure"
+            },
+            "postgresql_failure": "All 22 corruption cases update zero checkpoint_blobs rows. The installed SDK inlines primitive JSON-text snapshot/counter channels in checkpoint JSONB. Two clean cases and the existing 103 shared cases pass. This is failed fixture admission, not accepted corrupted-state recovery.",
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0
+          },
+          "adk_native_event_consistency_followup": {
+            "commit": "005ab5b15140908c06ce42eb5788dd11b333a8c5",
+            "status": "Local ADK frozen native/shared/CTK regression and corrected SQLite corruption fixture verified; fresh configured acceptance pending",
+            "source_file_sha256": {
+              "engines/adk/src/open_workflow_agent_adk/native.py": "794bd22293a77c6ff2bc7bd506586d8dc6ec62ecd59e81344739a32c8e3c35d4",
+              "tests/contract/test_adk_native_event_consistency.py": "13b9526dbe3b0387c36e508d05d014c25149badfe3b455f2acf90a76d91be585",
+              "tests/contract/test_native_state_consistency.py": "b59f4a0fef01e2b7bd369445db671a1d28ce766eb7d0eff998fb327f338e3b03",
+              ".github/workflows/postgres-ci.yml": "ac45a0c9786acc0f29ddf79a40f7bebfed41cd3a14a4cb10e996ca680421c3f6"
+            },
+            "scope": "ADK reads every saved user input for the specific native invocation, rejects contradictory/malformed or duplicate-key JSON, and accepts repeated matching inputs. Unrelated session invocations remain separate. PostgreSQL corruption fixture updates actual SDK-inline primitive channels and re-reads the exact checkpoint to prove mutation; SQLite keeps SDK serialization.",
+            "negative_probe": "Actual saved contradictory later user event is accepted by the prior first-event validator; the before-fix contract assertion fails. That failing assertion does not establish a fake dispatch count.",
+            "local_adk_native_shared_ctk": {
+              "passed": 780,
+              "skipped": 276,
+              "expected_assertion_failures": 3
+            },
+            "local_focus": {
+              "passed": 12,
+              "skipped": 22
+            },
+            "local_corrected_langgraph_fixture": {
+              "passed": 24,
+              "skipped": 24
+            },
+            "quality_checks": "Formatting, lint, strict 66-package-source and two fixture typing pass. ADK wheel/sdist build and current adapter source-byte verification pass. LangGraph runtime is unchanged from 556da47; its 809/254/three-gap full local baseline remains separately scoped.",
+            "remaining": "Fresh configured PostgreSQL and seven GitHub gates for this source; missing non-self cursor and well-typed native/common receipt consistency remain open. No general ambiguous-effect resolution, compensation, migration, JavaScript or full conformance claim."
           }
         }
       },

@@ -9,7 +9,7 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`556da47`, which retains the verified fork, original-input, terminal-record,
+`005ab5b`, which retains the verified fork, original-input, terminal-record,
 leaf-call and conditional common write corrections. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
@@ -45,7 +45,16 @@ contain zero known advisories. Source `556da47` adds actual LangGraph root and
 nested snapshot validation before common resume admission. Two prior corruption
 probes fail; 24 local SQLite clean/corrupt cases and the 809-case full native,
 shared and CTK regression pass, with 254 skips and three known gaps. Its fresh
-GitHub and configured PostgreSQL acceptance remains pending. Full local frozen
+GitHub acceptance at `fc54600` passes six gates and both main CI forced-stop
+images. PostgreSQL fails all 22 corruption mutations before recovery because
+the fixture targets blob rows instead of SDK-inline primitive JSONB channels;
+these failures do not qualify corruption rejection. Source `005ab5b` corrects
+the fixture and re-reads the exact altered checkpoint. It also rejects ADK
+contradictory later input events and malformed/duplicate-key native input JSON,
+while accepting matching repeats and preserving shared-session identity.
+Focused checks pass; the full ADK native/shared/CTK suite passes 780 with 276
+skips and three gaps. Fresh configured and remote acceptance is pending.
+Full local frozen
 results and the final
 PostgreSQL-only ADK adjustment retain their exact scopes in the manifest.
 The conditional-write gates passed at `6954db8`; prior leaf-call and corrected

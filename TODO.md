@@ -67,8 +67,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   stopped owner's lease is live. Expiry-aware image acceptance and action/fork
   generation guards passed all seven gates at `2acf632`, including both actual
   forced-stop runtime images. Root/nested LangGraph corruption checks at
-  `556da47` pass local native/shared/CTK regression; fresh GitHub/PostgreSQL
-  qualification is pending. Full native/common consistency remains open.
+  `556da47` pass local native/shared/CTK, Windows and image regression at
+  `fc54600`; its PostgreSQL corruption fixture fails before changing SDK state.
+  The corrected fixture and ADK all-input-event validation at `005ab5b` pass
+  local checks and full ADK regression; fresh configured acceptance is pending.
+  Full native/common consistency remains open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
