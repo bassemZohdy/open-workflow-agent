@@ -87,9 +87,19 @@ async def test_native_scope_has_individual_nodes_conditional_edges_and_private_j
 
 
 @pytest.mark.parametrize("scope", ["root", "do", "for"])
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_restart_resumes_pending_native_task_without_replaying_completed_call(
-    tmp_path, scope
+    tmp_path, scope, backend
 ):
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+    config = (
+        RuntimeConfig.model_validate({"persistence": {"datasource": datasource}})
+        if datasource
+        else RuntimeConfig()
+    )
+    database_root = None if datasource else tmp_path
     calls = []
 
     async def handler(request):
