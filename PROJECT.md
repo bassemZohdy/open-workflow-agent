@@ -22,7 +22,7 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
-### S1-05 native task execution — remote acceptance pending
+### S1-05 native task execution — 2026-10-11 (verified)
 
 The LangGraph adapter now lowers immutable derived scopes into native
 StateGraph task nodes and conditional edges. Common task semantics/services,
@@ -44,9 +44,30 @@ LangGraph backend-selection revision passed 396 tests with 3 unconfigured
 PostgreSQL skips. A fresh SDK-only environment without SQLite passed 8 tests
 with 10 explicit backend/dependency skips. PostgreSQL CI separately exercises
 its saver without installing SQLite. Exact remote
-acceptance is pending; S1-05 remains unchecked. Full crash recovery,
+acceptance is green at `6a3afd793c170f38c5547bf9218ce83e4e04e265`. Full crash recovery,
 ordered fork reducers, durable winners/waits/events, historical checkpoint
 migration and independent JS qualification remain staged work.
+
+Remote root validation: 982 passed, 20 skipped, 91.26% coverage; shared
+contracts: 287 passed. Native LangGraph contracts: 300 passed, 3 unconfigured
+PostgreSQL skips; adapted CTK: 96 passed. The isolated PostgreSQL native
+checkpoint job passed 6 tests with 4 deliberate SQLite-specific skips, proving
+its saver operates without SQLite installed. Windows native graph/checkpoint
+checks passed.
+
+| Gate | Run | Result |
+| --- | --- | --- |
+| CI | [38137735635](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38137735635) | success |
+| CI (push) | [38137731911](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38137731911) | success |
+| External Sandbox CI | [38137735617](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38137735617) | success |
+| PostgreSQL CI | [38137735715](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38137735715) | success |
+| Agent Framework CI (optional) | [38137735666](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38137735666) | success |
+| Security | [38137735602](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38137735602) | success |
+| Docs | [38137735580](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38137735580) | success |
+
+Both native/CTK matrices, runtime images, external sandbox and PostgreSQL
+acceptance passed, with Windows, mutation, manifests, optional Agent Framework,
+security and docs. No release or broader conformance claim was published.
 
 
 ### Stage 1 admission work — 2026-10-11 (verified)

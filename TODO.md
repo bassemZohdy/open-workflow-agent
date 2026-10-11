@@ -22,7 +22,9 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 - [x] **S1-04** (M) — Preserve transitions, loop/condition rules, and the different scopes of exit and end.
   Verified at `0dc871d`: [control flow](docs/workflow-control-flow.md) and
   [acceptance evidence](PROJECT.md#s1-04-control-flow-work--2026-10-11-verified).
-- [ ] **S1-05** (L) — Compile individual tasks and routing to native LangGraph nodes/tasks; keep native checkpoints private.
+- [x] **S1-05** (L) — Compile individual tasks and routing to native LangGraph nodes/tasks; keep native checkpoints private.
+  Verified at `6a3afd7`: [native task execution](docs/native-task-execution.md) and
+  [acceptance evidence](PROJECT.md#s1-05-native-task-execution--2026-10-11-verified).
 - [ ] **S1-06** (M) — Provide one-container embedded defaults; separate workflow behavior from external bootstrap/provider settings.
 - [ ] **S1-07** (M) — Complete reusable definitions, imports, references, validation, version resolution and safe serialization.
 - [ ] **S1-08** (M) — Verify the current implementation against every tracked feature before claiming it complete.

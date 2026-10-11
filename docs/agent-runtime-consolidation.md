@@ -25,7 +25,7 @@ The imported ADK expression engines, direct execution paths, custom checkpoint/h
 
 [TODO.md](../TODO.md) is the short staged backlog. The [full tracker](../resources/compatibility/feature-tracker.json) retains 658 feature rows, 443 proposed tests, 774 schema constraints, 83 extension decisions and 52 configuration entries. Every feature maps to TODO tasks. Proposed tests are not marked executed by import.
 
-Verified Stage 1 work records jq, data/export/context rules and scoped termination in PROJECT.md. Native task compilation is being validated against the same shared fixtures. Main remaining gaps include ordered fork outputs, durable race cancellation, persistent events/timers and native/common-state recovery. Protocol coverage, advanced native behavior and JS parity follow later.
+Verified Stage 1 work records jq, data/export/context rules and scoped termination in PROJECT.md. Native LangGraph task compilation is also verified against the same shared fixtures, private checkpoints and all required acceptance gates. Main remaining gaps include ordered fork outputs, durable race cancellation, persistent events/timers and native/common-state recovery. Protocol coverage, advanced native behavior and JS parity follow later.
 
 All eight agent families are preserved in [the pattern catalog](../resources/patterns/pattern-catalog.json). Per-role models/tools, budgets, route failures, response shapes and resume/cancellation need tests before old API equivalence can be claimed.
 

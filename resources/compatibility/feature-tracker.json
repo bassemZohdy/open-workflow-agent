@@ -39729,7 +39729,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -39748,6 +39748,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -39771,7 +39794,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -39790,6 +39813,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -39813,7 +39859,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -39832,6 +39878,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -39855,7 +39924,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -39874,6 +39943,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -39897,7 +39989,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -39916,6 +40008,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -39939,7 +40054,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -39958,6 +40073,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -39981,7 +40119,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -40000,6 +40138,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -40023,7 +40184,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -40042,6 +40203,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -40065,7 +40249,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -40084,6 +40268,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -40107,7 +40314,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -40126,6 +40333,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -40149,7 +40379,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -40168,6 +40398,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -40191,7 +40444,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -40210,6 +40463,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -40233,7 +40509,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -40252,6 +40528,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -40275,7 +40574,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -40294,6 +40593,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -40397,7 +40719,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -40416,6 +40738,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -48786,7 +49131,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -48805,6 +49150,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -48903,7 +49271,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -48922,6 +49290,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -48945,7 +49336,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -48964,6 +49355,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -48987,7 +49401,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -49006,6 +49420,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -49029,7 +49466,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -49048,6 +49485,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -49071,7 +49531,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -49090,6 +49550,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -49113,7 +49596,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -49132,6 +49615,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -50254,7 +50760,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -50273,6 +50779,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -50296,7 +50825,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -50315,6 +50844,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -50338,7 +50890,7 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -50357,6 +50909,29 @@
               "Agent Framework CI (optional)": 38135683392,
               "Security": 38135683390,
               "Docs": 38135683395
+            }
+          },
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
             }
           }
         ]
@@ -54249,8 +54824,32 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
+            }
+          }
+        ]
       },
       {
         "feature_id": "B002",
@@ -54271,8 +54870,32 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
+            }
+          }
+        ]
       },
       {
         "feature_id": "B003",
@@ -54293,8 +54916,32 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
+            }
+          }
+        ]
       },
       {
         "feature_id": "B004",
@@ -54315,8 +54962,32 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
+            }
+          }
+        ]
       },
       {
         "feature_id": "B005",
@@ -54359,8 +55030,32 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
+            }
+          }
+        ]
       },
       {
         "feature_id": "B007",
@@ -54381,8 +55076,32 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
+            }
+          }
+        ]
       },
       {
         "feature_id": "B008",
@@ -54403,8 +55122,32 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
+            }
+          }
+        ]
       },
       {
         "feature_id": "B009",
@@ -54425,8 +55168,32 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
+            }
+          }
+        ]
       },
       {
         "feature_id": "B010",
@@ -54579,8 +55346,32 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-05 bounded Python common semantics/native task nodes/routing/private checkpoint foundation verified; full feature/advanced native/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-05",
+            "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+            "scope": "Native StateGraph task nodes and conditional routing preserve the admitted common scope/pipeline fixtures. Typed private JSON channels use SDK default overwrite behavior; checkpoints isolate invocations, resume pending tasks and skip completed tasks/child scopes. This does not qualify native YAML extensions, autonomous agent graphs, custom reducers/channels, dynamic interrupts/Command/Send, durable winner/event/timer/side-effect recovery, all proposed inventory tests or JS.",
+            "tests": [
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_langgraph_adapter.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/ci/test_engine_benchmark.py"
+            ],
+            "validation": {
+              "CI": 38137735635,
+              "CI (push)": 38137731911,
+              "External Sandbox CI": 38137735617,
+              "PostgreSQL CI": 38137735715,
+              "Agent Framework CI (optional)": 38137735666,
+              "Security": 38137735602,
+              "Docs": 38137735580
+            }
+          }
+        ]
       },
       {
         "feature_id": "B017",
@@ -56169,29 +56960,64 @@
         "module": "M03",
         "description": "Compile individual tasks and routing to native LangGraph nodes/tasks; keep native checkpoints private.",
         "effort": "L",
-        "status": "In progress",
+        "status": "Complete",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "evidence": {
-          "scope": "Python admitted task scopes lower to native LangGraph StateGraph nodes/conditional routing; common task semantics and private native checkpoint identities/channels are preserved. Exact remote acceptance pending; advanced native/extension/agent/JS features remain staged.",
+          "commit": "6a3afd793c170f38c5547bf9218ce83e4e04e265",
+          "scope": "Python admitted task scopes lower to native LangGraph StateGraph nodes/conditional routing with common task semantics, original task pointers, private synchronous JSON checkpoints and invocation-isolated native identities. Advanced native/extension/agent/JS features retain their later-stage ownership.",
           "tests": [
             "tests/langgraph/test_native_task_graph.py",
+            "tests/langgraph/test_langgraph_adapter.py",
             "tests/core/test_workflow.py",
             "tests/contract/test_scoped_flow.py",
             "tests/contract/test_data_pipeline.py",
             "tests/contract/test_operator_lifecycle.py",
             "tests/ci/test_engine_benchmark.py"
           ],
-          "local_root": {
+          "local_root_before_backend_selection": {
             "passed": 977,
             "skipped": 20,
             "coverage_percent": 91.23
           },
           "native_matrices": {
             "adk": 389,
-            "langgraph": 395,
+            "langgraph": {
+              "passed": 396,
+              "skipped": 3
+            },
             "agent_framework_optional": 526
           },
-          "remote_acceptance": "Pending",
+          "sdk_without_sqlite": {
+            "passed": 8,
+            "skipped": 10
+          },
+          "ci_root": {
+            "passed": 982,
+            "skipped": 20,
+            "coverage_percent": 91.26
+          },
+          "ci_shared_contract": 287,
+          "ci_langgraph_native_contract": {
+            "passed": 300,
+            "skipped": 3
+          },
+          "ci_langgraph_ctk": 96,
+          "ci_postgres_without_sqlite": {
+            "passed": 6,
+            "skipped": 4
+          },
+          "windows_native_task_step": "success",
+          "runs": {
+            "CI": 38137735635,
+            "CI (push)": 38137731911,
+            "External Sandbox CI": 38137735617,
+            "PostgreSQL CI": 38137735715,
+            "Agent Framework CI (optional)": 38137735666,
+            "Security": 38137735602,
+            "Docs": 38137735580
+          },
+          "remote_acceptance": "All success",
+          "compatibility_limit": "Earlier Functional API native checkpoints are preserved but not silently migrated; full native/common reconciliation and historical in-flight migration remain S2-03/S2-09.",
           "full_conformance": false
         }
       },
