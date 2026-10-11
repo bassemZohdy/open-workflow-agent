@@ -41230,7 +41230,7 @@
         "direction": "OWS to LangGraph",
         "stage": 2,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T07",
         "effort": "L",
@@ -41275,7 +41275,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A031",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -41285,7 +41285,7 @@
         "direction": "OWS to LangGraph",
         "stage": 2,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T07",
         "effort": "L",
@@ -41330,7 +41330,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A032",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -53000,7 +53000,7 @@
         "direction": "OWS to LangGraph",
         "stage": 2,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T06; P-AS143",
         "effort": "L",
@@ -53022,7 +53022,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS143",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -64602,11 +64602,8 @@
             "skipped": 3
           },
           "pending": [
-            "Native replay after a previous completed repeated-race occurrence",
-            "End originating outside a competitive scope",
-            "Configured native PostgreSQL restart fixtures",
-            "Affected feature audit refresh at the verified executor commit",
-            "Fresh exact GitHub integration acceptance gates"
+            "Additional configured native PostgreSQL repeated-scope restart fixtures",
+            "Fresh exact fixture/audit GitHub follow-up gates"
           ],
           "full_conformance": false,
           "local_full_root": {
@@ -64632,7 +64629,7 @@
               "expected_assertion_failures": 3
             }
           },
-          "validation": "Frozen full local root/native/shared/CTK suites, five builds, locks, strict typing, formatting, lint and links pass. Configured database/remote acceptance and remaining recovery cases pending.",
+          "validation": "All exact runtime gates pass. Frozen full local runtime suites remain valid for unchanged code; additional repeated-scope/end fixtures pass independently. Fresh fixture/audit and configured repeated-scope database gates pending.",
           "foundation_validation": {
             "commit": "7f82470c794e6584302fb828164a7c14c003cd31",
             "local_full_root": {
@@ -64667,10 +64664,42 @@
             "status": "All foundation gates passed; these do not qualify the later executor integration."
           },
           "local_competitive_contracts": {
-            "root_and_principal_environments": 42,
-            "optional_environment": 63,
-            "configured_postgresql": "Pending; skips are not acceptance evidence."
-          }
+            "root_and_principal_environments": 56,
+            "optional_environment": 84,
+            "local_database_skips_principal": 26,
+            "local_database_skips_optional": 39,
+            "configured_postgresql": "Runtime winner cases passed; additional repeated-scope database fixtures pending."
+          },
+          "runtime_acceptance": {
+            "commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
+            "runs": {
+              "CI": 38152109920,
+              "CI (push)": 38152106466,
+              "External Sandbox CI": 38152109950,
+              "PostgreSQL CI": 38152109956,
+              "Agent Framework CI (optional)": 38152109988,
+              "Security": 38152110041,
+              "Docs": 38152109917
+            },
+            "result": "All success",
+            "ci_root": {
+              "passed": 1222,
+              "skipped": 47,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.76
+            },
+            "ci_shared_contract": {
+              "passed": 483,
+              "skipped": 16,
+              "expected_assertion_failures": 3
+            },
+            "native_postgresql_winner_restarts": {
+              "adk": 8,
+              "langgraph": 8
+            },
+            "scope": "Exact runtime qualification; additional repeated-scope fixtures and refreshed audit await configured follow-up gates."
+          },
+          "additional_recovery_commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283"
         }
       },
       {

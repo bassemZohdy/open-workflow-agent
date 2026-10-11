@@ -9,10 +9,11 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`ad33b4f`, which retains the ordered fork correction and adds shared restart
-evidence across adapters. Exact runtime GitHub acceptance at `6c84072` and the
-additional unchanged-runtime test qualification are recorded in
-[PROJECT.md](../PROJECT.md#s2-01-ordered-fork-results--2026-10-11-verified).
+`5dbc181`, which retains the ordered fork correction, adds durable competitive
+decisions and verifies repeated-scope restart across adapters. Exact runtime
+GitHub acceptance at `2fbe548` passed; the additional unchanged-runtime fixtures
+and refreshed audit await their configured follow-up gates. S2-02 remains open;
+see [current evidence](../PROJECT.md#s2-02-competitive-fork-decisions--in-progress).
 Hashes of reviewed Git file contents preserve the evidence baseline. The
 manifest's `previous_reviews` retains the earlier S1-08 acceptance and points
 to its immutable artifact. Historical green gates do not qualify changed code.
@@ -21,8 +22,8 @@ to its immutable artifact. Historical green gates do not qualify changed code.
 
 | Python audit outcome | Features | Meaning |
 | --- | ---: | --- |
-| Qualified subset | 178 | Specific bounded behavior has tests; full inventory criteria remain unverified |
-| Partial | 152 | Some requested behavior exists, with explicit missing scope |
+| Qualified subset | 181 | Specific bounded behavior has tests; full inventory criteria remain unverified |
+| Partial | 149 | Some requested behavior exists, with explicit missing scope |
 | Behavior mismatch | 32 | Accepted behavior differs from the tracked construct |
 | Rejected | 197 | Admission/client guard rejects the request; this is failure evidence, not implemented support |
 | Inert | 27 | Field is accepted/preserved without its requested effect |
@@ -51,7 +52,7 @@ not be read as current delivery status.
 | Finding | Actual behavior and evidence boundary | Repair owner |
 | --- | --- | --- |
 | Ordered fork output and collisions | Ordered branch arrays, isolated exports, explicit jq aggregation and failure cleanup pass shared fixtures. SQLite/PostgreSQL native fork restart and exact runtime GitHub gates pass; additional shared output restart passes every adapter | S2-01 verified; full criteria remain S4-03/S4-04 |
-| Competitive fork durability | In-process winner/cancel/drain exists; winner selection and effects are not durably reconciled | S2-02, S2-08 |
+| Competitive fork durability | First observed completion, cancellation intents and distinct occurrence identity are persisted. Fresh SQLite restart replays values/null/fault/end without branch calls; configured PostgreSQL winner replay passed both principal native adapters. Repeated-scope PostgreSQL fixtures and exact artifact gates are pending; external-action reconciliation/compensation is not established | S2-02 acceptance pending; general effects S2-03/S2-08; full criteria S4-03/S4-04 |
 | Native checkpoint recovery | Root/nested/loop/function/import/schema scopes recover completed calls with private savers; pending effects and common/native transactions remain unproved, and explicit null resume uses a missing-value sentinel | S2-03 |
 | Retry and timeout declarations | Predicates/count/basic backoff work; jitter and duration limits are inert, and original deadlines are not persisted | S2-04 |
 | Events and timers | Active process-local listeners and persisted after/every schedules exist; durable general inbox/outbox/timers/correlation/cron/on are missing. Explicit null event data is omitted | S2-05, S2-06 |

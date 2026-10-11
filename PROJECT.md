@@ -65,10 +65,31 @@ pass. Interruption before any decision restarts with a new winner, and repeated
 transitions retain distinct decisions on every adapter. All locks, five package
 builds, formatting, lint, strict typing and documentation links pass.
 
-Native recovery of repeated races after a prior completed occurrence, an end
-originating outside a competitive scope, configured PostgreSQL restart and
-fresh exact GitHub integration gates remain pending. The affected feature audit
-also awaits the verified executor commit. S2-02 stays open. These records do not establish
+All exact runtime GitHub gates at `2fbe548` passed: [CI
+38152109920](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152109920),
+[push CI 38152106466](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152106466),
+[PostgreSQL 38152109956](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152109956),
+[external sandbox 38152109950](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152109950),
+[Agent Framework 38152109988](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152109988),
+[security 38152110041](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152110041),
+and [documentation 38152109917](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152109917).
+The configured database job executes eight winner/null/fault/end restart cases
+on each principal native adapter, including interruption during cleanup, and
+both PostgreSQL runtime images pass restart acceptance. Linux root CI passes
+1,222 tests with 47 skips, three expected failures and 91.76% coverage; shared
+contracts pass 483 with 16 database skips. Its selected native jobs pass ADK 489
+and LangGraph 502; optional Agent Framework passes 782.
+
+Additional fixtures at `5dbc181` prove SQLite native recovery after a prior
+completed occurrence in loops, reusable calls, nested races, transitions and
+catch retries. An end originating outside a competitive scope drains it without
+inventing a winner. The whole competitive file passes 56 principal/root cases
+with 26 database skips, and 84 optional-adapter cases with 39 skips. The prior
+full suites qualify unchanged runtime code; these additional fixtures pass
+independently. The affected audit now records their exact source commit and
+retains the earlier immutable receipts. Repeated-scope PostgreSQL qualification
+and exact follow-up fixture/audit gates remain pending. S2-02 stays open.
+These records do not establish
 general pending-effect reconciliation, exactly-once external actions, durable
 timers, native metadata extensions or full conformance. A separate observed
 built-in error-status catch fallback gap remains tracked for S2-04.

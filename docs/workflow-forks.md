@@ -82,5 +82,9 @@ The [competitive fixtures](../tests/contract/test_competitive_forks.py) exercise
 completion order, fault/null/end, cancellation before a winner, losing waits,
 loop/reusable/nested/retry identity and fresh-service replay at cleanup
 boundaries. Configured PostgreSQL fixtures are in its integration gate. S2-02
-remains open until its remaining failure/restart cases and fresh acceptance
-gates pass; see [current evidence](../PROJECT.md#s2-02-competitive-fork-decisions--in-progress).
+also verifies restart after earlier completed occurrences in loop, reusable,
+nested, transition and catch-retry scopes, and an end originating outside a
+competitive scope. The cancellable losing operation never reaches its simulated
+committed effect. Runtime PostgreSQL winner replay and all exact runtime gates passed;
+additional repeated-scope database and audit gates remain pending. S2-02 stays
+open; see [current evidence](../PROJECT.md#s2-02-competitive-fork-decisions--in-progress).

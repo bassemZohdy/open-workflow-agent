@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "reviewed_implementation_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8",
+  "reviewed_implementation_commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
   "acceptance_record_commit": null,
   "purpose": "Exhaustive current implementation audit, not a full conformance certificate or feature completion claim",
   "review_method": "Each semantic construct and schema parent was compared with active admission/execution/native code and existing assertion scope. Missing/inert/mismatched behavior retains explicit owners. Source/API availability and copied material are not runtime proof.",
@@ -23,46 +23,48 @@
   "schema_constraint_status": "774 structural inventory constraints remain separate from runtime behavior and complete schema execution coverage",
   "acceptance": {
     "local_root": {
-      "passed": 1153,
-      "skipped": 30,
+      "commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
+      "passed": 1218,
+      "skipped": 51,
       "expected_assertion_failures": 3,
-      "coverage_percent": 91.67
+      "coverage_percent": 91.72
     },
     "native_matrices": {
+      "commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
       "adk": {
-        "passed": 539,
+        "passed": 585,
+        "skipped": 16,
         "expected_assertion_failures": 3
       },
       "langgraph": {
-        "passed": 549,
-        "skipped": 6,
+        "passed": 598,
+        "skipped": 23,
         "expected_assertion_failures": 3
       },
       "agent_framework_optional": {
-        "passed": 713,
+        "passed": 782,
+        "skipped": 24,
         "expected_assertion_failures": 3
       }
     },
     "additional_focused": {
-      "shared_root": 16,
-      "shared_adk": 16,
-      "shared_langgraph_and_native": {
-        "passed": 27,
-        "skipped": 7
-      },
-      "shared_agent_framework_optional": 24,
-      "native_collision_and_reducer_primitives": 2
+      "commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
+      "competitive_root": 56,
+      "competitive_adk": 56,
+      "competitive_langgraph": 56,
+      "competitive_agent_framework_optional": 84,
+      "postgresql_cases": "Awaiting configured follow-up gate"
     },
-    "scope": "Local and exact remote runtime assertions qualify bounded noncompetitive fork results. SQLite/PostgreSQL native result/effect restart passed. Additional shared output restart passes every adapter without certifying general pending-side-effect transactions. Public native extensions, independent JS and full proposed criteria remain unimplemented/unqualified.",
-    "remote_status": "S2-01 runtime and shared restart follow-up gates accepted; new milestone work remains unqualified",
+    "scope": "Runtime code is unchanged from exact accepted 2fbe548; additional repeated-scope/end fixtures pass independently. Full proposed criteria and JS remain unverified.",
+    "remote_status": "Runtime acceptance passed; additional repeated-scope fixtures and refreshed audit await exact follow-up gates.",
     "remote_runs": {
-      "CI": 38148408731,
-      "CI (push)": 38148405147,
-      "External Sandbox CI": 38148408720,
-      "PostgreSQL CI": 38148408705,
-      "Agent Framework CI (optional)": 38148408693,
-      "Security": 38148408820,
-      "Docs": 38148408742
+      "CI": 38152109920,
+      "CI (push)": 38152106466,
+      "External Sandbox CI": 38152109950,
+      "PostgreSQL CI": 38152109956,
+      "Agent Framework CI (optional)": 38152109988,
+      "Security": 38152110041,
+      "Docs": 38152109917
     }
   },
   "evidence_groups": {
@@ -621,9 +623,9 @@
       "test_scope": "Shared deterministic Python fixtures on both principal engines and optional Agent Framework: reverse completion, all JSON value types, nested ordered arrays, branch snapshots/exports, explicit jq aggregation/merge and failure cleanup. Real SQLite native restart preserves ordered outputs and completed calls; configured PostgreSQL counterpart passed CI. Full proposed criteria and independent JS remain unexecuted. Shared fresh-service output restart passes every supported adapter separately."
     },
     "compete": {
-      "outcome": "partial",
-      "observed": "FIRST_COMPLETED chooses a completed branch; simultaneous done branches use declaration order. Pending sibling tasks are cancelled and drained in-process.",
-      "remaining_scope": "Winner identity/order and cancellation are not durable across crashes; side-effect reconciliation remains missing.",
+      "outcome": "qualified_subset",
+      "observed": "First observed completion is committed before loser cancellation. The first claim retains value/null/fault/end output, source diagnostics and cancellation intents. Private invocation/fingerprint/call-site/ancestor/attempt coordinates distinguish races. Fresh SQLite services replay committed decisions without invoking branches, including interrupted cleanup and repeated loops/reusable/nested/transition/catch-retry scopes. Cancellation before a winner stores none; yielding loser cleanup is drained and the cancellable loser side-effect spy stays zero.",
+      "remaining_scope": "Additional repeated-scope PostgreSQL and exact fixture/audit gates await configured acceptance. General pending external-action reconciliation/compensation and complete proposed backend/operational criteria remain later work; cancellation does not reverse an already committed action. Independent JS is unimplemented.",
       "remediation_tasks": [
         "S2-02",
         "S2-08",
@@ -632,25 +634,105 @@
       "code": [
         {
           "path": "core/src/open_workflow_agent/workflow.py",
-          "symbol": "WorkflowExecutor._run_fork"
+          "symbol": "WorkflowExecutor._run_competing_fork"
+        },
+        {
+          "path": "core/src/open_workflow_agent/workflow.py",
+          "symbol": "WorkflowExecutor._fork_decision_result"
+        },
+        {
+          "path": "core/src/open_workflow_agent/workflow.py",
+          "symbol": "WorkflowExecutor._run_task_item"
+        },
+        {
+          "path": "core/src/open_workflow_agent/forks.py",
+          "symbol": "ForkIdentity.key"
+        },
+        {
+          "path": "core/src/open_workflow_agent/forks.py",
+          "symbol": "ForkDecisionStore.claim"
+        },
+        {
+          "path": "core/src/open_workflow_agent/forks.py",
+          "symbol": "ForkDecisionStore.get"
+        },
+        {
+          "path": "core/src/open_workflow_agent/forks.py",
+          "symbol": "ForkDecisionStore.mark_drained"
+        },
+        {
+          "path": "engines/langgraph/src/open_workflow_agent_langgraph/graph.py",
+          "symbol": "_snapshot"
+        },
+        {
+          "path": "engines/langgraph/src/open_workflow_agent_langgraph/graph.py",
+          "symbol": "_restore"
         }
       ],
       "tests": [
         {
-          "path": "tests/core/test_fork.py",
-          "symbol": "test_competing_fork_returns_only_the_first_completed_branch"
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_later_declared_first_completion_is_recorded_and_loser_cleanup_is_drained"
         },
         {
-          "path": "tests/contract/test_scoped_flow.py",
-          "symbol": "test_end_in_fork_cancels_inflight_sibling_and_concludes_workflow"
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_repeated_loop_races_have_distinct_decisions"
+        },
+        {
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_repeated_transition_runs_a_new_race"
+        },
+        {
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_restart_without_a_decision_can_choose_a_new_winner"
+        },
+        {
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_end_outside_a_competitive_scope_drains_it_without_choosing_its_winner"
+        },
+        {
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_repeated_race_restart_keeps_occurrences_and_never_repeats_committed_branches"
+        },
+        {
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_storage_failure_faults_and_drains_losers_without_a_winner"
+        },
+        {
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_cancellation_before_completion_drains_both_branches_without_a_decision"
+        },
+        {
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_a_losing_wait_does_not_leave_the_invocation_waiting"
+        },
+        {
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_catch_retry_starts_a_distinct_race_after_a_faulted_winner"
+        },
+        {
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_restart_after_winner_commit_replays_decision_without_starting_either_branch"
+        },
+        {
+          "path": "tests/core/test_fork.py",
+          "symbol": "test_ready_scope_completions_do_not_override_the_first_observed_winner"
+        },
+        {
+          "path": "tests/core/test_fork_decisions.py",
+          "symbol": "test_simultaneous_independent_connections_agree_on_one_committed_winner"
+        },
+        {
+          "path": "tests/core/test_postgres_persistence.py",
+          "symbol": "test_postgres_fork_decision_claim_and_cleanup_survive_independent_connections"
         }
       ],
-      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
+      "test_scope": "Identical deterministic Python contract fixtures on each principal native adapter and optional Agent Framework; independent common-store races and configured native PostgreSQL winner replay. Additional repeated-scope configured database qualification is pending. First-observed tie/error policy is documented; full proposed criteria and JS are unclaimed."
     },
     "end": {
       "outcome": "qualified_subset",
-      "observed": "Whole-workflow end cancels/drains siblings, preserves ending ancestors and surfaces their validation failures; exit returns to containing scope.",
-      "remaining_scope": "Competitive winner persistence and post-crash cancellation are separate unqualified behaviors.",
+      "observed": "Whole-workflow end cancels/drains siblings, preserves ending ancestors and surfaces their validation failures; exit returns to containing scope. Competitive end is durably recorded before cancelling losers; sibling/end ownership does not fabricate an inner-race winner.",
+      "remaining_scope": "General post-crash external-action reconciliation, compensation, full proposed criteria and independent JS remain unqualified.",
       "remediation_tasks": [
         "S2-02",
         "S2-08",
@@ -678,9 +760,17 @@
         {
           "path": "tests/contract/test_scoped_flow.py",
           "symbol": "test_loop_scope_exit_continues_iterations_and_end_stops_them"
+        },
+        {
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_end_outside_a_competitive_scope_drains_it_without_choosing_its_winner"
+        },
+        {
+          "path": "tests/contract/test_competitive_forks.py",
+          "symbol": "test_restart_after_winner_commit_replays_decision_without_starting_either_branch"
         }
       ],
-      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
+      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted; fresh-service competitive end replay and external-end ownership are also exercised."
     },
     "children": {
       "outcome": "partial",
@@ -3048,7 +3138,7 @@
       "construct": "fork compete true",
       "category": "Control flow",
       "evidence_group": "compete",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A031 (Competitive winner) at fork compete true: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -3069,7 +3159,7 @@
       "construct": "fork compete true composite lifetime",
       "category": "Control flow",
       "evidence_group": "compete",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A032 (Race loser cancellation) at fork compete true composite lifetime: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -9721,7 +9811,7 @@
       "construct": "/$defs/forkTask/allOf/1/properties/fork/properties/compete",
       "category": "Control flow",
       "evidence_group": "compete",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS143 (compete) at /$defs/forkTask/allOf/1/properties/fork/properties/compete: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16490,8 +16580,8 @@
     "behavior_mismatch": 32,
     "inert": 27,
     "internal_only": 9,
-    "partial": 152,
-    "qualified_subset": 178,
+    "partial": 149,
+    "qualified_subset": 181,
     "rejected": 197,
     "unimplemented": 63
   },
@@ -16528,6 +16618,7 @@
     "core/src/open_workflow_agent/events.py": "de8b1a59b0ea3903b3c18766e31e061f2c014ea38140c48ef3262da6df733a67",
     "core/src/open_workflow_agent/expressions.py": "636b7f7157dfaefd1e2a526855e73b7e764100e86a09dd810043aff2dcedf555",
     "core/src/open_workflow_agent/external_catalog.py": "65fbd1d9ce7bab4cd4c0c894d0235cc2f5b79d94f438759044a3bcc6e0630269",
+    "core/src/open_workflow_agent/forks.py": "aa69a7821f6d118a9fba2622bd6b7f09436a864a2954ef8e926385bb76dccc97",
     "core/src/open_workflow_agent/lifecycle.py": "4ded49a2189ab7d949f3d28eaa62c9b1a5f09ccd00f36e29b2469ab4ce04386d",
     "core/src/open_workflow_agent/metrics.py": "ae77ce4fb502ac7e45783a3553256a3d867216fdedacfa4b57944f2391ab730d",
     "core/src/open_workflow_agent/observability.py": "dcc23fa1bd4e84cb4bcb0f2db5758e483a4d6cf24b7f85c4be80e9f7e434c7c9",
@@ -16537,14 +16628,15 @@
     "core/src/open_workflow_agent/sandbox/validation.py": "ce392be7a493910554f1f04f5274f0e9fd38feb02de51d69a96926ed261f6f9d",
     "core/src/open_workflow_agent/scheduling.py": "1754a966ad88005f73a868ae8436a2561d5c94ea651ba720a28f59f49fe42340",
     "core/src/open_workflow_agent/security.py": "8ff318e0a96e8a54b833abc279d5a43f1a574d5f3ecca6c2a3c3856e564c566a",
-    "core/src/open_workflow_agent/services.py": "aae2302179c9e4a3620cff723f96c6772d3106244476e3daeadca4137c9d7a2f",
+    "core/src/open_workflow_agent/services.py": "3bb2eb84de7b86b93d411b534ab9e1d6e6da2ed672958134c82155dffc5a45cf",
     "core/src/open_workflow_agent/versions.py": "c1654fcf4326705628b9e2aa4983af5a5d038915afa0e911b63c2dff712e31d5",
-    "core/src/open_workflow_agent/workflow.py": "fa7495f873fd43764072054c088a1843abcd80171d9d1cb9c587ae236fd5fa3d",
+    "core/src/open_workflow_agent/workflow.py": "eb599ff527c91b4dc4b050c7ca138bbdf8dec370b1daa37c7346e0cc964785bf",
     "core/src/open_workflow_agent/workflow_catalog.py": "eef1ccfaa2238c25f6c9b5378475b8d105da9373697c09dec58596a192f6321a",
-    "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "8bc53fd97df1f849576cb97954e2c09410a2bf2bde454a117eed503f465eecdb",
+    "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "3358b9015a4e28d742a3bae05d1d93794a638b7510d10928025145c1c4c018c7",
     "engines/langgraph/src/open_workflow_agent_langgraph/native.py": "32806907d0c4b5d415966060281cfaf7485edcbd4c87568a110e1fda3ca3b7f7",
     "tests/contract/test_catalog_bindings.py": "92f619a91d0d2de0e54b3d1a137abeb8c02c1c6753930e28d7f07dd104228bef",
     "tests/contract/test_cloud_events.py": "db37015b35d525268aae32c261d91839ab9c5b4834450a74e0eacbb5664cdbcc",
+    "tests/contract/test_competitive_forks.py": "e80f3b5c906c65b9f05b5c91e67aadd8e25d8fb53ef75bc43eff2070f637dc75",
     "tests/contract/test_container_sandbox_contract.py": "0fddc4b529f6fa2a195334c499c110b9252f6eb98a7ad67a750027001c349457",
     "tests/contract/test_contract_scheduling.py": "5a601e9f11ff4228782bbceb8302e5ce04d656a85952fe3cb214b0c68b40aaee",
     "tests/contract/test_contract_subworkflows.py": "8013d2d302ea4fd4342aabbddbeb44a969b12f042f64165a367097944f670ab2",
@@ -16566,10 +16658,12 @@
     "tests/core/test_a2a_task_routes.py": "6e873d3c555843f3eb63f74e3f5de3714f6149c51a967de85c247ddd7c0e74bb",
     "tests/core/test_core_scheduling.py": "586b2edc9696d7b1980861d03f060335e2f33d0aabce55916db3122323b77361",
     "tests/core/test_events.py": "b828873bbfa3e6fe3680c6dcaf6dd49262ccac2649f45fb25a677298014c36a9",
-    "tests/core/test_fork.py": "bfef5824eef414843b3ddad8f6504a9aec2eb7b69f1403b629d8e6f9c9581764",
+    "tests/core/test_fork.py": "4effe82efbdc812b546b8e3cab38d51fe20d613926edceac638168fb9a61fa27",
+    "tests/core/test_fork_decisions.py": "edda71c33ba4c69979dd95f778afcd7acb197671083038a046c1c57982942ee7",
     "tests/core/test_lifecycle.py": "77284929b7c478c6296b37a5aeb39871d063ece7d428b8273e333b0b34352f64",
     "tests/core/test_metrics.py": "849dad8e0308ff6262cf2da1a4bb9b1a224a2dfb92fe2ac46ce670c833436072",
     "tests/core/test_observability.py": "62045b6f53fba0eac7616fb0a19ae981dd780e4ffc6de9b56e8eff8da7fa3f06",
+    "tests/core/test_postgres_persistence.py": "4a42a2406763f407f8214feea52319b28c59810d8d8dd028f517df12f53771d9",
     "tests/core/test_protocols.py": "2dcb17cb0e111901cdb85eea44edb7f7762c3c3106dd9387b9219efdf0701681",
     "tests/core/test_sandbox_validation.py": "fe06321287414eb1b0808600c38d31a0641b117097500862b5d9b7a18f0877a8",
     "tests/core/test_security.py": "ebb77bd3bea00c442d2f23ca1a214e4616e1d8d3c056155266c06626a0607044",
@@ -16667,66 +16761,195 @@
           }
         }
       }
+    },
+    {
+      "artifact_commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
+      "path": "resources/compatibility/implementation-audit.json",
+      "reviewed_implementation_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8",
+      "acceptance_record_commit": null,
+      "acceptance": {
+        "local_root": {
+          "passed": 1153,
+          "skipped": 30,
+          "expected_assertion_failures": 3,
+          "coverage_percent": 91.67
+        },
+        "native_matrices": {
+          "adk": {
+            "passed": 539,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 549,
+            "skipped": 6,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 713,
+            "expected_assertion_failures": 3
+          }
+        },
+        "additional_focused": {
+          "shared_root": 16,
+          "shared_adk": 16,
+          "shared_langgraph_and_native": {
+            "passed": 27,
+            "skipped": 7
+          },
+          "shared_agent_framework_optional": 24,
+          "native_collision_and_reducer_primitives": 2
+        },
+        "scope": "Local and exact remote runtime assertions qualify bounded noncompetitive fork results. SQLite/PostgreSQL native result/effect restart passed. Additional shared output restart passes every adapter without certifying general pending-side-effect transactions. Public native extensions, independent JS and full proposed criteria remain unimplemented/unqualified.",
+        "remote_status": "S2-01 runtime and shared restart follow-up gates accepted; new milestone work remains unqualified",
+        "remote_runs": {
+          "CI": 38148408731,
+          "CI (push)": 38148405147,
+          "External Sandbox CI": 38148408720,
+          "PostgreSQL CI": 38148408705,
+          "Agent Framework CI (optional)": 38148408693,
+          "Security": 38148408820,
+          "Docs": 38148408742
+        }
+      },
+      "audit_acceptance": {
+        "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+        "runs": {
+          "CI": 38148408731,
+          "CI (push)": 38148405147,
+          "External Sandbox CI": 38148408720,
+          "PostgreSQL CI": 38148408705,
+          "Agent Framework CI (optional)": 38148408693,
+          "Security": 38148408820,
+          "Docs": 38148408742
+        },
+        "result": "All success",
+        "ci_root": {
+          "passed": 1159,
+          "skipped": 30,
+          "expected_assertion_failures": 3,
+          "coverage_percent": 91.7
+        },
+        "ci_shared_contract": {
+          "passed": 439,
+          "expected_assertion_failures": 3
+        },
+        "native_ci": {
+          "adk": {
+            "passed": 445,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 458,
+            "skipped": 7,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 716,
+            "expected_assertion_failures": 3
+          }
+        },
+        "additional_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8",
+        "additional_local_shared": {
+          "root": 18,
+          "adk": 18,
+          "langgraph": 18,
+          "agent_framework_optional": 27
+        },
+        "scope": "Exact runtime gates passed at the accepted commit; all follow-up gates for additional shared restart/record revision passed at a83a474. Full inventory criteria remain unclaimed.",
+        "follow_up": {
+          "commit": "a83a474c65ed6fdabe4c82531d957bb95158e045",
+          "runs": {
+            "CI": 38149279907,
+            "CI (push)": 38149276892,
+            "External Sandbox CI": 38149279962,
+            "PostgreSQL CI": 38149279918,
+            "Agent Framework CI (optional)": 38149279905,
+            "Security": 38149279877,
+            "Docs": 38149279876
+          },
+          "result": "All success",
+          "scope": "Exact additional shared restart fixture and acceptance-record revision; no S2-02 runtime storage code is included"
+        }
+      },
+      "outcome_counts": {
+        "behavior_mismatch": 32,
+        "inert": 27,
+        "internal_only": 9,
+        "partial": 152,
+        "qualified_subset": 178,
+        "rejected": 197,
+        "unimplemented": 63
+      },
+      "gap_probes": {
+        "path": "tests/contract/test_implementation_audit_gaps.py",
+        "passed": 8,
+        "expected_assertion_failures": 3,
+        "unexpected_passes": 0,
+        "scope": "Ordered fork probes now pass; OpenAPI, raw binary and null event-data assertion failures retain strict expected-failure markers and repair owners.",
+        "independent_environments": {
+          "adk": {
+            "passed": 8,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 8,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 9,
+            "expected_assertion_failures": 3
+          }
+        }
+      }
     }
   ],
   "audit_acceptance": {
-    "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+    "commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
     "runs": {
-      "CI": 38148408731,
-      "CI (push)": 38148405147,
-      "External Sandbox CI": 38148408720,
-      "PostgreSQL CI": 38148408705,
-      "Agent Framework CI (optional)": 38148408693,
-      "Security": 38148408820,
-      "Docs": 38148408742
+      "CI": 38152109920,
+      "CI (push)": 38152106466,
+      "External Sandbox CI": 38152109950,
+      "PostgreSQL CI": 38152109956,
+      "Agent Framework CI (optional)": 38152109988,
+      "Security": 38152110041,
+      "Docs": 38152109917
     },
     "result": "All success",
     "ci_root": {
-      "passed": 1159,
-      "skipped": 30,
+      "passed": 1222,
+      "skipped": 47,
       "expected_assertion_failures": 3,
-      "coverage_percent": 91.7
+      "coverage_percent": 91.76
     },
     "ci_shared_contract": {
-      "passed": 439,
+      "passed": 483,
+      "skipped": 16,
       "expected_assertion_failures": 3
     },
     "native_ci": {
       "adk": {
-        "passed": 445,
+        "passed": 489,
+        "skipped": 16,
         "expected_assertion_failures": 3
       },
       "langgraph": {
-        "passed": 458,
-        "skipped": 7,
+        "passed": 502,
+        "skipped": 23,
         "expected_assertion_failures": 3
       },
       "agent_framework_optional": {
-        "passed": 716,
+        "passed": 782,
+        "skipped": 24,
         "expected_assertion_failures": 3
       }
     },
-    "additional_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8",
-    "additional_local_shared": {
-      "root": 18,
-      "adk": 18,
-      "langgraph": 18,
-      "agent_framework_optional": 27
+    "configured_postgresql": {
+      "adk_winner_restarts": 8,
+      "langgraph_winner_restarts": 8,
+      "common_native_job": 114507511474,
+      "runtime_images": "Both principal images passed start/restart acceptance"
     },
-    "scope": "Exact runtime gates passed at the accepted commit; all follow-up gates for additional shared restart/record revision passed at a83a474. Full inventory criteria remain unclaimed.",
-    "follow_up": {
-      "commit": "a83a474c65ed6fdabe4c82531d957bb95158e045",
-      "runs": {
-        "CI": 38149279907,
-        "CI (push)": 38149276892,
-        "External Sandbox CI": 38149279962,
-        "PostgreSQL CI": 38149279918,
-        "Agent Framework CI (optional)": 38149279905,
-        "Security": 38149279877,
-        "Docs": 38149279876
-      },
-      "result": "All success",
-      "scope": "Exact additional shared restart fixture and acceptance-record revision; no S2-02 runtime storage code is included"
-    }
+    "additional_shared_recovery_commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
+    "scope": "Exact runtime gates passed. New repeated-scope PostgreSQL fixtures and current artifact gates remain pending; S2-02 stays open."
   }
 }
