@@ -86,7 +86,7 @@ async def test_native_scope_has_individual_nodes_conditional_edges_and_private_j
     assert not hasattr(result, "snapshot")
 
 
-@pytest.mark.parametrize("scope", ["root", "do", "for"])
+@pytest.mark.parametrize("scope", ["root", "do", "for", "function"])
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_restart_resumes_pending_native_task_without_replaying_completed_call(
     tmp_path, scope, backend
@@ -125,6 +125,11 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
         else [{"parent": {"do": body, **({"for": {"in": "${ [1] }"}} if scope == "for" else {})}}]
     )
     plan = _plan(tasks)
+    if scope == "function":
+        workflow = generate_default_workflow()
+        workflow["use"] = {"functions": {"reusable": {"do": body}}}
+        workflow["do"] = [{"parent": {"call": "reusable"}}]
+        plan = compile_workflow(workflow)
     services = RuntimeServices(config, model=FakeModel(), database_root=database_root)
     services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
     services.tools.protocols = services.protocols
@@ -140,7 +145,13 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
                 await asyncio.sleep(0.01)
         assert calls == [
             f"{handle.invocation_id}:"
-            + ("/do/0/sideEffect" if scope == "root" else "/do/0/parent/do/0/sideEffect")
+            + (
+                "/do/0/sideEffect"
+                if scope == "root"
+                else "/do/0/parent/call/reusable/do/0/sideEffect"
+                if scope == "function"
+                else "/do/0/parent/do/0/sideEffect"
+            )
         ]
         running.cancel()
         with pytest.raises(asyncio.CancelledError):

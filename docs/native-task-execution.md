@@ -8,6 +8,9 @@ export pipeline, errors, catalog and services. Core imports no framework SDK.
 Nested `do`, loop bodies, try/catch scopes and fork branches each run as native
 scope graphs. Loop/fork orchestration remains common; ordered fork results,
 reducers and durable competitive winners are separate Stage 2 work.
+Reusable task bodies also lower to native scopes per call site, while public
+descriptors retain the original definition pointers. See the
+[reusable definition contract](reusable-definitions.md).
 
 The adapter uses the pinned SDK's native memory, SQLite or PostgreSQL saver.
 Checkpoints contain JSON text for public execution data/bindings plus private

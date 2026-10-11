@@ -9,6 +9,7 @@ from typing import Any
 
 from ..catalog import FunctionCatalog
 from ..config import SandboxConfig
+from ..definitions import resolve_reusable_components
 from ..errors import UnsupportedWorkflowFeature, WorkflowSemanticError
 from ..workflow import (
     WorkflowPlan,
@@ -28,10 +29,11 @@ def validate_sandbox_capabilities(
     sandbox: SandboxConfig,
     trusted_catalogs: Mapping[str, Any] | None = None,
 ) -> None:
-    rewritten = copy.deepcopy(dict(workflow))
+    effective = resolve_reusable_components(workflow)
+    rewritten = copy.deepcopy(effective)
     _rewrite_executable_runs(rewritten, sandbox=sandbox, reference="")
     validate_capabilities(rewritten, trusted_catalogs=trusted_catalogs)
-    validate_expression_profile(workflow)
+    validate_expression_profile(effective)
 
 
 def compile_sandbox_workflow(
@@ -56,9 +58,12 @@ async def resolve_and_compile_sandbox_workflow(
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
-    await resolver.resolve_workflow(workflow, catalog)
     validate_sandbox_capabilities(workflow, sandbox=sandbox, trusted_catalogs=trusted_catalogs)
-    return normalize_workflow(workflow)
+    resolve_functions = getattr(resolver, "resolve_functions", None)
+    imports = await resolve_functions(workflow, catalog) if callable(resolve_functions) else ()
+    if not callable(resolve_functions):
+        await resolver.resolve_workflow(workflow, catalog)
+    return normalize_workflow(workflow, imports=imports)
 
 
 def _rewrite_executable_runs(value: Any, *, sandbox: SandboxConfig, reference: str) -> None:

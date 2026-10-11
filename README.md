@@ -365,3 +365,7 @@ pending archival. [TODO.md](TODO.md) contains staged implementation gaps; the
 [full tracker](resources/compatibility/feature-tracker.json) preserves every
 reviewed feature and proposed test. Imported references are not advertised as
 implemented capabilities.
+
+Reusable OWS task functions and named error/retry/timeout definitions use the
+[common resolution contract](docs/reusable-definitions.md), with original
+descriptors and immutable catalog content identity.

@@ -1308,6 +1308,7 @@ dependencies = [
     { name = "jsonschema" },
     { name = "pydantic" },
     { name = "pyyaml" },
+    { name = "referencing" },
     { name = "uvicorn" },
 ]
 
@@ -1337,6 +1338,7 @@ requires-dist = [
     { name = "pydantic", specifier = "==2.13.5" },
     { name = "pypdf", marker = "extra == 'knowledge'", specifier = "==6.18.1" },
     { name = "pyyaml", specifier = "==6.0.3" },
+    { name = "referencing", specifier = "==0.37.0" },
     { name = "uvicorn", specifier = "==0.53.0" },
 ]
 provides-extras = ["model", "knowledge", "postgres"]

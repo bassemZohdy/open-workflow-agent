@@ -22,6 +22,47 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
+### S1-07 reusable definitions and resource identity — local verification
+
+Core resolves reusable task functions, named errors, catch retry policies and
+task/workflow timeouts into separate immutable execution definitions. Original
+workflow/task definitions and escaped pointers remain available to descriptors.
+Reusable task pipelines preserve parameter data, nested scope behavior and
+context exports. Native scopes and operation ids distinguish call sites;
+private error routing keeps retry identity consistent with the failed action.
+No private error fields enter public diagnostics. Recursive function calls,
+protocol/catalog shadowing and unbounded expansion fail admission.
+
+Inline Draft 2020-12 references now require a network-free resource closure,
+including anchors, dynamic anchors, nested identifiers and escaped/percent
+encoded fragments. Data fields in schema const/examples/defaults are not
+references. Missing or non-schema targets fail admission; runtime validation
+has no network retriever. `referencing==0.37.0` is an explicit pinned dependency;
+the standalone core lock also now includes its already-required jq pin.
+
+Asynchronous compilers capture immutable external catalog content/URI/digest
+in the plan fingerprint. Application text cannot trigger imports, another
+compilation cannot replace captured content, and execution rechecks deployment
+endpoint/integrity policy. Protocol templates respect the workflow expression
+mode. Remote definitions use strict safe loading and official task validation;
+unimplemented task modifiers/imports/execution remain explicit rejections.
+Local workflow versions use SemVer precedence, reject ambiguous build ties
+and cannot overwrite an existing identity with changed content. See the
+[qualified resolution contract](docs/reusable-definitions.md).
+
+Final local root validation passed 1050 tests, 26 skips and 91.35% core coverage.
+Independent native/contract/CTK matrices passed ADK 442, LangGraph 450 with
+4 unconfigured PostgreSQL skips and optional Agent Framework 589. Reusable
+script/shell fixtures pass through the existing SandboxManager on both
+independent principal engines. Exact remote acceptance is pending. Ruff, formatting, strict mypy, five
+core/runtime locks, documentation links and root/core builds passed. Windows
+CI includes the new shared definitions/import/reference fixtures; PostgreSQL
+native recovery also includes a reusable function scope. Authentication,
+secrets, extensions, full reliability/proposed inventory tests and independent
+JS retain their later-stage ownership. S1-07 remains unchecked; no release is
+published.
+
+
 ### S1-06 embedded/bootstrap defaults — 2026-10-11 (verified)
 
 Repository Compose now starts only the selected engine with embedded SQLite;

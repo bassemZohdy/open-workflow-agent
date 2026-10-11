@@ -145,7 +145,13 @@ class LangGraphScopeExecutor:
                     state.stop = True
                     return self._write(state)
                 executor._token(state).checkpoint()
-                await executor._run_task_item(task.name, task.definition, state, task.reference)
+                await executor._run_task_item(
+                    task.name,
+                    task.definition,
+                    state,
+                    task.reference,
+                    execution_reference=task.execution_reference,
+                )
                 target = END if state.stop or state.scope_exit else following
                 if state.jump_to is not None and not (state.stop or state.scope_exit):
                     target = names[state.jump_to]

@@ -24,18 +24,19 @@ ordering and descriptor scope separately from jq syntax.
 The [control-flow contract](workflow-control-flow.md) defines scoped routing,
 switch defaults, iteration and graceful end behavior.
 
-Currently rejected reusable components are `use.authentications`, `errors`,
-`extensions`, `functions`, `retries`, `secrets` and `timeouts`. Named errors
-and named timeouts are rejected rather than interpreted as message text or
-durations. Use standard inline errors and timeouts in this profile. Reusable
-resolution is staged in S1-07. Catalog calls retain the existing
+Reusable functions, errors, retry policies and timeouts resolve during
+admission and execute through the common task pipeline. See the
+[resolution and identity contract](reusable-definitions.md).
+`use.authentications`, `extensions` and `secrets` remain rejected until their
+security/extension stages. Catalog calls retain the existing
 deployment-controlled trust gate; declarations cannot authorize a remote
 catalog themselves. Metadata is inert; native extension admission is staged
 in S4-01.
 
 Data schemas support inline JSON Schema 2020-12 (`json` or `json:2020-12`),
-including boolean schemas and local fragment references. Malformed inline
-schemas fail admission. External schema resources/references and other
+including boolean schemas and a verified inline fragment/anchor reference
+closure. Malformed schemas or missing/non-schema reference targets fail
+admission. Runtime validation has no network retriever. External schema resources/references and other
 formats fail the capability gate without a network request. Credentials
 are supplied through runtime security profiles, never ordinary workflows.
 Inline OWS endpoint authentication policies are rejected because the common

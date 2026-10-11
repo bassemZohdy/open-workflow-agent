@@ -20,12 +20,16 @@ from uuid import uuid4
 
 import yaml
 from jsonschema import Draft202012Validator
+from referencing import Registry, Resource
+from referencing.jsonschema import DRAFT202012
 
 from ._version import __version__
 from .catalog import CatalogContext, FunctionCatalog
+from .definitions import definition_at_pointer, resolve_reusable_components
 from .errors import (
     ExpressionError,
     InvocationCancelled,
+    OwaError,
     ToolError,
     UnsupportedWorkflowFeature,
     WorkflowExecutionError,
@@ -34,7 +38,7 @@ from .errors import (
 )
 from .expressions import ExpressionEvaluator as ExpressionEvaluator
 from .expressions import ExpressionMode, validate_expression_data
-from .external_catalog import parse_catalog_function_reference
+from .external_catalog import ResolvedCatalogFunction, parse_catalog_function_reference
 from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
 from .workflow_profile import SCHEMA_SHA256, WORKFLOW_DSL
@@ -124,11 +128,17 @@ def load_workflow(source: str | Path | Mapping[str, Any]) -> dict[str, Any]:
     path = Path(source)
     try:
         raw = path.read_text(encoding="utf-8")
-        loaded = yaml.load(raw, Loader=_WorkflowLoader)
     except OSError as exc:
         raise WorkflowSchemaError(f"unable to read workflow: {path}") from exc
-    except (yaml.YAMLError, RecursionError) as exc:
-        raise WorkflowSchemaError("invalid workflow YAML") from exc
+    return load_workflow_text(raw)
+
+
+def load_workflow_text(raw: str) -> dict[str, Any]:
+    """Parse workflow/resource text with the same safe JSON and ambiguity rules."""
+    try:
+        loaded = yaml.load(raw, Loader=_WorkflowLoader)
+    except (yaml.YAMLError, RecursionError):
+        raise WorkflowSchemaError("invalid workflow YAML") from None
     if not isinstance(loaded, dict):
         raise WorkflowSchemaError("workflow root must be an object")
     _validate_json_value(loaded)
@@ -190,6 +200,7 @@ def validate_capabilities(
     _validate_catalog_capability(workflow, trusted_catalogs=trusted_catalogs)
     use = workflow.get("use")
     catalogs = use.get("catalogs") if isinstance(use, Mapping) else None
+    functions = use.get("functions", {}) if isinstance(use, Mapping) else {}
     _validate_schedule_capability(workflow)
     scope_names = {
         _pointer_name(reference.rsplit("/", 1)[-1])
@@ -229,6 +240,7 @@ def validate_capabilities(
             call = definition["call"]
             if not isinstance(call, str) or (
                 call not in SUPPORTED_CALLS
+                and call not in functions
                 and not _is_trusted_catalog_call(call, catalogs, trusted_catalogs)
             ):
                 raise UnsupportedWorkflowFeature(
@@ -245,8 +257,8 @@ def validate_capabilities(
                     )
         for suffix, task_list in _task_scopes(definition):
             nested: dict[str, Any] = {"do": task_list}
-            if isinstance(catalogs, Mapping):
-                nested["use"] = {"catalogs": catalogs}
+            if isinstance(use, Mapping):
+                nested["use"] = dict(use)
             validate_capabilities(
                 nested,
                 trusted_catalogs=trusted_catalogs,
@@ -262,6 +274,13 @@ def validate_capabilities(
         if "run" in definition:
             _validate_run_capability(definition["run"], reference)
     if _prefix == "/do":
+        for name, definition in functions.items():
+            validate_capabilities(
+                {"do": [{name: definition}], "use": dict(cast(Mapping[str, Any], use))},
+                trusted_catalogs=trusted_catalogs,
+                _prefix="/use/functions",
+                _indexed=False,
+            )
         validate_expression_profile(workflow)
 
 
@@ -294,6 +313,7 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
             "resume_input",
             "_task_reference",
             "_task_name",
+            "_execution_reference",
         }:
             raise WorkflowSemanticError(
                 "invalid or reserved expression binding", details={"reference": reference}
@@ -380,6 +400,8 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
     data_slot(workflow, "input", "from", globals_, "")
     data_slot(workflow, "output", "as", globals_ | {"context"}, "")
     tasks(workflow.get("do", []), ambient, "/do")
+    for name, definition in workflow.get("use", {}).get("functions", {}).items():
+        tasks([{name: definition}], ambient, "/use/functions", indexed=False)
 
 
 def _unsupported(feature: str, reference: str) -> NoReturn:
@@ -416,14 +438,19 @@ def _validate_definition_profile(workflow: Mapping[str, Any]) -> None:
             _unsupported("expression mode", "/evaluate/mode")
     use = workflow.get("use", {})
     if isinstance(use, Mapping):
+        for name in use.get("functions", {}):
+            if (
+                name in SUPPORTED_CALLS | {"grpc", "asyncapi"}
+                or parse_catalog_function_reference(name) is not None
+            ):
+                raise WorkflowSemanticError(
+                    "reusable functions cannot shadow protocol or catalog calls",
+                    details={"reference": f"/use/functions/{_pointer_token(name)}"},
+                )
         for key in (
             "authentications",
-            "errors",
             "extensions",
-            "functions",
-            "retries",
             "secrets",
-            "timeouts",
         ):
             if use.get(key):
                 _unsupported(f"reusable {key}", f"/use/{key}")
@@ -449,29 +476,62 @@ def _validate_data_profile(definition: Mapping[str, Any], reference: str) -> Non
             _unsupported("non-JSON data schema", f"{path}/document")
         # External references are not fetched by the inline validator. Local
         # fragments remain available without opening another network boundary.
-        _validate_schema_references(document, f"{path}/document")
         try:
             Draft202012Validator.check_schema(document)
         except Exception as exc:
             raise WorkflowSemanticError(
                 "invalid inline data schema", details={"reference": path}
             ) from exc
+        _validate_schema_references(document, f"{path}/document")
 
 
 def _validate_schema_references(value: Any, reference: str) -> None:
-    if isinstance(value, Mapping):
-        for key, item in value.items():
-            path = f"{reference}/{key}"
-            if (
-                key in {"$ref", "$dynamicRef"}
-                and isinstance(item, str)
-                and not item.startswith("#")
-            ):
-                _unsupported("external schema reference", path)
-            _validate_schema_references(item, path)
-    elif isinstance(value, list):
-        for index, item in enumerate(value):
-            _validate_schema_references(item, f"{reference}/{index}")
+    # Traverse schema resources, rather than arbitrary JSON values: const,
+    # examples and defaults may contain ordinary data fields named $ref.
+    locations: dict[int, str] = {}
+
+    def locate(item: Any, path: str) -> None:
+        locations[id(item)] = path
+        if isinstance(item, Mapping):
+            for key, child in item.items():
+                locate(child, f"{path}/{_pointer_token(str(key))}")
+        elif isinstance(item, list):
+            for index, child in enumerate(item):
+                locate(child, f"{path}/{index}")
+
+    locate(value, reference)
+    root = DRAFT202012.create_resource(value)
+    resolver = Registry().resolver_with_root(root)
+
+    def walk(resource: Resource[Any], current: Any) -> None:
+        document = resource.contents
+        if not isinstance(document, Mapping):
+            return
+        path = locations[id(document)]
+        if (
+            document.get("$schema", "https://json-schema.org/draft/2020-12/schema").rstrip("#")
+            != "https://json-schema.org/draft/2020-12/schema"
+        ):
+            _unsupported("inline schema dialect", f"{path}/$schema")
+        for key in ("$ref", "$dynamicRef"):
+            item = document.get(key)
+            if not isinstance(item, str):
+                continue
+            if not item.startswith("#"):
+                _unsupported("external schema reference", f"{path}/{key}")
+            try:
+                target = current.lookup(item).contents
+                if not isinstance(target, (Mapping, bool)):
+                    raise ValueError("reference target is not a schema")
+            except Exception:
+                raise WorkflowSemanticError(
+                    "unresolved or invalid inline schema reference",
+                    details={"reference": f"{path}/{key}"},
+                ) from None
+        for child in resource.subresources():
+            walk(child, current.in_subresource(child))
+
+    walk(root, resolver)
 
 
 def _validate_catalog_capability(
@@ -535,7 +595,7 @@ def compile_workflow(
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
-    validate_capabilities(workflow, trusted_catalogs=trusted_catalogs)
+    validate_capabilities(resolve_reusable_components(workflow), trusted_catalogs=trusted_catalogs)
     return normalize_workflow(workflow)
 
 
@@ -550,9 +610,12 @@ async def resolve_and_compile_workflow(
 
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
-    await resolver.resolve_workflow(workflow, catalog)
-    validate_capabilities(workflow, trusted_catalogs=trusted_catalogs)
-    return normalize_workflow(workflow)
+    validate_capabilities(resolve_reusable_components(workflow), trusted_catalogs=trusted_catalogs)
+    resolve_functions = getattr(resolver, "resolve_functions", None)
+    imports = await resolve_functions(workflow, catalog) if callable(resolve_functions) else ()
+    if not callable(resolve_functions):
+        await resolver.resolve_workflow(workflow, catalog)
+    return normalize_workflow(workflow, imports=imports)
 
 
 @dataclass(frozen=True, slots=True)
@@ -561,6 +624,7 @@ class TaskPlan:
     reference: str
     kind: str
     definition_json: str
+    execution_reference: str | None = None
 
     @property
     def definition(self) -> dict[str, Any]:
@@ -583,25 +647,65 @@ class WorkflowPlan:
     source_json: str
     tasks: tuple[TaskPlan, ...]
     scopes: tuple[ScopePlan, ...] = ()
+    execution_json: str | None = None
+    imports: tuple[ResolvedCatalogFunction, ...] = ()
 
     @property
     def source(self) -> dict[str, Any]:
         return cast(dict[str, Any], json.loads(self.source_json))
 
     @property
+    def execution_source(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.execution_json or self.source_json))
+
+    @property
     def fingerprint(self) -> str:
         import hashlib
 
-        return hashlib.sha256(self.source_json.encode("utf-8")).hexdigest()
+        content = self.source_json
+        if self.imports:
+            content = json.dumps(
+                {
+                    "source": self.source,
+                    "imports": [
+                        {
+                            "reference": item.reference,
+                            "resource": item.resource_uri,
+                            "digest": item.digest,
+                            "definition": item.definition,
+                        }
+                        for item in self.imports
+                    ],
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=False,
+                allow_nan=False,
+            )
+        return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
-def normalize_workflow(workflow: Mapping[str, Any]) -> WorkflowPlan:
+def normalize_workflow(
+    workflow: Mapping[str, Any],
+    *,
+    imports: tuple[ResolvedCatalogFunction, ...] = (),
+) -> WorkflowPlan:
+    _validate_json_value(workflow)
+    effective = resolve_reusable_components(workflow)
+    functions = effective.get("use", {}).get("functions", {})
     document = workflow["document"]
     scopes: list[ScopePlan] = []
 
-    def scope(task_list: list[Any], reference: str, *, indexed: bool = True) -> ScopePlan:
+    def scope(
+        task_list: list[Any],
+        reference: str,
+        *,
+        indexed: bool = True,
+        source_prefix: str | None = None,
+        stack: tuple[str, ...] = (),
+    ) -> ScopePlan:
         tasks: list[TaskPlan] = []
-        children: list[tuple[str, list[Any]]] = []
+        children: list[tuple[str, list[Any], str, bool, tuple[str, ...]]] = []
         for index, item in enumerate(task_list):
             if not isinstance(item, Mapping) or len(item) != 1:
                 raise WorkflowSemanticError(
@@ -612,6 +716,12 @@ def normalize_workflow(workflow: Mapping[str, Any]) -> WorkflowPlan:
                 raise WorkflowSemanticError(f"task {task_name} definition must be an object")
             prefix = f"{reference}/{index}" if indexed else reference
             task_reference = f"{prefix}/{_pointer_token(str(task_name))}"
+            source_start = f"{source_prefix}/{index}" if indexed else source_prefix
+            source_reference = (
+                f"{source_start}/{_pointer_token(str(task_name))}"
+                if source_prefix is not None
+                else task_reference
+            )
             kind = next(
                 (
                     candidate
@@ -623,26 +733,55 @@ def normalize_workflow(workflow: Mapping[str, Any]) -> WorkflowPlan:
             tasks.append(
                 TaskPlan(
                     name=str(task_name),
-                    reference=task_reference,
+                    reference=source_reference,
                     kind=kind,
                     definition_json=json.dumps(definition, sort_keys=True, separators=(",", ":")),
+                    execution_reference=task_reference
+                    if source_reference != task_reference
+                    else None,
                 )
             )
             children.extend(
-                (f"{task_reference}/{suffix}", nested)
+                (
+                    f"{task_reference}/{suffix}",
+                    nested,
+                    f"{source_reference}/{suffix}",
+                    not suffix.startswith("fork/branches/"),
+                    stack,
+                )
                 for suffix, nested in _task_scopes(definition)
             )
+            call = definition.get("call")
+            if isinstance(call, str) and call in functions:
+                if call in stack or len(stack) >= 32:
+                    raise WorkflowSemanticError(
+                        "recursive reusable function references are not enabled",
+                        details={"reference": f"{source_reference}/call"},
+                    )
+                children.append(
+                    (
+                        f"{task_reference}/call",
+                        [{call: functions[call]}],
+                        "/use/functions",
+                        False,
+                        (*stack, call),
+                    )
+                )
         result = ScopePlan(reference=reference, indexed=indexed, tasks=tuple(tasks))
         scopes.append(result)
-        for child_reference, nested in children:
+        if sum(len(item.tasks) for item in scopes) > 10000:
+            raise WorkflowSemanticError("reusable task expansion exceeds 10000 tasks")
+        for child_reference, nested, child_source, child_indexed, child_stack in children:
             scope(
                 nested,
                 child_reference,
-                indexed=not bool(re.search(r"/fork/branches/\d+$", child_reference)),
+                indexed=child_indexed,
+                source_prefix=child_source,
+                stack=child_stack,
             )
         return result
 
-    root = scope(workflow["do"], "/do")
+    root = scope(effective["do"], "/do")
     source_json = json.dumps(workflow, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return WorkflowPlan(
         namespace=str(document["namespace"]),
@@ -652,6 +791,10 @@ def normalize_workflow(workflow: Mapping[str, Any]) -> WorkflowPlan:
         source_json=source_json,
         tasks=root.tasks,
         scopes=tuple(scopes),
+        execution_json=json.dumps(
+            effective, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ),
+        imports=imports,
     )
 
 
@@ -805,8 +948,15 @@ class WorkflowExecutor:
         metadata: dict[str, Any] | None = None,
         scope_executor: ScopeExecutor | None = None,
     ) -> Any:
-        workflow = plan.source
+        workflow = plan.execution_source
         metadata = dict(metadata or {})
+        metadata["_source_references"] = {
+            task.execution_reference or task.reference: task.reference
+            for scope in plan.scopes
+            for task in scope.tasks
+        }
+        metadata["_functions"] = workflow.get("use", {}).get("functions", {})
+        metadata["_imports"] = {item.reference: item for item in plan.imports}
         metadata.setdefault("_lifecycle", LifecycleControl())
         metadata.setdefault("invocation_id", str(uuid4()))
         metadata.setdefault("workflow_name", plan.name)
@@ -837,7 +987,7 @@ class WorkflowExecutor:
                 },
                 "workflow": {
                     "id": metadata["invocation_id"],
-                    "definition": workflow,
+                    "definition": plan.source,
                     "input": copy.deepcopy(input_data),
                     "startedAt": _date_time_descriptor(),
                 },
@@ -945,7 +1095,10 @@ class WorkflowExecutor:
                 raise WorkflowExecutionError(f"task {name} definition must be an object")
             task_prefix = f"{prefix}/{index}" if indexed else prefix
             reference = f"{task_prefix}/{_pointer_token(str(name))}"
-            await self._run_task_item(str(name), definition, state, reference)
+            original = state.metadata.get("_source_references", {}).get(reference, reference)
+            await self._run_task_item(
+                str(name), definition, state, original, execution_reference=reference
+            )
             if state.stop:
                 return
             if state.scope_exit:
@@ -971,7 +1124,13 @@ class WorkflowExecutor:
             index += 1
 
     async def _run_task_item(
-        self, name: str, definition: Mapping[str, Any], state: ExecutionState, reference: str
+        self,
+        name: str,
+        definition: Mapping[str, Any],
+        state: ExecutionState,
+        reference: str,
+        *,
+        execution_reference: str | None = None,
     ) -> None:
         local = self._copy_state(state)
         for key in ("input", "output", "task"):
@@ -979,11 +1138,17 @@ class WorkflowExecutor:
         local.variables.update(
             {
                 "_task_reference": reference,
+                "_execution_reference": execution_reference or reference,
                 "_task_name": str(name),
                 "task": {
                     "name": str(name),
                     "reference": reference,
-                    "definition": copy.deepcopy(definition),
+                    "definition": copy.deepcopy(
+                        definition_at_pointer(
+                            local.variables.get("workflow", {}).get("definition", {}), reference
+                        )
+                        or definition
+                    ),
                     "input": copy.deepcopy(state.data),
                     "startedAt": _date_time_descriptor(),
                 },
@@ -1024,6 +1189,8 @@ class WorkflowExecutor:
             )
             raise
         except Exception as exc:
+            if isinstance(exc, OwaError) and exc._operation_id is None:
+                exc._operation_id = self._operation_id(local)
             if isinstance(
                 exc,
                 (
@@ -1055,9 +1222,11 @@ class WorkflowExecutor:
                 ),
             ):
                 raise
-            raise WorkflowExecutionError(
-                f"task {name} failed", details={"task": str(name)}
-            ) from exc
+            failure = WorkflowExecutionError(f"task {name} failed", details={"task": str(name)})
+            failure._operation_id = self._operation_id(local)
+            if execution_reference is not None and execution_reference != reference:
+                failure.details["instance"] = reference
+            raise failure from exc
         local.outputs[str(name)] = copy.deepcopy(output)
         state.outputs = local.outputs
         state.data = copy.deepcopy(output)
@@ -1173,6 +1342,24 @@ class WorkflowExecutor:
                 if "with" in definition
                 else copy.deepcopy(task_input)
             )
+            functions = state.metadata.get("_functions", {})
+            call = definition["call"]
+            if call in functions:
+                child = self._copy_state(state)
+                child.data = copy.deepcopy(payload)
+                await self._run_tasks(
+                    [{call: functions[call]}],
+                    child,
+                    prefix=self._nested_prefix(state, "call"),
+                    indexed=False,
+                )
+                state.context = copy.deepcopy(child.context)
+                state.variables["context"] = state.context
+                state.stop = child.stop
+                for key in ("event", "resume_input"):
+                    if key in child.variables:
+                        state.variables[key] = copy.deepcopy(child.variables[key])
+                return child.data
             if str(definition["call"]) in {"http", "mcp", "a2a", "openapi"} and isinstance(
                 payload, Mapping
             ):
@@ -1200,7 +1387,7 @@ class WorkflowExecutor:
             await self._run_tasks(
                 _task_body(definition["do"]),
                 state,
-                prefix=f"{task_reference}/do",
+                prefix=self._nested_prefix(state, "do"),
             )
             return state.data
         if "try" in definition:
@@ -1209,7 +1396,7 @@ class WorkflowExecutor:
                 await self._run_tasks(
                     _task_body(definition["try"]),
                     state,
-                    prefix=f"{task_reference}/try",
+                    prefix=self._nested_prefix(state, "try"),
                 )
                 return state.data
             catch_retry = catch.get("retry") if isinstance(catch, Mapping) else None
@@ -1219,7 +1406,7 @@ class WorkflowExecutor:
                     await self._run_tasks(
                         _task_body(definition["try"]),
                         state,
-                        prefix=f"{task_reference}/try",
+                        prefix=self._nested_prefix(state, "try"),
                     )
                     return state.data
                 except Exception as exc:
@@ -1246,6 +1433,11 @@ class WorkflowExecutor:
                                     _pointer_name(failed_reference.rsplit("/", 1)[-1]),
                                     state,
                                 ),
+                                **(
+                                    {"operation_id": exc._operation_id}
+                                    if isinstance(exc, OwaError) and exc._operation_id is not None
+                                    else {}
+                                ),
                                 "status": "retrying",
                                 "attempt": attempt + 1,
                                 "error": _error_details(exc),
@@ -1258,7 +1450,7 @@ class WorkflowExecutor:
                     await self._run_tasks(
                         _task_body(catch.get("do", [])),
                         state,
-                        prefix=f"{task_reference}/catch/do",
+                        prefix=self._nested_prefix(state, "catch/do"),
                     )
                     self._apply_transition(catch.get("then"), state)
                     return state.data
@@ -1301,8 +1493,12 @@ class WorkflowExecutor:
             if isinstance(raise_value, Mapping):
                 error = raise_value.get("error", raise_value)
                 if isinstance(error, Mapping):
+                    error = self._expressions(state).evaluate(
+                        error, state.data, variables=state.variables
+                    )
                     message = error.get("detail") or error.get("title") or error.get("type")
                     details = dict(error)
+                    details["instance"] = state.variables.get("_task_reference", "/do")
                 else:
                     message = error
                     details = {}
@@ -1322,6 +1518,15 @@ class WorkflowExecutor:
             return await self.services.call_protocol(call, payload)
         if self.services is None:
             raise WorkflowExecutionError("runtime services unavailable for catalog call")
+        binding = state.metadata.get("_imports", {}).get(call)
+        if isinstance(binding, ResolvedCatalogFunction):
+            return await self.services.external_catalogs.invoke_frozen(
+                binding,
+                payload,
+                variables=state.variables,
+                operation_id=self._operation_id(state),
+                mode=self._expressions(state).mode,
+            )
         context = CatalogContext(
             model=self.services.model,
             agent_instruction=getattr(self.services, "agent_instruction", ""),
@@ -1641,7 +1846,7 @@ class WorkflowExecutor:
         if not isinstance(document, (Mapping, bool)):
             return
         errors = sorted(
-            Draft202012Validator(document).iter_errors(value),
+            Draft202012Validator(document, registry=Registry()).iter_errors(value),
             key=lambda error: tuple(str(part) for part in error.path),
         )
         if errors:
@@ -1666,7 +1871,11 @@ class WorkflowExecutor:
 
     @staticmethod
     def _nested_prefix(state: ExecutionState, suffix: str) -> str:
-        parent = str(state.variables.get("_task_reference", "/do"))
+        parent = str(
+            state.variables.get(
+                "_execution_reference", state.variables.get("_task_reference", "/do")
+            )
+        )
         return f"{parent}/{suffix}"
 
     def _token(self, state: ExecutionState) -> Any:
@@ -1696,7 +1905,9 @@ class WorkflowExecutor:
             "task_name": str(name),
             "task_reference": reference,
             "engine": context.get("engine"),
-            "operation_id": f"{context.get('invocation_id', 'unknown-invocation')}:{reference}",
+            "operation_id": self._operation_id(state)
+            if state.variables.get("_task_reference") == reference
+            else f"{context.get('invocation_id', 'unknown-invocation')}:{reference}",
             "parent_invocation_id": context.get("parent_invocation_id"),
             "parent_task_reference": context.get("parent_task_reference"),
         }
@@ -1704,7 +1915,9 @@ class WorkflowExecutor:
     @staticmethod
     def _operation_id(state: ExecutionState) -> str:
         invocation = state.metadata.get("invocation_id", "unknown-invocation")
-        reference = state.variables.get("_task_reference", "unknown-task")
+        reference = state.variables.get(
+            "_execution_reference", state.variables.get("_task_reference", "unknown-task")
+        )
         return f"{invocation}:{reference}"
 
 

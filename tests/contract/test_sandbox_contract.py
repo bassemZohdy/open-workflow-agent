@@ -13,6 +13,7 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("reusable", [False, True])
 @pytest.mark.parametrize(
     ("engine_name", "engine_type"),
     [("adk", AdkWorkflowEngine), ("langgraph", LangGraphWorkflowEngine)],
@@ -36,9 +37,14 @@ async def test_internal_sandbox_run_tasks_have_cross_engine_parity(
     engine_type: type[AdkWorkflowEngine] | type[LangGraphWorkflowEngine],
     fixture_name: str,
     expected: dict[str, object],
+    reusable: bool,
 ) -> None:
     fixture = Path(__file__).parent / "fixtures" / f"{fixture_name}.yaml"
     workflow = yaml.safe_load(fixture.read_text(encoding="utf-8"))
+    if reusable:
+        definition = next(iter(workflow["do"][0].values()))
+        workflow["use"] = {"functions": {"execute": definition}}
+        workflow["do"] = [{"runReusable": {"call": "execute"}}]
     sandbox = SandboxConfig(
         enabled=True,
         allow_shell=True,

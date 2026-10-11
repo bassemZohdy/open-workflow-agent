@@ -15,6 +15,8 @@ class OwaError(Exception):
         super().__init__(message)
         self.message = message
         self.details = details or {}
+        # Private task routing identity; public diagnostics retain source pointers.
+        self._operation_id: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {"code": self.code, "message": self.message, "details": self.details}

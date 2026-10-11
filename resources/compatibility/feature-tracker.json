@@ -57077,8 +57077,36 @@
         "module": "M01",
         "description": "Complete reusable definitions, imports, references, validation, version resolution and safe serialization.",
         "effort": "M",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "In progress",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "scope": "Python reusable task functions and named error/retry/timeout resolution with original source identity; network-free schema closure, safe external catalog loading, immutable asynchronous import bindings/fingerprints and SemVer workflow version selection. Authentication/secrets/extensions, full reliability and JS retain later-stage ownership.",
+          "tests": [
+            "tests/contract/test_reusable_definitions.py",
+            "tests/contract/test_catalog_bindings.py",
+            "tests/contract/test_schema_reference_closure.py",
+            "tests/contract/test_sandbox_contract.py",
+            "tests/langgraph/test_native_task_graph.py",
+            "tests/core/test_workflow_catalog.py",
+            "tests/core/test_external_catalog.py"
+          ],
+          "remote_acceptance": "Pending",
+          "full_conformance": false,
+          "local_root": {
+            "passed": 1050,
+            "skipped": 26,
+            "coverage_percent": 91.35
+          },
+          "native_matrices": {
+            "adk": 442,
+            "langgraph": {
+              "passed": 450,
+              "skipped": 4
+            },
+            "agent_framework_optional": 589
+          },
+          "quality": "Ruff, formatting, strict mypy, five runtime/core locks, documentation links and root/core builds passed"
+        }
       },
       {
         "id": "S1-08",

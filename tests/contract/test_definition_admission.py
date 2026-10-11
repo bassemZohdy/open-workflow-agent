@@ -72,10 +72,6 @@ def test_document_metadata_is_preserved_and_plan_cannot_be_mutated():
 @pytest.mark.parametrize(
     "use",
     [
-        {"functions": {"echo": {"set": {"ok": True}}}},
-        {"errors": {"failure": {"type": "urn:test:error", "status": 500}}},
-        {"retries": {"retry": {"limit": {"attempt": {"count": 2}}}}},
-        {"timeouts": {"short": {"after": {"seconds": 2}}}},
         {"secrets": ["private-key"]},
         {"authentications": {"auth": {"bearer": {"token": "secret-value"}}}},
         {"extensions": [{"logging": {"extend": "all", "before": [{"log": {"set": {"x": 1}}}]}}]},

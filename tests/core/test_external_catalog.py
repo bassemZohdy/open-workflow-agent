@@ -423,7 +423,7 @@ def test_external_catalog_reference_and_uri_helpers():
 
 def test_external_catalog_definition_and_recursive_helpers():
     reference = CatalogFunctionReference("echo", "1.0.0", "trusted")
-    valid = {"call": "http", "with": {"endpoint": "https://api.test"}}
+    valid = {"call": "http", "with": {"method": "get", "endpoint": "https://api.test"}}
     assert _validate_function_definition(valid, reference) == ("http", valid["with"])
     assert _contains_key({"nested": [{"$ref": "x"}]}, "$ref") is True
     assert _contains_key({"nested": []}, "$ref") is False
@@ -447,7 +447,12 @@ def test_external_catalog_definition_and_recursive_helpers():
         with pytest.raises((UnsupportedWorkflowFeature, WorkflowSchemaError), match=message):
             _validate_function_definition(definition, reference)
 
-    workflow = {"do": [{"call": "echo:1.0.0@trusted"}, {"call": "noop:1.0.0@default"}]}
+    workflow = {
+        "do": [
+            {"remote": {"call": "echo:1.0.0@trusted"}},
+            {"local": {"call": "noop:1.0.0@default"}},
+        ]
+    }
     assert _referenced_functions(workflow) == {reference}
 
 
