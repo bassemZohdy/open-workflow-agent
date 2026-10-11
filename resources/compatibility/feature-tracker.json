@@ -39266,8 +39266,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A002",
@@ -39287,8 +39298,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A003",
@@ -39308,8 +39330,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A004",
@@ -39329,8 +39362,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A005",
@@ -39350,8 +39394,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A006",
@@ -39371,8 +39426,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A007",
@@ -39392,8 +39458,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A008",
@@ -39413,8 +39490,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A009",
@@ -39434,8 +39522,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A010",
@@ -39455,8 +39554,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A011",
@@ -39476,8 +39586,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A012",
@@ -39497,8 +39618,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A013",
@@ -39518,8 +39650,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A014",
@@ -39539,8 +39682,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "A015",
@@ -43460,8 +43614,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS002",
@@ -43501,8 +43666,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS004",
@@ -43522,8 +43698,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS005",
@@ -43606,8 +43793,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS009",
@@ -43627,8 +43825,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS010",
@@ -43648,8 +43857,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS011",
@@ -43669,8 +43889,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS012",
@@ -43690,8 +43921,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS013",
@@ -43711,8 +43953,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS014",
@@ -43732,8 +43985,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS015",
@@ -43753,8 +44017,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS016",
@@ -43774,8 +44049,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS017",
@@ -43839,8 +44125,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS020",
@@ -43860,8 +44157,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS021",
@@ -43881,8 +44189,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS022",
@@ -43924,8 +44243,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS024",
@@ -44029,8 +44359,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS029",
@@ -44132,8 +44473,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS034",
@@ -44153,8 +44505,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS035",
@@ -46385,8 +46748,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS146",
@@ -46580,8 +46954,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS155",
@@ -46601,8 +46986,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS156",
@@ -46622,8 +47018,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS157",
@@ -46643,8 +47050,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS158",
@@ -46664,8 +47082,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS159",
@@ -46685,8 +47114,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS160",
@@ -46706,8 +47146,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS161",
@@ -46727,8 +47178,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS162",
@@ -47550,8 +48012,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS203",
@@ -47835,8 +48308,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS216",
@@ -48776,8 +49260,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS263",
@@ -48797,8 +49292,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS264",
@@ -48818,8 +49324,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS265",
@@ -48839,8 +49356,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS266",
@@ -48860,8 +49388,19 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-01",
+            "scope": "Definition admission only: supported-profile preservation or explicit rejection; broader runtime/proposed inventory tests and JS remain unverified",
+            "tests": [
+              "tests/contract/test_definition_admission.py",
+              "tests/core/test_workflow.py",
+              "tests/core/test_protocol_baselines.py"
+            ],
+            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+          }
+        ]
       },
       {
         "feature_id": "AS267",
@@ -52850,7 +53389,7 @@
         "module": "M01",
         "description": "Pin the supported OWS schema, release status and semantic profile; reject unsupported definitions clearly.",
         "effort": "M",
-        "status": "Pending",
+        "status": "In progress; local admission verified, remote acceptance pending",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
       },
       {

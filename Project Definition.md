@@ -984,6 +984,12 @@ The detailed verified record lives in `docs/protocol-baselines.md`.
 
 Current reviewed baselines:
 
+Open Workflow 1.0.3 is an explicit exception to the stable-release policy:
+upstream marks its tag as prerelease. OWA preserves the existing public DSL
+and the unmodified reviewed schema snapshot, whose commit and SHA-256 are
+recorded in `resources/protocol-baselines.yaml`. The snapshot differs from
+the release tag; no full conformance claim follows from either pin.
+
 ```text
 Open Workflow Specification  1.0.3
 A2A Protocol                 1.0.1

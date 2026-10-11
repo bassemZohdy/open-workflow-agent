@@ -22,6 +22,39 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
+### Stage 1 admission work — 2026-10-11 (remote acceptance pending)
+
+S1-01 preserves the official schema bytes and records separate prerelease-tag
+and upstream-schema pins. Capabilities expose the bounded profile provenance.
+The common loader rejects duplicate keys, cyclic/non-JSON YAML and excessive
+nesting. Admission rejects ignored expression configurations, reusable
+components, external/non-JSON data schemas, named errors/timeouts, listener
+iterators/correlation and background/return modes. Nested diagnostics preserve
+task pointers; inline JSON Schema checks include boolean schemas.
+See [the profile and boundaries](docs/workflow-admission.md).
+
+Local root validation passed with 718 tests, 11 skips and 90.61% coverage
+before the final added admission tests. The independent native ADK and
+LangGraph matrices each passed 236 tests; optional Agent Framework passed
+322. Focused final admission/baseline/sandbox tests passed 62 tests. Ruff,
+formatting, strict mypy, all four runtime locks, Markdown links, root/core
+builds and packaged schema/profile checks passed. Both native benchmark
+probes recorded checkpoint growth and stable operation ids across replay.
+Final matrices and exact-commit CI evidence will replace these interim counts.
+
+Validation exposed two portability defects: frozen snapshots needed binary
+checkout attributes to preserve their exact upstream hashes on Windows;
+ADK's pinned SQLite migration probe retained a synchronous connection until
+garbage collection. The adapter closes that probe explicitly and closes its
+native event iterator/runner. Regression coverage verifies temporary storage
+cleanup after restart and preserves rejection of the old native schema.
+Native persistence remains owned by ADK.
+
+Local Docker availability probes timed out; container, Linux mutation and
+PostgreSQL acceptance are pending remote CI. No release, image publication,
+schema modification, broader conformance claim or later-stage delivery is
+recorded by this work.
+
 The runtime pipeline is:
 
 ```text

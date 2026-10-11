@@ -13,6 +13,7 @@ from open_workflow_agent.protocols import (
     MCP_METHODS,
     MCP_PROTOCOL_VERSION,
 )
+from open_workflow_agent.workflow_profile import workflow_profile
 
 ROOT = Path(__file__).resolve().parents[2]
 BASELINE_FILE = ROOT / "resources" / "protocol-baselines.yaml"
@@ -54,6 +55,21 @@ def test_protocol_baseline_manifest_keeps_claims_bounded() -> None:
     assert baselines["openapi"]["profile"] == "bounded operation adapter"
     assert baselines["cloudevents"]["profile"] == "bounded lifecycle events"
     assert baselines["asyncapi"]["implemented"] is False
+
+
+def test_workflow_provenance_matches_capability_profile() -> None:
+    baseline = _baselines()["open_workflow"]
+    profile = workflow_profile()
+    for stored, advertised in (
+        ("release", "dsl"),
+        ("release_status", "releaseStatus"),
+        ("release_revision", "releaseRevision"),
+        ("schema_revision", "schemaRevision"),
+        ("schema_sha256", "schemaSha256"),
+        ("profile", "semanticProfile"),
+    ):
+        assert baseline[stored] == profile[advertised]
+    assert baseline["policy_exception"]
 
 
 def test_protocol_method_sets_match_the_reviewed_bounded_profiles() -> None:

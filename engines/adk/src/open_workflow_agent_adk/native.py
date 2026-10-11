@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
+import sqlite3
 from collections.abc import Awaitable, Callable
+from contextlib import aclosing, closing
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunsplit
 
@@ -38,6 +41,35 @@ except ImportError:  # pragma: no cover - optional ADK db extra
 # canonical task reference, so replay is safe only when the external effect
 # honors the propagated idempotency key.
 ADK_RESUME_STRATEGY = "replay_with_stable_operation_ids"
+
+
+if SqliteSessionService is not None:
+
+    class _ClosingSqliteSessionService(SqliteSessionService):  # type: ignore[misc]
+        """Bound the pinned SDK migration probe's synchronous connection lifetime.
+
+        The upstream probe uses sqlite3's transaction context manager, which
+        does not close its connection. On Windows that retains a file handle
+        until garbage collection and prevents deterministic storage cleanup.
+        All session/checkpoint operations remain native ADK behavior.
+        """
+
+        def _is_migration_needed(self) -> bool:
+            if not os.path.exists(self._db_path):
+                return False
+            try:
+                with closing(
+                    sqlite3.connect(self._db_connect_path, uri=self._db_connect_uri)
+                ) as db:
+                    exists = db.execute(
+                        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='events'"
+                    ).fetchone()
+                    if not exists:
+                        return False
+                    columns = [row[1] for row in db.execute("PRAGMA table_info(events)").fetchall()]
+                    return "event_data" not in columns
+            except sqlite3.Error as exc:
+                raise RuntimeError("unable to inspect ADK session schema") from exc
 
 
 class NativeAdkRunner:
@@ -90,7 +122,7 @@ class NativeAdkRunner:
                 connect_args={"server_settings": {"search_path": "owa_adk,public"}},
             )
         elif database_path and SqliteSessionService is not None:
-            sessions = SqliteSessionService(database_path)
+            sessions = _ClosingSqliteSessionService(database_path)
         else:
             sessions = InMemorySessionService()
         existing = await sessions.get_session(
@@ -140,15 +172,21 @@ class NativeAdkRunner:
             parts=[types.Part(text=json.dumps(input_data, ensure_ascii=False, default=str))],
         )
         output = None
-        async for event in framework_runner.run_async(
-            user_id=user,
-            session_id=session_id,
-            invocation_id=invocation_id,
-            new_message=message,
-            yield_user_message=False,
-        ):
-            if getattr(event, "output", None) is not None:
-                output = event.output
+        try:
+            async with aclosing(
+                framework_runner.run_async(
+                    user_id=user,
+                    session_id=session_id,
+                    invocation_id=invocation_id,
+                    new_message=message,
+                    yield_user_message=False,
+                )
+            ) as events:
+                async for event in events:
+                    if getattr(event, "output", None) is not None:
+                        output = event.output
+        finally:
+            await framework_runner.close()
         return output if output is not None else result_value
 
     async def resume(

@@ -14,6 +14,35 @@ from open_workflow_agent_adk.native import ADK_AVAILABLE
 
 
 @pytest.mark.asyncio
+async def test_native_benchmark_closes_resources_before_temporary_storage_cleanup():
+    if not ADK_AVAILABLE:
+        pytest.skip("google-adk optional extra is not installed")
+    from benchmarks.engines import run_engine_benchmark
+
+    result = await run_engine_benchmark("adk", iterations=1, concurrency=1)
+    assert result["interruption_resume"]["status"] == "completed"
+    assert result["native_checkpoint_bytes_delta"] > 0
+
+
+def test_native_migration_probe_closes_database_and_preserves_old_schema_rejection(tmp_path):
+    if not ADK_AVAILABLE:
+        pytest.skip("google-adk optional extra is not installed")
+    import sqlite3
+    from contextlib import closing
+
+    from open_workflow_agent_adk.native import _ClosingSqliteSessionService
+
+    path = tmp_path / "old.sqlite3"
+    with closing(sqlite3.connect(path)) as connection:
+        connection.execute("CREATE TABLE events (id TEXT)")
+        connection.commit()
+    with pytest.raises(RuntimeError, match="old schema"):
+        _ClosingSqliteSessionService(str(path))
+    # Windows refuses this rename if the migration probe retains its handle.
+    path.rename(tmp_path / "migratable.sqlite3")
+
+
+@pytest.mark.asyncio
 async def test_native_adk_dynamic_plan_invocation(tmp_path):
     if not ADK_AVAILABLE:
         pytest.skip("google-adk optional extra is not installed")

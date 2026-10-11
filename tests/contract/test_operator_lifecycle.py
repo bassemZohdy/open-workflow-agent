@@ -61,7 +61,21 @@ async def test_operator_matrix_terminal_outcomes(tmp_path, engine_name, engine_t
     await engine.initialize(services)
     workflows = {
         "success": _workflow([{"finish": {"set": {"done": True}}}]),
-        "controlled_fault": _workflow([{"fail": {"raise": {"error": "controlled"}}}]),
+        "controlled_fault": _workflow(
+            [
+                {
+                    "fail": {
+                        "raise": {
+                            "error": {
+                                "type": "urn:test:controlled",
+                                "status": 500,
+                                "detail": "controlled",
+                            }
+                        }
+                    }
+                }
+            ]
+        ),
         "retry": _workflow(
             [
                 {

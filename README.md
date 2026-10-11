@@ -329,7 +329,8 @@ ADK and LangGraph are implementation engines, not public application contracts. 
 - [Getting started](docs/getting-started.md) — run a published image and invoke your first agent.
 - [Configuration](docs/configuration.md) — runtime configuration and model-provider reference.
 - [API guide](docs/api.md) — HTTP endpoints and request/response examples.
-- [Protocol baselines](docs/protocol-baselines.md) — pinned latest-stable external protocol/specification versions.
+- [Protocol baselines](docs/protocol-baselines.md) — reviewed protocol versions and the explicit OWS prerelease/schema-snapshot pin.
+- [Workflow admission](docs/workflow-admission.md) — supported definition profile and fail-closed boundaries.
 - [Protocol and security decisions](docs/protocol-security-decisions.md) — version policy, security profiles, authorization vocabulary, traffic-policy separation, and A2A task/skill decisions.
 - [Deployment guide](docs/deployment.md) — Docker Hub/GHCR images, persistence, Docker, Kubernetes, and OpenShift.
 - [Developer guide](docs/development.md) — source checkout, repository structure, tests, and contribution workflow.

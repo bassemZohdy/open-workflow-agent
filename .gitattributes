@@ -2,5 +2,8 @@
 resources/open-workflow/1.0.3/workflow.yaml binary
 core/src/open_workflow_agent/_resources/open-workflow/1.0.3/workflow.yaml binary
 
+# Frozen predecessor snapshots are verified against their original Git blobs.
+migration/reference/** binary
+
 # Shell scripts must use LF so Docker builds work on every host OS.
 *.sh text eol=lf

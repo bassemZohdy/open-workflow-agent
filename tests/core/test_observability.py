@@ -92,7 +92,23 @@ async def test_lifecycle_events_trace_fault_and_retry(services):
 async def test_lifecycle_events_trace_faulted_workflow(services):
     sink = InMemoryEventSink()
     executor = WorkflowExecutor(services.catalog, services=services, event_sink=sink)
-    plan = compile_workflow(_workflow([{"fail": {"raise": {"error": "tests.failure"}}}]))
+    plan = compile_workflow(
+        _workflow(
+            [
+                {
+                    "fail": {
+                        "raise": {
+                            "error": {
+                                "type": "urn:test:controlled",
+                                "status": 500,
+                                "detail": "tests.failure",
+                            }
+                        }
+                    }
+                }
+            ]
+        )
+    )
     with pytest.raises(WorkflowExecutionError):
         await executor.execute(plan, {})
     assert sink.events[-1].event_type == "WorkflowFaulted"

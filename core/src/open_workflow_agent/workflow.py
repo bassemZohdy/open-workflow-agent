@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import hashlib
 import json
+import math
 import os
 import re
 import time
@@ -12,7 +14,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, NoReturn, cast
 
 import yaml
 from jsonschema import Draft202012Validator
@@ -30,6 +32,7 @@ from .errors import (
 from .external_catalog import parse_catalog_function_reference
 from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
+from .workflow_profile import SCHEMA_SHA256, WORKFLOW_DSL
 
 DEFAULT_WORKFLOW: dict[str, Any] = {
     "document": {
@@ -74,19 +77,56 @@ class _NoCancellationToken:
         return await operation
 
 
+class _WorkflowLoader(yaml.SafeLoader):
+    """Reject ambiguous duplicate keys instead of silently overwriting tasks."""
+
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict[Any, Any]:
+        self.flatten_mapping(node)
+        result: dict[Any, Any] = {}
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if not isinstance(key, str) or key in result:
+                raise WorkflowSchemaError("workflow mapping keys must be unique strings")
+            result[key] = self.construct_object(value_node, deep=deep)
+        return result
+
+
+def _validate_json_value(
+    value: Any, *, depth: int = 0, parents: frozenset[int] = frozenset()
+) -> None:
+    if depth > 64 or id(value) in parents:
+        raise WorkflowSchemaError("workflow must be acyclic JSON data with depth at most 64")
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise WorkflowSchemaError("workflow mapping keys must be strings")
+            _validate_json_value(item, depth=depth + 1, parents=parents | {id(value)})
+    elif isinstance(value, list):
+        for item in value:
+            _validate_json_value(item, depth=depth + 1, parents=parents | {id(value)})
+    elif value is None or isinstance(value, (str, bool, int)):
+        return
+    elif isinstance(value, float) and math.isfinite(value):
+        return
+    else:
+        raise WorkflowSchemaError("workflow values must be finite JSON data")
+
+
 def load_workflow(source: str | Path | Mapping[str, Any]) -> dict[str, Any]:
     if isinstance(source, Mapping):
+        _validate_json_value(source)
         return copy.deepcopy(dict(source))
     path = Path(source)
     try:
         raw = path.read_text(encoding="utf-8")
-        loaded = yaml.safe_load(raw)
+        loaded = yaml.load(raw, Loader=_WorkflowLoader)
     except OSError as exc:
         raise WorkflowSchemaError(f"unable to read workflow: {path}") from exc
-    except yaml.YAMLError as exc:
-        raise WorkflowSchemaError(f"invalid workflow YAML: {exc}") from exc
+    except (yaml.YAMLError, RecursionError) as exc:
+        raise WorkflowSchemaError("invalid workflow YAML") from exc
     if not isinstance(loaded, dict):
         raise WorkflowSchemaError("workflow root must be an object")
+    _validate_json_value(loaded)
     return loaded
 
 
@@ -106,7 +146,10 @@ def _official_schema() -> dict[str, Any]:
         if not path.is_file():
             continue
         try:
-            schema = yaml.safe_load(path.read_text(encoding="utf-8"))
+            raw = path.read_bytes()
+            if hashlib.sha256(raw).hexdigest() != SCHEMA_SHA256:
+                raise WorkflowSchemaError("official schema does not match the reviewed SHA-256 pin")
+            schema = yaml.safe_load(raw)
         except (OSError, yaml.YAMLError) as exc:
             raise WorkflowSchemaError(f"unable to load official schema: {path}") from exc
         if not isinstance(schema, dict):
@@ -119,27 +162,45 @@ def _official_schema() -> dict[str, Any]:
 
 
 def validate_schema(workflow: Mapping[str, Any]) -> None:
+    _validate_json_value(workflow)
     validator = Draft202012Validator(_official_schema())
-    errors = sorted(validator.iter_errors(workflow), key=lambda error: list(error.path))
+    errors = sorted(validator.iter_errors(workflow), key=lambda error: tuple(map(str, error.path)))
     if errors:
         first = errors[0]
         path = "/".join(str(item) for item in first.path) or "root"
         raise WorkflowSchemaError(f"schema validation failed at {path}: {first.message}")
     document = workflow.get("document")
-    if not isinstance(document, dict) or document.get("dsl") != "1.0.3":
+    if not isinstance(document, dict) or document.get("dsl") != WORKFLOW_DSL:
         raise WorkflowSchemaError("only Open Workflow DSL 1.0.3 is supported")
 
 
 def validate_capabilities(
-    workflow: Mapping[str, Any], *, trusted_catalogs: Mapping[str, Any] | None = None
+    workflow: Mapping[str, Any],
+    *,
+    trusted_catalogs: Mapping[str, Any] | None = None,
+    _prefix: str = "/do",
 ) -> None:
+    _validate_definition_profile(workflow)
     _validate_catalog_capability(workflow, trusted_catalogs=trusted_catalogs)
     use = workflow.get("use")
     catalogs = use.get("catalogs") if isinstance(use, Mapping) else None
     _validate_schedule_capability(workflow)
-    for reference, definition in _walk_tasks(workflow.get("do", []), prefix="/do"):
+    seen: set[str] = set()
+    for reference, definition in _walk_tasks(workflow.get("do", []), prefix=_prefix):
+        name = reference.rsplit("/", 1)[-1]
+        if name in seen:
+            raise WorkflowSemanticError(
+                "duplicate task name in scope", details={"reference": reference}
+            )
+        seen.add(name)
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError(f"task {reference} must be an object")
+        _validate_data_profile(definition, reference)
+        if isinstance(definition.get("timeout"), str):
+            _unsupported("named timeout", f"{reference}/timeout")
+        raised = definition.get("raise")
+        if isinstance(raised, Mapping) and isinstance(raised.get("error"), str):
+            _unsupported("named error", f"{reference}/raise/error")
         task_keys = set(definition)
         if task_keys & DISABLED_TASKS:
             name = next(iter(task_keys & DISABLED_TASKS))
@@ -167,17 +228,95 @@ def validate_capabilities(
                     raise UnsupportedWorkflowFeature(
                         "mcp stdio transport is not enabled", details={"reference": reference}
                     )
-        for task_list in _nested_task_lists(definition):
+        for suffix, task_list in _task_scopes(definition):
             nested: dict[str, Any] = {"do": task_list}
             if isinstance(catalogs, Mapping):
                 nested["use"] = {"catalogs": catalogs}
-            validate_capabilities(nested, trusted_catalogs=trusted_catalogs)
+            validate_capabilities(
+                nested, trusted_catalogs=trusted_catalogs, _prefix=f"{reference}/{suffix}"
+            )
         if "emit" in definition:
             _validate_emit_capability(definition["emit"], reference)
         if "listen" in definition:
             _validate_listen_capability(definition["listen"], reference)
+            if "foreach" in definition:
+                _unsupported("listen foreach iteration", f"{reference}/foreach")
         if "run" in definition:
             _validate_run_capability(definition["run"], reference)
+
+
+def _unsupported(feature: str, reference: str) -> NoReturn:
+    raise UnsupportedWorkflowFeature(
+        f"{feature} is not supported by the current OWA profile",
+        details={"reference": reference},
+    )
+
+
+def _validate_definition_profile(workflow: Mapping[str, Any]) -> None:
+    evaluation = workflow.get("evaluate", {})
+    if isinstance(evaluation, Mapping):
+        if evaluation.get("language", "jq") != "jq":
+            _unsupported("expression language", "/evaluate/language")
+        if evaluation.get("mode", "strict") != "strict":
+            _unsupported("expression mode", "/evaluate/mode")
+    use = workflow.get("use", {})
+    if isinstance(use, Mapping):
+        for key in (
+            "authentications",
+            "errors",
+            "extensions",
+            "functions",
+            "retries",
+            "secrets",
+            "timeouts",
+        ):
+            if use.get(key):
+                _unsupported(f"reusable {key}", f"/use/{key}")
+    _validate_data_profile(workflow, "")
+    timeout = workflow.get("timeout")
+    if isinstance(timeout, str):
+        _unsupported("named timeout", "/timeout")
+
+
+def _validate_data_profile(definition: Mapping[str, Any], reference: str) -> None:
+    for name in ("input", "output", "export"):
+        spec = definition.get(name)
+        schema = spec.get("schema") if isinstance(spec, Mapping) else None
+        if not isinstance(schema, Mapping):
+            continue
+        path = f"{reference}/{name}/schema"
+        if "resource" in schema:
+            _unsupported("external data schema", f"{path}/resource")
+        if schema.get("format", "json") not in {"json", "json:2020-12"}:
+            _unsupported("data schema format", f"{path}/format")
+        document = schema.get("document")
+        if not isinstance(document, (Mapping, bool)):
+            _unsupported("non-JSON data schema", f"{path}/document")
+        # External references are not fetched by the inline validator. Local
+        # fragments remain available without opening another network boundary.
+        _validate_schema_references(document, f"{path}/document")
+        try:
+            Draft202012Validator.check_schema(document)
+        except Exception as exc:
+            raise WorkflowSemanticError(
+                "invalid inline data schema", details={"reference": path}
+            ) from exc
+
+
+def _validate_schema_references(value: Any, reference: str) -> None:
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            path = f"{reference}/{key}"
+            if (
+                key in {"$ref", "$dynamicRef"}
+                and isinstance(item, str)
+                and not item.startswith("#")
+            ):
+                _unsupported("external schema reference", path)
+            _validate_schema_references(item, path)
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            _validate_schema_references(item, f"{reference}/{index}")
 
 
 def _validate_catalog_capability(
@@ -1263,7 +1402,7 @@ class WorkflowExecutor:
         if not isinstance(schema, Mapping):
             return
         document = schema.get("document")
-        if not isinstance(document, Mapping):
+        if not isinstance(document, (Mapping, bool)):
             return
         errors = sorted(
             Draft202012Validator(document).iter_errors(value),
@@ -1355,6 +1494,8 @@ def _validate_listen_capability(definition: Any, reference: str) -> None:
     selected = strategy.get("one")
     if not isinstance(selected, Mapping) or not isinstance(selected.get("with"), Mapping):
         raise WorkflowSemanticError(f"listen.one.with is required at {reference}")
+    if "correlate" in selected:
+        _unsupported("event correlation", f"{reference}/listen/to/one/correlate")
     if "foreach" in definition:
         raise UnsupportedWorkflowFeature(
             "listen foreach iteration is not enabled", details={"reference": reference}
@@ -1364,6 +1505,12 @@ def _validate_listen_capability(definition: Any, reference: str) -> None:
 def _validate_run_capability(definition: Any, reference: str) -> None:
     if not isinstance(definition, Mapping):
         raise WorkflowSemanticError(f"run configuration must be an object at {reference}")
+    if definition.get("await", True) is not True:
+        _unsupported("background run", f"{reference}/run/await")
+    if "return" in definition:
+        _unsupported("run return selection", f"{reference}/run/return")
+    if "container" in definition:
+        _unsupported("deployment-disabled container execution", f"{reference}/run/container")
     if "shell" in definition or "script" in definition:
         raise UnsupportedWorkflowFeature(
             "run shell and script execution are disabled",
@@ -1592,6 +1739,20 @@ def _nested_task_lists(definition: Mapping[str, Any]) -> list[list[Any]]:
         if isinstance(case, Mapping) and case.get("do") is not None:
             nested.append(_task_body(case["do"]))
     return nested
+
+
+def _task_scopes(definition: Mapping[str, Any]) -> Iterable[tuple[str, list[Any]]]:
+    for key in ("do", "try"):
+        tasks = definition.get(key)
+        if isinstance(tasks, list):
+            yield key, tasks
+    catch = definition.get("catch")
+    if isinstance(catch, Mapping) and isinstance(catch.get("do"), list):
+        yield "catch/do", catch["do"]
+    fork = definition.get("fork")
+    if isinstance(fork, Mapping) and isinstance(fork.get("branches"), list):
+        for index, branch in enumerate(fork["branches"]):
+            yield f"fork/branches/{index}", _task_body(branch)
 
 
 def _walk_tasks(task_list: Any, *, prefix: str) -> Iterable[tuple[str, Any]]:

@@ -24,6 +24,7 @@ from .workflow import (
     SUPPORTED_TASKS,
     WorkflowPlan,
 )
+from .workflow_profile import WORKFLOW_DSL, workflow_profile
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,7 +45,8 @@ class EngineCapabilities:
             "runtime": "open-workflow-agent",
             "runtimeVersion": __version__,
             "engine": self.engine,
-            "workflowDsl": "1.0.3",
+            "workflowDsl": WORKFLOW_DSL,
+            "workflowProfile": workflow_profile(),
             "portableProfile": self.portable_profile,
             "tasks": list(self.tasks),
             "protocols": list(self.protocols),

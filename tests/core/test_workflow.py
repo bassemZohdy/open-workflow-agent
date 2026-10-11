@@ -312,7 +312,19 @@ async def test_try_catches_filtered_raise_and_exports_error(services):
         "do": [
             {
                 "recover": {
-                    "try": [{"fail": {"raise": {"error": "controlled failure"}}}],
+                    "try": [
+                        {
+                            "fail": {
+                                "raise": {
+                                    "error": {
+                                        "type": "urn:test:controlled",
+                                        "status": 500,
+                                        "detail": "controlled failure",
+                                    }
+                                }
+                            }
+                        }
+                    ],
                     "catch": {
                         "errors": {"with": {"detail": "controlled failure"}},
                         "as": "failure",

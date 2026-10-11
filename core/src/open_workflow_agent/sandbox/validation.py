@@ -81,6 +81,11 @@ def _rewrite_executable_runs(value: Any, *, sandbox: SandboxConfig, reference: s
 def _validate_executable_run(
     run: Mapping[str, Any], *, sandbox: SandboxConfig, reference: str
 ) -> dict[str, Any] | None:
+    if run.get("await", True) is not True or "return" in run:
+        raise UnsupportedWorkflowFeature(
+            "background execution and run return selection are not enabled",
+            details={"reference": reference},
+        )
     if "container" in run:
         if not sandbox.enabled or sandbox.backend not in {"docker", "kubernetes"}:
             raise UnsupportedWorkflowFeature(

@@ -12,6 +12,17 @@ from open_workflow_agent.sandbox.validation import (
 _IMAGE = "registry.example/worker@sha256:" + ("a" * 64)
 
 
+@pytest.mark.parametrize("option", [{"await": False}, {"return": "all"}])
+def test_sandbox_rewrite_does_not_hide_unsupported_process_modes(option):
+    config = SandboxConfig(enabled=True, backend="internal")
+    with pytest.raises(UnsupportedWorkflowFeature, match="background"):
+        _validate_executable_run(
+            {"script": {"language": "python", "code": "print(1)"}, **option},
+            sandbox=config,
+            reference="/do/0/run",
+        )
+
+
 def test_sandbox_validation_covers_script_shell_and_container_edges():
     internal = SandboxConfig(
         enabled=True,

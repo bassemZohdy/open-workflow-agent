@@ -2,13 +2,13 @@
 
 Verified: 2026-08-29
 
-Open Workflow Agent targets reviewed stable releases of the external protocols/specifications it implements or advertises. The canonical machine-readable project record is `resources/protocol-baselines.yaml`. Baselines are pinned per reviewed project state and never float automatically at runtime.
+Open Workflow Agent targets reviewed stable releases of external protocols, with an explicit exception for its existing Open Workflow 1.0.3 public DSL. Upstream marks that release as a prerelease. The canonical machine-readable project record is `resources/protocol-baselines.yaml`. Baselines are pinned per reviewed project state and never float automatically at runtime.
 
 ## Current Baselines
 
-| Protocol / specification | Pinned stable baseline | OWA status |
+| Protocol / specification | Pinned reviewed baseline | OWA status |
 | --- | --- | --- |
-| Open Workflow Specification | `1.0.3` | Implemented subset / OWA Portable Profile |
+| Open Workflow Specification | `1.0.3` | Prerelease DSL; pinned upstream schema snapshot / OWA Portable Profile |
 | A2A Protocol | release `1.0.1`, protocol `1.0` | Bounded v1 SendMessage + Task get/cancel profile |
 | Model Context Protocol | `2026-07-28` | Bounded common client/tool profile |
 | OpenAPI Specification | `3.2.0` | Bounded operation adapter only; no full parser/conformance claim |
@@ -28,6 +28,17 @@ Open Workflow Agent targets reviewed stable releases of the external protocols/s
 Because this test is part of the root quality gate used before release, changing a runtime-advertised baseline without updating/reviewing the canonical manifest and documentation fails CI.
 
 ## Open Workflow Specification — 1.0.3
+
+Reviewed on 2026-10-11: [upstream v1.0.3](https://github.com/open-workflow-specification/specification/releases/tag/v1.0.3)
+is marked prerelease at tag commit `9b5b1da29e9d4fff2358580241e11aab22704a16`.
+OWA retains its existing public DSL and the unmodified schema from commit
+`2dd2c84170d5f3e05d58e913e9ca298dcf8d543a`, SHA-256
+`704ef5e91c5d823167dd8751794edb1dd1a6f9a3bdf9bfd389bf9c6b23ae3816`.
+The schema snapshot includes upstream changes after the release tag; it is
+not the tag's schema and must not be presented as a stable release schema.
+See [schema provenance](../resources/open-workflow/1.0.3/SCHEMA_SOURCE.md)
+and the [definition admission profile](workflow-admission.md). Runtime loading
+checks the digest, including a deployment-provided `OWA_SCHEMA_PATH`.
 
 OWA bundles and validates against the official Open Workflow schema revision:
 
