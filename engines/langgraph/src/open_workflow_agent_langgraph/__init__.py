@@ -3,20 +3,20 @@
 from typing import Any
 
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
-from open_workflow_agent.errors import InvocationCancelled
+from open_workflow_agent.errors import InvocationCancelled, OwaError, WorkflowExecutionError
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.workflow import WorkflowPlan
 
 from .agent import LangGraphAgentFactory
-from .native import LangGraphFunctionalAdapter
+from .native import LANGGRAPH_AVAILABLE, NATIVE_SCOPE_STEP_LIMIT, LangGraphFunctionalAdapter
 
 
 class LangGraphWorkflowEngine(PortableWorkflowEngine):
     """LangGraph-facing engine boundary.
 
-    The common executor supplies the portable semantics. A native LangGraph
-    Functional API compiler can be selected by deployments that need native
-    graph persistence; deterministic contract tests remain framework-neutral.
+    The common executor supplies task semantics. Native StateGraph nodes and
+    conditional edges execute every derived scope; checkpoints stay private
+    to the adapter. Minimal test environments use the common interpreter.
     """
 
     engine_name = "langgraph"
@@ -37,7 +37,13 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         await self.native.prepare_storage()
 
     def capabilities(self) -> EngineCapabilities:
-        return EngineCapabilities(engine=self.engine_name, resume=True, streaming=False)
+        return EngineCapabilities(
+            engine=self.engine_name,
+            resume=True,
+            streaming=False,
+            native_task_nodes=LANGGRAPH_AVAILABLE,
+            native_scope_step_limit=NATIVE_SCOPE_STEP_LIMIT if LANGGRAPH_AVAILABLE else None,
+        )
 
     async def invoke(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
@@ -47,14 +53,12 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
         try:
-            output = await self.native.invoke(
-                lambda value: self.executor.execute(
-                    workflow,
-                    value,
-                    metadata=self._metadata(workflow, invocation, active),
-                ),
+            output = await self.native.execute_plan(
+                self.executor,
+                workflow,
                 input_data,
-                thread_id=invocation.session_id,
+                metadata=self._metadata(workflow, invocation, active),
+                invocation_id=invocation.invocation_id,
             )
             if active.control.token.cancelled or invocation.status == "cancelled":
                 result = self._stored_result(invocation)
@@ -67,8 +71,8 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         except Exception as exc:
             error = (
                 exc.as_dict()
-                if hasattr(exc, "as_dict")
-                else {"code": "workflow_execution_error", "message": str(exc), "details": {}}
+                if isinstance(exc, OwaError)
+                else WorkflowExecutionError("native execution failed").as_dict()
             )
             result = (
                 self._stored_result(invocation)
@@ -99,14 +103,13 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         active = self._begin_active(handle)
         result: InvocationResult | None = None
         try:
-            output = await self.native.resume(
-                lambda value: self.executor.execute(
-                    plan,
-                    value,
-                    metadata=self._metadata(plan, handle, active),
-                ),
+            output = await self.native.execute_plan(
+                self.executor,
+                plan,
                 resume_input,
-                thread_id=handle.session_id,
+                metadata=self._metadata(plan, handle, active),
+                invocation_id=handle.invocation_id,
+                resume=True,
             )
             result = self._record_result(handle, status="completed", output=output)
             return result
@@ -116,8 +119,8 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         except Exception as exc:
             error = (
                 exc.as_dict()
-                if hasattr(exc, "as_dict")
-                else {"code": "workflow_execution_error", "message": str(exc), "details": {}}
+                if isinstance(exc, OwaError)
+                else WorkflowExecutionError("native execution failed").as_dict()
             )
             result = self._record_result(handle, status="faulted", error=error)
             return result

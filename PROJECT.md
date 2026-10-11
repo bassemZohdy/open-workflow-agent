@@ -22,6 +22,29 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
+### S1-05 native task execution — remote acceptance pending
+
+The LangGraph adapter now lowers immutable derived scopes into native
+StateGraph task nodes and conditional edges. Common task semantics/services,
+identity, errors and sandbox execution are preserved. Native scope checkpoint
+keys include invocation/fingerprint/reference/occurrence; snapshots exclude
+live controls, services, handles and internal plans. Synchronous native task
+checkpoints skip completed tasks on restart. JSON null stays ordinary data.
+Capabilities expose native-node availability and the native per-scope guard.
+See [compiler/recovery boundaries](docs/native-task-execution.md).
+
+Local root validation passed 977 tests, 20 skips and 91.23% core coverage.
+Focused native topology/checkpoint/restart, common operator and benchmark tests
+passed 28 tests. Completed fork branch caches cannot advance a sibling's
+occurrence cursor on replay. Native failures are sanitized into common errors.
+Ruff, formatting, strict typing, all four locks, documentation links and
+root/core package builds passed. Independent native/contract/CTK matrices
+passed: ADK 389, LangGraph 395, optional Agent Framework 526. Exact remote
+acceptance is pending; S1-05 remains unchecked. Full crash recovery,
+ordered fork reducers, durable winners/waits/events, historical checkpoint
+migration and independent JS qualification remain staged work.
+
+
 ### Stage 1 admission work — 2026-10-11 (verified)
 
 S1-01 preserves the official schema bytes and records separate prerelease-tag

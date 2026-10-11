@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, NoReturn, cast
+from typing import Any, NoReturn, Protocol, cast
 from uuid import uuid4
 
 import yaml
@@ -568,6 +568,13 @@ class TaskPlan:
 
 
 @dataclass(frozen=True, slots=True)
+class ScopePlan:
+    reference: str
+    indexed: bool
+    tasks: tuple[TaskPlan, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class WorkflowPlan:
     namespace: str
     name: str
@@ -575,6 +582,7 @@ class WorkflowPlan:
     dsl: str
     source_json: str
     tasks: tuple[TaskPlan, ...]
+    scopes: tuple[ScopePlan, ...] = ()
 
     @property
     def source(self) -> dict[str, Any]:
@@ -589,24 +597,52 @@ class WorkflowPlan:
 
 def normalize_workflow(workflow: Mapping[str, Any]) -> WorkflowPlan:
     document = workflow["document"]
-    tasks: list[TaskPlan] = []
-    for index, item in enumerate(workflow["do"]):
-        if not isinstance(item, Mapping) or len(item) != 1:
-            raise WorkflowSemanticError(f"task at /do/{index} must have exactly one name")
-        task_name, definition = next(iter(item.items()))
-        if not isinstance(definition, Mapping):
-            raise WorkflowSemanticError(f"task {task_name} definition must be an object")
-        kind = next(
-            (candidate for candidate in SUPPORTED_TASKS if candidate in definition), "unknown"
-        )
-        tasks.append(
-            TaskPlan(
-                name=str(task_name),
-                reference=f"/do/{index}/{_pointer_token(str(task_name))}",
-                kind=kind,
-                definition_json=json.dumps(definition, sort_keys=True, separators=(",", ":")),
+    scopes: list[ScopePlan] = []
+
+    def scope(task_list: list[Any], reference: str, *, indexed: bool = True) -> ScopePlan:
+        tasks: list[TaskPlan] = []
+        children: list[tuple[str, list[Any]]] = []
+        for index, item in enumerate(task_list):
+            if not isinstance(item, Mapping) or len(item) != 1:
+                raise WorkflowSemanticError(
+                    f"task at {reference}/{index} must have exactly one name"
+                )
+            task_name, definition = next(iter(item.items()))
+            if not isinstance(definition, Mapping):
+                raise WorkflowSemanticError(f"task {task_name} definition must be an object")
+            prefix = f"{reference}/{index}" if indexed else reference
+            task_reference = f"{prefix}/{_pointer_token(str(task_name))}"
+            kind = next(
+                (
+                    candidate
+                    for candidate in SUPPORTED_TASKS
+                    if candidate in definition and (candidate != "do" or "for" not in definition)
+                ),
+                "unknown",
             )
-        )
+            tasks.append(
+                TaskPlan(
+                    name=str(task_name),
+                    reference=task_reference,
+                    kind=kind,
+                    definition_json=json.dumps(definition, sort_keys=True, separators=(",", ":")),
+                )
+            )
+            children.extend(
+                (f"{task_reference}/{suffix}", nested)
+                for suffix, nested in _task_scopes(definition)
+            )
+        result = ScopePlan(reference=reference, indexed=indexed, tasks=tuple(tasks))
+        scopes.append(result)
+        for child_reference, nested in children:
+            scope(
+                nested,
+                child_reference,
+                indexed=not bool(re.search(r"/fork/branches/\d+$", child_reference)),
+            )
+        return result
+
+    root = scope(workflow["do"], "/do")
     source_json = json.dumps(workflow, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return WorkflowPlan(
         namespace=str(document["namespace"]),
@@ -614,7 +650,8 @@ def normalize_workflow(workflow: Mapping[str, Any]) -> WorkflowPlan:
         version=str(document["version"]),
         dsl=str(document["dsl"]),
         source_json=source_json,
-        tasks=tuple(tasks),
+        tasks=root.tasks,
+        scopes=tuple(scopes),
     )
 
 
@@ -698,6 +735,18 @@ class _FlowControl:
     context: Any = None
 
 
+class ScopeExecutor(Protocol):
+    async def run_scope(
+        self,
+        executor: WorkflowExecutor,
+        task_list: list[Any],
+        state: ExecutionState,
+        *,
+        prefix: str,
+        indexed: bool,
+    ) -> None: ...
+
+
 @dataclass(slots=True)
 class ExecutionState:
     data: Any
@@ -712,6 +761,7 @@ class ExecutionState:
     transition_selected: bool = False
     flow: _FlowControl = field(default_factory=_FlowControl)
     branch_owners: tuple[asyncio.Task[Any], ...] = ()
+    scope_executor: ScopeExecutor | None = None
 
 
 class WorkflowExecutor:
@@ -742,12 +792,18 @@ class WorkflowExecutor:
             metadata=dict(state.metadata),
             flow=state.flow,
             branch_owners=state.branch_owners,
+            scope_executor=state.scope_executor,
         )
         child.variables["context"] = child.context
         return child
 
     async def execute(
-        self, plan: WorkflowPlan, input_data: Any, *, metadata: dict[str, Any] | None = None
+        self,
+        plan: WorkflowPlan,
+        input_data: Any,
+        *,
+        metadata: dict[str, Any] | None = None,
+        scope_executor: ScopeExecutor | None = None,
     ) -> Any:
         workflow = plan.source
         metadata = dict(metadata or {})
@@ -772,6 +828,7 @@ class WorkflowExecutor:
         state = ExecutionState(
             data=copy.deepcopy(input_data),
             metadata=metadata,
+            scope_executor=scope_executor,
             variables={
                 "runtime": {
                     "name": "open-workflow-agent",
@@ -871,6 +928,9 @@ class WorkflowExecutor:
         indexed: bool = True,
     ) -> None:
         tasks = list(task_list)
+        if state.scope_executor is not None:
+            await state.scope_executor.run_scope(self, tasks, state, prefix=prefix, indexed=indexed)
+            return
         index = 0
         while index < len(tasks):
             if state.flow.ended.is_set():
@@ -885,114 +945,7 @@ class WorkflowExecutor:
                 raise WorkflowExecutionError(f"task {name} definition must be an object")
             task_prefix = f"{prefix}/{index}" if indexed else prefix
             reference = f"{task_prefix}/{_pointer_token(str(name))}"
-            local = self._copy_state(state)
-            for key in ("input", "output", "task"):
-                local.variables.pop(key, None)
-            local.variables.update(
-                {
-                    "_task_reference": reference,
-                    "_task_name": str(name),
-                    "task": {
-                        "name": str(name),
-                        "reference": reference,
-                        "definition": copy.deepcopy(definition),
-                        "input": copy.deepcopy(state.data),
-                        "startedAt": _date_time_descriptor(),
-                    },
-                }
-            )
-            task_started = time.perf_counter()
-            self._emit(
-                "TaskStarted", {**self._task_event(reference, name, local), "status": "running"}
-            )
-            try:
-                result = await self._run_with_policy(str(name), definition, local, reference)
-                skipped = isinstance(result, _SkippedTask)
-                output = (
-                    copy.deepcopy(result.data)
-                    if skipped
-                    else self._apply_task_data(definition, result, local)
-                )
-            except asyncio.CancelledError:
-                if state.flow.ended.is_set():
-                    self._emit(
-                        "TaskCancelled",
-                        {
-                            **self._task_event(reference, name, local),
-                            "duration": time.perf_counter() - task_started,
-                            "status": "cancelled",
-                            "reason": "workflow_end",
-                        },
-                    )
-                raise
-            except InvocationCancelled as exc:
-                self._emit(
-                    "TaskCancelled",
-                    {
-                        **self._task_event(reference, name, local),
-                        "duration": time.perf_counter() - task_started,
-                        "status": "cancelled",
-                        "reason": exc.details.get("reason", "cancelled"),
-                        "error": _error_details(exc),
-                    },
-                )
-                raise
-            except Exception as exc:
-                if isinstance(
-                    exc,
-                    (
-                        WorkflowExecutionError,
-                        WorkflowSemanticError,
-                        UnsupportedWorkflowFeature,
-                        ExpressionError,
-                        ToolError,
-                    ),
-                ):
-                    exc.details.setdefault("instance", reference)
-                self._emit(
-                    "TaskFaulted",
-                    {
-                        **self._task_event(reference, name, local),
-                        "duration": time.perf_counter() - task_started,
-                        "status": "faulted",
-                        "error": _error_details(exc),
-                    },
-                )
-                if isinstance(
-                    exc,
-                    (
-                        WorkflowExecutionError,
-                        WorkflowSemanticError,
-                        UnsupportedWorkflowFeature,
-                        ExpressionError,
-                        ToolError,
-                    ),
-                ):
-                    raise
-                raise WorkflowExecutionError(
-                    f"task {name} failed", details={"task": str(name)}
-                ) from exc
-            local.outputs[str(name)] = copy.deepcopy(output)
-            state.outputs = local.outputs
-            state.data = copy.deepcopy(output)
-            state.context = copy.deepcopy(local.context)
-            state.variables["context"] = state.context
-            for key in ("event", "resume_input"):
-                if key in local.variables:
-                    state.variables[key] = copy.deepcopy(local.variables[key])
-            state.jump_to, state.stop = local.jump_to, local.stop
-            state.scope_exit = local.scope_exit
-            state.transition_selected = local.transition_selected
-            self._emit(
-                "TaskCompleted",
-                {
-                    **self._task_event(reference, name, local),
-                    "duration": time.perf_counter() - task_started,
-                    "status": "completed",
-                },
-            )
-            if not state.transition_selected and not state.stop:
-                self._apply_transition(definition.get("then"), state)
+            await self._run_task_item(str(name), definition, state, reference)
             if state.stop:
                 return
             if state.scope_exit:
@@ -1016,6 +969,116 @@ class WorkflowExecutor:
                 index = target_index
                 continue
             index += 1
+
+    async def _run_task_item(
+        self, name: str, definition: Mapping[str, Any], state: ExecutionState, reference: str
+    ) -> None:
+        local = self._copy_state(state)
+        for key in ("input", "output", "task"):
+            local.variables.pop(key, None)
+        local.variables.update(
+            {
+                "_task_reference": reference,
+                "_task_name": str(name),
+                "task": {
+                    "name": str(name),
+                    "reference": reference,
+                    "definition": copy.deepcopy(definition),
+                    "input": copy.deepcopy(state.data),
+                    "startedAt": _date_time_descriptor(),
+                },
+            }
+        )
+        task_started = time.perf_counter()
+        self._emit("TaskStarted", {**self._task_event(reference, name, local), "status": "running"})
+        try:
+            result = await self._run_with_policy(str(name), definition, local, reference)
+            skipped = isinstance(result, _SkippedTask)
+            output = (
+                copy.deepcopy(result.data)
+                if skipped
+                else self._apply_task_data(definition, result, local)
+            )
+        except asyncio.CancelledError:
+            if state.flow.ended.is_set():
+                self._emit(
+                    "TaskCancelled",
+                    {
+                        **self._task_event(reference, name, local),
+                        "duration": time.perf_counter() - task_started,
+                        "status": "cancelled",
+                        "reason": "workflow_end",
+                    },
+                )
+            raise
+        except InvocationCancelled as exc:
+            self._emit(
+                "TaskCancelled",
+                {
+                    **self._task_event(reference, name, local),
+                    "duration": time.perf_counter() - task_started,
+                    "status": "cancelled",
+                    "reason": exc.details.get("reason", "cancelled"),
+                    "error": _error_details(exc),
+                },
+            )
+            raise
+        except Exception as exc:
+            if isinstance(
+                exc,
+                (
+                    WorkflowExecutionError,
+                    WorkflowSemanticError,
+                    UnsupportedWorkflowFeature,
+                    ExpressionError,
+                    ToolError,
+                ),
+            ):
+                exc.details.setdefault("instance", reference)
+            self._emit(
+                "TaskFaulted",
+                {
+                    **self._task_event(reference, name, local),
+                    "duration": time.perf_counter() - task_started,
+                    "status": "faulted",
+                    "error": _error_details(exc),
+                },
+            )
+            if isinstance(
+                exc,
+                (
+                    WorkflowExecutionError,
+                    WorkflowSemanticError,
+                    UnsupportedWorkflowFeature,
+                    ExpressionError,
+                    ToolError,
+                ),
+            ):
+                raise
+            raise WorkflowExecutionError(
+                f"task {name} failed", details={"task": str(name)}
+            ) from exc
+        local.outputs[str(name)] = copy.deepcopy(output)
+        state.outputs = local.outputs
+        state.data = copy.deepcopy(output)
+        state.context = copy.deepcopy(local.context)
+        state.variables["context"] = state.context
+        for key in ("event", "resume_input"):
+            if key in local.variables:
+                state.variables[key] = copy.deepcopy(local.variables[key])
+        state.jump_to, state.stop = local.jump_to, local.stop
+        state.scope_exit = local.scope_exit
+        state.transition_selected = local.transition_selected
+        self._emit(
+            "TaskCompleted",
+            {
+                **self._task_event(reference, name, local),
+                "duration": time.perf_counter() - task_started,
+                "status": "completed",
+            },
+        )
+        if not state.transition_selected and not state.stop:
+            self._apply_transition(definition.get("then"), state)
 
     async def _run_with_policy(
         self,

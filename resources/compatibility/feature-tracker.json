@@ -56169,8 +56169,31 @@
         "module": "M03",
         "description": "Compile individual tasks and routing to native LangGraph nodes/tasks; keep native checkpoints private.",
         "effort": "L",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "In progress",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "scope": "Python admitted task scopes lower to native LangGraph StateGraph nodes/conditional routing; common task semantics and private native checkpoint identities/channels are preserved. Exact remote acceptance pending; advanced native/extension/agent/JS features remain staged.",
+          "tests": [
+            "tests/langgraph/test_native_task_graph.py",
+            "tests/core/test_workflow.py",
+            "tests/contract/test_scoped_flow.py",
+            "tests/contract/test_data_pipeline.py",
+            "tests/contract/test_operator_lifecycle.py",
+            "tests/ci/test_engine_benchmark.py"
+          ],
+          "local_root": {
+            "passed": 977,
+            "skipped": 20,
+            "coverage_percent": 91.23
+          },
+          "native_matrices": {
+            "adk": 389,
+            "langgraph": 395,
+            "agent_framework_optional": 526
+          },
+          "remote_acceptance": "Pending",
+          "full_conformance": false
+        }
       },
       {
         "id": "S1-06",

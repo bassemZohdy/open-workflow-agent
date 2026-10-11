@@ -6,8 +6,12 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from open_workflow_agent.errors import OwaError, WorkflowExecutionError
 from open_workflow_agent.expressions import validate_expression_data
 from open_workflow_agent.storage import is_postgresql_datasource
+from open_workflow_agent.workflow import WorkflowExecutor, WorkflowPlan
+
+NATIVE_SCOPE_STEP_LIMIT = 1000000
 
 # None is a native resume signal. A private bytes value preserves JSON null
 # without changing existing non-null checkpoint inputs or colliding with JSON.
@@ -103,6 +107,49 @@ class LangGraphFunctionalAdapter:
                 return await graph.ainvoke(input_data, config=config)
         graph = self.compile(runner)
         return await graph.ainvoke(input_data, config=config)
+
+    async def execute_plan(
+        self,
+        executor: WorkflowExecutor,
+        plan: WorkflowPlan,
+        input_data: Any,
+        *,
+        metadata: dict[str, Any],
+        invocation_id: str,
+        resume: bool = False,
+    ) -> Any:
+        """Run each derived task as a native node with private scope checkpoints."""
+        if not LANGGRAPH_AVAILABLE:
+            return await executor.execute(plan, input_data, metadata=metadata)
+        from .graph import LangGraphScopeExecutor
+
+        await self.prepare_storage()
+
+        async def run(saver: Any) -> Any:
+            scopes = LangGraphScopeExecutor(plan, saver, invocation_id, resume=resume)
+            raw_input = await scopes.original_input() if resume else input_data
+            try:
+                return await executor.execute(
+                    plan, raw_input, metadata=metadata, scope_executor=scopes
+                )
+            except OwaError:
+                raise
+            except Exception:
+                raise WorkflowExecutionError("native task execution failed") from None
+
+        if self.database_path and is_postgresql_datasource(self.database_path):
+            if AsyncPostgresSaver is None:
+                raise RuntimeError(
+                    "PostgreSQL LangGraph persistence requires langgraph-checkpoint-postgres"
+                )
+            async with AsyncPostgresSaver.from_conn_string(self.database_path) as saver:
+                await saver.setup()
+                return await run(saver)
+        if self.database_path and AsyncSqliteSaver is not None:
+            async with AsyncSqliteSaver.from_conn_string(self.database_path) as sqlite_saver:
+                await sqlite_saver.setup()
+                return await run(sqlite_saver)
+        return await run(self.checkpointer)
 
     async def resume(
         self,

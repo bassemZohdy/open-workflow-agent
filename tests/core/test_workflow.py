@@ -431,3 +431,35 @@ async def test_workflow_and_task_input_output_schemas_are_enforced(services):
     assert await executor.execute(plan, {"value": 3}) == {"result": 3}
     with pytest.raises(WorkflowSemanticError):
         await executor.execute(plan, {"value": "bad"})
+
+
+def test_derived_scope_plan_is_immutable_and_preserves_nested_task_references():
+    from dataclasses import FrozenInstanceError
+
+    from open_workflow_agent.workflow import generate_default_workflow
+
+    workflow = generate_default_workflow()
+    workflow["do"] = [
+        {"loop": {"for": {"in": "${ [] }"}, "do": [{"a/b~c": {"set": {"ok": True}}}]}},
+        {
+            "branches": {
+                "fork": {"branches": [{"child": {"do": [{"deep": {"set": {"ok": True}}}]}}]}
+            }
+        },
+    ]
+    plan = compile_workflow(workflow)
+    assert plan.tasks[0].kind == "for"
+    assert [scope.reference for scope in plan.scopes] == [
+        "/do",
+        "/do/0/loop/do",
+        "/do/1/branches/fork/branches/0",
+        "/do/1/branches/fork/branches/0/child/do",
+    ]
+    assert plan.scopes[1].tasks[0].reference == "/do/0/loop/do/0/a~1b~0c"
+    assert not plan.scopes[2].indexed
+    with pytest.raises(FrozenInstanceError):
+        plan.scopes[0].reference = "/changed"
+    decoded = plan.scopes[1].tasks[0].definition
+    decoded["set"]["ok"] = False
+    assert plan.scopes[1].tasks[0].definition["set"]["ok"] is True
+    assert plan.source == workflow

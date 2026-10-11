@@ -17,5 +17,8 @@ async def test_engine_benchmark_reports_resume_and_checkpoint_metrics(engine_nam
     assert result["concurrent_throughput_per_second"] > 0
     assert result["native_checkpoint_bytes_delta"] >= 0
     assert result["interruption_resume"]["status"] == "completed"
-    assert result["interruption_resume"]["side_effect_calls"] >= 2
+    if engine_name == "langgraph" and result["native_available"]:
+        assert result["interruption_resume"]["side_effect_calls"] == 1
+    else:
+        assert result["interruption_resume"]["side_effect_calls"] >= 2
     assert result["interruption_resume"]["unique_operation_ids"] == 1

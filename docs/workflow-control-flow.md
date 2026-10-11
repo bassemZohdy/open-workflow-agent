@@ -42,16 +42,20 @@ index. The corrected fork/name references can change operation ids relative
 to the earlier bridge. Compatibility for upgrading historical in-flight
 records belongs to S2-09 and is not qualified by this milestone.
 
-The native LangGraph and optional Agent Framework bridges reserve native
+The optional Agent Framework bridge and LangGraph Functional API compatibility
+helper reserve native
 `None` as a control/no-input signal. They encode public JSON null using a
 private bytes marker and decode it before common execution. That marker
 cannot be admitted JSON input; direct attempts to pass it fail core
-validation. Existing non-null LangGraph checkpoint input shapes are retained.
-Native persistence/control objects remain private.
+validation. Existing non-null Functional API checkpoint input shapes are retained.
+Engine invocations now use [native task graphs](native-task-execution.md),
+where JSON null is ordinary snapshot data. Native persistence/control objects
+remain private.
 
 Evidence is in [shared scope/flow fixtures](../tests/contract/test_scoped_flow.py),
 the existing lifecycle suite and the adapted CTK flow/switch/loop selection.
 Ordered fork aggregation, reducers, durable competitive winners, child
-workflow recursion/background operation, replay/migration and native task
-lowering remain separate later-stage work. JS and full conformance are not
+workflow recursion/background operation and full recovery/migration remain
+separate later-stage work. Native LangGraph task lowering is recorded
+separately in the task-execution acceptance record. JS and full conformance are not
 claimed.

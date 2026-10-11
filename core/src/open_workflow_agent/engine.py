@@ -39,6 +39,8 @@ class EngineCapabilities:
     streaming: bool = False
     cancellation: bool = True
     waiting: bool = True
+    native_task_nodes: bool = False
+    native_scope_step_limit: int | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -53,6 +55,10 @@ class EngineCapabilities:
             "functions": list(self.functions),
             "policies": list(self.policies),
             "features": {
+                "nativeTaskExecution": {
+                    "nodes": self.native_task_nodes,
+                    "scopeStepLimit": self.native_scope_step_limit,
+                },
                 "resume": self.resume,
                 "streaming": self.streaming,
                 "cancellation": self.cancellation,

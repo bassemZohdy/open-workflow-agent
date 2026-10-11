@@ -14,7 +14,7 @@ The imported ADK expression engines, direct execution paths, custom checkpoint/h
 
 ## Implementation rules
 
-- Reuse native LangGraph graph nodes, tasks, routing and checkpoints when they preserve OWS behavior. The current Functional API envelope still executes the common interpreter; native task-level lowering remains a gap.
+- Reuse native LangGraph graph nodes, tasks, routing and checkpoints when they preserve OWS behavior. The LangGraph adapter now lowers admitted scopes to native task nodes and conditional routing; see [the execution/recovery boundary](native-task-execution.md).
 - Start in one container with embedded storage. External databases, event transports and providers are optional bootstrap bindings.
 - Put task/workflow behavior in workflow YAML/JSON; put environment preparation, installed providers, storage endpoints, credentials and defaults in separate bootstrap configuration.
 - Keep the official schema unchanged. Versioned custom metadata extensions may declare native capabilities; reject unsupported required features.
@@ -25,7 +25,7 @@ The imported ADK expression engines, direct execution paths, custom checkpoint/h
 
 [TODO.md](../TODO.md) is the short staged backlog. The [full tracker](../resources/compatibility/feature-tracker.json) retains 658 feature rows, 443 proposed tests, 774 schema constraints, 83 extension decisions and 52 configuration entries. Every feature maps to TODO tasks. Proposed tests are not marked executed by import.
 
-Main gaps: full jq, data/export/context rules, scoped termination, ordered fork outputs, native task compilation, durable race cancellation, persistent events/timers and native/common-state recovery. Protocol coverage, advanced native behavior and JS parity follow later.
+Verified Stage 1 work records jq, data/export/context rules and scoped termination in PROJECT.md. Native task compilation is being validated against the same shared fixtures. Main remaining gaps include ordered fork outputs, durable race cancellation, persistent events/timers and native/common-state recovery. Protocol coverage, advanced native behavior and JS parity follow later.
 
 All eight agent families are preserved in [the pattern catalog](../resources/patterns/pattern-catalog.json). Per-role models/tools, budgets, route failures, response shapes and resume/cancellation need tests before old API equivalence can be claimed.
 
