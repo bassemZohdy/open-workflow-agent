@@ -548,9 +548,41 @@ three tracked gaps with 91.50% coverage, ADK 844/420, LangGraph 886/393 and
 optional Agent Framework 1,097/592, each with three tracked gaps. Both principal
 SDK focus suites pass 49/36. Formatting, lint, strict package/fixture/CI typing,
 five wheel/sdist builds and current wheel-source/pinned-schema bytes pass.
-Fresh exact-source GitHub and configured PostgreSQL acceptance are pending.
-Event/child operation receipts and complete native/common consistency remain
-open; the existing event bus has no new durable delivery guarantee.
+All seven exact `c7b70ad` jobs succeed. The actual corrected PostgreSQL command
+executes and passes all nine scope cases and eighteen sandbox cases per adapter:
+shared recovery passes 186 LangGraph, 152 ADK and 110 optional Agent Framework
+cases (seven optional skips). Both PostgreSQL runtime images and both main CI
+forced-stop image restarts pass. Both native benchmark steps pass in both main
+CI runs. Linux root passes 1,587/542/three tracked gaps with 91.52% coverage;
+shared contracts 689/468/three gaps; native LangGraph 790/393 and ADK 748/420,
+each with three gaps and 96 additional CTK passes. Windows root/native pass
+460/12 and 384/210; optional native/shared/CTK passes 1,097/592/three gaps.
+All six actual downloaded dependency reports contain zero known advisories.
+These results qualify the sandbox and corrected scope selection source; they
+do not qualify subsequent event/child changes.
+
+Source `5506277` additionally wraps event publication and existing synchronous
+child calls in the common journal. Prepared properties/default source and
+resolved child fingerprint/input bind their requests. Value/null/fault outcomes
+are reused; changed requests or child definitions reject redispatch and
+uncertain intents remain unresolved. The actual prior interruption assertions
+fail because both operations execute twice. Focus passes 70/64 in each
+principal SDK environment, including existing event/listener, separate child
+identity and leaf-call contracts. Five collection guards verify twenty
+configured event/child cases per principal adapter along with the existing
+scope/sandbox selection. Full frozen regressions pass: core
+1,625/586/three tracked gaps with 91.58% coverage;
+ADK 884/460, LangGraph 926/433 and optional Agent Framework 1,157/652,
+each with three tracked gaps.
+Formatting, lint, strict package/fixture/CI typing, five wheel/sdist builds,
+current wheel-source/pinned-schema bytes and unchanged-source checks pass.
+Fresh remote acceptance remains pending for this source.
+
+Actual probes on both principal SDKs delete the completed child's common
+invocation record after the parent retains its receipt. Recovery still accepts
+the known output. Child-record dependency reconciliation and complete
+native/common consistency remain open. The event bus has no new durable
+delivery guarantee; child scheduling/budget semantics retain S2-07 ownership.
 
 S2-03 stays open. This fix does not reconcile all native/common invocation or
 side-effect records. General pending-effect reconciliation, full native state

@@ -3976,7 +3976,7 @@
       "structural_compatibility": "Representable through mapping",
       "behavioral_compatibility": "Requires semantic wrapper; untested",
       "operational_compatibility": "No operational conformance run; production services must satisfy contract",
-      "mismatch": "Persisted resumability requires checkpointer and authenticated façade",
+      "mismatch": "Persisted resumability requires checkpointer and authenticated faÃ§ade",
       "effort": "M",
       "gap_severity": "Medium",
       "evidence": "S02; S03; S09; S10; S12; S13",
@@ -3985,7 +3985,7 @@
       "engine_realization": "Native execution plus OWS adapter",
       "implementation_module": "M09 Human interaction",
       "native_reuse": "interrupt/Command resume and schema-validated replies",
-      "custom_work": "Preserve listen or runtime suspended phase: Persisted resumability requires checkpointer and authenticated façade. Implement within Human interaction and validate T27.",
+      "custom_work": "Preserve listen or runtime suspended phase: Persisted resumability requires checkpointer and authenticated faÃ§ade. Implement within Human interaction and validate T27.",
       "embedded_support": "Embedded human-task journal/API; external UI/identity provider optional",
       "external_setup": "Optional provider/executor/endpoint binding only when this capability needs it; no external orchestration runtime required",
       "configuration_location": "Workflow standard field; backend/bootstrap binding external",
@@ -4343,8 +4343,8 @@
       "ows_basis": "Normative when construct used",
       "ows_version": "Stable v1.0.1 and v1.0.3",
       "normative_reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/dsl-reference.md#authentication",
-      "python_api": "A2A façade and workload identity",
-      "javascript_api": "A2A façade and workload identity",
+      "python_api": "A2A faÃ§ade and workload identity",
+      "javascript_api": "A2A faÃ§ade and workload identity",
       "python_status": "Adapter",
       "javascript_status": "Adapter",
       "structural_compatibility": "Representable through mapping",
@@ -5295,8 +5295,8 @@
       "ows_basis": "Normative when construct used",
       "ows_version": "v1.0.3 prerelease; absent dedicated construct in v1.0.1",
       "normative_reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/dsl-reference.md#a2a-call",
-      "python_api": "A2A façade wraps graph invocation",
-      "javascript_api": "A2A façade wraps graph invocation",
+      "python_api": "A2A faÃ§ade wraps graph invocation",
+      "javascript_api": "A2A faÃ§ade wraps graph invocation",
       "python_status": "Adapter",
       "javascript_status": "Adapter",
       "structural_compatibility": "Representable through mapping",
@@ -23151,7 +23151,7 @@
     {
       "id": "T33",
       "name": "Workflow exposed through A2A",
-      "prerequisites": "A2A server façade; registry; durable invocation mapping",
+      "prerequisites": "A2A server faÃ§ade; registry; durable invocation mapping",
       "input_fixture": "External SendMessage then GetTask,CancelTask,SubscribeToTask",
       "expected_outcome": "Workflow result as artifacts; INPUT_REQUIRED and terminal states mapped",
       "acceptance_criteria": "Ownership and auth validated; reconnect safe; AgentCard truthful",
@@ -29197,7 +29197,7 @@
                     "redirect": {
                       "type": "boolean",
                       "title": "HttpRedirect",
-                      "description": "Specifies whether redirection status codes (`300–399`) should be treated as errors."
+                      "description": "Specifies whether redirection status codes (`300â€“399`) should be treated as errors."
                     }
                   },
                   "required": [
@@ -29268,7 +29268,7 @@
                     "redirect": {
                       "type": "boolean",
                       "title": "HttpRedirect",
-                      "description": "Specifies whether redirection status codes (`300–399`) should be treated as errors."
+                      "description": "Specifies whether redirection status codes (`300â€“399`) should be treated as errors."
                     }
                   },
                   "required": [
@@ -30264,7 +30264,7 @@
                 "redirect": {
                   "type": "boolean",
                   "title": "HttpRedirect",
-                  "description": "Specifies whether redirection status codes (`300–399`) should be treated as errors."
+                  "description": "Specifies whether redirection status codes (`300â€“399`) should be treated as errors."
                 }
               },
               "required": [
@@ -30540,7 +30540,7 @@
                 "redirect": {
                   "type": "boolean",
                   "title": "HttpRedirect",
-                  "description": "Specifies whether redirection status codes (`300–399`) should be treated as errors."
+                  "description": "Specifies whether redirection status codes (`300â€“399`) should be treated as errors."
                 }
               },
               "required": [
@@ -44826,7 +44826,7 @@
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T27",
         "effort": "M",
-        "gap": "Persisted resumability requires checkpointer and authenticated façade",
+        "gap": "Persisted resumability requires checkpointer and authenticated faÃ§ade",
         "standard_or_extension": "Composition or runtime contract",
         "completion_rule": "Implemented in the selected backend(s), required acceptance tests passed, limitations explicitly recorded. Native API existence alone does not count as complete.",
         "todo_ids": [
@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "The common sandbox executor records a private intent before dispatch and value/fault receipts before native task progress. Script, shell and container replay reuse known outcomes, reject changed prepared requests and stop at uncertain intents. Execution identity is stable per private occurrence while retry attempts stay distinct. All actual dispatch remains through SandboxManager; deployment policy, enforced isolation profiles and public capabilities are unchanged. Fresh exact-source seven-gate and configured sandbox/scope acceptance, event/child operation receipts and complete native/common consistency remain open. General ambiguous-outcome resolution, compensation, migration, JavaScript and full conformance retain their owners. Fakes qualify common dispatch behavior, not stronger isolation or real-cluster acceptance.",
+          "scope": "Event emission and existing synchronous child calls use the common intent/outcome journal before native task progress. Event requests bind evaluated properties/default source; child requests bind resolved workflow fingerprint/input. Value/null/fault receipts retain known results; changed requests/child definitions reject redispatch, and uncertain intents remain unresolved. Actual child invocations retain existing separate parent/task/user identity. No event delivery, child scheduling/budget or stronger isolation capability is added. Fresh exact-source acceptance and complete native/common consistency remain open. Actual probes on both principal SDKs delete the completed child invocation after parent receipt retention; recovery still accepts the known output. Child record dependency reconciliation is not established by these receipts. General ambiguous-outcome resolution, event inbox/outbox, child budgets/asynchrony, compensation, version migration and full proposed/JavaScript criteria retain their owners.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -66256,7 +66256,7 @@
           },
           "native_completed_scope_dependencies_followup": {
             "commit": "968ec8fe1f030fe85533c1b97e7729080105f742",
-            "status": "SQLite/native/Windows bounded scope consistency verified; PostgreSQL scope cases were deselected",
+            "status": "Bounded implementation verified, including actual corrected PostgreSQL scope/sandbox cases at c7b70ad",
             "source_file_sha256": {
               "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "169a340bf2ed762a1bc04720ca092935feb13f1c87882c0a1b4793d7087b7c82",
               "tests/contract/test_native_scope_dependencies.py": "2437c0a0e9900bf89f1a5e8c55b5de431e3661b954e1c8bce783c3cd7af4dc8e",
@@ -66339,11 +66339,95 @@
               "dependency-audit-root": 71,
               "dependency-audit-sandbox-controller": 13
             },
-            "remote_known_advisories": 0
+            "remote_known_advisories": 0,
+            "configured_acceptance_followup": {
+              "commit": "c7b70ad9ef5c6fa59ae7d00ea39064e9486a4aad",
+              "runtime_commit": "3df61f685ea14a8fe996da88bea052f2fad71163",
+              "status": "All seven actual jobs successful; required scope/sandbox cases executed",
+              "remote_runs": {
+                "38182130965": "success",
+                "38182130946": "success",
+                "38182130947": "success",
+                "38182130944": "success",
+                "38182130956": "success",
+                "38182130936": "success",
+                "38182128750": "success"
+              },
+              "postgresql": {
+                "store_passed": 81,
+                "native_langgraph_passed": 10,
+                "native_langgraph_skipped": 8,
+                "shared_langgraph_passed": 186,
+                "shared_adk_passed": 152,
+                "shared_agent_framework_passed": 110,
+                "shared_agent_framework_skipped": 7,
+                "completed_scope_cases_passed": 9,
+                "sandbox_cases_passed_per_adapter": 18,
+                "both_runtime_images": "Success"
+              },
+              "main_ci_summary_lines": [
+                "1587 passed, 542 skipped, 3 xfailed",
+                "689 passed, 468 skipped, 3 xfailed",
+                "460 passed, 12 skipped",
+                "384 passed, 210 skipped",
+                "790 passed, 393 skipped, 3 xfailed",
+                "96 passed",
+                "748 passed, 420 skipped, 3 xfailed",
+                "96 passed"
+              ],
+              "optional_agent_framework": {
+                "passed": 1097,
+                "skipped": 592,
+                "expected_assertion_failures": 3
+              },
+              "linux_root": {
+                "passed": 1587,
+                "skipped": 542,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.52
+              },
+              "linux_shared_contracts": {
+                "passed": 689,
+                "skipped": 468,
+                "expected_assertion_failures": 3
+              },
+              "linux_native": {
+                "langgraph": {
+                  "passed": 790,
+                  "skipped": 393,
+                  "expected_assertion_failures": 3,
+                  "ctk_passed": 96
+                },
+                "adk": {
+                  "passed": 748,
+                  "skipped": 420,
+                  "expected_assertion_failures": 3,
+                  "ctk_passed": 96
+                }
+              },
+              "windows": {
+                "root_passed": 460,
+                "root_skipped": 12,
+                "native_passed": 384,
+                "native_skipped": 210
+              },
+              "both_main_ci_forced_stop_images": "Success",
+              "both_native_benchmark_steps_in_both_main_ci": "Success",
+              "remote_security_dependency_counts": {
+                "dependency-audit-adk": 109,
+                "dependency-audit-agent-framework": 74,
+                "dependency-audit-kubernetes-sandbox-controller": 16,
+                "dependency-audit-langgraph": 96,
+                "dependency-audit-root": 71,
+                "dependency-audit-sandbox-controller": 13
+              },
+              "remote_known_advisories": 0,
+              "coverage_limit": "This qualifies the unchanged completed-scope and sandbox source. It does not qualify subsequent event/child changes; the ac478e1 deselection limit and raw snapshots remain preserved."
+            }
           },
           "sandbox_receipt_recovery_followup": {
             "commit": "3df61f685ea14a8fe996da88bea052f2fad71163",
-            "status": "Local sandbox receipt regression and actual selector correction verified; fresh remote acceptance pending",
+            "status": "Bounded implementation verified, including actual corrected PostgreSQL scope/sandbox cases at c7b70ad",
             "source_file_sha256": {
               "core/src/open_workflow_agent/workflow.py": "cfd7d179a571ac51f3bda03f29ba2e0721828be94c3899357ed67536f49a2a8b",
               "core/src/open_workflow_agent/sandbox/executor.py": "9e48b15494897c85be5b01a1b86c13646f70f1c9358ba33f45c88f676f09edbe",
@@ -66389,7 +66473,139 @@
             },
             "selection_guard": "Three tests run actual PostgreSQL keyword expressions through real pytest collection: nine completed-scope cases, eighteen LangGraph sandbox cases and eighteen ADK sandbox cases are selected. The optional bridge command includes the sandbox fixture separately.",
             "quality_checks": "Formatting, lint, strict 66-package-source and fixture/CI typing, five wheel/sdist builds and current wheel source/pinned-schema bytes pass on frozen runtime/test source.",
-            "remaining": "Fresh exact-source seven-gate and configured sandbox/scope acceptance, event/child operation receipts and complete native/common consistency remain open. General ambiguous-outcome resolution, compensation, migration, JavaScript and full conformance retain their owners. Fakes qualify common dispatch behavior, not stronger isolation or real-cluster acceptance."
+            "remaining": "Fresh exact-source seven-gate and configured sandbox/scope acceptance, event/child operation receipts and complete native/common consistency remain open. General ambiguous-outcome resolution, compensation, migration, JavaScript and full conformance retain their owners. Fakes qualify common dispatch behavior, not stronger isolation or real-cluster acceptance.",
+            "configured_acceptance_followup": {
+              "commit": "c7b70ad9ef5c6fa59ae7d00ea39064e9486a4aad",
+              "runtime_commit": "3df61f685ea14a8fe996da88bea052f2fad71163",
+              "status": "All seven actual jobs successful; required scope/sandbox cases executed",
+              "remote_runs": {
+                "38182130965": "success",
+                "38182130946": "success",
+                "38182130947": "success",
+                "38182130944": "success",
+                "38182130956": "success",
+                "38182130936": "success",
+                "38182128750": "success"
+              },
+              "postgresql": {
+                "store_passed": 81,
+                "native_langgraph_passed": 10,
+                "native_langgraph_skipped": 8,
+                "shared_langgraph_passed": 186,
+                "shared_adk_passed": 152,
+                "shared_agent_framework_passed": 110,
+                "shared_agent_framework_skipped": 7,
+                "completed_scope_cases_passed": 9,
+                "sandbox_cases_passed_per_adapter": 18,
+                "both_runtime_images": "Success"
+              },
+              "main_ci_summary_lines": [
+                "1587 passed, 542 skipped, 3 xfailed",
+                "689 passed, 468 skipped, 3 xfailed",
+                "460 passed, 12 skipped",
+                "384 passed, 210 skipped",
+                "790 passed, 393 skipped, 3 xfailed",
+                "96 passed",
+                "748 passed, 420 skipped, 3 xfailed",
+                "96 passed"
+              ],
+              "optional_agent_framework": {
+                "passed": 1097,
+                "skipped": 592,
+                "expected_assertion_failures": 3
+              },
+              "linux_root": {
+                "passed": 1587,
+                "skipped": 542,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.52
+              },
+              "linux_shared_contracts": {
+                "passed": 689,
+                "skipped": 468,
+                "expected_assertion_failures": 3
+              },
+              "linux_native": {
+                "langgraph": {
+                  "passed": 790,
+                  "skipped": 393,
+                  "expected_assertion_failures": 3,
+                  "ctk_passed": 96
+                },
+                "adk": {
+                  "passed": 748,
+                  "skipped": 420,
+                  "expected_assertion_failures": 3,
+                  "ctk_passed": 96
+                }
+              },
+              "windows": {
+                "root_passed": 460,
+                "root_skipped": 12,
+                "native_passed": 384,
+                "native_skipped": 210
+              },
+              "both_main_ci_forced_stop_images": "Success",
+              "both_native_benchmark_steps_in_both_main_ci": "Success",
+              "remote_security_dependency_counts": {
+                "dependency-audit-adk": 109,
+                "dependency-audit-agent-framework": 74,
+                "dependency-audit-kubernetes-sandbox-controller": 16,
+                "dependency-audit-langgraph": 96,
+                "dependency-audit-root": 71,
+                "dependency-audit-sandbox-controller": 13
+              },
+              "remote_known_advisories": 0,
+              "coverage_limit": "This qualifies the unchanged completed-scope and sandbox source. It does not qualify subsequent event/child changes; the ac478e1 deselection limit and raw snapshots remain preserved."
+            }
+          },
+          "event_child_receipt_recovery_followup": {
+            "commit": "5506277f792f2ba0f00c8c0aa7cf55df0a6b6808",
+            "status": "Local known event/child outcomes and uncertain intents verified; fresh configured acceptance pending",
+            "source_file_sha256": {
+              "core/src/open_workflow_agent/workflow.py": "fc395254a394323373b8f2636b997c76cbef31c73145ae180292e0659ed3773c",
+              "tests/contract/test_event_child_effect_recovery.py": "bde01f9d41113812eca0ad9d14ba13e248319870f5d69adb390144e25805519c",
+              "tests/ci/test_postgres_recovery_selection.py": "940870c31685f76dd78c56c11e4aa1a8655f21342cff7f8b52a9af603b591834",
+              ".github/workflows/ci.yml": "39c9e8f55e7d5ef081fe00646f8e5c0af392ac58d393f4f62b9a3670e89d9788",
+              ".github/workflows/postgres-ci.yml": "8766ba0dc0a45e5e65640c1c659ac15869a5fd5817d4a5a790fe8873ce6a33ea"
+            },
+            "scope": "Event emission and existing synchronous child calls use the common intent/outcome journal before native task progress. Event requests bind evaluated properties/default source; child requests bind resolved workflow fingerprint/input. Value/null/fault receipts retain known results; changed requests/child definitions reject redispatch, and uncertain intents remain unresolved. Actual child invocations retain existing separate parent/task/user identity. No event delivery, child scheduling/budget or stronger isolation capability is added.",
+            "negative_probes": "Both event and actual child interruption assertions fail on prior source because recovery dispatches twice. Known event acknowledgement identity and actual child invocation records are checked after correction.",
+            "full_regression": {
+              "root": {
+                "passed": 1625,
+                "skipped": 586,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.58
+              },
+              "adk": {
+                "passed": 884,
+                "skipped": 460,
+                "expected_assertion_failures": 3
+              },
+              "lg": {
+                "passed": 926,
+                "skipped": 433,
+                "expected_assertion_failures": 3
+              },
+              "af": {
+                "passed": 1157,
+                "skipped": 652,
+                "expected_assertion_failures": 3
+              }
+            },
+            "local_focus": {
+              "adk": {
+                "passed": 70,
+                "skipped": 64
+              },
+              "langgraph": {
+                "passed": 70,
+                "skipped": 64
+              }
+            },
+            "quality_checks": "Formatting, lint, strict 66-package-source and fixture/CI typing, five wheel/sdist builds and current Python/pinned-schema wheel bytes pass. Five actual collection guards select nine scope cases, eighteen sandbox cases and twenty event/child cases per principal adapter.",
+            "remaining": "Fresh exact-source acceptance and complete native/common consistency remain open. Actual probes on both principal SDKs delete the completed child invocation after parent receipt retention; recovery still accepts the known output. Child record dependency reconciliation is not established by these receipts. General ambiguous-outcome resolution, event inbox/outbox, child budgets/asynchrony, compensation, version migration and full proposed/JavaScript criteria retain their owners."
           }
         }
       },

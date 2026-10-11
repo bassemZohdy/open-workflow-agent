@@ -86,15 +86,25 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   checkpoints reject recovery; a cancelled child without its first checkpoint
   remains valid. Focus passes 65/117 and full LangGraph native/shared/CTK passes
   850/357/three tracked gaps. All seven `ac478e1` jobs succeed, but their
-  PostgreSQL filter deselects all nine completed-scope cases; those cases remain
-  unqualified. Source `3df61f6` corrects the selector and checks actual collection.
+  PostgreSQL filter deselects all nine completed-scope cases; those cases were
+  unqualified at that revision. Source `3df61f6` corrects the selector and checks
+  actual collection.
   Common sandbox receipts preserve known script/shell/container outcomes across
   native recovery and stop changed requests or uncertain intents before another
   dispatch. Frozen full core passes 1,583/546/three tracked gaps with 91.50%
   coverage; ADK 844/420, LangGraph 886/393 and optional Agent Framework
   1,097/592 each retain three tracked gaps. Focus passes 49/36 on each principal
-  SDK. Fresh configured/exact-source sandbox/scope acceptance, event/child
-  operation receipts and complete native/common consistency remain open.
+  SDK. All seven `c7b70ad` jobs pass; PostgreSQL actually executes all nine scope
+  cases and eighteen sandbox cases per adapter, with 186 LangGraph/152 ADK
+  shared recovery passes and both runtime images. Source `5506277` additionally
+  records event and synchronous child outcomes before native progress; both
+  focused suites pass 70/64. Full frozen core passes 1,625/586
+  with 91.58% coverage; ADK 884/460, LangGraph 926/433 and optional
+  Agent Framework 1,157/652,
+  each with three tracked gaps. A completed child's missing common invocation
+  record is still accepted in an actual SDK probe. Child-record dependency
+  reconciliation, fresh event/child acceptance and complete native/common
+  consistency remain open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.

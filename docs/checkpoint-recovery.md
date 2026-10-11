@@ -203,8 +203,9 @@ passes 850/357/three tracked gaps. At `ac478e1`, all seven jobs succeed, includi
 Windows and actual image restarts, but its PostgreSQL keyword filter deselects
 the nine new scope cases. Those successful jobs do not qualify PostgreSQL scope
 corruption recovery. Source `3df61f6` corrects the real selector and verifies the
-selected cases through actual pytest collection. Fresh configured acceptance
-is required. Native formats/SQL remain engine-owned; binding version 2 introduces
+selected cases through actual pytest collection. All seven `c7b70ad` jobs
+subsequently pass; actual PostgreSQL runs all nine scope and eighteen sandbox
+cases per adapter. Native formats/SQL remain engine-owned; binding version 2 introduces
 no older-checkpoint migration guarantee.
 
 The common sandbox executor at `3df61f6` extends action receipts to existing
@@ -251,8 +252,22 @@ duplicate terminal resume, repeated reusable calls, pending actions inside
 retry/competitive scopes, and failed receipt writes. SQLite and configured
 PostgreSQL share the same assertions in independent SDK environments.
 Executable run receipts and execution ownership have subsequent evidence above.
-Event/child operation receipts and general ambiguous-outcome resolution remain
-open; no broader capability is advertised.
+Source `5506277` subsequently records event and existing synchronous child-call
+outcomes through the same common journal. Event requests bind evaluated
+properties and default source; child requests bind the resolved workflow
+fingerprint and evaluated input. Recovery preserves the publication acknowledgement
+identity and child value/null/fault outcomes, rejects changed requests or child
+definitions, and stops at uncertain intents. The prior interruption assertions
+fail because both event publication and actual child invocation occur twice.
+The corrected focus passes 70/64 in each principal SDK environment, including
+existing event/listener, child identity and leaf-call recovery contracts.
+
+This acknowledgement record does not add durable event delivery or child
+scheduling/budget semantics. Actual probes on both principal SDKs delete the completed
+child's common invocation record after the parent retains its receipt. Recovery
+still accepts the known output. Child-record dependency reconciliation and
+general ambiguous-outcome resolution remain open. Full/fresh configured results
+retain their source-specific scopes in [PROJECT.md](../PROJECT.md).
 
 [Journal fixtures](../tests/core/test_effect_journal.py) cover owner contention,
 reopening, first outcomes, source/occurrence separation, common errors, corrupt

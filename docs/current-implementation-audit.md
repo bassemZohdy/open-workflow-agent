@@ -78,6 +78,21 @@ consistency. Selected LangGraph snapshot checks do not establish all ADK private
 state or complete native/common invocation/payload reconciliation. No full feature outcome
 or independent JavaScript qualification is promoted by this bounded proof.
 
+The corrected PostgreSQL gate at `c7b70ad` executes all nine completed-scope cases
+and eighteen sandbox receipt cases per adapter. The shared recovery suites pass
+186 LangGraph, 152 ADK and 110 optional Agent Framework checks, with seven
+optional skips. Both PostgreSQL runtime images pass. This closes the earlier
+test-selection gap for that source.
+
+Source `5506277` records event publication acknowledgements and existing
+synchronous child-call outcomes before native task progress. The focused suites
+pass 70/64 in each principal SDK environment. Changed prepared input or resolved
+child definitions reject replay; known outcomes are reused and uncertain intents
+stop another dispatch. These receipts add neither durable event delivery nor
+child scheduling/budget capabilities. Both principal SDK probes still accept a saved
+child result after deletion of the child's common invocation record. That
+dependency gap remains S2-03 work; it prevents a complete recovery claim.
+
 Earlier competitive runtime, fixture/audit and all three common PostgreSQL
 gates passed at `2fbe548`, `51c204e` and `81d27b3`. The JSON null wake-up fix also
 passed every exact gate at `f2943c6`. Original-input and terminal recovery passed
