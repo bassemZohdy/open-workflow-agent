@@ -30,6 +30,7 @@ def workflow_profile() -> dict[str, Any]:
             "functionDepthLimit": 32,
             "expandedTaskLimit": 10000,
             "catalogContent": "captured by asynchronous compilation",
+            "catalogTaskPipeline": True,
             "arbitraryImports": False,
         },
         "dataSchemas": {

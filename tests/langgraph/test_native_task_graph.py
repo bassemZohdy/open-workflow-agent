@@ -86,7 +86,7 @@ async def test_native_scope_has_individual_nodes_conditional_edges_and_private_j
     assert not hasattr(result, "snapshot")
 
 
-@pytest.mark.parametrize("scope", ["root", "do", "for", "function"])
+@pytest.mark.parametrize("scope", ["root", "do", "for", "function", "import"])
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_restart_resumes_pending_native_task_without_replaying_completed_call(
     tmp_path, scope, backend
@@ -104,8 +104,20 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
     )
     database_root = None if datasource else tmp_path
     calls = []
+    catalog_fetches = []
 
     async def handler(request):
+        if request.url.host == "catalog.test":
+            catalog_fetches.append(request)
+            return httpx.Response(
+                200,
+                json={
+                    "call": "http",
+                    "with": {"method": "POST", "endpoint": "https://service.test/once"},
+                    "output": {"as": "${ . + {imported: true} }"},
+                    "export": {"as": "${ {saved: $output.once} }"},
+                },
+            )
         calls.append(request.headers["Idempotency-Key"])
         return httpx.Response(200, json={"once": True})
 
@@ -131,6 +143,28 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
         workflow["do"] = [{"parent": {"call": "reusable"}}]
         plan = compile_workflow(workflow)
     services = RuntimeServices(config, model=FakeModel(), database_root=database_root)
+    if scope == "import":
+        from open_workflow_agent.config import ExternalCatalogConfig
+        from open_workflow_agent.external_catalog import ExternalCatalogResolver
+        from open_workflow_agent.workflow import resolve_and_compile_workflow
+
+        workflow = generate_default_workflow()
+        workflow["use"] = {"catalogs": {"trusted": {"endpoint": "https://catalog.test/root"}}}
+        workflow["do"] = [
+            {"sideEffect": {"call": "echo:1.0.0@trusted"}},
+            *body[1:],
+        ]
+        resolver = ExternalCatalogResolver(
+            {"trusted": ExternalCatalogConfig(allowed_hosts=["catalog.test", "service.test"])},
+            http=HttpClient(transport=httpx.MockTransport(handler)),
+        )
+        services.external_catalogs = resolver
+        plan = await resolve_and_compile_workflow(
+            workflow,
+            trusted_catalogs=resolver.policies,
+            resolver=resolver,
+            catalog=services.catalog,
+        )
     services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
     services.tools.protocols = services.protocols
     engine = LangGraphWorkflowEngine()
@@ -148,6 +182,8 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
             + (
                 "/do/0/sideEffect"
                 if scope == "root"
+                else "/do/0/sideEffect/call/echo:1.0.0@trusted"
+                if scope == "import"
                 else "/do/0/parent/call/reusable/do/0/sideEffect"
                 if scope == "function"
                 else "/do/0/parent/do/0/sideEffect"
@@ -162,6 +198,8 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
         services.close()
 
     restarted = RuntimeServices(config, model=FakeModel(), database_root=database_root)
+    if scope == "import":
+        restarted.external_catalogs = resolver
     restarted.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
     restarted.tools.protocols = restarted.protocols
     resumed_engine = LangGraphWorkflowEngine()
@@ -176,6 +214,8 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
         assert result.status == "completed", result.error
         assert result.output == {"done": True}
         assert len(calls) == 1
+        if scope == "import":
+            assert len(catalog_fetches) == 1
         assert not any(
             event.task_reference and event.task_reference.endswith("/sideEffect")
             for event in restarted.events.events

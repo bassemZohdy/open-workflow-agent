@@ -58,3 +58,11 @@ native/contract/CTK, PostgreSQL and runtime-image acceptance gates.
 The implementation follows the official [Graph API](https://docs.langchain.com/oss/python/langgraph/graph-api)
 and [persistence](https://docs.langchain.com/oss/python/langgraph/persistence)
 contracts for native task nodes, conditional edges and saver checkpoints.
+
+
+Captured catalog protocol tasks have their own derived call scope. Public
+references identify the original workflow call; imported task descriptors
+contain captured content. A completed import scope recovers without repeating
+the protocol action. Synchronously compiled legacy catalog registrations use
+the outer task as their native checkpoint unit and retain the registry's
+mutable content contract; they do not qualify frozen import replay identity.

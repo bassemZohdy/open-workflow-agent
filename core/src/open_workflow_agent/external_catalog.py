@@ -11,7 +11,7 @@ import socket
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urljoin, urlparse
 
 import yaml
@@ -29,6 +29,9 @@ from .protocols import (
 )
 from .security import ProfileAuthentication, SecurityConfig
 from .versions import version_precedence
+
+if TYPE_CHECKING:
+    from .workflow import ExecutionState
 
 CATALOG_FUNCTION_REFERENCE = re.compile(
     r"^(?P<name>[a-z0-9][a-z0-9-]*):(?P<version>[A-Za-z0-9.+-]+)@(?P<catalog>[A-Za-z][A-Za-z0-9_-]*)$"
@@ -53,10 +56,15 @@ class ResolvedCatalogFunction:
     resource_uri: str
     digest: str
     definition_json: str
+    execution_definition_json: str | None = None
 
     @property
     def definition(self) -> dict[str, Any]:
         return dict(json.loads(self.definition_json))
+
+    @property
+    def execution_definition(self) -> dict[str, Any]:
+        return dict(json.loads(self.execution_definition_json or self.definition_json))
 
 
 @dataclass(slots=True)
@@ -103,6 +111,7 @@ class ExternalCatalogResolver:
         self.event_sink = event_sink
         self.security = security
         self._cache: dict[str, _CachedResource] = {}
+        self._registered_bindings: dict[str, ResolvedCatalogFunction] = {}
         self._resolved: dict[str, set[str]] = {}
         self._states: dict[str, str] = {name: "configured" for name in self.policies}
 
@@ -171,66 +180,55 @@ class ExternalCatalogResolver:
                 )
                 raise
             evaluation = workflow.get("evaluate", {})
-            call, function_with = _validate_function_definition(
-                resource.definition, reference, evaluation=evaluation
+            components = workflow.get("use", {})
+            _validate_function_definition(
+                resource.definition, reference, evaluation=evaluation, components=components
             )
-            bindings.append(
-                ResolvedCatalogFunction(
-                    reference.value,
-                    resource_uri,
-                    resource.digest,
-                    json.dumps(
-                        resource.definition,
-                        sort_keys=True,
-                        separators=(",", ":"),
-                        ensure_ascii=False,
-                        allow_nan=False,
-                    ),
-                )
+            binding = ResolvedCatalogFunction(
+                reference.value,
+                resource_uri,
+                resource.digest,
+                json.dumps(
+                    resource.definition,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=False,
+                    allow_nan=False,
+                ),
+                json.dumps(
+                    _resolve_function_definition(resource.definition, components),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=False,
+                    allow_nan=False,
+                ),
             )
-            runtime_protocols = ProtocolServices(
-                self._client(policy, auth_host=urlparse(resource_uri).hostname)
-            )
+            bindings.append(binding)
             expression_mode = cast(ExpressionMode, evaluation.get("mode", "strict"))
 
             async def invoke(
                 payload: Any,
                 context: CatalogContext,
                 *,
-                call_name: str = call,
-                with_definition: Any = function_with,
-                protocols: ProtocolServices = runtime_protocols,
-                reference_value: str = reference.value,
-                trust_policy: ExternalCatalogConfig = policy,
+                captured: ResolvedCatalogFunction = binding,
                 mode: ExpressionMode = expression_mode,
             ) -> Any:
-                evaluator = ExpressionEvaluator(mode=mode)
-                invocation_payload = payload
-                if with_definition is not None:
-                    invocation_payload = evaluator.evaluate(
-                        with_definition,
-                        payload,
-                        variables={"input": payload, "context": context.metadata},
-                    )
-                if not isinstance(invocation_payload, Mapping):
-                    raise ToolError(
-                        f"catalog function {reference_value} produced a non-object protocol payload"
-                    )
-                if _contains_sensitive_header(invocation_payload):
-                    raise UnsupportedWorkflowFeature(
-                        "external catalog invocation authorization headers are disabled",
-                        details={"function": reference_value},
-                    )
-                _validate_invocation_endpoints(invocation_payload, trust_policy)
-                if protocols.http.transport is not None:
-                    await _validate_invocation_destinations(
-                        invocation_payload, trust_policy, protocols.http
-                    )
-                return await protocols.call(call_name, dict(invocation_payload))
+                return await self.invoke_frozen(
+                    captured,
+                    payload,
+                    variables={"context": context.metadata},
+                    metadata=context.metadata,
+                    mode=mode,
+                )
 
             catalog.register(reference.value, invoke)
+            self._registered_bindings[reference.value] = binding
             self._resolved.setdefault(reference.catalog, set()).add(reference.value)
         return tuple(bindings)
+
+    def registered_binding(self, reference: str) -> ResolvedCatalogFunction | None:
+        """Compatibility content; asynchronous plans always use their own closure."""
+        return self._registered_bindings.get(reference)
 
     async def invoke_frozen(
         self,
@@ -240,8 +238,58 @@ class ExternalCatalogResolver:
         variables: Mapping[str, Any],
         operation_id: str | None = None,
         mode: ExpressionMode = "strict",
+        metadata: Mapping[str, Any] | None = None,
+        parent_state: ExecutionState | None = None,
     ) -> Any:
-        """Execute captured content while rechecking current deployment trust."""
+        """Compatibility invocation through the same portable task pipeline."""
+        from .workflow import ExecutionState, WorkflowExecutor
+
+        reference = str(variables.get("_task_reference", "/"))
+        execution_reference = str(variables.get("_execution_reference", reference))
+        task_metadata = dict(metadata or {})
+        if operation_id is not None:
+            # The prepared adapter preserves this already computed effect identity.
+            task_metadata["_catalog_operation_id"] = operation_id
+        task_metadata["_catalog_tasks"] = {execution_reference: binding}
+        task_metadata["_external_catalog_resolver"] = self
+        executor = WorkflowExecutor(FunctionCatalog())
+        if parent_state is not None:
+            state = executor._copy_state(parent_state)
+            state.data = payload
+            state.metadata = task_metadata
+            # A synchronously compiled compatibility plan has no derived import
+            # scope. Its outer native task remains the checkpoint unit.
+            state.scope_executor = None
+        else:
+            state = ExecutionState(
+                data=payload,
+                variables=dict(variables),
+                context=variables.get("context", payload),
+                expressions=ExpressionEvaluator(mode=mode),
+                metadata=task_metadata,
+            )
+        await executor._run_task_item(
+            binding.reference,
+            binding.execution_definition,
+            state,
+            reference,
+            execution_reference=execution_reference,
+        )
+        if parent_state is not None:
+            parent_state.context = state.context
+            parent_state.variables["context"] = state.context
+            parent_state.stop = state.stop
+        return state.data
+
+    async def invoke_prepared(
+        self,
+        binding: ResolvedCatalogFunction,
+        call: str,
+        payload: Any,
+        *,
+        mode: ExpressionMode = "strict",
+    ) -> Any:
+        """Dispatch an evaluated protocol payload under current deployment trust."""
         reference = parse_catalog_function_reference(binding.reference)
         if reference is None:
             raise WorkflowSchemaError("invalid frozen catalog reference")
@@ -256,24 +304,14 @@ class ExternalCatalogResolver:
                 details={"function": binding.reference},
             )
         self._verify_pin(binding.digest, policy, binding.reference, binding.resource_uri)
-        call, arguments = _validate_function_definition(
-            binding.definition, reference, evaluation={"mode": mode}
+        expected_call, _ = _validate_function_definition(
+            binding.execution_definition, reference, evaluation={"mode": mode}
         )
-        evaluator = ExpressionEvaluator(mode=mode)
-        invocation_payload = (
-            evaluator.evaluate(
-                arguments,
-                payload,
-                variables={**variables, "input": payload},
-            )
-            if arguments is not None
-            else payload
-        )
-        if not isinstance(invocation_payload, Mapping):
+        if call != expected_call:
+            raise UnsupportedWorkflowFeature("captured catalog protocol does not match dispatch")
+        if not isinstance(payload, Mapping):
             raise ToolError("catalog function produced a non-object protocol payload")
-        invocation_payload = dict(invocation_payload)
-        if operation_id is not None:
-            invocation_payload.setdefault("operation_id", operation_id)
+        invocation_payload = dict(payload)
         if _contains_sensitive_header(invocation_payload):
             raise UnsupportedWorkflowFeature(
                 "external catalog invocation authorization headers are disabled"
@@ -599,6 +637,7 @@ def _validate_function_definition(
     reference: CatalogFunctionReference,
     *,
     evaluation: Mapping[str, Any] | None = None,
+    components: Mapping[str, Any] | None = None,
 ) -> tuple[str, Any]:
     arguments = definition.get("with")
     if isinstance(arguments, Mapping) and "$ref" in arguments:
@@ -625,11 +664,6 @@ def _validate_function_definition(
             "external catalog function authorization headers are disabled",
             details={"function": reference.value},
         )
-    if set(definition) - {"call", "with"}:
-        raise UnsupportedWorkflowFeature(
-            "external catalog task modifiers are not enabled",
-            details={"function": reference.value},
-        )
     from .workflow import generate_default_workflow, validate_capabilities, validate_schema
 
     workflow = generate_default_workflow()
@@ -638,6 +672,13 @@ def _validate_function_definition(
     workflow["do"] = [{reference.name: dict(definition)}]
     try:
         validate_schema(workflow)
+        workflow["do"] = [
+            {
+                reference.name: _resolve_function_definition(
+                    definition, components, name=reference.name
+                )
+            }
+        ]
         validate_capabilities(workflow)
     except WorkflowSchemaError:
         raise WorkflowSchemaError(
@@ -651,6 +692,21 @@ def _validate_function_definition(
             exc.details["reference"] = location.removeprefix(prefix) or "/"
         raise
     return str(call), function_with
+
+
+def _resolve_function_definition(
+    definition: Mapping[str, Any], components: Mapping[str, Any] | None, *, name: str = "function"
+) -> dict[str, Any]:
+    from .definitions import resolve_reusable_components
+
+    # Caller functions/catalogs stay in their own scopes and trust boundaries.
+    use = {
+        key: value
+        for key, value in (components or {}).items()
+        if key in {"timeouts", "errors", "retries"}
+    }
+    workflow = resolve_reusable_components({"use": use, "do": [{name: dict(definition)}]})
+    return cast(dict[str, Any], workflow["do"][0][name])
 
 
 def _nested_values(value: Any) -> list[Any]:

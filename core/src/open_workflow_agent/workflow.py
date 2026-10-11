@@ -673,6 +673,7 @@ class WorkflowPlan:
                             "resource": item.resource_uri,
                             "digest": item.digest,
                             "definition": item.definition,
+                            "executionDefinition": item.execution_definition,
                         }
                         for item in self.imports
                     ],
@@ -693,6 +694,7 @@ def normalize_workflow(
     _validate_json_value(workflow)
     effective = resolve_reusable_components(workflow)
     functions = effective.get("use", {}).get("functions", {})
+    imported_functions = {item.reference: item.execution_definition for item in imports}
     document = workflow["document"]
     scopes: list[ScopePlan] = []
 
@@ -703,9 +705,10 @@ def normalize_workflow(
         indexed: bool = True,
         source_prefix: str | None = None,
         stack: tuple[str, ...] = (),
+        source_override: str | None = None,
     ) -> ScopePlan:
         tasks: list[TaskPlan] = []
-        children: list[tuple[str, list[Any], str, bool, tuple[str, ...]]] = []
+        children: list[tuple[str, list[Any], str, bool, tuple[str, ...], str | None]] = []
         for index, item in enumerate(task_list):
             if not isinstance(item, Mapping) or len(item) != 1:
                 raise WorkflowSemanticError(
@@ -722,6 +725,8 @@ def normalize_workflow(
                 if source_prefix is not None
                 else task_reference
             )
+            if source_override is not None:
+                source_reference = source_override
             kind = next(
                 (
                     candidate
@@ -748,6 +753,7 @@ def normalize_workflow(
                     f"{source_reference}/{suffix}",
                     not suffix.startswith("fork/branches/"),
                     stack,
+                    None,
                 )
                 for suffix, nested in _task_scopes(definition)
             )
@@ -765,19 +771,39 @@ def normalize_workflow(
                         "/use/functions",
                         False,
                         (*stack, call),
+                        None,
+                    )
+                )
+            elif isinstance(call, str) and call in imported_functions:
+                children.append(
+                    (
+                        f"{task_reference}/call",
+                        [{call: imported_functions[call]}],
+                        reference,
+                        False,
+                        stack,
+                        source_reference,
                     )
                 )
         result = ScopePlan(reference=reference, indexed=indexed, tasks=tuple(tasks))
         scopes.append(result)
         if sum(len(item.tasks) for item in scopes) > 10000:
             raise WorkflowSemanticError("reusable task expansion exceeds 10000 tasks")
-        for child_reference, nested, child_source, child_indexed, child_stack in children:
+        for (
+            child_reference,
+            nested,
+            child_source,
+            child_indexed,
+            child_stack,
+            child_override,
+        ) in children:
             scope(
                 nested,
                 child_reference,
                 indexed=child_indexed,
                 source_prefix=child_source,
                 stack=child_stack,
+                source_override=child_override,
             )
         return result
 
@@ -957,6 +983,12 @@ class WorkflowExecutor:
         }
         metadata["_functions"] = workflow.get("use", {}).get("functions", {})
         metadata["_imports"] = {item.reference: item for item in plan.imports}
+        metadata["_catalog_tasks"] = {
+            task.execution_reference: metadata["_imports"][task.name]
+            for scope in plan.scopes
+            for task in scope.tasks
+            if task.execution_reference is not None and task.name in metadata["_imports"]
+        }
         metadata.setdefault("_lifecycle", LifecycleControl())
         metadata.setdefault("invocation_id", str(uuid4()))
         metadata.setdefault("workflow_name", plan.name)
@@ -1133,6 +1165,7 @@ class WorkflowExecutor:
         execution_reference: str | None = None,
     ) -> None:
         local = self._copy_state(state)
+        imported = local.metadata.get("_catalog_tasks", {}).get(execution_reference or reference)
         for key in ("input", "output", "task"):
             local.variables.pop(key, None)
         local.variables.update(
@@ -1144,7 +1177,9 @@ class WorkflowExecutor:
                     "name": str(name),
                     "reference": reference,
                     "definition": copy.deepcopy(
-                        definition_at_pointer(
+                        imported.definition
+                        if isinstance(imported, ResolvedCatalogFunction)
+                        else definition_at_pointer(
                             local.variables.get("workflow", {}).get("definition", {}), reference
                         )
                         or definition
@@ -1344,11 +1379,18 @@ class WorkflowExecutor:
             )
             functions = state.metadata.get("_functions", {})
             call = definition["call"]
-            if call in functions:
+            imported = state.metadata.get("_imports", {}).get(call)
+            if call in functions or isinstance(imported, ResolvedCatalogFunction):
                 child = self._copy_state(state)
                 child.data = copy.deepcopy(payload)
                 await self._run_tasks(
-                    [{call: functions[call]}],
+                    [
+                        {
+                            call: imported.execution_definition
+                            if imported is not None
+                            else functions[call]
+                        }
+                    ],
                     child,
                     prefix=self._nested_prefix(state, "call"),
                     indexed=False,
@@ -1368,6 +1410,7 @@ class WorkflowExecutor:
                     **payload,
                     "operation_id": payload.get("operation_id")
                     or payload.get("operationId")
+                    or state.metadata.get("_catalog_operation_id")
                     or self._operation_id(state),
                 }
             return await self._call(str(definition["call"]), payload, state)
@@ -1512,6 +1555,18 @@ class WorkflowExecutor:
         raise UnsupportedWorkflowFeature(f"unsupported task {name}")
 
     async def _call(self, call: str, payload: Any, state: ExecutionState) -> Any:
+        imported = state.metadata.get("_catalog_tasks", {}).get(
+            state.variables.get("_execution_reference")
+        )
+        if isinstance(imported, ResolvedCatalogFunction):
+            resolver = state.metadata.get("_external_catalog_resolver")
+            if resolver is None and self.services is not None:
+                resolver = self.services.external_catalogs
+            if resolver is None:
+                raise WorkflowExecutionError("external catalog resolver is unavailable")
+            return await resolver.invoke_prepared(
+                imported, call, payload, mode=self._expressions(state).mode
+            )
         if call in {"http", "mcp", "a2a", "openapi"}:
             if self.services is None:
                 raise WorkflowExecutionError(f"protocol service unavailable: {call}")
@@ -1519,6 +1574,17 @@ class WorkflowExecutor:
         if self.services is None:
             raise WorkflowExecutionError("runtime services unavailable for catalog call")
         binding = state.metadata.get("_imports", {}).get(call)
+        catalog_reference = parse_catalog_function_reference(call)
+        if (
+            binding is None
+            and catalog_reference is not None
+            and catalog_reference.catalog != "default"
+        ):
+            registered = getattr(
+                getattr(self.services, "external_catalogs", None), "registered_binding", None
+            )
+            if callable(registered):
+                binding = registered(call)
         if isinstance(binding, ResolvedCatalogFunction):
             return await self.services.external_catalogs.invoke_frozen(
                 binding,
@@ -1526,6 +1592,8 @@ class WorkflowExecutor:
                 variables=state.variables,
                 operation_id=self._operation_id(state),
                 mode=self._expressions(state).mode,
+                metadata=state.metadata,
+                parent_state=state,
             )
         context = CatalogContext(
             model=self.services.model,

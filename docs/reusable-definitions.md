@@ -47,13 +47,23 @@ bodies, without treating application text as imports.
 
 The asynchronous workflow and sandbox compilers capture each resolved resource's
 immutable content, URI and digest in the internal plan. Workflow fingerprints
-include that closure. Compiling another workflow cannot replace a captured
+include the original and resolved closure. Imported named timeouts resolve
+against the caller workflow's reusable components during admission; the
+original imported descriptor retains the name. Compiling another workflow cannot replace a captured
 function body; execution rechecks current deployment trust/integrity policy.
 Synchronous compilation without resolution retains its existing catalog
-registration contract. Catalog imports currently allow supported protocol
-`call`/`with` bodies only; task modifiers, executable code, nested imports and
-unimplemented protocols fail explicitly. Their wider adapter work remains
-S3-03. Changed imported content produces a different fingerprint; automatic
+registration contract: the registered body also uses the common data/control
+pipeline, but remains mutable registry content, with the outer native call task
+as its checkpoint unit. Use asynchronous compilation for a frozen import
+closure and a separate derived native scope. Captured protocol tasks execute their input, condition,
+timeout, output, export and transition rules through the common task pipeline,
+including a separate native checkpoint scope per import call site. Public task
+references retain the workflow's original call pointer; the imported task's
+`$task.definition` contains the captured definition. Exported context returns
+to the caller before its output/export pipeline. Scope exit returns from the
+import; workflow end retains its workflow-wide effect. Executable remote code,
+nested imports and unimplemented protocols fail explicitly. Their wider
+adapter work remains S3-03. Changed imported content produces a different fingerprint; automatic
 in-flight content migration remains S2-09.
 
 The local workflow registry selects `latest` by SemVer precedence, independent

@@ -44,23 +44,31 @@ Asynchronous compilers capture immutable external catalog content/URI/digest
 in the plan fingerprint. Application text cannot trigger imports, another
 compilation cannot replace captured content, and execution rechecks deployment
 endpoint/integrity policy. Protocol templates respect the workflow expression
-mode. Remote definitions use strict safe loading and official task validation;
-unimplemented task modifiers/imports/execution remain explicit rejections.
+mode. Imported protocol tasks now use the complete common task pipeline,
+including input/output/export, condition/timeout/transition behavior, original
+caller pointers and captured task descriptors. Their native scopes also recover
+completed calls without replay. Remote definitions use strict safe loading and
+official task validation; unsafe code/nested imports/unimplemented protocols
+remain explicit rejections.
 Local workflow versions use SemVer precedence, reject ambiguous build ties
 and cannot overwrite an existing identity with changed content. See the
 [qualified resolution contract](docs/reusable-definitions.md).
 
-Final local root validation passed 1050 tests, 26 skips and 91.35% core coverage.
-Independent native/contract/CTK matrices passed ADK 442, LangGraph 450 with
-4 unconfigured PostgreSQL skips and optional Agent Framework 589. Reusable
-script/shell fixtures pass through the existing SandboxManager on both
-independent principal engines. Exact remote acceptance is pending. Ruff, formatting, strict mypy, five
-core/runtime locks, documentation links and root/core builds passed. Windows
-CI includes the new shared definitions/import/reference fixtures; PostgreSQL
-native recovery also includes a reusable function scope. Authentication,
-secrets, extensions, full reliability/proposed inventory tests and independent
-JS retain their later-stage ownership. S1-07 remains unchecked; no release is
-published.
+Final local root validation passed 1071 tests, 28 skips and 91.56% core coverage.
+Independent native/contract/CTK matrices passed ADK 463, LangGraph 472 with
+5 unconfigured PostgreSQL skips and optional Agent Framework 620. Imported
+protocol tasks share inline validation, input/output/export, condition, timeout
+and control-flow semantics. Native SQLite/PostgreSQL recovery fixtures include
+an imported task scope; legacy registered calls preserve context and end/exit
+behavior through the common pipeline. Reusable script/shell fixtures pass
+through the existing SandboxManager on both independent principal engines.
+The previous revision `792df13` passed all remote gates; exact remote acceptance
+for this final imported-task fix is pending. Ruff, formatting, strict mypy,
+five core/runtime locks, documentation links and root/core builds passed.
+Authentication, secrets, extensions, full reliability/proposed inventory tests
+and independent JS retain later-stage ownership. S1-07 remains unchecked
+pending exact remote acceptance and the remaining resource/reference coverage
+review. No release is published.
 
 
 ### S1-06 embedded/bootstrap defaults — 2026-10-11 (verified)
