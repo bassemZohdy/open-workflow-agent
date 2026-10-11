@@ -36,6 +36,7 @@ on:
       - "tests/contract/test_schema_resources.py"
       - "tests/contract/test_competitive_forks.py"
       - "tests/contract/test_checkpoint_recovery.py"
+      - "tests/contract/test_effect_recovery.py"
       - "tests/core/test_postgres_persistence.py"
       - "docker/Dockerfile.adk"
       - "docker/Dockerfile.langgraph"
@@ -116,6 +117,7 @@ jobs:
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
+            ../../tests/contract/test_effect_recovery.py \
             -k 'postgresql and langgraph' -vv --durations=20
       - name: Verify competitive fork and invocation recovery on native ADK with PostgreSQL
         env:
@@ -128,6 +130,7 @@ jobs:
             uv run --directory engines/adk --locked --exact --extra native --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
+            ../../tests/contract/test_effect_recovery.py \
             -k 'postgresql and adk' -vv --durations=20
       - name: Verify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL
         env:
@@ -140,6 +143,7 @@ jobs:
             uv run --directory engines/agent-framework --locked --exact --extra native --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
+            ../../tests/contract/test_effect_recovery.py \
             -k 'postgresql and agent-framework' -vv --durations=20
 
   postgres-runtime:

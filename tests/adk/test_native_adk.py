@@ -78,7 +78,7 @@ async def test_native_adk_dynamic_plan_invocation(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_native_adk_interrupted_resume_preserves_operation_identity(tmp_path):
+async def test_native_adk_interrupted_resume_reuses_completed_action_receipt(tmp_path):
     if not ADK_AVAILABLE:
         pytest.skip("google-adk optional extra is not installed")
     workflow = {
@@ -99,7 +99,7 @@ async def test_native_adk_interrupted_resume_preserves_operation_identity(tmp_pa
                     },
                 }
             },
-            {"pause": {"wait": {"seconds": 1}}},
+            {"pause": {"wait": {"seconds": 300}}},
             {"finish": {"set": {"done": True}}},
         ],
     }
@@ -128,6 +128,9 @@ async def test_native_adk_interrupted_resume_preserves_operation_identity(tmp_pa
     )
     running = asyncio.create_task(engine.invoke(plan, handle, {}))
     await asyncio.wait_for(reached_side_effect.wait(), timeout=5)
+    async with asyncio.timeout(5):
+        while handle.status != "waiting":
+            await asyncio.sleep(0.005)
     running.cancel()
     with pytest.raises(asyncio.CancelledError):
         await running
@@ -140,10 +143,9 @@ async def test_native_adk_interrupted_resume_preserves_operation_identity(tmp_pa
     await resumed_engine.initialize(restarted)
     persisted = restarted.invocations.get(handle.invocation_id)
     assert persisted is not None
-    assert persisted.status == "running"
+    assert persisted.status == "waiting"
     resumed = await resumed_engine.resume(persisted, {}, plan)
     assert resumed.status == "completed"
     assert resumed.output == {"done": True}
-    assert len(calls) >= 2
-    assert len(set(calls[-2:])) == 1
+    assert len(calls) == 1
     restarted.close()

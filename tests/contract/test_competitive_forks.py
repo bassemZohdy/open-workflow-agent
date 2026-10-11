@@ -252,15 +252,17 @@ async def test_restart_without_a_decision_can_choose_a_new_winner(
     started = set()
     ready = asyncio.Event()
 
-    async def interrupted_call(protocol, payload):
+    async def interrupted_call(protocol, payload, state):
         started.add(payload["body"]["branch"])
         if len(started) == 2:
             ready.set()
         await asyncio.Event().wait()
 
-    services.call_protocol = interrupted_call
     plan = _plan([_race()])
     engine, handle = await _engine(services, engine_name, engine_type, plan)
+    # Stop before either action has a dispatch intent. Once an external action
+    # begins, absence of a fork decision cannot justify dispatching it again.
+    engine.executor._call = interrupted_call
     running = asyncio.create_task(engine.invoke(plan, handle, {}))
     try:
         await asyncio.wait_for(ready.wait(), timeout=20)
@@ -268,6 +270,12 @@ async def test_restart_without_a_decision_can_choose_a_new_winner(
         with pytest.raises(asyncio.CancelledError):
             await asyncio.wait_for(running, timeout=20)
         assert _decisions(services) == []
+        assert (
+            services.effect_journal.connection.execute(
+                "SELECT identity FROM workflow_effects"
+            ).fetchall()
+            == []
+        )
     finally:
         running.cancel()
         await asyncio.gather(running, return_exceptions=True)

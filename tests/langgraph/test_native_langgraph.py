@@ -71,7 +71,7 @@ async def test_native_langgraph_interrupted_resume_preserves_operation_identity(
                     },
                 }
             },
-            {"pause": {"wait": {"seconds": 1}}},
+            {"pause": {"wait": {"seconds": 300}}},
             {"finish": {"set": {"done": True}}},
         ],
     }
@@ -100,6 +100,9 @@ async def test_native_langgraph_interrupted_resume_preserves_operation_identity(
     )
     running = asyncio.create_task(engine.invoke(plan, handle, {}))
     await asyncio.wait_for(reached_side_effect.wait(), timeout=5)
+    async with asyncio.timeout(5):
+        while handle.status != "waiting":
+            await asyncio.sleep(0.005)
     running.cancel()
     with pytest.raises(asyncio.CancelledError):
         await running
@@ -112,12 +115,11 @@ async def test_native_langgraph_interrupted_resume_preserves_operation_identity(
     await resumed_engine.initialize(restarted)
     persisted = restarted.invocations.get(handle.invocation_id)
     assert persisted is not None
-    assert persisted.status == "running"
+    assert persisted.status == "waiting"
     resumed = await resumed_engine.resume(persisted, {}, plan)
     assert resumed.status == "completed"
     assert resumed.output == {"done": True}
-    assert len(calls) >= 2
-    assert len(set(calls[-2:])) == 1
+    assert len(calls) == 1
     restarted.close()
 
 

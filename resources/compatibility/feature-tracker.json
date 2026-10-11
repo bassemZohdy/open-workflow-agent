@@ -65107,18 +65107,55 @@
                 "Docs": 38156628828
               },
               "result": "All success",
-              "ci_root": {"passed": 1323, "skipped": 132, "expected_gap_failures": 3, "coverage_percent": 91.75},
-              "configured_postgresql": {"adk_recovery": 36, "langgraph_recovery": 36, "optional_common_bridge_recovery": 34, "optional_native_boundary_skips": 2},
+              "ci_root": {
+                "passed": 1323,
+                "skipped": 132,
+                "expected_gap_failures": 3,
+                "coverage_percent": 91.75
+              },
+              "configured_postgresql": {
+                "adk_recovery": 36,
+                "langgraph_recovery": 36,
+                "optional_common_bridge_recovery": 34,
+                "optional_native_boundary_skips": 2
+              },
               "scope": "Original-input and terminal-record recovery; S2-03 remains in progress"
             },
             "documentation": "docs/checkpoint-recovery.md"
           },
           "journal_storage_foundation": {
-            "status": "Under verification; dispatcher integration pending",
+            "status": "Verified storage composition at d197fa1; dispatcher acceptance is separate",
             "scope": "Private common first-owner intents and first value/null/fault receipts. Conditional outcome writes, request digests and invocation/definition/task/occurrence/kind identity; no recovery lease or new execution guarantee.",
             "code": "core/src/open_workflow_agent/effects.py",
-            "tests": ["tests/core/test_effect_journal.py", "tests/core/test_postgres_persistence.py"],
-            "local_validation": "34 focused store cases. Frozen-source root 1353 passed/139 skipped/3 expected gap failures, 91.78%. Independent native/shared/CTK: ADK 671/98, LangGraph 684/105, optional Agent Framework 909/149, all with 3 expected gaps. Format/lint/typing, four locks, five builds, docs and six audit/source checks passed. Three configured PostgreSQL store cases and exact new revision gates are pending."
+            "tests": [
+              "tests/core/test_effect_journal.py",
+              "tests/core/test_postgres_persistence.py"
+            ],
+            "local_validation": "34 focused store cases. Frozen-source root 1353 passed/139 skipped/3 expected gap failures, 91.78%. Independent native/shared/CTK: ADK 671/98, LangGraph 684/105, optional Agent Framework 909/149, all with 3 expected gaps. Format/lint/typing, four locks, five builds, docs and six audit/source checks passed. All exact d197fa1 gates and the three configured PostgreSQL journal store cases passed; see separate remote acceptance.",
+            "remote_acceptance": {
+              "commit": "d197fa18f602a8639109d4dd7cce004309a53c88",
+              "result": "Success",
+              "runs": {
+                "ci_pr": 38158230755,
+                "ci_push": 38158225706,
+                "postgresql": 38158230768,
+                "external_sandbox": 38158230712,
+                "agent_framework": 38158230893,
+                "security": 38158231039,
+                "docs": 38158230744
+              },
+              "linux_root": {
+                "passed": 1357,
+                "skipped": 135,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.81
+              },
+              "configured_postgresql_store": {
+                "passed": 9,
+                "new_journal_cases": 3
+              },
+              "scope": "Private store composition only; all prior shared recovery and both PostgreSQL images passed. No dispatcher/lease/exactly-once claim."
+            }
           },
           "remaining": [
             "Reconcile native completion/checkpoint state with common invocation records after interruption.",
@@ -65127,7 +65164,54 @@
             "Do not infer compatible migration for legacy rows lacking original-input records.",
             "Verify crash boundaries and repeated task occurrences on embedded and configured PostgreSQL backends.",
             "Keep later retry/deadline, durable event/timer, child workflow, compensation and version-migration tasks open."
-          ]
+          ],
+          "action_dispatch_followup": {
+            "status": "Under verification",
+            "commit": null,
+            "scope": "Leaf protocol/catalog and prepared imported calls retain intents and reuse value/null/fault receipts before native task commit. Occurrence identity distinguishes repeated reusable calls. Changed requests, uncertain intents and failed outcome writes stop recovery without normal task/catch retry. Uncertain competitive branches do not establish a winner.",
+            "code": "core/src/open_workflow_agent/workflow.py",
+            "tests": [
+              "tests/contract/test_effect_recovery.py",
+              "tests/contract/test_operator_lifecycle.py",
+              "tests/contract/test_competitive_forks.py"
+            ],
+            "negative_probes": {
+              "action_replay": 8,
+              "unresolved_catch_retry": 2,
+              "uncertain_fork_and_retry": 4
+            },
+            "remaining": "Final full local and exact GitHub/database acceptance; executable run, event and child operations; fenced invocation ownership, checkpoint consistency, ambiguous outcome resolution, stronger idempotency/compensation, full proposed criteria and JavaScript.",
+            "local_validation": {
+              "root": {
+                "passed": 1377,
+                "skipped": 163,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.79
+              },
+              "native_adk": {
+                "passed": 695,
+                "skipped": 122,
+                "expected_assertion_failures": 3
+              },
+              "native_langgraph": {
+                "passed": 708,
+                "skipped": 129,
+                "expected_assertion_failures": 3
+              },
+              "optional_agent_framework": {
+                "passed": 945,
+                "skipped": 185,
+                "expected_assertion_failures": 3
+              },
+              "focused": {
+                "root": 82,
+                "native_adk": 84,
+                "native_langgraph": 83,
+                "optional_bridge": 120
+              },
+              "checks": "Format/lint/strict typing, four locks, five builds, docs and six audit/source checks passed. Exact new revision/database gates pending."
+            }
+          }
         }
       },
       {

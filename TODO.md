@@ -55,7 +55,9 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   General pending effects/compensation and full native/JS/proposed criteria retain later-stage owners.
 - [ ] **S2-03** (L) — Prove native checkpoint recovery and reconcile native state with common invocation/side-effect records.
   JSON resume-value preservation is verified at `f2943c6`; original-input and
-  terminal-result recovery are under verification. General effect reconciliation remains open.
+  terminal-result recovery at `6840605`, and journal storage at `d197fa1`.
+  Workflow action receipt integration is under verification. Fenced recovery
+  ownership and checkpoint consistency remain open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.

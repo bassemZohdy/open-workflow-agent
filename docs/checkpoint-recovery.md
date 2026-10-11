@@ -43,14 +43,39 @@ path remains; general pending side-effect reconciliation is still required.
 
 ## Evidence and remaining work
 
-The private action journal foundation is being verified separately. It retains
+The verified private action journal foundation retains
 a first-owner intent and the first completed value/null/fault outcome on the
 common datasource, with stable private occurrence identity and a request digest.
 Conditional writes reject another owner. An unresolved pending intent differs
-from a completed null result. This store is being composed into RuntimeServices;
-workflow dispatcher integration, recovery leases and pending-outcome resolution
-are still open. Its presence does not change current replay or advertised
-execution guarantees.
+from a completed null result. RuntimeServices composes this store on the common
+datasource. All exact foundation gates passed at `d197fa1`, including the actual
+PostgreSQL value/null/fault store fixtures. This storage acceptance does not
+establish recovery leases or exactly-once actions.
+
+The leaf-call integration follow-up is under verification. Protocol calls,
+catalog leaves and prepared imported calls save an intent before dispatch and
+save a value/null/fault receipt before returning to native task execution.
+Replay reuses the first outcome when the prepared request digest matches.
+Imported/reusable scope wrappers still execute their task pipeline; their leaf
+calls own receipts with private occurrence identity. Output transformation and
+export run against the reused raw result.
+
+A pending action without an outcome is uncertain. Recovery faults instead of
+dispatching it again, adopting the earlier owner or entering task/catch retry
+routing. Changed requests and failed receipt writes likewise require recovery
+reconciliation. Competitive forks propagate these failures and drain siblings
+without recording a winner. When restart occurs before any action intent, a
+new race can still choose a winner. Public operation keys remain unchanged;
+general repeated-action idempotency and compensation remain S2-08.
+
+[Action recovery fixtures](../tests/contract/test_effect_recovery.py) interrupt
+after leaf completion before native task commit, and after an external commit
+before an outcome is available. They cover values/null/faults, changed requests,
+duplicate terminal resume, repeated reusable calls, pending actions inside
+retry/competitive scopes, and failed receipt writes. SQLite and configured
+PostgreSQL share the same assertions in independent SDK environments.
+Executable run, event and child operations, recovery leases, and general
+pending-outcome resolution remain open; no broader capability is advertised.
 
 [Journal fixtures](../tests/core/test_effect_journal.py) cover owner contention,
 reopening, first outcomes, source/occurrence separation, common errors, corrupt

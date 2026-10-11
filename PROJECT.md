@@ -94,19 +94,51 @@ workflow fingerprint, task call site, execution occurrences and operation kind.
 Request digests avoid storing request bodies in this journal. Thirty-four
 focused cases cover concurrent connections, reopening, malformed data and
 errors, owner mismatch, repeated execution identities and failed SQLite commit.
-Three corresponding PostgreSQL store cases are wired into the existing gate.
+Three corresponding PostgreSQL store cases passed in the configured gate.
 Frozen-source validation passes 1,353 root tests with 139 skips, three expected
 gap failures and 91.78% coverage. Independent native/shared/CTK suites pass ADK
 671 (98 skips), LangGraph 684 (105 skips) and optional Agent Framework 909
 (149 skips), retaining the same three expected gaps. Formatting, lint, strict
 typing, four dependency locks, five builds, documentation links and six
-audit/source-preservation checks pass. Exact new revision GitHub/database
-acceptance is pending.
-Dispatcher integration, recovery leases and resolution of pending outcomes
-remain open; this foundation adds no advertised execution guarantee.
+audit/source-preservation checks pass. All exact `d197fa1` gates passed: [CI
+38158230755](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38158230755),
+[push CI 38158225706](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38158225706),
+[PostgreSQL 38158230768](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38158230768),
+[external sandbox 38158230712](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38158230712),
+[Agent Framework 38158230893](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38158230893),
+[security 38158231039](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38158231039)
+and [documentation 38158230744](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38158230744).
+Linux root CI passed 1,357 tests with 135 skips, three expected gap failures and
+91.81% coverage. The actual PostgreSQL store suite passed all nine cases,
+including the three new journal outcomes; all prior shared recovery and both
+runtime-image restart gates passed. That acceptance covers storage composition.
+
+The current follow-up connects leaf protocol/catalog calls and prepared imported
+calls to that journal. Completed value/null/fault outcomes are reused before
+native task commit; repeated reusable calls retain distinct private occurrence
+identities. A changed prepared request or an unresolved intent faults recovery
+without dispatching the action again. These recovery failures bypass ordinary
+task/catch retry routing. Receipt-write failures retain the pending intent.
+Competitive forks drain siblings and propagate uncertainty without recording
+a winner. Restart before any action intent can still choose a new winner.
+Public task references and operation keys retain their current meanings.
+
+Deterministic probes reproduced eight action replay failures before integration,
+two unsafe catch retries before their guard, and four uncertain fork/retry
+failures before the fork guard. Shared fixtures include configured PostgreSQL
+and actual independent SDK environments. Frozen-source full local validation
+passes 1,377 root tests with 163 skips, three expected gap failures and 91.79%
+coverage. Independent native/shared/CTK suites pass ADK 695 (122 skips),
+LangGraph 708 (129 skips) and optional Agent Framework 945 (185 skips), each
+with the same three expected gaps. Focused recovery/fork/benchmark runs pass
+82 root, 84 native ADK, 83 native LangGraph and 120 optional bridge cases.
+Formatting, lint, strict typing, four locks, five builds, documentation links
+and six audit/source checks pass. Exact new GitHub/database gates are pending.
+Executable run, event and child operations are not
+covered by this leaf-call follow-up; broader effect reconciliation remains open.
 
 S2-03 stays open. This fix does not reconcile all native/common invocation or
-side-effect records. General pending-effect receipts, fenced recovery ownership,
+side-effect records. General pending-effect reconciliation, fenced recovery ownership,
 missing or inconsistent native checkpoint recovery and configured database
 acceptance still require work. Legacy rows without an original-input record
 have no new migration guarantee. Later-stage retry/deadline,

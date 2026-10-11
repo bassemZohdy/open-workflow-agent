@@ -10,7 +10,7 @@ import math
 import os
 import re
 import time
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -26,6 +26,7 @@ from referencing.jsonschema import DRAFT202012
 from ._version import __version__
 from .catalog import CatalogContext, FunctionCatalog
 from .definitions import definition_at_pointer, resolve_reusable_components
+from .effects import EffectIdentity, EffectJournal, EffectReceipt, effect_request_digest
 from .errors import (
     ExpressionError,
     InvocationCancelled,
@@ -77,6 +78,10 @@ SUPPORTED_PROTOCOL_CALLS = ("http", "mcp", "a2a", "openapi")
 SUPPORTED_FUNCTION_CALLS = ("agent:1.0.0@default", "llm:1.0.0@default")
 SUPPORTED_CALLS = {*SUPPORTED_PROTOCOL_CALLS, *SUPPORTED_FUNCTION_CALLS}
 DISABLED_TASKS: set[str] = set()
+
+
+class _EffectRecoveryRequired(WorkflowExecutionError):
+    """Private recovery failure that cannot safely enter task retry/catch routing."""
 
 
 class _NoCancellationToken:
@@ -1508,7 +1513,7 @@ class WorkflowExecutor:
                 return await self._await_with_cancellation(operation, state)
             except Exception as exc:
                 last_error = exc
-                if isinstance(exc, InvocationCancelled):
+                if isinstance(exc, (InvocationCancelled, _EffectRecoveryRequired)):
                     raise
                 if attempt + 1 < max(1, attempts):
                     self._emit(
@@ -1635,7 +1640,7 @@ class WorkflowExecutor:
                     )
                     return state.data
                 except Exception as exc:
-                    if isinstance(exc, InvocationCancelled):
+                    if isinstance(exc, (InvocationCancelled, _EffectRecoveryRequired)):
                         raise
                     error = _error_details(exc)
                     state.variables["error"] = error
@@ -1746,17 +1751,24 @@ class WorkflowExecutor:
                 resolver = self.services.external_catalogs
             if resolver is None:
                 raise WorkflowExecutionError("external catalog resolver is unavailable")
-            return await resolver.invoke_prepared(
-                imported,
+            return await self._run_effect(
                 call,
                 payload,
-                mode=self._expressions(state).mode,
-                registry=state.metadata.get("_schema_registry"),
+                state,
+                lambda: resolver.invoke_prepared(
+                    imported,
+                    call,
+                    payload,
+                    mode=self._expressions(state).mode,
+                    registry=state.metadata.get("_schema_registry"),
+                ),
             )
         if call in {"http", "mcp", "a2a", "openapi"}:
             if self.services is None:
                 raise WorkflowExecutionError(f"protocol service unavailable: {call}")
-            return await self.services.call_protocol(call, payload)
+            return await self._run_effect(
+                call, payload, state, lambda: self.services.call_protocol(call, payload)
+            )
         if self.services is None:
             raise WorkflowExecutionError("runtime services unavailable for catalog call")
         binding = state.metadata.get("_imports", {}).get(call)
@@ -1787,7 +1799,127 @@ class WorkflowExecutor:
             services=self.services,
             metadata=state.metadata,
         )
-        return await self.catalog.call(call, payload, context)
+        return await self._run_effect(
+            call, payload, state, lambda: self.catalog.call(call, payload, context)
+        )
+
+    async def _run_effect(
+        self,
+        call: str,
+        payload: Any,
+        state: ExecutionState,
+        dispatch: Callable[[], Awaitable[Any]],
+    ) -> Any:
+        journal = getattr(self.services, "effect_journal", None)
+        if journal is None:
+            return await dispatch()
+        identity = EffectIdentity(
+            str(state.metadata["invocation_id"]),
+            str(state.metadata["_workflow_fingerprint"]),
+            str(state.variables.get("_execution_reference", state.variables["_task_reference"])),
+            state.execution_path,
+            "call:" + call,
+        )
+        # Each dispatch attempt gets a fresh private owner. Recovery never adopts
+        # an earlier pending intent: its external outcome may be ambiguous.
+        owner = str(uuid4())
+        try:
+            receipt = journal.begin(
+                identity,
+                effect_request_digest(call, payload),
+                owner,
+                operation_id=self._operation_id(state),
+            )
+        except WorkflowExecutionError as exc:
+            raise _EffectRecoveryRequired(exc.message, details=exc.details) from exc
+        if receipt.status != "pending":
+            return self._effect_result(receipt)
+        if receipt.owner != owner:
+            raise _EffectRecoveryRequired(
+                "workflow action has an unresolved execution intent",
+                details={"instance": state.variables.get("_task_reference")},
+            )
+        try:
+            result = await dispatch()
+            validate_expression_data(result)
+        except Exception as exc:
+            # Match the common task boundary and avoid saving unexpected native
+            # exception messages in the durable journal.
+            error = (
+                exc
+                if isinstance(
+                    exc,
+                    (
+                        InvocationCancelled,
+                        WorkflowExecutionError,
+                        WorkflowSemanticError,
+                        UnsupportedWorkflowFeature,
+                        ExpressionError,
+                        ToolError,
+                    ),
+                )
+                else WorkflowExecutionError(
+                    f"task {state.variables.get('_task_name', 'unknown')} failed",
+                    details={"task": state.variables.get("_task_name", "unknown")},
+                )
+            )
+            error._operation_id = error._operation_id or self._operation_id(state)
+            self._store_effect_outcome(journal, identity, owner, state, error=error)
+            if error is exc:
+                raise
+            raise error from exc
+        return self._effect_result(
+            self._store_effect_outcome(journal, identity, owner, state, output=result)
+        )
+
+    def _store_effect_outcome(
+        self,
+        journal: EffectJournal,
+        identity: EffectIdentity,
+        owner: str,
+        state: ExecutionState,
+        *,
+        output: Any = None,
+        error: OwaError | None = None,
+    ) -> EffectReceipt:
+        try:
+            return journal.finish(
+                identity,
+                owner,
+                output=output,
+                error=error.as_dict() if error else None,
+                error_status_code=error.status_code if error else None,
+                operation_id=error._operation_id if error else self._operation_id(state),
+            )
+        except WorkflowExecutionError as exc:
+            raise _EffectRecoveryRequired(
+                "workflow action outcome could not be reconciled",
+                details={"instance": state.variables.get("_task_reference")},
+            ) from exc
+
+    @staticmethod
+    def _effect_result(receipt: EffectReceipt) -> Any:
+        if receipt.error is not None:
+            error_types = (
+                InvocationCancelled,
+                WorkflowSemanticError,
+                UnsupportedWorkflowFeature,
+                ExpressionError,
+                ToolError,
+            )
+            error_type = next(
+                (kind for kind in error_types if kind.code == receipt.error["code"]),
+                WorkflowExecutionError,
+            )
+            error = error_type(
+                receipt.error["message"], details=copy.deepcopy(receipt.error["details"])
+            )
+            error.code = receipt.error["code"]
+            if receipt.error_status_code is not None:
+                error.status_code = receipt.error_status_code
+            error._operation_id = receipt.operation_id
+            raise error
+        return copy.deepcopy(receipt.output)
 
     async def _run_switch(self, switch: Any, state: ExecutionState) -> Any:
         default = None
@@ -1945,6 +2077,13 @@ class WorkflowExecutor:
                     prefix=self._nested_prefix(child, f"fork/branches/{index}"),
                     indexed=False,
                 )
+            except _EffectRecoveryRequired as exc:
+                # Uncertain actions have no branch outcome. Preserve recovery
+                # routing and drain siblings without fabricating a winner.
+                if not completion.done():
+                    completion.set_exception(exc)
+                    cancel_siblings(owner)
+                return
             except asyncio.CancelledError:
                 raise
             except Exception as exc:

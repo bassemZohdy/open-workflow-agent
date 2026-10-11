@@ -239,14 +239,12 @@ async def test_operator_matrix_restart_resume_reuses_side_effect_operation(
     assert persisted is not None
     resumed = await restarted_engine.resume(persisted, {"continue": True}, plan)
     assert resumed.status == "completed"
-    # Native task checkpoints skip completed nodes. Envelope adapters replay
-    # the sequence, preserving the same common operation/idempotency key.
-    expected_calls = 1 if restarted_engine.capabilities().native_task_nodes else 2
-    assert len(calls) == expected_calls
+    # A native checkpoint or the common action receipt reuses the outcome.
+    assert len(calls) == 1
     assert len(set(calls)) == 1
     duplicate_resume = await restarted_engine.resume(persisted, {"duplicate": True}, plan)
     assert duplicate_resume.status == "completed"
-    assert len(calls) == expected_calls
+    assert len(calls) == 1
     restarted_services.close()
 
 
