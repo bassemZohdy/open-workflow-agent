@@ -236,6 +236,11 @@ class LangGraphScopeExecutor:
             scope = self.scopes[reference]
             if native["next_node"] not in {END, *(_node_name(task) for task in scope.tasks)}:
                 raise ValueError("native routing target is inconsistent")
+            if (
+                any(value[key] for key in ("stop", "scope_exit", "ended"))
+                and native["next_node"] != END
+            ):
+                raise ValueError("native terminal controls disagree with routing")
             if value["jump_to"] is not None and value["jump_to"] not in {
                 task.name for task in scope.tasks
             }:
@@ -322,8 +327,9 @@ class LangGraphScopeExecutor:
                     task.reference,
                     execution_reference=task.execution_reference,
                 )
-                target = END if state.stop or state.scope_exit else following
-                if state.jump_to is not None and not (state.stop or state.scope_exit):
+                halted = state.stop or state.scope_exit or state.flow.ended.is_set()
+                target = END if halted else following
+                if state.jump_to is not None and not halted:
                     target = names[state.jump_to]
                 state.jump_to = None
                 return self._write(state, target)

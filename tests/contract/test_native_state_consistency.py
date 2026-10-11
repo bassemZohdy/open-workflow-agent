@@ -30,6 +30,9 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
         "clean",
         "outputs",
         "flags",
+        "typed-stop",
+        "typed-exit",
+        "typed-end",
         "visits",
         "path",
         "scope-cursor",
@@ -146,6 +149,12 @@ async def test_langgraph_corrupt_root_or_nested_checkpoint_rejects_before_recove
             snapshot["outputs"] = ["private-checkpoint-sentinel"]
         elif damage == "flags":
             snapshot["stop"] = "false"
+        elif damage == "typed-stop":
+            snapshot["stop"] = True
+        elif damage == "typed-exit":
+            snapshot["scope_exit"] = True
+        elif damage == "typed-end":
+            snapshot["ended"] = True
         elif damage == "visits":
             snapshot["task_visits"] = {"/forged": -1}
         elif damage == "path":
