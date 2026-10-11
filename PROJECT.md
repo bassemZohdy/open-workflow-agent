@@ -638,7 +638,13 @@ last numeric/custom-index edge cases; the final core jq suite passes 102 tests.
 Independent native adapter/contract/CTK suites passed: ADK 264, LangGraph 262,
 optional Agent Framework 355. The added sandbox jq cases then passed in each
 native environment (16 ADK, 16 LangGraph, 24 optional Agent Framework shared
-expression tests). Ruff, formatting, strict mypy, four lock checks, Markdown
+expression tests). Final root validation passed 851 tests, 13 skipped, with
+91.04% coverage; Windows expression/admission CI also passed. Concurrent jq
+invocations exposed a fresh-SQLite WAL initialization race in native LangGraph.
+The native saver now prepares storage before first concurrent writers, without
+serializing workflow execution or moving checkpoint ownership into core. A
+12-workflow barrier/checkpoint regression and the complete LangGraph matrix
+(265 passed) verify the correction. Ruff, formatting, strict mypy, four lock checks, Markdown
 links and root/standalone-core builds passed. Required remote acceptance for
 the submitted commit remains pending; S1-02 remains unchecked. Adapted CTK
 syntax is documented; proposed inventory tests and JS delivery are unclaimed.

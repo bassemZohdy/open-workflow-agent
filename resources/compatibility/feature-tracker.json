@@ -53476,7 +53476,7 @@
           },
           "native_matrices": {
             "adk": 264,
-            "langgraph": 262,
+            "langgraph": 265,
             "agent_framework_optional": 355
           },
           "final_shared_expression_tests": {
@@ -53485,7 +53485,13 @@
             "agent_framework_optional": 24
           },
           "remote_acceptance": "Pending",
-          "full_conformance": false
+          "full_conformance": false,
+          "local_root": {
+            "passed": 851,
+            "skipped": 13,
+            "coverage_percent": 91.04
+          },
+          "native_sqlite_concurrency_regression": "12 simultaneous first invocations; native checkpoints retained; no workflow serialization"
         }
       },
       {

@@ -62,5 +62,8 @@ semantics are not claimed by this milestone.
 
 Evidence: [core jq fixtures](../tests/core/test_expressions.py),
 [shared native adapter outcomes](../tests/contract/test_jq_portability.py),
-the existing contract suite and adapted pinned CTK selection. Proposed
+the existing contract suite, the Windows CI expression/admission job and
+adapted pinned CTK selection. Native LangGraph prepares its SQLite/WAL store
+through its own saver before concurrent first writers; a native barrier test
+verifies that this does not serialize workflow execution. Proposed
 inventory tests remain separate from executed repository fixtures.

@@ -34,6 +34,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             factory.bind_tools(services.agent_tool_bindings()),
         )
         self.native.database_path = services.engine_database_path("langgraph")
+        await self.native.prepare_storage()
 
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(engine=self.engine_name, resume=True, streaming=False)

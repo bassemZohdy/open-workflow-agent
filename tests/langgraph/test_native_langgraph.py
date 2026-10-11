@@ -10,7 +10,7 @@ from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
-from open_workflow_agent_langgraph.native import LANGGRAPH_AVAILABLE
+from open_workflow_agent_langgraph.native import LANGGRAPH_AVAILABLE, LangGraphFunctionalAdapter
 
 
 @pytest.mark.asyncio
@@ -117,3 +117,47 @@ async def test_native_langgraph_interrupted_resume_preserves_operation_identity(
     assert len(calls) >= 2
     assert len(set(calls[-2:])) == 1
     restarted.close()
+
+
+@pytest.mark.asyncio
+async def test_fresh_native_sqlite_storage_allows_concurrent_first_invocations(tmp_path):
+    if not LANGGRAPH_AVAILABLE:
+        pytest.skip("langgraph optional dependency is not installed")
+    adapter = LangGraphFunctionalAdapter(str(tmp_path / "fresh.sqlite"))
+    entered = 0
+    all_entered = asyncio.Event()
+    release = asyncio.Event()
+    count = 12
+
+    async def runner(value):
+        nonlocal entered
+        entered += 1
+        if entered == count:
+            all_entered.set()
+        await release.wait()
+        return {"value": value}
+
+    running = [
+        asyncio.create_task(adapter.invoke(runner, index, thread_id=f"thread-{index}"))
+        for index in range(count)
+    ]
+    try:
+        # Every workflow reaches the barrier before any can finish: checkpoint
+        # initialization is ordered without serializing workflow execution.
+        await asyncio.wait_for(all_entered.wait(), timeout=15)
+        release.set()
+        outputs = await asyncio.wait_for(asyncio.gather(*running), timeout=15)
+        assert outputs == [{"value": index} for index in range(count)]
+    finally:
+        release.set()
+        for task in running:
+            task.cancel()
+        await asyncio.gather(*running, return_exceptions=True)
+
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+    async with AsyncSqliteSaver.from_conn_string(str(tmp_path / "fresh.sqlite")) as saver:
+        for index in range(count):
+            checkpoint = await saver.aget_tuple({"configurable": {"thread_id": f"thread-{index}"}})
+            assert checkpoint is not None
+            assert checkpoint.checkpoint["channel_values"]["__end__"] == {"value": index}

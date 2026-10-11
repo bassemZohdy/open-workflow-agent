@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -31,6 +32,22 @@ class LangGraphFunctionalAdapter:
     def __init__(self, database_path: str | None = None) -> None:
         self.database_path = database_path
         self.checkpointer = InMemorySaver() if LANGGRAPH_AVAILABLE and InMemorySaver else None
+        self._prepared_database_path: str | None = None
+        self._preparation_lock = asyncio.Lock()
+
+    async def prepare_storage(self) -> None:
+        """Let the native saver initialize WAL before concurrent first writers."""
+        path = self.database_path
+        if not LANGGRAPH_AVAILABLE or not path or is_postgresql_datasource(path):
+            return
+        if AsyncSqliteSaver is None:
+            return
+        async with self._preparation_lock:
+            if self._prepared_database_path == path:
+                return
+            async with AsyncSqliteSaver.from_conn_string(path) as saver:
+                await saver.setup()
+            self._prepared_database_path = path
 
     def compile(
         self,
@@ -57,6 +74,7 @@ class LangGraphFunctionalAdapter:
     ) -> Any:
         if not LANGGRAPH_AVAILABLE:
             return await runner(input_data)
+        await self.prepare_storage()
         config = {"configurable": {"thread_id": thread_id}}
         if self.database_path and is_postgresql_datasource(self.database_path):
             if AsyncPostgresSaver is None:
@@ -84,6 +102,7 @@ class LangGraphFunctionalAdapter:
     ) -> Any:
         if not LANGGRAPH_AVAILABLE:
             return await runner(resume_input)
+        await self.prepare_storage()
         from langgraph.types import Command
 
         config = {"configurable": {"thread_id": thread_id}}
