@@ -52,6 +52,15 @@ except ImportError:  # pragma: no cover - optional ADK db extra
 ADK_RESUME_STRATEGY = "replay_with_stable_operation_ids"
 
 
+def _native_input_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate native input field")
+        result[key] = value
+    return result
+
+
 if SqliteSessionService is not None:
 
     class _ClosingSqliteSessionService(SqliteSessionService):  # type: ignore[misc]
@@ -218,20 +227,24 @@ class NativeAdkRunner:
         try:
             if session is None:
                 raise ValueError("session is absent")
+            validate_expression_data(workflow_input)
+            expected = json.dumps(workflow_input, sort_keys=True, allow_nan=False)
+            found_input = False
             for event in session.events:
                 if event.invocation_id == invocation_id and event.author == "user":
                     parts = event.content.parts if event.content else None
                     if parts is None or len(parts) != 1 or not isinstance(parts[0].text, str):
                         raise ValueError("original input is absent")
-                    saved = json.loads(parts[0].text)
+                    saved = json.loads(parts[0].text, object_pairs_hook=_native_input_object)
                     validate_expression_data(saved)
-                    validate_expression_data(workflow_input)
-                    if json.dumps(saved, sort_keys=True, allow_nan=False) != json.dumps(
-                        workflow_input, sort_keys=True, allow_nan=False
-                    ):
+                    if json.dumps(saved, sort_keys=True, allow_nan=False) != expected:
                         raise ValueError("original input disagrees")
-                    return
-            raise ValueError("invocation is absent")
+                    # The SDK may retain matching user messages on replay.
+                    # Every message for this invocation must agree; the first
+                    # matching input cannot authorize contradictory later ones.
+                    found_input = True
+            if not found_input:
+                raise ValueError("invocation is absent")
         except Exception:
             raise InvocationStateError(
                 "native execution state is unavailable or inconsistent; recovery is required"

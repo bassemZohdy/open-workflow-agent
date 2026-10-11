@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import importlib
 import json
 import os
 from pathlib import Path
@@ -171,20 +172,22 @@ async def test_langgraph_corrupt_root_or_nested_checkpoint_rejects_before_recove
             channels[channel] = json.dumps(snapshot if channel == "snapshot" else counters)
         thread = saved.config["configurable"]["thread_id"]
         namespace = saved.config["configurable"].get("checkpoint_ns", "")
-        # Write intentionally damaged bytes using the installed SDK serializer;
-        # no invented checkpoint codec or substitute persistence engine.
+        # Follow the installed SDK's storage layout: PostgreSQL inlines
+        # primitive JSON-text channels in checkpoint JSONB; SQLite serializes
+        # the whole checkpoint. Do not assume every channel has a blob row.
         if backend == "postgresql":
-            encoding, payload = saver.serde.dumps_typed(channels[channel])
+            json_types = importlib.import_module("psycopg.types.json")
+
             updated = await saver.conn.execute(
-                "UPDATE checkpoint_blobs SET type = %s, blob = %s "
-                "WHERE thread_id = %s AND checkpoint_ns = %s AND channel = %s AND version = %s",
+                "UPDATE checkpoints SET checkpoint = "
+                "jsonb_set(checkpoint, ARRAY['channel_values', %s], %s, false) "
+                "WHERE thread_id = %s AND checkpoint_ns = %s AND checkpoint_id = %s",
                 (
-                    encoding,
-                    payload,
+                    channel,
+                    json_types.Jsonb(channels[channel]),
                     thread,
                     namespace,
-                    channel,
-                    str(checkpoint["channel_versions"][channel]),
+                    checkpoint["id"],
                 ),
             )
         else:
@@ -197,6 +200,9 @@ async def test_langgraph_corrupt_root_or_nested_checkpoint_rejects_before_recove
         assert updated.rowcount == 1
         await updated.close()
         await saver.conn.commit()
+        altered = await saver.aget_tuple(saved.config)
+        assert altered is not None
+        assert altered.checkpoint["channel_values"][channel] == channels[channel]
 
     try:
         await recovered.native._with_saver(corrupt)

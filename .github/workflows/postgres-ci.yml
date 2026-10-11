@@ -49,6 +49,7 @@ on:
       - "tests/contract/test_runtime_execution_ownership.py"
       - "tests/contract/test_native_checkpoint_fencing.py"
       - "tests/contract/test_native_state_consistency.py"
+      - "tests/contract/test_adk_native_event_consistency.py"
       - "tests/core/test_postgres_persistence.py"
       - "docker/Dockerfile.adk"
       - "docker/Dockerfile.langgraph"
@@ -152,6 +153,7 @@ jobs:
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
             ../../tests/contract/test_recovery_admission.py \
+            ../../tests/contract/test_adk_native_event_consistency.py \
             ../../tests/contract/test_runtime_execution_ownership.py \
             ../../tests/contract/test_action_execution_authority.py \
             ../../tests/contract/test_native_checkpoint_fencing.py \
