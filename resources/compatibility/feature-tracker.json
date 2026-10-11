@@ -43769,7 +43769,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A080",
-          "python_outcome": "unimplemented",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },

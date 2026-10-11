@@ -76,7 +76,10 @@ Loser tasks are cancelled and awaited, including cleanup that yields. A separate
 receipt records draining. After process interruption, a saved winner survives
 without restarting its losing branch. Cancellation and a cleanup receipt do not
 undo a committed external action or prove distributed compensation. General
-pending-action recovery remains S2-03/S2-08.
+pending-action resolution remains S2-03/S2-08. The current S2-03 leaf-call
+follow-up blocks unresolved action replay. Its private recovery failure drains
+competitive siblings without recording a winner or entering catch retries.
+Restart before an action intent is created can still choose a new winner.
 
 The [competitive fixtures](../tests/contract/test_competitive_forks.py) exercise
 completion order, fault/null/end, cancellation before a winner, losing waits,

@@ -3,21 +3,26 @@
 S1-08 compares every tracked feature with active admission/execution code and
 the scope of actual test assertions. The machine-readable
 [implementation audit](../resources/compatibility/implementation-audit.json)
-contains all **658 feature IDs** and 77 evidence groups. Each entry preserves
+contains all **658 feature IDs** and 78 evidence groups. Each entry preserves
 its original construct, proposed tests, independent Python/JavaScript outcome,
 remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`51f7259`, which retains the verified ordered/competitive fork corrections and
-adds original-input binding, atomic terminal records and adapter finalization
-reconciliation. Its full local suites passed; exact new GitHub/database gates
-are pending. Recovery and lifecycle remain partial, and S2-03 remains open for
-general effects, recovery ownership and native checkpoint consistency.
+`8da4de3`, which retains the verified fork, original-input and terminal-record
+corrections and adds common leaf-call action receipts. Completed outcomes are
+reused before native task commit; changed requests and uncertain intents stop
+recovery without repeat dispatch or ordinary task/catch retries. Uncertain
+competitive actions cannot establish a winner. Full local suites passed; exact
+new GitHub/database gates are pending. Recovery, action idempotency and lifecycle
+remain partial. S2-03 remains open for broader effects, fenced ownership and
+native checkpoint consistency.
 
 Earlier competitive runtime, fixture/audit and all three common PostgreSQL
 gates passed at `2fbe548`, `51c204e` and `81d27b3`. The JSON null wake-up fix also
-passed every exact gate at `f2943c6`. See [competitive acceptance](../PROJECT.md#s2-02-competitive-fork-decisions--2026-10-11-verified)
+passed every exact gate at `f2943c6`. Original-input and terminal recovery passed
+all exact gates at `6840605`; private journal storage passed at `d197fa1`.
+See [competitive acceptance](../PROJECT.md#s2-02-competitive-fork-decisions--2026-10-11-verified)
 and [recovery progress](../PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 Hashes of reviewed Git file contents preserve the evidence baseline. The
 manifest's `previous_reviews` retains the earlier S1-08 acceptance and points
@@ -28,12 +33,12 @@ to its immutable artifact. Historical green gates do not qualify changed code.
 | Python audit outcome | Features | Meaning |
 | --- | ---: | --- |
 | Qualified subset | 181 | Specific bounded behavior has tests; full inventory criteria remain unverified |
-| Partial | 149 | Some requested behavior exists, with explicit missing scope |
+| Partial | 150 | Some requested behavior exists, with explicit missing scope |
 | Behavior mismatch | 32 | Accepted behavior differs from the tracked construct |
 | Rejected | 197 | Admission/client guard rejects the request; this is failure evidence, not implemented support |
 | Inert | 27 | Field is accepted/preserved without its requested effect |
 | Internal only | 9 | Native primitive is used privately, without a general public capability |
-| Unimplemented | 63 | No public implementation found in the reviewed paths |
+| Unimplemented | 62 | No public implementation found in the reviewed paths |
 
 These counts include both semantic capabilities and individual schema fields.
 Fields behind the same unsupported parent inherit that parent's rejection;
@@ -58,7 +63,8 @@ not be read as current delivery status.
 | --- | --- | --- |
 | Ordered fork output and collisions | Ordered branch arrays, isolated exports, explicit jq aggregation and failure cleanup pass shared fixtures. SQLite/PostgreSQL native fork restart and exact runtime GitHub gates pass; additional shared output restart passes every adapter | S2-01 verified; full criteria remain S4-03/S4-04 |
 | Competitive fork durability | First observed completion, cancellation intents and distinct occurrence identity are persisted. SQLite/PostgreSQL replay preserves values/null/fault/end and repeated occurrences without branch calls on both principal adapters and the optional common bridge. All exact acceptance gates passed. External-action reconciliation/compensation is not established | S2-02 verified; general effects S2-03/S2-08; full criteria S4-03/S4-04 |
-| Native checkpoint recovery | Private scope savers recover completed calls. Original raw input and empty/false resume values are separate; atomic terminal value/null/error records survive interruption and late finalization. General pending effects, ownership, checkpoint consistency and legacy migration remain unproved; new configured database acceptance is pending | S2-03 in progress; migration S2-09 |
+| Native checkpoint recovery | Original input, resume values and atomic terminal outcomes have verified acceptance. Leaf-call intents/outcomes reconcile local before-native-commit interruption; repeated occurrences remain distinct. Uncertain actions and request changes stop recovery without retry or a fabricated fork winner. New dispatch database gates are pending; fenced ownership, broader effects, native consistency and legacy migration remain open | S2-03 in progress; migration S2-09 |
+| Action idempotency and compensation | A080 is partial: selected call receipts prevent completed replay and block uncertain actions. A079 remains unimplemented: no compensation/saga state machine exists. Run/event/child effects, redrive, ambiguous outcome resolution, full process-crash criteria and exactly-once external actions remain unqualified | S2-03, S2-08; full criteria S4-03/S4-04 |
 | Retry and timeout declarations | Predicates/count/basic backoff work; jitter and duration limits are inert, and original deadlines are not persisted | S2-04 |
 | Events and timers | Active process-local listeners and persisted after/every schedules exist; durable general inbox/outbox/timers/correlation/cron/on are missing. Explicit null event data is omitted | S2-05, S2-06 |
 | Child workflow recovery | Synchronous child invocation/parent identity exists; recursive budgets, asynchronous children, durable cancellation and compatible version migration remain missing | S2-07, S2-09 |
