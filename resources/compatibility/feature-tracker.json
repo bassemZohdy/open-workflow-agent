@@ -41121,7 +41121,7 @@
         "direction": "OWS to LangGraph",
         "stage": 2,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T06",
         "effort": "L",
@@ -41140,7 +41140,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A029",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -41150,7 +41150,7 @@
         "direction": "OWS to LangGraph",
         "stage": 2,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: behavior_mismatch; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T06",
         "effort": "L",
@@ -41168,7 +41168,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A030",
-          "python_outcome": "behavior_mismatch",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -42547,7 +42547,7 @@
         "direction": "OWS to LangGraph",
         "stage": 1,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T14",
         "effort": "L",
@@ -42606,7 +42606,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A056",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -42667,7 +42667,7 @@
         "direction": "OWS to LangGraph",
         "stage": 1,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: behavior_mismatch; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T14",
         "effort": "L",
@@ -42706,7 +42706,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A058",
-          "python_outcome": "behavior_mismatch",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -42716,7 +42716,7 @@
         "direction": "OWS to LangGraph",
         "stage": 1,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: behavior_mismatch; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T06",
         "effort": "L",
@@ -42755,7 +42755,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A059",
-          "python_outcome": "behavior_mismatch",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -52654,7 +52654,7 @@
         "direction": "OWS to LangGraph",
         "stage": 2,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T06; P-AS141",
         "effort": "L",
@@ -52676,7 +52676,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS141",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -52686,7 +52686,7 @@
         "direction": "OWS to LangGraph",
         "stage": 2,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T06; P-AS142",
         "effort": "L",
@@ -52708,7 +52708,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS142",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },

@@ -105,8 +105,9 @@ def test_audit_preserves_unexecuted_full_criteria_and_specific_hidden_gaps():
     assert all(not row["full_proposed_criteria_executed"] for row in audit["features"])
     assert all(row["javascript_outcome"] == "unimplemented" for row in audit["features"])
     rows = {row["feature_id"]: row for row in audit["features"]}
-    assert rows["A058"]["python_outcome"] == "behavior_mismatch"
+    assert rows["A058"]["python_outcome"] == "qualified_subset"
     assert "S2-01" in rows["A058"]["todo_ids"]
+    assert rows["A057"]["python_outcome"] == "unimplemented"  # SDK != public reducers.
     assert rows["AS082"]["evidence_group"] == "http_raw"
     assert rows["AS138"]["evidence_group"] == "mcp_inert"
     assert rows["AS180"]["evidence_group"] == "container_inert"

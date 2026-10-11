@@ -1,7 +1,7 @@
 {
   "format_version": 1,
-  "reviewed_implementation_commit": "f7be5d115e337c551686a8cdebc62284329e9805",
-  "acceptance_record_commit": "eb96e12eca560d0a38d6ded7518d0c52c18b3420",
+  "reviewed_implementation_commit": "5f97cb9df834874f360859c59f5e7eaec96b5058",
+  "acceptance_record_commit": null,
   "purpose": "Exhaustive current implementation audit, not a full conformance certificate or feature completion claim",
   "review_method": "Each semantic construct and schema parent was compared with active admission/execution/native code and existing assertion scope. Missing/inert/mismatched behavior retains explicit owners. Source/API availability and copied material are not runtime proof.",
   "outcome_definitions": {
@@ -23,28 +23,39 @@
   "schema_constraint_status": "774 structural inventory constraints remain separate from runtime behavior and complete schema execution coverage",
   "acceptance": {
     "local_root": {
-      "passed": 1127,
+      "passed": 1153,
       "skipped": 30,
-      "coverage_percent": 91.66
+      "expected_assertion_failures": 3,
+      "coverage_percent": 91.67
     },
     "native_matrices": {
-      "adk": 517,
-      "langgraph": {
-        "passed": 527,
-        "skipped": 6
+      "adk": {
+        "passed": 539,
+        "expected_assertion_failures": 3
       },
-      "agent_framework_optional": 683
+      "langgraph": {
+        "passed": 549,
+        "skipped": 6,
+        "expected_assertion_failures": 3
+      },
+      "agent_framework_optional": {
+        "passed": 713,
+        "expected_assertion_failures": 3
+      }
     },
-    "remote_runs": {
-      "CI": 38145342408,
-      "CI push": 38145338954,
-      "External Sandbox": 38145342355,
-      "PostgreSQL": 38145342373,
-      "Optional Agent Framework": 38145342274,
-      "Security": 38145342415,
-      "Docs": 38145342449
+    "additional_focused": {
+      "shared_root": 16,
+      "shared_adk": 16,
+      "shared_langgraph_and_native": {
+        "passed": 27,
+        "skipped": 7
+      },
+      "shared_agent_framework_optional": 24,
+      "native_collision_and_reducer_primitives": 2
     },
-    "scope": "Exact reviewed implementation passed; suite success qualifies only its actual assertions, not all inventory features"
+    "scope": "Full local suites cover the unchanged runtime implementation before added test-only failure/recovery fixtures; every additional fixture passes separately. Real SQLite ordered fork restart passed; PostgreSQL counterpart awaits configured CI. Public native extensions and independent JS remain unimplemented.",
+    "remote_status": "Pending exact new revision; historical green gates do not qualify changed code",
+    "remote_runs": {}
   },
   "evidence_groups": {
     "loading": {
@@ -473,9 +484,9 @@
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
     },
     "fork_isolation": {
-      "outcome": "partial",
-      "observed": "Fork branches copy input/context and run concurrently; branch mutation is isolated and per-call operation identities differ.",
-      "remaining_scope": "Mapping branch results are merged into input and collisions are overwritten; ordered branch output/reducers/collision policy are incomplete.",
+      "outcome": "qualified_subset",
+      "observed": "Branches retain separate immutable input/context snapshots and local exports. Parent context changes only through explicit fork-level export. Ordered arrays retain same-key branch values; per-call operation identities remain distinct. Branch failure cancels and drains siblings.",
+      "remaining_scope": "Declared native channel/reducer extensions, complete proposed acceptance criteria and independent JS qualification remain later-stage work. This bounded fork result/isolation qualification does not establish durable pending-effect transactions or competitive forks.",
       "remediation_tasks": [
         "S2-01",
         "S4-02",
@@ -499,14 +510,46 @@
         {
           "path": "tests/contract/test_reusable_definitions.py",
           "symbol": "test_reusable_operation_ids_are_distinct_for_parallel_call_sites"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_fork_order_is_declaration_order_even_when_completion_order_reverses"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_fork_retains_each_branch_json_value"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_nested_fork_preserves_nested_result_arrays"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_branch_exports_are_isolated_and_parent_context_is_preserved"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_fork_pipeline_explicitly_aggregates_results_and_replaces_parent_context"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_object_merge_requires_explicit_fork_output_expression"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_failed_fork_drains_sibling_before_returning_common_error"
+        },
+        {
+          "path": "tests/langgraph/test_native_task_graph.py",
+          "symbol": "test_restart_preserves_ordered_fork_results_and_completed_branch_effects"
         }
       ],
-      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
+      "test_scope": "Shared deterministic Python fixtures on both principal engines and optional Agent Framework: reverse completion, all JSON value types, nested ordered arrays, branch snapshots/exports, explicit jq aggregation/merge and failure cleanup. Real SQLite native restart preserves ordered outputs and completed calls; configured PostgreSQL counterpart awaits CI. Full proposed criteria and independent JS remain unexecuted."
     },
     "fork_join": {
-      "outcome": "behavior_mismatch",
-      "observed": "Noncompetitive fork gathers in declaration order, then merges object branch outputs into original input, overwriting duplicate keys. Non-object branches remain a list.",
-      "remaining_scope": "Preserve ordered branch results and explicit collision/reducer semantics; current object merge hides branch identity.",
+      "outcome": "qualified_subset",
+      "observed": "Every noncompetitive fork returns declaration-ordered branch outputs as an array, preserving overlapping object keys and JSON value types. Input is not implicitly merged. Explicit standard jq output/export chooses aggregation or object merge behavior.",
+      "remaining_scope": "Complete proposed backend/restart/operational criteria and independent JS qualification remain open. Durable competitive winner/cancellation and common/native pending-effect reconciliation have separate Stage 2 owners; declared native channel reducers remain Stage 4 work.",
       "remediation_tasks": [
         "S2-01",
         "S4-04"
@@ -525,9 +568,41 @@
         {
           "path": "tests/contract/test_implementation_audit_gaps.py",
           "symbol": "test_noncompetitive_fork_preserves_ordered_object_results"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_fork_order_is_declaration_order_even_when_completion_order_reverses"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_fork_retains_each_branch_json_value"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_nested_fork_preserves_nested_result_arrays"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_branch_exports_are_isolated_and_parent_context_is_preserved"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_fork_pipeline_explicitly_aggregates_results_and_replaces_parent_context"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_object_merge_requires_explicit_fork_output_expression"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_failed_fork_drains_sibling_before_returning_common_error"
+        },
+        {
+          "path": "tests/langgraph/test_native_task_graph.py",
+          "symbol": "test_restart_preserves_ordered_fork_results_and_completed_branch_effects"
         }
       ],
-      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted; desired-behavior gap probe is a strict expected assertion failure, not a completed feature"
+      "test_scope": "Shared deterministic Python fixtures on both principal engines and optional Agent Framework: reverse completion, all JSON value types, nested ordered arrays, branch snapshots/exports, explicit jq aggregation/merge and failure cleanup. Real SQLite native restart preserves ordered outputs and completed calls; configured PostgreSQL counterpart awaits CI. Full proposed criteria and independent JS remain unexecuted."
     },
     "compete": {
       "outcome": "partial",
@@ -1898,8 +1973,17 @@
           "symbol": "LangGraphScopeExecutor.compile_scope"
         }
       ],
-      "tests": [],
-      "test_scope": "Source review only; no feature-specific executable proof"
+      "tests": [
+        {
+          "path": "tests/langgraph/test_native_state_collisions.py",
+          "symbol": "test_native_parallel_last_value_collision_is_rejected"
+        },
+        {
+          "path": "tests/langgraph/test_native_state_collisions.py",
+          "symbol": "test_native_explicit_append_reducer_preserves_parallel_values"
+        }
+      ],
+      "test_scope": "Pinned SDK primitive checks only: default LastValue conflicting writes fail and explicit operator.add retains parallel values. No public workflow-native metadata channel/reducer implementation or general proposed criteria qualification follows."
     },
     "native_routing": {
       "outcome": "unimplemented",
@@ -2907,7 +2991,7 @@
       "construct": "fork.branches",
       "category": "Control flow",
       "evidence_group": "fork_isolation",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A029 (Parallel branches) at fork.branches: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -2928,7 +3012,7 @@
       "construct": "fork compete false",
       "category": "Control flow",
       "evidence_group": "fork_join",
-      "python_outcome": "behavior_mismatch",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A030 (Fork join output) at fork compete false: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -3486,7 +3570,7 @@
       "construct": "Task data and context transitions",
       "category": "Data and expressions",
       "evidence_group": "fork_isolation",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A056 (State mutability) at Task data and context transitions: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -3531,7 +3615,7 @@
       "construct": "fork branch outputs and exports",
       "category": "Data and expressions",
       "evidence_group": "fork_join",
-      "python_outcome": "behavior_mismatch",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A058 (Concurrent state collisions) at fork branch outputs and exports: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -3552,7 +3636,7 @@
       "construct": "fork ordered outputs",
       "category": "Data and expressions",
       "evidence_group": "fork_join",
-      "python_outcome": "behavior_mismatch",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A059 (Merge ordering) at fork ordered outputs: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -9573,7 +9657,7 @@
       "construct": "/$defs/forkTask/allOf/1/properties/fork",
       "category": "Control flow",
       "evidence_group": "fork_isolation",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS141 (fork) at /$defs/forkTask/allOf/1/properties/fork: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -9597,7 +9681,7 @@
       "construct": "/$defs/forkTask/allOf/1/properties/fork/properties/branches",
       "category": "Control flow",
       "evidence_group": "fork_isolation",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS142 (branches) at /$defs/forkTask/allOf/1/properties/fork/properties/branches: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16387,32 +16471,32 @@
     }
   ],
   "outcome_counts": {
-    "behavior_mismatch": 35,
+    "behavior_mismatch": 32,
     "inert": 27,
     "internal_only": 9,
-    "partial": 156,
-    "qualified_subset": 171,
+    "partial": 152,
+    "qualified_subset": 178,
     "rejected": 197,
     "unimplemented": 63
   },
   "gap_probes": {
     "path": "tests/contract/test_implementation_audit_gaps.py",
-    "passed": 6,
-    "expected_assertion_failures": 5,
+    "passed": 8,
+    "expected_assertion_failures": 3,
     "unexpected_passes": 0,
-    "scope": "Root environment, both principal adapters. --runxfail confirms actual assertion mismatches; no feature completion follows.",
+    "scope": "Ordered fork probes now pass; OpenAPI, raw binary and null event-data assertion failures retain strict expected-failure markers and repair owners.",
     "independent_environments": {
       "adk": {
-        "passed": 6,
-        "expected_assertion_failures": 5
+        "passed": 8,
+        "expected_assertion_failures": 3
       },
       "langgraph": {
-        "passed": 6,
-        "expected_assertion_failures": 5
+        "passed": 8,
+        "expected_assertion_failures": 3
       },
       "agent_framework_optional": {
-        "passed": 6,
-        "expected_assertion_failures": 6
+        "passed": 9,
+        "expected_assertion_failures": 3
       }
     }
   },
@@ -16429,6 +16513,7 @@
     "core/src/open_workflow_agent/expressions.py": "636b7f7157dfaefd1e2a526855e73b7e764100e86a09dd810043aff2dcedf555",
     "core/src/open_workflow_agent/external_catalog.py": "65fbd1d9ce7bab4cd4c0c894d0235cc2f5b79d94f438759044a3bcc6e0630269",
     "core/src/open_workflow_agent/lifecycle.py": "4ded49a2189ab7d949f3d28eaa62c9b1a5f09ccd00f36e29b2469ab4ce04386d",
+    "core/src/open_workflow_agent/metrics.py": "ae77ce4fb502ac7e45783a3553256a3d867216fdedacfa4b57944f2391ab730d",
     "core/src/open_workflow_agent/observability.py": "dcc23fa1bd4e84cb4bcb0f2db5758e483a4d6cf24b7f85c4be80e9f7e434c7c9",
     "core/src/open_workflow_agent/protocols.py": "58de0b788c8c057ce4d68fc70e9bd5cd4d0f6e7280be3a55a21e446e5b55a737",
     "core/src/open_workflow_agent/resources.py": "940d169d815db3aa52b39a9b2ef797f380f808907969cc6b1ea8346fbf7a46b7",
@@ -16438,7 +16523,7 @@
     "core/src/open_workflow_agent/security.py": "8ff318e0a96e8a54b833abc279d5a43f1a574d5f3ecca6c2a3c3856e564c566a",
     "core/src/open_workflow_agent/services.py": "aae2302179c9e4a3620cff723f96c6772d3106244476e3daeadca4137c9d7a2f",
     "core/src/open_workflow_agent/versions.py": "c1654fcf4326705628b9e2aa4983af5a5d038915afa0e911b63c2dff712e31d5",
-    "core/src/open_workflow_agent/workflow.py": "f34d12f3ae30f83b725e58445705fa570f4c51a097ed6b2cf71aaf249093af93",
+    "core/src/open_workflow_agent/workflow.py": "fa7495f873fd43764072054c088a1843abcd80171d9d1cb9c587ae236fd5fa3d",
     "core/src/open_workflow_agent/workflow_catalog.py": "eef1ccfaa2238c25f6c9b5378475b8d105da9373697c09dec58596a192f6321a",
     "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "8bc53fd97df1f849576cb97954e2c09410a2bf2bde454a117eed503f465eecdb",
     "engines/langgraph/src/open_workflow_agent_langgraph/native.py": "32806907d0c4b5d415966060281cfaf7485edcbd4c87568a110e1fda3ca3b7f7",
@@ -16447,60 +16532,125 @@
     "tests/contract/test_container_sandbox_contract.py": "0fddc4b529f6fa2a195334c499c110b9252f6eb98a7ad67a750027001c349457",
     "tests/contract/test_contract_scheduling.py": "5a601e9f11ff4228782bbceb8302e5ce04d656a85952fe3cb214b0c68b40aaee",
     "tests/contract/test_contract_subworkflows.py": "8013d2d302ea4fd4342aabbddbeb44a969b12f042f64165a367097944f670ab2",
-    "tests/contract/test_data_pipeline.py": "9e94ae28a8068523413e226dea10c5af5456698ed84cdf00a34b1e4b776f7d65",
+    "tests/contract/test_data_pipeline.py": "b0cc83febc4bf0857d08e4841bd3fa1d02e592ef84f4e47fab21608c7c49da30",
     "tests/contract/test_definition_admission.py": "b3b8ec606e7211feca4af52a78a6e608ebdd3c5d9df2a5a3de5c027d64288eef",
     "tests/contract/test_durable_approvals.py": "3d771a642fb65e809765d8c265003cdcf9cdd80b36322afbc2b1723085428847",
     "tests/contract/test_eventing.py": "6c75d914574ae12a25d860e7ae5c618abd2acb1da36399d9abd404898b09ef26",
+    "tests/contract/test_fork_results.py": "82dce7fcf0d6d0deb51dc3614185278c2619c7367f174b98d8eff91e85985287",
+    "tests/contract/test_implementation_audit_gaps.py": "6c44d34efd00b0221770a219d212048b37fa62092a5840289e0a79462b9b7ad1",
     "tests/contract/test_jq_portability.py": "6f953d921345c712ec472f040a36d9346233ea7b405b08b6af034ac84391c75e",
     "tests/contract/test_operator_lifecycle.py": "f63e0a4fb07fd6d5e370d2129343911d52da1a8af8c95f572bc4acf70c0ef9e1",
-    "tests/contract/test_reusable_definitions.py": "f4ae173731c941b7ac4917c5265fe530b314863720b014e0b013f65f882d51da",
+    "tests/contract/test_reusable_definitions.py": "cc6ed66bce68278088af449a63b880096c75755650fbaa4b99671feb9d188f41",
     "tests/contract/test_sandbox_contract.py": "93d427f5637ebdf135c6166dbad67e6099c0f6aa095d5e5e41676cf0ec0c9437",
     "tests/contract/test_schema_reference_closure.py": "8a1cc06242a1fc45d90384a474eab978b8c5be1ed94b8ff3e8c9a9455708c4fc",
     "tests/contract/test_schema_resources.py": "9f48e5ae98dac5d559eb089b6c64e90c72cfab3ecedd6058c8b1f01b20945bf0",
     "tests/contract/test_scoped_flow.py": "84fcd9ca62d47d43e6ec70edcf9317f3256db5665421c16b990f5f29edb9da92",
     "tests/contract/test_tools.py": "c335173ec41629d4899e0997c382df51c0ad96312b8145aa08adbedd580cc24b",
+    "tests/core/test_a2a_streaming.py": "49fc4eff9d1eba010e66981726fb83e825560861a3128bc0dbd529010478db53",
+    "tests/core/test_a2a_task_routes.py": "6e873d3c555843f3eb63f74e3f5de3714f6149c51a967de85c247ddd7c0e74bb",
     "tests/core/test_core_scheduling.py": "586b2edc9696d7b1980861d03f060335e2f33d0aabce55916db3122323b77361",
     "tests/core/test_events.py": "b828873bbfa3e6fe3680c6dcaf6dd49262ccac2649f45fb25a677298014c36a9",
     "tests/core/test_fork.py": "bfef5824eef414843b3ddad8f6504a9aec2eb7b69f1403b629d8e6f9c9581764",
     "tests/core/test_lifecycle.py": "77284929b7c478c6296b37a5aeb39871d063ece7d428b8273e333b0b34352f64",
+    "tests/core/test_metrics.py": "849dad8e0308ff6262cf2da1a4bb9b1a224a2dfb92fe2ac46ce670c833436072",
     "tests/core/test_observability.py": "62045b6f53fba0eac7616fb0a19ae981dd780e4ffc6de9b56e8eff8da7fa3f06",
     "tests/core/test_protocols.py": "2dcb17cb0e111901cdb85eea44edb7f7762c3c3106dd9387b9219efdf0701681",
     "tests/core/test_sandbox_validation.py": "fe06321287414eb1b0808600c38d31a0641b117097500862b5d9b7a18f0877a8",
     "tests/core/test_security.py": "ebb77bd3bea00c442d2f23ca1a214e4616e1d8d3c056155266c06626a0607044",
-    "tests/core/test_workflow_catalog.py": "e6ef50d8fa6a7cd7648d6bb56dd1c05ec4aa8279fb326582e1358727deac173b",
-    "tests/langgraph/test_native_task_graph.py": "0191272a76498f225c4ce5bca90fa3fac4d767769b21b91fc994a9d91716437d",
-    "tests/core/test_a2a_task_routes.py": "6e873d3c555843f3eb63f74e3f5de3714f6149c51a967de85c247ddd7c0e74bb",
-    "tests/core/test_a2a_streaming.py": "49fc4eff9d1eba010e66981726fb83e825560861a3128bc0dbd529010478db53",
     "tests/core/test_security_oauth2_mtls.py": "2c5511081d600c71552d4c443cc8a4ba27e26ab5ffd8867378d9a58af6a36b99",
-    "core/src/open_workflow_agent/metrics.py": "ae77ce4fb502ac7e45783a3553256a3d867216fdedacfa4b57944f2391ab730d",
-    "tests/core/test_metrics.py": "849dad8e0308ff6262cf2da1a4bb9b1a224a2dfb92fe2ac46ce670c833436072"
+    "tests/core/test_workflow_catalog.py": "e6ef50d8fa6a7cd7648d6bb56dd1c05ec4aa8279fb326582e1358727deac173b",
+    "tests/langgraph/test_native_state_collisions.py": "50c2c34e2b12a7943523994cabaa3da1955962908c31262d5ae6f5e99e69eaed",
+    "tests/langgraph/test_native_task_graph.py": "efb8c5b3af7249c44d3aed2b98f93594eb2a4b915109b65dac5ca02be9d82ba4"
   },
   "audit_integrity_checks": {
     "passed": 4,
     "scope": "Exhaustive IDs, active symbols, retained criteria and ownership; not runtime qualification"
   },
-  "audit_acceptance": {
-    "commit": "a1cbae83e2a973e48be1afa893d1bac24fd7b8ac",
-    "runs": {
-      "CI": 38146714092,
-      "CI (push)": 38146711017,
-      "External Sandbox CI": 38146714047,
-      "PostgreSQL CI": 38146714069,
-      "Agent Framework CI (optional)": 38146714162,
-      "Security": 38146714020,
-      "Docs": 38146714075
-    },
-    "result": "All success",
-    "ci_root": {
-      "passed": 1141,
-      "skipped": 26,
-      "expected_assertion_failures": 5,
-      "coverage_percent": 91.69
-    },
-    "ci_shared_contract": {
-      "passed": 421,
-      "expected_assertion_failures": 5
-    },
-    "scope": "Audit artifact/checks plus all required regression gates; existing baseline source/test anchors remain qualified only at their stated assertion scope"
-  }
+  "previous_reviews": [
+    {
+      "artifact_commit": "7ab4022e7a0e227dcf7e81ac6cd83fac60c423f5",
+      "path": "resources/compatibility/implementation-audit.json",
+      "reviewed_implementation_commit": "f7be5d115e337c551686a8cdebc62284329e9805",
+      "acceptance_record_commit": "eb96e12eca560d0a38d6ded7518d0c52c18b3420",
+      "acceptance": {
+        "local_root": {
+          "passed": 1127,
+          "skipped": 30,
+          "coverage_percent": 91.66
+        },
+        "native_matrices": {
+          "adk": 517,
+          "langgraph": {
+            "passed": 527,
+            "skipped": 6
+          },
+          "agent_framework_optional": 683
+        },
+        "remote_runs": {
+          "CI": 38145342408,
+          "CI push": 38145338954,
+          "External Sandbox": 38145342355,
+          "PostgreSQL": 38145342373,
+          "Optional Agent Framework": 38145342274,
+          "Security": 38145342415,
+          "Docs": 38145342449
+        },
+        "scope": "Exact reviewed implementation passed; suite success qualifies only its actual assertions, not all inventory features"
+      },
+      "audit_acceptance": {
+        "commit": "a1cbae83e2a973e48be1afa893d1bac24fd7b8ac",
+        "runs": {
+          "CI": 38146714092,
+          "CI (push)": 38146711017,
+          "External Sandbox CI": 38146714047,
+          "PostgreSQL CI": 38146714069,
+          "Agent Framework CI (optional)": 38146714162,
+          "Security": 38146714020,
+          "Docs": 38146714075
+        },
+        "result": "All success",
+        "ci_root": {
+          "passed": 1141,
+          "skipped": 26,
+          "expected_assertion_failures": 5,
+          "coverage_percent": 91.69
+        },
+        "ci_shared_contract": {
+          "passed": 421,
+          "expected_assertion_failures": 5
+        },
+        "scope": "Audit artifact/checks plus all required regression gates; existing baseline source/test anchors remain qualified only at their stated assertion scope"
+      },
+      "outcome_counts": {
+        "behavior_mismatch": 35,
+        "inert": 27,
+        "internal_only": 9,
+        "partial": 156,
+        "qualified_subset": 171,
+        "rejected": 197,
+        "unimplemented": 63
+      },
+      "gap_probes": {
+        "path": "tests/contract/test_implementation_audit_gaps.py",
+        "passed": 6,
+        "expected_assertion_failures": 5,
+        "unexpected_passes": 0,
+        "scope": "Root environment, both principal adapters. --runxfail confirms actual assertion mismatches; no feature completion follows.",
+        "independent_environments": {
+          "adk": {
+            "passed": 6,
+            "expected_assertion_failures": 5
+          },
+          "langgraph": {
+            "passed": 6,
+            "expected_assertion_failures": 5
+          },
+          "agent_framework_optional": {
+            "passed": 6,
+            "expected_assertion_failures": 6
+          }
+        }
+      }
+    }
+  ]
 }

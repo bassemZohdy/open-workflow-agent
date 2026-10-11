@@ -9,19 +9,20 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`f7be5d115e337c551686a8cdebc62284329e9805`, whose exact acceptance is recorded in
-[PROJECT.md](../PROJECT.md#s1-07-reusable-definitions-and-resource-identity--2026-10-11-verified).
-Hashes of the reviewed Git file contents preserve the evidence baseline. Later
-milestones must update current outcomes and evidence when behavior changes;
-historical suite results alone cannot qualify changed code.
+`5f97cb9df834874f360859c59f5e7eaec96b5058`, which corrects ordered fork
+results and adds failure/restart evidence. Its local results and pending exact
+GitHub acceptance are recorded in [PROJECT.md](../PROJECT.md#s2-01-ordered-fork-results--in-progress).
+Hashes of reviewed Git file contents preserve the evidence baseline. The
+manifest's `previous_reviews` retains the earlier S1-08 acceptance and points
+to its immutable artifact. Historical green gates do not qualify changed code.
 
 ## Outcomes
 
 | Python audit outcome | Features | Meaning |
 | --- | ---: | --- |
-| Qualified subset | 171 | Specific bounded behavior has tests; full inventory criteria remain unverified |
-| Partial | 156 | Some requested behavior exists, with explicit missing scope |
-| Behavior mismatch | 35 | Accepted behavior differs from the tracked construct |
+| Qualified subset | 178 | Specific bounded behavior has tests; full inventory criteria remain unverified |
+| Partial | 152 | Some requested behavior exists, with explicit missing scope |
+| Behavior mismatch | 32 | Accepted behavior differs from the tracked construct |
 | Rejected | 197 | Admission/client guard rejects the request; this is failure evidence, not implemented support |
 | Inert | 27 | Field is accepted/preserved without its requested effect |
 | Internal only | 9 | Native primitive is used privately, without a general public capability |
@@ -48,7 +49,7 @@ not be read as current delivery status.
 
 | Finding | Actual behavior and evidence boundary | Repair owner |
 | --- | --- | --- |
-| Ordered fork output and collisions | Object branch outputs merge into input and overwrite shared keys; the pinned OWS prose requires an array in declaration order | S2-01 |
+| Ordered fork output and collisions | Ordered branch arrays, isolated exports and explicit jq aggregation now pass local shared fixtures. Failure cleanup and real SQLite ordered-result restart pass; exact configured GitHub acceptance is pending | S2-01 |
 | Competitive fork durability | In-process winner/cancel/drain exists; winner selection and effects are not durably reconciled | S2-02, S2-08 |
 | Native checkpoint recovery | Root/nested/loop/function/import/schema scopes recover completed calls with private savers; pending effects and common/native transactions remain unproved, and explicit null resume uses a missing-value sentinel | S2-03 |
 | Retry and timeout declarations | Predicates/count/basic backoff work; jitter and duration limits are inert, and original deadlines are not persisted | S2-04 |
@@ -77,12 +78,16 @@ conformance. Existing bounded fixtures remain linked in the manifest to their
 exact reviewed implementation acceptance.
 
 [Gap probes](../tests/contract/test_implementation_audit_gaps.py) assert desired
-fork, OpenAPI, HTTP raw and null-event behavior. In the root environment, they
-produce five expected assertion failures and six passing admission checks.
-Running with `--runxfail` confirms each failure reaches the relevant output or
-request assertion. Their strict, AssertionError-only xfails keep unrelated
+fork, OpenAPI, HTTP raw and null-event behavior. Ordered-fork checks now pass
+without expected-failure markers: the root and principal engine environments
+report eight passed and three expected assertion failures; optional Agent
+Framework reports nine passed and three expected assertion failures. The
+remaining failures concern OpenAPI routing, HTTP raw binary data and explicit
+null event data. Prior unmarked runs confirmed the relevant output/request
+assertions. Their strict, AssertionError-only xfails keep unrelated
 errors failing CI and require marker removal when a repair makes the desired
-behavior pass. They remain open defects, never feature-completion evidence.
+behavior pass. Remaining expected failures are open defects. The passing fork
+probes prove their actual subset, without closing complete inventory criteria.
 
 The backlog and tracker retain earlier verified milestone scopes. The audit
 adds missing repair ownership, including S2-01 for state collisions that were

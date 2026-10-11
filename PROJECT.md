@@ -48,8 +48,11 @@ marker. Branch failure drains siblings before returning the common error.
 Real SQLite restart retains ordered branch outputs without replaying completed
 calls; the same PostgreSQL case awaits its configured GitHub gate. Formatting,
 lint and all five dependency locks pass. GitHub acceptance is pending; S2-01
-remains unchecked. The S1-08 audit retains its pinned historical baseline until
-the affected implementation outcomes and acceptance are refreshed.
+remains unchecked. The current audit now reviews `5f97cb9`, moving seven fork
+features to qualified subsets (178 qualified subsets, 152 partial outcomes and
+32 mismatches). It preserves the earlier S1-08 artifact and green acceptance
+as history; current GitHub acceptance remains pending. Public native channels
+remain unimplemented despite the SDK primitive checks.
 
 ### S1-08 current implementation audit — 2026-10-11 (verified)
 
