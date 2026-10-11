@@ -44,6 +44,8 @@ on:
       - "tests/core/test_invocation_store_writes.py"
       - "tests/core/test_execution_ownership.py"
       - "tests/core/test_execution_ownership_fences.py"
+      - "tests/core/test_action_progress_ownership.py"
+      - "tests/contract/test_action_execution_authority.py"
       - "tests/contract/test_runtime_execution_ownership.py"
       - "tests/contract/test_native_checkpoint_fencing.py"
       - "tests/core/test_postgres_persistence.py"
@@ -105,7 +107,8 @@ jobs:
           set -euo pipefail
           timeout --signal=TERM --kill-after=30s 5m \
             uv run --locked --extra knowledge --extra postgres pytest tests/core/test_postgres_persistence.py \
-            tests/core/test_execution_ownership.py tests/core/test_execution_ownership_fences.py -vv --durations=20
+            tests/core/test_execution_ownership.py tests/core/test_execution_ownership_fences.py \
+            tests/core/test_action_progress_ownership.py -vv --durations=20
       - name: Verify native LangGraph task checkpoints and interrupted restart
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
@@ -129,6 +132,7 @@ jobs:
             ../../tests/contract/test_checkpoint_recovery.py \
             ../../tests/contract/test_recovery_admission.py \
             ../../tests/contract/test_runtime_execution_ownership.py \
+            ../../tests/contract/test_action_execution_authority.py \
             ../../tests/contract/test_native_checkpoint_fencing.py \
             ../../tests/contract/test_process_crash_recovery.py \
             ../../tests/contract/test_effect_recovery.py \
@@ -147,6 +151,7 @@ jobs:
             ../../tests/contract/test_checkpoint_recovery.py \
             ../../tests/contract/test_recovery_admission.py \
             ../../tests/contract/test_runtime_execution_ownership.py \
+            ../../tests/contract/test_action_execution_authority.py \
             ../../tests/contract/test_native_checkpoint_fencing.py \
             ../../tests/contract/test_process_crash_recovery.py \
             ../../tests/contract/test_effect_recovery.py \
@@ -165,6 +170,7 @@ jobs:
             ../../tests/contract/test_checkpoint_recovery.py \
             ../../tests/contract/test_recovery_admission.py \
             ../../tests/contract/test_runtime_execution_ownership.py \
+            ../../tests/contract/test_action_execution_authority.py \
             ../../tests/contract/test_process_crash_recovery.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \

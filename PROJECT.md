@@ -300,10 +300,66 @@ optional Agent Framework 1,007 (309 skips), each with three expected gaps.
 Adapters and service composition are unchanged by the subsequent unused-store
 expiry guard and fixture typing correction. Formatting, lint, strict package/CI
 and fixture typing, four locks, five builds and artifact checks pass. Fresh
-GitHub/configured PostgreSQL acceptance for the ownership source remains pending.
+GitHub/configured PostgreSQL acceptance for the storage foundation subsequently
+passed all seven gates at `cdd6e17`. Linux root passed 1,502 cases (270 skips,
+three gaps, 91.91% coverage); PostgreSQL passed 57 common-store cases and both
+packaged runtime restarts. Its six downloaded dependency reports contain no
+known advisories. The earlier two-runtime negative probe remains scoped to the
+storage-only source.
+
+Runtime source `b2dfc5c` integrates private invocation/resume ownership,
+in-process caller coalescing, renewal, lease-loss cancellation and shutdown
+draining. Common state writes and actual native SDK checkpoint mutations lock
+the common ownership row through their storage transaction. SQLite TEMP
+triggers and PostgreSQL transaction guards preserve SDK-owned formats and SQL.
+Native storage workers drain before connections close, including repeated
+cancellation; workflow execution remains on its engine.
+
+The corrected frozen local regression passes 1,532 root cases (304 skips,
+three gaps, 91.85% coverage), ADK 771 (219 skips), LangGraph 781 (226 skips)
+and optional Agent Framework 1,037 (340 skips), each with three gaps.
+These full local runs precede the final PostgreSQL-only ADK schema-read
+binding adjustment; its final SQLite focus passes 33 cases with 22 database
+skips. Exact `b2dfc5c` configured PostgreSQL proves the final adjustment:
+65 common-store cases, 101 shared cases per principal SDK, 90 optional bridge
+cases (seven skips), 10 separate LangGraph cases (eight skips), and both
+packaged PostgreSQL restart jobs pass. Linux root passes 1,536 (300 skips,
+three gaps, 91.87%); native suites pass ADK 675 and LangGraph 685 plus 96 CTK
+cases each. Windows passes 452 root cases (four skips) and 279 native cases
+(53 skips). All six fresh dependency reports have zero known advisories.
+
+Five exact source gates pass: [PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38172139241),
+[external sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38172139245),
+[optional Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38172139233),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38172139248)
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38172139237).
+Both [PR CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38172139235)
+and [push CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38172134981)
+fail LangGraph's immediate forced-stop image resume with HTTP 409 while the
+killed owner's lease remains live; ADK image jobs are cancelled by fail-fast.
+Their root, Windows, native and CTK jobs pass. The acceptance correction waits
+for actual production lease expiry and rejects every other error; its fresh
+image proof remains pending. Action intent and fork progress guards are also
+under validation. Original dispatch owners retain truthful outcome receipts
+after expiry, without gaining authority to start another action.
+
+The follow-up now locks execution authority through action intent and fork
+winner/drain commits, using an explicit PostgreSQL transaction or a SQLite
+writer lock. Existing intent replay is also guarded. Original dispatch owners
+can still retain completed external-action outcomes after expiry. Frozen local
+regression passes 1,544 root tests (316 skips, three gaps, 91.81% coverage),
+ADK 775 (223 skips), LangGraph 785 (230 skips) and optional Agent Framework
+1,043 (346 skips), each retaining three gaps. Formatting, lint, strict typing,
+all locks, five package builds, current-source wheel/schema checks and
+audit/documentation checks pass. The four actual restart-poll harness scenarios
+prove eventual success, unrelated conflict and server-error rejection, and a
+bounded failure when ownership never expires. Fresh configured PostgreSQL
+action/fork guards and production forced-stop image acceptance remain pending.
+The machine-readable audit binds this follow-up separately by source file
+hashes; the reviewed `b2dfc5c` results and image failure remain historical proof.
 
 S2-03 stays open. This fix does not reconcile all native/common invocation or
-side-effect records. General pending-effect reconciliation, fenced recovery ownership,
+side-effect records. General pending-effect reconciliation, final fenced recovery acceptance,
 missing or inconsistent native checkpoint recovery and broader configured
 database acceptance still require work. Legacy rows without an original-input record
 have no new migration guarantee. Later-stage retry/deadline,

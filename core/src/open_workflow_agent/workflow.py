@@ -44,6 +44,7 @@ from .external_catalog import ResolvedCatalogFunction, parse_catalog_function_re
 from .forks import ForkDecision, ForkIdentity
 from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
+from .ownership import ExecutionLease
 from .protocols import PROTOCOL_DATA_FIELDS
 from .resources import SchemaResource, materialize_schema_resources
 from .resources import schema_registry as build_schema_registry
@@ -1836,6 +1837,7 @@ class WorkflowExecutor:
                 effect_request_digest(call, payload),
                 owner,
                 operation_id=self._operation_id(state),
+                execution_lease=self._execution_lease(state),
             )
         except WorkflowExecutionError as exc:
             raise _EffectRecoveryRequired(exc.message, details=exc.details) from exc
@@ -1907,6 +1909,11 @@ class WorkflowExecutor:
                 "workflow action outcome could not be reconciled",
                 details={"instance": state.variables.get("_task_reference")},
             ) from exc
+
+    @staticmethod
+    def _execution_lease(state: ExecutionState) -> ExecutionLease | None:
+        handle = state.metadata.get("_invocation_handle")
+        return handle._execution_lease if handle is not None else None
 
     @staticmethod
     def _effect_result(receipt: EffectReceipt) -> Any:
@@ -2063,7 +2070,7 @@ class WorkflowExecutor:
         if recorded is not None:
             self._token(state).checkpoint()
             if not recorded.drained:
-                store.mark_drained(identity)
+                store.mark_drained(identity, execution_lease=self._execution_lease(state))
             return self._fork_decision_result(recorded, state)
 
         completion: asyncio.Future[ForkDecision] = asyncio.get_running_loop().create_future()
@@ -2120,7 +2127,9 @@ class WorkflowExecutor:
                     cancellation_intents=tuple(i for i in range(len(branches)) if i != index),
                     error_status_code=error.status_code if error else None,
                 )
-                recorded = store.claim(identity, decision)
+                recorded = store.claim(
+                    identity, decision, execution_lease=self._execution_lease(state)
+                )
                 completion.set_result(recorded)
             except Exception as exc:
                 completion.set_exception(exc)
@@ -2154,7 +2163,7 @@ class WorkflowExecutor:
             if completion.done() and not completion.cancelled():
                 completion.exception()
             if recorded is not None:
-                store.mark_drained(identity)
+                store.mark_drained(identity, execution_lease=self._execution_lease(state))
         self._token(state).checkpoint()
         handle = state.metadata.get("_invocation_handle")
         if handle is not None and handle.status == "waiting":

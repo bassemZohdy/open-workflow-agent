@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Private database-clock claims, renewal, release and retained generations across connections. RuntimeServices owns composition/cleanup. Execution admission, heartbeat supervision and atomic common/native write fencing are not integrated. Initial native/input admission and selected process-crash source gates passed; full S2-03 remains open.",
+          "scope": "Private invocation/resume admission, local caller coalescing, renewal/loss/shutdown supervision and common/native storage transaction fencing. Native SQL, checkpoint formats and engine state remain SDK-owned. Action/fork admission generation guards and their fresh acceptance, complete nested native/common consistency, ambiguous effects, full proposed criteria and independent JavaScript remain unqualified. Optional Agent Framework common bridge proof does not establish native checkpoint durability.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -65577,7 +65577,7 @@
           },
           "execution_ownership_storage_foundation": {
             "commit": "75fbc0d7bdfb242c4e8b92490a57627f85aa6a0c",
-            "status": "Local ownership storage foundation verified; new-source GitHub/PostgreSQL acceptance pending",
+            "status": "Verified for storage-only scope at cdd6e17; historical runtime admission probe remains source-scoped",
             "scope": "Private database-clock claims, renewal, release and retained generations across connections. RuntimeServices owns composition/cleanup. Execution admission, heartbeat supervision and atomic common/native write fencing are not integrated.",
             "tests": [
               "tests/core/test_execution_ownership.py"
@@ -65589,7 +65589,186 @@
             "negative_probe": "A corrupted infinite SQLite expiry could be renewed at f00a7a0; 75fbc0d rejects verify/renew/release without changing it.",
             "runtime_admission_probe": "Two independent common runtimes enter the same invocation at 75fbc0d; ownership storage is not integrated with execution admission.",
             "composition_probe": "Independent RuntimeServices share the ownership record and close their owned storage connections.",
-            "remaining": "Runtime invocation/resume ownership and heartbeat integration, lease-loss cancellation, atomic common/native write fencing and complete native consistency remain open."
+            "remaining": "Runtime invocation/resume ownership and heartbeat integration, lease-loss cancellation, atomic common/native write fencing and complete native consistency remain open.",
+            "remote_acceptance": {
+              "commit": "cdd6e17803583291cf69bd61183214a637a522c6",
+              "runtime_source": "75fbc0d7bdfb242c4e8b92490a57627f85aa6a0c",
+              "result": "Success",
+              "runs": {
+                "38168042885": "success",
+                "38168042878": "success",
+                "38168042905": "success",
+                "38168042875": "success",
+                "38168042914": "success",
+                "38168042957": "success",
+                "38168038764": "success"
+              },
+              "linux_root": {
+                "passed": 1502,
+                "skipped": 270,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.91
+              },
+              "postgresql": {
+                "store_passed": 57,
+                "native_langgraph_passed": 10,
+                "native_langgraph_skipped": 8,
+                "shared_adk_passed": 92,
+                "shared_langgraph_passed": 92,
+                "shared_agent_framework_passed": 85,
+                "shared_agent_framework_skipped": 7,
+                "both_runtime_image_jobs": "Success"
+              },
+              "remote_security_dependency_counts": {
+                "dependency-audit-adk": 109,
+                "dependency-audit-agent-framework": 74,
+                "dependency-audit-kubernetes-sandbox-controller": 16,
+                "dependency-audit-langgraph": 96,
+                "dependency-audit-root": 71,
+                "dependency-audit-sandbox-controller": 13
+              },
+              "remote_known_advisories": 0,
+              "scope": "Ownership storage foundation only; runtime admission and native fences were not integrated in this source."
+            }
+          },
+          "runtime_and_native_execution_fences": {
+            "commit": "b2dfc5c451b94e0d8d1848e404b46e80d7b06dd3",
+            "status": "Bounded local, PostgreSQL, Windows and native suite proof; main CI image restart acceptance failed",
+            "scope": "Private invocation/resume admission, local caller coalescing, renewal/loss/shutdown supervision and common/native storage transaction fencing. Native SQL, checkpoint formats and engine state remain SDK-owned.",
+            "local_frozen_regression": {
+              "root": {
+                "passed": 1532,
+                "skipped": 304,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.85
+              },
+              "adk": {
+                "passed": 771,
+                "skipped": 219,
+                "expected_assertion_failures": 3
+              },
+              "langgraph": {
+                "passed": 781,
+                "skipped": 226,
+                "expected_assertion_failures": 3
+              },
+              "agent_framework_optional": {
+                "passed": 1037,
+                "skipped": 340,
+                "expected_assertion_failures": 3
+              }
+            },
+            "local_source_scope": "Full frozen suites precede the final PostgreSQL-only ADK schema-read binding adjustment. Final ADK SQLite focus passed 33 cases (22 database skips); exact b2 configured PostgreSQL proves that adjustment.",
+            "remote_runs": {
+              "38172139237": "success",
+              "38172139248": "success",
+              "38172139233": "success",
+              "38172139245": "success",
+              "38172139241": "success",
+              "38172139235": "failure",
+              "38172134981": "failure"
+            },
+            "linux_root": {
+              "passed": 1536,
+              "skipped": 300,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.87
+            },
+            "linux_shared": {
+              "passed": 649,
+              "skipped": 236,
+              "expected_assertion_failures": 3
+            },
+            "linux_native": {
+              "adk": {
+                "passed": 675,
+                "skipped": 219,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "langgraph": {
+                "passed": 685,
+                "skipped": 226,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "agent_framework_optional": {
+                "passed": 1037,
+                "skipped": 340,
+                "expected_assertion_failures": 3
+              }
+            },
+            "windows": {
+              "root_passed": 452,
+              "root_skipped": 4,
+              "native_passed": 279,
+              "native_skipped": 53
+            },
+            "postgresql": {
+              "store_passed": 65,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_adk_passed": 101,
+              "shared_langgraph_passed": 101,
+              "shared_agent_framework_passed": 90,
+              "shared_agent_framework_skipped": 7,
+              "both_runtime_image_jobs": "Success"
+            },
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0,
+            "main_ci_failure": "Both main CI runs fail immediate LangGraph image resume with HTTP 409 while the killed owner lease remains live. ADK image jobs are cancelled by fail-fast. Root, Windows, native and CTK jobs pass. Restart acceptance must wait for actual production lease expiry; no runtime lease bypass is accepted.",
+            "remaining": "Action/fork admission generation guards and their fresh acceptance, complete nested native/common consistency, ambiguous effects, full proposed criteria and independent JavaScript remain unqualified. Optional Agent Framework common bridge proof does not establish native checkpoint durability."
+          },
+          "action_progress_admission_followup": {
+            "status": "Local frozen-source regression verified; fresh GitHub PostgreSQL and image acceptance pending",
+            "parent_commit": "b2dfc5c451b94e0d8d1848e404b46e80d7b06dd3",
+            "source_scope": "Follow-up artifact runtime, fixture and CI Git file contents are bound below by SHA-256. The reviewed b2 source and its two failed main CI gates retain separate evidence.",
+            "source_file_sha256": {
+              "core/src/open_workflow_agent/effects.py": "41187891af210735e756f91f4ab401db8c9503a187ea5a55c5a9823262f2e430",
+              "core/src/open_workflow_agent/forks.py": "3a260a4da7c11be52bc7c4d9ca833c52aa8a47aab81759b64f3741efcb58021b",
+              "core/src/open_workflow_agent/ownership.py": "a67eb678e8512f094147c1e01258137b80959ebaab9314cf516ce874ff0c09d5",
+              "core/src/open_workflow_agent/workflow.py": "084ac5cd100b33bd63061acc89ed900708d0678e7e39c9503c82392ab6600e48",
+              "tests/core/test_action_progress_ownership.py": "8fa0a100caae0d75be90fd167870daa006e7ca6196ccb0fa507683d275d4ae53",
+              "tests/contract/test_action_execution_authority.py": "17bee27b3c4d3f117299274b6228e1fa8a50976674b03f7a88dd0f7a8e71ddc8",
+              "tests/contract/test_competitive_forks.py": "6a8c6e424021122530618ac9e9822152da973e5d6d22e2335f8bcc54a1a2d401",
+              ".github/workflows/ci.yml": "1bfb64a22e5807d9609861502fcc628585970d272fa918f99a58aedc40fef037",
+              ".github/workflows/postgres-ci.yml": "28d0c2c799bf6b87e656382d54ef4ffc3643c2ed0066035d1697574f9624f344"
+            },
+            "local_frozen_regression": {
+              "root": {
+                "passed": 1544,
+                "skipped": 316,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.81
+              },
+              "adk": {
+                "passed": 775,
+                "skipped": 223,
+                "expected_assertion_failures": 3
+              },
+              "langgraph": {
+                "passed": 785,
+                "skipped": 230,
+                "expected_assertion_failures": 3
+              },
+              "agent_framework_optional": {
+                "passed": 1043,
+                "skipped": 346,
+                "expected_assertion_failures": 3
+              }
+            },
+            "scope": "Action intent insertion/replay and fork winner/drain progress lock valid execution authority through commit. Existing first-dispatch owners can retain truthful external outcomes after expiry. Standalone unowned storage contracts remain compatible.",
+            "local_lock_proof": "SQLite guarded progress transaction blocks a competing ownership write through commit, then permits it. Matching PostgreSQL lock-timeout proof is wired for the fresh database gate, not counted as local acceptance.",
+            "image_acceptance_correction": "Wait for the persisted waiting boundary before forced stop, then retry only the exact live-owner conflict until real production lease expiry. No deletion/shortening of a production lease. Four deterministic actual-poll harness scenarios pass: eventual success, unrelated conflict rejection, server failure rejection, bounded never-expiring failure.",
+            "quality_checks": "Formatting, lint, strict package/CI/new-fixture typing, four locks, five builds, all five current-source wheel checks, pinned official schema bytes, six audit/tracker checks and Markdown links pass.",
+            "remaining": "Fresh configured PostgreSQL and forced-stop runtime-image acceptance; full nested native/common consistency, general pending effect reconciliation, and full S2-03 acceptance remain open. No compensation, migration, JavaScript or full conformance claim."
           }
         }
       },

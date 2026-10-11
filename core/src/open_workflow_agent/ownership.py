@@ -6,7 +6,8 @@ import asyncio
 import math
 import sqlite3
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Protocol
@@ -52,6 +53,50 @@ def execution_write_guard(
 ) -> tuple[str, tuple[str, str, str, str, int]]:
     """Guard a common write inside its own storage transaction."""
     return _write_guard(lease, postgresql=connection.is_postgresql)
+
+
+@contextmanager
+def owned_write_transaction(
+    connection: StorageConnection,
+    lease: ExecutionLease | None,
+    *,
+    invocation_id: str,
+    workflow_fingerprint: str,
+) -> Iterator[None]:
+    """Keep authority locked through a common intent/progress write and commit.
+
+    PostgreSQL common connections use autocommit, so the row lock needs an
+    explicit transaction. SQLite requires a writer lock before checking the
+    owner; a read-only preflight would permit a takeover before the write.
+    This guard deliberately does not govern first-dispatch outcome receipts.
+    """
+
+    if lease is None:
+        yield
+        connection.commit()
+        return
+    if lease.invocation_id != invocation_id or lease.workflow_fingerprint != workflow_fingerprint:
+        raise InvocationStateConflict("invocation execution ownership is inconsistent")
+    guard, parameters = execution_write_guard(connection, lease)
+    if connection.is_postgresql:
+        with connection.raw.transaction():
+            if connection.execute(guard, parameters).fetchone() is None:
+                raise InvocationStateConflict("invocation execution ownership was lost")
+            yield
+        return
+    try:
+        locked = connection.execute(
+            "UPDATE invocation_ownership SET owner = owner "
+            f"WHERE invocation_id = ? AND EXISTS ({guard})",
+            (invocation_id, *parameters),
+        )
+        if locked.rowcount != 1:
+            raise InvocationStateConflict("invocation execution ownership was lost")
+        yield
+        connection.commit()
+    except BaseException:
+        connection.raw.rollback()
+        raise
 
 
 def _write_guard(

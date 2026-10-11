@@ -61,8 +61,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   Initial native/input-binding admission passed all gates at `b9a2b31`;
   eight forced process-stop cases per SDK/common bridge passed SQLite/PostgreSQL
   acceptance at `ef29f23`. Private expiring ownership storage at `75fbc0d`
-  has local proof and pending fresh database gates. Runtime ownership admission,
-  atomic native checkpoint fencing and full native consistency remain open.
+  passed all gates at `cdd6e17`. Runtime admission and atomic common/native
+  checkpoint fencing at `b2dfc5c` pass local, Windows, native and PostgreSQL
+  suites; both main CI image restart gates fail immediate resume while the
+  stopped owner's lease is live. Expiry-aware image acceptance and action/fork
+  generation guards are being validated. Full native consistency remains open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.

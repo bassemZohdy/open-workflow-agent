@@ -8,8 +8,9 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-from .errors import WorkflowExecutionError
+from .errors import InvocationStateConflict, WorkflowExecutionError
 from .expressions import validate_expression_data
+from .ownership import ExecutionLease, owned_write_transaction
 from .storage import StorageConnection, open_storage
 
 
@@ -97,7 +98,13 @@ class ForkDecisionStore:
         except Exception:
             raise WorkflowExecutionError("competitive fork decision could not be read") from None
 
-    def claim(self, identity: ForkIdentity, decision: ForkDecision) -> ForkDecision:
+    def claim(
+        self,
+        identity: ForkIdentity,
+        decision: ForkDecision,
+        *,
+        execution_lease: ExecutionLease | None = None,
+    ) -> ForkDecision:
         """Return the committed winner, retaining the first claim across connections."""
 
         try:
@@ -107,12 +114,19 @@ class ForkDecisionStore:
             for name in ("output", "context", "error"):
                 validate_expression_data(payload[name])
             encoded = json.dumps(payload, ensure_ascii=False, allow_nan=False, sort_keys=True)
-            self.connection.execute(
-                """INSERT INTO competitive_fork_decisions(identity, payload, drained)
-                VALUES (?, ?, 0) ON CONFLICT(identity) DO NOTHING""",
-                (identity.key, encoded),
-            )
-            self.connection.commit()
+            with owned_write_transaction(
+                self.connection,
+                execution_lease,
+                invocation_id=identity.invocation_id,
+                workflow_fingerprint=identity.workflow_fingerprint,
+            ):
+                self.connection.execute(
+                    """INSERT INTO competitive_fork_decisions(identity, payload, drained)
+                    VALUES (?, ?, 0) ON CONFLICT(identity) DO NOTHING""",
+                    (identity.key, encoded),
+                )
+        except InvocationStateConflict:
+            raise
         except Exception:
             try:
                 self.connection.raw.rollback()
@@ -124,18 +138,31 @@ class ForkDecisionStore:
             raise WorkflowExecutionError("competitive fork winner was not recorded")
         return recorded
 
-    def mark_drained(self, identity: ForkIdentity) -> None:
+    def mark_drained(
+        self, identity: ForkIdentity, *, execution_lease: ExecutionLease | None = None
+    ) -> None:
         """Record in-process loser draining; this does not undo external effects."""
 
         try:
-            updated = self.connection.execute(
-                "UPDATE competitive_fork_decisions SET drained = 1 WHERE identity = ?",
-                (identity.key,),
-            )
-            self.connection.commit()
-            if updated.rowcount != 1:
-                raise ValueError("competitive fork decision is absent")
+            with owned_write_transaction(
+                self.connection,
+                execution_lease,
+                invocation_id=identity.invocation_id,
+                workflow_fingerprint=identity.workflow_fingerprint,
+            ):
+                updated = self.connection.execute(
+                    "UPDATE competitive_fork_decisions SET drained = 1 WHERE identity = ?",
+                    (identity.key,),
+                )
+                if updated.rowcount != 1:
+                    raise ValueError("competitive fork decision is absent")
+        except InvocationStateConflict:
+            raise
         except Exception:
+            try:
+                self.connection.raw.rollback()
+            except Exception:
+                pass
             raise WorkflowExecutionError("competitive fork cleanup could not be recorded") from None
 
     def close(self) -> None:

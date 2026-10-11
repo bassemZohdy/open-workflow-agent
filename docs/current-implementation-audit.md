@@ -9,7 +9,7 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`75fbc0d`, which retains the verified fork, original-input, terminal-record,
+`b2dfc5c`, which retains the verified fork, original-input, terminal-record,
 leaf-call and conditional common write corrections. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
@@ -29,17 +29,24 @@ fake external dispatch. Optional Agent Framework native durability remains
 unqualified. Configured PostgreSQL and Linux/Windows gates subsequently passed
 at `ef29f23`. These focused results do
 not replace the full-suite baseline recorded at `58516fb`.
-Private database-clock ownership storage is composed into RuntimeServices but
-does not yet guard execution or native writes. Local contention/expiry/failure
-fixtures passed 25 cases with 12 PostgreSQL skips. The corrected full root at
-`75fbc0d` passed 1,498 (274 skips, three gaps, 91.89% coverage); native regression
-matrices retain their separate `f00a7a0` baseline. Fresh ownership-source gates
-remain pending. A two-runtime probe confirms concurrent admission remains open.
+The private ownership storage foundation passed all seven gates at `cdd6e17`.
+Runtime source `b2dfc5c` now guards invocation/resume admission and actual
+common/native checkpoint transactions, with renewal, loss and shutdown draining.
+Both principal SDKs retain their native formats, SQL and checkpoint ownership.
+The same shared fixtures pass on configured PostgreSQL; both PostgreSQL image
+jobs pass. Linux root passes 1,536 cases (300 skips, three gaps, 91.87%);
+Windows root/native suites and principal native/CTK suites pass. Six fresh
+dependency reports contain zero known advisories. Both main CI image restart
+gates fail immediate resume with a live killed-owner lease; their ADK image
+jobs are cancelled. Production-expiry-aware image acceptance and action/fork
+admission guards are being validated. Full local frozen results and the final
+PostgreSQL-only ADK adjustment retain their exact scopes in the manifest.
 The conditional-write gates passed at `6954db8`; prior leaf-call and corrected
 dependency gates passed at `fc53574`. Recovery, action idempotency and lifecycle
-remain partial. S2-03 remains open for broader effects, fenced ownership and
-full native checkpoint consistency. Initial input-binding checks do not
-establish nested checkpoint validation or atomic native write fences.
+remain partial. S2-03 remains open for final fenced execution acceptance,
+broader effects and full native checkpoint consistency. Initial input-binding
+checks do not establish nested checkpoint validation. No full feature outcome
+or independent JavaScript qualification is promoted by this bounded proof.
 
 Earlier competitive runtime, fixture/audit and all three common PostgreSQL
 gates passed at `2fbe548`, `51c204e` and `81d27b3`. The JSON null wake-up fix also
@@ -91,7 +98,7 @@ not be read as current delivery status.
 | --- | --- | --- |
 | Ordered fork output and collisions | Ordered branch arrays, isolated exports, explicit jq aggregation and failure cleanup pass shared fixtures. SQLite/PostgreSQL native fork restart and exact runtime GitHub gates pass; additional shared output restart passes every adapter | S2-01 verified; full criteria remain S4-03/S4-04 |
 | Competitive fork durability | First observed completion, cancellation intents and distinct occurrence identity are persisted. SQLite/PostgreSQL replay preserves values/null/fault/end and repeated occurrences without branch calls on both principal adapters and the optional common bridge. All exact acceptance gates passed. External-action reconciliation/compensation is not established | S2-02 verified; general effects S2-03/S2-08; full criteria S4-03/S4-04 |
-| Native checkpoint recovery | Original input, resume values, atomic terminal outcomes and leaf-call receipts have bounded SQLite/PostgreSQL acceptance. Conditional common writes retain newer records against stale workers; conflicts stop retry or a fabricated fork winner. New-source database gates are pending. Exclusive execution ownership, native checkpoint fencing/consistency, broader effects and legacy migration remain open | S2-03 in progress; migration S2-09 |
+| Native checkpoint recovery | Original input, resume values, terminal outcomes and leaf-call receipts have bounded SQLite/PostgreSQL acceptance. Runtime admission and common/native transaction fencing pass local, Windows and PostgreSQL fixtures. Main CI image restart still needs actual lease-expiry acceptance; action/fork guards, nested consistency, broader effects and legacy migration remain open | S2-03 in progress; migration S2-09 |
 | Action idempotency and compensation | A080 is partial: selected call receipts prevent completed replay and block uncertain actions. A079 remains unimplemented: no compensation/saga state machine exists. Run/event/child effects, redrive, ambiguous outcome resolution, full process-crash criteria and exactly-once external actions remain unqualified | S2-03, S2-08; full criteria S4-03/S4-04 |
 | Retry and timeout declarations | Predicates/count/basic backoff work; jitter and duration limits are inert, and original deadlines are not persisted | S2-04 |
 | Events and timers | Active process-local listeners and persisted after/every schedules exist; durable general inbox/outbox/timers/correlation/cron/on are missing. Explicit null event data is omitted | S2-05, S2-06 |

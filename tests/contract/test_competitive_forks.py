@@ -391,12 +391,12 @@ async def test_repeated_race_restart_keeps_occurrences_and_never_repeats_committ
             raise WorkflowExecutionError("first attempt failed")
         return {"iteration": index + 1}
 
-    def interrupt_second_occurrence(identity):
+    def interrupt_second_occurrence(identity, **authority):
         decision = services.fork_decisions.get(identity)
         if decision.output == {"iteration": 2}:
             running.cancel()
             raise asyncio.CancelledError
-        original_mark(identity)
+        original_mark(identity, **authority)
 
     race = _race()
     functions = None
@@ -486,7 +486,7 @@ async def test_storage_failure_faults_and_drains_losers_without_a_winner(
         await started.wait()
         return {"winner": "fast"}
 
-    def fail_claim(*args):
+    def fail_claim(*args, **kwargs):
         raise WorkflowExecutionError("competitive fork decision could not be stored")
 
     services.call_protocol = call
@@ -679,7 +679,7 @@ async def test_restart_after_winner_commit_replays_decision_without_starting_eit
             raise WorkflowExecutionError("winning branch failed", details={"type": "urn:race"})
         return None if winner_outcome == "null" else {"winner": "fast"}
 
-    def interrupt_before_cleanup_receipt(identity):
+    def interrupt_before_cleanup_receipt(identity, **authority):
         # The atomic winner and cancellation intents exist. Neither the cleanup
         # receipt nor the parent task's native completed checkpoint exists yet.
         assert services.fork_decisions.get(identity).drained is False

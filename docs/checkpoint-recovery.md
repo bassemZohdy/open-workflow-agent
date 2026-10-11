@@ -119,11 +119,26 @@ expiry fails closed. [Store fixtures](../tests/core/test_execution_ownership.py)
 cover independent/simultaneous connections, expiry/reopening, identity rebinding,
 forged tokens, host-clock skew, invalid durations and failed SQLite commits.
 Local focused proof passed 25 cases with 12 unconfigured PostgreSQL skips;
-matching configured cases are wired and pending. RuntimeServices composes and
-closes the store, but execution admission and native writes do not use it yet.
-A two-runtime probe still enters the same invocation twice. Runtime integration,
-heartbeat supervision, lease-loss cancellation and atomic common/native fences
-remain required before claiming exclusive execution ownership.
+matching configured cases subsequently pass at `cdd6e17`. That storage-only
+source did not guard execution admission or native writes; its two-runtime
+negative probe is retained as historical evidence.
+
+At `b2dfc5c`, invocation/resume admission acquires private expiring ownership,
+coalesces local callers and supervises renewal, loss and shutdown. Common writes
+and actual SDK database mutations lock the ownership row through commit.
+SQLite TEMP triggers and PostgreSQL guards preserve native checkpoint SQL and
+serialization. Cancellation drains native storage workers before closing
+connections or releasing authority. The shared runtime and actual native
+writer fixtures prove stale writes cannot cross a takeover, on SQLite and
+configured PostgreSQL; Windows fixtures also pass.
+
+The full PostgreSQL gate and both PostgreSQL images pass. Both main CI image
+restart gates fail immediate resume with HTTP 409 while a forcibly killed
+owner's lease is still live. Their root, Windows, native and CTK jobs pass.
+Expiry-aware image acceptance waits for the real production lease and rejects
+other errors; fresh acceptance remains pending. Action intents and fork progress
+are also being fenced. Truthful outcomes from the original dispatch owner
+must remain recordable after expiry, without authorizing another action.
 
 The verified private action journal foundation retains
 a first-owner intent and the first completed value/null/fault outcome on the
@@ -179,7 +194,7 @@ into the configured database gate for both principal adapters and the optional
 common Agent Framework bridge. Local database skips are not database acceptance.
 
 See [current validation](../PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
-General pending effects, recovery ownership and missing/inconsistent native
+General pending effects, final ownership acceptance and missing/inconsistent native
 checkpoints remain open in S2-03. Retry/deadline, durable event/timer, child
 workflow, compensation/idempotency and migration retain S2-04 through S2-09.
 Full proposed criteria, public native extensions and JavaScript qualification

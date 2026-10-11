@@ -9,8 +9,9 @@ from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
 
-from .errors import WorkflowExecutionError
+from .errors import InvocationStateConflict, WorkflowExecutionError
 from .expressions import validate_expression_data
+from .ownership import ExecutionLease, owned_write_transaction
 from .storage import StorageConnection, open_storage
 
 
@@ -150,22 +151,27 @@ class EffectJournal:
         owner: str,
         *,
         operation_id: str | None = None,
+        execution_lease: ExecutionLease | None = None,
     ) -> EffectReceipt:
         """Return the first owner; callers must not dispatch another owner's intent."""
 
         try:
             proposed = EffectReceipt(request_digest, owner, operation_id=operation_id)
-            self.connection.execute(
-                """INSERT INTO workflow_effects(identity, owner, status, payload)
-                VALUES (?, ?, ?, ?) ON CONFLICT(identity) DO NOTHING""",
-                (
-                    identity.key,
-                    owner,
-                    proposed.status,
-                    json.dumps(asdict(proposed), allow_nan=False),
-                ),
-            )
-            self.connection.commit()
+            encoded = json.dumps(asdict(proposed), allow_nan=False)
+            with owned_write_transaction(
+                self.connection,
+                execution_lease,
+                invocation_id=identity.invocation_id,
+                workflow_fingerprint=identity.workflow_fingerprint,
+            ):
+                self.connection.execute(
+                    """INSERT INTO workflow_effects(identity, owner, status, payload)
+                    VALUES (?, ?, ?, ?) ON CONFLICT(identity) DO NOTHING""",
+                    (identity.key, owner, proposed.status, encoded),
+                )
+        except InvocationStateConflict:
+            self._rollback()
+            raise
         except Exception:
             self._rollback()
             raise WorkflowExecutionError("workflow effect intent could not be stored") from None

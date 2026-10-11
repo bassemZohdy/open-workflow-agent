@@ -43,6 +43,7 @@ jobs:
           tests/core/test_workflow.py
           tests/core/test_sandbox_validation.py
           tests/core/test_execution_ownership_fences.py
+          tests/core/test_action_progress_ownership.py
           tests/core/test_native_write_fence_storage.py
           tests/contract/test_jq_portability.py
           tests/contract/test_data_pipeline.py
@@ -64,6 +65,7 @@ jobs:
           ../../tests/contract/test_schema_resources.py
           ../../tests/contract/test_process_crash_recovery.py
           ../../tests/contract/test_runtime_execution_ownership.py
+          ../../tests/contract/test_action_execution_authority.py
           ../../tests/contract/test_native_checkpoint_fencing.py
 
   manifests:
@@ -499,7 +501,7 @@ jobs:
           try:
               with sqlite3.connect(sys.argv[1]) as connection:
                   row = connection.execute(
-                      "SELECT invocation_id FROM invocations WHERE status IN ('running', 'waiting') ORDER BY rowid DESC LIMIT 1"
+                      "SELECT invocation_id FROM invocations WHERE status = 'waiting' ORDER BY rowid DESC LIMIT 1"
                   ).fetchone()
               print(row[0] if row else "")
           except sqlite3.Error:
@@ -528,9 +530,37 @@ jobs:
             fi
             sleep 1
           done
-          resume="$(curl --fail --silent --request POST --header 'content-type: application/json' \
-            --data '{"input":{}}' "http://127.0.0.1:${{ matrix.resume_port }}/v1/invocations/${invocation_id}/resume")"
-          python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["status"] == "completed"; assert d["output"] == {"done": True}' "$resume"
+          # A forced stop retains the old owner's live lease. Wait for its
+          # actual expiry; never delete or shorten the production ownership row.
+          for attempt in $(seq 1 60); do
+            status="$(curl --silent --show-error --max-time 45 \
+              --output "$workdir/resume.json" --write-out '%{http_code}' \
+              --request POST --header 'content-type: application/json' \
+              --data '{"input":{}}' \
+              "http://127.0.0.1:${{ matrix.resume_port }}/v1/invocations/${invocation_id}/resume")"
+            if [[ "$status" == 200 ]]; then
+              break
+            fi
+            test "$status" = 409
+            python - "$workdir/resume.json" <<'PY'
+          import json
+          import sys
+          with open(sys.argv[1]) as source:
+              error = json.load(source)["error"]
+          assert error["code"] == "invalid_invocation_state", error
+          assert error["message"] == "invocation execution ownership is unavailable", error
+          PY
+            sleep 1
+          done
+          test "$status" = 200
+          python - "$workdir/resume.json" <<'PY'
+          import json
+          import sys
+          with open(sys.argv[1]) as source:
+              result = json.load(source)
+          assert result["status"] == "completed", result
+          assert result["output"] == {"done": True}, result
+          PY
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v7
