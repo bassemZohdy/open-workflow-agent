@@ -10,9 +10,9 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 
 ## Stage 1 — Correct core execution
 
-- [ ] **S1-01** (M) — Pin the supported OWS schema, release status and semantic profile; reject unsupported definitions clearly.
-  Implementation and local gates are recorded in [the admission profile](docs/workflow-admission.md).
-  Exact-commit remote acceptance is pending; this task remains open until verified.
+- [x] **S1-01** (M) — Pin the supported OWS schema, release status and semantic profile; reject unsupported definitions clearly.
+  Verified at `df47361`: [admission profile](docs/workflow-admission.md) and
+  [acceptance evidence](PROJECT.md#stage-1-admission-work--2026-10-11-verified).
 - [ ] **S1-02** (L) — Replace the partial expression evaluator with validated jq behavior and consistent data/type handling.
 - [ ] **S1-03** (M) — Fix input/output/export ordering, context replacement, task-local data and immutable branch input.
 - [ ] **S1-04** (M) — Preserve transitions, loop/condition rules, and the different scopes of exit and end.

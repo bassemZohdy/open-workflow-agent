@@ -22,25 +22,35 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
-### Stage 1 admission work — 2026-10-11 (remote acceptance pending)
+### Stage 1 admission work — 2026-10-11 (verified)
 
 S1-01 preserves the official schema bytes and records separate prerelease-tag
 and upstream-schema pins. Capabilities expose the bounded profile provenance.
 The common loader rejects duplicate keys, cyclic/non-JSON YAML and excessive
 nesting. Admission rejects ignored expression configurations, reusable
 components, external/non-JSON data schemas, named errors/timeouts, listener
-iterators/correlation and background/return modes. Nested diagnostics preserve
+iterators/correlation, inline endpoint authentication and background/return modes. Nested diagnostics preserve
 task pointers; inline JSON Schema checks include boolean schemas.
 See [the profile and boundaries](docs/workflow-admission.md).
 
-Local root validation passed with 718 tests, 11 skips and 90.61% coverage
-before the final added admission tests. The independent native ADK and
-LangGraph matrices each passed 236 tests; optional Agent Framework passed
-322. Focused final admission/baseline/sandbox tests passed 62 tests. Ruff,
+Local root validation passed with 734 tests, 13 skips and 90.64% coverage.
+The independent native ADK and LangGraph matrices passed 249 and 247 tests
+before the final two authentication-admission assertions; optional Agent
+Framework passed 333. The final focused workflow/protocol/admission suite
+passed 90 tests. Ruff,
 formatting, strict mypy, all four runtime locks, Markdown links, root/core
 builds and packaged schema/profile checks passed. Both native benchmark
 probes recorded checkpoint growth and stable operation ids across replay.
-Final matrices and exact-commit CI evidence will replace these interim counts.
+
+Exact code-commit acceptance at `df4736146ad964c1d6d544759a3b934ca086575b`:
+
+| Gate | Run | Result |
+| --- | --- | --- |
+| CI (PR) | [38131069592](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38131069592) | success: root/coverage, mutation, manifests, both native/contract/CTK matrices and both runtime-image acceptance jobs |
+| CI (push) | [38131066073](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38131066073) | success |
+| External Sandbox CI | [38131069556](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38131069556) | success: contracts, controller image and both Docker-backend runtime acceptance jobs |
+| PostgreSQL CI | [38131069642](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38131069642) | success: common stores and both native-engine persistence jobs |
+| Docs | [38131069597](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38131069597) | success |
 
 Validation exposed two portability defects: frozen snapshots needed binary
 checkout attributes to preserve their exact upstream hashes on Windows;
@@ -51,7 +61,7 @@ cleanup after restart and preserves rejection of the old native schema.
 Native persistence remains owned by ADK.
 
 Local Docker availability probes timed out; container, Linux mutation and
-PostgreSQL acceptance are pending remote CI. No release, image publication,
+PostgreSQL acceptance were verified in remote CI. No release, image publication,
 schema modification, broader conformance claim or later-stage delivery is
 recorded by this work.
 

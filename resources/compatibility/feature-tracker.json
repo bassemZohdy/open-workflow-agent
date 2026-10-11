@@ -39266,7 +39266,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39276,7 +39276,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39298,7 +39299,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39308,7 +39309,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39330,7 +39332,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39340,7 +39342,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39362,7 +39365,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39372,7 +39375,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39394,7 +39398,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39404,7 +39408,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39426,7 +39431,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39436,7 +39441,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39458,7 +39464,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39468,7 +39474,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39490,7 +39497,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39500,7 +39507,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39522,7 +39530,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39532,7 +39540,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39554,7 +39563,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39564,7 +39573,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39586,7 +39596,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39596,7 +39606,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39618,7 +39629,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39628,7 +39639,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39650,7 +39662,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39660,7 +39672,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -39682,7 +39695,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -39692,7 +39705,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -43614,7 +43628,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -43624,7 +43638,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -43666,7 +43681,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -43676,7 +43691,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -43698,7 +43714,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -43708,7 +43724,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -43793,7 +43810,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -43803,7 +43820,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -43825,7 +43843,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -43835,7 +43853,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -43857,7 +43876,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -43867,7 +43886,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -43889,7 +43909,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -43899,7 +43919,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -43921,7 +43942,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -43931,7 +43952,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -43953,7 +43975,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -43963,7 +43985,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -43985,7 +44008,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -43995,7 +44018,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -44017,7 +44041,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -44027,7 +44051,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -44049,7 +44074,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -44059,7 +44084,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -44125,7 +44151,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -44135,7 +44161,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -44157,7 +44184,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -44167,7 +44194,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -44189,7 +44217,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -44199,7 +44227,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -44243,7 +44272,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -44253,7 +44282,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -44359,7 +44389,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -44369,7 +44399,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -44473,7 +44504,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -44483,7 +44514,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -44505,7 +44537,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -44515,7 +44547,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -46748,7 +46781,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -46758,7 +46791,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -46954,7 +46988,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -46964,7 +46998,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -46986,7 +47021,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -46996,7 +47031,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -47018,7 +47054,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -47028,7 +47064,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -47050,7 +47087,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -47060,7 +47097,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -47082,7 +47120,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -47092,7 +47130,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -47114,7 +47153,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -47124,7 +47163,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -47146,7 +47186,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -47156,7 +47196,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -47178,7 +47219,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -47188,7 +47229,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -48012,7 +48054,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -48022,7 +48064,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -48308,7 +48351,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -48318,7 +48361,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -49260,7 +49304,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -49270,7 +49314,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -49292,7 +49337,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -49302,7 +49347,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -49324,7 +49370,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -49334,7 +49380,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -49356,7 +49403,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -49366,7 +49413,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -49388,7 +49436,7 @@
           "S1-07",
           "S4-01"
         ],
-        "repository_status": "Admission verified locally; remaining mapped stages unverified",
+        "repository_status": "S1-01 admission verified; remaining mapped stages unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-01",
@@ -49398,7 +49446,8 @@
               "tests/core/test_workflow.py",
               "tests/core/test_protocol_baselines.py"
             ],
-            "validation": "Local root coverage, shared/CTK/native matrices; exact-commit remote acceptance pending"
+            "validation": "Exact-commit CI, Docker/external sandbox, PostgreSQL, native contract/CTK and Linux mutation gates passed; see PROJECT.md",
+            "commit": "df4736146ad964c1d6d544759a3b934ca086575b"
           }
         ]
       },
@@ -53389,8 +53438,25 @@
         "module": "M01",
         "description": "Pin the supported OWS schema, release status and semantic profile; reject unsupported definitions clearly.",
         "effort": "M",
-        "status": "In progress; local admission verified, remote acceptance pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "df4736146ad964c1d6d544759a3b934ca086575b",
+          "pull_request": "https://github.com/bassemZohdy/open-workflow-agent/pull/64",
+          "runs": {
+            "CI": 38131069592,
+            "External Sandbox CI": 38131069556,
+            "PostgreSQL CI": 38131069642,
+            "Docs": 38131069597
+          },
+          "conclusions": "All success; runtime images, native contract/CTK, Linux mutation and persistence verified",
+          "local_root": {
+            "passed": 734,
+            "skipped": 13,
+            "coverage_percent": 90.64
+          },
+          "full_conformance": false
+        }
       },
       {
         "id": "S1-02",
