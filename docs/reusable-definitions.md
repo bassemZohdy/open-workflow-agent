@@ -48,6 +48,13 @@ prerelease/build identifiers; ranges, floating versions and malformed pins are
 rejected. Resolution inspects actual task call slots, including reusable task
 bodies, without treating application text as imports.
 
+Prebound deployment ProfileAuthentication providers retain their security
+configuration when a resolver is constructed without a separate configuration;
+the policy's named profile must still resolve, and credentials remain host-bound.
+Captured A2A calls share inline OWS method-name translation before protocol
+dispatch. This preserves existing bounded wire behavior; wider A2A and other
+adapter semantics remain in their later integration stages.
+
 The asynchronous workflow and sandbox compilers capture each resolved resource's
 immutable content, URI and digest in the internal plan. Workflow fingerprints
 include the original and resolved closure. Imported named timeouts resolve

@@ -27,6 +27,7 @@ from .protocols import (
     HttpClient,
     ProtocolServices,
     resolve_public_addresses_async,
+    workflow_protocol_payload,
 )
 from .resources import SchemaResourceResolver
 from .security import ProfileAuthentication, SecurityConfig
@@ -337,7 +338,9 @@ class ExternalCatalogResolver:
         client = self._client(policy, auth_host=urlparse(binding.resource_uri).hostname)
         if client.transport is not None:
             await _validate_invocation_destinations(invocation_payload, policy, client)
-        return await ProtocolServices(client).call(call, dict(invocation_payload))
+        return await ProtocolServices(client).call(
+            call, workflow_protocol_payload(call, invocation_payload)
+        )
 
     def capabilities(self) -> dict[str, Any]:
         configured = sorted(self.policies)
@@ -390,26 +393,15 @@ class ExternalCatalogResolver:
         return policy
 
     def _schema_client(self, policy: ExternalCatalogConfig, uri: str) -> HttpClient:
-        base = self._client(policy, auth_host=urlparse(uri).hostname)
-        authentication = (
-            _authentication(policy.authentication, self.security) or base.authentication
-        )
-        if authentication is not None:
-            authentication = _HostBoundAuthentication(authentication, urlparse(uri).hostname or "")
-        return HttpClient(
-            timeout=policy.timeout_seconds,
-            max_response_bytes=policy.max_response_bytes,
-            allowed_hosts=set(policy.allowed_hosts),
-            authentication=authentication,
-            transport=base.transport,
-            destination_resolver=lambda endpoint: _resolve_external_destination(endpoint, policy),
-        )
+        return self._client(policy, auth_host=urlparse(uri).hostname)
 
     def _client(self, policy: ExternalCatalogConfig, *, auth_host: str | None = None) -> HttpClient:
         auth = policy.authentication
-        authentication: AuthenticationProvider | None = _authentication(auth, self.security)
-        if authentication is None and self.http is not None:
-            authentication = self.http.authentication
+        provided = self.http.authentication if self.http is not None else None
+        security = self.security
+        if security is None and isinstance(provided, ProfileAuthentication):
+            security = provided.security
+        authentication: AuthenticationProvider | None = _authentication(auth, security) or provided
         if authentication is not None and auth_host:
             authentication = _HostBoundAuthentication(authentication, auth_host)
         return HttpClient(

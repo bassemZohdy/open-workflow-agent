@@ -121,6 +121,55 @@ async def test_catalog_like_application_data_does_not_fetch_resources(services):
 
 @pytest.mark.parametrize("engine_name,engine_type", engine_cases())
 @pytest.mark.asyncio
+async def test_imported_a2a_calls_use_the_same_ows_method_translation_as_inline_calls(
+    services, engine_name, engine_type
+):
+    definition = {
+        "call": "a2a",
+        "with": {
+            "server": "https://api.test/a2a",
+            "method": "tasks/get",
+            "parameters": {"id": "${ .id }"},
+        },
+    }
+    methods = []
+
+    async def handler(request):
+        if request.url.host == "catalog.test":
+            return httpx.Response(200, json=definition)
+        body = json.loads(request.content)
+        assert body["params"] == {"id": "task-1"}
+        methods.append(body["method"])
+        return httpx.Response(200, json={"result": {"id": "task-1"}})
+
+    resolver = _resolver(services, handler)
+    services.protocols.http = resolver.http
+    imported = _workflow()
+    inline = generate_default_workflow()
+    inline["do"] = [{"remote": definition}]
+    engine = engine_type()
+    await engine.initialize(services)
+    try:
+        for source in (inline, imported):
+            plan = await _compile(services, resolver, source)
+            handle = services.invocations.create(
+                engine=engine_name,
+                session_id=None,
+                user_id="user",
+                workflow_name=plan.name,
+                workflow_version=plan.version,
+                workflow_fingerprint=plan.fingerprint,
+            )
+            result = await engine.invoke(await engine.compile(plan), handle, {"id": "task-1"})
+            assert result.status == "completed", result.error
+            assert result.output == {"result": {"id": "task-1"}}
+    finally:
+        await engine.shutdown()
+    assert methods == ["GetTask", "GetTask"]
+
+
+@pytest.mark.parametrize("engine_name,engine_type", engine_cases())
+@pytest.mark.asyncio
 async def test_frozen_imports_use_the_workflow_expression_mode(services, engine_name, engine_type):
     async def handler(request):
         if request.url.host == "catalog.test":

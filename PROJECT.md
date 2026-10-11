@@ -66,9 +66,9 @@ Local workflow versions use SemVer precedence, reject ambiguous build ties
 and cannot overwrite an existing identity with changed content. See the
 [qualified resolution contract](docs/reusable-definitions.md).
 
-Final local root validation passed 1122 tests, 30 skips and 91.62% core coverage.
-Independent native/contract/CTK matrices passed ADK 514, LangGraph 524 with
-6 unconfigured PostgreSQL skips and optional Agent Framework 679. Imported
+Final local root validation passed 1127 tests, 30 skips and 91.66% core coverage.
+Independent native/contract/CTK matrices passed ADK 517, LangGraph 527 with
+6 unconfigured PostgreSQL skips and optional Agent Framework 683. Imported
 protocol tasks share inline validation, input/output/export, condition, timeout
 and control-flow semantics. Native SQLite/PostgreSQL recovery fixtures include
 an imported task scope and a captured schema resource; legacy registered calls preserve context and end/exit
@@ -81,7 +81,15 @@ The previous revision `0c113c0` passed all remote gates, including
 [optional Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38142313598),
 [security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38142313636)
 and [documentation](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38142313732).
-Exact remote acceptance for the schema resource revision is pending. Ruff, formatting, strict mypy,
+Revision `bc4cb93` passed root, Windows, mutation, native engines, PostgreSQL,
+external sandbox, optional Agent Framework, security and docs checks. Packaged
+runtime acceptance failed when a prebound ProfileAuthentication's security
+configuration was not reused; its named policy now resolves against that
+configuration, with missing profiles rejected before requests and credentials
+bound to the catalog host. Imported A2A tasks also now share inline OWS method
+translation before wire dispatch. The packaged catalog check includes both
+legacy registration and frozen schema-resource resolution; its program passed
+locally. Exact remote acceptance for these fixes is pending. Ruff, formatting, strict mypy,
 five core/runtime locks, documentation links and root/core builds passed.
 Authentication, secrets, extensions, full reliability/proposed inventory tests
 and independent JS retain later-stage ownership. S1-07 remains unchecked

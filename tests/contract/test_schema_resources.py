@@ -518,8 +518,9 @@ async def test_revoked_resource_trust_stops_before_model_or_network_effects(
     assert fetched == [ROOT]
 
 
+@pytest.mark.parametrize("prebound", [False, True])
 @pytest.mark.asyncio
-async def test_resource_credentials_remain_deployment_owned(services, monkeypatch):
+async def test_resource_credentials_remain_deployment_owned(services, monkeypatch, prebound):
     from open_workflow_agent.config import CatalogAuthenticationConfig
     from open_workflow_agent.security import SecurityConfig
 
@@ -541,6 +542,11 @@ async def test_resource_credentials_remain_deployment_owned(services, monkeypatc
     resolver.schemas.policies["schemas"].authentication = CatalogAuthenticationConfig(
         security_profile="schema-reader"
     )
+    if prebound:
+        from open_workflow_agent.security import ProfileAuthentication
+
+        resolver.http.authentication = ProfileAuthentication(resolver.security, "schema-reader")
+        resolver.security = None
     plan = await _compile(services, resolver, _workflow({"resource": {"endpoint": ROOT}}))
     assert received == ["Bearer schema-secret"]
     assert "schema-secret" not in plan.source_json

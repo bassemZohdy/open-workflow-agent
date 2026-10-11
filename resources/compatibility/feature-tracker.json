@@ -57080,7 +57080,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "evidence": {
-          "scope": "Python reusable task functions and named error/retry/timeout resolution with original source identity; network-free schema closure, safe external catalog loading, immutable asynchronous import bindings/fingerprints and SemVer workflow version selection. Authentication/secrets/extensions, full reliability and JS retain later-stage ownership. Imported protocol tasks use the common input/body/output/export and control pipeline, resolve caller-owned named timeouts, preserve original call pointers/captured descriptors, and have per-call native checkpoints. Legacy registrations preserve context and control flow. Exact deployment-approved HTTPS JSON Schema resources with mandatory original-byte SHA-256 pins, bounded frozen reference closures, offline root/reusable/imported schema validation, credential ownership and current-policy rechecks. Safe JSON/YAML serialization bounds source/expanded bytes, nodes, depth and alias construction. Sandbox admission preserves literal run fields in data; conflicting schema identifiers fail admission.",
+          "scope": "Python reusable task functions and named error/retry/timeout resolution with original source identity; network-free schema closure, safe external catalog loading, immutable asynchronous import bindings/fingerprints and SemVer workflow version selection. Authentication/secrets/extensions, full reliability and JS retain later-stage ownership. Imported protocol tasks use the common input/body/output/export and control pipeline, resolve caller-owned named timeouts, preserve original call pointers/captured descriptors, and have per-call native checkpoints. Legacy registrations preserve context and control flow. Exact deployment-approved HTTPS JSON Schema resources with mandatory original-byte SHA-256 pins, bounded frozen reference closures, offline root/reusable/imported schema validation, credential ownership and current-policy rechecks. Safe JSON/YAML serialization bounds source/expanded bytes, nodes, depth and alias construction. Sandbox admission preserves literal run fields in data; conflicting schema identifiers fail admission. Prebound deployment profile configuration remains available for policy-named authentication, with missing-profile rejection and host-bound headers. Imported A2A tasks share inline OWS method translation before protocol dispatch.",
           "tests": [
             "tests/contract/test_reusable_definitions.py",
             "tests/contract/test_catalog_bindings.py",
@@ -57090,22 +57090,23 @@
             "tests/core/test_workflow_catalog.py",
             "tests/core/test_external_catalog.py",
             "tests/contract/test_schema_resources.py",
-            "tests/core/test_sandbox_validation.py"
+            "tests/core/test_sandbox_validation.py",
+            "tests/ci/container_catalog_image_acceptance.sh"
           ],
-          "remote_acceptance": "Previous revision 0c113c0 passed all required exact-commit gates. Current schema resource revision passed final local validation and awaits exact remote acceptance.",
+          "remote_acceptance": "bc4cb93 passed root/Windows/mutation/native-engine/PostgreSQL/external-sandbox/optional-Agent-Framework/security/docs checks; packaged container catalog acceptance failed on prebound profile configuration. Current fixes and strengthened packaged resource acceptance passed local validation and await exact remote acceptance.",
           "full_conformance": false,
           "local_root": {
-            "passed": 1122,
+            "passed": 1127,
             "skipped": 30,
-            "coverage_percent": 91.62
+            "coverage_percent": 91.66
           },
           "native_matrices": {
-            "adk": 514,
+            "adk": 517,
             "langgraph": {
-              "passed": 524,
+              "passed": 527,
               "skipped": 6
             },
-            "agent_framework_optional": 679
+            "agent_framework_optional": 683
           },
           "quality": "Ruff, formatting, strict mypy, five runtime/core locks, documentation links and root/core builds passed"
         }

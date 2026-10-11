@@ -60,6 +60,29 @@ PROTOCOL_DATA_FIELDS = frozenset(
     }
 )
 
+_OPEN_WORKFLOW_A2A_METHODS = {
+    "message/send": "SendMessage",
+    "message/stream": "SendStreamingMessage",
+    "tasks/get": "GetTask",
+    "tasks/list": "ListTasks",
+    "tasks/cancel": "CancelTask",
+    "tasks/resubscribe": "SubscribeToTask",
+    "tasks/pushNotificationConfig/set": "CreateTaskPushNotificationConfig",
+    "tasks/pushNotificationConfig/get": "GetTaskPushNotificationConfig",
+    "tasks/pushNotificationConfig/list": "ListTaskPushNotificationConfigs",
+    "tasks/pushNotificationConfig/delete": "DeleteTaskPushNotificationConfig",
+    "agent/getAuthenticatedExtendedCard": "GetExtendedAgentCard",
+}
+
+
+def workflow_protocol_payload(protocol: str, payload: Any) -> Any:
+    """Translate OWS method names at the workflow boundary, before wire dispatch."""
+    if protocol == "a2a" and isinstance(payload, dict):
+        method = payload.get("method")
+        if isinstance(method, str) and method in _OPEN_WORKFLOW_A2A_METHODS:
+            return {**payload, "method": _OPEN_WORKFLOW_A2A_METHODS[method]}
+    return payload
+
 
 class AuthenticationProvider(Protocol):
     def headers(self, endpoint: str) -> Mapping[str, str]: ...
