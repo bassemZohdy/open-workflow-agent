@@ -415,6 +415,32 @@ async def test_ending_branch_ancestor_validation_failure_is_not_swallowed(
 
 
 @pytest.mark.parametrize("engine_name,engine_type", engine_cases())
+@pytest.mark.asyncio
+async def test_loop_while_root_stays_transformed_task_input_as_body_output_changes(
+    services, engine_name, engine_type
+):
+    result, references = await _run(
+        services,
+        engine_name,
+        engine_type,
+        [
+            {
+                "loop": {
+                    "input": {"from": "${ .payload }"},
+                    "for": {"in": [1, 2, 3]},
+                    "while": "${ .guard and $input.guard }",
+                    "do": [{"step": {"set": {"n": "${ .n + $item }"}}}],
+                }
+            }
+        ],
+        {"payload": {"guard": True, "n": 0}},
+    )
+    assert result.status == "completed", result.error
+    assert result.output == {"n": 6}
+    assert references == ["/do/0/loop"] + ["/do/0/loop/do/0/step"] * 3
+
+
+@pytest.mark.parametrize("engine_name,engine_type", engine_cases())
 @pytest.mark.parametrize("directive", ["exit", "end"])
 @pytest.mark.asyncio
 async def test_loop_scope_exit_continues_iterations_and_end_stops_them(

@@ -180,6 +180,10 @@ and LangGraph environment, and 88 in the optional Agent Framework environment.
 Ruff, formatting, strict mypy, four lock checks, Markdown links and root/core
 builds passed. Windows CI includes the new shared flow fixtures.
 
+The final loop-root regression preserves the loop task's transformed input
+for `while` while body outputs evolve. Its complete scoped-flow fixture passes
+62 tests in each ADK/LangGraph environment and 91 in optional Agent Framework.
+
 The runtime pipeline is:
 
 ```text

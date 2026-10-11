@@ -29,7 +29,8 @@ empty array; strings, objects, numbers, booleans and null fail with the common
 validation contract before body effects. Item and index variables are local
 to the iteration. Each body consumes the preceding iteration's output and
 carries successful context exports forward. `while` is checked before each
-iteration, with its current carried data, context and item/index bindings;
+iteration against the loop task's transformed input, with current context
+and item/index bindings;
 false/null stops iteration. With no completed iteration the original loop
 input passes through; otherwise the last iteration's output is the raw loop
 output. Existing jq truthiness applies to task and switch conditions.

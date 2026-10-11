@@ -1289,6 +1289,7 @@ class WorkflowExecutor:
         configuration = definition.get("for", definition)
         if not isinstance(configuration, Mapping):
             raise WorkflowSemanticError("for configuration must be an object")
+        task_input = copy.deepcopy(state.data)
         values = self._expressions(state).evaluate(
             configuration.get("in", configuration.get("over", [])),
             state.data,
@@ -1304,7 +1305,7 @@ class WorkflowExecutor:
             child.variables[variable] = copy.deepcopy(value)
             child.variables[str(configuration.get("at", "index"))] = index
             if "while" in definition and not self._expressions(child).condition(
-                definition["while"], child.data, variables=child.variables
+                definition["while"], task_input, variables=child.variables
             ):
                 break
             await self._run_tasks(body, child, prefix=self._nested_prefix(child, "do"))
