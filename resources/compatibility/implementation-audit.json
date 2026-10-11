@@ -53,7 +53,55 @@
       "uncertain_fork_and_retry": 4
     },
     "scope": "Leaf-call action receipts and recovery guards. No full action idempotency/compensation or S2-03 completion.",
-    "remote_status": "Exact new revision GitHub/database gates pending; historical green gates qualify their own source."
+    "remote_status": "At f63b8018ee95fb91297cdb8d495926dd52f44c4b both CI runs, PostgreSQL, external sandbox, optional Agent Framework and Docs passed. Security failed; its parser missed nested advisories. Corrected dependency gate and patched lock acceptance are pending; historical successful Security jobs do not prove absence of fixable advisories.",
+    "dependency_gate_qualification": "Historical Security jobs used a defective top-level report parser. Independently recorded behavioral tests remain source-scoped; dependency safety requires the corrected gate and fresh reports.",
+    "dependency_gate_correction": {
+      "status": "Local validation passed; exact new-head GitHub acceptance pending",
+      "old_report_negative_probes": {
+        "adk_fixable_advisories_missed": 4,
+        "langgraph_fixable_advisories_missed": 3,
+        "fresh_root_pypdf_fixable_advisories": 3
+      },
+      "parser_tests_passed": 26,
+      "workflow_script_boundary_cases_passed": 6,
+      "patched_versions": {
+        "urllib3": "2.8.0",
+        "multidict": "6.9.1",
+        "pypdf": "6.19.0"
+      },
+      "fresh_local_dependencies_audited": {
+        "root": 74,
+        "adk": 112,
+        "langgraph": 99,
+        "agent_framework_optional": 77,
+        "sandbox_controller": 13,
+        "kubernetes_sandbox_controller": 16
+      },
+      "fresh_local_known_advisories": 0,
+      "patched_local_regression": {
+        "root_passed": 1403,
+        "root_skipped": 163,
+        "root_coverage_percent": 91.79,
+        "adk_passed": 695,
+        "adk_skipped": 122,
+        "langgraph_passed": 708,
+        "langgraph_skipped": 129,
+        "agent_framework_passed": 945,
+        "agent_framework_skipped": 185,
+        "expected_assertion_failures_per_environment": 3
+      }
+    },
+    "postgresql_action_dispatch": {
+      "commit": "f63b8018ee95fb91297cdb8d495926dd52f44c4b",
+      "run": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38160101730",
+      "store_passed": 9,
+      "native_langgraph_passed": 10,
+      "native_langgraph_skipped": 8,
+      "shared_adk_passed": 61,
+      "shared_langgraph_passed": 61,
+      "shared_agent_framework_passed": 59,
+      "shared_agent_framework_skipped": 2
+    }
   },
   "evidence_groups": {
     "loading": {

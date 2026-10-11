@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Verified JSON resume input wake-up; original workflow input and atomic terminal-result recovery are under verification. Broader native/common invocation and side-effect reconciliation remains open.",
+          "scope": "Verified bounded resume-value, original-input, terminal-record and journal-storage behavior. Leaf-call receipt integration has local and configured PostgreSQL proof; full new-head acceptance awaits the corrected dependency gate. Fenced ownership and native consistency remain open.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -65180,7 +65180,7 @@
               "unresolved_catch_retry": 2,
               "uncertain_fork_and_retry": 4
             },
-            "remaining": "Final full local and exact GitHub/database acceptance; executable run, event and child operations; fenced invocation ownership, checkpoint consistency, ambiguous outcome resolution, stronger idempotency/compensation, full proposed criteria and JavaScript.",
+            "remaining": "Exact corrected-gate GitHub acceptance; executable run, event and child operations; fenced invocation ownership, checkpoint consistency, ambiguous outcome resolution, stronger idempotency/compensation, full proposed criteria and JavaScript.",
             "local_validation": {
               "root": {
                 "passed": 1377,
@@ -65209,7 +65209,55 @@
                 "native_langgraph": 83,
                 "optional_bridge": 120
               },
-              "checks": "Format/lint/strict typing, four locks, five builds, docs and six audit/source checks passed. Exact new revision/database gates pending."
+              "checks": "Format/lint/strict typing, four locks, five builds, docs and audit/source checks passed. f63b801 runtime and configured PostgreSQL gates passed; Security failed and needs its parser correction plus patched-lock acceptance."
+            },
+            "postgresql_action_dispatch": {
+              "commit": "f63b8018ee95fb91297cdb8d495926dd52f44c4b",
+              "run": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38160101730",
+              "store_passed": 9,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_adk_passed": 61,
+              "shared_langgraph_passed": 61,
+              "shared_agent_framework_passed": 59,
+              "shared_agent_framework_skipped": 2
+            }
+          },
+          "dependency_gate_qualification": "Historical Security jobs used a defective top-level report parser. Independently recorded behavioral tests remain source-scoped; dependency safety requires the corrected gate and fresh reports.",
+          "dependency_gate_correction": {
+            "status": "Local validation passed; exact new-head GitHub acceptance pending",
+            "old_report_negative_probes": {
+              "adk_fixable_advisories_missed": 4,
+              "langgraph_fixable_advisories_missed": 3,
+              "fresh_root_pypdf_fixable_advisories": 3
+            },
+            "parser_tests_passed": 26,
+            "workflow_script_boundary_cases_passed": 6,
+            "patched_versions": {
+              "urllib3": "2.8.0",
+              "multidict": "6.9.1",
+              "pypdf": "6.19.0"
+            },
+            "fresh_local_dependencies_audited": {
+              "root": 74,
+              "adk": 112,
+              "langgraph": 99,
+              "agent_framework_optional": 77,
+              "sandbox_controller": 13,
+              "kubernetes_sandbox_controller": 16
+            },
+            "fresh_local_known_advisories": 0,
+            "patched_local_regression": {
+              "root_passed": 1403,
+              "root_skipped": 163,
+              "root_coverage_percent": 91.79,
+              "adk_passed": 695,
+              "adk_skipped": 122,
+              "langgraph_passed": 708,
+              "langgraph_skipped": 129,
+              "agent_framework_passed": 945,
+              "agent_framework_skipped": 185,
+              "expected_assertion_failures_per_environment": 3
             }
           }
         }

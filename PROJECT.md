@@ -22,6 +22,44 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
+### Dependency audit correction — 2026-10-11 (under verification)
+
+The historical dependency audit parser read the top-level report instead of
+`dependencies[].vulns[]`. Earlier successful Security jobs remain historical
+run results and do not prove absence of fixable dependency advisories. Their
+runtime, checkpoint and container test results remain independently recorded.
+The Security run at `f63b801` failed without a report after a registry timeout;
+its other jobs also used the defective parser.
+
+Actual downloaded ADK and LangGraph reports reproduce the false pass: four and
+three fixable advisories respectively. The corrected parser rejects both. A
+fresh root audit also finds three pypdf advisories. Patched urllib3 2.8.0,
+multidict 6.9.1 and pypdf 6.19.0 are selected in the four independent locks;
+root and standalone-core pypdf requirements agree. The gate validates nested
+advisories, scanner status and report completeness. It rejects missing,
+malformed, skipped or contradictory reports. Unfixable advisories remain
+visible warnings under the existing policy. Registry failures receive one
+bounded retry when no report exists, never advisory suppression. Each runtime
+environment now audits all its optional model, knowledge and persistence
+dependencies. All six fresh local audits report no known advisories across
+74 root, 112 ADK, 99 LangGraph, 77 optional Agent Framework, 13 Docker-controller
+and 16 Kubernetes-controller dependencies. Twenty-six deterministic parser
+tests pass. Executing the actual workflow script with a fake scanner also
+proves clean-report success, fixable-advisory failure, visible unfixable
+warnings, contradictory/failed-scan rejection and exactly two attempts before
+missing-report failure.
+
+Frozen-source regression with the patched dependencies passes 1,403 root
+tests, 163 skips, three known expected gaps and 91.79% coverage. Independent
+native/shared/CTK suites pass ADK 695 (122 skips), LangGraph 708 (129 skips) and
+optional Agent Framework 945 (185 skips), each retaining the same three gaps.
+Formatting, lint, strict typing, all four locks, all five package builds and
+documentation checks pass. Exact new-head GitHub acceptance remains pending.
+The patched versions are confirmed by the
+[urllib3 release](https://github.com/urllib3/urllib3/releases/tag/2.8.0),
+[multidict advisory](https://github.com/aio-libs/multidict/security/advisories/GHSA-54p9-h82j-f925)
+and [pypdf release](https://github.com/py-pdf/pypdf/releases/tag/6.19.0).
+
 ### S2-03 checkpoint recovery — 2026-10-11 (in progress)
 
 Fresh-runtime tests reproduce a common resume defect: a submitted JSON null was
@@ -133,14 +171,20 @@ LangGraph 708 (129 skips) and optional Agent Framework 945 (185 skips), each
 with the same three expected gaps. Focused recovery/fork/benchmark runs pass
 82 root, 84 native ADK, 83 native LangGraph and 120 optional bridge cases.
 Formatting, lint, strict typing, four locks, five builds, documentation links
-and six audit/source checks pass. Exact new GitHub/database gates are pending.
+and six audit/source checks pass. At `f63b801`, both CI runs, PostgreSQL,
+external sandbox, optional Agent Framework and documentation passed. The
+configured PostgreSQL suite passed nine store cases, native LangGraph
+checkpoint tests passed 10 with eight skips, and shared recovery passed 61
+on each principal adapter and 59 with two native-boundary skips on the optional
+bridge. Security failed and its parser defect requires the separate correction
+above; full new-head acceptance remains pending.
 Executable run, event and child operations are not
 covered by this leaf-call follow-up; broader effect reconciliation remains open.
 
 S2-03 stays open. This fix does not reconcile all native/common invocation or
 side-effect records. General pending-effect reconciliation, fenced recovery ownership,
-missing or inconsistent native checkpoint recovery and configured database
-acceptance still require work. Legacy rows without an original-input record
+missing or inconsistent native checkpoint recovery and broader configured
+database acceptance still require work. Legacy rows without an original-input record
 have no new migration guarantee. Later-stage retry/deadline,
 timer/event, child workflow, compensation and version migration owners remain
 unchanged; no stronger recovery or exactly-once guarantee is advertised.

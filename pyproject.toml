@@ -37,7 +37,7 @@ model = ["litellm==1.101.0"]
 knowledge = [
   "fastembed==0.8.0",
   "numpy==2.5.3",
-  "pypdf==6.18.1",
+  "pypdf==6.19.0",
 ]
 postgres = ["psycopg[binary]==3.3.5"]
 
