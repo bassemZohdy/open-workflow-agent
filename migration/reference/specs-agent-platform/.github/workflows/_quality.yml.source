@@ -1,0 +1,123 @@
+name: Quality checks
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+    outputs:
+      result:
+        value: ${{ jobs.quality.outputs.result }}
+
+jobs:
+  quality:
+    name: Lint, type check, tests, and image smoke tests
+    runs-on: [self-hosted, linux, x64, specs-agent]
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    outputs:
+      result: ${{ steps.finish.outputs.result }}
+    steps:
+      - name: Check out the requested ref
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Check lockfile is up to date
+        run: uv lock --check
+
+      - name: Install workspace
+        run: uv sync --frozen --all-packages
+
+      - name: Lint
+        run: uv run --all-packages ruff check .
+
+      - name: Check formatting
+        run: uv run --all-packages ruff format --check .
+
+      - name: Type check
+        run: uv run --all-packages mypy tests packages/open-agent-core/src packages/open-agent-lang/src packages/open-agent-adk/src
+
+      - name: Run tests
+        run: uv run --all-packages pytest --cov --cov-report=term-missing --cov-report=xml --cov-fail-under=70
+
+      - name: Check OpenAPI docs are up to date
+        run: uv run --all-packages python scripts/generate_openapi.py --check
+
+      - name: Build packages
+        run: uv build --all-packages
+
+      - name: Build LangGraph image
+        run: docker compose --env-file .env.example --profile lang build
+
+      - name: Build ADK image
+        run: docker compose --env-file .env.example --profile adk build
+
+      - name: Scan LangGraph image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: specs-agent-lang:local
+          format: table
+          scanners: vuln
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - name: Scan ADK image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: specs-agent-adk:local
+          format: table
+          scanners: vuln
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - name: Smoke test Compose profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          export COMPOSE_PROJECT_NAME="specs-agent-ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          export POSTGRES_PORT=15432
+          export LANG_PORT=18081
+          export ADK_PORT=18082
+          compose=(docker compose --env-file .env.example)
+          cleanup() {
+            "${compose[@]}" --profile lang --profile adk down -v --remove-orphans
+          }
+          trap cleanup EXIT
+
+          for profile in lang adk; do
+            "${compose[@]}" --profile "$profile" up -d
+            port="$LANG_PORT"
+            if [[ "$profile" == "adk" ]]; then
+              port="$ADK_PORT"
+            fi
+            for attempt in {1..30}; do
+              if curl --fail --silent "http://127.0.0.1:${port}/health/ready"; then
+                break
+              fi
+              if [[ "$attempt" == 30 ]]; then
+                "${compose[@]}" --profile "$profile" logs
+                exit 1
+              fi
+              sleep 2
+            done
+            "${compose[@]}" --profile "$profile" down --remove-orphans
+          done
+
+      - id: finish
+        run: echo "result=ok" >> "$GITHUB_OUTPUT"

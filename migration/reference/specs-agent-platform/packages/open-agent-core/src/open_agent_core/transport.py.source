@@ -1,0 +1,232 @@
+"""Shared FastAPI request/response contract for both engine runners."""
+
+from __future__ import annotations
+
+import json
+import secrets
+import time
+import uuid
+from collections.abc import AsyncIterator, Sequence
+from typing import Any, Literal
+
+from fastapi import HTTPException, Request
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class ChatMessage(BaseModel):
+    """One message in an OpenAI-compatible chat completion request."""
+
+    model_config = ConfigDict(extra="allow")
+
+    role: str
+    content: Any = None
+    name: str | None = None
+    tool_calls: list[dict[str, Any]] | None = None
+    tool_call_id: str | None = None
+
+
+class ChatCompletionRequest(BaseModel):
+    """OpenAI-compatible chat completion request accepted by both runners."""
+
+    model_config = ConfigDict(extra="allow")
+
+    model: str
+    messages: list[ChatMessage]
+    stream: bool = False
+    n: int = Field(default=1, ge=1, le=8)
+    temperature: float | None = None
+    tools: list[dict[str, Any]] | None = None
+
+
+class PaginatedResponse(BaseModel):
+    """Shared list envelope with cursor-based pagination."""
+
+    model_config = ConfigDict(extra="allow")
+
+    object: Literal["list"] = "list"
+    data: list[dict[str, Any]]
+    has_more: bool
+    first_id: str | None = None
+    last_id: str | None = None
+
+
+def paginate(
+    items: Sequence[dict[str, Any]],
+    *,
+    limit: int,
+    after: str | None = None,
+    id_key: str = "id",
+) -> PaginatedResponse:
+    """Return a paginated slice of ``items`` using cursor-based pagination.
+
+    ``after`` is matched against ``id_key``. ``limit`` is capped to the length of
+    the input for safety.
+    """
+    limit = max(1, min(limit, 100, len(items)))
+    start = 0
+    if after:
+        for index, item in enumerate(items):
+            if item.get(id_key) == after:
+                start = index + 1
+                break
+    page = items[start : start + limit]
+    has_more = start + limit < len(items)
+    first_id = page[0].get(id_key) if page else None
+    last_id = page[-1].get(id_key) if page else None
+    return PaginatedResponse(
+        data=list(page),
+        has_more=has_more,
+        first_id=first_id if isinstance(first_id, str) else None,
+        last_id=last_id if isinstance(last_id, str) else None,
+    )
+
+
+def chat_response(model: str, result: dict[str, Any], request_id: str) -> dict[str, Any]:
+    """Build an OpenAI-compatible chat completion response."""
+    content = result.get("content", result.get("output", result))
+    if not isinstance(content, str):
+        content = json.dumps(content, ensure_ascii=False, default=str)
+    return {
+        "id": request_id,
+        "object": "chat.completion",
+        "created": int(time.time()),
+        "model": model,
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+    }
+
+
+async def stream_response(response: dict[str, Any]) -> AsyncIterator[str]:
+    """Yield an OpenAI-compatible SSE stream from a completed response dict."""
+    request_id = response["id"]
+    model = response["model"]
+    content = response["choices"][0]["message"].get("content", "")
+    async for item in _stream_chunks(model, request_id, response["created"], content):
+        yield item
+
+
+def _content_from_event_data(data: Any) -> str:
+    if not isinstance(data, dict):
+        return ""
+    content = data.get("content")
+    if isinstance(content, str):
+        return content
+    output = data.get("output", data)
+    if isinstance(output, str):
+        return output
+    if isinstance(output, dict):
+        output_content = output.get("content")
+        if isinstance(output_content, str):
+            return output_content
+        return json.dumps(output, ensure_ascii=False, default=str)
+    return ""
+
+
+async def _stream_chunks(
+    model: str, request_id: str, created: int, content: str
+) -> AsyncIterator[str]:
+    chunk: dict[str, Any] = {
+        "id": request_id,
+        "object": "chat.completion.chunk",
+        "created": created,
+        "model": model,
+        "choices": [
+            {
+                "index": 0,
+                "delta": {"role": "assistant", "content": ""},
+                "finish_reason": None,
+            }
+        ],
+    }
+    yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+    if content:
+        chunk["choices"][0]["delta"] = {"content": content}
+        yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+    final = {
+        "id": request_id,
+        "object": "chat.completion.chunk",
+        "created": created,
+        "model": model,
+        "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+    }
+    yield f"data: {json.dumps(final, ensure_ascii=False)}\n\n"
+    yield "data: [DONE]\n\n"
+
+
+async def stream_events_response(
+    model: str,
+    events: AsyncIterator[Any],
+) -> AsyncIterator[str]:
+    """Yield an OpenAI-compatible SSE stream from execution events.
+
+    Intermediate events produce empty deltas so the client sees progress.
+    The final ``completed`` event emits the content delta and stop marker.
+    """
+    request_id = f"chatcmpl-{uuid.uuid4().hex}"
+    created = int(time.time())
+    seen_role = False
+    async for event in events:
+        kind = getattr(event, "kind", "completed")
+        data = getattr(event, "data", {})
+        if kind == "completed":
+            content = _content_from_event_data(data)
+            async for item in _stream_chunks(model, request_id, created, content):
+                yield item
+            return
+        if not seen_role:
+            seen_role = True
+            chunk: dict[str, Any] = {
+                "id": request_id,
+                "object": "chat.completion.chunk",
+                "created": created,
+                "model": model,
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"role": "assistant"},
+                        "finish_reason": None,
+                    }
+                ],
+            }
+            yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+    # Fallback if no completed event was emitted.
+    async for item in _stream_chunks(model, request_id, created, ""):
+        yield item
+
+
+def authorize_dependency(expected_api_key: str) -> Any:
+    """Return a FastAPI dependency that validates the configured API key."""
+
+    async def authorize(request: Request) -> None:
+        if not expected_api_key:
+            return
+        provided = request.headers.get("x-api-key")
+        if not provided:
+            authorization = request.headers.get("authorization", "")
+            if authorization.lower().startswith("bearer "):
+                provided = authorization[7:].strip()
+        if not provided or not secrets.compare_digest(provided, expected_api_key):
+            raise HTTPException(
+                status_code=401,
+                detail={"error": {"message": "API key required", "type": "authentication_error"}},
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    return authorize
+
+
+__all__ = [
+    "ChatCompletionRequest",
+    "ChatMessage",
+    "PaginatedResponse",
+    "authorize_dependency",
+    "chat_response",
+    "paginate",
+    "stream_response",
+]

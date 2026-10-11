@@ -1,0 +1,6 @@
+{
+  "yaml.schemas": {
+    "${workspaceFolder}/src/openworkflow_adk/schema/vendor/1.0.3/workflow.yaml": "/*.yaml",
+    "${workspaceFolder}/docs/schema/agent-characteristics.json": "/*.workflow.yaml"
+  }
+}

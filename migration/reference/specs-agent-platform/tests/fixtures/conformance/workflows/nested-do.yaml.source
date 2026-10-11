@@ -1,0 +1,11 @@
+document:
+  dsl: '1.0.3'
+  namespace: conformance.support
+  name: nested-do
+  version: '1.0.0'
+do:
+  - outer:
+      do:
+        - inner:
+            set:
+              value: 1

@@ -6,7 +6,8 @@
   "private_source": {
     "repository": "bassemZohdy/specs-agent-platform",
     "visibility": "private",
-    "disposition": "Locally reviewed; public source transfer awaits explicit approval; do not archive before transfer disposition is settled"
+    "public_transfer": "Authorized by the user on 2026-10-11 after the explicit private-to-public question",
+    "disposition": "All 109 pinned tracked files imported as Apache references; origin visibility unchanged"
   },
   "sources": [
     {
@@ -3448,6 +3449,1129 @@
           "type": "blob",
           "git_blob_sha": "ae4f2dab8e05c890b331c23cf8e2d5819680c2de",
           "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
+        }
+      ]
+    },
+    {
+      "repository": "bassemZohdy/specs-agent-platform",
+      "revision": "a90b25a8c0d3518e1c0bd311f42621869b94a0a8",
+      "license": "Apache-2.0",
+      "visibility": "private at origin; approved canonical reference publication",
+      "archive_status": "Pending user action; browser is not authenticated",
+      "tracked_file_count": 109,
+      "refs": [
+        {
+          "ref": "refs/heads/codex/ci-format-and-frozen-sync",
+          "sha": "d7af48bc7c62edb5bac424b66c355e33300e3230"
+        },
+        {
+          "ref": "refs/heads/dependabot/docker/packages/open-agent-adk/python-3.14-slim",
+          "sha": "34c9621826fba02c5c840abeb221fc692a81a513"
+        },
+        {
+          "ref": "refs/heads/dependabot/docker/packages/open-agent-lang/python-3.14-slim",
+          "sha": "ae2a6699c9a41a86d8b765cc355da76d52b93da0"
+        },
+        {
+          "ref": "refs/heads/dependabot/github_actions/actions/checkout-7",
+          "sha": "10e8eda3baab7032e95fab95c3c79b41d2cca214"
+        },
+        {
+          "ref": "refs/heads/dependabot/uv/python-dependencies-d90f203fa5",
+          "sha": "9b39abea6804c28d9a98c4496545fe3806e7ccb6"
+        },
+        {
+          "ref": "refs/heads/main",
+          "sha": "a90b25a8c0d3518e1c0bd311f42621869b94a0a8"
+        },
+        {
+          "ref": "refs/pull/1/head",
+          "sha": "ae2a6699c9a41a86d8b765cc355da76d52b93da0"
+        },
+        {
+          "ref": "refs/pull/1/merge",
+          "sha": "e204a6727b75ba23e53fcbb36dbe2b0466321df8"
+        },
+        {
+          "ref": "refs/pull/10/head",
+          "sha": "a7ffd2be37ae6e63278dd31c247ff4ab32dc20df"
+        },
+        {
+          "ref": "refs/pull/11/head",
+          "sha": "6dbaee22b3a6add430f605b750b9fbe1b8b0fb9c"
+        },
+        {
+          "ref": "refs/pull/12/head",
+          "sha": "9dddf7e11f63bca25cebdac9e684b1dc2a98d4c2"
+        },
+        {
+          "ref": "refs/pull/13/head",
+          "sha": "245fdf77f5bb70a14f459af422581a7c0cb37441"
+        },
+        {
+          "ref": "refs/pull/14/head",
+          "sha": "d7af48bc7c62edb5bac424b66c355e33300e3230"
+        },
+        {
+          "ref": "refs/pull/15/head",
+          "sha": "9b39abea6804c28d9a98c4496545fe3806e7ccb6"
+        },
+        {
+          "ref": "refs/pull/15/merge",
+          "sha": "0e868eabeb4f5a3c97606248a3d20f7b981976c1"
+        },
+        {
+          "ref": "refs/pull/2/head",
+          "sha": "edd19a30b180552c7d01d8a6356e9a0074a6ef7e"
+        },
+        {
+          "ref": "refs/pull/3/head",
+          "sha": "a37fa056846d30707ff454fe550293c7cd8025b7"
+        },
+        {
+          "ref": "refs/pull/4/head",
+          "sha": "34c9621826fba02c5c840abeb221fc692a81a513"
+        },
+        {
+          "ref": "refs/pull/4/merge",
+          "sha": "16aaf4ba0007add5b9b3bad57463c10461bb0fd8"
+        },
+        {
+          "ref": "refs/pull/5/head",
+          "sha": "a144192fb56b3088b1f69516e52f47e794cd5276"
+        },
+        {
+          "ref": "refs/pull/6/head",
+          "sha": "1e9681a3bbf9ce56d29d97db54ca84e82990eab7"
+        },
+        {
+          "ref": "refs/pull/7/head",
+          "sha": "5012288271073b3d526281629a25e5503e47ed83"
+        },
+        {
+          "ref": "refs/pull/8/head",
+          "sha": "7bed892b8182501ca99751495511682a1459bf14"
+        },
+        {
+          "ref": "refs/pull/9/head",
+          "sha": "10e8eda3baab7032e95fab95c3c79b41d2cca214"
+        },
+        {
+          "ref": "refs/pull/9/merge",
+          "sha": "e5ed28ae743c13e77c0132cc219e94e02e142251"
+        }
+      ],
+      "open_prs": [
+        {
+          "number": 15,
+          "title": "Bump the python-dependencies group across 1 directory with 18 updates",
+          "head": "9b39abea6804c28d9a98c4496545fe3806e7ccb6",
+          "branch": "dependabot/uv/python-dependencies-d90f203fa5",
+          "url": "https://github.com/bassemZohdy/specs-agent-platform/pull/15"
+        },
+        {
+          "number": 9,
+          "title": "Bump actions/checkout from 6 to 7",
+          "head": "10e8eda3baab7032e95fab95c3c79b41d2cca214",
+          "branch": "dependabot/github_actions/actions/checkout-7",
+          "url": "https://github.com/bassemZohdy/specs-agent-platform/pull/9"
+        },
+        {
+          "number": 4,
+          "title": "Bump python from 3.11-slim to 3.14-slim in /packages/open-agent-adk",
+          "head": "34c9621826fba02c5c840abeb221fc692a81a513",
+          "branch": "dependabot/docker/packages/open-agent-adk/python-3.14-slim",
+          "url": "https://github.com/bassemZohdy/specs-agent-platform/pull/4"
+        },
+        {
+          "number": 1,
+          "title": "Bump python from 3.11-slim to 3.14-slim in /packages/open-agent-lang",
+          "head": "ae2a6699c9a41a86d8b765cc355da76d52b93da0",
+          "branch": "dependabot/docker/packages/open-agent-lang/python-3.14-slim",
+          "url": "https://github.com/bassemZohdy/specs-agent-platform/pull/1"
+        }
+      ],
+      "files": [
+        {
+          "path": ".dockerignore",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2ebaaea924c7ef236adcc15db5f16b0d49dcca14",
+          "sha256": "72416068c657781d05d4a0286b9e08d3d7d819b99efdf8fd448baefeab9e9a0e",
+          "destination": "migration/reference/specs-agent-platform/.dockerignore.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": ".env.example",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d736df8906778d7bb7e3651a7e979f864197a3bb",
+          "sha256": "5cae292d6755b2e52b09139dba2a24b1e61a5ccd93de11b61e9b51a907487174",
+          "destination": "migration/reference/specs-agent-platform/.env.example.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": ".gitattributes",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6820aaa4d69beec10f43ce8d1885cfba271b3757",
+          "sha256": "141804a285704fed71dd5e921dbd57e64dbaec191071f808528a6fba524caad1",
+          "destination": "migration/reference/specs-agent-platform/.gitattributes.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": ".github/actionlint.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b8bbcfd946e3aa06e7ca5f840f9b73be219c38f2",
+          "sha256": "df362980c3638868132e0cf89ca6859655b0a3f68adcf9203c9547075241531b",
+          "destination": "migration/reference/specs-agent-platform/.github/actionlint.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": ".github/dependabot.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7c68fb148f662af7e120f0490216667ab4193328",
+          "sha256": "46bf5bdb1d8c792637c449222f6564228618ad57140ca3f51df5e3fc6ff58583",
+          "destination": "migration/reference/specs-agent-platform/.github/dependabot.yml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": ".github/scripts/release_target.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "1f349282e20047f4253d1a142e50d649c3df4afb",
+          "sha256": "c393570ebba11e9d6e2ec3806841d82031a07f1cdc53e4d41864b58afe2a3200",
+          "destination": "migration/reference/specs-agent-platform/.github/scripts/release_target.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": ".github/workflows/_quality.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "fcb8b2abda78fa0682f56fd8f5514da4ec856b21",
+          "sha256": "896be45dbecfb8c295e0c20c668f43f3b6bb64d408a54e4447b7bcdb3ee90082",
+          "destination": "migration/reference/specs-agent-platform/.github/workflows/_quality.yml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b68da166cbc6f59fe119746fe9979d7e04198bd1",
+          "sha256": "27cee86eab31973bab1ab4c5cd7f6328fad12753c0e81c255a29525149103dc0",
+          "destination": "migration/reference/specs-agent-platform/.github/workflows/ci.yml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": ".github/workflows/publish-images.yml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8a0455b5fbd8a56b979660970a9107d2e81e36bf",
+          "sha256": "aac8e149a5122c6dc3a0f5e7b1716cab99221cb3c5ed36077d734775d17807ff",
+          "destination": "migration/reference/specs-agent-platform/.github/workflows/publish-images.yml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": ".gitignore",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d34b7ae08827d1cf8c6d0cbc4b3f6a23661a3d03",
+          "sha256": "cb47b554e8138c12508c427f1163c03a97a95da1fa0622c6c4e261ada08d6fef",
+          "destination": "migration/reference/specs-agent-platform/.gitignore.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": ".pre-commit-config.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5d17d4315b1c1ba7aeff732ef3713249702ba40a",
+          "sha256": "74950540ba04edec57063b57c095c1abda17efedb99e5c04519ba4b45bcab42e",
+          "destination": "migration/reference/specs-agent-platform/.pre-commit-config.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "CHANGELOG.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "75f021575357e5c29a62fc3af2a6960fed6e8e2d",
+          "sha256": "c56800f9049325d1e6385943b2cce2265725a541f90fbf2209dff97488f8a734",
+          "destination": "migration/reference/specs-agent-platform/CHANGELOG.md.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "dc3c7e4c6b7a6e399a3be7bcabcc41f65c94d64e",
+          "sha256": "b774357ab4f7f451d44698fc570399f33107cb3b1a63d28e1ef2c85daf124841",
+          "destination": "migration/reference/specs-agent-platform/CONTRIBUTING.md.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "LICENSE",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "625e3183e8b23df5258885a1668814baa0b02d43",
+          "sha256": "d7473c955267845dd36d3d283c3e9f20a645bdf1986644cb373f1892b954865d",
+          "destination": "migration/reference/specs-agent-platform/LICENSE",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "README.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6b8682dd9e756a28561bbcc794b1c7d364fce694",
+          "sha256": "7a43e9c9c05647e8bd8ddba0a7044c726c601f091ce30d40f4a4f1b21606bc61",
+          "destination": "migration/reference/specs-agent-platform/README.md.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "SECURITY.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "107f873e3ea85b8ea33c211509446ecf87d90f87",
+          "sha256": "454b8ff54729ba0c3009179ea33fb56099266b28e75448b7d20281bba8679b49",
+          "destination": "migration/reference/specs-agent-platform/SECURITY.md.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "TODO.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "22f5af6f18e5aaa73a0a25d6308e64be4b2f4462",
+          "sha256": "127aa79ef2b27d9efccc6db87ff88da4eed4f59ca76dfd22b11954dcde19a994",
+          "destination": "migration/reference/specs-agent-platform/TODO.md.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "docker-compose.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "80ded55e86b4f6c0b5f6f2d12746166e45da918a",
+          "sha256": "84697850238fc28558e127a38c58ff3a85ff5f130fe1b76313b4fca3f2645166",
+          "destination": "migration/reference/specs-agent-platform/docker-compose.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "docs/architecture.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "71bd69331630f00f1e07d21fa9fbf8ff79a59c91",
+          "sha256": "080f3400e314dc0ca555c7a500a909cdd680f88044220549f167790edb862dac",
+          "destination": "migration/reference/specs-agent-platform/docs/architecture.md.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "docs/architecture.svg",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "1ac5ce43ae261015c107e964d20e03ef7dc3dce0",
+          "sha256": "3912b4fa82f93d79286f4831a7c88fb5486d7d24ca62f1aa758d936bdfe3308d",
+          "destination": "migration/reference/specs-agent-platform/docs/architecture.svg.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "docs/containers.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7e58ebcbcddd93b4286fd0fbd4f926ef32fa701c",
+          "sha256": "d64e79137ee885ac632b750298253b0b79927460b1db2c7af3ecbf7cf525bd4d",
+          "destination": "migration/reference/specs-agent-platform/docs/containers.md.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "docs/expressions.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "da7d0fb997c174888a421146a220dff4a38595a2",
+          "sha256": "f0089ca569612d2eef2c018b205dc965cd5a08eafda93e46e2765e49cce2ca90",
+          "destination": "migration/reference/specs-agent-platform/docs/expressions.md.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "docs/openapi-adk.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4e33ca2ff0bd699dd5fed10de2084a2212af275b",
+          "sha256": "deb351fc13ac7eb3ec0d2baedf444c67aca00694832394086c7f8ce6d38afd3e",
+          "destination": "migration/reference/specs-agent-platform/docs/openapi-adk.json.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "docs/openapi-lang.json",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "f21da19e00a6b4244758375ec7f31df75fe0a40e",
+          "sha256": "407ae06bcc14567aa300aacd7e9dcd1200f6d10caeb60d77b4dfee3cd2cf1abd",
+          "destination": "migration/reference/specs-agent-platform/docs/openapi-lang.json.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "docs/openapi.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6b1fece97fb41acf8d6c82ce99d70089b2af0d47",
+          "sha256": "a75f2fb65dca41e9723add9c97052f159daf8d56ef1ccebc6970a86bd0ba5f19",
+          "destination": "migration/reference/specs-agent-platform/docs/openapi.md.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "docs/releasing.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "14de52b1ebbd7a21a1e94bbd3bc9c3d7480af195",
+          "sha256": "9c05b9ab935dd8d7fa3de35176dd4aca122febb890b893b8e509c68db916a914",
+          "destination": "migration/reference/specs-agent-platform/docs/releasing.md.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "docs/self-hosted-runner.md",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b86a80fa44a1063c14756f899f12b366ac7d3f4c",
+          "sha256": "a31c3623ca067af3d725c197b5af61b8f61a42460b834b9ea4d764e2370c2438",
+          "destination": "migration/reference/specs-agent-platform/docs/self-hosted-runner.md.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "examples/agent.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "61af1db85df6a2999fa89fe7c8d31bb0f9ee9777",
+          "sha256": "d84c5daf18d9f4d736330956a5c92940bd8fc76628f6485cd6f503cad8dad3a0",
+          "destination": "migration/reference/specs-agent-platform/examples/agent.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "examples/application/agents/support-agent.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "808d7e729181f2437c66550fcb6c7af250ab4f6f",
+          "sha256": "39794aee9105f535b53a8fd0f2dfa43ab1895414b1a618ed597e4c3cd115f1f4",
+          "destination": "migration/reference/specs-agent-platform/examples/application/agents/support-agent.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "examples/application/bindings.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5991d08903efc01b88e191987b9f310fe8feba63",
+          "sha256": "fb1648527c34fa7b80cd35fa11f6d64e6f60ec4b114725a9ef91ddf4b8eee96a",
+          "destination": "migration/reference/specs-agent-platform/examples/application/bindings.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "examples/application/workflows/workflow.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "64a8f9c5d7411455e9fef3502655eaddccd45131",
+          "sha256": "ec228d399acc9dd454541af50e8442d91df46a695e2fc204ab2a26a8d1c816d8",
+          "destination": "migration/reference/specs-agent-platform/examples/application/workflows/workflow.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "examples/workflow.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "eb15fe63f451edc54283d5f0442c14fa95dc596a",
+          "sha256": "ad57f6ce774644e95e92ca3f2d1476ee97cbeaa0c9a8625727cb21961d73b282",
+          "destination": "migration/reference/specs-agent-platform/examples/workflow.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-adk/Dockerfile",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "475c7cbebcaa4006824f4380bed5ee0cf47d2494",
+          "sha256": "97474fae9aa1d3dd33ec1247eb44e40ab7a213cd82ed7228d1d382e2c58b4999",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-adk/Dockerfile.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-adk/pyproject.toml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "c34fc0230fb08807a2a881b7895c26a0bd07d57e",
+          "sha256": "d820e7acc5c25cee4e9858b1f3ec6e84566867b50f93d5ae4e0ef371c8e95b3a",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-adk/pyproject.toml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-adk/src/open_agent_adk/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ff90602bab800de1aec8a17beb43d4ea8ddb5a01",
+          "sha256": "3e3b51863589fc54e88a0f864258917ec0b7fbeabfe04b4a809d5ca324312d15",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-adk/src/open_agent_adk/__init__.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-adk/src/open_agent_adk/cli.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "583ebeed126b999449fe52d6ebbac195cc783ec1",
+          "sha256": "eeec134a149fc8dc3e5d4984e3e7b85bcc1b35970e61a5452c4ea815d6133167",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-adk/src/open_agent_adk/cli.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-adk/src/open_agent_adk/compiler.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "22529a8fb1430beca889eec6f637df0d07d4b8aa",
+          "sha256": "efd219748163218fffba6ec9028819d5e64c66bf8ed205222eb0517258f8a4f1",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-adk/src/open_agent_adk/compiler.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-adk/src/open_agent_adk/mcp.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "325495c2ffd98f5f599c06196cae003fba38f3dd",
+          "sha256": "2f361b97cb17a0e04a2532004736aceab6053447fe1dad00bff6bf2d2e01d611",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-adk/src/open_agent_adk/mcp.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-adk/src/open_agent_adk/py.typed",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-adk/src/open_agent_adk/py.typed.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-adk/src/open_agent_adk/runner.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "be848592eb8c82ee67edae475cde4a8a0b37a13e",
+          "sha256": "9c96ebda7889a0b5ee0ac25737819b7816544d8b92d889608919fce5b3a33c46",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-adk/src/open_agent_adk/runner.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/pyproject.toml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3c1e144270cc9c086e5008b4a7e5a592bf44b42a",
+          "sha256": "27a2604b2a224b1ae79b547d8dc187cbfe76b231f54ae01cbcaf2cb20e940d80",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/pyproject.toml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "03753b9f1767a636dc132d3227e8c0eaee69e1a3",
+          "sha256": "b872f8b20261e25a9139c82d6b4e54aec68d0855ba853d9c3d75bf5656af27c4",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/__init__.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/agent_spec/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "66b25157132d4f8a0c67d78b2bc76bf7fb5720e1",
+          "sha256": "c31f6702c5ad78611bbaf3310f1702aba8c804d9a2368aba88f89288e79364aa",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/agent_spec/__init__.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/agent_spec/loader.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5836fc0167b10cb08893e4b917da003dea4033f9",
+          "sha256": "4337829254bb17e26e3ef7a8a6af572d3a37ffbf35cc5f8ac11129149183c72d",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/agent_spec/loader.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/agent_spec/models.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7e0925bb5a5f4aa83a3e2a4404c31b0166a19ccc",
+          "sha256": "a60419ddb0d6c6516f8d2bb311c1782fa2880319d1071745d90b8bc7fd956aab",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/agent_spec/models.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/cli.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "604f3d42b22eafcd90078eafe5cc36822599b824",
+          "sha256": "79cd79007bec53a88504680f4d3bf72a5aab79b833d204242b912eb2b740bd8c",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/cli.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/diagnostics.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ac2c84a33648f659ae6d6631814621db6bc65834",
+          "sha256": "9211842ff5b51d622174afea622c8df75183cb54b4331a1f79b5cc725deda3c2",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/diagnostics.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/expressions.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "807b035f9251fa0f3ed90fff56c1b23b2a922947",
+          "sha256": "868f8b3bbc0d3ae767aea75d787a4087429dfe7b1c13c058379b6748c0aaeca1",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/expressions.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/http_security.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4f43be9f62d6e46725d31fd015aa377afe4b3d43",
+          "sha256": "83a034b0a7f5474de3682642c206987d673a8073036724bd469d30b73e7ad6bc",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/http_security.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/ir.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "739581b25ef67a16bab3a2c7043e0e1e8202bcc9",
+          "sha256": "f32dcff8c3dc81743491238a13d30a3f36adfd89ab4a352f590646af1e3ccbfd",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/ir.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/loader.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "77d34c6980b39cbeba83fca82dc57091835c8b56",
+          "sha256": "657710dbc47e624dafc129550b2ef336ff2e86d536748b7b76afd44856171e70",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/loader.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/mcp_runtime.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "5e926f0bfaae4faf0a48882264f38dc7eae24a2b",
+          "sha256": "915033e9377af0c4a196937f6f67429095b61acd3d7dbd02420222562149002a",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/mcp_runtime.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/parser.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2783e8d4ed1eafc87a8462dd7fbebc6fee23a2f0",
+          "sha256": "8b6d4ae2cd92eee4f7ae0afc7badbd8c5d8138a676f1728adef154f8d0b09b39",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/parser.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/persistence.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7aea1b26bae0b913c36bdbf171a01b5fc22b587c",
+          "sha256": "b55c364d5609544662d3e0e05188d03cc75b6bc592ae6819f950f85dfaae6873",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/persistence.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/py.typed",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/py.typed.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/retry.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2b37fbbb5a9aa272e7adeded9e9bd577fad4087d",
+          "sha256": "ffc46c260d411f1a9b08700bff6eecbce29aaed28f9a2f2fb78f1847c655c7d0",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/retry.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/runtime.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "06b120d4fe6ec648b0f2d70123d60c4ed7af4600",
+          "sha256": "e7e257b0410a1831c63a60a1411d8dce2962e866ee4e9b05d4b8a3dbe016d420",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/runtime.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/telemetry.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b41579d6357041353e40b2dd3880eea6e97b4e4c",
+          "sha256": "10fe7513021f91a97e0a8e68a8160bc553704515fd5a1c78dbd5771ad733d473",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/telemetry.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/transport.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3ae67bbcf6cbd6bd86b3ed378c1b9a041a241df1",
+          "sha256": "11e020b634ebfb4d98740704a5283e970036f58d5708c0bff3489d404538c490",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/transport.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/workflow/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6ada03081b94a603990f4ee34eaf224321697b2c",
+          "sha256": "11d757ffbdec2f9b8d28447a51a005fa7dd5c1d9b306b9e514785b6b241ae38e",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/workflow/__init__.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/workflow/loader.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "2ec4aeb56b6d20a639546f182da5a10f871ef955",
+          "sha256": "aa1fb18fda49f4e5dd4301b2f6a337c995c007ba14c49b5d34e2fa5e1b8c90c5",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/workflow/loader.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-core/src/open_agent_core/workflow/models.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "68536f60317f874b6d830b912bd53f5e3e32834b",
+          "sha256": "318e153d3a3b538f984b0f7ef4ac93c01fa070522925eba843428087c4a48ff3",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-core/src/open_agent_core/workflow/models.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-lang/Dockerfile",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6f3332a7c9572e3007258c3b8958b95c9b715cb4",
+          "sha256": "87a18c13086c5e94bff587f3531ca2299a8bbe85c0d944d8fae4709f105ab82c",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-lang/Dockerfile.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-lang/pyproject.toml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "fabc847dd2741111e4919a9a1dfc958ed530e82a",
+          "sha256": "20a9c2c2e6819c7f29e9e6000f4d58d385b769d7b9d76752cba49c69518ad5c7",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-lang/pyproject.toml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-lang/src/open_agent_lang/__init__.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9cb72e1bdf04d34f11587d3f94034a426f4dd96c",
+          "sha256": "fd0a2f44f27c8c283d6a839b46e8cbf7bb2a1ebc95411904dc5ad102a8d2d2bc",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-lang/src/open_agent_lang/__init__.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-lang/src/open_agent_lang/cli.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "abe17bdd0d3ea71bfcd928fee10535488a67ba14",
+          "sha256": "d0935589e5f84374c2ca2296485ffc858852ce0caf1862790a6b96f108e871b0",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-lang/src/open_agent_lang/cli.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-lang/src/open_agent_lang/compiler.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9b68bc3f18c2c36c3b29714a59e157432e1b65c2",
+          "sha256": "4937b2b8169a224daa5e38ec87a5b844387787025588c6c694586ca57f7c26fe",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-lang/src/open_agent_lang/compiler.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-lang/src/open_agent_lang/mcp.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "0d938ef92598673c7493e0829c62b2e60b8e52a3",
+          "sha256": "3cf4af261c47ad9dcdfedbdbe3729a4b7999db8554241d8ad2656e5ed6cf62c6",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-lang/src/open_agent_lang/mcp.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-lang/src/open_agent_lang/py.typed",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-lang/src/open_agent_lang/py.typed.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "packages/open-agent-lang/src/open_agent_lang/runner.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4c1dd28cbd6cd60551762459d200f26481461593",
+          "sha256": "b3e8f09e0925acffbee27f60ce912dcd33f8fbf542d5477aec3755fe5d167fe8",
+          "destination": "migration/reference/specs-agent-platform/packages/open-agent-lang/src/open_agent_lang/runner.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "pyproject.toml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "aa82672258ef72c9c5741bd2fc5f3fe1cdcb803b",
+          "sha256": "934951ca4c1003e0f1b8af3d6889451728484905baeb7e5d956313f8da7447ad",
+          "destination": "migration/reference/specs-agent-platform/pyproject.toml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "scripts/generate_openapi.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "33a36670e3fc054039413d8183873da622fa58c9",
+          "sha256": "d46eb0b2a617bd9992daba5da8bf9ca2b6b5a2d0645658e7c5cafd1c0c7ea6c2",
+          "destination": "migration/reference/specs-agent-platform/scripts/generate_openapi.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/agents/agent-openai-config.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "319c6737d1f9bf9862d918dc31c6fd362a6bc88a",
+          "sha256": "8e85c8a8cdfbf4e0767228f9d15708487109e3f01960a21870f08a6131240d00",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/agents/agent-openai-config.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/agents/agent-vertex-config.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "735cd5d48512b70f658386a3c24b80c5b86f27fb",
+          "sha256": "34ab609b96d4b7ccaf17befe41aff97116f6762fe48bce28407a9124f2ad206a",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/agents/agent-vertex-config.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/agents/agent-with-memory.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e1a2b045b4226891d3412d63805f28a1e8440c84",
+          "sha256": "446eb8e2deafd34304f78bc17d0df54ad48457173917f73edb6544cec4771727",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/agents/agent-with-memory.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/agents/agent-with-tools.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9b1d4f05aec4883c6feb0daea4d8e02780df6db9",
+          "sha256": "fd9d1e587f56e2f8a26938bb7b92c2b3e96a20e933602e04072ea0970c209e55",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/agents/agent-with-tools.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/agents/agent.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "694cca7e46f64c930cc720b0dda03e5306123537",
+          "sha256": "1b9fdb33474603b1632f1c4fd13cd4b7a32126410855bd4183212ed8c3e0850a",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/agents/agent.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/bindings.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "af5f6ba1eef9f4cfab0e4668c5c95abc33c12509",
+          "sha256": "3b6faeb11801f2afe3600626dc0c58a1eef9a9332889e3294c9886d806361ec6",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/bindings.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/catch-filtered.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "be08caa5e793652a9d9779e0d9f2609d32a55cc0",
+          "sha256": "45b5434850695925319a08845bad5a9c670d2258e43794f4bbe55ac677a7afec",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/catch-filtered.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/emit.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "81fafdf67349588e13e88857b2b7677745f8e185",
+          "sha256": "5bcbfad1adf301bfda03a4ebae4af090aae77b02ddbd5d2dc0b9f90b93e9980d",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/emit.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/finally.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b2822e97c59aae2635c83a31410d50ac677b93bf",
+          "sha256": "0c259189cdded0ee54661bc47143b488709a6d6eda81131cf44422464761cdc7",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/finally.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/for-in.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9ea2ff8b7639ac9f83c166ebba621d0e01403ffe",
+          "sha256": "1bdeed0bb499ffdd41b39df71c6b6812ef0c4e1783001df93f214ccc83877029",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/for-in.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/fork-join.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "be05060dde07dadf707ee60f8c2a709003425549",
+          "sha256": "bfea0aac88877a901b836f12771fe2fbe81ea79e0dede43a75dc8d4a512c25af",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/fork-join.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/listen.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e9029685b6b84eb24f65818531c38e1d6f7d968f",
+          "sha256": "ee4c669c5eb0fa52ae0463bc11c6997020effe2646e89558b9fc6f019368ae0a",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/listen.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/minimal.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "7958f699bb03d4fe01cd7ba92996da1cc0976a22",
+          "sha256": "d92e9bb125b206fafc4f2e08b360ed164293d4b53adbacb3b24e5c5e02904dbb",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/minimal.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/nested-do.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3932ebd8b9bafedb2de7b3f1237966356dcb2c1c",
+          "sha256": "62e0be5973ebeeb6bc8c67b54df0ccf9ffc0cc8bf40a5434e16018b6a50dc76b",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/nested-do.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/raise.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "66833ccc0462a55107dd7efb705bfe6a46c7c7df",
+          "sha256": "f9a6a5973d4de4859a92f1caff0f4619f417616616685c99a16c9208dccc6437",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/raise.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/retry-constant.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "24b713b28eae754e1bdc06db04136cdbcc3d07ac",
+          "sha256": "06dbe5a0ebebb2ef164992f6277e14e46e29e5da4ada0ebf3bc3357ca993bb9f",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/retry-constant.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/run.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "751c940ddf8aca144186a3abe50d542ab8ac21f4",
+          "sha256": "335ea435a2286bb152def41cf2029c3ef1dfd0c69119e8d05d33a36f1cb8e4f2",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/run.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/set-and-call.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "ea948a6dd50a3b053e4aa0053269a2f792cc2a70",
+          "sha256": "f732e056bac74f7d691a37e5e5ee13a2e960ad1e30a40481506c8c02ee53aab9",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/set-and-call.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/switch-default.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "64092aafdc9ddef6a75f70f3979a6663585766b3",
+          "sha256": "988d2e042c247b47659599b596da2090132cc62f19471f6170cac6680af38eff",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/switch-default.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/wait.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "e7e20f4ad5137ce055fa0f818152231cf290d8df",
+          "sha256": "0017f7f295441ffd09caa505eaf90e0f1ac305e2c3e1dee5a45db9c55fa7b3d5",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/wait.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/fixtures/conformance/workflows/while.yaml",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "d6a67be0a974c221284697f7388b951ccf90684b",
+          "sha256": "cfb43cca3ec697088bde7956336030b9fadf09333bd0764620204d52ed2bab16",
+          "destination": "migration/reference/specs-agent-platform/tests/fixtures/conformance/workflows/while.yaml.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_cli.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "64b943946c0f3b0818bd7d21da0dc8fc85e4eea1",
+          "sha256": "56626e78d9837d4605c7f668b1f5ded0102d0813b905e1dd321b56f7b949b601",
+          "destination": "migration/reference/specs-agent-platform/tests/test_cli.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_compilers.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "8f01f641f3e3e7747671239518a8fa4ee9c38080",
+          "sha256": "1c5a62cf6d0ea8f181e27950071219cd03dbbffc7ebabf57936ca94648833bc8",
+          "destination": "migration/reference/specs-agent-platform/tests/test_compilers.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_compose_assets.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "3e2aa61a4245ccb849c2df13a8529662d33ab7b1",
+          "sha256": "4edb07a109f1275d20a0534ba03826095238f8ea4ab3c3a95be4a9b3cf80ba49",
+          "destination": "migration/reference/specs-agent-platform/tests/test_compose_assets.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_conformance.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "4e6e5c463a322a43e5b596d8967a5a49c35905ea",
+          "sha256": "319b2fcaa86b3fe5594c08eaa5215c415b227e1e20315dc97420bde2a8cb9420",
+          "destination": "migration/reference/specs-agent-platform/tests/test_conformance.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_core_loader.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "b4023f0dc4b1b7f824c62df1c3fc62f88bb9ef4a",
+          "sha256": "f28d0db93553eaab7d68cccf4ba1a46d89e548c282ff3d289495d68366f3e473",
+          "destination": "migration/reference/specs-agent-platform/tests/test_core_loader.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_expressions.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "9341feb06bba442e877ef9b4f4e06a8b65ab63ff",
+          "sha256": "d7514412d99232b29ae48251cd52ea3e6eb2827bec22b9aeffb0ae195e8fceaf",
+          "destination": "migration/reference/specs-agent-platform/tests/test_expressions.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_integration.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "08ae12d3e65f08452145ffafd5a5e1993a7aa7b7",
+          "sha256": "a6ac10c0a12d0f9d478f080146e7231729c5988cc810ce9e005129a31f547a5f",
+          "destination": "migration/reference/specs-agent-platform/tests/test_integration.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_lifecycle.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6c02bbce0adff0d86b14a093388133418b346608",
+          "sha256": "7f0dd57da898d62977c322753d9eaa3bd138a22e590c4496fd314d91b89d2065",
+          "destination": "migration/reference/specs-agent-platform/tests/test_lifecycle.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_mcp.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6af8fa887e6af769ff47aa67905e452cb679c778",
+          "sha256": "29aaba693336258d8f717a74cc723b6c0d60794c76f81f364ec053d579b3bf01",
+          "destination": "migration/reference/specs-agent-platform/tests/test_mcp.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_openapi.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "6f9f4b1177cd5c10679a0184e1b987118318a143",
+          "sha256": "ee4de4e6c4cdf6db6c47dbc868eea149cd43a2b5464c6f92a42b1783c59e7140",
+          "destination": "migration/reference/specs-agent-platform/tests/test_openapi.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_persistence.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "56357705f4bfd06e6157f4a4a19f94606655eb9a",
+          "sha256": "779b2807d8ccdca0feaa475311998845a4913031995cd13ff3a3999a4d16e6a7",
+          "destination": "migration/reference/specs-agent-platform/tests/test_persistence.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_persistence_postgres.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "a070395de0fdbb7a0086e19caca52f42905351b8",
+          "sha256": "b4bf757aa7fda184f58df439f4026c59f471a9138d773b150f2d3b63d58cb2b6",
+          "destination": "migration/reference/specs-agent-platform/tests/test_persistence_postgres.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_retry_policy.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "cec997eb3347ef8450a153be1523a7f84e4a453b",
+          "sha256": "698239f726c875c428884cc8a628e24548387c568dd8d144b660ae44d7c26242",
+          "destination": "migration/reference/specs-agent-platform/tests/test_retry_policy.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_runtime_and_api.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "504676842aab84077884e9115ba280b77398f039",
+          "sha256": "459f608c7ed3efd04b5afcdc5eb44c8d519aec58f5c35b38af88728ff3e550b3",
+          "destination": "migration/reference/specs-agent-platform/tests/test_runtime_and_api.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "tests/test_telemetry.py",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "38f07876b043206e223210fae8c7f86530aa0754",
+          "sha256": "f4d9b0b8e5ec8cb3fe8a55e9e4facb541444c8ec7dd22f60d378cf81d138f2ed",
+          "destination": "migration/reference/specs-agent-platform/tests/test_telemetry.py.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
+        },
+        {
+          "path": "uv.lock",
+          "mode": "100644",
+          "type": "blob",
+          "git_blob_sha": "47f25eb10672709438f436adb507ce3bee1465d0",
+          "sha256": "4f4574f3562746ca9dd70ceb6992d215df79d4c96fd94991512b74f7233b6e7f",
+          "destination": "migration/reference/specs-agent-platform/uv.lock.source",
+          "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
         }
       ]
     }

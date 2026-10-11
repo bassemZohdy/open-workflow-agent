@@ -1,0 +1,9 @@
+component_type: Agent
+agentspec_version: "26.1.2"
+id: "examples/hello-agent@1.0.0"
+name: "hello-agent"
+system_prompt: "Say hello."
+llm_config:
+  component_type: OpenAiConfig
+  name: "hello-model"
+  model_id: "gpt-4o-mini"

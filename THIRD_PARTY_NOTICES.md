@@ -9,4 +9,4 @@ The canonical runtime keeps its existing MIT license. Material imported from
 
 No separate NOTICE file exists at that revision. Original source headers and
 license bytes are preserved. Frozen snapshots are not runtime modules. No
-generic-agent-lang source or private specs-agent-platform source is published.
+generic-agent-lang source is copied. The approved specs-agent-platform reference publication also retains Apache-2.0: [license](migration/reference/specs-agent-platform/LICENSE), revision `a90b25a8c0d3518e1c0bd311f42621869b94a0a8`. All 109 tracked files remain exact snapshots; no separate NOTICE exists in that source tree.

@@ -1,0 +1,57 @@
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+ROOT = Path(__file__).resolve().parent.parent
+SCRIPT = ROOT / "scripts" / "generate_openapi.py"
+LANG_PATH = ROOT / "docs" / "openapi-lang.json"
+ADK_PATH = ROOT / "docs" / "openapi-adk.json"
+
+
+@pytest.fixture
+def generated_specs() -> tuple[dict[str, Any], dict[str, Any]]:
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--check"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    lang_text = LANG_PATH.read_text(encoding="utf-8")
+    adk_text = ADK_PATH.read_text(encoding="utf-8")
+    return json.loads(lang_text), json.loads(adk_text)
+
+
+def test_openapi_files_exist_and_match_regenerated(
+    generated_specs: tuple[dict[str, Any], dict[str, Any]],
+) -> None:
+    lang_spec, adk_spec = generated_specs
+    assert "openapi" in lang_spec
+    assert "openapi" in adk_spec
+
+
+@pytest.mark.parametrize("spec_path", [LANG_PATH, ADK_PATH])
+def test_openapi_contains_expected_endpoints(spec_path: Path) -> None:
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    paths = spec.get("paths", {})
+    assert "/health/live" in paths
+    assert "/health/ready" in paths
+    assert "/v1/models" in paths
+    assert "/v1/chat/completions" in paths
+    assert "/v1/events" in paths
+
+
+def test_openapi_chat_request_lists_ignored_fields(
+    generated_specs: tuple[dict[str, Any], dict[str, Any]],
+) -> None:
+    lang_spec, _ = generated_specs
+    chat_schema = lang_spec["components"]["schemas"]["ChatCompletionRequest"]
+    props = chat_schema["properties"]
+    for field in ("temperature", "tools", "n"):
+        assert field in props, field

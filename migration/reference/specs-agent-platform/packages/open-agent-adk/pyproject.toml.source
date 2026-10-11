@@ -1,0 +1,22 @@
+[project]
+name = "open-agent-adk"
+version = "0.1.0"
+description = "Google ADK adapter for Specs Agent Platform"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "google-adk>=1,<2",
+  "mcp>=1,<2",
+  "open-agent-core",
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.32,<1",
+]
+
+[tool.uv.sources]
+open-agent-core = { workspace = true }
+
+[project.scripts]
+open-agent-adk = "open_agent_adk.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

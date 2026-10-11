@@ -18,8 +18,7 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 - [ ] **S1-06** (M) — Provide one-container embedded defaults; separate workflow behavior from external bootstrap/provider settings.
 - [ ] **S1-07** (M) — Complete reusable definitions, imports, references, validation, version resolution and safe serialization.
 - [ ] **S1-08** (M) — Verify the current implementation against every tracked feature before claiming it complete.
-- [ ] **MIG-01** (S) — Approve/dispose private-source transfer and missing generic-agent-lang license before source publication.
-- [ ] **MIG-02** (S) — Publish migration notices and archive the three sources after consolidation and preservation checks.
+- [ ] **MIG-02** (S) — Archive the three preserved predecessors after consolidation is merged; currently requires user action.
 
 ## Stage 2 — Reliable execution and recovery
 

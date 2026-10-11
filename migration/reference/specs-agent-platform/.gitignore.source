@@ -1,0 +1,49 @@
+# Local environments and secrets
+.venv/
+.env
+.env.*
+!.env.example
+
+# Python bytecode and tool caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.pyre/
+.pytype/
+
+# Test and coverage output
+.coverage
+.coverage.*
+coverage.xml
+junit*.xml
+htmlcov/
+
+# Build and packaging output
+dist/
+build/
+*.egg-info/
+
+# Runtime and security-scan output
+tmp/
+data/
+.trivy/
+*.sarif
+sbom*.json
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.log
+
+# Editor and operating-system metadata
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+Desktop.ini

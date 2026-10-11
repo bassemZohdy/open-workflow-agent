@@ -1,0 +1,251 @@
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Any
+
+import yaml
+from pydantic import ValidationError
+
+from ..diagnostics import Diagnostic, SpecValidationError, source_location
+from ..ir import TaskIR, WorkflowIR
+from .models import WorkflowDocument
+
+_KINDS = (
+    "call",
+    "switch",
+    "for",
+    "fork",
+    "try",
+    "do",
+    "emit",
+    "listen",
+    "raise",
+    "run",
+    "set",
+    "wait",
+)
+
+# Bounds on recursive task-tree loading. A malicious or malformed document
+# with unbounded nesting or task count could otherwise trigger a Python
+# RecursionError or excessive memory use before validation ever runs.
+_MAX_TASK_DEPTH = 64
+_MAX_TASK_COUNT = 5000
+
+
+class _ParseBudget:
+    """Mutable counters shared across one `load_workflow` call's recursion."""
+
+    __slots__ = ("task_count",)
+
+    def __init__(self) -> None:
+        self.task_count = 0
+
+
+def _error(message: str, source: Path, path: str | None = None) -> SpecValidationError:
+    return SpecValidationError(
+        [Diagnostic(code="WORKFLOW_SPEC_INVALID", message=message, source=source, path=path)]
+    )
+
+
+def _validation_error(exc: ValidationError, source: Path) -> SpecValidationError:
+    return SpecValidationError(
+        [
+            Diagnostic(
+                code="WORKFLOW_SPEC_INVALID",
+                message=str(item["msg"]),
+                source=source,
+                path=".".join(str(part) for part in item["loc"]) or None,
+                line=source_location(source, tuple(item["loc"]))[0],
+                column=source_location(source, tuple(item["loc"]))[1],
+            )
+            for item in exc.errors()
+        ]
+    )
+
+
+def _read(path: Path) -> dict[str, Any]:
+    try:
+        text = path.read_text(encoding="utf-8")
+        value = json.loads(text) if path.suffix.lower() == ".json" else yaml.safe_load(text)
+    except (OSError, UnicodeError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        raise _error(str(exc), path) from exc
+    if not isinstance(value, dict):
+        raise _error("document root must be an object", path)
+    return value
+
+
+def is_workflow_document(path: Path) -> bool:
+    value = _read(path)
+    document = value.get("document") if isinstance(value, dict) else None
+    return isinstance(document, dict) and "dsl" in document
+
+
+def _task(value: Any, source: Path, location: str, budget: _ParseBudget, depth: int = 0) -> TaskIR:
+    if depth > _MAX_TASK_DEPTH:
+        raise _error(
+            f"workflow task nesting exceeds the maximum depth of {_MAX_TASK_DEPTH}",
+            source,
+            location,
+        )
+    budget.task_count += 1
+    if budget.task_count > _MAX_TASK_COUNT:
+        raise _error(f"workflow declares more than {_MAX_TASK_COUNT} tasks", source, location)
+    if not isinstance(value, dict) or len(value) != 1:
+        raise _error("each task must be a one-key mapping", source, location)
+    name, body = next(iter(value.items()))
+    if not isinstance(name, str) or not isinstance(body, dict):
+        raise _error("task name must map to an object", source, location)
+    kind = next((candidate for candidate in _KINDS if candidate in body), None)
+    if kind is None:
+        raise _error("task does not declare a supported Open Workflow operation", source, location)
+
+    children: list[TaskIR] = []
+    for key in ("do", "then", "try", "body"):
+        nested = body.get(key)
+        if isinstance(nested, list):
+            children.extend(
+                _task(item, source, f"{location}.{key}[{index}]", budget, depth + 1)
+                for index, item in enumerate(nested)
+            )
+
+    catch_tasks: list[TaskIR] = []
+    catch = body.get("catch")
+    if isinstance(catch, list):
+        catch_tasks.extend(
+            _task(item, source, f"{location}.catch[{index}]", budget, depth + 1)
+            for index, item in enumerate(catch)
+        )
+    elif isinstance(catch, dict):
+        nested = catch.get("do", catch.get("then", []))
+        if isinstance(nested, list):
+            catch_tasks.extend(
+                _task(item, source, f"{location}.catch.do[{index}]", budget, depth + 1)
+                for index, item in enumerate(nested)
+            )
+    finally_tasks: list[TaskIR] = []
+    finally_block = body.get("finally")
+    if isinstance(finally_block, list):
+        finally_tasks.extend(
+            _task(item, source, f"{location}.finally[{index}]", budget, depth + 1)
+            for index, item in enumerate(finally_block)
+        )
+    elif isinstance(finally_block, dict):
+        nested = finally_block.get("do", finally_block.get("then", []))
+        if isinstance(nested, list):
+            finally_tasks.extend(
+                _task(item, source, f"{location}.finally.do[{index}]", budget, depth + 1)
+                for index, item in enumerate(nested)
+            )
+
+    branches: dict[str, tuple[TaskIR, ...]] = {}
+    switch = body.get("switch")
+    if isinstance(switch, list):
+        for index, clause in enumerate(switch):
+            if not isinstance(clause, dict):
+                continue
+            branch_name = str(clause.get("name", clause.get("when", index)))
+            nested = clause.get("then", clause.get("do", []))
+            if isinstance(nested, list):
+                branches[branch_name] = tuple(
+                    _task(item, source, f"{location}.switch[{index}]", budget, depth + 1)
+                    for item in nested
+                )
+    elif isinstance(switch, dict):
+        for branch_name, nested in switch.items():
+            if isinstance(nested, dict):
+                nested = nested.get("then", nested.get("do", []))
+            if isinstance(nested, list):
+                branches[str(branch_name)] = tuple(
+                    _task(
+                        item,
+                        source,
+                        f"{location}.switch.{branch_name}[{index}]",
+                        budget,
+                        depth + 1,
+                    )
+                    for index, item in enumerate(nested)
+                )
+
+    fork_branches: list[tuple[TaskIR, ...]] = []
+    fork = body.get("fork")
+    if isinstance(fork, dict):
+        nested = fork.get("branches", [])
+        if isinstance(nested, dict):
+            nested = list(nested.values())
+        if isinstance(nested, list):
+            for index, branch in enumerate(nested):
+                if isinstance(branch, list):
+                    fork_branches.append(
+                        tuple(
+                            _task(
+                                item,
+                                source,
+                                f"{location}.fork.branches[{index}]",
+                                budget,
+                                depth + 1,
+                            )
+                            for item in branch
+                        )
+                    )
+                elif isinstance(branch, dict):
+                    fork_branches.append(
+                        (
+                            _task(
+                                branch,
+                                source,
+                                f"{location}.fork.branches[{index}]",
+                                budget,
+                                depth + 1,
+                            ),
+                        )
+                    )
+
+    return TaskIR(
+        name=name,
+        kind=kind,
+        config=dict(body),
+        children=tuple(children),
+        branches=branches,
+        fork_branches=tuple(fork_branches),
+        catch_tasks=tuple(catch_tasks),
+        finally_tasks=tuple(finally_tasks),
+    )
+
+
+def load_workflow(path: str | Path) -> WorkflowIR:
+    source = Path(path).resolve()
+    document = _read(source)
+    try:
+        parsed = WorkflowDocument.model_validate(document)
+    except ValidationError as exc:
+        raise _validation_error(exc, source) from exc
+    metadata = parsed.document
+    dsl = metadata.dsl
+    if not dsl.startswith("1.0"):
+        raise SpecValidationError(
+            [
+                Diagnostic(
+                    code="WORKFLOW_VERSION_UNSUPPORTED",
+                    message=f"expected Open Workflow 1.0.x, received {dsl or '<missing>'}",
+                    source=source,
+                    path="document.dsl",
+                )
+            ]
+        )
+    namespace = metadata.namespace
+    name = metadata.name
+    version = metadata.version
+    tasks = parsed.do
+    budget = _ParseBudget()
+    return WorkflowIR(
+        id=f"{namespace}/{name}@{version}",
+        namespace=namespace,
+        name=name,
+        version=version,
+        source=str(source),
+        document=document,
+        tasks=tuple(
+            _task(item, source, f"do[{index}]", budget) for index, item in enumerate(tasks)
+        ),
+    )

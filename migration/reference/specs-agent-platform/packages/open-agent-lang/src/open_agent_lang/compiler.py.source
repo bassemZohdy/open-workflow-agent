@@ -1,0 +1,969 @@
+from __future__ import annotations
+
+import asyncio
+import os
+import time
+from collections.abc import Awaitable, Callable, Mapping
+from typing import Annotated, Any, TypedDict
+
+import httpx
+from open_agent_core import ApplicationIR, EchoAgentInvoker, ExecutionEvent, InMemoryEngine, TaskIR
+from open_agent_core.expressions import condition_allows, duration_seconds, resolve_value
+from open_agent_core.persistence import CheckpointStore, RetentionPolicy, retention_policy_from_env
+from open_agent_core.runtime import AgentInvoker, RuntimeContext
+from opentelemetry import trace
+
+NATIVE_KINDS = frozenset({"set", "call", "run"})
+
+# Route taken when a switch selection matches no branch (the interpreter
+# simply does nothing in that case).
+_NO_BRANCH = "__no_branch__"
+# Loop continuation routes for the for/while loop-back conditional edge.
+_CONTINUE = "__continue__"
+_DONE = "__done__"
+# Sentinel recorded in loop state when a loop variable had no previous value.
+_MISSING = "__missing__"
+# Error-handler routing: whether the catch conditions accepted the failure.
+_HANDLED = "__handled__"
+_UNHANDLED = "__unhandled__"
+
+
+def _fork_reducer(
+    current: dict[str, dict[str, Any]] | None,
+    update: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Merge parallel branch slot writes for the ``fork`` state channel.
+
+    Each fork branch writes exclusively under its own slot key, so concurrent
+    updates never touch the same key and the merge is order-independent.
+    """
+    merged = dict(current or {})
+    merged.update(update)
+    return merged
+
+
+def _loop_reducer(
+    current: dict[str, dict[str, Any]] | None,
+    update: dict[str, dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    """Merge loop-state updates for the ``loop`` state channel.
+
+    Each loop task writes exclusively under its own key, so updates from
+    nested or parallel loops never collide.
+    """
+    merged = dict(current or {})
+    merged.update(update)
+    return merged
+
+
+def _replace_reducer(current: Any, update: Any) -> Any:
+    """Replace the channel value with the latest write (error channel)."""
+    del current
+    return update
+
+
+class GraphState(TypedDict, total=False):
+    payload: dict[str, Any]
+    messages: list[dict[str, Any]]
+    output: dict[str, Any]
+    values: dict[str, Any]
+    fork: Annotated[dict[str, dict[str, Any]], _fork_reducer]
+    loop: Annotated[dict[str, dict[str, Any]], _loop_reducer]
+    error: Annotated[dict[str, Any], _replace_reducer]
+    run_id: str
+
+
+class LangGraphCompiler:
+    """Lower a workflow's task sequence into a LangGraph StateGraph.
+
+    Tasks whose kind is in ``NATIVE_KINDS`` compile to dedicated node
+    functions that evaluate values through ``open_agent_core.expressions``
+    directly instead of delegating to the interpreter. The remaining kinds
+    still call back into the injectable runtime until they gain native
+    compilation (COMPILE-003 through COMPILE-007).
+    """
+
+    def __init__(
+        self,
+        application: ApplicationIR,
+        runtime: Any | None = None,
+        *,
+        checkpoint_store: CheckpointStore | None = None,
+        retention_policy: RetentionPolicy | None = None,
+    ) -> None:
+        self.application = application
+        self.runtime = runtime or InMemoryEngine(application)
+        self.agent_invoker: AgentInvoker = (
+            getattr(self.runtime, "agent_invoker", None) or EchoAgentInvoker()
+        )
+        self.call_handlers: Mapping[str, Callable[[dict[str, Any]], Awaitable[Any]]] = dict(
+            getattr(self.runtime, "call_handlers", None) or {}
+        )
+        self.checkpoint_store = checkpoint_store or getattr(self.runtime, "checkpoint_store", None)
+        self.retention_policy = (
+            retention_policy
+            or getattr(self.runtime, "retention_policy", None)
+            or retention_policy_from_env()
+        )
+        self._node_counter = 0
+        try:
+            self.max_loop_iterations = max(1, int(os.getenv("MAX_LOOP_ITERATIONS", "10000")))
+        except ValueError:
+            self.max_loop_iterations = 10000
+
+    def compile(self, workflow_id: str | None = None) -> Any:
+        try:
+            from langgraph.graph import END, START, StateGraph
+        except ImportError as exc:  # pragma: no cover - depends on optional extra
+            raise RuntimeError("Install open-agent-lang to compile LangGraph workflows") from exc
+
+        workflow = (
+            self.application.workflows[0]
+            if workflow_id is None
+            else next(item for item in self.application.workflows if item.id == workflow_id)
+        )
+        self._node_counter = 0
+        builder = StateGraph(GraphState)
+        first, exits = self._compile_chain(builder, workflow.tasks, workflow.id)
+        if first is None:
+            builder.add_edge(START, END)
+        else:
+            builder.add_edge(START, first)
+            for exit_node in exits:
+                builder.add_edge(exit_node, END)
+        return builder.compile()
+
+    def _next_node_name(self, task: TaskIR, *, suffix: str | None = None) -> str:
+        """Return a unique node name for *task* and consume the name counter."""
+        name = f"{task.name}_{self._node_counter}"
+        self._node_counter += 1
+        return f"{name}_{suffix}" if suffix else name
+
+    def _compile_chain(
+        self,
+        builder: Any,
+        tasks: tuple[TaskIR, ...],
+        workflow_id: str,
+        values_key: str = "values",
+    ) -> tuple[str | None, list[str]]:
+        """Compile a linear task chain into the graph builder.
+
+        Returns ``(first_node, exit_points)``. Exit points are node names the
+        next task in the enclosing chain (or ``END``) must be wired from; a
+        switch contributes one exit per branch plus its no-match skip path,
+        and a fork contributes its single join node. ``values_key`` names the
+        state channel the chain reads and writes (``"values"`` for the main
+        chain, ``"fork.<slot>"`` keys for fork branches).
+        """
+        first: str | None = None
+        exits: list[str] = []
+        for task in tasks:
+            if task.kind == "switch":
+                entry, branch_exits, skip = self._compile_switch(builder, task, workflow_id)
+            elif task.kind == "fork":
+                entry, join = self._compile_fork(builder, task, workflow_id, values_key)
+                branch_exits = [join]
+                skip = None
+            elif task.kind == "for":
+                entry, exit_node = self._compile_loop(builder, task, workflow_id, values_key)
+                branch_exits = [exit_node]
+                skip = None
+            else:
+                entry, branch_exits = self._compile_controlled(
+                    builder, task, workflow_id, values_key
+                )
+                skip = None
+            for previous_exit in exits:
+                builder.add_edge(previous_exit, entry)
+            exits = branch_exits + ([skip] if skip is not None else [])
+            if first is None:
+                first = entry
+        return first, exits
+
+    def _compile_controlled(
+        self, builder: Any, task: TaskIR, workflow_id: str, values_key: str
+    ) -> tuple[str, list[str]]:
+        """Compile a task node with its retry/catch/finally controls.
+
+        Returns ``(entry_node, exit_points)``. Static retry configs map onto
+        LangGraph's ``RetryPolicy`` (constant/linear/exponential from
+        ``open_agent_core.retry``); catch branches wire as the node's
+        ``error_handler``; finally chains run on the success, handled-error,
+        and unhandled-error paths via explicit edges, with the unhandled path
+        ending in a re-raise node so the failure still propagates.
+        """
+        action = self._compile_task(task, workflow_id, values_key)
+        retry_policy = self._native_retry_policy(task)
+        has_catch = bool(task.catch_tasks)
+        has_finally = bool(task.finally_tasks)
+        entry = self._next_node_name(task)
+        if not has_catch and not has_finally and retry_policy is None:
+            builder.add_node(entry, action)
+            return entry, [entry]
+
+        handler = None
+        if has_catch or has_finally:
+            retry_attempts = retry_policy.max_attempts if retry_policy is not None else 1
+            handler = self._error_handler_node(task, workflow_id, values_key, retry_attempts)
+        builder.add_node(entry, action, retry_policy=retry_policy, error_handler=handler)
+        handler_name = f"__error_handler__{entry}"
+
+        finally_ok: tuple[str | None, list[str]] | None = None
+        finally_err: tuple[str | None, list[str]] | None = None
+        if has_finally:
+            finally_ok = self._compile_chain(builder, task.finally_tasks, workflow_id, values_key)
+            finally_err = self._compile_chain(builder, task.finally_tasks, workflow_id, values_key)
+        catch_chain: tuple[str | None, list[str]] | None = None
+        if has_catch:
+            catch_chain = self._compile_chain(builder, task.catch_tasks, workflow_id, values_key)
+
+        exits: list[str] = []
+        if has_finally:
+            assert finally_ok is not None and finally_ok[0] is not None
+            assert finally_err is not None and finally_err[0] is not None
+            builder.add_edge(entry, finally_ok[0])
+            exits.extend(finally_ok[1])
+        else:
+            exits.append(entry)
+        if has_catch and catch_chain is not None:
+            assert catch_chain[0] is not None
+            catch_exit = catch_chain[1]
+            if has_finally:
+                assert finally_ok is not None and finally_ok[0] is not None
+                for exit_node in catch_exit:
+                    builder.add_edge(exit_node, finally_ok[0])
+            else:
+                exits.extend(catch_exit)
+        if handler is not None:
+            re_raise = self._next_node_name(task, suffix="reraise")
+            builder.add_node(re_raise, self._re_raise_node())
+            if has_catch:
+                assert catch_chain is not None and catch_chain[0] is not None
+                if has_finally:
+                    assert finally_err is not None and finally_err[0] is not None
+                    unhandled_target = finally_err[0]
+                else:
+                    unhandled_target = re_raise
+                builder.add_conditional_edges(
+                    handler_name,
+                    self._handler_path,
+                    {_HANDLED: catch_chain[0], _UNHANDLED: unhandled_target},
+                )
+            elif has_finally:
+                assert finally_err is not None and finally_err[0] is not None
+                builder.add_edge(handler_name, finally_err[0])
+            else:
+                builder.add_edge(handler_name, re_raise)
+            if has_finally:
+                assert finally_err is not None
+                for exit_node in finally_err[1]:
+                    builder.add_edge(exit_node, re_raise)
+        return entry, exits
+
+    @staticmethod
+    def _is_static(value: Any) -> bool:
+        """Return whether a config value contains no runtime expressions."""
+        if isinstance(value, dict):
+            return all(
+                LangGraphCompiler._is_static(key) and LangGraphCompiler._is_static(item)
+                for key, item in value.items()
+            )
+        if isinstance(value, list):
+            return all(LangGraphCompiler._is_static(item) for item in value)
+        if isinstance(value, str):
+            stripped = value.strip()
+            return "${" not in value and not stripped.startswith((".", "$"))
+        return True
+
+    def _native_retry_policy(self, task: TaskIR) -> Any:
+        """Map a static retry config onto LangGraph's RetryPolicy.
+
+        Dynamic conditions (``when``/``exceptWhen``) and expression-bearing
+        values cannot be evaluated by LangGraph's static policy, so those
+        tasks keep the delegated execution path.
+        """
+        retry = task.config.get("retry")
+        if retry is None or isinstance(retry, bool):
+            return None
+        if isinstance(retry, dict) and any(
+            key in retry for key in ("when", "exceptWhen", "except_when")
+        ):
+            return None
+        if not self._is_static(retry):
+            return None
+        try:
+            from langgraph.types import RetryPolicy as LangGraphRetryPolicy
+        except ImportError as exc:  # pragma: no cover - depends on optional extra
+            raise RuntimeError("Install open-agent-lang to compile LangGraph workflows") from exc
+        from open_agent_core.retry import EXPONENTIAL, parse_retry_config
+
+        policy = parse_retry_config(retry)
+        backoff_factor = 2.0 if policy.backoff.strategy == EXPONENTIAL else 1.0
+        return LangGraphRetryPolicy(
+            initial_interval=policy.initial_delay_seconds,
+            backoff_factor=backoff_factor,
+            max_attempts=policy.max_attempts,
+            jitter=False,
+            retry_on=lambda exc: True,
+        )
+
+    def _catch_allowed_native(self, task: TaskIR, context: RuntimeContext) -> bool:
+        """Mirror the interpreter's catch filtering/aliasing semantics."""
+        catch = task.config.get("catch")
+        if not isinstance(catch, dict):
+            return bool(task.catch_tasks)
+        errors = catch.get("errors", {})
+        expected = errors.get("with", {}) if isinstance(errors, dict) else {}
+        actual = context.values.get("error", {})
+        if isinstance(expected, dict) and isinstance(actual, dict):
+            for key, value in expected.items():
+                if actual.get(str(key)) != resolve_value(value, context):
+                    return False
+        return condition_allows(catch, context)
+
+    def _error_handler_node(
+        self, task: TaskIR, workflow_id: str, values_key: str, retry_attempts: int = 1
+    ) -> Any:
+        from langgraph.errors import NodeError
+
+        async def handler(state: GraphState, error: NodeError) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            exc = getattr(error, "error", error)
+            error_dict = {"message": str(exc), "type": type(exc).__name__}
+            context.values["error"] = error_dict
+            context.values["retry_attempt"] = retry_attempts
+            handled = False
+            if task.catch_tasks and self._catch_allowed_native(task, context):
+                catch = task.config.get("catch")
+                if isinstance(catch, dict):
+                    alias = catch.get("as", "error")
+                    if isinstance(alias, str):
+                        context.values[alias] = context.values.get("error")
+                handled = True
+            return {
+                **self._result(context, values_key),
+                "error": {"handled": handled, "exc": exc},
+            }
+
+        return handler
+
+    @staticmethod
+    async def _handler_path(state: GraphState) -> str:
+        error = state.get("error", {})
+        return _HANDLED if error.get("handled") else _UNHANDLED
+
+    @staticmethod
+    def _re_raise_node() -> Any:
+        async def re_raise(state: GraphState) -> dict[str, Any]:
+            error = state.get("error", {})
+            exc = error.get("exc")
+            if isinstance(exc, BaseException):
+                # Re-raise a fresh exception: LangGraph marks the original
+                # object's id as handled when routing to the error handler, so
+                # re-raising that same object would be silently swallowed.
+                try:
+                    raise type(exc)(str(exc))
+                except TypeError:
+                    raise RuntimeError(str(exc)) from exc
+            raise RuntimeError("task failed after exhausting retries")  # pragma: no cover
+
+        return re_raise
+
+    def _compile_fork(
+        self, builder: Any, task: TaskIR, workflow_id: str, values_key: str
+    ) -> tuple[str, str]:
+        """Compile a fork task; return ``(fan_out_node, join_node)``.
+
+        The fan-out node fans out via conditional edges to one entry node per
+        branch (LangGraph runs parallel targets concurrently). Each branch runs
+        an isolated chain that reads and writes its own ``fork`` channel slot
+        seeded from the enclosing values, so parallel branches never race on
+        shared keys. All branch exits plus the gated skip path converge on the
+        join node, which merges slots back in deterministic branch order.
+        """
+        fan_out = self._next_node_name(task)
+        builder.add_node(fan_out, self._fork_fanout_node(task, workflow_id, values_key))
+        join = self._next_node_name(task, suffix="join")
+        builder.add_node(join, self._fork_join_node(task, workflow_id, values_key, fan_out))
+        if not task.fork_branches:
+            # An empty fork does nothing in the interpreter; pass straight
+            # through from the fan-out node (which still honors ``if`` gating).
+            builder.add_edge(fan_out, join)
+            return fan_out, join
+        path_map: dict[str, str] = {}
+        for branch_index, branch in enumerate(task.fork_branches):
+            slot = f"{fan_out}.{branch_index}"
+            entry = self._next_node_name(task, suffix="entry")
+            builder.add_node(entry, self._fork_entry_node(slot, workflow_id, values_key))
+            branch_first, exit_points = self._compile_chain(
+                builder, branch, workflow_id, values_key=f"fork.{slot}"
+            )
+            if branch_first is None:
+                exit_points = [entry]
+            else:
+                builder.add_edge(entry, branch_first)
+            path_map[slot] = entry
+            for exit_node in exit_points:
+                builder.add_edge(exit_node, join)
+        skip = self._next_node_name(task, suffix="skip")
+        builder.add_node(skip, self._noop_node)
+        path_map[_NO_BRANCH] = skip
+        builder.add_edge(skip, join)
+        builder.add_conditional_edges(
+            fan_out, self._fork_fanout_path(task, workflow_id, values_key, fan_out), path_map
+        )
+        return fan_out, join
+
+    def _fork_slots(self, task: TaskIR, fan_out: str) -> list[str]:
+        return [f"{fan_out}.{index}" for index in range(len(task.fork_branches))]
+
+    def _fork_fanout_node(self, task: TaskIR, workflow_id: str, values_key: str) -> Any:
+        async def fan_out(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            condition = task.config.get("if")
+            if condition is not None and not bool(resolve_value(condition, context)):
+                context.values[task.name] = context.input
+            return self._result(context, values_key)
+
+        return fan_out
+
+    def _fork_fanout_path(
+        self, task: TaskIR, workflow_id: str, values_key: str, fan_out: str
+    ) -> Any:
+        slots = self._fork_slots(task, fan_out)
+
+        async def fan_out_path(state: GraphState) -> list[str]:
+            context = self._context(state, workflow_id, values_key)
+            condition = task.config.get("if")
+            if condition is not None and not bool(resolve_value(condition, context)):
+                return [_NO_BRANCH]
+            return slots or [_NO_BRANCH]
+
+        return fan_out_path
+
+    def _fork_entry_node(self, slot: str, workflow_id: str, values_key: str) -> Any:
+        """Seed a branch slot with a copy of the enclosing values."""
+
+        async def entry(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            return {"fork": {slot: dict(context.values)}}
+
+        return entry
+
+    def _fork_join_node(self, task: TaskIR, workflow_id: str, values_key: str, fan_out: str) -> Any:
+        """Merge branch slots back into the enclosing values in branch order."""
+        slots = self._fork_slots(task, fan_out)
+
+        async def join(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            fork = state.get("fork", {})
+            if not any(slot in fork for slot in slots):
+                # Skip path (if-gated fork): no branch slot was seeded, so the
+                # enclosing values are already final.
+                return self._result(context, values_key)
+            contexts: list[dict[str, Any]] = []
+            for slot in slots:
+                branch_values = fork.get(slot, {})
+                contexts.append(branch_values)
+                context.values.update(branch_values)
+            compete = isinstance(task.config.get("fork"), dict) and bool(
+                task.config.get("fork", {}).get("compete", False)
+            )
+            context.values[task.name] = contexts
+            # Compete mode resolves to the first declared branch: LangGraph has
+            # no first-completion cancellation, so the deterministic declared
+            # order stands in for completion order (documented divergence).
+            context.values["output"] = contexts[0] if compete and contexts else contexts
+            return self._result(context, values_key)
+
+        return join
+
+    def _loop_iterable(self, task: TaskIR, context: RuntimeContext) -> tuple[Any, str, str]:
+        """Resolve a for task's iterable and loop-variable names (interpreter parity)."""
+        for_config = task.config.get("for", {})
+        if isinstance(for_config, dict):
+            values = resolve_value(for_config.get("in", []), context)
+            variable = str(
+                for_config.get("each", for_config.get("as", task.config.get("as", "item")))
+            )
+            index_name = str(for_config.get("at", task.config.get("at", "index")))
+        else:
+            values = resolve_value(for_config, context)
+            variable = str(task.config.get("as", task.config.get("item", "item")))
+            index_name = str(task.config.get("at", "index"))
+        if isinstance(values, dict):
+            variable = str(values.get("as", variable))
+            values = values.get("in", values.get("items", []))
+        items = values if isinstance(values, list) else []
+        return items, variable, index_name
+
+    def _loop_while_holds(self, task: TaskIR, context: RuntimeContext) -> bool:
+        """Return whether the task-level ``while`` condition still holds."""
+        while_condition = task.config.get("while")
+        if while_condition is None:
+            return True
+        return bool(resolve_value(while_condition, context))
+
+    def _compile_loop(
+        self, builder: Any, task: TaskIR, workflow_id: str, values_key: str
+    ) -> tuple[str, str]:
+        """Compile a for/while loop; return ``(entry_node, exit_node)``.
+
+        A setup node initializes the iteration state (iterable, loop-variable
+        names, previous values for scoping restore) and routes to the body
+        chain or the exit. The body chain runs with the loop variable and
+        index bound in the enclosing values; a continuation router advances
+        the iteration, honors the task-level ``while`` condition, enforces
+        the max-iteration guard, and loops back via ``add_conditional_edges``
+        or exits forward. The exit node restores the previous loop-variable
+        values (SPEC-002 scoping parity with the interpreter).
+        """
+        setup = self._next_node_name(task)
+        exit_node = self._next_node_name(task, suffix="exit")
+        builder.add_node(exit_node, self._loop_exit_node(task, workflow_id, values_key, setup))
+        key = setup
+        if not task.children:
+            # An empty body still binds and restores loop variables; a single
+            # pass-through entry is equivalent.
+            builder.add_node(setup, self._loop_setup_node(task, workflow_id, values_key, key))
+            builder.add_edge(setup, exit_node)
+            return setup, exit_node
+        builder.add_node(setup, self._loop_setup_node(task, workflow_id, values_key, key))
+        body_first, body_exits = self._compile_chain(
+            builder, task.children, workflow_id, values_key
+        )
+        assert body_first is not None
+        router = self._next_node_name(task, suffix="router")
+        builder.add_node(router, self._loop_router_node(task, workflow_id, values_key, key))
+        path_map = {_CONTINUE: body_first, _DONE: exit_node}
+        builder.add_conditional_edges(setup, self._loop_path(task, workflow_id, key), path_map)
+        for body_exit in body_exits:
+            builder.add_edge(body_exit, router)
+        builder.add_conditional_edges(router, self._loop_path(task, workflow_id, key), path_map)
+        return setup, exit_node
+
+    def _loop_path(self, task: TaskIR, workflow_id: str, key: str) -> Any:
+        del task, workflow_id
+
+        async def loop_path(state: GraphState) -> str:
+            loop = state.get("loop", {}).get(key, {})
+            return _DONE if loop.get("done") else _CONTINUE
+
+        return loop_path
+
+    def _loop_setup_node(self, task: TaskIR, workflow_id: str, values_key: str, key: str) -> Any:
+        async def setup(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            items, variable, index_name = self._loop_iterable(task, context)
+            previous: dict[str, Any] = {}
+            for name in (variable, index_name):
+                previous[name] = _MISSING if name not in context.values else context.values[name]
+            loop_state: dict[str, Any] = {
+                "items": items,
+                "index": 0,
+                "variable": variable,
+                "index_name": index_name,
+                "previous": previous,
+                "iterations": 0,
+                "done": not items,
+            }
+            condition = task.config.get("if")
+            if condition is not None and not bool(resolve_value(condition, context)):
+                context.values[task.name] = context.input
+                loop_state["done"] = True
+            elif items:
+                context.values[variable] = items[0]
+                context.values[index_name] = 0
+                if not self._loop_while_holds(task, context):
+                    loop_state["done"] = True
+            return {**self._result(context, values_key), "loop": {key: loop_state}}
+
+        return setup
+
+    def _loop_router_node(self, task: TaskIR, workflow_id: str, values_key: str, key: str) -> Any:
+        async def router(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            loop = dict(state.get("loop", {}).get(key, {}))
+            items = loop.get("items", [])
+            index = loop.get("index", 0)
+            variable = str(loop.get("variable", "item"))
+            index_name = str(loop.get("index_name", "index"))
+            iterations = loop.get("iterations", 0) + 1
+            if iterations > self.max_loop_iterations:
+                raise RuntimeError(
+                    f"loop {task.name!r} exceeded the maximum of "
+                    f"{self.max_loop_iterations} iterations"
+                )
+            loop["iterations"] = iterations
+            next_index = index + 1
+            if next_index >= len(items):
+                loop["done"] = True
+            else:
+                context.values[variable] = items[next_index]
+                context.values[index_name] = next_index
+                loop["index"] = next_index
+                if not self._loop_while_holds(task, context):
+                    loop["done"] = True
+            return {**self._result(context, values_key), "loop": {key: loop}}
+
+        return router
+
+    def _loop_exit_node(self, task: TaskIR, workflow_id: str, values_key: str, key: str) -> Any:
+        del task
+
+        async def exit_node(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            loop = state.get("loop", {}).get(key, {})
+            for name, previous in loop.get("previous", {}).items():
+                if previous == _MISSING:
+                    context.values.pop(name, None)
+                else:
+                    context.values[name] = previous
+            return self._result(context, values_key)
+
+        return exit_node
+
+    def _compile_switch(
+        self, builder: Any, task: TaskIR, workflow_id: str
+    ) -> tuple[str, list[str], str]:
+        """Compile a switch task; return ``(router_node, exits, skip_node)``.
+
+        Each branch compiles to its own chain of native nodes reached via
+        ``add_conditional_edges`` from the router node. Unmatched selections
+        route to the skip node, which forwards to the next task in the chain.
+        """
+        router = self._next_node_name(task)
+        builder.add_node(router, self._switch_router_node(task, workflow_id))
+        path_map: dict[str, str] = {}
+        branch_exits: list[str] = []
+        for branch_name, branch_tasks in task.branches.items():
+            entry, exit_points = self._compile_chain(builder, branch_tasks, workflow_id)
+            if entry is None:
+                entry = self._next_node_name(task, suffix="noop")
+                builder.add_node(entry, self._noop_node)
+                exit_points = [entry]
+            path_map[branch_name] = entry
+            branch_exits.extend(exit_points)
+        skip = self._next_node_name(task, suffix="skip")
+        builder.add_node(skip, self._noop_node)
+        path_map[_NO_BRANCH] = skip
+        builder.add_conditional_edges(router, self._switch_router_path(task, workflow_id), path_map)
+        return router, branch_exits, skip
+
+    def _switch_route(self, task: TaskIR, context: RuntimeContext) -> str:
+        """Compute the branch a switch selection routes to (interpreter parity)."""
+        selected = resolve_value(task.config.get("case"), context)
+        switch_key: str | None = str(selected) if selected is not None else None
+        clauses = task.config.get("switch")
+        if isinstance(clauses, list):
+            for clause in clauses:
+                if not isinstance(clause, dict):
+                    continue
+                clause_name = str(clause.get("name", clause.get("when", "")))
+                when = clause.get("when")
+                if (selected is not None and clause_name == switch_key) or (
+                    selected is None and when is not None and bool(resolve_value(when, context))
+                ):
+                    switch_key = clause_name
+                    break
+            else:
+                switch_key = next(
+                    (
+                        str(clause.get("name"))
+                        for clause in clauses
+                        if isinstance(clause, dict) and clause.get("default")
+                    ),
+                    switch_key,
+                )
+        if switch_key is None:
+            switch_key = next(iter(task.branches), None)
+        if switch_key is None or switch_key not in task.branches:
+            return _NO_BRANCH
+        return switch_key
+
+    def _switch_router_node(self, task: TaskIR, workflow_id: str) -> Any:
+        async def router_node(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id)
+            condition = task.config.get("if")
+            if condition is not None and not bool(resolve_value(condition, context)):
+                context.values[task.name] = context.input
+            return self._result(context)
+
+        return router_node
+
+    def _switch_router_path(self, task: TaskIR, workflow_id: str) -> Any:
+        async def router_path(state: GraphState) -> str:
+            context = self._context(state, workflow_id)
+            condition = task.config.get("if")
+            if condition is not None and not bool(resolve_value(condition, context)):
+                return _NO_BRANCH
+            return self._switch_route(task, context)
+
+        return router_path
+
+    async def _noop_node(self, state: GraphState) -> dict[str, Any]:
+        del state
+        return {}
+
+    def _compile_task(self, task: TaskIR, workflow_id: str, values_key: str = "values") -> Any:
+        if task.kind == "set":
+            return self._compile_set(task, workflow_id, values_key)
+        if task.kind == "call":
+            return self._compile_call(task, workflow_id, values_key)
+        if task.kind == "run":
+            return self._compile_run(task, workflow_id, values_key)
+        if task.kind == "wait":
+            return self._compile_wait(task, workflow_id, values_key)
+        if task.kind == "listen":
+            return self._compile_listen(task, workflow_id, values_key)
+        if task.kind == "raise":
+            return self._compile_raise(task, workflow_id, values_key)
+        if task.kind == "emit":
+            return self._compile_emit(task, workflow_id, values_key)
+        return self._compile_delegated(task, workflow_id)
+
+    def _context(
+        self, state: GraphState, workflow_id: str, values_key: str = "values"
+    ) -> RuntimeContext:
+        """Build the runtime context a node evaluates expressions against."""
+        if values_key == "values":
+            values = dict(state.get("values", {}))
+        else:
+            values = dict(state.get("fork", {}).get(values_key.removeprefix("fork."), {}))
+        context = RuntimeContext(
+            dict(state.get("payload", {})),
+            values=values,
+            run_id=state.get("run_id") or "",
+            entrypoint=workflow_id,
+        )
+        messages = state.get("messages")
+        if messages:
+            context.values["messages"] = messages
+        return context
+
+    def _result(self, context: RuntimeContext, values_key: str = "values") -> dict[str, Any]:
+        if values_key == "values":
+            return {
+                "values": context.values,
+                "output": context.values.get("output", context.values),
+            }
+        return {"fork": {values_key.removeprefix("fork."): context.values}}
+
+    async def _checkpoint(self, context: RuntimeContext, status: str) -> None:
+        """Persist current values when checkpointing is configured."""
+        if self.checkpoint_store is not None and context.entrypoint:
+            await self.checkpoint_store.save(
+                context.run_id,
+                context.entrypoint,
+                context.values,
+                status,
+                expires_at=self.retention_policy.expires_at(time.time()),
+            )
+
+    def _gated(self, task: TaskIR, context: RuntimeContext) -> bool:
+        """Honor the task's ``if`` condition; mirror interpreter semantics."""
+        condition = task.config.get("if")
+        if condition is not None and not bool(resolve_value(condition, context)):
+            context.values[task.name] = context.input
+            return False
+        return True
+
+    def _compile_set(self, task: TaskIR, workflow_id: str, values_key: str = "values") -> Any:
+        async def node(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            if self._gated(task, context):
+                assignments = task.config.get("set", task.config)
+                if isinstance(assignments, dict):
+                    for key, value in assignments.items():
+                        context.values[str(key)] = resolve_value(value, context)
+            if values_key == "values":
+                await self._checkpoint(context, "completed")
+            return self._result(context, values_key)
+
+        return node
+
+    def _compile_run(self, task: TaskIR, workflow_id: str, values_key: str = "values") -> Any:
+        async def node(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            if self._gated(task, context):
+                context.events.append(
+                    ExecutionEvent(context.run_id, task.kind, task.name, task.config)
+                )
+            if values_key == "values":
+                await self._checkpoint(context, "completed")
+            return self._result(context, values_key)
+
+        return node
+
+    def _compile_call(self, task: TaskIR, workflow_id: str, values_key: str = "values") -> Any:
+        async def node(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            if not self._gated(task, context):
+                if values_key == "values":
+                    await self._checkpoint(context, "completed")
+                return self._result(context, values_key)
+            target = task.config.get("call")
+            arguments = resolve_value(
+                task.config.get("with", task.config.get("input", {})), context
+            )
+            if not isinstance(arguments, dict):
+                arguments = {"value": arguments}
+            if isinstance(target, str) and target in self.application.bindings.agent_calls:
+                agent_id = self.application.bindings.agent_calls[target]
+                agent = next(
+                    (item for item in self.application.agents if item.id == agent_id), None
+                )
+                if agent is None:
+                    raise KeyError(f"Unknown bound agent: {agent_id}")
+                result = await self.agent_invoker.invoke(
+                    agent,
+                    context.values.get("messages", [{"role": "user", "content": arguments}]),
+                    context,
+                )
+            elif isinstance(target, str) and target in self.call_handlers:
+                result = await self.call_handlers[target](arguments)
+            elif isinstance(target, str) and target.startswith(("http://", "https://")):
+                method = str(task.config.get("method", "POST")).upper()
+                headers = task.config.get("headers", {})
+                if not isinstance(headers, dict):
+                    headers = {}
+                try:
+                    timeout = float(task.config.get("timeout_seconds", 30.0))
+                except ValueError:
+                    timeout = 30.0
+                with trace.get_tracer(__name__).start_as_current_span(
+                    "task.call.http",
+                    attributes={"http.url": target, "http.method": method},
+                ):
+                    async with httpx.AsyncClient(timeout=timeout) as client:
+                        response = await client.request(
+                            method,
+                            target,
+                            json=arguments,
+                            headers={str(key): str(value) for key, value in headers.items()},
+                        )
+                        response.raise_for_status()
+                        try:
+                            result = response.json()
+                        except ValueError:
+                            result = {
+                                "status_code": response.status_code,
+                                "text": response.text,
+                            }
+            else:
+                result = {"call": target, "with": arguments}
+            context.values[task.name] = result
+            context.values["output"] = result if isinstance(result, dict) else {"result": result}
+            await self._checkpoint(context, "completed")
+            return self._result(context)
+
+        return node
+
+    def _compile_wait(self, task: TaskIR, workflow_id: str, values_key: str = "values") -> Any:
+        async def node(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            if self._gated(task, context):
+                await asyncio.sleep(
+                    duration_seconds(resolve_value(task.config.get("wait"), context))
+                )
+            if values_key == "values":
+                await self._checkpoint(context, "completed")
+            return self._result(context, values_key)
+
+        return node
+
+    def _compile_listen(self, task: TaskIR, workflow_id: str, values_key: str = "values") -> Any:
+        async def node(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            if self._gated(task, context):
+                listen = task.config.get("listen", {})
+                incoming: Any = context.input.get("events", context.values.get("events", []))
+                if "event" in context.input:
+                    incoming = [context.input["event"]]
+                if not isinstance(incoming, list):
+                    incoming = [incoming]
+                filters: list[Any] = []
+                if isinstance(listen, dict):
+                    target = listen.get("to", {})
+                    if isinstance(target, dict):
+                        candidate = target.get("one", target.get("any", target.get("all", [])))
+                        if isinstance(candidate, list):
+                            filters = candidate
+                        elif isinstance(candidate, dict):
+                            filters = [candidate]
+                matched = [
+                    event
+                    for event in incoming
+                    if not filters
+                    or any(
+                        isinstance(item, dict)
+                        and isinstance(item.get("with", item), dict)
+                        and isinstance(event, dict)
+                        and all(
+                            event.get(key) == value for key, value in item.get("with", item).items()
+                        )
+                        for item in filters
+                    )
+                ]
+                if not matched:
+                    raise RuntimeError("no matching event available for listen task")
+                context.values[task.name] = matched
+                context.values["output"] = matched
+            if values_key == "values":
+                await self._checkpoint(context, "completed")
+            return self._result(context, values_key)
+
+        return node
+
+    def _compile_raise(self, task: TaskIR, workflow_id: str, values_key: str = "values") -> Any:
+        async def node(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            if self._gated(task, context):
+                raise RuntimeError(
+                    str(
+                        task.config.get(
+                            "raise", task.config.get("error", "workflow raised an error")
+                        )
+                    )
+                )
+            if values_key == "values":
+                await self._checkpoint(context, "completed")
+            return self._result(context, values_key)
+
+        return node
+
+    def _compile_emit(self, task: TaskIR, workflow_id: str, values_key: str = "values") -> Any:
+        async def node(state: GraphState) -> dict[str, Any]:
+            context = self._context(state, workflow_id, values_key)
+            if self._gated(task, context):
+                context.events.append(
+                    ExecutionEvent(context.run_id, task.kind, task.name, task.config)
+                )
+            if values_key == "values":
+                await self._checkpoint(context, "completed")
+            return self._result(context, values_key)
+
+        return node
+
+    def _compile_delegated(self, task: TaskIR, workflow_id: str) -> Any:
+        async def run_task(state: GraphState) -> dict[str, Any]:
+            payload = dict(state.get("payload", {}))
+            values = dict(state.get("values", {}))
+            if hasattr(self.runtime, "execute_task"):
+                values = await self.runtime.execute_task(
+                    workflow_id,
+                    task.name,
+                    payload,
+                    values=values,
+                    run_id=state.get("run_id"),
+                    messages=state.get("messages"),
+                )
+                return {"values": values, "output": values.get("output", values)}
+            result = await self.runtime.invoke(workflow_id, payload, run_id=state.get("run_id"))
+            return {"output": result, "values": result}
+
+        return run_task
+
+
+def compile_workflow(application: ApplicationIR, workflow_id: str | None = None) -> Any:
+    return LangGraphCompiler(application).compile(workflow_id)

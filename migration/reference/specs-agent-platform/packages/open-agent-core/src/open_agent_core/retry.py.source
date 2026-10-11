@@ -1,0 +1,119 @@
+"""Framework-neutral retry and backoff policy for Open Workflow tasks.
+
+The policy is parsed from a workflow task's ``retry`` config and applied
+directly by the in-memory engine, while native compilers translate it into
+their framework's own retry mechanism (e.g. LangGraph's ``RetryPolicy``).
+The module is deliberately context-free: expression-bearing config values are
+resolved by the caller or through the optional ``resolve`` callback before or
+during parsing.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Any
+
+from .expressions import duration_seconds
+
+CONSTANT = "constant"
+LINEAR = "linear"
+EXPONENTIAL = "exponential"
+
+
+@dataclass(frozen=True)
+class BackoffPolicy:
+    """Delay progression between retry attempts.
+
+    ``value`` is the linear increment or the constant delay in seconds.
+    Exponential backoff doubles the previous delay, starting at ``2 ** attempt``
+    when no previous delay exists.
+    """
+
+    strategy: str = CONSTANT
+    value: float = 0.0
+
+    def next_delay(self, attempt_index: int, previous: float) -> float:
+        """Return the delay before the 1-based retry *attempt_index*.
+
+        ``previous`` is the delay used before the previous attempt (``0.0``
+        before the first retry).
+        """
+        if self.strategy == LINEAR:
+            return previous + (self.value or previous)
+        if self.strategy == EXPONENTIAL:
+            return previous * 2 if previous else 2**attempt_index
+        return self.value or previous
+
+
+@dataclass(frozen=True)
+class RetryPolicy:
+    """Total attempt count plus the delay schedule between attempts."""
+
+    max_attempts: int = 1
+    initial_delay_seconds: float = 0.0
+    backoff: BackoffPolicy = field(default_factory=BackoffPolicy)
+
+    def retry_delay(self, attempt_index: int, previous: float) -> float:
+        """Delay before the 1-based retry attempt, given the previous delay."""
+        return self.backoff.next_delay(attempt_index, previous)
+
+
+def parse_retry_config(config: Any, *, resolve: Callable[[Any], Any] | None = None) -> RetryPolicy:
+    """Parse an Open Workflow ``retry`` config into a :class:`RetryPolicy`.
+
+    Supports the common config shapes: booleans, plain integers, and dicts with
+    ``max_attempts``, ``limit.attempt.count``, ``attempts``, ``count``,
+    ``delay`` / ``backoff_seconds``, and a ``backoff`` mapping with
+    ``constant``, ``linear``, or ``exponential`` keys.
+
+    ``resolve`` is applied to expression-bearing values (attempt counts,
+    delays, and constant backoff) so engines can evaluate ``${...}`` templates
+    against their own runtime context; without it, values are used literally.
+    """
+    if isinstance(config, bool) or config is None:
+        return RetryPolicy()
+    if isinstance(config, int):
+        return RetryPolicy(max_attempts=max(1, config + 1))
+    if not isinstance(config, dict):
+        return RetryPolicy()
+
+    def resolved(value: Any) -> Any:
+        return resolve(value) if resolve is not None else value
+
+    if "max_attempts" in config:
+        attempts = int(resolved(config.get("max_attempts")) or 1)
+    elif isinstance(config.get("limit"), dict):
+        limit = config["limit"]
+        attempt_limit = limit.get("attempt", limit)
+        if isinstance(attempt_limit, dict):
+            attempts = int(resolved(attempt_limit.get("count", 1)) or 1)
+        else:
+            attempts = int(resolved(attempt_limit) or 1)
+    else:
+        attempts = int(resolved(config.get("attempts", config.get("count", 1))) or 1)
+        if "count" in config or "retries" in config:
+            attempts += 1
+    delay = config.get("delay", config.get("backoff_seconds", 0.0))
+    initial_delay = duration_seconds(resolved(delay))
+
+    backoff = BackoffPolicy()
+    backoff_config = config.get("backoff")
+    if isinstance(backoff_config, dict):
+        if LINEAR in backoff_config:
+            backoff = BackoffPolicy(LINEAR, duration_seconds(backoff_config[LINEAR]))
+        elif EXPONENTIAL in backoff_config:
+            backoff = BackoffPolicy(EXPONENTIAL, 0.0)
+        elif CONSTANT in backoff_config:
+            backoff = BackoffPolicy(CONSTANT, duration_seconds(resolved(backoff_config[CONSTANT])))
+    return RetryPolicy(max(1, attempts), initial_delay, backoff)
+
+
+__all__ = [
+    "BackoffPolicy",
+    "CONSTANT",
+    "EXPONENTIAL",
+    "LINEAR",
+    "RetryPolicy",
+    "parse_retry_config",
+]

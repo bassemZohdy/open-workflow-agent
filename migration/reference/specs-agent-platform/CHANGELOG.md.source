@@ -1,0 +1,57 @@
+# Changelog
+
+All notable changes to this project are documented in this file.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project intends to adopt [Semantic Versioning](https://semver.org/)
+once it reaches a stable `1.0` release. Until then, breaking changes may land
+without a major version bump.
+
+## [Unreleased]
+
+- Added `LICENSE`, `CONTRIBUTING.md`, `SECURITY.md`, and this changelog.
+- Added GHCR delivery for the LangGraph and ADK images, including non-publishing
+  pull-request image scans, Trivy SARIF results, BuildKit OCI SBOM/provenance
+  attestations, and published-digest smoke tests.
+- Added Linux AMD64/ARM64 image publication and a dedicated WSL2 self-hosted
+  GitHub Actions runner for CI and release jobs.
+- Hardened runtime images by removing build-only Python tooling, upgraded the
+  LangChain/LangGraph stack past known fixable vulnerabilities, and retained a
+  blocking Trivy gate for fixable HIGH/CRITICAL findings.
+- Added container consumption and release-operation documentation.
+- Added richer workflow expressions, deterministic nested-loop scoping, and
+  broader Open Workflow and Agent Spec conformance fixtures.
+- Added application-bundle compatibility validation for mixed workflow DSL
+  versions, unsupported Agent Spec versions, unresolved agent calls, and
+  explicitly referenced MCP tool bindings.
+- Added graceful runner shutdown, in-flight request draining, MCP lifecycle
+  cleanup, cancellation-state coverage, and checkpoint restart-reuse tests.
+- Added checked-in OpenAPI documents for both engines, generator drift checks,
+  API and expression guides, and a static architecture diagram.
+- Expanded Git and Docker ignore policies for secrets, caches, local runtime
+  state, scan output, and build artifacts; added repository line-ending rules.
+- Upgraded GitHub Actions to Node 24-compatible releases and retained the
+  dedicated self-hosted WSL2 runner quality, scan, smoke-test, and ARM64 gates.
+- Documented that both engine compilers currently wrap the shared
+  `InMemoryEngine` interpreter instead of mapping workflow task trees onto
+  native LangGraph/ADK constructs, and planned the replacement as
+  `COMPILE-001`..`COMPILE-015` in `TODO.md` (no behavior change yet).
+- Documented that the declared Agent Spec `memory` field is parsed but not
+  wired into execution by either engine, and planned a pluggable
+  `MemoryStore` abstraction (in-memory/SQLite/Postgres/third-party backends
+  with availability health checks) as `MEM-001`..`MEM-006` in `TODO.md` (no
+  behavior change yet).
+- Documented that each engine's default model (`gpt-4o-mini` /
+  `gemini-2.0-flash`) is hardcoded inline with no environment override, and
+  planned a shared `resolve_model()` helper with `DEFAULT_MODEL`/
+  `OPENAI_DEFAULT_MODEL`/`GOOGLE_DEFAULT_MODEL` env vars covering every
+  agent and sub-agent either engine compiles, as `MODEL-001`..`MODEL-005`
+  in `TODO.md` (no behavior change yet).
+
+## [0.1.0]
+
+Initial workspace: Open Workflow and Open Agent Specification loaders and
+validation, framework-neutral IR, deterministic in-memory execution,
+LangGraph and Google ADK compilers/runners with OpenAI-compatible APIs,
+optional SQLite checkpoints, MCP adapters, Docker images, and CI. See
+`TODO.md` for the detailed, itemized history of this release.

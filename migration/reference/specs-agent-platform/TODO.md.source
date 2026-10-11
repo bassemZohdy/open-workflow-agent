@@ -1,0 +1,1019 @@
+# Specs Agent Platform Work Board
+
+This is the actionable backlog behind the [README roadmap](README.md#roadmap).
+Unchecked items are planned improvements, not prerequisites for running the
+current release.
+
+Priorities:
+
+- **P0** - security, data safety, or release blockers.
+- **P1** - next-release quality and delivery work.
+- **P2** - platform capabilities and maintainability.
+- **P3** - longer-term product direction.
+
+## Completed foundation
+
+- [x] Create the uv workspace with `open-agent-core`, `open-agent-lang`, and
+  `open-agent-adk` as independently packaged modules.
+- [x] Keep Open Workflow and Open Agent Specification loaders separated under
+  `open-agent-core` and normalize both into a framework-neutral IR.
+- [x] Add Pydantic validation, `pyagentspec` validation, bindings, aliases,
+  duplicate-entrypoint checks, and YAML source coordinates.
+- [x] Implement the supported Open Workflow v1 execution surface: expressions,
+  `set`, `call`, `switch`, `for`, `while`, `fork`, `wait`, `listen`, `raise`,
+  `emit`, `if`, retry, catch, and finally.
+- [x] Add deterministic local execution, HTTP calls, ChatOpenAI and Google ADK
+  bridges, and optional SQLite checkpoints.
+- [x] Add LangGraph and ADK compilers, MCP adapters, FastAPI runners, CLIs,
+  embedded UIs, and independent Docker images.
+- [x] Add OpenAI-compatible chat/models/tools APIs, health routes, CloudEvents
+  intake, authentication, request limits, timeouts, and structured failures.
+- [x] Add tests, conformance fixtures, Docker Compose profiles, package builds,
+  Postgres-backed startup smoke tests, and environment-driven configuration.
+
+## P0 - Security and runtime safety
+
+- [x] **SEC-001:** Reject chunked requests that exceed `MAX_REQUEST_BYTES`
+  instead of relying only on `Content-Length`.
+- [x] **SEC-002:** Stop publishing Postgres on `0.0.0.0:5432` with a placeholder
+  password by default until the Postgres checkpoint backend is available.
+  Bound to `127.0.0.1` instead of all interfaces; the password remains a dev
+  default since Postgres is unused by application code until **RUN-002**.
+- [x] **SEC-003:** Add depth and document-size limits to recursive workflow task
+  loading to prevent `RecursionError` and resource-exhaustion attacks.
+- [x] **SEC-004:** Add configurable CORS middleware with a restrictive default.
+- [x] **SEC-005:** Add configurable API rate limiting and authentication lockout.
+  - Acceptance:
+    - Per-client sliding-window request rate limiting returns HTTP 429 with
+      `Retry-After` when the limit is exceeded.
+    - Failed authentication attempts are counted per client and lock the client
+      out for a configurable duration after a threshold.
+    - Behavior is driven by environment variables with safe defaults and can be
+      disabled explicitly.
+    - Health endpoints remain reachable for orchestrators.
+    - Both runners share the same ASGI middleware from `open-agent-core`.
+  - Files: `open_agent_core/http_security.py`, both `runner.py`, tests.
+  - Complexity: medium.
+
+- [x] **SEC-006:** Add MCP subprocess sandboxing, lifecycle limits,
+  cancellation, and health reporting.
+  - Acceptance:
+    - Command allow/deny lists and shell-interpreter blocking are configurable
+      via environment variables.
+    - Per-call timeouts, output-size limits, and a concurrency cap are enforced.
+    - Subprocesses are terminated when the calling task is cancelled or times out.
+    - A health map tracks last success/failure per binding and is exposed through
+      a protected `/health/mcp` route.
+    - Shared runtime logic lives in `open-agent-core`; engine packages delegate
+      to it and keep only engine-specific adapters.
+  - Files: `open_agent_core/mcp_runtime.py`, both `mcp.py`, both `runner.py`,
+    tests, docs.
+  - Complexity: large.
+  - Depends on: shared module design compatible with both engines.
+
+## P1 - Native framework compilation
+
+Both engine compilers currently wrap a shared interpreter (`InMemoryEngine`)
+instead of mapping the workflow task tree onto each framework's native
+constructs: `LangGraphCompiler` builds a single linear `StateGraph` node
+chain per workflow and calls back into the interpreter for every task kind,
+and `AdkCompiler` only compiles `AgentIR` — there is no ADK workflow
+compiler, so `AdkEngine` always delegates the whole task tree to the
+interpreter. See
+[docs/architecture.md](docs/architecture.md#current-compilation-fidelity-known-limitation)
+for the detailed breakdown. The tasks below replace that shared-interpreter
+wrapper with real per-engine compilers, keeping only document parsing,
+validation, and a small expression/retry utility library shared between them.
+
+Target task-kind-to-native-primitive mapping:
+
+| Open Workflow task | LangGraph native primitive | ADK native primitive |
+| --- | --- | --- |
+| `do` (sequence) | linear `add_edge` chain | `SequentialAgent` |
+| `switch` | `add_conditional_edges` | custom `ConditionalAgent` (`BaseAgent`) |
+| `fork` | parallel fan-out/fan-in edges | `ParallelAgent` |
+| `for` / `while` | loop-back conditional edge | `LoopAgent` |
+| `retry` | `add_node(..., retry_policy=...)` | custom wrapper `BaseAgent` |
+| `catch` / `finally` | `add_node(..., error_handler=...)` | custom wrapper `BaseAgent` |
+| `call` | node invoking the compiled sub-graph/agent | sub-agent reference |
+| `set` / `run` | dedicated node function | custom `BaseAgent` leaf |
+| `wait` / `listen` / `raise` / `emit` | dedicated node function (no native primitive) | custom `BaseAgent` leaf (no native primitive) |
+
+- [x] **COMPILE-001:** Extract a standalone expression evaluator and
+  retry/backoff policy from `InMemoryEngine` into reusable `open-agent-core`
+  modules that either native compiler can call without depending on the
+  interpreter.
+  - Acceptance:
+    - `open_agent_core/expressions.py` exposes `evaluate(expr, context)` and
+      condition helpers (`when`/`exceptWhen` semantics) used by both
+      `runtime.py` and the new native compilers.
+    - `open_agent_core/retry.py` exposes a framework-neutral retry/backoff
+      policy (constant/linear/exponential) that both engines can translate
+      into their own native retry mechanism.
+    - `InMemoryEngine` is refactored to call these modules instead of owning
+      the logic inline; existing behavior and tests are unchanged.
+  - Files: new `open_agent_core/expressions.py`, `open_agent_core/retry.py`,
+    `runtime.py`, tests.
+  - Complexity: medium.
+  - Status: completed — `expressions.py` (evaluate/resolve_value/condition_allows) and
+    `retry.py` (RetryPolicy/BackoffPolicy/parse_retry_config) extracted;
+    `runtime.py` delegates via backward-compatible private aliases; all tests pass.
+
+- [x] **COMPILE-002:** LangGraph native compiler — per-task-kind node
+  generation for `set`, `call`, and `run`, replacing the generic
+  `execute_task` delegation for these kinds.
+  - Acceptance:
+    - Each `set`/`call`/`run` task compiles to its own node function that
+      resolves values via `open_agent_core/expressions.py` directly, not
+      through `InMemoryEngine.execute_task`.
+    - Existing conformance fixtures using only these kinds produce identical
+      output through the compiled graph and through `InMemoryEngine`.
+  - Files: `open_agent_lang/compiler.py`, tests.
+  - Complexity: medium.
+  - Depends on: COMPILE-001.
+  - Status: completed — `set`/`call`/`run` compile to native node functions
+    (incl. `if` gating and call dispatch parity: bound agents, handlers, HTTP);
+    parity tests cover the conformance fixtures, call dispatch, and `if` gates.
+
+- [x] **COMPILE-003:** LangGraph native `switch` mapping via
+  `add_conditional_edges`.
+  - Acceptance:
+    - `switch` tasks compile to a routing function registered with
+      `add_conditional_edges`; each branch becomes its own chain of native
+      nodes rather than an interpreter call.
+    - Default/fallback branches and `case`-expression branches from the Open
+      Workflow v1 fixtures behave identically to the interpreter path.
+  - Files: `open_agent_lang/compiler.py`, tests.
+  - Complexity: medium/large.
+  - Depends on: COMPILE-002.
+  - Status: completed — switch routes via `add_conditional_edges` with one
+    chain of native nodes per branch; case/default/when/no-match routing,
+    `if` gating, and empty branches match interpreter parity (169 tests pass).
+
+- [ ] **COMPILE-004:** LangGraph native `fork` mapping via parallel
+  fan-out/fan-in edges.
+  - Acceptance:
+    - Fork branches compile to independent node chains from a common
+      fan-out node, converging on a join node.
+    - Branch output merge order is deterministic and documented; LangGraph's
+      state-reducer support is used to avoid concurrent-write races.
+  - Files: `open_agent_lang/compiler.py`, tests.
+  - Complexity: large.
+  - Depends on: COMPILE-002.
+  - Status: completed — fork compiles to a fan-out node, per-branch chains
+    writing reducer-merged `fork` channel slots, and a join that merges in
+    declared branch order; `compete` resolves to the first declared branch
+    (no LangGraph cancellation; documented in `docs/architecture.md`);
+    interpreter `invoke`/`stream` now wrap non-dict output; if-gated and
+    nested forks match interpreter parity (173 tests pass).
+
+- [ ] **COMPILE-005:** LangGraph native `for`/`while` mapping via a
+  loop-back conditional edge.
+  - Acceptance:
+    - The loop body compiles to a node chain with a continuation router that
+      loops back via `add_conditional_edges` or exits forward.
+    - Loop-variable scoping matches current interpreter semantics
+      (**SPEC-002**); a configurable max-iteration guard prevents runaway
+      loops from a malformed condition.
+  - Files: `open_agent_lang/compiler.py`, tests.
+  - Complexity: large.
+  - Depends on: COMPILE-002.
+  - Status: completed — `for` tasks compile to a setup node, body chain, and
+    continuation router looping back via `add_conditional_edges` (loop state
+    in a reducer-merged `loop` channel); task-level `while` breaks per
+    iteration; loop variables are restored at exit (SPEC-002 scoping);
+    `MAX_LOOP_ITERATIONS` (default 10000, compiler-overridable) guards
+    runaway loops; empty bodies/iterables and nested loops match interpreter
+    parity. Task-level `while` on kind-`do` tasks stays delegated (the
+    interpreter does not loop them). 180 tests pass.
+
+- [ ] **COMPILE-006:** LangGraph native `retry`/`catch`/`finally` mapping
+  via `add_node(..., retry_policy=..., error_handler=...)`.
+  - Acceptance:
+    - `retry` config (`max_attempts`, backoff strategy) maps onto
+      LangGraph's `RetryPolicy` using the shared `open_agent_core/retry.py`
+      policy from **COMPILE-001**.
+    - `catch` branches are wired as the node's `error_handler`; `finally`
+      tasks execute on both the success and error paths via explicit edges.
+    - Error aliasing/filtering semantics from the interpreter path are
+      preserved.
+  - Files: `open_agent_lang/compiler.py`, tests.
+  - Complexity: large.
+  - Depends on: COMPILE-001, COMPILE-002.
+  - Status: completed — static retry configs map to LangGraph `RetryPolicy`
+    (constant/linear/exponential, jitter off, retry-on-any-exception); catch
+    wires as the node's `error_handler` with the interpreter's
+    errors.with/when/exceptWhen filtering and `as` aliasing; finally chains
+    run on success, handled, and unhandled paths, with the unhandled path
+    re-raising a fresh exception (LangGraph swallows re-raised originals it
+    already routed); dynamic retry conditions stay delegated; docs updated
+    (184 tests pass).
+
+- [ ] **COMPILE-007:** LangGraph native leaf tasks without a framework
+  primitive (`wait`, `listen`, `raise`, `emit`) as dedicated node functions.
+  - Acceptance:
+    - Each kind compiles to its own small node function using the shared
+      expression evaluator; behavior matches the interpreter path.
+    - `docs/architecture.md` documents why these remain node-function-based
+      rather than mapped to a native LangGraph primitive.
+  - Files: `open_agent_lang/compiler.py`, tests, `docs/architecture.md`.
+  - Complexity: medium.
+  - Depends on: COMPILE-001, COMPILE-002.
+
+- [ ] **COMPILE-008:** Retire `InMemoryEngine` as the LangGraph engine's
+  production execution path.
+  - Acceptance:
+    - `LangGraphEngine`/`LangGraphCompiler` no longer call
+      `InMemoryEngine.execute_task`/`invoke` for any task kind covered by
+      **COMPILE-002** through **COMPILE-007**.
+    - `InMemoryEngine` remains available for the core CLI's offline
+      validate/dry-run path and as the parity-test reference implementation
+      (**COMPILE-014**).
+  - Files: `open_agent_lang/compiler.py`, `open_agent_lang/runner.py`, tests.
+  - Complexity: medium.
+  - Depends on: COMPILE-002 through COMPILE-007.
+
+- [ ] **COMPILE-009:** ADK native workflow compiler skeleton —
+  `WorkflowIR` to a `BaseAgent` composite tree.
+  - Acceptance:
+    - New `open_agent_adk/workflow_compiler.py` maps `do` (sequence) to
+      `SequentialAgent`, `fork` to `ParallelAgent`, `for`/`while` to
+      `LoopAgent`, and `call` to the already-compiled `LlmAgent` for the
+      referenced agent (or a nested compiled sub-workflow).
+    - `set`/`run` compile to minimal custom `BaseAgent` leaves that mutate
+      session state via the shared expression evaluator.
+  - Files: new `open_agent_adk/workflow_compiler.py`, tests.
+  - Complexity: large.
+  - Depends on: COMPILE-001.
+
+- [ ] **COMPILE-010:** ADK native `switch` mapping via a custom
+  `ConditionalAgent`.
+  - Acceptance:
+    - A `BaseAgent` subclass evaluates branch conditions with the shared
+      expression evaluator and dispatches to exactly one matching
+      sub-agent, since ADK has no built-in conditional composite.
+    - Behavior matches the interpreter path for the Open Workflow v1
+      `switch` fixtures.
+  - Files: `open_agent_adk/workflow_compiler.py`, tests.
+  - Complexity: medium.
+  - Depends on: COMPILE-009.
+
+- [ ] **COMPILE-011:** ADK native `retry`/`catch`/`finally` mapping via a
+  custom wrapper `BaseAgent`.
+  - Acceptance:
+    - A wrapper agent applies the shared `open_agent_core/retry.py` policy
+      around its wrapped sub-agent, since ADK has no built-in retry
+      composite.
+    - Catch/finally semantics match the LangGraph mapping (**COMPILE-006**)
+      and the interpreter path.
+  - Files: `open_agent_adk/workflow_compiler.py`, tests.
+  - Complexity: large.
+  - Depends on: COMPILE-001, COMPILE-009.
+
+- [ ] **COMPILE-012:** ADK native leaf tasks without a composite primitive
+  (`wait`, `listen`, `raise`, `emit`) as small `BaseAgent` leaves.
+  - Acceptance:
+    - Each kind compiles to its own minimal `BaseAgent`, mirroring
+      **COMPILE-007**'s LangGraph leaves for behavioral parity.
+  - Files: `open_agent_adk/workflow_compiler.py`, tests.
+  - Complexity: medium.
+  - Depends on: COMPILE-001, COMPILE-009.
+
+- [ ] **COMPILE-013:** Retire `InMemoryEngine` as the ADK engine's
+  production execution path.
+  - Acceptance:
+    - `AdkEngine.invoke`/`stream`/`execute_task` run the compiled
+      `workflow_compiler` agent tree instead of always delegating to
+      `self.fallback` (`InMemoryEngine`).
+    - `InMemoryEngine` remains available only for the CLI's offline
+      validate/dry-run path and as the parity-test reference.
+  - Files: `open_agent_adk/runner.py`, tests.
+  - Complexity: medium.
+  - Depends on: COMPILE-009 through COMPILE-012.
+
+- [ ] **COMPILE-014:** Cross-engine and interpreter parity test suite.
+  - Acceptance:
+    - Every fixture in `tests/fixtures/conformance/` executes through
+      `InMemoryEngine` (reference), the compiled LangGraph `StateGraph`, and
+      the compiled ADK agent tree; results are asserted equal or a
+      divergence is explicitly documented and allow-listed.
+    - CI runs this suite for every pull request.
+  - Files: new `tests/test_native_parity.py`.
+  - Complexity: large.
+  - Depends on: COMPILE-008, COMPILE-013.
+
+- [ ] **COMPILE-015:** Update all documentation for the shipped
+  native-compilation architecture.
+  - Acceptance:
+    - README's compilation-fidelity note, `docs/architecture.md`'s diagram
+      and prose, and `docs/architecture.svg` describe the shipped native
+      compilers instead of the shared-interpreter wrapper.
+    - The task-kind-to-native-primitive mapping table above is corrected to
+      match what actually shipped, including any leaf kinds still without a
+      native equivalent.
+    - `CHANGELOG.md` records the change.
+  - Files: `README.md`, `docs/architecture.md`, `docs/architecture.svg`,
+    `CHANGELOG.md`, `TODO.md`.
+  - Complexity: small.
+  - Depends on: COMPILE-008, COMPILE-013, COMPILE-014.
+
+## P1 - CI/CD and GitHub Container Registry
+
+### Image publishing workflow
+
+- [x] **CD-001:** Add `.github/workflows/publish-images.yml` as a dedicated CD
+  workflow, separate from pull-request CI.
+- [x] **CD-002:** Build both engine images with a matrix and publish them as:
+  - `ghcr.io/bassemzohdy/specs-agent-lang`
+  - `ghcr.io/bassemzohdy/specs-agent-adk`
+- [x] **CD-003:** Authenticate to GitHub Container Registry using the workflow
+  `GITHUB_TOKEN` with minimum permissions: `contents: read` and
+  `packages: write`.
+- [x] **CD-004:** Trigger publishing on strict semantic-version tags and manual
+  requests for the matching existing tag; reject build metadata and malformed
+  Docker-tag collisions.
+- [x] **CD-005:** Coordinate immutable full semantic-version and
+  `sha-<full-commit>` tags, stable major/minor/`latest` aliases, metadata-action
+  OCI labels, and digest-based idempotent recovery.
+- [x] **CD-006:** Use Docker Buildx with registry-backed layer caching and build
+  `linux/amd64` plus `linux/arm64` when dependency compatibility is verified.
+  - Acceptance:
+    - Pull-request CI includes an ARM64 dry-run build that proves both images
+      build for `linux/arm64` before the publisher enables it.
+    - `publish-images.yml` builds a multi-arch manifest (`linux/amd64,linux/arm64`)
+      using registry-backed Buildx caching.
+    - `docs/containers.md` and `docs/releasing.md` document multi-arch support
+      and the mutable `buildcache` tag.
+  - Files: `.github/workflows/ci.yml`, `.github/workflows/publish-images.yml`,
+    docs.
+  - Complexity: medium.
+  - Recommended order: after CD-007 so the reusable quality workflow can host
+    the ARM64 dry-run.
+
+- [x] **CD-007:** Make publication depend on successful lint, type checking,
+  tests, package builds, and image smoke tests for the exact release commit.
+  - Acceptance:
+    - Quality checks are extracted into a reusable workflow
+      `.github/workflows/_quality.yml`.
+    - `ci.yml` calls the reusable workflow for pull requests and pushes.
+    - `publish-images.yml` runs the reusable workflow on the exact release SHA
+      and makes `build-and-scan` depend on it.
+    - No release tag can be promoted until the full quality suite passes.
+  - Files: `.github/workflows/_quality.yml`, `ci.yml`, `publish-images.yml`,
+    docs.
+  - Complexity: medium.
+
+- [x] **CD-008:** Pull each published digest from GHCR and verify its
+  `/health/ready` endpoint before considering the release successful.
+
+### Container supply-chain controls
+
+- [x] **CD-009:** Scan both exact remote untagged digests with Trivy before any
+  release tags are applied, fail releases on fixable critical/high findings,
+  and retain unfixed findings in the generated security report.
+- [x] **CD-010:** Upload vulnerability scan results to GitHub code scanning in
+  SARIF format.
+- [x] **CD-011:** Generate an SBOM for each image with BuildKit and store its OCI
+  attestation with the GHCR digest; retain a review SBOM artifact.
+- [x] **CD-012:** Publish BuildKit OCI provenance and SBOM attestations and
+  document digest inspection. GitHub artifact attestations are deferred because
+  this private personal repository is not eligible.
+- [x] **CD-013:** Publish by immutable digest and prevent an existing release tag
+  from being silently overwritten.
+
+### Release operations and documentation
+
+- [x] **CD-014:** Document `docker pull` and `docker run` examples for both GHCR
+  images, including API/UI ports, volumes, credentials, and spec mounts.
+- [x] **CD-015:** Define package visibility, retention, and cleanup rules for
+  prerelease, `edge`, SHA, and stable tags.
+- [x] **CD-016:** Add a release checklist that keeps image versions,
+  `pyproject.toml`, changelog entries, and Git tags aligned.
+- [x] **CD-017:** Add a non-publishing pull-request path that builds and scans
+  images without granting package-write permission to untrusted code.
+- [x] **CD-018:** Protect release environments and require approval for stable
+  production tags if the repository becomes public or gains more maintainers.
+  - Acceptance:
+    - `publish-images.yml` declares a `release` environment for the tag-promotion
+      job only when the release is stable; prereleases skip the environment.
+    - `docs/releasing.md` documents the `release` environment, required reviewers,
+      and the manual steps an admin must take in the GitHub UI.
+  - Files: `.github/workflows/publish-images.yml`, `docs/releasing.md`.
+  - Complexity: small (code); requires admin action in GitHub UI.
+
+## P1 - Correctness and test coverage
+
+- [x] **TEST-001:** Cover MCP registry failures in both adapters: unsupported
+  transport, missing command, and malformed `env`/`args`.
+- [x] **TEST-002:** Cover `SQLiteCheckpointStore` corrupt rows, concurrent
+  writers, and in-memory versus file-backed operation.
+- [x] **TEST-003:** Cover CLI parsing, structured failures, and exit codes for
+  all three packages.
+- [x] **TEST-004:** Cover `/v1/events` headers, body fallback, status codes, and
+  invalid JSON in both runners.
+- [x] **TEST-005:** Either wire `temperature`, `tools`, and `n` through chat
+  execution or document and test that they are intentionally ignored.
+  Documented in README; test asserts they're accepted without effect.
+- [x] **TEST-006:** Exercise both top-level example specifications in the
+  conformance suite. Already covered by
+  `test_representative_open_workflow_and_agent_spec_fixtures_load`.
+- [x] **TEST-007:** Add recursion-depth and cyclic-safety tests for nested
+  workflow bodies. (Depth and task-count limits; the workflow task tree has
+  no cycles by construction since it comes from tree-shaped YAML/JSON.)
+- [x] **TEST-008:** Add load, cancellation, timeout, graceful-shutdown, and
+  restart-recovery integration suites.
+  - Acceptance:
+    - Concurrent chat requests complete without corruption under load.
+    - Async invocation cancellation leaves checkpoints in a defined state.
+    - Request timeouts return HTTP 504 in both runners.
+    - FastAPI lifespan drains in-flight requests and closes resources on shutdown.
+    - Reusing a `run_id` with a new engine process returns the completed
+      checkpoint without re-execution.
+  - Files: `tests/test_integration.py`, runner and runtime adjustments as needed.
+  - Complexity: large.
+  - Depends on: RUN-006 for lifespan/shutdown behavior.
+
+## P2 - Runtime and API hardening
+
+- [x] **RUN-001:** Add OpenTelemetry traces, structured execution logs, and
+  per-task metrics.
+  - Acceptance:
+    - Optional telemetry initialization driven by standard `OTEL_*` env vars.
+    - Spans around invoke, task execution, retry/catch, and checkpoint save.
+    - Per-task counters/histograms for executions, duration, retries, and failures.
+    - FastAPI and httpx instrumentation when telemetry is enabled.
+    - No telemetry overhead when disabled.
+  - Files: new `open_agent_core/telemetry.py`, `runtime.py`, both runners, tests.
+  - Complexity: medium.
+
+- [x] **RUN-002:** Add a Postgres checkpoint backend behind the persistence
+  protocol and move synchronous SQLite I/O off the event loop.
+  - Acceptance:
+    - `CheckpointStore` protocol is async (`load`, `save`, `ping`, `delete`).
+    - `PostgresCheckpointStore` implements the protocol using `asyncpg`.
+    - `SQLiteCheckpointStore` delegates blocking work to a thread pool.
+    - A factory selects the backend from `CHECKPOINT_DB_PATH` or
+      `DATABASE_URL`/`CHECKPOINT_DATABASE_URL`.
+    - Readiness check awaits `ping()`.
+  - Files: `open_agent_core/persistence.py`, `runtime.py`, both runners,
+    `docker-compose.yaml`, `.env.example`, tests.
+  - Complexity: large.
+
+- [x] **RUN-003:** Add checkpoint retention and expiry policies.
+  - Acceptance:
+    - Configurable max age, max count per entrypoint, and status-based retention.
+    - `expire()` deletes or archives old checkpoints and returns the count removed.
+    - A background task runs expiry on a configurable interval.
+    - Schema includes `created_at` and `expires_at` with appropriate indexes.
+  - Files: `open_agent_core/persistence.py`, both runners.
+  - Complexity: medium.
+  - Depends on: RUN-002.
+
+- [x] **RUN-004:** Make readiness checks validate application loading and
+  checkpoint connectivity.
+- [x] **RUN-005:** Add Docker health checks for the LangGraph and ADK services.
+- [x] **RUN-006:** Add graceful shutdown for MCP subprocesses and in-flight
+  requests through FastAPI lifespan handling.
+  - Acceptance:
+    - Both runners define a FastAPI `lifespan` that initializes and closes the
+      engine and MCP registry.
+    - MCP registry exposes async `start()`/`close()` and terminates subprocesses
+      on close.
+    - Shutdown stops accepting new requests, allows in-flight requests a grace
+      period, then closes resources.
+  - Files: both runners, both `mcp.py`, `runtime.py`, CLIs.
+  - Complexity: medium/large.
+
+- [x] **API-001:** Normalize the ADK `KeyError` response to the shared structured
+  error envelope.
+- [x] **API-002:** Add `GET /v1/models/{id}` and pagination for models/tools.
+  - Acceptance:
+    - `GET /v1/models/{id}` returns the model object or 404 with the shared error
+      envelope.
+    - `GET /v1/models` and `GET /v1/tools` accept `limit` and `after` cursor,
+      return `has_more`/`first_id`/`last_id`, and cap `limit`.
+    - Shared pagination helpers live in `open-agent-core`.
+    - Backward compatibility: unpaginated clients still see `.data` array.
+  - Files: `open_agent_core/transport.py`, both runners, tests.
+  - Complexity: small/medium.
+
+- [ ] **API-003:** Replace the single-chunk streaming response with true
+  incremental streaming in both engines.
+  - Acceptance:
+    - `stream()` yields intermediate `ExecutionEvent`s during execution.
+    - Chat endpoint with `stream: true` returns incremental SSE chunks.
+    - Each chunk is a valid OpenAI `chat.completion.chunk` delta.
+    - Non-streaming path is unchanged.
+  - Files: `runtime.py`, both runners, compilers as needed, tests.
+  - Complexity: large.
+
+- [ ] **API-004:** Route accepted CloudEvents to matching durable `listen` tasks
+  with retry and dead-letter behavior.
+  - Acceptance:
+    - `/v1/events` validates and persists CloudEvents.
+    - A matcher finds workflows/agents with pending `listen` tasks and matching
+      filters.
+    - Retry scheduler attempts delivery with backoff up to a max, then moves the
+      event to a dead-letter store.
+    - Optional endpoints to list and replay dead-letter events.
+  - Files: new `open_agent_core/events.py`, `persistence.py`, `runtime.py`, both
+    runners, tests.
+  - Complexity: large.
+  - Depends on: RUN-002 for durable storage.
+
+## P2 - Pluggable agent memory
+
+`AgentIR.memory` (`agent_spec/models.py`/`loader.py`) is parsed and validated
+today but never consumed — no compiler or invoker reads it, and there is no
+storage abstraction for it at all. This is a different concern from
+`CheckpointStore`: checkpoints resume a *workflow run*; memory is an *agent's*
+conversational/context history across turns or sessions. Google ADK's
+`ADK_MEMORY_SERVICE_URI` only configures ADK's own native dev-ui memory
+service, not the declarative `memory` field, and LangGraph has no equivalent
+at all. The tasks below add a `MemoryStore` abstraction that mirrors the
+`CheckpointStore` design **RUN-002** already established — protocol-based,
+async, `ping()`-checked availability, backend selected by configuration — and
+make it genuinely pluggable so a deployer can supply a backend this repo does
+not ship (Redis, a vector store, a managed memory service) without forking
+`open-agent-core`.
+
+- [ ] **MEM-001:** Define a pluggable `MemoryStore` protocol and an in-memory
+  default implementation.
+  - Acceptance:
+    - `open_agent_core/memory.py` defines an async `MemoryStore` protocol:
+      `append(scope_id, entry)`, `history(scope_id, limit=...)`,
+      `clear(scope_id)`, `ping()`.
+    - `InMemoryMemoryStore` is the default (per-process, used when no memory
+      backend is configured) and is explicitly documented as ephemeral — not
+      shared across processes and not surviving a restart.
+    - The scope key mirrors the existing checkpoint `run_id`/thread-id
+      concept so per-conversation memory and per-run checkpoints can use the
+      same identifier without coupling the two stores together.
+  - Files: new `open_agent_core/memory.py`, tests.
+  - Complexity: medium.
+
+- [ ] **MEM-002:** Add a durable `SQLiteMemoryStore` and a
+  `PostgresMemoryStore`, and a backend-selection factory.
+  - Acceptance:
+    - `SQLiteMemoryStore` follows the async, thread-pool-offloaded pattern
+      already used by `SQLiteCheckpointStore` (**RUN-002**).
+    - `PostgresMemoryStore` reuses the same `asyncpg` connection approach as
+      `PostgresCheckpointStore`, in its own table/schema, separate from
+      checkpoints.
+    - A factory selects the backend from `MEMORY_STORE_PATH` or
+      `MEMORY_DATABASE_URL`, defaulting to `InMemoryMemoryStore` when unset,
+      independent of the checkpoint backend's own selection.
+    - Both new stores implement `ping()` for availability checks.
+  - Files: `open_agent_core/memory.py`, `docker-compose.yaml`,
+    `.env.example`, tests.
+  - Complexity: large.
+  - Depends on: MEM-001.
+
+- [ ] **MEM-003:** Make the `MemoryStore` backend pluggable for stores
+  outside this repository, not just the two built-in backends.
+  - Acceptance:
+    - The factory resolves a fully-qualified class path from
+      `MEMORY_STORE_CLASS` ahead of the built-in URL-scheme detection, so a
+      deployer can supply their own `MemoryStore` implementation without
+      modifying `open-agent-core`.
+    - `docs/memory.md` documents the protocol contract and gives a minimal
+      third-party backend example.
+  - Files: `open_agent_core/memory.py`, `docs/memory.md`.
+  - Complexity: medium.
+  - Depends on: MEM-001.
+
+- [ ] **MEM-004:** Wire declared Agent Spec `memory` config into both engine
+  invokers.
+  - Acceptance:
+    - `LangGraphAgentInvoker` and `AdkAgentInvoker` read `AgentIR.memory`
+      and, when present, load prior turns from the configured `MemoryStore`
+      before invoking the model and append the new turn after a successful
+      response.
+    - Agents that omit `memory` behave exactly as today — no behavior
+      change for the common case.
+    - Memory read/append failures are logged and degrade to no-memory
+      behavior rather than failing the request, matching the existing
+      `ADK_FALLBACK_ON_ERROR` fail-open convention.
+  - Files: both `runner.py` (agent invokers), tests.
+  - Complexity: large.
+  - Depends on: MEM-001, MEM-002.
+
+- [ ] **MEM-005:** Add memory-backend availability to health/readiness
+  reporting.
+  - Acceptance:
+    - `GET /health/ready` additionally awaits the configured `MemoryStore`'s
+      `ping()`, mirroring the existing checkpoint-store check from
+      **RUN-004**, and returns 503 with a reason when unreachable.
+    - A protected `GET /health/memory` route reports backend type and last
+      successful ping, mirroring the existing `/health/mcp` route from
+      **SEC-006**.
+  - Files: both `runner.py`, tests.
+  - Complexity: small/medium.
+  - Depends on: MEM-001, MEM-004.
+
+- [ ] **MEM-006:** Document the pluggable memory architecture and update
+  environment reference tables.
+  - Acceptance:
+    - `docs/memory.md` explains the `MemoryStore` protocol, built-in
+      backends, the third-party plugin mechanism, and the availability
+      health checks.
+    - `README.md`'s environment variable table documents
+      `MEMORY_STORE_PATH`, `MEMORY_DATABASE_URL`, and `MEMORY_STORE_CLASS`.
+    - `docs/architecture.md` diagram gains a `MemoryStore` node parallel to
+      the existing checkpoint-store flow.
+    - `CHANGELOG.md` records the change.
+  - Files: `docs/memory.md`, `README.md`, `docs/architecture.md`,
+    `CHANGELOG.md`.
+  - Complexity: small.
+  - Depends on: MEM-001 through MEM-005.
+
+## P2 - Default model configuration
+
+Today, an agent that omits `llm_config.model_id`/`model` silently falls back
+to a model name hardcoded inline at the call site — `"gpt-4o-mini"` in
+`LangGraphAgentInvoker.invoke()` (`open_agent_lang/runner.py`) and
+`"gemini-2.0-flash"` in `AdkCompiler.compile()`
+(`open_agent_adk/compiler.py`). Neither fallback is configurable or
+documented. The tasks below replace both inline fallbacks with one shared,
+env-var-configurable resolver in `open-agent-core`, so a deployer can set an
+organization-wide default model without editing every Agent Spec document,
+and so the same resolution automatically covers any agent or sub-agent
+either engine compiles — including nested agents from the planned ADK
+workflow compiler (**COMPILE-009**) — rather than only the one call site
+each engine happens to have today.
+
+Precedence (highest to lowest): the agent's own declared
+`llm_config.model_id`/`model` \> an engine-specific default env var \> a
+generic cross-engine default env var \> the existing hardcoded built-in
+fallback (preserved so zero-config behavior does not change).
+
+- [ ] **MODEL-001:** Add a shared default-model resolution helper in
+  `open-agent-core`.
+  - Acceptance:
+    - New `open_agent_core/model_config.py` exposes
+      `resolve_model(llm_config, *, engine_env_var, builtin_default) -> str`
+      implementing the precedence order above as a pure function.
+    - Empty-string and unset env vars are treated identically (fall through
+      to the next precedence level), matching existing env-parsing
+      conventions elsewhere in the codebase.
+    - Unit tests cover every precedence branch independently and in
+      combination.
+  - Files: new `open_agent_core/model_config.py`, tests.
+  - Complexity: small.
+
+- [ ] **MODEL-002:** Wire the LangGraph agent invoker to the shared resolver.
+  - Acceptance:
+    - `LangGraphAgentInvoker.invoke()` calls
+      `resolve_model(llm_config, engine_env_var="OPENAI_DEFAULT_MODEL",
+      builtin_default="gpt-4o-mini")` instead of its inline
+      `.get(..., "gpt-4o-mini")` fallback chain.
+    - Behavior is unchanged for existing agents when `OPENAI_DEFAULT_MODEL`
+      and `DEFAULT_MODEL` are both unset.
+  - Files: `open_agent_lang/runner.py`, tests.
+  - Complexity: small.
+  - Depends on: MODEL-001.
+
+- [ ] **MODEL-003:** Wire the ADK compiler to the shared resolver.
+  - Acceptance:
+    - `AdkCompiler.compile()` calls
+      `resolve_model(llm_config, engine_env_var="GOOGLE_DEFAULT_MODEL",
+      builtin_default="gemini-2.0-flash")` instead of its inline
+      `.get(..., "gemini-2.0-flash")` fallback chain.
+    - Behavior is unchanged for existing agents when `GOOGLE_DEFAULT_MODEL`
+      and `DEFAULT_MODEL` are both unset.
+  - Files: `open_agent_adk/compiler.py`, tests.
+  - Complexity: small.
+  - Depends on: MODEL-001.
+
+- [ ] **MODEL-004:** Apply the same default-model resolution to every
+  nested/sub-agent either engine compiles, not just each engine's one
+  current top-level call site.
+  - Acceptance:
+    - The planned ADK native workflow compiler (**COMPILE-009**) calls
+      `resolve_model(...)` for every `LlmAgent` it builds inside a
+      `Sequential`/`Parallel`/`LoopAgent` tree, using the same
+      `GOOGLE_DEFAULT_MODEL` env var as the top-level agent path.
+    - Any future LangGraph per-agent sub-graph compilation does the
+      equivalent with `OPENAI_DEFAULT_MODEL`.
+    - A regression test compiles a workflow with a `call` task referencing
+      an agent that omits `model_id` and asserts the resolved default is
+      used.
+  - Files: `open_agent_adk/workflow_compiler.py` (once it exists per
+    **COMPILE-009**), `open_agent_lang/compiler.py`, tests.
+  - Complexity: small.
+  - Depends on: MODEL-001, COMPILE-009.
+
+- [ ] **MODEL-005:** Document default-model configuration and update
+  environment reference tables.
+  - Acceptance:
+    - README's environment variable table documents `DEFAULT_MODEL`,
+      `OPENAI_DEFAULT_MODEL`, and `GOOGLE_DEFAULT_MODEL`, including the
+      precedence order and the existing built-in fallback values.
+    - `.env.example` includes the new variables, empty by default (no
+      behavior change from today).
+    - `docs/architecture.md` documents that model resolution is centralized
+      in `open_agent_core/model_config.py` and applies to every agent and
+      sub-agent either engine compiles.
+    - `CHANGELOG.md` records the change.
+  - Files: `README.md`, `.env.example`, `docs/architecture.md`,
+    `CHANGELOG.md`.
+  - Complexity: small.
+  - Depends on: MODEL-001 through MODEL-004.
+
+## P2 - Externalized agent configuration
+
+Agent Spec documents hardcode every agent characteristic today — model,
+temperature, provider auth, system prompt, tool bindings — as literal
+values. Retargeting an agent for a different environment (dev/staging/prod,
+a different provider account, a different default persona) means editing
+and redeploying the spec document itself. There is no placeholder syntax
+that lets a spec *declare* a characteristic's value as "read from this
+environment variable, falling back to this default if unset," the way
+Spring Boot's `${property.name:defaultValue}` lets a properties/YAML file
+defer a value to the environment. This is a different, complementary
+concern to [`MODEL-001`..`MODEL-005`](#p2---default-model-configuration):
+those tasks give the *platform* a fallback for a field an agent's author
+left out entirely; the tasks below let an agent's *author* explicitly mark
+any field as environment-overridable, with its own author-chosen default.
+
+The workflow task language already owns the `${...}` syntax for its own
+runtime expression evaluator (`open_agent_core/expressions.py`, evaluated
+against workflow payload/context, e.g. `${ .priority == "high" }`). To avoid
+colliding with that, placeholder resolution below is scoped to Agent Spec
+and `bindings.yaml` documents only — never to Open Workflow task bodies,
+which keep their existing expression semantics unchanged.
+
+- [ ] **CONFIG-001:** Design the placeholder syntax, precedence rules, and
+  document scope.
+  - Acceptance:
+    - A short design note fixes the exact grammar: `${VAR_NAME}` (required —
+      resolution fails if unset) and `${VAR_NAME:default}` (optional —
+      falls back to the literal default text if the variable is unset or
+      empty).
+    - The design explicitly states the syntax applies only to Agent Spec
+      documents (`agent_spec/loader.py`) and `bindings.yaml`
+      (`tool_bindings`, `agent_calls`, `aliases`), never to Open Workflow
+      task bodies, so it cannot collide with the existing expression
+      evaluator's own `${...}` syntax.
+    - The design states precedence for a single field: the field's own
+      resolved placeholder value (env var if set, else the spec's inline
+      default) always wins; composing this with the separate
+      `MODEL-001`..`MODEL-005` engine-default layer is deferred to
+      **CONFIG-006**.
+    - Reviewed against the existing `agent-with-tools.yaml` and
+      `agent-vertex-config.yaml` conformance fixtures to confirm the syntax
+      reads naturally in nested `llm_config`/`auth` blocks.
+  - Files: design note only (no code).
+  - Complexity: small.
+
+- [ ] **CONFIG-002:** Implement the placeholder-resolution utility in
+  `open-agent-core`.
+  - Acceptance:
+    - New `open_agent_core/config_resolution.py` exposes
+      `resolve_env_placeholders(value, *, env=os.environ) -> Any`, a pure
+      function that recursively walks dicts/lists and rewrites every string
+      leaf matching `${VAR_NAME}`/`${VAR_NAME:default}`; non-matching
+      strings and non-string leaves pass through unchanged.
+    - A required placeholder (`${VAR_NAME}`, no `:default`) with no
+      matching env var raises a typed error carrying the variable name and
+      the dotted path to the offending field.
+    - An optional placeholder (`${VAR_NAME:default}`) with an unset or
+      empty-string env var resolves to the literal default text.
+    - A literal `${...}` that does not match `[A-Z_][A-Z0-9_]*` (with or
+      without `:default`) is left untouched, so it cannot misfire on
+      unrelated bracketed text.
+    - Pure unit tests cover: required-and-set, required-and-missing,
+      optional-with-default-used, optional-with-env-override, nested
+      dict/list structures, and adjacent non-placeholder text in the same
+      string.
+  - Files: new `open_agent_core/config_resolution.py`, new
+    `tests/test_config_resolution.py`.
+  - Complexity: small/medium.
+  - Depends on: CONFIG-001.
+
+- [ ] **CONFIG-003:** Wire placeholder resolution into the Agent Spec
+  loader.
+  - Acceptance:
+    - `agent_spec/loader.py` calls `resolve_env_placeholders` on the raw
+      parsed document dict before it reaches
+      `AgentSpecDeserializer().from_dict(...)` and the `AgentDocument`
+      pydantic model, so `llm_config.model_id`, `llm_config.temperature`,
+      `llm_config.auth.*`, `system_prompt`, and `tools[].binding` can all
+      carry placeholders.
+    - A required-and-missing placeholder surfaces through the existing
+      `SpecValidationError`/diagnostics path (see **CONFIG-005**), not a
+      raw exception.
+    - Existing agent fixtures with no placeholders load with byte-identical
+      results (pure passthrough when no `${...}` pattern is present).
+  - Files: `open_agent_core/agent_spec/loader.py`, tests.
+  - Complexity: small.
+  - Depends on: CONFIG-002.
+
+- [ ] **CONFIG-004:** Wire placeholder resolution into `bindings.yaml`
+  loading.
+  - Acceptance:
+    - `loader.py`'s `bindings.yaml` parsing resolves placeholders in
+      `tool_bindings[].command`, `tool_bindings[].args`,
+      `tool_bindings[].env` values, `agent_calls` targets, and `aliases`
+      targets, so a deployment can point bindings at environment-specific
+      commands/paths/targets without forking `bindings.yaml` per
+      environment.
+    - `BindingsIR` construction happens after resolution, so downstream
+      code never sees an unresolved placeholder.
+    - Existing bindings fixtures with no placeholders are unaffected.
+  - Files: `open_agent_core/loader.py`, tests.
+  - Complexity: small.
+  - Depends on: CONFIG-002.
+
+- [ ] **CONFIG-005:** Add a dedicated diagnostic code for unresolved
+  required placeholders.
+  - Acceptance:
+    - A new diagnostic code (e.g. `AGENT_CONFIG_PLACEHOLDER_UNRESOLVED`) is
+      added to `diagnostics.py`, raised by **CONFIG-003**/**CONFIG-004**
+      through the same `SpecValidationError` path used by every other
+      loader failure, including the variable name and source document
+      location.
+    - All three CLIs' existing diagnostic-rendering path (**CODE-002**)
+      renders it without a raw traceback.
+  - Files: `open_agent_core/diagnostics.py`, `agent_spec/loader.py`,
+    `loader.py`, tests.
+  - Complexity: small.
+  - Depends on: CONFIG-003, CONFIG-004.
+
+- [ ] **CONFIG-006:** Document and compose this mechanism with the
+  engine-level default-model resolver.
+  - Acceptance:
+    - Documentation states the combined precedence when both mechanisms are
+      in play: an agent's own literal or placeholder-resolved
+      `llm_config.model_id` (this section) always wins; only when the
+      field is omitted entirely does `resolve_model()` from
+      [`MODEL-001`](#p2---default-model-configuration) apply.
+    - No behavior change to `MODEL-001`..`MODEL-005`'s own resolver; this
+      task is documentation/composition only, not a rewrite.
+  - Files: `docs/architecture.md` or a new `docs/agent-config.md`.
+  - Complexity: small.
+  - Depends on: CONFIG-003, MODEL-001.
+
+- [ ] **CONFIG-007:** Add conformance fixtures and end-to-end tests
+  demonstrating placeholder usage.
+  - Acceptance:
+    - New fixtures under `tests/fixtures/conformance/agents/` (e.g.
+      `agent-with-env-placeholders.yaml`) declare `llm_config.model_id`,
+      `temperature`, and a tool `binding` using both `${VAR}` and
+      `${VAR:default}` forms.
+    - A `bindings.yaml` fixture variant declares a `tool_bindings` entry
+      whose `command`/`env` use placeholders.
+    - Parametrized tests load each fixture with the env var set and unset
+      (asserting the default applies) and assert the resolved `AgentIR`
+      values match expectations.
+  - Files: `tests/fixtures/conformance/agents/**`, `tests/test_conformance.py`,
+    tests.
+  - Complexity: small/medium.
+  - Depends on: CONFIG-003, CONFIG-004.
+
+- [ ] **CONFIG-008:** Document the feature and update environment
+  reference material.
+  - Acceptance:
+    - README gains a section (near "Agent capabilities") explaining the
+      `${VAR}`/`${VAR:default}` syntax, its scope (Agent Spec and
+      `bindings.yaml` only, distinct from the workflow expression
+      language), and a worked example.
+    - `.env.example` gains a comment block showing a sample placeholder
+      usage pattern (no new required variables — placeholder names are
+      author-chosen per spec, not fixed by the platform).
+    - `docs/architecture.md` gains a short note on where resolution
+      happens in the load pipeline (between raw YAML/JSON parse and
+      Pydantic validation).
+    - `CHANGELOG.md` records the change.
+  - Files: `README.md`, `.env.example`, `docs/architecture.md`,
+    `CHANGELOG.md`.
+  - Complexity: small.
+  - Depends on: CONFIG-001 through CONFIG-007.
+
+## P2 - Specification and platform capabilities
+
+- [x] **SPEC-001:** Expand conformance fixtures across more Open Workflow v1
+  shapes and Agent Spec component types.
+  - Acceptance:
+    - A `tests/fixtures/conformance/` tree covers canonical workflow shapes
+      (`set`, `call`, `switch`, `for`, `while`, `fork`, `retry`, `catch`,
+      `finally`, `wait`, `listen`, `raise`, `emit`, `run`, nested `do`).
+    - Agent fixtures cover tools, memory, and provider-specific config variants.
+    - Parametrized tests load every fixture and assert valid IR.
+  - Files: `tests/fixtures/conformance/**`, `tests/test_conformance.py`.
+  - Complexity: medium.
+
+- [x] **SPEC-002:** Add richer expression functions, scoped variables, and
+  compatibility tests for coercion and error semantics.
+  - Acceptance:
+    - Built-in functions (`length`, `upper`, `lower`, `concat`, `join`, `split`,
+      `default`, `exists`, `matches`, `now`) are callable inside expressions.
+    - Scoped variable shadowing in nested loops is deterministic.
+    - A coercion/error matrix is documented and tested.
+  - Files: `open_agent_core/runtime.py`, new `tests/test_expressions.py`, docs.
+  - Complexity: medium/large.
+
+- [x] **SPEC-003:** Add schema/version compatibility checks for application
+  bundles.
+  - Acceptance:
+    - Mixed workflow DSL versions and unsupported agent spec versions are rejected.
+    - Inline `call: agent-id` references resolve to declared agents.
+    - Agent tool bindings referenced from agent specs exist in `bindings.yaml`.
+    - Clear diagnostic codes for each failure class.
+  - Files: `open_agent_core/loader.py`, `diagnostics.py`, tests.
+  - Complexity: medium.
+
+- [ ] **OPS-001:** Add Kubernetes and managed-container deployment examples
+  using external secret managers.
+  - Acceptance:
+    - `deployments/kubernetes/` contains base manifests and Kustomize overlays for
+      both engines.
+    - Secret-manager examples (External Secrets Operator, Sealed Secrets,
+      CSI driver) mount credentials without embedding them.
+    - `docs/deployments.md` explains usage.
+  - Files: `deployments/**`, `docs/deployments.md`, README.
+  - Complexity: large.
+
+## P2 - Documentation and maintainability
+
+- [x] **DOC-001:** Add docstrings to complex runtime internals, especially
+  expression lookup and retry/catch control flow.
+  - Acceptance:
+    - Every non-trivial function in `runtime.py` has an accurate docstring.
+    - No behavior changes; only comments/docstrings added.
+  - Files: `open_agent_core/runtime.py`.
+  - Complexity: small.
+
+- [x] **DOC-002:** Publish a generated OpenAPI document and clearly describe
+  accepted-but-ignored chat fields.
+  - Acceptance:
+    - `scripts/generate_openapi.py` writes `docs/openapi-lang.json` and
+      `docs/openapi-adk.json` from each runner's `create_app`.
+    - CI fails if generated OpenAPI files drift.
+    - `docs/openapi.md` describes endpoints and the accepted-but-ignored
+      `temperature`, `tools`, and `n` fields.
+  - Files: both runners, new `scripts/generate_openapi.py`, `docs/openapi.md`,
+    CI, tests.
+  - Complexity: medium.
+
+- [x] **DOC-003:** Add an architecture diagram showing the flow from both spec
+  loaders through core IR into the LangGraph and ADK engines.
+  - Acceptance:
+    - `docs/architecture.md` contains a Mermaid diagram and a rendered static
+      image for offline viewing.
+    - README links to the diagram near the repository layout section.
+  - Files: `docs/architecture.md`, `docs/architecture.svg`, README.
+  - Complexity: small.
+
+- [x] **CODE-001:** Remove or integrate the unused `ApplicationConfig` model.
+- [x] **CODE-002:** Make the core CLI render `SpecValidationError` diagnostics
+  without a raw traceback. (Applied to all three CLIs; `serve` fails fast
+  with diagnostics before starting uvicorn.)
+- [x] **CODE-003:** Extract the duplicated FastAPI request/response contract from
+  both runner modules into a shared core transport module.
+  - Acceptance:
+    - `ChatMessage`, `ChatCompletionRequest`, `_chat_response`, and
+      `_stream_response` live in `open-agent-core` and are imported by both
+      runners.
+    - Shared authorization helper is centralized without changing behavior.
+    - Both runners remain independently deployable and pass all existing tests.
+  - Files: `open_agent_core/transport.py`, both runners, tests.
+  - Complexity: medium.
+
+## P3 - Product roadmap
+
+- [ ] **PRODUCT-001:** Add run history and workflow visualization to the
+  lightweight console.
+- [ ] **PRODUCT-002:** Support resumable distributed executions and human
+  approval steps.
+- [ ] **PRODUCT-003:** Add a registry for versioned specification bundles and
+  compatibility policies.
+
+## Recently completed maintenance
+
+- [x] Add `SECURITY.md`, Apache-2.0 `LICENSE`, `CONTRIBUTING.md`, and
+  `CHANGELOG.md`.
+- [x] Add pre-commit checks for Ruff and mypy.
+- [x] Type-check tests and examples instead of excluding them from mypy.
+- [x] Enforce pytest coverage in CI.
+- [x] Add Dependabot, lockfile validation, and CI concurrency cancellation.
+- [x] Reject a local Makefile/justfile; Docker Compose remains the standard
+  build, package, and run interface.
+- [x] Fix the ADK `chat_completions` `KeyError` envelope (**API-001**), wrap
+  all three CLIs' `serve`/validation paths to render `SpecValidationError`
+  diagnostics instead of a traceback (**CODE-002**), remove the unused
+  `ApplicationConfig` model (**CODE-001**), and add CLI parsing/exit-code
+  tests (**TEST-003**).
+
+## Definition of done
+
+Every completed item must include:
+
+- implementation and focused tests;
+- applicable lint, formatting, type, unit, and integration checks;
+- updated user/deployment documentation;
+- CI evidence for the affected packages and both engines when relevant;
+- no embedded credentials or broader permissions than the task requires.
+
+Changes affecting both engines must preserve the shared core contract and keep
+  the images independently deployable.

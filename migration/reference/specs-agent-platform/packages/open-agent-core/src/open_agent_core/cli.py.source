@@ -1,0 +1,28 @@
+from __future__ import annotations
+
+import argparse
+import sys
+
+from .diagnostics import SpecValidationError
+from .loader import load_application
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="open-agent-core")
+    parser.add_argument("application", nargs="?", default="examples/application")
+    args = parser.parse_args(argv)
+    try:
+        application = load_application(args.application)
+    except SpecValidationError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    print(
+        f"valid: {len(application.workflows)} workflow(s), "
+        f"{len(application.agents)} agent(s), "
+        f"{len(application.entrypoints())} entrypoint(s)"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

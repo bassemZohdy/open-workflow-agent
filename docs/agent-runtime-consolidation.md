@@ -6,7 +6,7 @@ Accepted on 2026-10-11: maintain `open-workflow-agent` as the main repository, c
 |---|---|---|
 | open-workflow-agent-adk | All 284 tracked files preserved as frozen Apache references; selected fixtures adapted to canonical contract tests | Native graph/provider/broker/memory ports and old import/CLI compatibility |
 | generic-agent-lang | All 102 file hashes and refs indexed; eight pattern families tracked; independent assistant/pipeline OWS recipes | No detected license grant; source stays at origin; unsafe approval excluded |
-| specs-agent-platform | Reviewed locally | Private source transfer to this public repository awaits approval |
+| specs-agent-platform | All 109 pinned tracked files imported as Apache references after explicit transfer authorization | Native compiler integration and semantic/checkpoint corrections remain staged work |
 
 Pinned public revisions, refs and every file disposition are in [the source manifest](../migration/source-manifest.json). The [reference guide](../migration/README.md) explains provenance. Frozen code is not installed, packaged or imported as a second engine. Source repositories have not yet been archived. Keep their histories, releases, branches and useful open PRs; do not delete them.
 
@@ -39,4 +39,4 @@ Standalone Apache `open-workflow-agent-adk` v0.2.1 imports `openworkflow_adk`; t
 
 Archive after reviewed material/disposition is published and preservation checks pass. GitHub archival is reversible and retains source history. It freezes maintenance; it does not assert that all legacy features are implemented here. Existing pinned releases remain available; unarchive if old-boundary maintenance is needed.
 
-The GitHub connector used here has no archive action. Browser fallback needs permission before use. Private-source publication is a separate decision. Both statuses remain pending until performed and verified.
+Private-source publication was authorized after the explicit visibility question and is completed in this consolidation. The source remains private at origin. The GitHub connector has no archive action, and the permitted browser fallback is not authenticated; archival currently needs the user to perform the action. Never report archival complete until repository metadata confirms it.

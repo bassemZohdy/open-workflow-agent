@@ -53172,29 +53172,50 @@
         "id": "MIG-01",
         "stage": 1,
         "module": "M12",
-        "description": "Approve/dispose private-source transfer and missing generic-agent-lang license before source publication.",
+        "description": "Settle source transfer/license disposition: private Apache transfer authorized; unlicensed generic source retained at origin.",
         "effort": "S",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Completed",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": [
+          "PROJECT.md: approved source transfer and Apache attribution; generic source retained without copying"
+        ]
       },
       {
         "id": "MIG-02",
         "stage": 1,
         "module": "M12",
-        "description": "Publish migration notices and archive the three sources after consolidation and preservation checks.",
+        "description": "Publish consolidation/migration record and archive the three preserved predecessors; archival currently needs user action.",
         "effort": "S",
         "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "blocker": "GitHub connector has no archive action; browser not authenticated; user offered to perform unavailable actions."
       }
     ],
-    "source_disposition": "Public ADK frozen references imported; generic code stays at licensed origin pending rights; private specs source transfer pending approval",
+    "source_disposition": "All 284 public ADK and 109 approved private specs files imported as Apache frozen references; generic code retained at origin with all eight patterns tracked; unsafe approval excluded",
     "verification": {
       "new_tests_executed": [
-        {"path": "tests/contract/test_consolidated_patterns.py", "passed": 14, "scope": "Canonical ADK/LangGraph adapters; native SDK lowering not qualified"},
-        {"path": "tests/ci/test_consolidation_tracking.py", "passed": 2, "scope": "Full inventory ownership and exact Apache snapshot integrity"}
+        {
+          "path": "tests/contract/test_consolidated_patterns.py",
+          "passed": 14,
+          "scope": "Canonical ADK/LangGraph adapters; native SDK lowering not qualified"
+        },
+        {
+          "path": "tests/ci/test_consolidation_tracking.py",
+          "passed": 2,
+          "scope": "Full inventory ownership and exact Apache snapshot integrity"
+        }
       ],
-      "local_root_suite": {"passed": 679, "skipped": 8, "core_coverage_percent": 90.47},
-      "quality_checks": ["Ruff", "formatting", "strict mypy", "Markdown relative links"],
+      "local_root_suite": {
+        "passed": 679,
+        "skipped": 8,
+        "core_coverage_percent": 90.47
+      },
+      "quality_checks": [
+        "Ruff",
+        "formatting",
+        "strict mypy",
+        "Markdown relative links"
+      ],
       "full_conformance": false
     }
   }

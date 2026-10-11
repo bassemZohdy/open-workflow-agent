@@ -1,0 +1,83 @@
+name: ${COMPOSE_PROJECT_NAME:-specs-agent-platform}
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    ports:
+      # Loopback-only: the Postgres checkpoint backend is reachable from the
+      # lang/adk services on the internal network; this host binding is for
+      # local debugging only and must not be reachable beyond this host with
+      # the .env.example placeholder password.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  lang:
+    profiles: ["lang"]
+    image: specs-agent-lang:local
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    build:
+      context: .
+      dockerfile: packages/open-agent-lang/Dockerfile
+    environment:
+      APPLICATION_PATH: ${APPLICATION_PATH:-/app/examples/application}
+      PORT: ${LANG_CONTAINER_PORT:-8080}
+      CHECKPOINT_DATABASE_URL: postgresql://${POSTGRES_USER:-specs_agent}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-specs_agent}
+    ports:
+      - "${LANG_PORT:-8081}:${LANG_CONTAINER_PORT:-8080}"
+    volumes:
+      - lang_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os,urllib.request as u; u.urlopen('http://127.0.0.1:' + os.environ.get('PORT', '8080') + '/health/ready', timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  adk:
+    profiles: ["adk"]
+    image: specs-agent-adk:local
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    build:
+      context: .
+      dockerfile: packages/open-agent-adk/Dockerfile
+    environment:
+      APPLICATION_PATH: ${APPLICATION_PATH:-/app/examples/application}
+      PORT: ${ADK_CONTAINER_PORT:-8080}
+      CHECKPOINT_DATABASE_URL: postgresql://${POSTGRES_USER:-specs_agent}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-specs_agent}
+    ports:
+      - "${ADK_PORT:-8082}:${ADK_CONTAINER_PORT:-8080}"
+    volumes:
+      - adk_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os,urllib.request as u; u.urlopen('http://127.0.0.1:' + os.environ.get('PORT', '8080') + '/health/ready', timeout=3)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  lang_data:
+  adk_data:

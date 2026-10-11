@@ -1,0 +1,12 @@
+document:
+  dsl: '1.0.3'
+  namespace: conformance.support
+  name: retry-constant
+  version: '1.0.0'
+do:
+  - risky:
+      call: flaky
+      retry:
+        max_attempts: 3
+        delay:
+          seconds: 0

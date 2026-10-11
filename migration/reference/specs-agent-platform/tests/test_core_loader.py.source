@@ -1,0 +1,508 @@
+from pathlib import Path
+from typing import Any
+
+import pytest
+import yaml
+from open_agent_core import (
+    InMemoryEngine,
+    SpecValidationError,
+    SQLiteCheckpointStore,
+    load_application,
+)
+
+ROOT = Path(__file__).parents[1]
+
+
+def test_loads_application_and_resolves_bindings() -> None:
+    application = load_application(ROOT / "examples" / "application")
+
+    assert application.entrypoints() == (
+        "example.support/support-workflow@1.0.0",
+        "example.support/support-agent@1.0.0",
+    )
+    assert application.resolve_entrypoint("support") == "example.support/support-workflow@1.0.0"
+    assert application.workflows[0].tasks[1].kind == "call"
+    assert application.bindings.agent_calls["support-agent"].endswith("support-agent@1.0.0")
+
+
+def test_rejects_invalid_workflow_version(tmp_path: Path) -> None:
+    source = tmp_path / "bad.yaml"
+    source.write_text(
+        "document:\n  dsl: '0.9'\n  namespace: x\n  name: y\n  version: '1'\ndo: []\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SpecValidationError) as error:
+        load_application(tmp_path)
+
+    assert "WORKFLOW_VERSION_UNSUPPORTED" in str(error.value)
+
+
+def test_validation_diagnostic_includes_structured_path(tmp_path: Path) -> None:
+    source = tmp_path / "bad.yaml"
+    source.write_text("document:\n  dsl: 1.0.3\n", encoding="utf-8")
+
+    with pytest.raises(SpecValidationError) as error:
+        load_application(tmp_path)
+
+    assert error.value.diagnostics[0].path == "document.namespace"
+
+
+def test_validation_diagnostic_includes_yaml_coordinates(tmp_path: Path) -> None:
+    source = tmp_path / "bad.yaml"
+    source.write_text(
+        "document:\n  dsl: '1.0.3'\n  namespace: [invalid]\n  name: test\n  version: '1'\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SpecValidationError) as error:
+        load_application(tmp_path)
+
+    diagnostic = error.value.diagnostics[0]
+    assert diagnostic.path == "document.namespace"
+    assert diagnostic.line == 3
+    assert diagnostic.column == 14
+
+
+def test_rejects_unknown_bound_agent(tmp_path: Path) -> None:
+    workflow = tmp_path / "workflow.yaml"
+    workflow.write_text(
+        "document:\n"
+        "  dsl: '1.0.3'\n"
+        "  namespace: x\n"
+        "  name: y\n"
+        "  version: '1'\n"
+        "do:\n"
+        "  - call_it:\n"
+        "      call: missing\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "bindings.yaml").write_text(
+        "agent_calls:\n  missing: does-not-exist\n", encoding="utf-8"
+    )
+
+    with pytest.raises(SpecValidationError) as error:
+        load_application(tmp_path)
+
+    assert "UNRESOLVED_AGENT_BINDING" in str(error.value)
+
+
+def test_reports_malformed_source(tmp_path: Path) -> None:
+    (tmp_path / "broken.yaml").write_text("document: [", encoding="utf-8")
+
+    with pytest.raises(SpecValidationError) as error:
+        load_application(tmp_path)
+
+    assert "WORKFLOW_SPEC_INVALID" in str(error.value)
+
+
+def test_loads_explicit_workflow_and_agent_paths() -> None:
+    application = load_application(
+        workflow_path=ROOT / "examples" / "application" / "workflows" / "workflow.yaml",
+        agent_path=ROOT / "examples" / "application" / "agents" / "support-agent.yaml",
+    )
+
+    assert len(application.workflows) == 1
+    assert len(application.agents) == 1
+
+
+@pytest.mark.asyncio
+async def test_runtime_resolves_control_flow_retry_and_catch(tmp_path: Path) -> None:
+    workflow = tmp_path / "workflow.yaml"
+    workflow.write_text(
+        "document:\n"
+        "  dsl: '1.0.3'\n"
+        "  namespace: x\n"
+        "  name: control\n"
+        "  version: '1'\n"
+        "do:\n"
+        "  - copy:\n"
+        "      set:\n"
+        "        copied: '${ .request }'\n"
+        "  - branch:\n"
+        "      switch:\n"
+        "        - name: enabled\n"
+        "          when: '${ .enabled }'\n"
+        "          then:\n"
+        "            - mark_enabled:\n"
+        "                set:\n"
+        "                  branch: 'yes'\n"
+        "        - name: disabled\n"
+        "          default: true\n"
+        "          then:\n"
+        "            - mark_disabled:\n"
+        "                set:\n"
+        "                  branch: 'no'\n"
+        "  - loop:\n"
+        "      for:\n"
+        "        in: [1, 2]\n"
+        "        as: number\n"
+        "      do:\n"
+        "        - remember:\n"
+        "            set:\n"
+        "              last_number: '${ .number }'\n"
+        "  - risky:\n"
+        "      call: flaky\n"
+        "      retry:\n"
+        "        max_attempts: 2\n"
+        "      catch:\n"
+        "        - recovered:\n"
+        "            set:\n"
+        "              status: recovered\n"
+        "      finally:\n"
+        "        - cleanup:\n"
+        "            set:\n"
+        "              cleaned: true\n",
+        encoding="utf-8",
+    )
+    application = load_application(tmp_path)
+    attempts = 0
+
+    async def flaky(_: dict[str, object]) -> object:
+        nonlocal attempts
+        attempts += 1
+        raise RuntimeError("temporary failure")
+
+    engine = InMemoryEngine(application, call_handlers={"flaky": flaky})
+    result = await engine.invoke(
+        "x/control@1",
+        {"request": "hello", "enabled": True},
+    )
+
+    assert attempts == 2
+    assert result["copied"] == "hello"
+    assert result["branch"] == "yes"
+    assert result["last_number"] == 2
+    assert result["status"] == "recovered"
+    assert result["cleaned"] is True
+
+
+@pytest.mark.asyncio
+async def test_runtime_supports_expression_operators_and_mapping_blocks(tmp_path: Path) -> None:
+    workflow = tmp_path / "workflow.yaml"
+    workflow.write_text(
+        "document:\n"
+        "  dsl: '1.0.3'\n"
+        "  namespace: x\n"
+        "  name: expressions\n"
+        "  version: '1'\n"
+        "do:\n"
+        "  - values:\n"
+        "      set:\n"
+        "        selected: '${ .items[1] }'\n"
+        "        workflow_item: '${ $workflow.input.items[0] }'\n"
+        "        context_selected: '${ $context.selected }'\n"
+        "        valid: \"${ .count >= 2 && .name == 'ready' }\"\n"
+        "        member: '${ .selected in .items }'\n"
+        '        rendered: "count=${ .count }"\n'
+        "  - branch:\n"
+        "      case: '${ .selected }'\n"
+        "      switch:\n"
+        "        ready:\n"
+        "          do:\n"
+        "            - mark:\n"
+        "                set:\n"
+        "                  status: ok\n"
+        "  - failing:\n"
+        "      call: missing-handler\n"
+        "      catch:\n"
+        "        do:\n"
+        "          - recover:\n"
+        "              set:\n"
+        "                recovered: true\n"
+        "      finally:\n"
+        "        do:\n"
+        "          - clean:\n"
+        "              set:\n"
+        "                cleaned: true\n"
+        "  - finish:\n"
+        "      set:\n"
+        "        output:\n"
+        "          selected: '${ .selected }'\n"
+        "          workflow_item: '${ .workflow_item }'\n"
+        "          context_selected: '${ .context_selected }'\n"
+        "          valid: '${ .valid }'\n"
+        "          member: '${ .member }'\n"
+        "          rendered: '${ .rendered }'\n"
+        "          status: '${ .status }'\n"
+        "          recovered: '${ .recovered }'\n"
+        "          cleaned: '${ .cleaned }'\n",
+        encoding="utf-8",
+    )
+    application = load_application(tmp_path)
+
+    async def fail(_: dict[str, object]) -> object:
+        raise RuntimeError("expected")
+
+    result = await InMemoryEngine(application, call_handlers={"missing-handler": fail}).invoke(
+        "x/expressions@1",
+        {"items": ["not-ready", "ready"], "count": 2, "name": "ready"},
+    )
+
+    assert result["selected"] == "ready"
+    assert result["workflow_item"] == "not-ready"
+    assert result["context_selected"] == "ready"
+    assert result["valid"] is True
+    assert result["member"] is True
+    assert result["rendered"] == "count=2"
+    assert result["status"] == "ok"
+    assert result["recovered"] is True
+    assert result["cleaned"] is True
+
+
+@pytest.mark.asyncio
+async def test_runtime_persists_and_reuses_completed_checkpoint(tmp_path: Path) -> None:
+    workflow = tmp_path / "workflow.yaml"
+    workflow.write_text(
+        "document:\n"
+        "  dsl: '1.0.3'\n"
+        "  namespace: x\n"
+        "  name: checkpointed\n"
+        "  version: '1'\n"
+        "do:\n"
+        "  - save:\n"
+        "      set:\n"
+        "        value: '${ .value }'\n",
+        encoding="utf-8",
+    )
+    application = load_application(tmp_path)
+    store = SQLiteCheckpointStore(tmp_path / "runs.db")
+    engine = InMemoryEngine(application, checkpoint_store=store)
+
+    first = await engine.invoke("x/checkpointed@1", {"value": "first"}, run_id="run-1")
+    second = await engine.invoke("x/checkpointed@1", {"value": "second"}, run_id="run-1")
+
+    assert first["value"] == "first"
+    assert second == first
+    record = await store.load("run-1")
+    await store.close()
+    assert record is not None
+    assert record["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_runtime_supports_v1_for_retry_catch_wait_fork_and_listen(tmp_path: Path) -> None:
+    workflow = tmp_path / "workflow.yaml"
+    workflow.write_text(
+        "document:\n"
+        "  dsl: '1.0.3'\n"
+        "  namespace: x\n"
+        "  name: v1-controls\n"
+        "  version: '1'\n"
+        "do:\n"
+        "  - iterate:\n"
+        "      for:\n"
+        "        each: item\n"
+        "        in: .items\n"
+        "        at: position\n"
+        "      while: '${ .position < 2 }'\n"
+        "      do:\n"
+        "        - remember:\n"
+        "            set:\n"
+        "              last: '${ .item }'\n"
+        "              last_position: '${ .position }'\n"
+        "  - risky:\n"
+        "      call: flaky\n"
+        "      retry:\n"
+        "        delay:\n"
+        "          seconds: 0\n"
+        "        backoff:\n"
+        "          constant:\n"
+        "            seconds: 0\n"
+        "        limit:\n"
+        "          attempt:\n"
+        "            count: 2\n"
+        "        when: \"${ .error.type == 'RuntimeError' }\"\n"
+        "      catch:\n"
+        "        errors:\n"
+        "          with:\n"
+        "            type: RuntimeError\n"
+        "        as: caught\n"
+        "        do:\n"
+        "          - recover:\n"
+        "              set:\n"
+        "                recovered: '${ .caught.message }'\n"
+        "  - wait_a_moment:\n"
+        "      wait:\n"
+        "        seconds: 0\n"
+        "  - listen_for_event:\n"
+        "      listen:\n"
+        "        to:\n"
+        "          one:\n"
+        "            with:\n"
+        "              type: ready\n"
+        "  - parallel:\n"
+        "      fork:\n"
+        "        branches:\n"
+        "          - left:\n"
+        "              set:\n"
+        "                left: true\n"
+        "          - right:\n"
+        "              set:\n"
+        "                right: true\n"
+        "  - skipped:\n"
+        "      if: '${ .enabled }'\n"
+        "      set:\n"
+        "        should_not_exist: true\n"
+        "  - finish:\n"
+        "      set:\n"
+        "        output:\n"
+        "          last: '${ .last }'\n"
+        "          last_position: '${ .last_position }'\n"
+        "          recovered: '${ .recovered }'\n"
+        "          event_type: '${ .listen_for_event[0].type }'\n"
+        "          left: '${ .left }'\n"
+        "          right: '${ .right }'\n",
+        encoding="utf-8",
+    )
+    application = load_application(tmp_path)
+    attempts = 0
+
+    async def flaky(_: dict[str, object]) -> object:
+        nonlocal attempts
+        attempts += 1
+        raise RuntimeError("temporary")
+
+    result = await InMemoryEngine(application, call_handlers={"flaky": flaky}).invoke(
+        "x/v1-controls@1",
+        {
+            "items": ["first", "second", "third"],
+            "enabled": False,
+            "events": [{"type": "ready", "data": {"ok": True}}],
+        },
+    )
+
+    assert attempts == 2
+    assert result == {
+        "last": "second",
+        "last_position": 1,
+        "recovered": "temporary",
+        "event_type": "ready",
+        "left": True,
+        "right": True,
+    }
+
+
+def test_rejects_excessively_nested_workflow_tasks(tmp_path: Path) -> None:
+    node: dict[str, Any] = {"leaf": {"set": {"value": 1}}}
+    for index in range(80):
+        node = {f"level{index}": {"do": [node]}}
+    document = {
+        "document": {"dsl": "1.0.3", "namespace": "x", "name": "deep", "version": "1"},
+        "do": [node],
+    }
+    source = tmp_path / "deep.yaml"
+    source.write_text(yaml.safe_dump(document), encoding="utf-8")
+
+    with pytest.raises(SpecValidationError) as error:
+        load_application(tmp_path)
+
+    assert "maximum depth" in str(error.value)
+
+
+def test_rejects_workflows_with_too_many_tasks(tmp_path: Path) -> None:
+    tasks = [{f"task{index}": {"set": {"value": index}}} for index in range(5001)]
+    document = {
+        "document": {"dsl": "1.0.3", "namespace": "x", "name": "wide", "version": "1"},
+        "do": tasks,
+    }
+    source = tmp_path / "wide.yaml"
+    source.write_text(yaml.safe_dump(document), encoding="utf-8")
+
+    with pytest.raises(SpecValidationError) as error:
+        load_application(tmp_path)
+
+    assert "more than" in str(error.value)
+
+
+def test_rejects_mixed_workflow_dsl_versions(tmp_path: Path) -> None:
+    (tmp_path / "one.yaml").write_text(
+        "document:\n  dsl: '1.0.2'\n  namespace: x\n  name: one\n  version: '1'\ndo: []\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "two.yaml").write_text(
+        "document:\n  dsl: '1.0.3'\n  namespace: x\n  name: two\n  version: '1'\ndo: []\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SpecValidationError) as error:
+        load_application(tmp_path)
+
+    assert "WORKFLOW_VERSION_MIXED" in str(error.value)
+
+
+@pytest.mark.parametrize("version", ["99.0.0", "26.10.0"])
+def test_rejects_unsupported_agent_spec_version(tmp_path: Path, version: str) -> None:
+    (tmp_path / "agent.yaml").write_text(
+        f"component_type: Agent\nagentspec_version: '{version}'\nid: x/agent@1\nname: agent\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SpecValidationError) as error:
+        load_application(tmp_path)
+
+    assert "AGENT_SPEC_VERSION_UNSUPPORTED" in str(error.value)
+
+
+def test_rejects_inline_call_to_unknown_agent_id(tmp_path: Path) -> None:
+    (tmp_path / "workflow.yaml").write_text(
+        "document:\n"
+        "  dsl: '1.0.3'\n"
+        "  namespace: x\n"
+        "  name: w\n"
+        "  version: '1'\n"
+        "do:\n"
+        "  - step:\n"
+        "      call: other.ns/missing-agent@1.0.0\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SpecValidationError) as error:
+        load_application(tmp_path)
+
+    assert "UNRESOLVED_AGENT_CALL" in str(error.value)
+
+
+def test_rejects_agent_tool_binding_not_declared(tmp_path: Path) -> None:
+    (tmp_path / "agent.yaml").write_text(
+        "component_type: Agent\n"
+        "agentspec_version: '26.1.2'\n"
+        "id: x/agent@1\n"
+        "name: agent\n"
+        "system_prompt: You are helpful.\n"
+        "llm_config:\n"
+        "  component_type: OpenAiConfig\n"
+        "  name: model\n"
+        "  model_id: gpt-4o-mini\n"
+        "tools:\n"
+        "  - component_type: ClientTool\n"
+        "    name: lookup\n"
+        "    binding: missing-binding\n"
+        "    description: Look up an order.\n"
+        "    inputs: []\n"
+        "    outputs: []\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SpecValidationError) as error:
+        load_application(tmp_path)
+
+    assert "UNRESOLVED_TOOL_BINDING" in str(error.value)
+
+
+def test_allows_call_binding_name_without_agent_id_shape(tmp_path: Path) -> None:
+    """Simple handler names that are not agent IDs remain valid for runtime binding."""
+    (tmp_path / "workflow.yaml").write_text(
+        "document:\n"
+        "  dsl: '1.0.3'\n"
+        "  namespace: x\n"
+        "  name: w\n"
+        "  version: '1'\n"
+        "do:\n"
+        "  - step:\n"
+        "      call: some-handler\n",
+        encoding="utf-8",
+    )
+
+    application = load_application(tmp_path)
+    assert len(application.workflows) == 1

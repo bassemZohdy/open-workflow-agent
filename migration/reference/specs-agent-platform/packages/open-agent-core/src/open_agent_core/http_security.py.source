@@ -1,0 +1,256 @@
+"""Shared ASGI-level HTTP hardening helpers for the runner packages."""
+
+from __future__ import annotations
+
+import json
+import os
+import time
+from collections import deque
+from collections.abc import Awaitable, Callable
+from typing import Any
+
+Scope = dict[str, Any]
+Message = dict[str, Any]
+Receive = Callable[[], Awaitable[Message]]
+Send = Callable[[Message], Awaitable[None]]
+ASGIApp = Callable[[Scope, Receive, Send], Awaitable[None]]
+
+
+class MaxRequestBodyMiddleware:
+    """Reject request bodies larger than ``max_bytes`` regardless of transfer encoding.
+
+    ``Content-Length`` alone cannot be trusted: chunked transfer-encoded
+    requests omit it entirely. This buffers at most ``max_bytes + 1`` bytes of
+    the incoming body before handing control to the wrapped app, so memory
+    use stays bounded and oversized bodies are rejected before the route
+    handler runs, whether or not the client declared a length.
+    """
+
+    def __init__(self, app: ASGIApp, max_bytes: int) -> None:
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope.get("type") != "http" or not self.max_bytes:
+            await self.app(scope, receive, send)
+            return
+
+        buffered: list[Message] = []
+        total = 0
+        while True:
+            message = await receive()
+            buffered.append(message)
+            if message.get("type") != "http.request":
+                break
+            total += len(message.get("body", b""))
+            if total > self.max_bytes:
+                await _too_large_response(send)
+                return
+            if not message.get("more_body", False):
+                break
+
+        async def replay() -> Message:
+            if buffered:
+                return buffered.pop(0)
+            return await receive()
+
+        await self.app(scope, replay, send)
+
+
+async def _too_large_response(send: Send) -> None:
+    body = json.dumps(
+        {"error": {"message": "request body too large", "type": "invalid_request_error"}}
+    ).encode("utf-8")
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 413,
+            "headers": [(b"content-type", b"application/json")],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
+
+
+def cors_kwargs_from_env() -> dict[str, Any] | None:
+    """Build ``CORSMiddleware`` kwargs from ``CORS_ALLOW_ORIGINS``, or ``None``.
+
+    No CORS middleware is registered unless a deployer explicitly opts in by
+    setting a comma-separated origin allowlist, so cross-origin browser
+    access is denied by default.
+    """
+    raw = os.getenv("CORS_ALLOW_ORIGINS", "").strip()
+    if not raw:
+        return None
+    origins = [origin.strip() for origin in raw.split(",") if origin.strip()]
+    if not origins:
+        return None
+    return {
+        "allow_origins": origins,
+        "allow_credentials": False,
+        "allow_methods": ["GET", "POST"],
+        "allow_headers": ["Authorization", "X-API-Key", "Content-Type", "X-Open-Agent-Thread-Id"],
+    }
+
+
+class RateLimitMiddleware:
+    """Enforce per-client request rate limiting and authentication lockout.
+
+    Clients are keyed by the remote address from the ASGI scope, with a fallback
+    to a synthetic key when the address is unavailable. Both rate-limit and
+    auth-lockout windows are sliding: old entries are pruned on every check.
+
+    Health endpoints (``/health/live`` and ``/health/ready``) are exempt from
+    rate limiting so orchestrators can keep probing under load, but failed
+    authentication attempts on those endpoints still count toward lockout.
+    """
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        max_requests: int = 60,
+        window_seconds: float = 60.0,
+        lockout_max_failures: int = 5,
+        lockout_window_seconds: float = 900.0,
+        lockout_duration_seconds: float = 300.0,
+        exempt_paths: set[str] | None = None,
+    ) -> None:
+        self.app = app
+        self.max_requests = max(0, max_requests)
+        self.window_seconds = max(0.0, window_seconds)
+        self.lockout_max_failures = max(0, lockout_max_failures)
+        self.lockout_window_seconds = max(0.0, lockout_window_seconds)
+        self.lockout_duration_seconds = max(0.0, lockout_duration_seconds)
+        self.exempt_paths = exempt_paths or {"/health/live", "/health/ready"}
+        self._requests: dict[str, deque[float]] = {}
+        self._failures: dict[str, deque[float]] = {}
+        self._locked_out: dict[str, float] = {}
+
+    def _client_key(self, scope: Scope) -> str:
+        client = scope.get("client")
+        if isinstance(client, (list, tuple)) and client:
+            return str(client[0])
+        return "anonymous"
+
+    def _prune(self, timestamps: deque[float], window: float) -> None:
+        cutoff = time.monotonic() - window
+        while timestamps and timestamps[0] < cutoff:
+            timestamps.popleft()
+
+    def _is_locked_out(self, key: str) -> tuple[bool, float]:
+        if key not in self._locked_out:
+            return False, 0.0
+        remaining = self._locked_out[key] - time.monotonic()
+        if remaining <= 0:
+            del self._locked_out[key]
+            return False, 0.0
+        return True, remaining
+
+    def _record_failure(self, key: str) -> None:
+        if self.lockout_max_failures <= 0 or self.lockout_window_seconds <= 0:
+            return
+        failures = self._failures.setdefault(key, deque())
+        self._prune(failures, self.lockout_window_seconds)
+        failures.append(time.monotonic())
+        if len(failures) >= self.lockout_max_failures:
+            self._locked_out[key] = time.monotonic() + self.lockout_duration_seconds
+            failures.clear()
+
+    def _over_limit(self, key: str) -> bool:
+        if self.max_requests <= 0 or self.window_seconds <= 0:
+            return False
+        timestamps = self._requests.setdefault(key, deque())
+        self._prune(timestamps, self.window_seconds)
+        return len(timestamps) >= self.max_requests
+
+    def _record_request(self, key: str) -> None:
+        if self.max_requests <= 0 or self.window_seconds <= 0:
+            return
+        timestamps = self._requests.setdefault(key, deque())
+        self._prune(timestamps, self.window_seconds)
+        timestamps.append(time.monotonic())
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope.get("type") != "http":
+            await self.app(scope, receive, send)
+            return
+
+        key = self._client_key(scope)
+        locked, retry_after = self._is_locked_out(key)
+        if locked:
+            await _rate_limited_response(send, retry_after, "client locked out")
+            return
+
+        path = scope.get("path", "")
+        exempt = path in self.exempt_paths
+        if not exempt and self._over_limit(key):
+            await _rate_limited_response(send, self.window_seconds, "rate limit exceeded")
+            return
+
+        if not exempt:
+            self._record_request(key)
+
+        failure_recorded = False
+
+        async def wrapped_send(message: Message) -> None:
+            nonlocal failure_recorded
+            if message.get("type") == "http.response.start":
+                if message.get("status") == 401 and not failure_recorded:
+                    self._record_failure(key)
+                    failure_recorded = True
+            await send(message)
+
+        await self.app(scope, receive, wrapped_send)
+
+
+async def _rate_limited_response(send: Send, retry_after: float, reason: str) -> None:
+    body = json.dumps({"error": {"message": reason, "type": "rate_limit_error"}}).encode("utf-8")
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 429,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"retry-after", str(int(retry_after) + 1).encode("ascii")),
+            ],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
+
+
+def rate_limit_middleware_from_env() -> dict[str, Any] | None:
+    """Return kwargs for ``RateLimitMiddleware`` if any limit is configured.
+
+    All values are optional. Set a variable to ``0`` or leave it empty to
+    disable the corresponding behavior.
+    """
+    try:
+        max_requests = int(os.getenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "60"))
+    except ValueError:
+        max_requests = 60
+    try:
+        window_seconds = float(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60"))
+    except ValueError:
+        window_seconds = 60.0
+    try:
+        lockout_max_failures = int(os.getenv("AUTH_LOCKOUT_MAX_FAILURES", "5"))
+    except ValueError:
+        lockout_max_failures = 5
+    try:
+        lockout_window_seconds = float(os.getenv("AUTH_LOCKOUT_WINDOW_SECONDS", "900"))
+    except ValueError:
+        lockout_window_seconds = 900.0
+    try:
+        lockout_duration_seconds = float(os.getenv("AUTH_LOCKOUT_DURATION_SECONDS", "300"))
+    except ValueError:
+        lockout_duration_seconds = 300.0
+
+    if max_requests <= 0 and lockout_max_failures <= 0:
+        return None
+    return {
+        "max_requests": max(0, max_requests),
+        "window_seconds": max(0.0, window_seconds),
+        "lockout_max_failures": max(0, lockout_max_failures),
+        "lockout_window_seconds": max(0.0, lockout_window_seconds),
+        "lockout_duration_seconds": max(0.0, lockout_duration_seconds),
+    }

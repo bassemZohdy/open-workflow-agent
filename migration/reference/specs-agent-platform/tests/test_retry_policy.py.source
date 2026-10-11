@@ -1,0 +1,140 @@
+"""Tests for the standalone expression evaluator and retry/backoff policy."""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+from open_agent_core.expressions import (
+    condition_allows,
+    duration_seconds,
+    evaluate,
+    resolve_value,
+)
+from open_agent_core.retry import (
+    BackoffPolicy,
+    RetryPolicy,
+    parse_retry_config,
+)
+from open_agent_core.runtime import RuntimeContext
+
+
+def _ctx(values: dict[str, Any] | None = None, input_data: Any = None) -> RuntimeContext:
+    return RuntimeContext(input_data if input_data is not None else {}, values=values or {})
+
+
+def test_evaluate_public_api_paths_and_literals() -> None:
+    ctx = _ctx({"name": "Alice"}, {"count": 3})
+    assert evaluate("input.count", ctx) == 3
+    assert evaluate(".input.count", ctx) == 3
+    assert evaluate("context.name", ctx) == "Alice"
+    assert evaluate("!exists(context.missing)", ctx) is True
+    assert evaluate("'true'", ctx) == "true"
+    assert evaluate("true", ctx) is True
+    # ``${...}`` wrapping is resolved by ``resolve_value``, not ``evaluate``.
+    assert resolve_value("${ input.count }", ctx) == 3
+
+
+def test_resolve_value_public_api_recursion_and_interpolation() -> None:
+    ctx = _ctx({"name": "Bob", "n": 2})
+    assert resolve_value("hello ${ context.name }", ctx) == "hello Bob"
+    assert resolve_value("${ context.n }", ctx) == 2
+    assert resolve_value({"a": "${ context.n }", "b": ["${ context.name }"]}, ctx) == {
+        "a": 2,
+        "b": ["Bob"],
+    }
+    assert resolve_value(42, ctx) == 42
+
+
+def test_condition_allows_when_except_when() -> None:
+    ctx = _ctx({"ok": True, "nope": False})
+    assert condition_allows({}, ctx) is True
+    assert condition_allows({"when": "${ context.ok }"}, ctx) is True
+    assert condition_allows({"when": "${ context.nope }"}, ctx) is False
+    assert condition_allows({"exceptWhen": "${ context.nope }"}, ctx) is True
+    assert condition_allows({"exceptWhen": "${ context.ok }"}, ctx) is False
+    assert (
+        condition_allows({"when": "${ context.ok }", "exceptWhen": "${ context.ok }"}, ctx) is False
+    )
+    assert condition_allows({"except_when": "${ context.ok }"}, ctx) is False
+    # Legacy quirk: bare paths are not evaluated by ``resolve_value``, so a
+    # non-empty string condition counts as satisfied.
+    assert condition_allows({"when": "context.nope"}, ctx) is True
+
+
+def test_duration_seconds_normalization() -> None:
+    assert duration_seconds(5) == 5.0
+    assert duration_seconds(-3) == 0.0
+    # Legacy quirk: the first recognized unit wins (seconds before minutes).
+    assert duration_seconds({"seconds": 2, "minutes": 1}) == 2.0
+    assert duration_seconds({"minutes": 1}) == 60.0
+    assert duration_seconds("PT1H30M") == 5400.0
+    assert duration_seconds("garbage") == 0.0
+    assert duration_seconds(None) == 0.0
+
+
+def test_parse_retry_config_shapes() -> None:
+    assert parse_retry_config(None) == RetryPolicy()
+    assert parse_retry_config(True) == RetryPolicy()
+    assert parse_retry_config(2) == RetryPolicy(max_attempts=3)
+    assert parse_retry_config("junk") == RetryPolicy()
+    assert parse_retry_config({"max_attempts": 3}) == RetryPolicy(max_attempts=3)
+    assert parse_retry_config({"limit": {"attempt": {"count": 4}}}) == RetryPolicy(max_attempts=4)
+    assert parse_retry_config({"attempts": 2}) == RetryPolicy(max_attempts=2)
+    assert parse_retry_config({"count": 2}) == RetryPolicy(max_attempts=3)
+    assert parse_retry_config({"retries": 2}) == RetryPolicy(max_attempts=2)
+    assert parse_retry_config({"max_attempts": 0}) == RetryPolicy(max_attempts=1)
+    with_expressions = parse_retry_config(
+        {"max_attempts": "${ attempts }", "delay": {"seconds": 1}},
+        resolve=lambda value: 5 if isinstance(value, str) and "attempts" in value else value,
+    )
+    assert with_expressions.max_attempts == 5
+    assert with_expressions.initial_delay_seconds == 1.0
+
+
+def test_retry_policy_backoff_delays() -> None:
+    constant = RetryPolicy(max_attempts=3, initial_delay_seconds=1.0)
+    assert constant.retry_delay(1, 1.0) == 1.0
+    assert constant.retry_delay(2, 1.0) == 1.0
+
+    linear = RetryPolicy(
+        max_attempts=4,
+        initial_delay_seconds=0.5,
+        backoff=BackoffPolicy("linear", 2.0),
+    )
+    assert linear.retry_delay(1, 0.5) == 2.5
+    assert linear.retry_delay(2, 2.5) == 4.5
+
+    exponential = RetryPolicy(
+        max_attempts=4,
+        backoff=BackoffPolicy("exponential"),
+    )
+    assert exponential.retry_delay(1, 0.0) == 2.0
+    assert exponential.retry_delay(2, 2.0) == 4.0
+    assert exponential.retry_delay(3, 4.0) == 8.0
+
+    parsed = parse_retry_config(
+        {
+            "max_attempts": 4,
+            "delay": {"seconds": 1},
+            "backoff": {"exponential": True},
+        }
+    )
+    assert parsed.retry_delay(1, 0.0) == 2.0
+
+    linear_parsed = parse_retry_config({"max_attempts": 4, "backoff": {"linear": 3}})
+    assert linear_parsed.retry_delay(1, 0.0) == 3.0
+
+    constant_parsed = parse_retry_config(
+        {"max_attempts": 4, "backoff": {"constant": {"seconds": 5}}}
+    )
+    assert constant_parsed.retry_delay(1, 1.0) == 5.0
+
+
+@pytest.mark.asyncio
+async def test_runtime_engine_uses_shared_retry_policy() -> None:
+    """The in-memory engine applies retries via the shared policy module."""
+    from open_agent_core.retry import parse_retry_config as shared_parse
+
+    retry = {"max_attempts": 3, "delay": {"seconds": 0}}
+    assert shared_parse(retry).max_attempts == 3

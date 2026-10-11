@@ -1,0 +1,14 @@
+document:
+  dsl: '1.0.3'
+  namespace: conformance.support
+  name: for-in
+  version: '1.0.0'
+do:
+  - iterate:
+      for:
+        in: '${ .items }'
+        as: item
+      do:
+        - remember:
+            set:
+              last: '${ .item }'

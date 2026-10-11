@@ -1,0 +1,63 @@
+from __future__ import annotations
+
+from typing import Any
+
+from open_agent_core import AgentIR, ApplicationIR
+
+from .mcp import AdkMcpTool, McpToolRegistry
+
+
+class AdkCompiler:
+    """Build Google ADK agents from the normalized Agent Spec representation."""
+
+    def __init__(self, application: ApplicationIR):
+        self.application = application
+
+    def compile(self, agent_id: str | None = None) -> Any:
+        try:
+            from google.adk.agents import LlmAgent
+        except ImportError as exc:  # pragma: no cover - depends on optional extra
+            raise RuntimeError("Install open-agent-adk to compile Google ADK agents") from exc
+
+        agent: AgentIR = (
+            self.application.agents[0]
+            if agent_id is None
+            else next(item for item in self.application.agents if item.id == agent_id)
+        )
+        llm_config = agent.document.get("llm_config", {})
+        model = llm_config.get("model_id", llm_config.get("model", "gemini-2.0-flash"))
+        kwargs: dict[str, Any] = {
+            "name": agent.name.replace("-", "_"),
+            "model": model,
+            "instruction": agent.system_prompt or "You are a helpful assistant.",
+        }
+        registry = McpToolRegistry(self.application.bindings.tool_bindings)
+        tools: list[Any] = []
+        for item in agent.tools:
+            binding = item.get("binding", item.get("mcp_binding", item.get("name")))
+            if not isinstance(binding, str) or binding not in registry.bindings:
+                continue
+            name = item.get("name", binding)
+            if not isinstance(name, str) or not name:
+                continue
+            parameters = item.get("parameters", item.get("input_schema", {}))
+            if not isinstance(parameters, dict):
+                parameters = {"type": "object", "properties": {}}
+            elif "type" not in parameters:
+                parameters = {"type": "object", **parameters}
+            tools.append(
+                AdkMcpTool(
+                    name=name,
+                    description=str(item.get("description", "")),
+                    parameters=parameters,
+                    binding=binding,
+                    registry=registry,
+                )
+            )
+        if tools:
+            kwargs["tools"] = tools
+        return LlmAgent(**kwargs)
+
+
+def compile_agent(application: ApplicationIR, agent_id: str | None = None) -> Any:
+    return AdkCompiler(application).compile(agent_id)

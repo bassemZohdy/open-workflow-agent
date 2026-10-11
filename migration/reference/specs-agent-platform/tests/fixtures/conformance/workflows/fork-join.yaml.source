@@ -1,0 +1,15 @@
+document:
+  dsl: '1.0.3'
+  namespace: conformance.support
+  name: fork-join
+  version: '1.0.0'
+do:
+  - parallel:
+      fork:
+        branches:
+          - left:
+              set:
+                left: true
+          - right:
+              set:
+                right: true

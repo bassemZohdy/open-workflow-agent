@@ -1,0 +1,385 @@
+"""Framework-neutral workflow expression evaluation.
+
+The Open Workflow expression language is small: literals, boolean/logic
+operators, comparisons, membership tests, built-in functions, and dotted path
+lookups against the runtime context. This module owns that evaluator so the
+in-memory engine and every native compiler can share it without depending on
+one another.
+"""
+
+from __future__ import annotations
+
+import datetime
+import json
+import re
+from collections.abc import Mapping
+from typing import Any, Protocol
+
+_EXPRESSION = re.compile(r"\$\{\s*([^}]+?)\s*\}")
+_PATH_PART = re.compile(r"(?:^|\.)([^.\[\]]+)|\[(?:'([^']+)'|\"([^\"]+)\"|(\d+))\]")
+_ISO_DURATION = re.compile(
+    r"^P(?:(?P<days>\d+(?:\.\d+)?)D)?(?:T(?:(?P<hours>\d+(?:\.\d+)?)H)?"
+    r"(?:(?P<minutes>\d+(?:\.\d+)?)M)?(?:(?P<seconds>\d+(?:\.\d+)?)S)?)?$"
+)
+
+
+class ExpressionContext(Protocol):
+    """The minimal context surface expression evaluation needs.
+
+    ``open_agent_core.runtime.RuntimeContext`` satisfies this protocol, as do
+    the state adapters used by native compilers.
+    """
+
+    input: dict[str, Any]
+    values: dict[str, Any]
+
+
+def split_expression(expression: str, operator: str) -> tuple[str, str] | None:
+    """Split a top-level expression without interpreting quoted values."""
+    depth = 0
+    quote: str | None = None
+    index = 0
+    while index <= len(expression) - len(operator):
+        character = expression[index]
+        if quote:
+            if character == quote and (index == 0 or expression[index - 1] != "\\"):
+                quote = None
+            index += 1
+            continue
+        if character in {"'", '"'}:
+            quote = character
+            index += 1
+            continue
+        if character in "([":
+            depth += 1
+        elif character in ")]":
+            depth = max(0, depth - 1)
+        elif depth == 0 and expression.startswith(operator, index):
+            return expression[:index].strip(), expression[index + len(operator) :].strip()
+        index += 1
+    return None
+
+
+def literal(value: str) -> tuple[bool, Any]:
+    """Return ``(True, parsed)`` when *value* is a literal, else ``(False, None)``."""
+    normalized = value.strip()
+    lowered = normalized.lower()
+    if lowered in {"true", "false"}:
+        return True, lowered == "true"
+    if lowered in {"null", "none"}:
+        return True, None
+    if (normalized.startswith('"') and normalized.endswith('"')) or (
+        normalized.startswith("'") and normalized.endswith("'")
+    ):
+        return True, normalized[1:-1]
+    try:
+        return True, json.loads(normalized)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return False, None
+
+
+def duration_seconds(value: Any) -> float:
+    """Normalize numeric, mapping, and ISO-8601 duration values to seconds."""
+    if isinstance(value, (int, float)):
+        return max(0.0, float(value))
+    if isinstance(value, dict):
+        if "seconds" in value:
+            return duration_seconds(value["seconds"])
+        if "minutes" in value:
+            return duration_seconds(value["minutes"]) * 60
+        if "hours" in value:
+            return duration_seconds(value["hours"]) * 3600
+        if "days" in value:
+            return duration_seconds(value["days"]) * 86400
+        return 0.0
+    if isinstance(value, str):
+        try:
+            return max(0.0, float(value))
+        except ValueError:
+            match = _ISO_DURATION.fullmatch(value.strip().upper())
+            if match:
+                return sum(
+                    float(match.group(name) or 0) * multiplier
+                    for name, multiplier in (
+                        ("days", 86400),
+                        ("hours", 3600),
+                        ("minutes", 60),
+                        ("seconds", 1),
+                    )
+                )
+    return 0.0
+
+
+def split_arguments(arguments: str) -> list[str]:
+    """Split a function argument list on top-level commas."""
+    parts: list[str] = []
+    current: list[str] = []
+    depth = 0
+    quote: str | None = None
+    escaped = False
+    for character in arguments:
+        if quote:
+            current.append(character)
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == quote:
+                quote = None
+            continue
+        if character in {"'", '"'}:
+            quote = character
+            current.append(character)
+        elif character == "(":
+            depth += 1
+            current.append(character)
+        elif character == ")":
+            depth -= 1
+            current.append(character)
+        elif character == "," and depth == 0:
+            parts.append("".join(current).strip())
+            current = []
+        else:
+            current.append(character)
+    if current or arguments.endswith(","):
+        parts.append("".join(current).strip())
+    return parts
+
+
+def parse_function_call(path: str) -> tuple[str, list[str]] | None:
+    """Return ``(name, [arg_expression, ...])`` if ``path`` is a function call."""
+    if not path.endswith(")"):
+        return None
+    depth = 0
+    quote: str | None = None
+    escaped = False
+    paren_index = -1
+    for index, character in enumerate(path):
+        if quote:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == quote:
+                quote = None
+            continue
+        if character in {"'", '"'}:
+            quote = character
+        elif character == "(":
+            if depth == 0:
+                paren_index = index
+            depth += 1
+        elif character == ")":
+            depth -= 1
+            if depth == 0 and index == len(path) - 1:
+                name = path[:paren_index].strip()
+                args_str = path[paren_index + 1 : -1].strip()
+                args = split_arguments(args_str) if args_str else []
+                return name, args
+    return None
+
+
+def call_function(name: str, arguments: list[Any]) -> Any:
+    """Evaluate a built-in expression function."""
+    if name == "length":
+        value = arguments[0] if arguments else None
+        try:
+            return len(value) if value is not None else 0
+        except TypeError:
+            return 0
+    if name == "upper":
+        return str(arguments[0] if arguments else "").upper()
+    if name == "lower":
+        return str(arguments[0] if arguments else "").lower()
+    if name == "concat":
+        return "".join(str(item) for item in arguments)
+    if name == "join":
+        if len(arguments) < 2:
+            return ""
+        separator, items = arguments[0], arguments[1]
+        if not isinstance(items, (list, tuple)):
+            return str(items)
+        return str(separator).join(str(item) for item in items)
+    if name == "split":
+        if len(arguments) < 2:
+            return []
+        value, separator = arguments[0], arguments[1]
+        return str(value).split(str(separator))
+    if name == "default":
+        value = arguments[0] if arguments else None
+        fallback = arguments[1] if len(arguments) > 1 else None
+        return value if value is not None else fallback
+    if name == "exists":
+        return (arguments[0] if arguments else None) is not None
+    if name == "matches":
+        if len(arguments) < 2:
+            return False
+        value, pattern = arguments[0], arguments[1]
+        return re.search(str(pattern), str(value)) is not None
+    if name == "now":
+        return datetime.datetime.now(datetime.UTC).isoformat()
+    raise RuntimeError(f"Unknown function: {name}")
+
+
+def evaluate(expression: str, context: ExpressionContext) -> Any:
+    """Evaluate a workflow expression against the current runtime context.
+
+    Supports literals, boolean/logic operators, comparisons, membership tests,
+    built-in functions, and dotted path lookups against ``context.input`` and
+    ``context.values``. Paths may use the ``$workflow.input``, ``$context``,
+    ``input.``, or ``values.`` prefixes. A leading ``!`` negates the result.
+    Missing paths return ``None``.
+    """
+    path = expression.strip()
+    literal_value, value = literal(path)
+    if literal_value:
+        return value
+    if path in {".", "$"}:
+        return context.input
+    if path.startswith("!"):
+        return not bool(evaluate(path[1:], context))
+
+    for operator in ("||", " or "):
+        pair = split_expression(path, operator)
+        if pair:
+            left = evaluate(pair[0], context)
+            return left or evaluate(pair[1], context)
+    for operator in ("&&", " and "):
+        pair = split_expression(path, operator)
+        if pair:
+            left = evaluate(pair[0], context)
+            return evaluate(pair[1], context) if left else left
+    for operator in (" not in ", " in ", ">=", "<=", "!=", "==", ">", "<"):
+        pair = split_expression(path, operator)
+        if pair:
+            left = evaluate(pair[0], context)
+            right = evaluate(pair[1], context)
+            try:
+                if operator == "==":
+                    return left == right
+                if operator == "!=":
+                    return left != right
+                if operator == ">=":
+                    return left >= right
+                if operator == "<=":
+                    return left <= right
+                if operator == ">":
+                    return left > right
+                if operator == "<":
+                    return left < right
+                if operator == " in ":
+                    return left in right
+                return left not in right
+            except TypeError:
+                return False
+
+    function = parse_function_call(path)
+    if function is not None:
+        name, arg_expressions = function
+        evaluated = [evaluate(arg, context) for arg in arg_expressions]
+        return call_function(name, evaluated)
+
+    normalized = path.removeprefix("$").removeprefix(".")
+    current: Any
+    if normalized in {"workflow", "workflow.input"}:
+        current = context.input
+        normalized = ""
+    elif normalized.startswith("workflow.input."):
+        current = context.input
+        normalized = normalized.removeprefix("workflow.input.")
+    elif normalized == "context":
+        current = context.values
+        normalized = ""
+    elif normalized.startswith("context."):
+        current = context.values
+        normalized = normalized.removeprefix("context.")
+    elif normalized.startswith("input."):
+        current = context.input
+        normalized = normalized.removeprefix("input.")
+    elif normalized.startswith("values."):
+        current = context.values
+        normalized = normalized.removeprefix("values.")
+    else:
+        current = context.input
+    parts: list[str] = []
+    if normalized:
+        for match in _PATH_PART.finditer(normalized):
+            part = match.group(1) or match.group(2) or match.group(3) or match.group(4)
+            if part is not None:
+                parts.append(part)
+    for part in parts:
+        if isinstance(current, dict):
+            current = current.get(part)
+        elif isinstance(current, list) and part.isdigit():
+            current = current[int(part)] if int(part) < len(current) else None
+        else:
+            current = None
+            break
+    if current is None and not path.startswith(("input.", "values.")):
+        current = context.values
+        for part in parts:
+            if isinstance(current, dict):
+                current = current.get(part)
+            elif isinstance(current, list) and part.isdigit():
+                current = current[int(part)] if int(part) < len(current) else None
+            else:
+                current = None
+                break
+    return current
+
+
+def resolve_value(value: Any, context: ExpressionContext) -> Any:
+    """Recursively resolve expressions embedded in a value.
+
+    Dicts and lists are traversed. Strings that are a single expression
+    (``${...}`` or start with ``.``/``$``) are replaced by the evaluated value.
+    Other strings have all ``${...}`` substrings interpolated. Non-string values
+    are returned unchanged.
+    """
+    if isinstance(value, dict):
+        return {key: resolve_value(item, context) for key, item in value.items()}
+    if isinstance(value, list):
+        return [resolve_value(item, context) for item in value]
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    match = _EXPRESSION.fullmatch(stripped)
+    if match:
+        return evaluate(match.group(1), context)
+    if stripped.startswith((".", "$")):
+        return evaluate(stripped, context)
+    return _EXPRESSION.sub(
+        lambda item: (
+            "" if (resolved := evaluate(item.group(1), context)) is None else str(resolved)
+        ),
+        value,
+    )
+
+
+def condition_allows(
+    config: Mapping[str, Any], context: ExpressionContext, *, default: bool = True
+) -> bool:
+    """Honor ``when`` / ``exceptWhen`` (or ``except_when``) control expressions.
+
+    Used by retry, catch, and any other control block that can be gated on
+    runtime conditions. Returns *default* when neither key is present.
+    """
+    when = config.get("when")
+    except_when = config.get("exceptWhen", config.get("except_when"))
+    if when is not None and not bool(resolve_value(when, context)):
+        return False
+    return not (except_when is not None and bool(resolve_value(except_when, context)))
+
+
+__all__ = [
+    "ExpressionContext",
+    "call_function",
+    "condition_allows",
+    "duration_seconds",
+    "evaluate",
+    "literal",
+    "parse_function_call",
+    "resolve_value",
+    "split_arguments",
+    "split_expression",
+]

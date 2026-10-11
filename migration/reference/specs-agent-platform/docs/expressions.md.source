@@ -1,0 +1,60 @@
+# Workflow expressions
+
+Open Workflow task values can contain expressions evaluated by the shared
+`open-agent-core` runtime. Use `${ ... }` for a complete value or interpolation;
+paths beginning with `.` or `$` may also be used directly. A plain path such as
+`context.name` is evaluated when it appears inside `${ ... }`.
+
+## Paths and prefixes
+
+| Prefix | Meaning |
+|--------|---------|
+| `input.` or `$workflow.input.` | The workflow invocation payload |
+| `context.` or `values.` | The mutable execution state |
+| `.` or `$` | Shorthand for the invocation payload |
+
+Missing paths evaluate to `None` rather than raising.
+
+## Literals and operators
+
+Expressions support literals (quoted strings, numbers, booleans, null, JSON
+lists, and JSON objects),
+unary `!`, binary `||`/`or`, `&&`/`and`, comparisons, and membership tests
+(`in` / `not in`).
+
+## Built-in functions
+
+| Function | Description |
+|----------|-------------|
+| `length(value)` | Length of a string, list, or dict; `0` for `None` |
+| `upper(value)` | Upper-case string conversion |
+| `lower(value)` | Lower-case string conversion |
+| `concat(a, b, ...)` | Concatenate arguments as strings |
+| `join(separator, items)` | Join a list with a separator |
+| `split(value, separator)` | Split a string into a list |
+| `default(value, fallback)` | Return `fallback` when `value` is `None` |
+| `exists(value)` | `True` when `value` is not `None` |
+| `matches(value, pattern)` | `True` when `value` matches a Python regex |
+| `now()` | Current UTC ISO-8601 timestamp |
+
+Functions may be nested, for example `length(split(context.tags, ','))`.
+
+## Coercion and error matrix
+
+| Operation | Non-string operand | `None` operand | Out-of-range index |
+|-----------|-------------------|----------------|-------------------|
+| `length` | Uses Python `len`; `0` if unsupported | `0` | N/A |
+| `upper`/`lower` | Coerced with `str` | `"NONE"` / `"none"` | N/A |
+| `concat`/`join` | Coerced with `str` | Coerced to `"None"` | N/A |
+| `split` | Coerced with `str` | Coerced to `"None"` | N/A |
+| `matches` | Coerced with `str` | Coerced to `"None"` | N/A |
+| Ordered comparison | Type mismatch returns `False` | Type mismatch returns `False` | N/A |
+| Path lookup | `None` | `None` | `None` |
+
+Unknown functions raise a runtime `RuntimeError`.
+
+## Scoped variables in loops
+
+`for` tasks bind an `each` variable and an optional `at` index. Nested loops
+that reuse the same variable name shadow the outer binding only for the
+inner loop body; the outer value is restored after the inner loop completes.

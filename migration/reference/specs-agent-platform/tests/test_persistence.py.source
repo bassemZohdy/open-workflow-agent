@@ -1,0 +1,204 @@
+import asyncio
+import sqlite3
+from collections.abc import AsyncGenerator
+from pathlib import Path
+
+import pytest
+import pytest_asyncio
+from open_agent_core import (
+    RetentionPolicy,
+    SQLiteCheckpointStore,
+    retention_interval_seconds_from_env,
+    retention_policy_from_env,
+)
+
+
+@pytest_asyncio.fixture
+async def file_store(tmp_path: Path) -> AsyncGenerator[SQLiteCheckpointStore, None]:
+    store = SQLiteCheckpointStore(tmp_path / "checkpoints.db")
+    try:
+        yield store
+    finally:
+        await store.close()
+
+
+@pytest.mark.asyncio
+async def test_file_backed_store_persists_across_instances(tmp_path: Path) -> None:
+    path = tmp_path / "checkpoints.db"
+    first = SQLiteCheckpointStore(path)
+    await first.save("run-1", "entry@1", {"value": 1}, "completed")
+    await first.close()
+
+    reopened = SQLiteCheckpointStore(path)
+    record = await reopened.load("run-1")
+    await reopened.close()
+
+    assert record is not None
+    assert record == {"entrypoint": "entry@1", "status": "completed", "values": {"value": 1}}
+
+
+@pytest.mark.asyncio
+async def test_memory_backed_store_does_not_persist_across_instances() -> None:
+    first = SQLiteCheckpointStore(":memory:")
+    await first.save("run-1", "entry@1", {"value": 1}, "completed")
+    await first.close()
+
+    fresh = SQLiteCheckpointStore(":memory:")
+    record = await fresh.load("run-1")
+    await fresh.close()
+
+    assert record is None
+
+
+@pytest.mark.asyncio
+async def test_memory_backed_store_persists_within_the_same_instance() -> None:
+    store = SQLiteCheckpointStore(":memory:")
+    await store.save("run-1", "entry@1", {"value": 1}, "completed")
+
+    record = await store.load("run-1")
+    await store.close()
+
+    assert record is not None
+    assert record["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_load_returns_none_for_unknown_run_id(file_store: SQLiteCheckpointStore) -> None:
+    assert await file_store.load("does-not-exist") is None
+
+
+@pytest.mark.asyncio
+async def test_load_recovers_from_corrupt_values_json(tmp_path: Path) -> None:
+    path = tmp_path / "checkpoints.db"
+    store = SQLiteCheckpointStore(path)
+    await store.save("valid-run", "entry@1", {"value": 1}, "completed")
+    await store.close()
+
+    with sqlite3.connect(path) as connection:
+        connection.execute(
+            "INSERT INTO checkpoints(run_id, entrypoint, status, values_json) VALUES (?, ?, ?, ?)",
+            ("corrupt-run", "entry@1", "completed", "{not valid json"),
+        )
+
+    reopened = SQLiteCheckpointStore(path)
+    record = await reopened.load("corrupt-run")
+    await reopened.close()
+
+    assert record is not None
+    assert record == {"entrypoint": "entry@1", "status": "completed", "values": {}}
+
+
+@pytest.mark.asyncio
+async def test_ping_succeeds_for_a_reachable_store(tmp_path: Path) -> None:
+    file_store = SQLiteCheckpointStore(tmp_path / "checkpoints.db")
+    memory_store = SQLiteCheckpointStore(":memory:")
+    await file_store.ping()
+    await memory_store.ping()
+    await file_store.close()
+    await memory_store.close()
+
+
+@pytest.mark.asyncio
+async def test_concurrent_writers_do_not_corrupt_or_lose_data(
+    file_store: SQLiteCheckpointStore,
+) -> None:
+    run_ids = [f"run-{index}" for index in range(20)]
+
+    async def _write(run_id: str) -> None:
+        for attempt in range(5):
+            await file_store.save(run_id, "entry@1", {"attempt": attempt}, "completed")
+
+    await asyncio.gather(*[_write(run_id) for run_id in run_ids])
+
+    for run_id in run_ids:
+        record = await file_store.load(run_id)
+        assert record is not None
+        assert record["values"]["attempt"] == 4
+
+
+@pytest.mark.asyncio
+async def test_expire_removes_checkpoints_older_than_max_age(
+    file_store: SQLiteCheckpointStore,
+) -> None:
+    await file_store.save("old-run", "entry@1", {"value": 1}, "completed")
+
+    removed = await file_store.expire(RetentionPolicy(max_age_seconds=0.001))
+
+    # The checkpoint is older than 1ms only if we wait briefly.
+    if removed == 0:
+        import asyncio
+
+        await asyncio.sleep(0.01)
+        removed = await file_store.expire(RetentionPolicy(max_age_seconds=0.001))
+
+    assert removed == 1
+    assert await file_store.load("old-run") is None
+
+
+@pytest.mark.asyncio
+async def test_expire_keeps_only_max_count_per_entrypoint(
+    file_store: SQLiteCheckpointStore,
+) -> None:
+    for index in range(3):
+        await file_store.save(f"run-{index}", "entry@1", {"index": index}, "completed")
+
+    removed = await file_store.expire(RetentionPolicy(max_count_per_entrypoint=2))
+
+    assert removed == 1
+    assert await file_store.load("run-2") is not None
+    assert await file_store.load("run-1") is not None
+    assert await file_store.load("run-0") is None
+
+
+@pytest.mark.asyncio
+async def test_expire_keeps_protected_statuses(file_store: SQLiteCheckpointStore) -> None:
+    await file_store.save("keep-me", "entry@1", {"value": 1}, "archived")
+
+    removed = await file_store.expire(
+        RetentionPolicy(max_age_seconds=0.001, keep_statuses=frozenset({"archived"}))
+    )
+
+    assert removed == 0
+    assert await file_store.load("keep-me") is not None
+
+
+@pytest.mark.asyncio
+async def test_expire_returns_zero_when_no_policy_is_active(
+    file_store: SQLiteCheckpointStore,
+) -> None:
+    await file_store.save("run-1", "entry@1", {"value": 1}, "completed")
+    assert await file_store.expire(RetentionPolicy()) == 0
+
+
+def test_retention_policy_from_env_parses_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CHECKPOINT_RETENTION_MAX_AGE_SECONDS", "3600")
+    monkeypatch.setenv("CHECKPOINT_RETENTION_MAX_COUNT_PER_ENTRYPOINT", "10")
+    monkeypatch.setenv("CHECKPOINT_RETENTION_KEEP_STATUSES", "completed, archived ")
+
+    policy = retention_policy_from_env()
+
+    assert policy.max_age_seconds == 3600.0
+    assert policy.max_count_per_entrypoint == 10
+    assert policy.keep_statuses == {"completed", "archived"}
+
+
+def test_retention_policy_from_env_ignores_invalid_values(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CHECKPOINT_RETENTION_MAX_AGE_SECONDS", "not-a-number")
+    monkeypatch.setenv("CHECKPOINT_RETENTION_MAX_COUNT_PER_ENTRYPOINT", "also-not")
+
+    policy = retention_policy_from_env()
+
+    assert policy.max_age_seconds == 0.0
+    assert policy.max_count_per_entrypoint == 0
+
+
+def test_retention_interval_seconds_from_env() -> None:
+    assert (
+        retention_interval_seconds_from_env({"CHECKPOINT_RETENTION_INTERVAL_SECONDS": "60"}) == 60.0
+    )
+    assert (
+        retention_interval_seconds_from_env({"CHECKPOINT_RETENTION_INTERVAL_SECONDS": "bad"}) == 0.0
+    )
+    assert (
+        retention_interval_seconds_from_env({"CHECKPOINT_RETENTION_INTERVAL_SECONDS": "-5"}) == 0.0
+    )

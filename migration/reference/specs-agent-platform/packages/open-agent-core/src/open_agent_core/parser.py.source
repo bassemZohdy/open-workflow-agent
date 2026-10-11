@@ -1,0 +1,5 @@
+"""Backward-compatible parser facade for application loading."""
+
+from .loader import ApplicationLoader, load_application
+
+__all__ = ["ApplicationLoader", "load_application"]

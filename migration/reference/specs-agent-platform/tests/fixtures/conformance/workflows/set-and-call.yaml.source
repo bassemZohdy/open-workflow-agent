@@ -1,0 +1,11 @@
+document:
+  dsl: '1.0.3'
+  namespace: conformance.support
+  name: set-and-call
+  version: '1.0.0'
+do:
+  - init:
+      set:
+        request: '${ .message }'
+  - answer:
+      call: support-agent

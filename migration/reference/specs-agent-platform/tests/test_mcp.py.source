@@ -1,0 +1,136 @@
+from pathlib import Path
+
+import pytest
+from open_agent_adk.mcp import McpToolRegistry as AdkMcpToolRegistry
+from open_agent_core.mcp_runtime import McpSandboxPolicy
+from open_agent_lang.mcp import McpToolRegistry as LangMcpToolRegistry
+
+REGISTRY_CLASSES = [LangMcpToolRegistry, AdkMcpToolRegistry]
+
+
+@pytest.mark.parametrize("registry_cls", REGISTRY_CLASSES)
+@pytest.mark.asyncio
+async def test_discover_rejects_unknown_binding(registry_cls: type) -> None:
+    registry = registry_cls({})
+
+    with pytest.raises(KeyError):
+        await registry.discover("missing")
+
+
+@pytest.mark.parametrize("registry_cls", REGISTRY_CLASSES)
+@pytest.mark.asyncio
+async def test_call_rejects_unknown_binding(registry_cls: type) -> None:
+    registry = registry_cls({})
+
+    with pytest.raises(KeyError):
+        await registry.call("missing", {})
+
+
+@pytest.mark.parametrize("registry_cls", REGISTRY_CLASSES)
+@pytest.mark.asyncio
+async def test_discover_rejects_unsupported_transport(registry_cls: type) -> None:
+    registry = registry_cls({"lookup": {"transport": "http", "command": "echo"}})
+
+    with pytest.raises(ValueError, match="Unsupported MCP transport"):
+        await registry.discover("lookup")
+
+
+@pytest.mark.parametrize("registry_cls", REGISTRY_CLASSES)
+@pytest.mark.asyncio
+async def test_discover_rejects_missing_command(registry_cls: type) -> None:
+    registry = registry_cls({"lookup": {"transport": "stdio"}})
+
+    with pytest.raises(ValueError, match="requires a command"):
+        await registry.discover("lookup")
+
+
+@pytest.mark.parametrize("registry_cls", REGISTRY_CLASSES)
+@pytest.mark.asyncio
+async def test_discover_rejects_non_list_args(registry_cls: type) -> None:
+    registry = registry_cls({"lookup": {"command": "echo", "args": "not-a-list"}})
+
+    with pytest.raises(ValueError, match="args must be a list"):
+        await registry.discover("lookup")
+
+
+@pytest.mark.parametrize("registry_cls", REGISTRY_CLASSES)
+@pytest.mark.asyncio
+async def test_discover_rejects_non_mapping_env(registry_cls: type) -> None:
+    registry = registry_cls({"lookup": {"command": "echo", "env": ["not", "a", "mapping"]}})
+
+    with pytest.raises(ValueError, match="env must be a mapping"):
+        await registry.discover("lookup")
+
+
+@pytest.mark.parametrize("registry_cls", REGISTRY_CLASSES)
+@pytest.mark.asyncio
+async def test_call_rejects_malformed_binding_before_spawning_a_process(
+    registry_cls: type,
+) -> None:
+    registry = registry_cls({"lookup": {"transport": "sse", "command": "echo"}})
+
+    with pytest.raises(ValueError, match="Unsupported MCP transport"):
+        await registry.call("lookup", {})
+
+
+def test_sandbox_rejects_shell_command(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MCP_ALLOW_SHELL", "0")
+    policy = McpSandboxPolicy()
+
+    with pytest.raises(ValueError, match="denied shell interpreter"):
+        policy.validate("sh-binding", {"command": "bash"})
+
+
+def test_sandbox_allows_shell_when_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MCP_ALLOW_SHELL", "1")
+    policy = McpSandboxPolicy()
+
+    policy.validate("sh-binding", {"command": "bash"})
+
+
+def test_sandbox_rejects_command_not_in_allow_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MCP_ALLOWED_COMMANDS", "python")
+    policy = McpSandboxPolicy()
+
+    with pytest.raises(ValueError, match="not in allowed list"):
+        policy.validate("bad-binding", {"command": "node"})
+
+
+def test_sandbox_filters_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MCP_ALLOWED_ENV_VARS", "PATH,HOME")
+    monkeypatch.setenv("HOME", "/tmp/test-home")
+    monkeypatch.setenv("SECRET", "should-be-stripped")
+    policy = McpSandboxPolicy()
+    env = policy.filtered_env("binding", {"env": {"EXTRA": "value"}})
+
+    assert "PATH" in env
+    assert "HOME" in env
+    assert "EXTRA" in env
+    assert "SECRET" not in env
+
+
+def test_sandbox_denies_specific_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MCP_DENIED_ENV_VARS", "SECRET")
+    monkeypatch.setenv("SECRET", "should-be-stripped")
+    policy = McpSandboxPolicy()
+    env = policy.filtered_env("binding", {})
+
+    assert "SECRET" not in env
+
+
+def test_sandbox_rejects_cwd_outside_root(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("MCP_ALLOWED_CWD_ROOT", str(tmp_path))
+    policy = McpSandboxPolicy()
+
+    with pytest.raises(ValueError, match="outside allowed root"):
+        policy.validate("bad-binding", {"command": "python", "cwd": "/tmp"})
+
+
+@pytest.mark.parametrize("registry_cls", REGISTRY_CLASSES)
+def test_health_summary_tracks_configured_bindings(registry_cls: type) -> None:
+    registry = registry_cls({"lookup": {"command": "echo"}})
+
+    summary = registry.health_summary()
+
+    assert "lookup" in summary
+    assert summary["lookup"]["status"] == "unknown"

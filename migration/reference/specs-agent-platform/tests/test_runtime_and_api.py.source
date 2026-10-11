@@ -1,0 +1,560 @@
+import asyncio
+import json
+from collections.abc import AsyncIterator
+from pathlib import Path
+from typing import Any
+
+import pytest
+from fastapi.testclient import TestClient
+from open_agent_core import (
+    AgentIR,
+    InMemoryEngine,
+    RuntimeContext,
+    SQLiteCheckpointStore,
+    load_application,
+)
+from open_agent_core.runtime import ExecutionEvent
+from open_agent_lang.mcp import McpToolRegistry
+from open_agent_lang.runner import LangGraphAgentInvoker, create_app
+
+ROOT = Path(__file__).parents[1]
+
+
+@pytest.mark.asyncio
+async def test_in_memory_engine_executes_bound_agent() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    engine = InMemoryEngine(application)
+
+    result = await engine.invoke(
+        "support",
+        {"request": "Where is my order?"},
+        messages=[{"role": "user", "content": "Where is my order?"}],
+    )
+
+    assert "support-agent" in result["content"]
+
+
+def test_openai_compatible_routes() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    models = client.get("/v1/models")
+    assert models.status_code == 200
+    assert any(item["id"] == "support" for item in models.json()["data"]) is False
+
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "example.support/support-workflow@1.0.0",
+            "messages": [{"role": "user", "content": "Where is my order?"}],
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["object"] == "chat.completion"
+
+
+def test_chat_completions_accepts_but_ignores_openai_only_fields() -> None:
+    # temperature/tools/n are accepted for OpenAI SDK compatibility but have
+    # no effect: model config comes from the Agent Spec, tool bindings from
+    # bindings.yaml. Documented in README's "Using the HTTP API" section.
+    application = load_application(ROOT / "examples" / "application")
+    engine = InMemoryEngine(application)
+    plain = TestClient(create_app(application=application, engine=engine)).post(
+        "/v1/chat/completions",
+        json={
+            "model": "example.support/support-workflow@1.0.0",
+            "messages": [{"role": "user", "content": "Where is my order?"}],
+        },
+    )
+    with_openai_fields = TestClient(create_app(application=application, engine=engine)).post(
+        "/v1/chat/completions",
+        json={
+            "model": "example.support/support-workflow@1.0.0",
+            "messages": [{"role": "user", "content": "Where is my order?"}],
+            "temperature": 1.9,
+            "n": 3,
+            "tools": [
+                {
+                    "type": "function",
+                    "function": {"name": "unrelated_tool", "parameters": {"type": "object"}},
+                }
+            ],
+        },
+    )
+
+    assert plain.status_code == with_openai_fields.status_code == 200
+    assert (
+        plain.json()["choices"][0]["message"]["content"]
+        == with_openai_fields.json()["choices"][0]["message"]["content"]
+    )
+
+
+def test_openai_streaming_route() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "example.support/support-workflow@1.0.0",
+            "stream": True,
+            "messages": [{"role": "user", "content": "hello"}],
+        },
+    )
+    assert response.status_code == 200
+    lines = [line for line in response.text.splitlines() if line.startswith("data: ")]
+    assert len(lines) >= 3
+    assert lines[-1] == "data: [DONE]"
+    for line in lines[:-1]:
+        payload = json.loads(line.removeprefix("data: "))
+        assert payload["object"] == "chat.completion.chunk"
+        assert payload["choices"][0]["delta"] is not None
+
+
+@pytest.mark.asyncio
+async def test_in_memory_engine_stream_yields_intermediate_events(tmp_path: Path) -> None:
+    workflow = tmp_path / "workflow.yaml"
+    workflow.write_text(
+        "document:\n"
+        "  dsl: '1.0.3'\n"
+        "  namespace: x\n"
+        "  name: streamed\n"
+        "  version: '1'\n"
+        "do:\n"
+        "  - first:\n"
+        "      set:\n"
+        "        value: 1\n"
+        "  - second:\n"
+        "      set:\n"
+        "        value: 2\n",
+        encoding="utf-8",
+    )
+    application = load_application(tmp_path)
+    events = [
+        event
+        async for event in InMemoryEngine(application).stream("x/streamed@1", {"input": "hello"})
+    ]
+    kinds = [event.kind for event in events]
+    assert "task.completed" in kinds
+    assert kinds[-1] == "completed"
+    assert events[-1].data.get("value") == 2
+
+
+def test_health_ready_is_ok_without_a_checkpoint_store() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready"}
+
+
+def test_health_ready_checks_checkpoint_store_connectivity(tmp_path: Path) -> None:
+    application = load_application(ROOT / "examples" / "application")
+    store = SQLiteCheckpointStore(tmp_path / "checkpoints.db")
+    engine = InMemoryEngine(application, checkpoint_store=store)
+    client = TestClient(create_app(application=application, engine=engine))
+
+    response = client.get("/health/ready")
+
+    assert response.status_code == 200
+
+
+def test_health_ready_reports_unavailable_checkpoint_store(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    application = load_application(ROOT / "examples" / "application")
+    store = SQLiteCheckpointStore(tmp_path / "checkpoints.db")
+
+    async def _broken_ping() -> None:
+        raise RuntimeError("disk unavailable")
+
+    store.ping = _broken_ping  # type: ignore[method-assign]
+    engine = InMemoryEngine(application, checkpoint_store=store)
+    client = TestClient(create_app(application=application, engine=engine))
+
+    with caplog.at_level("ERROR"):
+        response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json()["status"] == "not_ready"
+    assert any("readiness check failed" in record.getMessage() for record in caplog.records)
+
+
+def test_langgraph_embedded_ui() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.get("/ui")
+
+    assert response.status_code == 200
+    assert "Specs Agent LangGraph" in response.text
+
+
+def test_langgraph_tools_capability_route() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.get("/v1/tools")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["object"] == "list"
+    assert body["data"] == []
+    assert body["has_more"] is False
+
+
+@pytest.mark.asyncio
+async def test_langgraph_agent_executes_bound_mcp_tool(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "test")
+    from langchain_core.messages import AIMessage
+
+    class FakeChat:
+        calls = 0
+
+        def __init__(self, **kwargs: object) -> None:
+            del kwargs
+
+        def bind_tools(self, tools: list[dict[str, Any]]) -> "FakeChat":
+            assert tools[0]["function"]["name"] == "lookup"
+            return self
+
+        async def ainvoke(self, messages: list[object]) -> AIMessage:
+            del messages
+            self.calls += 1
+            if self.calls == 1:
+                return AIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": "lookup",
+                            "args": {"order_id": "A-42"},
+                            "id": "call-1",
+                            "type": "tool_call",
+                        }
+                    ],
+                )
+            return AIMessage(content="Order A-42 is shipped.")
+
+    class FakeRegistry(McpToolRegistry):
+        def __init__(self) -> None:
+            super().__init__({"lookup": {}})
+
+        async def call(self, binding_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+            assert binding_name == "lookup"
+            return {"status": "shipped", "order_id": arguments["order_id"]}
+
+    monkeypatch.setattr("langchain_openai.ChatOpenAI", FakeChat)
+    agent = AgentIR(
+        id="support-agent",
+        name="support-agent",
+        component_type="Agent",
+        source="test",
+        document={"llm_config": {"model_id": "test"}},
+        tools=(
+            {
+                "name": "lookup",
+                "binding": "lookup",
+                "description": "Look up an order.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"order_id": {"type": "string"}},
+                    "required": ["order_id"],
+                },
+            },
+        ),
+    )
+    result = await LangGraphAgentInvoker(FakeRegistry()).invoke(
+        agent,
+        [{"role": "user", "content": "Where is A-42?"}],
+        RuntimeContext({}),
+    )
+
+    assert result == {"content": "Order A-42 is shipped."}
+
+
+def test_events_route_prefers_cloudevents_headers_over_body() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.post(
+        "/v1/events",
+        headers={"ce-id": "header-id", "ce-type": "header.type"},
+        json={"id": "body-id", "type": "body.type"},
+    )
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body == {"accepted": True, "event_id": "header-id", "event_type": "header.type"}
+
+
+def test_events_route_falls_back_to_body_when_headers_absent() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.post("/v1/events", json={"id": "body-id", "type": "body.type"})
+
+    assert response.status_code == 202
+    body = response.json()
+    assert body == {"accepted": True, "event_id": "body-id", "event_type": "body.type"}
+
+
+def test_events_route_accepts_empty_body() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.post("/v1/events")
+
+    assert response.status_code == 202
+    assert response.json() == {"accepted": True, "event_id": None, "event_type": None}
+
+
+def test_events_route_rejects_invalid_json() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.post(
+        "/v1/events",
+        headers={"content-type": "application/json"},
+        content=b"not json",
+    )
+
+    assert response.status_code == 400
+
+
+def test_api_key_and_request_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPEN_AGENT_API_KEY", "secret")
+    monkeypatch.setenv("MAX_REQUEST_BYTES", "128")
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    assert client.get("/v1/models").status_code == 401
+    authorized = client.get("/v1/models", headers={"Authorization": "Bearer secret"})
+    assert authorized.status_code == 200
+    oversized = client.post(
+        "/v1/events",
+        headers={"X-API-Key": "secret"},
+        content=b"{" + b"x" * 200 + b"}",
+    )
+    assert oversized.status_code == 413
+
+
+def test_request_limit_rejects_oversized_body_without_content_length(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MAX_REQUEST_BYTES", "128")
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    def chunks() -> Any:
+        yield b"{" + b"x" * 200 + b"}"
+
+    oversized = client.post("/v1/events", content=chunks())
+
+    assert "content-length" not in {key.lower() for key in oversized.request.headers.keys()}
+    assert oversized.status_code == 413
+
+
+def test_invocation_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("REQUEST_TIMEOUT_SECONDS", "0.01")
+    application = load_application(ROOT / "examples" / "application")
+
+    class SlowEngine:
+        async def invoke(self, *args: object, **kwargs: object) -> dict[str, Any]:
+            del args, kwargs
+            await asyncio.sleep(0.05)
+            return {"content": "late"}
+
+        async def stream(self, *args: object, **kwargs: object) -> AsyncIterator[ExecutionEvent]:
+            del args, kwargs
+            return
+            yield
+
+        async def execute_task(self, *args: object, **kwargs: object) -> dict[str, Any]:
+            del args, kwargs
+            return {"content": "late"}
+
+    client = TestClient(create_app(application=application, engine=SlowEngine()))
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "example.support/support-workflow@1.0.0",
+            "messages": [{"role": "user", "content": "hello"}],
+        },
+    )
+
+    assert response.status_code == 504
+
+
+def test_runtime_errors_use_consistent_envelope() -> None:
+    application = load_application(ROOT / "examples" / "application")
+
+    class FailingEngine:
+        async def invoke(self, *args: object, **kwargs: object) -> dict[str, Any]:
+            del args, kwargs
+            raise RuntimeError("boom")
+
+        async def stream(self, *args: object, **kwargs: object) -> AsyncIterator[ExecutionEvent]:
+            del args, kwargs
+            raise RuntimeError("boom")
+            yield
+
+        async def execute_task(self, *args: object, **kwargs: object) -> dict[str, Any]:
+            del args, kwargs
+            raise RuntimeError("boom")
+
+    client = TestClient(create_app(application=application, engine=FailingEngine()))
+    response = client.post(
+        "/v1/chat/completions",
+        json={
+            "model": "example.support/support-workflow@1.0.0",
+            "messages": [{"role": "user", "content": "hello"}],
+        },
+    )
+
+    assert response.status_code == 500
+    assert response.json()["error"]["type"] == "server_error"
+
+
+def test_runtime_errors_are_logged_server_side(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    # /v1/chat/completions has its own try/except that turns failures into an
+    # HTTPException before they ever reach the app-wide handler, so exercise a
+    # route (/v1/models) with no local guard to hit the generic handler.
+    def _boom(self: object, identifier: str) -> str:
+        del self, identifier
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("open_agent_core.ir.ApplicationIR.resolve_entrypoint", _boom)
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(
+        create_app(application=application, engine=InMemoryEngine(application)),
+        raise_server_exceptions=False,
+    )
+
+    with caplog.at_level("ERROR"):
+        response = client.get("/v1/models")
+
+    assert response.status_code == 500
+    assert any("unhandled error" in record.getMessage() for record in caplog.records)
+    assert any(record.exc_info for record in caplog.records)
+
+
+def test_cors_is_disabled_by_default() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.get("/v1/models", headers={"Origin": "https://example.com"})
+
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_cors_allows_configured_origin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CORS_ALLOW_ORIGINS", "https://example.com")
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    allowed = client.get("/v1/models", headers={"Origin": "https://example.com"})
+    denied = client.get("/v1/models", headers={"Origin": "https://not-allowed.example"})
+
+    assert allowed.headers["access-control-allow-origin"] == "https://example.com"
+    assert "access-control-allow-origin" not in denied.headers
+
+
+def test_get_model_by_id() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.get("/v1/models/example.support/support-workflow@1.0.0")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["id"] == "example.support/support-workflow@1.0.0"
+    assert body["object"] == "model"
+
+    unknown = client.get("/v1/models/unknown/model@1")
+    assert unknown.status_code == 404
+    assert unknown.json()["error"]["type"] == "invalid_request_error"
+
+
+def test_models_pagination() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.get("/v1/models?limit=1")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body["data"]) == 1
+    assert body["has_more"] is True
+    assert body["first_id"] == body["data"][0]["id"]
+    assert body["last_id"] == body["data"][0]["id"]
+
+    next_page = client.get(f"/v1/models?limit=1&after={body['last_id']}")
+    assert next_page.status_code == 200
+    next_body = next_page.json()
+    assert len(next_body["data"]) == 1
+    assert next_body["data"][0]["id"] != body["data"][0]["id"]
+    assert next_body["has_more"] is False
+
+
+def test_tools_pagination() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.get("/v1/tools")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"] == []
+    assert body["has_more"] is False
+
+
+def test_rate_limit_returns_429_after_threshold(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "2")
+    monkeypatch.setenv("RATE_LIMIT_WINDOW_SECONDS", "60")
+    monkeypatch.setenv("AUTH_LOCKOUT_MAX_FAILURES", "0")
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    assert client.get("/v1/models").status_code == 200
+    assert client.get("/v1/models").status_code == 200
+    limited = client.get("/v1/models")
+    assert limited.status_code == 429
+    assert limited.json()["error"]["type"] == "rate_limit_error"
+    assert "retry-after" in limited.headers
+
+
+def test_rate_limit_exempts_health_endpoints(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "1")
+    monkeypatch.setenv("RATE_LIMIT_WINDOW_SECONDS", "60")
+    monkeypatch.setenv("AUTH_LOCKOUT_MAX_FAILURES", "0")
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    assert client.get("/health/ready").status_code == 200
+    assert client.get("/health/live").status_code == 200
+    assert client.get("/health/ready").status_code == 200
+
+
+def test_auth_lockout_blocks_after_failed_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("SPECS_AGENT_API_KEY", "secret")
+    monkeypatch.setenv("RATE_LIMIT_REQUESTS_PER_MINUTE", "0")
+    monkeypatch.setenv("AUTH_LOCKOUT_MAX_FAILURES", "3")
+    monkeypatch.setenv("AUTH_LOCKOUT_WINDOW_SECONDS", "60")
+    monkeypatch.setenv("AUTH_LOCKOUT_DURATION_SECONDS", "1")
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    for _ in range(3):
+        assert client.get("/v1/models").status_code == 401
+    locked = client.get("/v1/models", headers={"Authorization": "Bearer secret"})
+    assert locked.status_code == 429
+    assert locked.json()["error"]["type"] == "rate_limit_error"
+
+
+def test_health_mcp_reports_binding_status() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    client = TestClient(create_app(application=application, engine=InMemoryEngine(application)))
+
+    response = client.get("/health/mcp")
+    assert response.status_code == 200
+    assert response.json() == {"object": "list", "data": {}}

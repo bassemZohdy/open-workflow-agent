@@ -1,0 +1,459 @@
+# Specs Agent Platform
+
+Specs Agent Platform turns declarative workflow and agent documents into
+portable executions. It accepts an Open Workflow document for orchestration
+and an Open Agent Specification document for cognitive nodes, validates both,
+normalizes them into a framework-neutral intermediate representation, and
+executes that representation through an independently deployable engine.
+
+The same application directory can be run with either:
+
+- **LangGraph** (`open-agent-lang`) for LangChain/LangGraph deployments and
+  OpenAI-compatible model access.
+- **Google ADK** (`open-agent-adk`) for Google GenAI ADK deployments and its
+  native developer UI.
+
+The engine images are alternatives, not a combined runtime. Choose one image
+for a deployment and keep the declarative specifications unchanged.
+
+## What the platform is for
+
+The platform is useful when workflow logic should be versioned as data rather
+than embedded in application code. A workflow can initialize state, call an
+agent or HTTP endpoint, branch, loop, retry, catch errors, wait for an event,
+and finish with a structured result. An Agent Spec document describes the LLM
+node, model configuration, prompt, memory, and declared tools used by an agent.
+
+The runtime deliberately separates concerns:
+
+1. **Load** YAML or JSON from an application directory (or explicit paths).
+2. **Validate** the document envelope and the relevant upstream schema.
+3. **Lower** the documents into `ApplicationIR`, `WorkflowIR`, and `AgentIR`.
+4. **Bind** workflow call names to agent entrypoints and MCP tool definitions.
+5. **Compile or execute** with the selected adapter.
+
+This makes validation and deterministic local execution possible without model
+credentials, while still allowing the adapters to bridge to LangGraph, Google
+ADK, ChatOpenAI, and MCP servers when configured.
+
+**Current limitation:** step 5 above is not yet a full native compile for
+either engine. `open-agent-lang` builds a linear LangGraph `StateGraph` node
+chain and `open-agent-adk` only compiles the agent-level `AgentIR` into a
+native `LlmAgent`; workflow control flow (`switch`, `fork`, `for`/`while`,
+`retry`, `catch`) is interpreted by the shared `InMemoryEngine` behind both
+adapters rather than mapped onto each framework's native primitives
+(LangGraph's conditional/parallel edges and retry policies, or ADK's
+`SequentialAgent`/`ParallelAgent`/`LoopAgent`). See
+[docs/architecture.md](docs/architecture.md#current-compilation-fidelity-known-limitation)
+for the detailed breakdown and the planned native-compiler work tracked as
+`COMPILE-*` in [TODO.md](TODO.md#p1---native-framework-compilation).
+
+## Repository layout
+
+```text
+packages/
+  open-agent-core/
+    src/open_agent_core/
+      workflow/       # Open Workflow models and loader
+      agent_spec/     # Open Agent Specification models and loader
+      ir.py           # shared framework-neutral intermediate representation
+      loader.py       # application discovery, composition, and bindings
+      runtime.py      # deterministic execution contract and local engine
+      persistence.py  # optional SQLite checkpoints
+  open-agent-lang/    # LangGraph compiler, MCP adapter, FastAPI runner, image
+  open-agent-adk/     # Google ADK compiler, MCP adapter, FastAPI runner, image
+examples/
+  application/        # complete runnable application used by tests and images
+tests/                # loader, runtime, compiler, API, and Compose checks
+scripts/              # generated-document maintenance utilities
+docs/                 # architecture, API, container, and operations guides
+.github/workflows/    # CI quality gates and profile smoke tests
+```
+
+Both standards intentionally live under separate subpackages of
+`open-agent-core`; the engine packages depend on core, never the reverse.
+See [docs/architecture.md](docs/architecture.md) for a visual overview of the
+flow from spec loaders through core IR into both engines.
+
+## Application format
+
+An application directory may contain `workflows/`, `agents/`, and an optional
+`bindings.yaml`. The loader recursively discovers YAML/JSON files unless an
+explicit path is supplied.
+
+The bundled example is:
+
+```text
+examples/application/
+├── workflows/workflow.yaml
+├── agents/support-agent.yaml
+└── bindings.yaml
+```
+
+The workflow calls `support-agent` through this binding:
+
+```yaml
+agent_calls:
+  support-agent: "example.support/support-agent@1.0.0"
+aliases:
+  support: "example.support/support-workflow@1.0.0"
+```
+
+The canonical workflow entrypoint is
+`example.support/support-workflow@1.0.0`; the `support` alias resolves to the
+same versioned entrypoint. Versioned IDs make deployments deterministic and
+allow multiple document versions to coexist.
+
+An application bundle must use one Open Workflow DSL version across all of its
+workflow documents. The current Agent Spec loader accepts the `26.1.x` schema
+family used by `pyagentspec`. It also rejects direct agent-ID calls that do not
+resolve and explicit `binding`/`mcp_binding` tool references that are absent
+from `bindings.yaml`; diagnostics include a stable code and source location.
+
+### Workflow capabilities
+
+The current runtime supports the common Open Workflow v1 control-flow
+surface, including:
+
+- `set`, `call`, `switch`, `for`/`while`, `fork`, `wait`, `listen`, `raise`,
+  `emit`, and nested `do` blocks;
+- retry limits, delays, constant/linear/exponential backoff, `when`, and
+  `exceptWhen` expressions;
+- filtered `catch` blocks, error aliases, `finally` blocks, task-level `if`,
+  and structured error values;
+- scalar, nested, list-index, boolean, comparison, membership, interpolation,
+  `$workflow.input`, and `$context` expressions;
+- built-in string, collection, presence, regular-expression, and timestamp
+  functions with deterministic loop-variable scoping.
+
+The implementation reports unsupported or invalid documents rather than
+silently changing their meaning. Full conformance to every optional feature of
+the upstream specifications remains on the roadmap.
+
+### Agent capabilities
+
+Agent documents are validated with the available Agent Spec schema and lowered
+into model, prompt, memory, and tool metadata. The LangGraph adapter uses
+`ChatOpenAI` when `OPENAI_API_KEY` is configured and otherwise uses a
+deterministic local fallback. The ADK adapter uses Google ADK sessions when
+available and can fall back locally with `ADK_FALLBACK_ON_ERROR=1`.
+
+**Current limitation:** a declared `memory` block is parsed and validated but
+not yet consumed — neither adapter reads or writes it, so it currently has no
+runtime effect. There is no pluggable memory-storage abstraction yet (the
+`CheckpointStore` protocol only covers workflow run state, not agent
+conversational memory). Adding one — with in-memory, SQLite, and Postgres
+backends, a plugin mechanism for external stores, and availability health
+checks mirroring the existing checkpoint-store readiness check — is tracked
+as `MEM-001`..`MEM-006` in
+[TODO.md](TODO.md#p2---pluggable-agent-memory).
+
+### Externalized agent configuration (planned)
+
+Agent Spec fields are literal values today — retargeting an agent for a
+different environment means editing the spec document itself. Planned work
+adds a placeholder syntax so a spec author can mark any field as
+environment-overridable, Spring Boot property-style:
+
+```yaml
+llm_config:
+  model_id: "${OPENAI_MODEL:gpt-4o-mini}"
+  temperature: "${OPENAI_TEMPERATURE:0.2}"
+```
+
+`${VAR_NAME}` resolves from the process environment and fails validation if
+unset; `${VAR_NAME:default}` falls back to the given default when the
+variable is unset or empty. This is scoped to Agent Spec and `bindings.yaml`
+documents only — the `${...}` syntax already belongs to the workflow
+expression language (see [Workflow expressions](#workflow-expressions)), and
+task bodies keep their current meaning unchanged. It composes with, but is
+distinct from, the default-model fallback described above: an agent's own
+resolved value (literal or placeholder) always wins over any engine default.
+Not yet implemented; tracked as `CONFIG-001`..`CONFIG-008` in
+[TODO.md](TODO.md#p2---externalized-agent-configuration).
+
+## Quick start: run locally
+
+Install the workspace and validate the example without starting a server:
+
+```bash
+uv sync --all-packages
+uv run --package open-agent-core open-agent-core examples/application
+```
+
+Start the LangGraph runner:
+
+```bash
+PORT=8080 uv run --package open-agent-lang open-agent-lang serve examples/application --host 127.0.0.1
+```
+
+Start the ADK runner instead:
+
+```bash
+PORT=8080 uv run --package open-agent-adk open-agent-adk serve examples/application --host 127.0.0.1
+```
+
+On Windows PowerShell, set the port with `$env:PORT = "8080"` before running
+the command. The CLI also accepts `--application`, `--workflow`, and
+`--agent`; these map to `APPLICATION_PATH`, `WORKFLOW_SPEC_PATH`, and
+`AGENT_SPEC_PATH`.
+
+## Docker Compose deployment
+
+Copy `.env.example` to `.env` and change credentials or ports as needed:
+
+```bash
+cp .env.example .env
+docker compose --profile lang up --build
+```
+
+To use the checked-in defaults without copying a file:
+
+```bash
+docker compose --env-file .env.example --profile adk up --build
+```
+
+Run only one engine profile in a deployment:
+
+| Engine | Host API | Embedded UI |
+| --- | --- | --- |
+| LangGraph | `http://localhost:${LANG_PORT:-8081}/v1` | `/ui` lightweight console |
+| Google ADK | `http://localhost:${ADK_PORT:-8082}/v1` | `/dev-ui/` native ADK UI and `/ui` fallback |
+
+Both runners also expose Swagger UI at `/docs`, ReDoc at `/redoc`, and the
+live OpenAPI document at `/openapi.json`.
+
+`LANG_PORT` and `ADK_PORT` select host ports. `LANG_CONTAINER_PORT` and
+`ADK_CONTAINER_PORT` select the listener inside each container and are passed
+to the runner as `PORT`. The Compose project name is controlled by
+`COMPOSE_PROJECT_NAME`.
+
+### Environment precedence
+
+The supported layering follows common deployment conventions:
+
+1. Explicit shell variables (or CI/deployment environment) override file
+   values used for Compose interpolation.
+2. `.env` contains local or deployment-specific overrides and is not committed.
+3. `.env.example` provides required names and safe development defaults.
+4. `${NAME:-fallback}` values in `docker-compose.yaml` are the final fallback.
+
+The service environment passes the selected values into the container. Keep
+provider keys in a secret manager or an untracked `.env` file.
+
+Useful settings include:
+
+| Variable | Purpose |
+| --- | --- |
+| `APPLICATION_PATH` | Application directory inside the image |
+| `WORKFLOW_SPEC_PATH`, `AGENT_SPEC_PATH` | Restrict discovery to explicit files |
+| `OPENAI_API_KEY`, `OPENAI_BASE_URL` | LangGraph model access |
+| `GOOGLE_API_KEY` | Google ADK model access |
+| `SPECS_AGENT_API_KEY` | Optional bearer or `X-API-Key` authentication |
+| `REQUEST_TIMEOUT_SECONDS` | Per-request execution timeout |
+| `MAX_REQUEST_BYTES` | Request-size limit, enforced on the raw byte stream regardless of transfer encoding |
+| `CORS_ALLOW_ORIGINS` | Comma-separated browser origin allowlist; CORS is disabled by default |
+| `CHECKPOINT_DB_PATH` | Optional SQLite checkpoint file, commonly `/data/checkpoints.db` |
+| `SHUTDOWN_GRACE_PERIOD_SECONDS` | Time allowed for in-flight requests to drain before engine resources close |
+| `MCP_DISCOVERY_TTL_SECONDS` | MCP manifest cache lifetime; `0` disables caching |
+| `RATE_LIMIT_REQUESTS_PER_MINUTE` | Max HTTP requests per client per window; `0` disables |
+| `RATE_LIMIT_WINDOW_SECONDS` | Sliding window for request rate limiting |
+| `AUTH_LOCKOUT_MAX_FAILURES` | Failed auth attempts before temporary lockout; `0` disables |
+| `AUTH_LOCKOUT_WINDOW_SECONDS` | Window in which auth failures are counted |
+| `AUTH_LOCKOUT_DURATION_SECONDS` | How long an auth lockout lasts |
+| `MCP_ALLOWED_COMMANDS` | Comma-separated MCP command allow list (empty means allow all except denied) |
+| `MCP_DENIED_COMMANDS` | Comma-separated MCP command deny list |
+| `MCP_ALLOW_SHELL` | Set to `1` to allow shell interpreters for MCP bindings |
+| `MCP_ALLOWED_ENV_VARS` | Comma-separated env vars passed to MCP subprocesses |
+| `MCP_DENIED_ENV_VARS` | Comma-separated env vars stripped from MCP subprocesses |
+| `MCP_ALLOWED_CWD_ROOT` | If set, MCP `cwd` must be under this directory |
+| `MCP_TOOL_TIMEOUT_SECONDS` | Per-call timeout for MCP tool execution |
+| `MCP_MAX_OUTPUT_BYTES` | Max output bytes per MCP tool call |
+| `MCP_MAX_CONCURRENT_SESSIONS` | Max concurrent MCP subprocess sessions |
+| `ADK_FALLBACK_ON_ERROR` | Use the deterministic fallback when ADK setup fails |
+
+**Current limitation:** an agent that omits `llm_config.model_id`/`model`
+falls back to a model name hardcoded inline at each engine's call site —
+`gpt-4o-mini` for LangGraph, `gemini-2.0-flash` for ADK — with no
+environment-variable override today. Making that default configurable
+(`DEFAULT_MODEL`, `OPENAI_DEFAULT_MODEL`, `GOOGLE_DEFAULT_MODEL`) through one
+shared resolver that covers every agent and sub-agent either engine
+compiles is tracked as `MODEL-001`..`MODEL-005` in
+[TODO.md](TODO.md#p2---default-model-configuration).
+
+Compose provides separate `lang_data` and `adk_data` volumes for checkpoint
+files. Do not share a checkpoint database between different engine profiles.
+
+Published GHCR images, including `docker pull`/`docker run` examples,
+read-only specification mounts, persistent data volumes, tag policy, and
+OCI provenance/SBOM inspection are documented in [Container images](docs/containers.md).
+The HTTP API surface is documented in generated OpenAPI files; see
+[docs/openapi.md](docs/openapi.md).
+Release maintainers should follow the [release checklist](docs/releasing.md).
+CI and release workflows use the dedicated repository runner; maintainers can
+follow its [operations guide](docs/self-hosted-runner.md).
+
+## Using the HTTP API
+
+Both runners expose the same compatibility surface:
+
+- `GET /health/live` — process liveness.
+- `GET /health/ready` — readiness check.
+- `GET /health/mcp` — MCP binding health (authenticated when an API key is configured).
+- `GET /v1/models` — available versioned workflow and agent entrypoints.
+- `GET /v1/models/{id}` — one versioned entrypoint or alias.
+- `GET /v1/tools` — configured MCP tool bindings.
+- `POST /v1/chat/completions` — OpenAI-compatible invocation endpoint.
+- `POST /v1/events` — JSON/CloudEvents intake acknowledgment.
+
+Interactive Swagger and ReDoc views are available at `/docs` and `/redoc`.
+The checked-in engine-specific API documents and error/authentication details
+are described in [docs/openapi.md](docs/openapi.md).
+
+Use an entrypoint returned by `/v1/models` as the request `model`:
+
+```bash
+curl http://localhost:8081/v1/models
+
+curl http://localhost:8081/v1/chat/completions \
+  -H 'content-type: application/json' \
+  -H 'X-Open-Agent-Thread-ID: demo-run-1' \
+  -d '{
+    "model": "example.support/support-workflow@1.0.0",
+    "messages": [{"role": "user", "content": "I need help with an order"}]
+  }'
+```
+
+The response follows the OpenAI chat-completion envelope. `stream: true`
+returns a small server-sent event stream. The thread header supplies a stable
+run ID and enables checkpoint reuse when `CHECKPOINT_DB_PATH` is configured.
+
+The request body accepts the standard OpenAI `temperature`, `tools`, and `n`
+fields for SDK compatibility, but the runners currently ignore them: model
+temperature comes from the Agent Spec's own `llm_config`, and tool bindings
+come from `bindings.yaml`, not from the request. Sending them does not error,
+but it also has no effect.
+
+For a CloudEvent-style request:
+
+```bash
+curl -X POST http://localhost:8081/v1/events \
+  -H 'content-type: application/json' \
+  -H 'ce-id: event-123' \
+  -H 'ce-type: order.created' \
+  -d '{"id":"event-123","type":"order.created","data":{"order_id":"A-42"}}'
+```
+
+The current endpoint validates and acknowledges the event envelope; durable
+event routing and long-lived listeners are roadmap items.
+
+When `SPECS_AGENT_API_KEY` is non-empty, send either
+`Authorization: Bearer <key>` or `X-API-Key: <key>` to protected endpoints.
+
+## Workflow expressions
+
+Task fields are evaluated as expressions against the current execution context.
+See [docs/expressions.md](docs/expressions.md) for supported paths, operators,
+built-in functions, and the coercion/error matrix.
+
+## MCP tools
+
+Declare stdio MCP servers in `bindings.yaml` and reference their binding names
+from Agent Spec `tools` entries:
+
+```yaml
+tool_bindings:
+  order-tools:
+    transport: stdio
+    command: python
+    args: ["tools/order_server.py"]
+    env:
+      ORDERS_DB: /data/orders.db
+```
+
+LangGraph discovers tool manifests, exposes them as OpenAI function tools, and
+executes bounded tool-call rounds. ADK adapts declared tools to native
+`BaseTool` instances. Discovery metadata and configured transports are visible
+from `GET /v1/tools`; cache duration is controlled by
+`MCP_DISCOVERY_TTL_SECONDS`.
+
+## Choosing an engine
+
+| Concern | LangGraph image | ADK image |
+| --- | --- | --- |
+| Graph execution | LangGraph `StateGraph` | Google ADK Agent/Runner bridge |
+| Model provider | OpenAI-compatible via `ChatOpenAI` | Google GenAI / ADK |
+| Tool bridge | MCP stdio with bounded tool rounds | MCP-to-ADK `BaseTool` adaptation |
+| UI | Embedded lightweight console at `/ui` | Native ADK `/dev-ui/` plus fallback `/ui` |
+| Offline behavior | Deterministic echo fallback | Optional deterministic fallback |
+
+Keep the same specs and choose the image according to provider, hosting, and
+observability requirements. The core loader and IR are shared; the runtime
+dependencies remain isolated. Both engines currently execute workflow control
+flow through the same shared interpreter rather than fully native framework
+constructs — see the compilation-fidelity note above.
+
+## Development and validation
+
+```bash
+uv sync --all-packages
+uv run --all-packages ruff check .
+uv run --all-packages ruff format --check .
+uv run --all-packages mypy tests packages/open-agent-core/src packages/open-agent-lang/src packages/open-agent-adk/src
+uv run --all-packages pytest --cov --cov-report=term-missing --cov-fail-under=70
+uv run --all-packages python scripts/generate_openapi.py --check
+uv build --all-packages
+```
+
+Compose configuration checks run as part of the test suite. Docker image builds
+and profile startup checks are available in CI and can be enabled locally with
+`RUN_DOCKER_INTEGRATION=1`. Contributor conventions, generated-file policy,
+and workspace hygiene are documented in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Roadmap
+
+The roadmap is intentionally staged; [TODO.md](TODO.md) is the actionable
+checklist and records completed work separately from future scope.
+
+### Near term
+
+- Replace the shared-interpreter compilers with real native-mapping compilers
+  for both engines — LangGraph conditional/parallel edges and retry policies,
+  ADK `Sequential`/`Parallel`/`Loop` composite agents — tracked as
+  [`COMPILE-001`..`COMPILE-015`](TODO.md#p1---native-framework-compilation).
+- Replace the compatibility streaming response with true incremental execution
+  events in both engines.
+- Route CloudEvents to durable matching `listen` tasks with retry and dead-letter
+  behavior.
+
+### Platform hardening
+
+- Add a pluggable agent-memory abstraction (in-memory, SQLite, Postgres, and
+  third-party backends) with availability health checks, mirroring the
+  existing checkpoint-store design — tracked as
+  [`MEM-001`..`MEM-006`](TODO.md#p2---pluggable-agent-memory).
+- Make the per-engine default model configurable via environment variables
+  instead of hardcoded inline, applied to every agent and sub-agent either
+  engine compiles — tracked as
+  [`MODEL-001`..`MODEL-005`](TODO.md#p2---default-model-configuration).
+- Let Agent Spec and `bindings.yaml` fields declare Spring Boot-style
+  `${VAR:default}` placeholders so any agent characteristic (model,
+  temperature, prompt, tool bindings) can be overridden per environment
+  without editing the spec — tracked as
+  [`CONFIG-001`..`CONFIG-008`](TODO.md#p2---externalized-agent-configuration).
+- Add deployment manifests and secret-manager examples for Kubernetes and
+  managed container platforms.
+- Add checkpoint retention and expiry policies.
+
+### Longer term
+
+- Provide a versioned schema registry and compatibility checks for published
+  specification bundles.
+- Add visual workflow inspection and run history to the lightweight console.
+- Support resumable, distributed event-driven executions and human approval
+  steps.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE). Review dependency
+licenses before redistributing a deployment image.

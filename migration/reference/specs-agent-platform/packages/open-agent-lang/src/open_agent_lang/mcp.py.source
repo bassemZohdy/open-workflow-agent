@@ -1,0 +1,36 @@
+"""Minimal MCP stdio discovery and invocation for workflow tool bindings."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from open_agent_core import McpProcessManager, McpToolError
+
+
+class McpToolRegistry:
+    """Resolve `bindings.tool_bindings` entries through MCP stdio servers."""
+
+    def __init__(self, bindings: dict[str, dict[str, Any]]):
+        self._manager = McpProcessManager(bindings)
+
+    @property
+    def bindings(self) -> dict[str, dict[str, Any]]:
+        return self._manager.bindings
+
+    async def start(self) -> None:
+        await self._manager.start()
+
+    async def close(self) -> None:
+        await self._manager.close()
+
+    async def discover(self, binding_name: str) -> list[dict[str, Any]]:
+        return await self._manager.discover(binding_name)
+
+    async def call(self, binding_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        return await self._manager.call(binding_name, arguments)
+
+    def health_summary(self) -> dict[str, dict[str, Any]]:
+        return self._manager.health_summary()
+
+
+__all__ = ["McpToolError", "McpToolRegistry"]

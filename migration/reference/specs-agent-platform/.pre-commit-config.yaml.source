@@ -1,0 +1,30 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --all-packages ruff check --fix
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --all-packages ruff format
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: mypy
+        name: mypy
+        entry: uv run --all-packages mypy tests packages/open-agent-core/src packages/open-agent-lang/src packages/open-agent-adk/src
+        language: system
+        types: [python]
+        pass_filenames: false
+
+      - id: openapi-docs
+        name: generated OpenAPI docs
+        entry: uv run --all-packages python scripts/generate_openapi.py --check
+        language: system
+        pass_filenames: false
+        always_run: true

@@ -1,0 +1,23 @@
+"""Small Pydantic models for the stable Open Workflow document envelope."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class WorkflowMetadata(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    dsl: str
+    namespace: str
+    name: str
+    version: str
+
+
+class WorkflowDocument(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    document: WorkflowMetadata
+    do: list[dict[str, Any]] = Field(default_factory=list)

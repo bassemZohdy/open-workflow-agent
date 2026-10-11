@@ -1,0 +1,12 @@
+component_type: Agent
+agentspec_version: '26.1.2'
+id: conformance.support/support-agent-openai@1.0.0
+name: support-agent-openai
+system_prompt: Using OpenAI.
+llm_config:
+  component_type: OpenAiConfig
+  name: openai-model
+  model_id: gpt-4o
+  default_generation_parameters:
+    temperature: 0.2
+    max_tokens: 256

@@ -1,0 +1,59 @@
+from pathlib import Path
+
+import pytest
+from open_agent_core import load_application
+
+ROOT = Path(__file__).parents[1]
+FIXTURES = ROOT / "tests" / "fixtures" / "conformance"
+
+
+def test_representative_open_workflow_and_agent_spec_fixtures_load() -> None:
+    application = load_application(
+        workflow_path=ROOT / "examples" / "workflow.yaml",
+        agent_path=ROOT / "examples" / "agent.yaml",
+    )
+
+    assert application.workflows[0].id == "examples/hello@1.0.0"
+    assert application.workflows[0].tasks[0].kind == "set"
+    assert application.agents[0].id == "examples/hello-agent@1.0.0"
+    assert application.agents[0].system_prompt == "Say hello."
+
+
+@pytest.mark.parametrize(
+    "workflow_path",
+    sorted((FIXTURES / "workflows").glob("*.yaml")),
+    ids=lambda path: path.stem,
+)
+def test_conformance_workflow_shape_loads(workflow_path: Path) -> None:
+    application = load_application(
+        root=workflow_path.parent,
+        workflow_path=workflow_path,
+    )
+
+    assert len(application.workflows) == 1
+    assert application.workflows[0].source == str(workflow_path)
+
+
+@pytest.mark.parametrize(
+    "agent_path",
+    sorted((FIXTURES / "agents").glob("*.yaml")),
+    ids=lambda path: path.stem,
+)
+def test_conformance_agent_component_loads(agent_path: Path) -> None:
+    application = load_application(
+        root=agent_path.parent,
+        agent_path=agent_path,
+    )
+
+    assert len(application.agents) == 1
+    assert application.agents[0].source == str(agent_path)
+
+
+def test_conformance_application_composition() -> None:
+    application = load_application(FIXTURES)
+
+    workflow_ids = {workflow.id for workflow in application.workflows}
+    agent_ids = {agent.id for agent in application.agents}
+    assert "conformance.support/support-workflow@1.0.0" in workflow_ids
+    assert "conformance.support/support-agent@1.0.0" in agent_ids
+    assert application.resolve_entrypoint("support") == "conformance.support/support-workflow@1.0.0"

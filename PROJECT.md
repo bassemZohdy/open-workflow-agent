@@ -563,8 +563,10 @@ This repository is the selected implementation home. All 284 tracked files of
 the public standalone ADK predecessor are preserved as frozen Apache references;
 selected fixtures are adapted for canonical contract verification. Independent
 assistant/pipeline recipes and an eight-family catalog preserve useful patterns
-without copying unlicensed source. Private `specs-agent-platform` publication and
-repository archiving remain pending. The full tracker records 658 features, 443
+without copying unlicensed source. All 109 Apache files of `specs-agent-platform`
+are now imported as references after the user authorized the explained
+private-to-public transfer. The origin remains private. Archival remains pending
+and currently needs user action because the browser is not authenticated. The full tracker records 658 features, 443
 proposed tests and 774 schema constraints. This is source consolidation and gap
 tracking, not completed native lowering or full OWS/LangGraph conformance.
 
@@ -603,3 +605,5 @@ uv run --directory engines/adk --locked --extra native --extra knowledge --with 
 uv run --directory engines/langgraph --locked --extra sqlite --extra knowledge --with pytest --with pytest-asyncio pytest ../../tests/langgraph ../../tests/contract ../../tests/ctk -q
 uv run --directory engines/agent-framework --locked --extra native --extra knowledge --with pytest --with pytest-asyncio pytest ../../tests/agent_framework ../../tests/contract ../../tests/ctk -q
 ```
+
+The CI source-integrity gate caught three ignored predecessor reference files missing from the initial PR. Those exact source bytes are now explicitly tracked; the gate remains enforced. MIG-01 transfer/license disposition is complete: both imported sources retain Apache attribution, and unlicensed generic source stays at origin. No active compiler, checkpoint service or unsafe approval implementation is introduced by the frozen reference import.

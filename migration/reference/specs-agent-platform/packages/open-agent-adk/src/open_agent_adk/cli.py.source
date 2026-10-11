@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+import argparse
+import os
+import sys
+
+import uvicorn
+from open_agent_core.diagnostics import SpecValidationError
+
+from .runner import create_app
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(prog="open-agent-adk")
+    parser.add_argument("command", choices=["serve"])
+    parser.add_argument("application_positional", nargs="?")
+    parser.add_argument(
+        "--application", default=os.getenv("APPLICATION_PATH", "examples/application")
+    )
+    parser.add_argument("--workflow", default=os.getenv("WORKFLOW_SPEC_PATH") or None)
+    parser.add_argument("--agent", default=os.getenv("AGENT_SPEC_PATH") or None)
+    parser.add_argument("--host", default=os.getenv("HOST", "127.0.0.1"))
+    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "8080")))
+    args = parser.parse_args(argv)
+    if args.command == "serve":
+        application = args.application_positional or args.application
+        try:
+            app = create_app(
+                application_path=application,
+                workflow_path=args.workflow,
+                agent_path=args.agent,
+            )
+        except SpecValidationError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        try:
+            graceful_timeout = max(0.0, float(os.getenv("SHUTDOWN_GRACE_PERIOD_SECONDS", "30")))
+        except ValueError:
+            graceful_timeout = 30.0
+        uvicorn.run(
+            app,
+            host=args.host,
+            port=args.port,
+            timeout_graceful_shutdown=int(graceful_timeout),
+        )
+    return 0
+
+
+__all__ = ["main"]

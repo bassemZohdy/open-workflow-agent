@@ -1,0 +1,77 @@
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class TaskIR(BaseModel):
+    """Normalized task shape shared by all runtime adapters.
+
+    `config` deliberately retains spec-native values. Adapters consume the
+    normalized task kind while the runtime expression evaluator resolves values
+    at execution time.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    name: str
+    kind: str
+    config: dict[str, Any] = Field(default_factory=dict)
+    children: tuple[TaskIR, ...] = ()
+    branches: dict[str, tuple[TaskIR, ...]] = Field(default_factory=dict)
+    fork_branches: tuple[tuple[TaskIR, ...], ...] = ()
+    catch_tasks: tuple[TaskIR, ...] = ()
+    finally_tasks: tuple[TaskIR, ...] = ()
+
+
+class WorkflowIR(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    namespace: str
+    name: str
+    version: str
+    source: str
+    document: dict[str, Any]
+    tasks: tuple[TaskIR, ...] = ()
+
+
+class AgentIR(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: str
+    component_type: str
+    source: str
+    document: dict[str, Any]
+    system_prompt: str | None = None
+    tools: tuple[dict[str, Any], ...] = ()
+    memory: dict[str, Any] | None = None
+
+
+class BindingsIR(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    agent_calls: dict[str, str] = Field(default_factory=dict)
+    tool_bindings: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    aliases: dict[str, str] = Field(default_factory=dict)
+
+
+class ApplicationIR(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    version: Literal[1] = 1
+    root: str
+    workflows: tuple[WorkflowIR, ...] = ()
+    agents: tuple[AgentIR, ...] = ()
+    bindings: BindingsIR = Field(default_factory=BindingsIR)
+
+    def entrypoints(self) -> tuple[str, ...]:
+        return tuple(item.id for item in self.workflows) + tuple(item.id for item in self.agents)
+
+    def resolve_entrypoint(self, identifier: str) -> str:
+        return self.bindings.aliases.get(identifier, identifier)
+
+
+TaskIR.model_rebuild()

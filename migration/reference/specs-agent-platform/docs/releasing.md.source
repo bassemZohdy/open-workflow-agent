@@ -1,0 +1,98 @@
+# Releasing container images
+
+This project publishes engine images only from a strict semantic-version Git
+tag (`vX.Y.Z`, optionally with a valid prerelease) or a manual request naming
+that existing tag. Build metadata, leading zeroes, and empty prerelease
+identifiers are rejected. Pull-request CI builds and scans images but does not
+publish them.
+
+## Before creating a release
+
+1. Choose a valid semantic version and decide whether it is stable or a
+   prerelease. The Git tag has a `v` prefix (for example, `v0.1.0`); its
+   canonical immutable container tag is `0.1.0`. Do not reuse a version.
+2. Update the package version(s) in `pyproject.toml`, the matching
+   `CHANGELOG.md` entry, and any user-facing examples that name the release.
+3. Run the repository quality checks, package builds, and both image/profile
+   smoke tests for the exact commit to release.
+4. Confirm that no unreviewed credentials, local files, or unrelated changes
+   are included.
+5. Create and push the matching annotated tag, for example `v0.1.0`.
+
+## Publishing and permissions
+
+The `publish-images.yml` workflow is triggered by a matching tag or by
+`workflow_dispatch` with the matching existing tag. It checks out that tag and
+requires the root and all package versions to equal the requested version. It
+validates that exact release commit with the reusable quality workflow before
+any image build or scan begins, so publication cannot proceed unless lint,
+formatting, type checking, tests, package builds, image builds, image scans, and
+Compose smoke tests all pass for the release SHA. Release jobs run on the
+repository's dedicated self-hosted runner; see
+[Self-hosted runner operations](self-hosted-runner.md).
+It publishes:
+
+- `ghcr.io/bassemzohdy/specs-agent-lang`
+- `ghcr.io/bassemzohdy/specs-agent-adk`
+
+The workflow uses the repository-scoped `GITHUB_TOKEN`. Pull-request jobs have
+only `contents: read`; release jobs grant only the additional package and
+best-effort SARIF permissions they need. Do not replace these with a personal
+token or grant package-write access to pull-request code.
+
+Both images are first pushed only as OCI digests, with BuildKit provenance
+(`mode=max`) and SBOM attestations stored in GHCR. Trivy scans those exact
+remote digests and fails on any fixable high or critical finding. Unfixed
+findings remain in the generated security report for review. A single
+publication job preflights both canonical full-version tags: it resumes only
+when an existing tag already points to the intended digest, and rejects a
+different digest. Only after both preflights pass does it add canonical and
+stable alias tags, then pulls and checks both digests at `/health/ready`.
+
+The vulnerability gate does not depend on GitHub code scanning. In a private
+repository without GitHub Advanced Security, GitHub can reject SARIF ingestion;
+that best-effort upload is allowed to fail while the SARIF and SBOM workflow
+artifacts are retained for review.
+
+## After publication
+
+1. Confirm both package pages show the expected full version and digest.
+2. Inspect the OCI attestations for each digest, for example:
+
+   ```bash
+   docker buildx imagetools inspect \
+     ghcr.io/bassemzohdy/specs-agent-lang@sha256:REPLACE_WITH_DIGEST
+   ```
+
+3. Pull and run each image as described in [Container images](containers.md).
+4. Confirm the API readiness endpoint and relevant UI load from the published
+   digest, rather than from a local build.
+5. Announce the release with links to the changelog, package digests, SBOMs,
+   scan results, and any known limitations.
+
+## Tag and package policy
+
+- Full version tags are immutable deployment references.
+- Stable releases update major/minor aliases and `latest`; prereleases do not
+  update `latest`.
+- `sha-<full-commit-SHA>` tags are immutable traceability references, not
+  long-term deployment targets; images also include OCI source, revision, and
+  version labels.
+- `edge` is not currently emitted. It remains deferred until a separately
+  approved main-branch publication and retention policy exists.
+- Images are published for `linux/amd64` and `linux/arm64` after ARM64
+  compatibility is verified in CI. The release workflow uses a registry-backed
+  `buildcache` tag for Buildx layer caching; that tag is not a deployment target.
+- Stable releases require approval through the `release` GitHub environment
+  before aliases are published. Prereleases bypass the environment. Configure the
+  environment in the GitHub UI with required reviewers and, optionally, a wait
+  timer before the first stable release.
+- Packages default private. Repository linkage can inherit access controls, not
+  visibility. Making a package public is explicit and irreversible; it and
+  retention cleanup require maintainer approval. Preserve stable release
+  digests and their OCI attestations.
+
+If a release fails before aliases are created, rerun the same version: matching
+canonical digest tags resume safely. Never force-push or repurpose an existing
+full version tag. GitHub artifact attestations are intentionally deferred: they
+are unsupported for this private personal repository.

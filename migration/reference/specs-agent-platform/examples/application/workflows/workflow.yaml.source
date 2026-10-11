@@ -1,0 +1,18 @@
+document:
+  dsl: "1.0.3"
+  namespace: "example.support"
+  name: "support-workflow"
+  version: "1.0.0"
+  title: "Support workflow"
+
+do:
+  - initialize:
+      set:
+        status: "received"
+  - ask_agent:
+      call: "support-agent"
+      with:
+        request: "${ .request }"
+  - complete:
+      set:
+        status: "completed"

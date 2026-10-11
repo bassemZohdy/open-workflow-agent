@@ -1,0 +1,181 @@
+"""Integration suites for runtime, shutdown, timeout, and checkpoint reuse."""
+
+from __future__ import annotations
+
+import asyncio
+from pathlib import Path
+from typing import Any
+
+import httpx
+import pytest
+from fastapi.testclient import TestClient
+from open_agent_adk.runner import create_app as create_adk_app
+from open_agent_core import InMemoryEngine, SQLiteCheckpointStore, load_application
+from open_agent_core.ir import ApplicationIR
+from open_agent_lang.runner import create_app as create_lang_app
+
+ROOT = Path(__file__).parents[1]
+
+
+def _slow_application(tmp_path: Path) -> ApplicationIR:
+    workflow_path = tmp_path / "workflow.yaml"
+    workflow_path.write_text(
+        """\
+document:
+  dsl: '1.0.3'
+  namespace: integration
+  name: slow
+  version: '1.0.0'
+do:
+  - step:
+      call: slow
+""",
+        encoding="utf-8",
+    )
+    return load_application(workflow_path=workflow_path)
+
+
+class _SlowEngine(InMemoryEngine):
+    def __init__(self, application: ApplicationIR, delay: float) -> None:
+        super().__init__(
+            application,
+            call_handlers={"slow": lambda _arguments: self._slow_call(delay)},
+        )
+        self.delay = delay
+
+    async def _slow_call(self, delay: float) -> dict[str, Any]:
+        await asyncio.sleep(delay)
+        return {"output": "finished"}
+
+
+def test_concurrent_chat_requests_complete_without_corruption() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    app = create_lang_app(application=application, engine=InMemoryEngine(application))
+
+    async def run() -> list[str]:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            responses = await asyncio.gather(
+                *[
+                    client.post(
+                        "/v1/chat/completions",
+                        json={
+                            "model": "example.support/support-workflow@1.0.0",
+                            "messages": [{"role": "user", "content": f"msg {i}"}],
+                        },
+                    )
+                    for i in range(5)
+                ]
+            )
+        return [r.json()["choices"][0]["message"]["content"] for r in responses]
+
+    contents = asyncio.run(run())
+    assert all("support-agent:" in content for content in contents)
+    assert len(set(contents)) == 5
+
+
+def test_request_timeout_returns_504(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("REQUEST_TIMEOUT_SECONDS", "0.1")
+    application = _slow_application(tmp_path)
+    app = create_lang_app(
+        application=application,
+        engine=_SlowEngine(application, delay=1.0),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "integration/slow@1.0.0",
+                "messages": [{"role": "user", "content": "hello"}],
+            },
+        )
+
+    assert response.status_code == 504
+    assert response.json()["error"]["type"] == "timeout_error"
+
+
+def test_adk_request_timeout_returns_504(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("ADK_NATIVE_UI", "0")
+    monkeypatch.setenv("REQUEST_TIMEOUT_SECONDS", "0.1")
+    application = _slow_application(tmp_path)
+    app = create_adk_app(
+        application=application,
+        engine=_SlowEngine(application, delay=1.0),
+    )
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/v1/chat/completions",
+            json={
+                "model": "integration/slow@1.0.0",
+                "messages": [{"role": "user", "content": "hello"}],
+            },
+        )
+
+    assert response.status_code == 504
+    assert response.json()["error"]["type"] == "timeout_error"
+
+
+@pytest.mark.asyncio
+async def test_cancellation_leaves_checkpoint_in_defined_state(tmp_path: Path) -> None:
+    application = _slow_application(tmp_path)
+    store = SQLiteCheckpointStore(":memory:")
+    engine = _SlowEngine(application, delay=5.0)
+    engine.checkpoint_store = store
+
+    task = asyncio.create_task(engine.invoke("integration/slow@1.0.0", {}, run_id="run-1"))
+    await asyncio.sleep(0.05)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    checkpoint = await store.load("run-1")
+    await store.close()
+    assert checkpoint is not None
+    assert checkpoint["status"] == "failed"
+
+
+@pytest.mark.asyncio
+async def test_reusing_run_id_returns_completed_checkpoint(tmp_path: Path) -> None:
+    application = _slow_application(tmp_path)
+    store = SQLiteCheckpointStore(":memory:")
+    engine1 = _SlowEngine(application, delay=0.05)
+    engine1.checkpoint_store = store
+
+    first = await engine1.invoke("integration/slow@1.0.0", {}, run_id="run-2")
+    assert first["output"] == "finished"
+
+    engine2 = _SlowEngine(application, delay=5.0)
+    engine2.checkpoint_store = store
+    second = await engine2.invoke("integration/slow@1.0.0", {}, run_id="run-2")
+    await store.close()
+
+    assert second["output"] == "finished"
+
+
+def test_lifespan_drains_in_flight_requests_on_shutdown(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("SHUTDOWN_GRACE_PERIOD_SECONDS", "1")
+    application = _slow_application(tmp_path)
+    app = create_lang_app(
+        application=application,
+        engine=_SlowEngine(application, delay=0.2),
+    )
+
+    async def run() -> int:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/v1/chat/completions",
+                json={
+                    "model": "integration/slow@1.0.0",
+                    "messages": [{"role": "user", "content": "hello"}],
+                },
+            )
+            return response.status_code
+
+    assert asyncio.run(run()) == 200

@@ -1,0 +1,5 @@
+version: 1
+agent_calls:
+  support-agent: "example.support/support-agent@1.0.0"
+aliases:
+  support: "example.support/support-workflow@1.0.0"

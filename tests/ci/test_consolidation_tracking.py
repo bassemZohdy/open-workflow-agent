@@ -24,8 +24,14 @@ def test_full_inventory_is_preserved_and_owned_by_pending_tasks():
     assert len(tracking) == len(ids) == 658
     assert {row["feature_id"] for row in tracking} == ids
     tasks = {task["id"] for task in tracker["repository_tracking"]["tasks"]}
+    pending = {
+        task["id"]
+        for task in tracker["repository_tracking"]["tasks"]
+        if task["status"] == "Pending"
+    }
     todo = (ROOT / "TODO.md").read_text()
-    assert all(f"**{task}**" in todo for task in tasks)
+    assert all(f"**{task}**" in todo for task in pending)
+    assert "**MIG-01**" not in todo
     tests = {test["id"] for test in tracker["tests"]}
     for row in tracking:
         assert row["todo_ids"] and set(row["todo_ids"]) <= tasks
@@ -41,14 +47,18 @@ def test_apache_snapshot_exact_bytes_and_generic_source_boundary():
     adk = sources["open-workflow-agent-adk"]
     assert adk["license"] == "Apache-2.0"
     assert len(adk["files"]) == adk["tracked_file_count"] == 284
-    for item in adk["files"]:
-        data = (ROOT / item["destination"]).read_bytes()
-        assert hashlib.sha256(data).hexdigest() == item["sha256"]
-        blob = f"blob {len(data)}\0".encode() + data
-        assert hashlib.sha1(blob).hexdigest() == item["git_blob_sha"]
+    specs = sources["specs-agent-platform"]
+    assert specs["license"] == "Apache-2.0"
+    assert len(specs["files"]) == specs["tracked_file_count"] == 109
+    for source in (adk, specs):
+        for item in source["files"]:
+            data = (ROOT / item["destination"]).read_bytes()
+            assert hashlib.sha256(data).hexdigest() == item["sha256"]
+            blob = f"blob {len(data)}\0".encode() + data
+            assert hashlib.sha1(blob).hexdigest() == item["git_blob_sha"]
     generic = sources["generic-agent-lang"]
     assert len(generic["files"]) == 102
     assert generic["license"] is None
     assert all("destination" not in item for item in generic["files"])
     assert manifest["private_source"]["visibility"] == "private"
-    assert not (ROOT / "migration/reference/specs-agent-platform").exists()
+    assert manifest["private_source"]["public_transfer"].startswith("Authorized by the user")

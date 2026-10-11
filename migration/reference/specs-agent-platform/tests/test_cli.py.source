@@ -1,0 +1,80 @@
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+from open_agent_adk.cli import main as adk_main
+from open_agent_core.cli import main as core_main
+from open_agent_lang.cli import main as lang_main
+
+ROOT = Path(__file__).parents[1]
+EXAMPLE_APPLICATION = str(ROOT / "examples" / "application")
+
+
+def _write_invalid_workflow(tmp_path: Path) -> str:
+    source = tmp_path / "bad.yaml"
+    source.write_text(
+        "document:\n  dsl: '0.9'\n  namespace: x\n  name: y\n  version: '1'\ndo: []\n",
+        encoding="utf-8",
+    )
+    return str(tmp_path)
+
+
+def test_core_cli_reports_success(capsys: pytest.CaptureFixture[str]) -> None:
+    exit_code = core_main([EXAMPLE_APPLICATION])
+
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "workflow(s)" in out
+    assert "agent(s)" in out
+
+
+def test_core_cli_reports_structured_diagnostics_on_invalid_spec(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    invalid_application = _write_invalid_workflow(tmp_path)
+
+    exit_code = core_main([invalid_application])
+
+    assert exit_code == 1
+    err = capsys.readouterr().err
+    assert "WORKFLOW_VERSION_UNSUPPORTED" in err
+
+
+def test_core_cli_rejects_unknown_arguments() -> None:
+    with pytest.raises(SystemExit) as excinfo:
+        core_main(["--unknown-flag"])
+    assert excinfo.value.code == 2
+
+
+@pytest.mark.parametrize("cli_main", [lang_main, adk_main])
+def test_engine_cli_reports_structured_diagnostics_on_invalid_spec(
+    cli_main: object, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    invalid_application = _write_invalid_workflow(tmp_path)
+
+    exit_code = cli_main(["serve", "--application", invalid_application])  # type: ignore[operator]
+
+    assert exit_code == 1
+    err = capsys.readouterr().err
+    assert "WORKFLOW_VERSION_UNSUPPORTED" in err
+
+
+@pytest.mark.parametrize("prog", ["open-agent-lang", "open-agent-adk"])
+def test_engine_cli_rejects_unknown_command(prog: str) -> None:
+    cli_main = lang_main if prog == "open-agent-lang" else adk_main
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main(["not-a-command"])
+    assert excinfo.value.code == 2
+
+
+def test_core_cli_entry_point_is_installed() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "open_agent_core.cli", EXAMPLE_APPLICATION],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0
+    assert "entrypoint(s)" in result.stdout

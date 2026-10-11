@@ -1,0 +1,78 @@
+# Self-hosted runner operations
+
+This repository's CI and release workflows run only on the dedicated
+`SpecsAgentRunner` WSL2 distribution. The GitHub Actions runner is named
+`specs-agent-wsl-01`; its systemd unit is
+`actions.runner.bassemZohdy-specs-agent-platform.specs-agent-wsl-01.service`.
+Its GitHub runner labels are
+`self-hosted`, `Linux`, `X64`, and `specs-agent` (workflow label matching is
+case-insensitive). GitHub-hosted fallback is intentionally not configured.
+
+## Security boundary
+
+Treat this as a private, trusted-code runner: repository collaborators who can
+change workflow code can execute commands in the runner environment. The
+isolated WSL distribution contains its own Docker Engine, so Docker access is
+effectively privileged inside that distribution. Do not run workflows from
+untrusted forks, and keep repository write/admin access tightly controlled.
+
+`SpecsAgentRunner` disables Windows automount and interop. This prevents jobs
+from automatically seeing Windows drives or launching Windows executables; do
+not weaken those settings merely for a workflow convenience.
+
+## Health and routine checks
+
+From Windows PowerShell, confirm the service and runner process are healthy.
+The runner account has no `sudo`; use WSL's root user for systemd operations:
+
+```powershell
+wsl.exe -d SpecsAgentRunner -u root --exec systemctl is-active actions.runner.bassemZohdy-specs-agent-platform.specs-agent-wsl-01.service
+wsl.exe -d SpecsAgentRunner -u root --exec systemctl status actions.runner.bassemZohdy-specs-agent-platform.specs-agent-wsl-01.service --no-pager
+```
+
+From an authenticated GitHub CLI session, confirm GitHub sees the expected
+online runner and labels:
+
+```bash
+gh api repos/OWNER/REPOSITORY/actions/runners \
+  --jq '.runners[] | select(.name == "specs-agent-wsl-01") | {status, busy, labels: [.labels[].name]}'
+```
+
+The runner is offline while Windows sleeps or the user logs off, because WSL2
+stops with that user session. A current-user **HKCU Run** keepalive starts WSL
+and the service after sign-in; it is deliberately not a Scheduled Task because
+creating one requires administrative rights in this setup. After Windows or
+WSL recovery, start the distribution, then verify the systemd service and the
+GitHub API result above before relying on queued jobs.
+
+Docker data lives in the isolated distribution. Periodically inspect usage with
+`docker system df`; prune only data no longer needed by active workloads, for
+example `docker image prune` or `docker builder prune` after reviewing their
+targets. Avoid broad `docker system prune --volumes` on this persistent runner.
+
+## Startup, recovery, and rollback
+
+For normal startup or recovery, sign in to the Windows account, allow the HKCU
+Run keepalive to launch WSL, then run the health checks. If the service is not
+active, inspect and restart it from Windows PowerShell:
+
+```powershell
+wsl.exe -d SpecsAgentRunner -u root --exec journalctl -u actions.runner.bassemZohdy-specs-agent-platform.specs-agent-wsl-01.service --no-pager
+wsl.exe -d SpecsAgentRunner -u root --exec systemctl restart actions.runner.bassemZohdy-specs-agent-platform.specs-agent-wsl-01.service
+```
+
+Do not start a second interactive runner process while the service owns the
+registration.
+
+To remove the runner safely, first disable or update repository workflows so no
+jobs target `specs-agent`, then wait for or cancel active jobs. Stop and disable
+the systemd service from Windows PowerShell:
+
+```powershell
+wsl.exe -d SpecsAgentRunner -u root --exec systemctl disable --now actions.runner.bassemZohdy-specs-agent-platform.specs-agent-wsl-01.service
+```
+
+Then remove the runner registration from GitHub, remove the HKCU Run keepalive
+entry, and only then unregister the WSL distribution if it is no longer needed.
+This order avoids stranded jobs and prevents an old runner credential from
+reconnecting.
