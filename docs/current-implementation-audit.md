@@ -9,9 +9,10 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`5f97cb9df834874f360859c59f5e7eaec96b5058`, which corrects ordered fork
-results and adds failure/restart evidence. Its local results and pending exact
-GitHub acceptance are recorded in [PROJECT.md](../PROJECT.md#s2-01-ordered-fork-results--in-progress).
+`ad33b4f`, which retains the ordered fork correction and adds shared restart
+evidence across adapters. Exact runtime GitHub acceptance at `6c84072` and the
+additional unchanged-runtime test qualification are recorded in
+[PROJECT.md](../PROJECT.md#s2-01-ordered-fork-results--2026-10-11-verified).
 Hashes of reviewed Git file contents preserve the evidence baseline. The
 manifest's `previous_reviews` retains the earlier S1-08 acceptance and points
 to its immutable artifact. Historical green gates do not qualify changed code.
@@ -49,7 +50,7 @@ not be read as current delivery status.
 
 | Finding | Actual behavior and evidence boundary | Repair owner |
 | --- | --- | --- |
-| Ordered fork output and collisions | Ordered branch arrays, isolated exports and explicit jq aggregation now pass local shared fixtures. Failure cleanup and real SQLite ordered-result restart pass; exact configured GitHub acceptance is pending | S2-01 |
+| Ordered fork output and collisions | Ordered branch arrays, isolated exports, explicit jq aggregation and failure cleanup pass shared fixtures. SQLite/PostgreSQL native fork restart and exact runtime GitHub gates pass; additional shared output restart passes every adapter | S2-01 verified; full criteria remain S4-03/S4-04 |
 | Competitive fork durability | In-process winner/cancel/drain exists; winner selection and effects are not durably reconciled | S2-02, S2-08 |
 | Native checkpoint recovery | Root/nested/loop/function/import/schema scopes recover completed calls with private savers; pending effects and common/native transactions remain unproved, and explicit null resume uses a missing-value sentinel | S2-03 |
 | Retry and timeout declarations | Predicates/count/basic backoff work; jitter and duration limits are inert, and original deadlines are not persisted | S2-04 |

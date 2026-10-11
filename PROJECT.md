@@ -22,7 +22,7 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
-### S2-01 ordered fork results — in progress
+### S2-01 ordered fork results — 2026-10-11 (verified)
 
 Noncompetitive fork returns the declaration-ordered array of all branch
 outputs, retaining overlapping keys and JSON null/scalar/list/object values.
@@ -45,14 +45,40 @@ primitive checks do not implement public native metadata extensions.
 
 The desired ordered-fork audit probe now passes without an expected-failure
 marker. Branch failure drains siblings before returning the common error.
-Real SQLite restart retains ordered branch outputs without replaying completed
-calls; the same PostgreSQL case awaits its configured GitHub gate. Formatting,
-lint and all five dependency locks pass. GitHub acceptance is pending; S2-01
-remains unchecked. The current audit now reviews `5f97cb9`, moving seven fork
-features to qualified subsets (178 qualified subsets, 152 partial outcomes and
-32 mismatches). It preserves the earlier S1-08 artifact and green acceptance
-as history; current GitHub acceptance remains pending. Public native channels
-remain unimplemented despite the SDK primitive checks.
+Real SQLite and configured PostgreSQL restart retain ordered branch outputs
+without replaying completed calls. A further shared fixture at `ad33b4f` reopens
+services and resumes interrupted forks on every adapter, verifying ordered
+outputs and persisted completed results: 18 shared executions pass in each
+principal environment, 27 in optional Agent Framework; the LangGraph environment
+also passes both native collision/reducer primitive checks (20 total). This
+shared restart case qualifies output shape; general pending-effect reconciliation
+is S2-03/S2-08 work.
+
+Formatting, lint, strict typing, all five locks, root/core builds and Markdown
+links pass. Exact runtime acceptance is green at `6c84072` (runtime change
+`5f97cb9`): root CI reports 1,159 passed, 30 skipped, three expected failures and
+91.70% coverage; shared contracts report 439 passed and three expected failures.
+Independent CI matrices report ADK 445, LangGraph 458 (seven PostgreSQL skips),
+and optional Agent Framework 716 passed. Both runtime images, SQLite defaults,
+PostgreSQL containers, restricted external sandbox, Windows, manifests, mutation,
+security and docs passed. The later shared test changes no runtime code and is
+separately qualified locally; its follow-up GitHub checks are not yet a receipt.
+
+The current audit reviews `ad33b4f`, recording seven fork features as qualified
+subsets (178 qualified subsets, 152 partial outcomes and 32 mismatches). It
+retains historical S1-08 evidence, all complete proposed criteria and independent
+JS gaps. Public native channels remain unimplemented despite SDK primitive checks;
+their versioned metadata implementation belongs to S4-01/S4-02.
+
+| Gate | Run | Result |
+| --- | --- | --- |
+| CI | [38148408731](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38148408731) | success |
+| CI (push) | [38148405147](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38148405147) | success |
+| External Sandbox CI | [38148408720](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38148408720) | success |
+| PostgreSQL CI | [38148408705](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38148408705) | success |
+| Agent Framework CI (optional) | [38148408693](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38148408693) | success |
+| Security | [38148408820](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38148408820) | success |
+| Docs | [38148408742](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38148408742) | success |
 
 ### S1-08 current implementation audit — 2026-10-11 (verified)
 

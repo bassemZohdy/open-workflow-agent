@@ -42,7 +42,12 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 
 ## Stage 2 — Reliable execution and recovery
 
-- [ ] **S2-01** (M) — Preserve ordered fork results, branch isolation, reducers and state-collision behavior.
+- [x] **S2-01** (M) — Preserve ordered fork results, branch isolation, reducers and state-collision behavior.
+  Runtime verified at `6c84072`, with additional cross-adapter restart fixtures at
+  `ad33b4f`: [fork behavior](docs/workflow-forks.md) and
+  [acceptance evidence](PROJECT.md#s2-01-ordered-fork-results--2026-10-11-verified).
+  Public native channel/reducer extensions remain S4-01/S4-02; full proposed
+  criteria and independent JS qualification remain S4-03/S4-04.
 - [ ] **S2-02** (L) — Implement first-completed competitive forks, durable winner selection and loser cancellation.
 - [ ] **S2-03** (L) — Prove native checkpoint recovery and reconcile native state with common invocation/side-effect records.
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.

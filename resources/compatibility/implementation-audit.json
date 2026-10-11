@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "reviewed_implementation_commit": "5f97cb9df834874f360859c59f5e7eaec96b5058",
+  "reviewed_implementation_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8",
   "acceptance_record_commit": null,
   "purpose": "Exhaustive current implementation audit, not a full conformance certificate or feature completion claim",
   "review_method": "Each semantic construct and schema parent was compared with active admission/execution/native code and existing assertion scope. Missing/inert/mismatched behavior retains explicit owners. Source/API availability and copied material are not runtime proof.",
@@ -53,9 +53,17 @@
       "shared_agent_framework_optional": 24,
       "native_collision_and_reducer_primitives": 2
     },
-    "scope": "Full local suites cover the unchanged runtime implementation before added test-only failure/recovery fixtures; every additional fixture passes separately. Real SQLite ordered fork restart passed; PostgreSQL counterpart awaits configured CI. Public native extensions and independent JS remain unimplemented.",
-    "remote_status": "Pending exact new revision; historical green gates do not qualify changed code",
-    "remote_runs": {}
+    "scope": "Local and exact remote runtime assertions qualify bounded noncompetitive fork results. SQLite/PostgreSQL native result/effect restart passed. Additional shared output restart passes every adapter without certifying general pending-side-effect transactions. Public native extensions, independent JS and full proposed criteria remain unimplemented/unqualified.",
+    "remote_status": "Runtime accepted; later test-only follow-up gates pending",
+    "remote_runs": {
+      "CI": 38148408731,
+      "CI (push)": 38148405147,
+      "External Sandbox CI": 38148408720,
+      "PostgreSQL CI": 38148408705,
+      "Agent Framework CI (optional)": 38148408693,
+      "Security": 38148408820,
+      "Docs": 38148408742
+    }
   },
   "evidence_groups": {
     "loading": {
@@ -542,9 +550,13 @@
         {
           "path": "tests/langgraph/test_native_task_graph.py",
           "symbol": "test_restart_preserves_ordered_fork_results_and_completed_branch_effects"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_restart_preserves_ordered_fork_output_on_each_adapter"
         }
       ],
-      "test_scope": "Shared deterministic Python fixtures on both principal engines and optional Agent Framework: reverse completion, all JSON value types, nested ordered arrays, branch snapshots/exports, explicit jq aggregation/merge and failure cleanup. Real SQLite native restart preserves ordered outputs and completed calls; configured PostgreSQL counterpart awaits CI. Full proposed criteria and independent JS remain unexecuted."
+      "test_scope": "Shared deterministic Python fixtures on both principal engines and optional Agent Framework: reverse completion, all JSON value types, nested ordered arrays, branch snapshots/exports, explicit jq aggregation/merge and failure cleanup. Real SQLite native restart preserves ordered outputs and completed calls; configured PostgreSQL counterpart passed CI. Full proposed criteria and independent JS remain unexecuted. Shared fresh-service output restart passes every supported adapter separately."
     },
     "fork_join": {
       "outcome": "qualified_subset",
@@ -600,9 +612,13 @@
         {
           "path": "tests/langgraph/test_native_task_graph.py",
           "symbol": "test_restart_preserves_ordered_fork_results_and_completed_branch_effects"
+        },
+        {
+          "path": "tests/contract/test_fork_results.py",
+          "symbol": "test_restart_preserves_ordered_fork_output_on_each_adapter"
         }
       ],
-      "test_scope": "Shared deterministic Python fixtures on both principal engines and optional Agent Framework: reverse completion, all JSON value types, nested ordered arrays, branch snapshots/exports, explicit jq aggregation/merge and failure cleanup. Real SQLite native restart preserves ordered outputs and completed calls; configured PostgreSQL counterpart awaits CI. Full proposed criteria and independent JS remain unexecuted."
+      "test_scope": "Shared deterministic Python fixtures on both principal engines and optional Agent Framework: reverse completion, all JSON value types, nested ordered arrays, branch snapshots/exports, explicit jq aggregation/merge and failure cleanup. Real SQLite native restart preserves ordered outputs and completed calls; configured PostgreSQL counterpart passed CI. Full proposed criteria and independent JS remain unexecuted. Shared fresh-service output restart passes every supported adapter separately."
     },
     "compete": {
       "outcome": "partial",
@@ -16536,7 +16552,7 @@
     "tests/contract/test_definition_admission.py": "b3b8ec606e7211feca4af52a78a6e608ebdd3c5d9df2a5a3de5c027d64288eef",
     "tests/contract/test_durable_approvals.py": "3d771a642fb65e809765d8c265003cdcf9cdd80b36322afbc2b1723085428847",
     "tests/contract/test_eventing.py": "6c75d914574ae12a25d860e7ae5c618abd2acb1da36399d9abd404898b09ef26",
-    "tests/contract/test_fork_results.py": "82dce7fcf0d6d0deb51dc3614185278c2619c7367f174b98d8eff91e85985287",
+    "tests/contract/test_fork_results.py": "5f414fca4e9a29bc1a693d27ca0ce0600a0bd90b11a373d5fcf9f6546f86cb7a",
     "tests/contract/test_implementation_audit_gaps.py": "6c44d34efd00b0221770a219d212048b37fa62092a5840289e0a79462b9b7ad1",
     "tests/contract/test_jq_portability.py": "6f953d921345c712ec472f040a36d9346233ea7b405b08b6af034ac84391c75e",
     "tests/contract/test_operator_lifecycle.py": "f63e0a4fb07fd6d5e370d2129343911d52da1a8af8c95f572bc4acf70c0ef9e1",
@@ -16652,5 +16668,51 @@
         }
       }
     }
-  ]
+  ],
+  "audit_acceptance": {
+    "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+    "runs": {
+      "CI": 38148408731,
+      "CI (push)": 38148405147,
+      "External Sandbox CI": 38148408720,
+      "PostgreSQL CI": 38148408705,
+      "Agent Framework CI (optional)": 38148408693,
+      "Security": 38148408820,
+      "Docs": 38148408742
+    },
+    "result": "All success",
+    "ci_root": {
+      "passed": 1159,
+      "skipped": 30,
+      "expected_assertion_failures": 3,
+      "coverage_percent": 91.7
+    },
+    "ci_shared_contract": {
+      "passed": 439,
+      "expected_assertion_failures": 3
+    },
+    "native_ci": {
+      "adk": {
+        "passed": 445,
+        "expected_assertion_failures": 3
+      },
+      "langgraph": {
+        "passed": 458,
+        "skipped": 7,
+        "expected_assertion_failures": 3
+      },
+      "agent_framework_optional": {
+        "passed": 716,
+        "expected_assertion_failures": 3
+      }
+    },
+    "additional_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8",
+    "additional_local_shared": {
+      "root": 18,
+      "adk": 18,
+      "langgraph": 18,
+      "agent_framework_optional": 27
+    },
+    "scope": "Exact runtime gates passed at the accepted commit; subsequent test-only cross-adapter output restart fixture passed independently in every native environment. No runtime change intervenes. Follow-up GitHub checks for that test/record revision remain pending, and full inventory criteria remain unclaimed."
+  }
 }

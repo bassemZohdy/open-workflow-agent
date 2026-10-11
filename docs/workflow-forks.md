@@ -46,8 +46,12 @@ JSON output types, nested arrays, branch export isolation and explicit
 aggregation and sibling cleanup after branch failure; see
 [the shared fixtures](../tests/contract/test_fork_results.py). A real SQLite
 restart preserves the ordered array and does not replay completed branch calls;
-its configured PostgreSQL counterpart runs in the database acceptance gate.
+its configured PostgreSQL counterpart passes in the database acceptance gate.
+The shared fixture also reopens storage and resumes interrupted forks on every
+adapter, checking the ordered output and persisted completed result. It does not
+establish general pending-effect transactions or exactly-once external actions.
 The [native primitive checks](../tests/langgraph/test_native_state_collisions.py)
 verify default same-key collision rejection and explicit append aggregation
 in the pinned SDK. They do not expose those channels as workflow metadata.
-S2-01 acceptance remains pending in [PROJECT.md](../PROJECT.md).
+S2-01 acceptance is recorded in
+[PROJECT.md](../PROJECT.md#s2-01-ordered-fork-results--2026-10-11-verified).

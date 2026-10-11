@@ -41135,8 +41135,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A029",
@@ -41163,8 +41189,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A030",
@@ -41192,8 +41244,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A031",
@@ -41221,8 +41299,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A032",
@@ -41420,8 +41524,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A037",
@@ -42562,7 +42692,7 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "S1-02/S1-03 bounded Python expression/data-flow behavior verified; full feature/JS qualification pending",
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -42601,6 +42731,31 @@
               "Security": 38134434712,
               "Docs": 38134434699
             }
+          },
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
           }
         ],
         "current_implementation_audit": {
@@ -42632,7 +42787,7 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -42652,6 +42807,31 @@
               "Security": 38133078050,
               "Docs": 38133078048
             }
+          },
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
           }
         ],
         "current_implementation_audit": {
@@ -42681,7 +42861,7 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -42701,6 +42881,31 @@
               "Security": 38133078050,
               "Docs": 38133078048
             }
+          },
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
           }
         ],
         "current_implementation_audit": {
@@ -42730,7 +42935,7 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
         "evidence_of_completion": [
           {
             "task_id": "S1-02",
@@ -42750,6 +42955,31 @@
               "Security": 38133078050,
               "Docs": 38133078048
             }
+          },
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
           }
         ],
         "current_implementation_audit": {
@@ -52671,8 +52901,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS141",
@@ -52703,8 +52959,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS142",
@@ -61162,8 +61444,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B010",
@@ -61195,8 +61503,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B011",
@@ -61228,8 +61562,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B012",
@@ -61261,8 +61621,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B013",
@@ -61294,8 +61680,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B014",
@@ -61327,8 +61739,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B015",
@@ -61573,8 +62011,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B022",
@@ -61603,8 +62067,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B023",
@@ -61633,8 +62123,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B024",
@@ -61663,8 +62179,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B025",
@@ -61693,8 +62235,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B026",
@@ -61723,8 +62291,34 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-01 portable fork foundation verified; remaining mapped stages and full criteria unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-01",
+            "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+            "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
+            "tests": [
+              "tests/contract/test_fork_results.py",
+              "tests/contract/test_implementation_audit_gaps.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_reusable_definitions.py",
+              "tests/core/test_workflow.py",
+              "tests/contract/test_contract.py",
+              "tests/langgraph/test_native_task_graph.py",
+              "tests/langgraph/test_native_state_collisions.py"
+            ],
+            "validation": {
+              "CI": 38148408731,
+              "CI (push)": 38148405147,
+              "External Sandbox CI": 38148408720,
+              "PostgreSQL CI": 38148408705,
+              "Agent Framework CI (optional)": 38148408693,
+              "Security": 38148408820,
+              "Docs": 38148408742
+            },
+            "additional_local_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B027",
@@ -63876,10 +64470,10 @@
         "module": "M04",
         "description": "Preserve ordered fork results, branch isolation, reducers and state-collision behavior.",
         "effort": "M",
-        "status": "In progress",
+        "status": "Complete",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "evidence": {
-          "scope": "Noncompetitive declaration-ordered arrays for every JSON branch output, branch input/context isolation and explicit common jq aggregation instead of implicit object merging. Declared native channels/reducers and independent JS remain their later-stage owners. Full milestone acceptance pending.",
+          "scope": "Verified portable noncompetitive declaration-ordered results for every JSON output, branch input/context/export isolation, explicit jq aggregation/merge, sibling draining on failure, native SQLite/PostgreSQL ordered result restart and shared fresh-service output restart on every adapter. Pinned SDK default collision/append primitives are checked independently; public native channel/reducer metadata remains S4-01/S4-02. General pending-effect reconciliation, competition and full JS/proposed criteria remain open.",
           "tests": [
             "tests/contract/test_fork_results.py",
             "tests/contract/test_implementation_audit_gaps.py",
@@ -63894,7 +64488,7 @@
             "passed": 201,
             "remaining_expected_gap_failures": 3
           },
-          "new_shared_fork_executions": 16,
+          "new_shared_fork_executions": 18,
           "full_conformance": false,
           "local_full_root": {
             "passed": 1153,
@@ -63928,7 +64522,49 @@
             "shared_agent_framework_optional": 24,
             "native_collision_and_reducer_primitives": 2
           },
-          "remote_acceptance": "Pending; exact new implementation must pass before milestone closure"
+          "remote_acceptance": {
+            "CI": 38148408731,
+            "CI (push)": 38148405147,
+            "External Sandbox CI": 38148408720,
+            "PostgreSQL CI": 38148408705,
+            "Agent Framework CI (optional)": 38148408693,
+            "Security": 38148408820,
+            "Docs": 38148408742
+          },
+          "commit": "6c8407291d51060ac8254eb7d786643acfce4c7a",
+          "additional_shared_restart_commit": "ad33b4f28d13ce7753c08636b3d587d8ec12fec8",
+          "additional_local_shared": {
+            "root": 18,
+            "adk": 18,
+            "langgraph": 18,
+            "agent_framework_optional": 27
+          },
+          "ci_root": {
+            "passed": 1159,
+            "skipped": 30,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.7
+          },
+          "ci_shared_contract": {
+            "passed": 439,
+            "expected_assertion_failures": 3
+          },
+          "native_ci": {
+            "adk": {
+              "passed": 445,
+              "expected_assertion_failures": 3
+            },
+            "langgraph": {
+              "passed": 458,
+              "skipped": 7,
+              "expected_assertion_failures": 3
+            },
+            "agent_framework_optional": {
+              "passed": 716,
+              "expected_assertion_failures": 3
+            }
+          },
+          "follow_up_checks": "Test-only/record revision pending; no changed runtime is qualified by old gates"
         }
       },
       {
