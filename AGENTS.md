@@ -2,7 +2,9 @@
 
 ## Autonomous Work
 
-Treat `Project Definition.md` as authoritative; read it before implementation. Use `PROJECT.md` for orientation and `TODO.md` for the scoped backlog. Work in the prescribed milestone order, update checkboxes only after verification, and do not implement later milestones or redesign contracts. `/init` changes are context and scaffolding only.
+Treat `Project Definition.md` as authoritative; read it before implementation. Use `PROJECT.md` for orientation and `TODO.md` for the scoped backlog. Follow milestone order except for the user-authorized blocked-task deferral below. Update checkboxes only after verification and do not redesign contracts. `/init` changes are context and scaffolding only.
+
+Do not remain indefinitely on a stuck task. After repeated unsuccessful attempts, if there is no actionable next step, move its original unchecked entry to the end of `TODO.md` under `Deferred tasks`, preserving its ID, scope and verified history. Record the exact blocker, attempts and evidence, remaining implementation and validation, affected dependencies, and the condition and next action for resuming it. Reflect the deferral in `PROJECT.md` and the feature tracker without marking the task or its features complete. Continue the next ready backlog task, including a later milestone when necessary; preserve dependency and capability gates. A running validation, a difficult task or a reproducible gap with an actionable fix does not by itself establish that work is stuck.
 
 ## Structure
 

@@ -1,6 +1,16 @@
 # Open Workflow Agent — implementation gaps
 
-`open-workflow-agent` is the main repository. Implement these stages in order; keep every gap tracked from day one. Existing shipped behavior is recorded in [PROJECT.md](PROJECT.md), not assumed missing or conformant here.
+`open-workflow-agent` is the main repository. Implement these stages in order, with the blocked-task exception below; keep every gap tracked from day one. Existing shipped behavior is recorded in [PROJECT.md](PROJECT.md), not assumed missing or conformant here.
+
+If repeated attempts leave a task stuck with no actionable next step, move its
+original unchecked entry to **Deferred tasks** at the end of this backlog and
+continue the next ready task. Preserve its ID, full scope and verified progress.
+Each deferral must describe the blocker and evidence, unsuccessful attempts,
+remaining implementation and required validations, dependency impact, and the
+condition and next action for resuming it. Keep `PROJECT.md` and the feature
+tracker consistent. Deferral does not imply completion or relax dependency,
+security, portability or capability acceptance gates. Running validations and
+actionable failures remain active work.
 
 The [full tracker](resources/compatibility/feature-tracker.json) preserves **658 features, 443 proposed tests and 774 schema constraints**, with Python/JS status and links to tasks below. All new delivery claims await verification. The [migration record](docs/agent-runtime-consolidation.md) distinguishes imported reference material from active code.
 
@@ -143,3 +153,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 Close a task only when its mapped features have tested outcomes, failure/restart behavior where applicable, and recorded evidence for each supported backend. Unsupported or conditional features stay visible. Existing CTK profile results are not full OWS conformance. Do not label copied source or proposed tests as implemented capabilities.
 
 Earlier completed release/readiness work and deferred details are preserved in [the previous backlog](docs/backlog-before-consolidation-2026-10-11.md). Optional Microsoft Agent Framework hardening, external event transports, push notifications, multi-tenancy and delegated identity remain conditional; tracking them does not activate them automatically.
+
+## Deferred tasks
+
+No active backlog tasks are currently deferred. S2-03 has verified recent
+progress and a reproducible child-record dependency gap with an actionable
+implementation path; its fresh remote validations are running. Move a task's
+entry here when the blocked-task rule applies, keeping its checkbox unchecked
+and including the full deferral record described above.
