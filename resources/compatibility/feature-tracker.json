@@ -39729,8 +39729,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A016",
@@ -39751,8 +39771,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A017",
@@ -39773,8 +39813,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A018",
@@ -39795,8 +39855,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A019",
@@ -39817,8 +39897,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A020",
@@ -39839,8 +39939,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A021",
@@ -39861,8 +39981,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A022",
@@ -39883,8 +40023,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A023",
@@ -39905,8 +40065,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A024",
@@ -39927,8 +40107,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A025",
@@ -39949,8 +40149,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A026",
@@ -39971,8 +40191,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A027",
@@ -39993,8 +40233,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A028",
@@ -40015,8 +40275,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A029",
@@ -40117,8 +40397,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "A034",
@@ -48486,8 +48786,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS145",
@@ -48583,8 +48903,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS149",
@@ -48605,8 +48945,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS150",
@@ -48627,8 +48987,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS151",
@@ -48649,8 +49029,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS152",
@@ -48671,8 +49071,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS153",
@@ -48693,8 +49113,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS154",
@@ -49814,8 +50254,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS204",
@@ -49836,8 +50296,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS205",
@@ -49858,8 +50338,28 @@
           "S2-07",
           "S3-07"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-04 bounded Python common control flow verified; native lowering/full feature/JS qualification pending",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-04",
+            "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+            "scope": "Scoped admission/routing, exit versus end, first-match/default switch, explicit directive precedence, ordered loop/while/item/index behavior, copied data and original JSON pointers. This qualifies common Python semantics, not later native task lowering, durable winner/recovery/recursion features, all proposed tests or JS.",
+            "tests": [
+              "tests/contract/test_scoped_flow.py",
+              "tests/contract/test_data_pipeline.py",
+              "tests/contract/test_operator_lifecycle.py"
+            ],
+            "validation": {
+              "CI": 38135683393,
+              "CI (push)": 38135679455,
+              "External Sandbox CI": 38135683420,
+              "PostgreSQL CI": 38135683388,
+              "Agent Framework CI (optional)": 38135683392,
+              "Security": 38135683390,
+              "Docs": 38135683395
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS206",
@@ -55618,8 +56118,50 @@
         "module": "M03",
         "description": "Preserve transitions, loop/condition rules, and the different scopes of exit and end.",
         "effort": "M",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "0dc871d5a143feb9043d0d4288a8e7d37ee3dad0",
+          "scope": "Python bounded scoped transitions/exit/end, switch ordering/defaults, ordered loops/while and original pointers; native lowering, advanced fork/recovery/child workflow features and independent JS/proposed tests remain tracked",
+          "tests": [
+            "tests/contract/test_scoped_flow.py",
+            "tests/contract/test_data_pipeline.py",
+            "tests/contract/test_operator_lifecycle.py"
+          ],
+          "local_root_before_final_assertions": {
+            "passed": 972,
+            "skipped": 14,
+            "coverage_percent": 90.49
+          },
+          "native_matrices_before_final_assertions": {
+            "adk": 385,
+            "langgraph": 384,
+            "agent_framework_optional": 520
+          },
+          "final_shared_scoped_flow_tests": {
+            "adk": 62,
+            "langgraph": 62,
+            "agent_framework_optional": 91
+          },
+          "ci_root": {
+            "passed": 980,
+            "skipped": 10,
+            "coverage_percent": 91.26
+          },
+          "ci_shared_contract": 287,
+          "runs": {
+            "CI": 38135683393,
+            "CI (push)": 38135679455,
+            "External Sandbox CI": 38135683420,
+            "PostgreSQL CI": 38135683388,
+            "Agent Framework CI (optional)": 38135683392,
+            "Security": 38135683390,
+            "Docs": 38135683395
+          },
+          "remote_acceptance": "All success",
+          "compatibility_limit": "Corrected fork/name pointers can change historical operation ids; in-flight upgrade qualification remains S2-09",
+          "full_conformance": false
+        }
       },
       {
         "id": "S1-05",

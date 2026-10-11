@@ -150,7 +150,7 @@ Both native/CTK, runtime-image, external-sandbox and native PostgreSQL gates
 passed, along with Windows, mutation, manifests, security and docs. No
 release or broader conformance claim was published.
 
-### S1-04 control-flow work — remote acceptance pending
+### S1-04 control-flow work — 2026-10-11 (verified)
 
 Common task routing now distinguishes scope exit from workflow end, validates
 named transition targets in scope before effects, preserves backward jumps,
@@ -169,8 +169,8 @@ JSON null with a private non-JSON bytes marker; non-null LangGraph checkpoint
 inputs remain unchanged. Shared fixtures verify all JSON types, nested forks,
 scope exit/end, original references, early loop stop, routing and cycles.
 Later native task lowering, reducers, durable winner/recovery/migration and
-independent JS delivery remain unclaimed. S1-04 remains open until remote
-acceptance passes for the exact code commit.
+independent JS delivery remain unclaimed. Exact-commit acceptance is green
+at `0dc871d5a143feb9043d0d4288a8e7d37ee3dad0`.
 
 Local root validation before the final ending-ancestor failure assertions
 passed 972 tests, 14 skips and 90.49% coverage. Independent native
@@ -183,6 +183,23 @@ builds passed. Windows CI includes the new shared flow fixtures.
 The final loop-root regression preserves the loop task's transformed input
 for `while` while body outputs evolve. Its complete scoped-flow fixture passes
 62 tests in each ADK/LangGraph environment and 91 in optional Agent Framework.
+
+Remote root validation passed 980 tests, 10 skips and 91.26% coverage; its
+shared contract run passed 287 tests.
+
+| Gate | Run | Result |
+| --- | --- | --- |
+| CI | [38135683393](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38135683393) | success |
+| CI (push) | [38135679455](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38135679455) | success |
+| External Sandbox CI | [38135683420](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38135683420) | success |
+| PostgreSQL CI | [38135683388](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38135683388) | success |
+| Agent Framework CI (optional) | [38135683392](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38135683392) | success |
+| Security | [38135683390](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38135683390) | success |
+| Docs | [38135683395](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38135683395) | success |
+
+Both native/CTK, runtime-image, external-sandbox and native PostgreSQL gates
+passed, with Windows, mutation, manifests, optional Agent Framework, security
+and docs. No release or broader conformance claim was published.
 
 The runtime pipeline is:
 
