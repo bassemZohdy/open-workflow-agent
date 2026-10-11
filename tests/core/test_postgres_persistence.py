@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import os
+from dataclasses import replace
+from uuid import uuid4
 
 import pytest
 from open_workflow_agent.approvals import APPROVAL_REQUEST_EVENT, ApprovalStore
 from open_workflow_agent.events import EventEnvelope
+from open_workflow_agent.forks import ForkDecision, ForkDecisionStore, ForkIdentity
 from open_workflow_agent.knowledge import DeterministicEmbeddingProvider, KnowledgeService
 from open_workflow_agent.memory import MemoryService
 from open_workflow_agent.persistence import InvocationStore
@@ -27,6 +30,30 @@ def test_postgres_datasource_normalization_and_engine_namespace() -> None:
     assert resolve_datasource(url) == url
     namespaced = namespaced_datasource(url, "owa_langgraph")
     assert "owa_langgraph%2Cpublic" in namespaced
+
+
+def test_postgres_fork_decision_claim_and_cleanup_survive_independent_connections() -> None:
+    url = _postgres_url()
+    pytest.importorskip("psycopg")
+    identity = ForkIdentity(str(uuid4()), "fingerprint", "/do/0/race", (("/do/0/race", 1),))
+    winner = ForkDecision(1, "completed", None, {}, None, "operation", (0,))
+    later = replace(winner, winner=0, output={"other": True}, cancellation_intents=(1,))
+    first = ForkDecisionStore(url)
+    second = ForkDecisionStore(url)
+    try:
+        assert first.claim(identity, winner) == winner
+        assert second.claim(identity, later) == winner
+        second.mark_drained(identity)
+        assert first.get(identity) == replace(winner, drained=True)
+    finally:
+        first.close()
+        second.close()
+    reopened = ForkDecisionStore(url)
+    try:
+        assert reopened.get(identity) == replace(winner, drained=True)
+        assert reopened.get(replace(identity, occurrence=(("/do/0/race", 2),))) is None
+    finally:
+        reopened.close()
 
 
 def test_postgres_common_stores_are_durable_and_isolated(tmp_path) -> None:

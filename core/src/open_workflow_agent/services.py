@@ -10,6 +10,7 @@ from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
 from .events import EventBus, InMemoryEventBus
 from .external_catalog import ExternalCatalogResolver
+from .forks import ForkDecisionStore
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
 from .memory import MemoryService
 from .metrics import Metrics, MetricsEventSink
@@ -121,6 +122,7 @@ class RuntimeServices:
         )
         self.memory = MemoryService(str(memory_database) if memory_database else None)
         self.invocations = InvocationStore(invocation_path)
+        self.fork_decisions = ForkDecisionStore(invocation_path)
         self.schedules = ScheduleStore(invocation_path)
         self.catalog = FunctionCatalog.default(
             self.model, instruction=self.agent_instruction, services=self
@@ -226,4 +228,5 @@ class RuntimeServices:
         self.memory.close()
         self.schedules.close()
         self.invocations.close()
+        self.fork_decisions.close()
         self.approvals.close()

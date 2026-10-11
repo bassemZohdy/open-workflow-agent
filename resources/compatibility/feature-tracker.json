@@ -64564,7 +64564,20 @@
               "expected_assertion_failures": 3
             }
           },
-          "follow_up_checks": "Test-only/record revision pending; no changed runtime is qualified by old gates"
+          "follow_up_checks": {
+            "commit": "a83a474c65ed6fdabe4c82531d957bb95158e045",
+            "runs": {
+              "CI": 38149279907,
+              "CI (push)": 38149276892,
+              "External Sandbox CI": 38149279962,
+              "PostgreSQL CI": 38149279918,
+              "Agent Framework CI (optional)": 38149279905,
+              "Security": 38149279877,
+              "Docs": 38149279876
+            },
+            "result": "All success",
+            "scope": "Exact additional shared restart fixture and acceptance-record revision; no S2-02 runtime storage code is included"
+          }
         }
       },
       {
@@ -64573,8 +64586,52 @@
         "module": "M04",
         "description": "Implement first-completed competitive forks, durable winner selection and loser cancellation.",
         "effort": "L",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "In progress",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "scope": "Common atomic winner/cancellation-intent store and runtime datasource composition; fork executor integration and native occurrence/restart proof pending. No execution-level durable competitive capability is claimed.",
+          "tests": [
+            "tests/core/test_fork_decisions.py",
+            "tests/core/test_postgres_persistence.py"
+          ],
+          "local_store_cases": 16,
+          "focused_service_bootstrap_and_forks": {
+            "passed": 54,
+            "skipped": 3
+          },
+          "pending": [
+            "first observed completion order",
+            "stable repeated/nested/retry occurrence identity",
+            "persisted winner before loser cancellation",
+            "restart during cleanup before parent native commit",
+            "independent engine shared acceptance",
+            "configured PostgreSQL decision fixture",
+            "full root coverage and exact GitHub gates"
+          ],
+          "full_conformance": false,
+          "local_full_root": {
+            "passed": 1173,
+            "skipped": 35,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.67
+          },
+          "local_native": {
+            "adk": {
+              "passed": 543,
+              "expected_assertion_failures": 3
+            },
+            "langgraph": {
+              "passed": 556,
+              "skipped": 7,
+              "expected_assertion_failures": 3
+            },
+            "agent_framework_optional": {
+              "passed": 719,
+              "expected_assertion_failures": 3
+            }
+          },
+          "validation": "Local full root/native suites, builds and strict typing pass; new PostgreSQL/remote acceptance and execution integration pending"
+        }
       },
       {
         "id": "S2-03",

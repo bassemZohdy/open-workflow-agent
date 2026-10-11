@@ -22,6 +22,30 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
+### S2-02 competitive fork decisions — in progress
+
+The common runtime now composes an embedded decision store using its existing
+SQLite or optional PostgreSQL datasource. An atomic claim retains the first
+recorded winner and its loser cancellation intents across connections and
+reopening; invocation, frozen workflow identity, resolved task call site and
+execution occurrences separate races. Cleanup receipts remain separate from
+winner data. Native checkpoint state stays engine-private.
+
+Sixteen local store/composition cases pass, including simultaneous SQLite
+connections, JSON null/fault/end outcomes, invalid output, corrupt/closed storage,
+identity separation and runtime reopening. A configured PostgreSQL counterpart
+is added to its existing integration gate. Focused service/bootstrap/fork
+regressions pass 54 tests with three unconfigured PostgreSQL skips. Formatting,
+lint and strict core typing pass. Executor integration, occurrence persistence,
+completion ordering, native restart/loser cleanup and full acceptance remain
+pending. Full local validation passes 1,173 root tests with 35 skips, three
+expected protocol/event failures and 91.67% coverage. Independent native suites
+pass ADK 543, LangGraph 556 (seven PostgreSQL skips) and optional Agent Framework
+719 tests, each retaining three expected gap failures. All package typing (64
+source files), builds, formatting, lint and links pass. This store is not yet
+used by fork execution, and no durable competitive fork capability is advertised
+from the component tests. Exact new GitHub storage acceptance remains pending.
+
 ### S2-01 ordered fork results — 2026-10-11 (verified)
 
 Noncompetitive fork returns the declaration-ordered array of all branch
@@ -62,7 +86,14 @@ Independent CI matrices report ADK 445, LangGraph 458 (seven PostgreSQL skips),
 and optional Agent Framework 716 passed. Both runtime images, SQLite defaults,
 PostgreSQL containers, restricted external sandbox, Windows, manifests, mutation,
 security and docs passed. The later shared test changes no runtime code and is
-separately qualified locally; its follow-up GitHub checks are not yet a receipt.
+separately qualified locally. All seven follow-up GitHub runs also passed at
+`a83a474`: CI [38149279907](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149279907),
+push CI [38149276892](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149276892),
+external sandbox [38149279962](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149279962),
+PostgreSQL [38149279918](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149279918),
+optional Agent Framework [38149279905](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149279905),
+security [38149279877](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149279877)
+and docs [38149279876](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38149279876).
 
 The current audit reviews `ad33b4f`, recording seven fork features as qualified
 subsets (178 qualified subsets, 152 partial outcomes and 32 mismatches). It

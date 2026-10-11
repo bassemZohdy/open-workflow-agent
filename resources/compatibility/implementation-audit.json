@@ -54,7 +54,7 @@
       "native_collision_and_reducer_primitives": 2
     },
     "scope": "Local and exact remote runtime assertions qualify bounded noncompetitive fork results. SQLite/PostgreSQL native result/effect restart passed. Additional shared output restart passes every adapter without certifying general pending-side-effect transactions. Public native extensions, independent JS and full proposed criteria remain unimplemented/unqualified.",
-    "remote_status": "Runtime accepted; later test-only follow-up gates pending",
+    "remote_status": "S2-01 runtime and shared restart follow-up gates accepted; new milestone work remains unqualified",
     "remote_runs": {
       "CI": 38148408731,
       "CI (push)": 38148405147,
@@ -16713,6 +16713,20 @@
       "langgraph": 18,
       "agent_framework_optional": 27
     },
-    "scope": "Exact runtime gates passed at the accepted commit; subsequent test-only cross-adapter output restart fixture passed independently in every native environment. No runtime change intervenes. Follow-up GitHub checks for that test/record revision remain pending, and full inventory criteria remain unclaimed."
+    "scope": "Exact runtime gates passed at the accepted commit; all follow-up gates for additional shared restart/record revision passed at a83a474. Full inventory criteria remain unclaimed.",
+    "follow_up": {
+      "commit": "a83a474c65ed6fdabe4c82531d957bb95158e045",
+      "runs": {
+        "CI": 38149279907,
+        "CI (push)": 38149276892,
+        "External Sandbox CI": 38149279962,
+        "PostgreSQL CI": 38149279918,
+        "Agent Framework CI (optional)": 38149279905,
+        "Security": 38149279877,
+        "Docs": 38149279876
+      },
+      "result": "All success",
+      "scope": "Exact additional shared restart fixture and acceptance-record revision; no S2-02 runtime storage code is included"
+    }
   }
 }
