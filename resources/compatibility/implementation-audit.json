@@ -53,10 +53,14 @@
       "competitive_adk": 56,
       "competitive_langgraph": 56,
       "competitive_agent_framework_optional": 84,
-      "postgresql_cases": "Awaiting configured follow-up gate"
+      "postgresql_cases": {
+        "adk": 13,
+        "langgraph": 13,
+        "agent_framework_optional": "Pending"
+      }
     },
     "scope": "Runtime code is unchanged from exact accepted 2fbe548; additional repeated-scope/end fixtures pass independently. Full proposed criteria and JS remain unverified.",
-    "remote_status": "Runtime acceptance passed; additional repeated-scope fixtures and refreshed audit await exact follow-up gates.",
+    "remote_status": "All exact runtime and repeated-scope/audit gates passed; optional Agent Framework common PostgreSQL bridge gate pending.",
     "remote_runs": {
       "CI": 38152109920,
       "CI (push)": 38152106466,
@@ -625,7 +629,7 @@
     "compete": {
       "outcome": "qualified_subset",
       "observed": "First observed completion is committed before loser cancellation. The first claim retains value/null/fault/end output, source diagnostics and cancellation intents. Private invocation/fingerprint/call-site/ancestor/attempt coordinates distinguish races. Fresh SQLite services replay committed decisions without invoking branches, including interrupted cleanup and repeated loops/reusable/nested/transition/catch-retry scopes. Cancellation before a winner stores none; yielding loser cleanup is drained and the cancellable loser side-effect spy stays zero.",
-      "remaining_scope": "Additional repeated-scope PostgreSQL and exact fixture/audit gates await configured acceptance. General pending external-action reconciliation/compensation and complete proposed backend/operational criteria remain later work; cancellation does not reverse an already committed action. Independent JS is unimplemented.",
+      "remaining_scope": "Optional Agent Framework common PostgreSQL bridge gate is pending. General pending external-action reconciliation/compensation, full proposed criteria and independent JS remain later work; cancellation does not reverse a committed action.",
       "remediation_tasks": [
         "S2-02",
         "S2-08",
@@ -727,7 +731,7 @@
           "symbol": "test_postgres_fork_decision_claim_and_cleanup_survive_independent_connections"
         }
       ],
-      "test_scope": "Identical deterministic Python contract fixtures on each principal native adapter and optional Agent Framework; independent common-store races and configured native PostgreSQL winner replay. Additional repeated-scope configured database qualification is pending. First-observed tie/error policy is documented; full proposed criteria and JS are unclaimed."
+      "test_scope": "Identical deterministic Python contract fixtures on each principal native adapter and optional Agent Framework; common-store races, native PostgreSQL winner/null/fault/end and repeated loop/reusable/nested/transition/catch-retry recovery pass on both principal adapters. Optional common PostgreSQL bridge acceptance is pending. First-observed tie/error policy is documented; full proposed criteria and JS remain unclaimed."
     },
     "end": {
       "outcome": "qualified_subset",
@@ -16950,6 +16954,53 @@
       "runtime_images": "Both principal images passed start/restart acceptance"
     },
     "additional_shared_recovery_commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
-    "scope": "Exact runtime gates passed. New repeated-scope PostgreSQL fixtures and current artifact gates remain pending; S2-02 stays open."
+    "scope": "Exact runtime and repeated-scope/audit gates passed; optional common PostgreSQL bridge acceptance pending. Full proposed criteria and JS remain unclaimed.",
+    "follow_up": {
+      "commit": "51c204e4474fa0c0e512c79b144c5e3d5014c76b",
+      "runs": {
+        "CI": 38152858220,
+        "CI (push)": 38152854446,
+        "External Sandbox CI": 38152858243,
+        "PostgreSQL CI": 38152858245,
+        "Agent Framework CI (optional)": 38152858272,
+        "Security": 38152858238,
+        "Docs": 38152858223
+      },
+      "result": "All success",
+      "ci_root": {
+        "passed": 1236,
+        "skipped": 57,
+        "expected_assertion_failures": 3,
+        "coverage_percent": 91.79
+      },
+      "ci_shared_contract": {
+        "passed": 497,
+        "skipped": 26,
+        "expected_assertion_failures": 3
+      },
+      "native_ci": {
+        "adk": {
+          "passed": 503,
+          "skipped": 26,
+          "expected_assertion_failures": 3
+        },
+        "langgraph": {
+          "passed": 516,
+          "skipped": 33,
+          "expected_assertion_failures": 3
+        },
+        "agent_framework_optional": {
+          "passed": 803,
+          "skipped": 39,
+          "expected_assertion_failures": 3
+        }
+      },
+      "configured_postgresql": {
+        "adk": 13,
+        "langgraph": 13,
+        "job": 114509716719
+      },
+      "scope": "All repeated-scope fixtures and refreshed audit gates passed. The optional Agent Framework package exposes common PostgreSQL binding; its newly added independent database gate is pending."
+    }
   }
 }

@@ -87,8 +87,23 @@ inventing a winner. The whole competitive file passes 56 principal/root cases
 with 26 database skips, and 84 optional-adapter cases with 39 skips. The prior
 full suites qualify unchanged runtime code; these additional fixtures pass
 independently. The affected audit now records their exact source commit and
-retains the earlier immutable receipts. Repeated-scope PostgreSQL qualification
-and exact follow-up fixture/audit gates remain pending. S2-02 stays open.
+retains the earlier immutable receipts. All exact follow-up fixture/audit gates
+at `51c204e` passed: [CI 38152858220](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152858220),
+[push CI 38152854446](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152854446),
+[PostgreSQL 38152858245](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152858245),
+[external sandbox 38152858243](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152858243),
+[optional adapter 38152858272](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152858272),
+[security 38152858238](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152858238),
+and [docs 38152858223](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38152858223).
+Linux root passes 1,236 tests with 57 skips, three expected failures and 91.79%
+coverage. Selected native jobs pass ADK 503 and LangGraph 516; optional Agent
+Framework passes 803. The configured database job passes all 13 winner and
+repeated-scope restart cases on each principal native adapter.
+
+The optional package also exposes the common PostgreSQL binding, so its same
+13 database bridge cases are now added to the independent database gate.
+That final optional common-binding acceptance remains pending; it does not
+activate production images or stronger native checkpoint hardening. S2-02 stays open.
 These records do not establish
 general pending-effect reconciliation, exactly-once external actions, durable
 timers, native metadata extensions or full conformance. A separate observed

@@ -23,6 +23,8 @@ on:
       - "engines/langgraph/src/open_workflow_agent_langgraph/__init__.py"
       - "engines/langgraph/src/open_workflow_agent_langgraph/native.py"
       - "engines/langgraph/src/open_workflow_agent_langgraph/graph.py"
+      - "engines/agent-framework/src/open_workflow_agent_agent_framework/__init__.py"
+      - "engines/agent-framework/src/open_workflow_agent_agent_framework/native.py"
       - "core/src/open_workflow_agent/workflow.py"
       - "core/src/open_workflow_agent/definitions.py"
       - "core/src/open_workflow_agent/versions.py"
@@ -39,9 +41,11 @@ on:
       - "core/pyproject.toml"
       - "engines/adk/pyproject.toml"
       - "engines/langgraph/pyproject.toml"
+      - "engines/agent-framework/pyproject.toml"
       - "uv.lock"
       - "engines/adk/uv.lock"
       - "engines/langgraph/uv.lock"
+      - "engines/agent-framework/uv.lock"
 
 permissions:
   contents: read
@@ -121,6 +125,17 @@ jobs:
             uv run --directory engines/adk --locked --exact --extra native --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             -k 'postgresql and adk' -vv --durations=20
+      - name: Verify competitive fork replay on optional Agent Framework with PostgreSQL
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 5m \
+            uv run --directory engines/agent-framework --locked --exact --extra native --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
+            -k 'postgresql and agent-framework' -vv --durations=20
 
   postgres-runtime:
     name: PostgreSQL persistence ${{ matrix.engine }} acceptance

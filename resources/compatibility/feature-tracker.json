@@ -64602,8 +64602,8 @@
             "skipped": 3
           },
           "pending": [
-            "Additional configured native PostgreSQL repeated-scope restart fixtures",
-            "Fresh exact fixture/audit GitHub follow-up gates"
+            "New independent optional Agent Framework common PostgreSQL bridge gate",
+            "Exact final gate configuration validation"
           ],
           "full_conformance": false,
           "local_full_root": {
@@ -64629,7 +64629,7 @@
               "expected_assertion_failures": 3
             }
           },
-          "validation": "All exact runtime gates pass. Frozen full local runtime suites remain valid for unchanged code; additional repeated-scope/end fixtures pass independently. Fresh fixture/audit and configured repeated-scope database gates pending.",
+          "validation": "All exact runtime and repeated-scope/audit gates pass at 2fbe548 and 51c204e. The optional package also exposes the common PostgreSQL binding, so its independent database bridge fixture is being added before closure.",
           "foundation_validation": {
             "commit": "7f82470c794e6584302fb828164a7c14c003cd31",
             "local_full_root": {
@@ -64668,7 +64668,11 @@
             "optional_environment": 84,
             "local_database_skips_principal": 26,
             "local_database_skips_optional": 39,
-            "configured_postgresql": "Runtime winner cases passed; additional repeated-scope database fixtures pending."
+            "configured_postgresql": {
+              "adk": 13,
+              "langgraph": 13,
+              "agent_framework_optional": "Pending"
+            }
           },
           "runtime_acceptance": {
             "commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
@@ -64699,7 +64703,54 @@
             },
             "scope": "Exact runtime qualification; additional repeated-scope fixtures and refreshed audit await configured follow-up gates."
           },
-          "additional_recovery_commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283"
+          "additional_recovery_commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
+          "fixture_and_audit_acceptance": {
+            "commit": "51c204e4474fa0c0e512c79b144c5e3d5014c76b",
+            "runs": {
+              "CI": 38152858220,
+              "CI (push)": 38152854446,
+              "External Sandbox CI": 38152858243,
+              "PostgreSQL CI": 38152858245,
+              "Agent Framework CI (optional)": 38152858272,
+              "Security": 38152858238,
+              "Docs": 38152858223
+            },
+            "result": "All success",
+            "ci_root": {
+              "passed": 1236,
+              "skipped": 57,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.79
+            },
+            "ci_shared_contract": {
+              "passed": 497,
+              "skipped": 26,
+              "expected_assertion_failures": 3
+            },
+            "native_ci": {
+              "adk": {
+                "passed": 503,
+                "skipped": 26,
+                "expected_assertion_failures": 3
+              },
+              "langgraph": {
+                "passed": 516,
+                "skipped": 33,
+                "expected_assertion_failures": 3
+              },
+              "agent_framework_optional": {
+                "passed": 803,
+                "skipped": 39,
+                "expected_assertion_failures": 3
+              }
+            },
+            "configured_postgresql": {
+              "adk": 13,
+              "langgraph": 13,
+              "job": 114509716719
+            },
+            "scope": "All repeated-scope fixtures and refreshed audit gates passed. The optional Agent Framework package exposes common PostgreSQL binding; its newly added independent database gate is pending."
+          }
         }
       },
       {

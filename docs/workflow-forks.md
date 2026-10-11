@@ -85,6 +85,7 @@ boundaries. Configured PostgreSQL fixtures are in its integration gate. S2-02
 also verifies restart after earlier completed occurrences in loop, reusable,
 nested, transition and catch-retry scopes, and an end originating outside a
 competitive scope. The cancellable losing operation never reaches its simulated
-committed effect. Runtime PostgreSQL winner replay and all exact runtime gates passed;
-additional repeated-scope database and audit gates remain pending. S2-02 stays
+committed effect. Runtime PostgreSQL winner and repeated-scope replay and exact
+runtime/audit gates passed on both principal adapters. The optional package's
+common PostgreSQL bridge gate remains pending. S2-02 stays
 open; see [current evidence](../PROJECT.md#s2-02-competitive-fork-decisions--in-progress).
