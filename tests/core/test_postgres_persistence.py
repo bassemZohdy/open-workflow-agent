@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import os
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
+from threading import Barrier
 from uuid import uuid4
 
 import pytest
 from open_workflow_agent.approvals import APPROVAL_REQUEST_EVENT, ApprovalStore
 from open_workflow_agent.effects import EffectIdentity, EffectJournal, effect_request_digest
-from open_workflow_agent.errors import WorkflowExecutionError
+from open_workflow_agent.errors import InvocationStateError, WorkflowExecutionError
 from open_workflow_agent.events import EventEnvelope
 from open_workflow_agent.forks import ForkDecision, ForkDecisionStore, ForkIdentity
 from open_workflow_agent.knowledge import DeterministicEmbeddingProvider, KnowledgeService
@@ -32,6 +34,92 @@ def test_postgres_datasource_normalization_and_engine_namespace() -> None:
     assert resolve_datasource(url) == url
     namespaced = namespaced_datasource(url, "owa_langgraph")
     assert "owa_langgraph%2Cpublic" in namespaced
+
+
+@pytest.mark.parametrize("outcome", ["value", "null", "fault", "cancelled"])
+def test_postgres_stale_write_generation_and_first_terminal_outcome(outcome):
+    url = _postgres_url()
+    pytest.importorskip("psycopg")
+    first = InvocationStore(url)
+    other = InvocationStore(url)
+    stale = first.create(
+        engine="test",
+        session_id=None,
+        user_id=None,
+        workflow_name="write-guard",
+        workflow_version="1.0.0",
+        workflow_fingerprint="definition",
+    )
+    fresh = other.get(stale.invocation_id)
+    try:
+        other.update(fresh, status="waiting")
+        other.update(fresh, status="running")
+        with pytest.raises(InvocationStateError):
+            first.update(stale, status="completed", output={"late": True})
+        assert first.get(stale.invocation_id).status == "running"
+        status = (
+            "faulted"
+            if outcome == "fault"
+            else "cancelled"
+            if outcome == "cancelled"
+            else "completed"
+        )
+        output = {"retained": True} if outcome == "value" else None
+        error = (
+            {"code": status, "message": "retained", "details": {}}
+            if status != "completed"
+            else None
+        )
+        other.update(fresh, status=status, output=output, error=error)
+        with pytest.raises(InvocationStateError):
+            first.update(stale, status="faulted", error={"late": True})
+        loaded = first.get(stale.invocation_id)
+        first.update(loaded, status=status, output={"late": True}, error={"late": True})
+        assert loaded.output == output and loaded.error == error
+    finally:
+        first.close()
+        other.close()
+    reopened = InvocationStore(url)
+    try:
+        saved = reopened.get(stale.invocation_id)
+        assert saved.status == status and saved.output == output and saved.error == error
+    finally:
+        reopened.close()
+
+
+def test_postgres_two_simultaneous_invocation_writers_retain_one_outcome():
+    url = _postgres_url()
+    pytest.importorskip("psycopg")
+    stores = [InvocationStore(url) for _ in range(2)]
+    initial = stores[0].create(
+        engine="test",
+        session_id=None,
+        user_id=None,
+        workflow_name="write-race",
+        workflow_version="1.0.0",
+        workflow_fingerprint="definition",
+    )
+    handles = [store.get(initial.invocation_id) for store in stores]
+    barrier = Barrier(2)
+
+    def write(index):
+        barrier.wait(timeout=10)
+        try:
+            stores[index].update(handles[index], status="completed", output={"winner": index})
+            return index
+        except InvocationStateError:
+            return None
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as workers:
+            results = list(workers.map(write, range(2)))
+        winners = [index for index in results if index is not None]
+        assert len(winners) == 1
+        saved = stores[0].get(initial.invocation_id)
+        assert saved.status == "completed" and saved.output == {"winner": winners[0]}
+    finally:
+        for store in stores:
+            store.close()
 
 
 @pytest.mark.parametrize("outcome", ["value", "null", "fault"])

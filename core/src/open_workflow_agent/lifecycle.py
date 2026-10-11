@@ -5,9 +5,12 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .errors import InvocationCancelled
+
+if TYPE_CHECKING:
+    from .persistence import ExecutionHandle
 
 INVOCATION_STATES = ("running", "waiting", "completed", "faulted", "cancelled")
 TERMINAL_INVOCATION_STATES = frozenset({"completed", "faulted", "cancelled"})
@@ -120,3 +123,4 @@ class ActiveInvocation:
     control: LifecycleControl
     task: asyncio.Task[Any] | None
     result: asyncio.Future[Any]
+    handle: ExecutionHandle | None = None

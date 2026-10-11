@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ._version import __version__
-from .errors import InvocationCancelled, WorkflowExecutionError
+from .errors import InvocationCancelled, InvocationStateConflict, WorkflowExecutionError
 from .lifecycle import (
     INVOCATION_STATES,
     TERMINAL_INVOCATION_STATES,
@@ -185,6 +185,7 @@ class WorkflowEngine:
     async def cancel(
         self, handle: ExecutionHandle, *, operation_id: str | None = None
     ) -> InvocationResult:
+        self.services.invocations.refresh(handle)
         if handle.status in TERMINAL_INVOCATION_STATES:
             return self._stored_result(handle)
         active = self._active.get(handle.invocation_id)
@@ -192,9 +193,17 @@ class WorkflowEngine:
             "invocation cancellation requested",
             details={"operation_id": operation_id} if operation_id else {},
         )
+        owned_handle = active.handle if active is not None and active.handle is not None else handle
+        if owned_handle is not handle:
+            self.services.invocations.refresh(owned_handle)
+        if owned_handle.status in TERMINAL_INVOCATION_STATES:
+            self.services.invocations.refresh(handle)
+            return self._stored_result(handle)
+        self.services.invocations.update(owned_handle, status="cancelled", error=error.as_dict())
+        if owned_handle is not handle:
+            self.services.invocations.refresh(handle)
         if active is not None:
             active.control.token.cancel("cancelled")
-        self.services.invocations.update(handle, status="cancelled", error=error.as_dict())
         if active is None:
             self.services.lifecycle_events.emit(
                 WorkflowEvent(
@@ -220,6 +229,7 @@ class WorkflowEngine:
             control=LifecycleControl(),
             task=asyncio.current_task(),
             result=asyncio.get_running_loop().create_future(),
+            handle=handle,
         )
         if handle.invocation_id in self._restart_resume_inputs:
             active.control.request_resume(self._restart_resume_inputs.pop(handle.invocation_id))
@@ -234,13 +244,22 @@ class WorkflowEngine:
     async def _resume_active_or_terminal(
         self, handle: ExecutionHandle, resume_input: Any
     ) -> InvocationResult | None:
+        self.services.invocations.refresh(handle)
         if handle.status in TERMINAL_INVOCATION_STATES:
             return self._stored_result(handle)
         active = self._active.get(handle.invocation_id)
         if active is None:
             return None
         if handle.status == "waiting":
-            self.services.invocations.update(handle, status="running")
+            owned_handle = active.handle if active.handle is not None else handle
+            if owned_handle is not handle:
+                self.services.invocations.refresh(owned_handle)
+            if owned_handle.status in TERMINAL_INVOCATION_STATES:
+                self.services.invocations.refresh(handle)
+                return self._stored_result(handle)
+            self.services.invocations.update(owned_handle, status="running")
+            if owned_handle is not handle:
+                self.services.invocations.refresh(handle)
             active.control.request_resume(resume_input)
         return await asyncio.shield(active.result)
 
@@ -288,7 +307,11 @@ class WorkflowEngine:
             raise ValueError(f"unsupported invocation status: {status}")
         if handle.status in TERMINAL_INVOCATION_STATES:
             return self._stored_result(handle)
-        self.services.invocations.update(handle, status=status, output=output, error=error)
+        try:
+            self.services.invocations.update(handle, status=status, output=output, error=error)
+        except InvocationStateConflict:
+            self.services.invocations.refresh(handle, terminal_only=True)
+            return self._stored_result(handle)
         return InvocationResult(handle.invocation_id, handle.session_id, status, output, error)
 
     def capabilities(self) -> EngineCapabilities:

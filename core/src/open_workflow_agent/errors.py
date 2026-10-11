@@ -111,6 +111,10 @@ class InvocationStateError(OwaError):
     status_code = 409
 
 
+class InvocationStateConflict(InvocationStateError):
+    """A newer durable invocation record invalidated this writer's snapshot."""
+
+
 class InvocationCancelled(OwaError):
     code = "invocation_cancelled"
     status_code = 409

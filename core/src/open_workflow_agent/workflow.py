@@ -30,6 +30,7 @@ from .effects import EffectIdentity, EffectJournal, EffectReceipt, effect_reques
 from .errors import (
     ExpressionError,
     InvocationCancelled,
+    InvocationStateConflict,
     OwaError,
     ToolError,
     UnsupportedWorkflowFeature,
@@ -1414,6 +1415,7 @@ class WorkflowExecutor:
                     UnsupportedWorkflowFeature,
                     ExpressionError,
                     ToolError,
+                    InvocationStateConflict,
                 ),
             ):
                 exc.details.setdefault("instance", reference)
@@ -1434,6 +1436,7 @@ class WorkflowExecutor:
                     UnsupportedWorkflowFeature,
                     ExpressionError,
                     ToolError,
+                    InvocationStateConflict,
                 ),
             ):
                 raise
@@ -1513,7 +1516,9 @@ class WorkflowExecutor:
                 return await self._await_with_cancellation(operation, state)
             except Exception as exc:
                 last_error = exc
-                if isinstance(exc, (InvocationCancelled, _EffectRecoveryRequired)):
+                if isinstance(
+                    exc, (InvocationCancelled, InvocationStateConflict, _EffectRecoveryRequired)
+                ):
                     raise
                 if attempt + 1 < max(1, attempts):
                     self._emit(
@@ -1640,7 +1645,9 @@ class WorkflowExecutor:
                     )
                     return state.data
                 except Exception as exc:
-                    if isinstance(exc, (InvocationCancelled, _EffectRecoveryRequired)):
+                    if isinstance(
+                        exc, (InvocationCancelled, InvocationStateConflict, _EffectRecoveryRequired)
+                    ):
                         raise
                     error = _error_details(exc)
                     state.variables["error"] = error
@@ -1842,6 +1849,10 @@ class WorkflowExecutor:
         try:
             result = await dispatch()
             validate_expression_data(result)
+        except InvocationStateConflict:
+            # Losing common state authority does not establish an action
+            # outcome. Leave its intent pending for explicit reconciliation.
+            raise
         except Exception as exc:
             # Match the common task boundary and avoid saving unexpected native
             # exception messages in the durable journal.
@@ -2077,7 +2088,7 @@ class WorkflowExecutor:
                     prefix=self._nested_prefix(child, f"fork/branches/{index}"),
                     indexed=False,
                 )
-            except _EffectRecoveryRequired as exc:
+            except (_EffectRecoveryRequired, InvocationStateConflict) as exc:
                 # Uncertain actions have no branch outcome. Preserve recovery
                 # routing and drain siblings without fabricating a winner.
                 if not completion.done():

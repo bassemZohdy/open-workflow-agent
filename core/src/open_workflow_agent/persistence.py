@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import json
 import uuid
-from dataclasses import asdict, dataclass, replace
+from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
 from typing import Any
 
-from .errors import InvocationStateError, WorkflowDefinitionChanged, WorkflowExecutionError
+from .errors import (
+    InvocationStateConflict,
+    InvocationStateError,
+    WorkflowDefinitionChanged,
+    WorkflowExecutionError,
+)
 from .expressions import validate_expression_data
-from .lifecycle import VALID_INVOCATION_TRANSITIONS
+from .lifecycle import TERMINAL_INVOCATION_STATES, VALID_INVOCATION_TRANSITIONS
 from .storage import StorageConnection, open_storage
 
 
@@ -33,6 +38,52 @@ class ExecutionHandle:
     # is deliberately common invocation metadata, not an engine credential or
     # native execution reference.
     owner_principal: str | None = None
+    # Exact durable snapshot for conditional writes; private runtime bookkeeping.
+    _persisted_payload: str | None = field(default=None, init=False, repr=False, compare=False)
+
+
+def _public_fields(handle: ExecutionHandle) -> dict[str, Any]:
+    return {item.name: getattr(handle, item.name) for item in fields(handle) if item.init}
+
+
+def _encode_handle(handle: ExecutionHandle) -> str:
+    payload = _public_fields(handle)
+    # Repeated running/waiting transitions must not restore an old writer's
+    # authority. This generation stays inside common storage, not public APIs.
+    payload["_revision"] = uuid.uuid4().hex
+    validate_expression_data(payload)
+    return json.dumps(payload, ensure_ascii=False, allow_nan=False)
+
+
+def _decode_payload(encoded: str) -> dict[str, Any]:
+    def unique_fields(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for name, value in pairs:
+            if name in result:
+                raise ValueError("duplicate invocation fields")
+            result[name] = value
+        return result
+
+    payload = json.loads(encoded, object_pairs_hook=unique_fields)
+    validate_expression_data(payload)
+    if not isinstance(payload, dict):
+        raise ValueError("invocation payload must be an object")
+    if "_revision" in payload:
+        revision = payload.pop("_revision")
+        if (
+            not isinstance(revision, str)
+            or len(revision) != 32
+            or uuid.UUID(revision).hex != revision
+        ):
+            raise ValueError("invalid invocation revision")
+    payload.setdefault("owner_principal", None)
+    return payload
+
+
+def _verify_identity(handle: ExecutionHandle, payload: dict[str, Any]) -> None:
+    for name, value in _public_fields(handle).items():
+        if name not in {"status", "output", "error"} and payload.get(name) != value:
+            raise InvocationStateError("invocation identity cannot be changed")
 
 
 class InvocationStore:
@@ -108,43 +159,85 @@ class InvocationStore:
             parent_task_reference=parent_task_reference,
             owner_principal=owner_principal,
         )
+        encoded = _encode_handle(handle)
         self.connection.execute(
             "INSERT INTO invocations(invocation_id, payload, status) VALUES (?, ?, ?)",
-            (handle.invocation_id, json.dumps(asdict(handle)), handle.status),
+            (handle.invocation_id, encoded, handle.status),
         )
         self.connection.commit()
+        handle._persisted_payload = encoded
         return handle
 
     def get(self, invocation_id: str) -> ExecutionHandle | None:
-        row = self.connection.execute(
-            "SELECT payload FROM invocations WHERE invocation_id = ?", (invocation_id,)
-        ).fetchone()
-        if row is None:
-            return None
-        payload = json.loads(row[0])
-        # Keep persisted handles readable across the addition of the common
-        # ownership field; old rows represent trusted/unowned invocations.
-        payload.setdefault("owner_principal", None)
-        return ExecutionHandle(**payload)
+        try:
+            row = self.connection.execute(
+                "SELECT payload, status FROM invocations WHERE invocation_id = ?", (invocation_id,)
+            ).fetchone()
+            if row is None:
+                return None
+            handle = ExecutionHandle(**_decode_payload(row[0]))
+            if handle.invocation_id != invocation_id or handle.status != row[1]:
+                raise ValueError("invocation columns disagree")
+            if handle.status not in VALID_INVOCATION_TRANSITIONS:
+                raise ValueError("invalid invocation state")
+            handle._persisted_payload = row[0]
+            return handle
+        except Exception:
+            raise WorkflowExecutionError("invocation state could not be recovered") from None
+
+    def refresh(self, handle: ExecutionHandle, *, terminal_only: bool = False) -> ExecutionHandle:
+        """A stale executor may reload terminal outcomes without adopting active state."""
+
+        current = self.get(handle.invocation_id)
+        if current is None:
+            raise WorkflowExecutionError("invocation state could not be recovered")
+        _verify_identity(handle, _public_fields(current))
+        if terminal_only and current.status not in TERMINAL_INVOCATION_STATES:
+            raise InvocationStateConflict("invocation state has changed; reload before retry")
+        for name, value in _public_fields(current).items():
+            setattr(handle, name, value)
+        handle._persisted_payload = current._persisted_payload
+        return handle
 
     def update(self, handle: ExecutionHandle, **changes: Any) -> ExecutionHandle:
+        expected = handle._persisted_payload
+        if expected is None:
+            raise InvocationStateError("invocation handle must be loaded before writing")
+        original = _decode_payload(expected)
+        _verify_identity(handle, original)
         requested_status = changes.get("status", handle.status)
-        allowed = VALID_INVOCATION_TRANSITIONS.get(handle.status, frozenset())
+        allowed = VALID_INVOCATION_TRANSITIONS.get(original["status"], frozenset())
         if requested_status not in allowed:
             raise InvocationStateError(
                 f"invalid invocation transition: {handle.status} -> {requested_status}",
                 details={"from": handle.status, "to": requested_status},
             )
-        known_changes = {key: value for key, value in changes.items() if hasattr(handle, key)}
+        known_changes = {
+            key: value for key, value in changes.items() if key in _public_fields(handle)
+        }
         candidate = replace(handle, **known_changes)
+        _verify_identity(candidate, original)
+        if original["status"] in TERMINAL_INVOCATION_STATES:
+            current = self.get(handle.invocation_id)
+            if current is None or current._persisted_payload != expected:
+                raise InvocationStateConflict("invocation state has changed; reload before retry")
+            return self.refresh(handle, terminal_only=True)
         try:
+            encoded = _encode_handle(candidate)
             updated = self.connection.execute(
-                "UPDATE invocations SET payload = ?, status = ? WHERE invocation_id = ?",
-                (json.dumps(asdict(candidate)), candidate.status, candidate.invocation_id),
+                """UPDATE invocations SET payload = ?, status = ?
+                WHERE invocation_id = ? AND status = ? AND payload = ?""",
+                (encoded, candidate.status, candidate.invocation_id, original["status"], expected),
             )
             if updated.rowcount != 1:
-                raise ValueError("invocation is absent")
+                raise InvocationStateConflict("invocation state has changed; reload before retry")
             self.connection.commit()
+        except InvocationStateConflict:
+            try:
+                self.connection.raw.rollback()
+            except Exception:
+                pass
+            raise
         except Exception:
             try:
                 self.connection.raw.rollback()
@@ -153,6 +246,7 @@ class InvocationStore:
             raise WorkflowExecutionError("invocation state could not be stored") from None
         for key, value in known_changes.items():
             setattr(handle, key, value)
+        handle._persisted_payload = encoded
         return handle
 
     def verify_fingerprint(self, handle: ExecutionHandle, fingerprint: str) -> None:
