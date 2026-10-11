@@ -22,7 +22,7 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
-### S2-02 competitive fork decisions — in progress
+### S2-02 competitive fork decisions — 2026-10-11 (verified)
 
 The common runtime now composes an embedded decision store using its existing
 SQLite or optional PostgreSQL datasource. An atomic claim retains the first
@@ -100,10 +100,18 @@ coverage. Selected native jobs pass ADK 503 and LangGraph 516; optional Agent
 Framework passes 803. The configured database job passes all 13 winner and
 repeated-scope restart cases on each principal native adapter.
 
-The optional package also exposes the common PostgreSQL binding, so its same
-13 database bridge cases are now added to the independent database gate.
-That final optional common-binding acceptance remains pending; it does not
-activate production images or stronger native checkpoint hardening. S2-02 stays open.
+The optional package also exposes the common PostgreSQL binding. Its same 13
+database bridge cases pass in the independent gate at `81d27b3`, making 39
+configured cases across the three adapter environments. All exact final gates
+pass: [CI 38153550708](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38153550708),
+[push CI 38153548023](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38153548023),
+[PostgreSQL 38153550655](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38153550655),
+[external sandbox 38153550759](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38153550759),
+[optional adapter 38153550700](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38153550700),
+[security 38153550667](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38153550667),
+and [docs 38153550675](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38153550675).
+This common-binding acceptance does not activate production images or stronger
+native checkpoint hardening. S2-02 is complete at the recorded scope.
 These records do not establish
 general pending-effect reconciliation, exactly-once external actions, durable
 timers, native metadata extensions or full conformance. A separate observed

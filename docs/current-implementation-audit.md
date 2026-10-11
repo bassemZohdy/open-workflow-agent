@@ -12,8 +12,9 @@ The reviewed implementation is
 `5dbc181`, which retains the ordered fork correction, adds durable competitive
 decisions and verifies repeated-scope restart across adapters. Exact runtime
 GitHub acceptance at `2fbe548` and additional fixture/audit gates at `51c204e`
-passed. The optional adapter's common PostgreSQL binding gate remains pending. S2-02 remains open;
-see [current evidence](../PROJECT.md#s2-02-competitive-fork-decisions--in-progress).
+passed. All three common PostgreSQL bindings and exact final gates passed at
+`81d27b3`. S2-02 is verified; see
+[current evidence](../PROJECT.md#s2-02-competitive-fork-decisions--2026-10-11-verified).
 Hashes of reviewed Git file contents preserve the evidence baseline. The
 manifest's `previous_reviews` retains the earlier S1-08 acceptance and points
 to its immutable artifact. Historical green gates do not qualify changed code.
@@ -52,7 +53,7 @@ not be read as current delivery status.
 | Finding | Actual behavior and evidence boundary | Repair owner |
 | --- | --- | --- |
 | Ordered fork output and collisions | Ordered branch arrays, isolated exports, explicit jq aggregation and failure cleanup pass shared fixtures. SQLite/PostgreSQL native fork restart and exact runtime GitHub gates pass; additional shared output restart passes every adapter | S2-01 verified; full criteria remain S4-03/S4-04 |
-| Competitive fork durability | First observed completion, cancellation intents and distinct occurrence identity are persisted. Fresh SQLite restart replays values/null/fault/end without branch calls. PostgreSQL winner and repeated-scope restart passed both principal native adapters; optional common PostgreSQL bridge acceptance is pending. External-action reconciliation/compensation is not established | S2-02 acceptance pending; general effects S2-03/S2-08; full criteria S4-03/S4-04 |
+| Competitive fork durability | First observed completion, cancellation intents and distinct occurrence identity are persisted. SQLite/PostgreSQL replay preserves values/null/fault/end and repeated occurrences without branch calls on both principal adapters and the optional common bridge. All exact acceptance gates passed. External-action reconciliation/compensation is not established | S2-02 verified; general effects S2-03/S2-08; full criteria S4-03/S4-04 |
 | Native checkpoint recovery | Root/nested/loop/function/import/schema scopes recover completed calls with private savers; pending effects and common/native transactions remain unproved, and explicit null resume uses a missing-value sentinel | S2-03 |
 | Retry and timeout declarations | Predicates/count/basic backoff work; jitter and duration limits are inert, and original deadlines are not persisted | S2-04 |
 | Events and timers | Active process-local listeners and persisted after/every schedules exist; durable general inbox/outbox/timers/correlation/cron/on are missing. Explicit null event data is omitted | S2-05, S2-06 |

@@ -6,8 +6,9 @@ successors, switch/catch overrides, named transitions and scope termination.
 Core derives immutable scope/task plans and owns each task's input/body/output/
 export pipeline, errors, catalog and services. Core imports no framework SDK.
 Nested `do`, loop bodies, try/catch scopes and fork branches each run as native
-scope graphs. Loop/fork orchestration remains common; ordered fork results,
-reducers and durable competitive winners are separate Stage 2 work.
+scope graphs. Loop/fork orchestration remains common. Ordered results and durable
+competitive decisions are verified by S2-01/S2-02; declared native channel
+reducers remain Stage 4 work. See [fork behavior](workflow-forks.md).
 Reusable task bodies also lower to native scopes per call site, while public
 descriptors retain the original definition pointers. See the
 [reusable definition contract](reusable-definitions.md).
@@ -38,10 +39,13 @@ workflow input. Completed sequential tasks and completed child scopes are not
 replayed. A task interrupted before its checkpoint may repeat, so the existing
 common operation/idempotency boundary still applies. This milestone does not
 claim exactly-once effects, native/common-record reconciliation after every
-crash, durable waits/events, competitive winner recovery, or in-flight migration
+crash, durable waits/events, or in-flight migration
 from the earlier Functional API envelope. S2-03/S2-08/S2-09 own those gates.
 The native checkpoint key/format is adapter-private and versioned; older
 checkpoints are preserved but cannot silently resume through this compiler.
+The common competitive decision store separately prevents branch replay after
+a winner is committed, including interruption before the parent checkpoint;
+that S2-02 guarantee does not reconcile general pending external actions.
 
 All calls, including executable operations, still use common services and
 SandboxManager. The adapter creates no subprocess, container or pod execution

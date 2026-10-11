@@ -56,7 +56,7 @@ in the pinned SDK. They do not expose those channels as workflow metadata.
 S2-01 acceptance is recorded in
 [PROJECT.md](../PROJECT.md#s2-01-ordered-fork-results--2026-10-11-verified).
 
-## Competitive fork integration under verification
+## Competitive fork decisions and recovery
 
 The S2-02 implementation records the first completion observed by the executor.
 The pinned specification defines one winning branch output; the backlog requires
@@ -87,5 +87,6 @@ nested, transition and catch-retry scopes, and an end originating outside a
 competitive scope. The cancellable losing operation never reaches its simulated
 committed effect. Runtime PostgreSQL winner and repeated-scope replay and exact
 runtime/audit gates passed on both principal adapters. The optional package's
-common PostgreSQL bridge gate remains pending. S2-02 stays
-open; see [current evidence](../PROJECT.md#s2-02-competitive-fork-decisions--in-progress).
+same common PostgreSQL bridge cases and all exact final gates also pass. S2-02
+acceptance is recorded in
+[PROJECT.md](../PROJECT.md#s2-02-competitive-fork-decisions--2026-10-11-verified).

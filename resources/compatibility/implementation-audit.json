@@ -56,11 +56,11 @@
       "postgresql_cases": {
         "adk": 13,
         "langgraph": 13,
-        "agent_framework_optional": "Pending"
+        "agent_framework_optional_common_bridge": 13
       }
     },
     "scope": "Runtime code is unchanged from exact accepted 2fbe548; additional repeated-scope/end fixtures pass independently. Full proposed criteria and JS remain unverified.",
-    "remote_status": "All exact runtime and repeated-scope/audit gates passed; optional Agent Framework common PostgreSQL bridge gate pending.",
+    "remote_status": "All exact runtime, additional fixture/audit and final common PostgreSQL bridge gates passed.",
     "remote_runs": {
       "CI": 38152109920,
       "CI (push)": 38152106466,
@@ -629,9 +629,8 @@
     "compete": {
       "outcome": "qualified_subset",
       "observed": "First observed completion is committed before loser cancellation. The first claim retains value/null/fault/end output, source diagnostics and cancellation intents. Private invocation/fingerprint/call-site/ancestor/attempt coordinates distinguish races. Fresh SQLite services replay committed decisions without invoking branches, including interrupted cleanup and repeated loops/reusable/nested/transition/catch-retry scopes. Cancellation before a winner stores none; yielding loser cleanup is drained and the cancellable loser side-effect spy stays zero.",
-      "remaining_scope": "Optional Agent Framework common PostgreSQL bridge gate is pending. General pending external-action reconciliation/compensation, full proposed criteria and independent JS remain later work; cancellation does not reverse a committed action.",
+      "remaining_scope": "General pending external-action reconciliation/compensation, full proposed criteria and independent JS remain later work. Cancellation does not reverse an already committed action; optional native checkpoint hardening is not established by common decision replay.",
       "remediation_tasks": [
-        "S2-02",
         "S2-08",
         "S4-04"
       ],
@@ -731,14 +730,13 @@
           "symbol": "test_postgres_fork_decision_claim_and_cleanup_survive_independent_connections"
         }
       ],
-      "test_scope": "Identical deterministic Python contract fixtures on each principal native adapter and optional Agent Framework; common-store races, native PostgreSQL winner/null/fault/end and repeated loop/reusable/nested/transition/catch-retry recovery pass on both principal adapters. Optional common PostgreSQL bridge acceptance is pending. First-observed tie/error policy is documented; full proposed criteria and JS remain unclaimed."
+      "test_scope": "Identical deterministic Python fixtures on each principal native adapter and optional Agent Framework. SQLite and configured PostgreSQL winner/null/fault/end plus repeated loop/reusable/nested/transition/catch-retry recovery pass in all three independent environments. Optional bridge tests qualify common decisions, not advanced native checkpoint guarantees. First-observed tie/error policy is documented; full proposed criteria and JS are unclaimed."
     },
     "end": {
       "outcome": "qualified_subset",
       "observed": "Whole-workflow end cancels/drains siblings, preserves ending ancestors and surfaces their validation failures; exit returns to containing scope. Competitive end is durably recorded before cancelling losers; sibling/end ownership does not fabricate an inner-race winner.",
       "remaining_scope": "General post-crash external-action reconciliation, compensation, full proposed criteria and independent JS remain unqualified.",
       "remediation_tasks": [
-        "S2-02",
         "S2-08",
         "S4-04"
       ],
@@ -16954,7 +16952,7 @@
       "runtime_images": "Both principal images passed start/restart acceptance"
     },
     "additional_shared_recovery_commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
-    "scope": "Exact runtime and repeated-scope/audit gates passed; optional common PostgreSQL bridge acceptance pending. Full proposed criteria and JS remain unclaimed.",
+    "scope": "All exact runtime, repeated-scope/audit and final common PostgreSQL bridge gates pass. Full proposed criteria, independent JS, general effects and optional native checkpoint hardening remain unclaimed.",
     "follow_up": {
       "commit": "51c204e4474fa0c0e512c79b144c5e3d5014c76b",
       "runs": {
@@ -17001,6 +16999,26 @@
         "job": 114509716719
       },
       "scope": "All repeated-scope fixtures and refreshed audit gates passed. The optional Agent Framework package exposes common PostgreSQL binding; its newly added independent database gate is pending."
+    },
+    "final_gate_acceptance": {
+      "commit": "81d27b33d521517fd912d3bc02c51074c0341289",
+      "runs": {
+        "CI": 38153550708,
+        "CI (push)": 38153548023,
+        "External Sandbox CI": 38153550759,
+        "PostgreSQL CI": 38153550655,
+        "Agent Framework CI (optional)": 38153550700,
+        "Security": 38153550667,
+        "Docs": 38153550675
+      },
+      "result": "All success",
+      "configured_postgresql": {
+        "adk": 13,
+        "langgraph": 13,
+        "agent_framework_optional_common_bridge": 13,
+        "job": 114511774405
+      },
+      "scope": "Exact final database-gate revision passes all required gates. Runtime remains unchanged from 2fbe548 and recovery fixtures from 5dbc181. Optional bridge acceptance does not activate production/native checkpoint hardening."
     }
   }
 }
