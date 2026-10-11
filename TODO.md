@@ -112,9 +112,18 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   with 91.58% coverage; ADK 884/460, LangGraph 926/433 and optional
   Agent Framework 1,157/652,
   each with three tracked gaps. A completed child's missing common invocation
-  record is still accepted in an actual SDK probe. Child-record dependency
-  reconciliation, fresh event/child acceptance and complete native/common
-  consistency remain open.
+  record is accepted at that source in actual SDK probes. All seven `33cd41f`
+  jobs subsequently pass, including twenty configured event/child cases per
+  adapter and both PostgreSQL/main CI images. Source `e39a7c0` binds terminal
+  child records/input to prepared requests and admits an action identity index
+  atomically with intents. Pre-admission checks reconcile associated receipts
+  and descendant actions even before native task progress saves a receipt link.
+  Missing/changed child records, input, execution references, descendant receipts
+  and index metadata now reject before parent mutation or dispatch. Focus passes
+  77/74 per principal SDK; storage/selection checks pass 52/9. Full frozen
+  core passes 1,664/621/three tracked gaps with 91.67% coverage;
+  ADK 918/494, LangGraph 960/467, optional Agent Framework 1,208/703, each with three gaps.
+  Fresh configured acceptance and the final S2-03 audit remain open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
@@ -157,7 +166,7 @@ Earlier completed release/readiness work and deferred details are preserved in [
 ## Deferred tasks
 
 No active backlog tasks are currently deferred. S2-03 has verified recent
-progress and a reproducible child-record dependency gap with an actionable
-implementation path; its fresh remote validations are running. Move a task's
+progress; its current validation and remaining acceptance are recorded above.
+Move a task's
 entry here when the blocked-task rule applies, keeping its checkbox unchecked
 and including the full deferral record described above.

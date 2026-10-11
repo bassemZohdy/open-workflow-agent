@@ -264,9 +264,21 @@ existing event/listener, child identity and leaf-call recovery contracts.
 
 This acknowledgement record does not add durable event delivery or child
 scheduling/budget semantics. Actual probes on both principal SDKs delete the completed
-child's common invocation record after the parent retains its receipt. Recovery
-still accepts the known output. Child-record dependency reconciliation and
-general ambiguous-outcome resolution remain open. Full/fresh configured results
+child's common invocation record after the parent retains its receipt. At that
+source, recovery still accepts the known output. Source `e39a7c0` subsequently
+binds known child outcomes to the terminal common record and original input.
+Recovery checks parent identity and the original prepared child request as well.
+An identity index is stored atomically with action intents, allowing read-only
+reconciliation before native progress has retained a receipt reference. Associated
+actions and descendant child actions are checked before parent state changes.
+Missing or changed child records, input, execution references, descendant receipts
+or index metadata reject recovery. Both focused principal suites pass 77/74.
+The same deletion assertions fail on exact archived `5506277` source in both
+the task-checkpoint gap and a waiting parent.
+
+Existing non-child receipt digests preserve their prior format. Older unbound
+child receipts require explicit recovery; no migration guarantee follows. Pending
+intent resolution retains S2-08 ownership. Full/fresh configured results
 retain their source-specific scopes in [PROJECT.md](../PROJECT.md).
 
 [Journal fixtures](../tests/core/test_effect_journal.py) cover owner contention,

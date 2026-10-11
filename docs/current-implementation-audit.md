@@ -89,9 +89,20 @@ synchronous child-call outcomes before native task progress. The focused suites
 pass 70/64 in each principal SDK environment. Changed prepared input or resolved
 child definitions reject replay; known outcomes are reused and uncertain intents
 stop another dispatch. These receipts add neither durable event delivery nor
-child scheduling/budget capabilities. Both principal SDK probes still accept a saved
+child scheduling/budget capabilities. At that source both principal SDK probes accept a saved
 child result after deletion of the child's common invocation record. That
-dependency gap remains S2-03 work; it prevents a complete recovery claim.
+dependency gap motivated the subsequent reconciliation change.
+
+Source `e39a7c0` binds the terminal child record and original input to the
+prepared request. An action identity index is admitted atomically with intents;
+pre-admission checks cover its receipts and descendant child actions even before
+native task progress stores a receipt link. Missing or changed child records,
+input, execution references, descendant receipts and index metadata now reject
+recovery before parent mutation or dispatch. Both focused principal suites pass
+77/74; storage/selection checks pass 52/9. The same deletion assertions fail on
+exact archived `5506277` source. Fresh full/configured acceptance and the final
+S2-03 requirement audit remain pending. Neither old child-receipt migration nor
+general pending-intent resolution is implied.
 
 Earlier competitive runtime, fixture/audit and all three common PostgreSQL
 gates passed at `2fbe548`, `51c204e` and `81d27b3`. The JSON null wake-up fix also

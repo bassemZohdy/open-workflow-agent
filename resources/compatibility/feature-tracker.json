@@ -3976,7 +3976,7 @@
       "structural_compatibility": "Representable through mapping",
       "behavioral_compatibility": "Requires semantic wrapper; untested",
       "operational_compatibility": "No operational conformance run; production services must satisfy contract",
-      "mismatch": "Persisted resumability requires checkpointer and authenticated faÃ§ade",
+      "mismatch": "Persisted resumability requires checkpointer and authenticated faÃƒÂ§ade",
       "effort": "M",
       "gap_severity": "Medium",
       "evidence": "S02; S03; S09; S10; S12; S13",
@@ -3985,7 +3985,7 @@
       "engine_realization": "Native execution plus OWS adapter",
       "implementation_module": "M09 Human interaction",
       "native_reuse": "interrupt/Command resume and schema-validated replies",
-      "custom_work": "Preserve listen or runtime suspended phase: Persisted resumability requires checkpointer and authenticated faÃ§ade. Implement within Human interaction and validate T27.",
+      "custom_work": "Preserve listen or runtime suspended phase: Persisted resumability requires checkpointer and authenticated faÃƒÂ§ade. Implement within Human interaction and validate T27.",
       "embedded_support": "Embedded human-task journal/API; external UI/identity provider optional",
       "external_setup": "Optional provider/executor/endpoint binding only when this capability needs it; no external orchestration runtime required",
       "configuration_location": "Workflow standard field; backend/bootstrap binding external",
@@ -4343,8 +4343,8 @@
       "ows_basis": "Normative when construct used",
       "ows_version": "Stable v1.0.1 and v1.0.3",
       "normative_reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/dsl-reference.md#authentication",
-      "python_api": "A2A faÃ§ade and workload identity",
-      "javascript_api": "A2A faÃ§ade and workload identity",
+      "python_api": "A2A faÃƒÂ§ade and workload identity",
+      "javascript_api": "A2A faÃƒÂ§ade and workload identity",
       "python_status": "Adapter",
       "javascript_status": "Adapter",
       "structural_compatibility": "Representable through mapping",
@@ -5295,8 +5295,8 @@
       "ows_basis": "Normative when construct used",
       "ows_version": "v1.0.3 prerelease; absent dedicated construct in v1.0.1",
       "normative_reference": "https://github.com/open-workflow-specification/specification/blob/v1.0.3/dsl-reference.md#a2a-call",
-      "python_api": "A2A faÃ§ade wraps graph invocation",
-      "javascript_api": "A2A faÃ§ade wraps graph invocation",
+      "python_api": "A2A faÃƒÂ§ade wraps graph invocation",
+      "javascript_api": "A2A faÃƒÂ§ade wraps graph invocation",
       "python_status": "Adapter",
       "javascript_status": "Adapter",
       "structural_compatibility": "Representable through mapping",
@@ -23151,7 +23151,7 @@
     {
       "id": "T33",
       "name": "Workflow exposed through A2A",
-      "prerequisites": "A2A server faÃ§ade; registry; durable invocation mapping",
+      "prerequisites": "A2A server faÃƒÂ§ade; registry; durable invocation mapping",
       "input_fixture": "External SendMessage then GetTask,CancelTask,SubscribeToTask",
       "expected_outcome": "Workflow result as artifacts; INPUT_REQUIRED and terminal states mapped",
       "acceptance_criteria": "Ownership and auth validated; reconnect safe; AgentCard truthful",
@@ -29197,7 +29197,7 @@
                     "redirect": {
                       "type": "boolean",
                       "title": "HttpRedirect",
-                      "description": "Specifies whether redirection status codes (`300â€“399`) should be treated as errors."
+                      "description": "Specifies whether redirection status codes (`300Ã¢â‚¬â€œ399`) should be treated as errors."
                     }
                   },
                   "required": [
@@ -29268,7 +29268,7 @@
                     "redirect": {
                       "type": "boolean",
                       "title": "HttpRedirect",
-                      "description": "Specifies whether redirection status codes (`300â€“399`) should be treated as errors."
+                      "description": "Specifies whether redirection status codes (`300Ã¢â‚¬â€œ399`) should be treated as errors."
                     }
                   },
                   "required": [
@@ -30264,7 +30264,7 @@
                 "redirect": {
                   "type": "boolean",
                   "title": "HttpRedirect",
-                  "description": "Specifies whether redirection status codes (`300â€“399`) should be treated as errors."
+                  "description": "Specifies whether redirection status codes (`300Ã¢â‚¬â€œ399`) should be treated as errors."
                 }
               },
               "required": [
@@ -30540,7 +30540,7 @@
                 "redirect": {
                   "type": "boolean",
                   "title": "HttpRedirect",
-                  "description": "Specifies whether redirection status codes (`300â€“399`) should be treated as errors."
+                  "description": "Specifies whether redirection status codes (`300Ã¢â‚¬â€œ399`) should be treated as errors."
                 }
               },
               "required": [
@@ -44826,7 +44826,7 @@
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T27",
         "effort": "M",
-        "gap": "Persisted resumability requires checkpointer and authenticated faÃ§ade",
+        "gap": "Persisted resumability requires checkpointer and authenticated faÃƒÂ§ade",
         "standard_or_extension": "Composition or runtime contract",
         "completion_rule": "Implemented in the selected backend(s), required acceptance tests passed, limitations explicitly recorded. Native API existence alone does not count as complete.",
         "todo_ids": [
@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Event emission and existing synchronous child calls use the common intent/outcome journal before native task progress. Event requests bind evaluated properties/default source; child requests bind resolved workflow fingerprint/input. Value/null/fault receipts retain known results; changed requests/child definitions reject redispatch, and uncertain intents remain unresolved. Actual child invocations retain existing separate parent/task/user identity. No event delivery, child scheduling/budget or stronger isolation capability is added. Fresh exact-source acceptance and complete native/common consistency remain open. Actual probes on both principal SDKs delete the completed child invocation after parent receipt retention; recovery still accepts the known output. Child record dependency reconciliation is not established by these receipts. General ambiguous-outcome resolution, event inbox/outbox, child budgets/asynchrony, compensation, version migration and full proposed/JavaScript criteria retain their owners.",
+          "scope": "Known child outcomes bind the terminal common record, original input, parent identity and original prepared fingerprint/input request. A common identity index is admitted atomically with intents. Read-only pre-admission validation checks associated receipts and descendant child actions even when native task progress has not saved a receipt reference. Missing/changed child records, input, native references, descendant receipts and index metadata reject before parent mutation or dispatch. No native checkpoint or execution plan moves into core. Fresh exact-source configured/remote qualification and final S2-03 requirement audit remain open. Pending intents still require explicit resolution; event inbox/outbox, child scheduling/budgets, compensation, workflow-version migration and full proposed/JavaScript qualification retain later owners. Existing non-child digest formats are preserved; older unbound child outcomes fail closed without a migration guarantee.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -66561,7 +66561,7 @@
           },
           "event_child_receipt_recovery_followup": {
             "commit": "5506277f792f2ba0f00c8c0aa7cf55df0a6b6808",
-            "status": "Local known event/child outcomes and uncertain intents verified; fresh configured acceptance pending",
+            "status": "Bounded receipts verified including configured SQLite/PostgreSQL/native/Windows/image acceptance",
             "source_file_sha256": {
               "core/src/open_workflow_agent/workflow.py": "fc395254a394323373b8f2636b997c76cbef31c73145ae180292e0659ed3773c",
               "tests/contract/test_event_child_effect_recovery.py": "bde01f9d41113812eca0ad9d14ba13e248319870f5d69adb390144e25805519c",
@@ -66605,7 +66605,136 @@
               }
             },
             "quality_checks": "Formatting, lint, strict 66-package-source and fixture/CI typing, five wheel/sdist builds and current Python/pinned-schema wheel bytes pass. Five actual collection guards select nine scope cases, eighteen sandbox cases and twenty event/child cases per principal adapter.",
-            "remaining": "Fresh exact-source acceptance and complete native/common consistency remain open. Actual probes on both principal SDKs delete the completed child invocation after parent receipt retention; recovery still accepts the known output. Child record dependency reconciliation is not established by these receipts. General ambiguous-outcome resolution, event inbox/outbox, child budgets/asynchrony, compensation, version migration and full proposed/JavaScript criteria retain their owners."
+            "remaining": "Fresh exact-source acceptance and complete native/common consistency remain open. Actual probes on both principal SDKs delete the completed child invocation after parent receipt retention; recovery still accepts the known output. Child record dependency reconciliation is not established by these receipts. General ambiguous-outcome resolution, event inbox/outbox, child budgets/asynchrony, compensation, version migration and full proposed/JavaScript criteria retain their owners.",
+            "configured_acceptance_followup": {
+              "commit": "33cd41f329ede67f2c33882a9fe3b45f9a032445",
+              "runtime_commit": "5506277f792f2ba0f00c8c0aa7cf55df0a6b6808",
+              "status": "All seven actual jobs successful; configured event/child cases executed",
+              "remote_runs": {
+                "38183195906": "success",
+                "38183196141": "success",
+                "38183195924": "success",
+                "38183195937": "success",
+                "38183195938": "success",
+                "38183196057": "success",
+                "38183191872": "success"
+              },
+              "linux_root": {
+                "passed": 1629,
+                "skipped": 582,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.61
+              },
+              "linux_shared_contracts": {
+                "passed": 729,
+                "skipped": 508,
+                "expected_assertion_failures": 3
+              },
+              "linux_native": {
+                "adk": {
+                  "passed": 788,
+                  "skipped": 460,
+                  "expected_assertion_failures": 3,
+                  "ctk_passed": 96
+                },
+                "langgraph": {
+                  "passed": 830,
+                  "skipped": 433,
+                  "expected_assertion_failures": 3,
+                  "ctk_passed": 96
+                }
+              },
+              "optional_agent_framework": {
+                "passed": 1157,
+                "skipped": 652,
+                "expected_assertion_failures": 3
+              },
+              "windows": {
+                "root_passed": 460,
+                "root_skipped": 12,
+                "native_passed": 424,
+                "native_skipped": 250
+              },
+              "postgresql": {
+                "store_passed": 81,
+                "native_langgraph_passed": 10,
+                "native_langgraph_skipped": 8,
+                "shared_langgraph_passed": 206,
+                "shared_adk_passed": 172,
+                "shared_agent_framework_passed": 130,
+                "shared_agent_framework_skipped": 7,
+                "event_child_cases_passed_per_adapter": 20,
+                "both_runtime_images": "Success"
+              },
+              "both_main_ci_forced_stop_images": "Success",
+              "both_native_benchmarks_in_both_main_ci": "Success",
+              "remote_security_dependency_counts": {
+                "dependency-audit-adk": 109,
+                "dependency-audit-agent-framework": 74,
+                "dependency-audit-kubernetes-sandbox-controller": 16,
+                "dependency-audit-langgraph": 96,
+                "dependency-audit-root": 71,
+                "dependency-audit-sandbox-controller": 13
+              },
+              "remote_known_advisories": 0,
+              "coverage_limit": "This qualifies the preceding event/child receipt source. Child record/index reconciliation changes require fresh acceptance; raw earlier limits remain preserved."
+            }
+          },
+          "child_invocation_dependency_followup": {
+            "commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+            "status": "Local child/index reconciliation verified; fresh configured acceptance pending",
+            "source_file_sha256": {
+              "core/src/open_workflow_agent/effects.py": "fba7712d67ad9d89973fdbe35cbec13809d269903745b0ce4e86deb465b534e9",
+              "core/src/open_workflow_agent/engine.py": "d5cad8241973546569f8772bfbd6cda19af2ee28c48ec75dbc0cb139ef2fdc6d",
+              "core/src/open_workflow_agent/services.py": "58e3559872eb1e1c780ee9fa23dd30abfd3b37fac947b758fbfce2103cdda3ac",
+              "core/src/open_workflow_agent/workflow.py": "4221bfb9343a015dbaee7150189054c3e298182d08bb732820b4d8d7dcd44849",
+              "tests/contract/test_child_invocation_dependencies.py": "d85ab12597ef63799c1d636c1e0c157edaa11810a71908361a821d46ad2b33ac",
+              "tests/core/test_effect_journal.py": "da9331b0e9634108ca62ff60cbd21728a62d0b1ce139062f1ef371e236a0211e",
+              "tests/ci/test_postgres_recovery_selection.py": "dc73bf1a535d9f2146112d8df0fc16c22f66f625a96c6f0643eddd92a8924453",
+              ".github/workflows/ci.yml": "2da264f3ef66753c06a9ae6ab1c9e17224b53fd14f4c5999222dcc31ecadf714",
+              ".github/workflows/postgres-ci.yml": "9c3d32ee0758cb2a1958eaf4ebdef9ef7e34924517ad51a682d3e811e396eb35"
+            },
+            "scope": "Known child outcomes bind the terminal common record, original input, parent identity and original prepared fingerprint/input request. A common identity index is admitted atomically with intents. Read-only pre-admission validation checks associated receipts and descendant child actions even when native task progress has not saved a receipt reference. Missing/changed child records, input, native references, descendant receipts and index metadata reject before parent mutation or dispatch. No native checkpoint or execution plan moves into core.",
+            "negative_probe": "The same current deletion assertions on exact archived 5506277 runtime fail to raise for task-gap and waiting recovery; current source rejects both with common InvocationStateError and unchanged parent payload.",
+            "full_regression": {
+              "root": {
+                "passed": 1664,
+                "skipped": 621,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.67
+              },
+              "adk": {
+                "passed": 918,
+                "skipped": 494,
+                "expected_assertion_failures": 3
+              },
+              "lg": {
+                "passed": 960,
+                "skipped": 467,
+                "expected_assertion_failures": 3
+              },
+              "af": {
+                "passed": 1208,
+                "skipped": 703,
+                "expected_assertion_failures": 3
+              }
+            },
+            "local_focus": {
+              "adk": {
+                "passed": 77,
+                "skipped": 74
+              },
+              "langgraph": {
+                "passed": 77,
+                "skipped": 74
+              }
+            },
+            "foundation": {
+              "passed": 52,
+              "skipped": 9
+            },
+            "quality_checks": "Formatting, lint, strict 66-package-source and fixture/CI typing, five wheel/sdist builds and current Python/pinned-schema wheel bytes pass on frozen runtime/test source. Seven actual collection guards include seventeen configured child-dependency cases per principal adapter. SQLite rollback injection proves atomic index/intent admission; a configured PostgreSQL counterpart is added to its real CI command.",
+            "remaining": "Fresh exact-source configured/remote qualification and final S2-03 requirement audit remain open. Pending intents still require explicit resolution; event inbox/outbox, child scheduling/budgets, compensation, workflow-version migration and full proposed/JavaScript qualification retain later owners. Existing non-child digest formats are preserved; older unbound child outcomes fail closed without a migration guarantee."
           }
         }
       },

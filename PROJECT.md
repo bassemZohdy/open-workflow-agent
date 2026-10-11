@@ -584,9 +584,51 @@ the known output. Child-record dependency reconciliation and complete
 native/common consistency remain open. The event bus has no new durable
 delivery guarantee; child scheduling/budget semantics retain S2-07 ownership.
 
-S2-03 stays open. This fix does not reconcile all native/common invocation or
-side-effect records. General pending-effect reconciliation, full native state
-consistency and configured acceptance of the new validation still require work.
+All seven exact `33cd41f` jobs subsequently pass for the event/child receipt
+source. Configured PostgreSQL executes twenty event/child cases per adapter:
+shared recovery passes 206 LangGraph, 172 ADK and 130 optional bridge checks
+(seven optional skips), with both runtime images green. Linux root passes
+1,629/582/three tracked gaps with 91.61% coverage; shared contracts 729/508;
+native ADK 788/460 and LangGraph 830/433, each with three gaps and 96 CTK passes.
+Windows root/native pass 460/12 and 424/250; optional native/shared/CTK passes
+1,157/652/three gaps. Both native benchmarks and actual forced-stop image
+restart steps pass in both main CI runs. Six downloaded dependency reports
+contain zero known advisories. These results qualify the preceding receipt
+source, rather than subsequent child-record reconciliation.
+
+Source `e39a7c0` binds known child outcomes to the terminal common record and
+original input, and verifies the original prepared fingerprint/input and parent
+identity. A common action identity index is admitted atomically with intents.
+Read-only pre-admission checks traverse associated receipts and descendant
+child actions, including the interval before native progress retains a receipt
+link. Deleted or changed child records, input, execution references, descendant
+receipts and index metadata reject before parent mutation or dispatch. Identical
+fixtures yield the same common state error on both principal adapters, while
+clean value/null/fault outcomes and duplicate terminal resume remain valid.
+Focus passes 77/74 per principal SDK; storage/selection checks pass 52/9.
+The same task-gap and waiting deletion assertions fail on exact archived
+`5506277` source. Seven real collection guards select seventeen configured
+child-dependency cases per principal adapter. A rollback injection checks
+atomic index/intent storage; its PostgreSQL counterpart is in the configured
+store suite. Existing non-child receipt digests retain their prior format;
+older unbound child outcomes fail closed without a migration guarantee.
+Full frozen regressions pass: core 1,664/621/three tracked gaps
+with 91.67% coverage; ADK 918/494, LangGraph 960/467, optional Agent Framework 1,208/703,
+each with three tracked gaps. Formatting, lint, strict package/fixture/CI typing,
+five wheel/sdist builds and current wheel-source/pinned-schema bytes pass.
+Fresh exact-source configured qualification remains pending.
+
+The final S2-03 audit must verify common identity/fingerprint/original-input and
+terminal-result recovery; native checkpoint/session and routing consistency;
+known side-effect receipts and child-record dependencies; unresolved-intent
+admission behavior; ownership/fencing and forced-stop recovery; identical
+principal-engine assertions on SQLite/PostgreSQL; and current source quality,
+build, Windows, benchmark, image and dependency acceptance. Full proposed/JS
+criteria, event inbox/outbox, child scheduling/budgets, general pending-outcome
+resolution, compensation and version migration retain their later owners.
+
+S2-03 stays open until fresh configured acceptance and that requirement audit
+pass. General pending-effect resolution remains later-stage work.
 Legacy rows without an original-input record
 have no new migration guarantee. Later-stage retry/deadline,
 timer/event, child workflow, compensation and version migration owners remain
