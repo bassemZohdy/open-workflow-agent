@@ -6,7 +6,12 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from open_workflow_agent.expressions import validate_expression_data
 from open_workflow_agent.storage import is_postgresql_datasource
+
+# None is a native resume signal. A private bytes value preserves JSON null
+# without changing existing non-null checkpoint inputs or colliding with JSON.
+_NULL_INPUT = b"owa/null-input/v1"
 
 try:
     from langgraph.checkpoint.memory import InMemorySaver
@@ -61,6 +66,8 @@ class LangGraphFunctionalAdapter:
 
         @entrypoint(checkpointer=saver)
         async def workflow(input_data: Any) -> Any:
+            if isinstance(input_data, bytes) and input_data == _NULL_INPUT:
+                input_data = None
             return await runner(input_data)
 
         return workflow
@@ -74,6 +81,10 @@ class LangGraphFunctionalAdapter:
     ) -> Any:
         if not LANGGRAPH_AVAILABLE:
             return await runner(input_data)
+        if isinstance(input_data, bytes) and input_data == _NULL_INPUT:
+            validate_expression_data(input_data)
+        if input_data is None:
+            input_data = _NULL_INPUT
         await self.prepare_storage()
         config = {"configurable": {"thread_id": thread_id}}
         if self.database_path and is_postgresql_datasource(self.database_path):

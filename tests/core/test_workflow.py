@@ -192,7 +192,7 @@ def test_workflow_capability_helpers_reject_invalid_definitions():
 
 @pytest.mark.asyncio
 async def test_plan_executes_set_switch_for_fork_and_calls(services):
-    services.model.response = {"label": "called"}
+    services.model.response = {"label": "called", "items": []}
     workflow = {
         "document": {
             "dsl": "1.0.3",

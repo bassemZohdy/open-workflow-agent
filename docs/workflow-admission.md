@@ -21,6 +21,8 @@ modes use the same pinned jq implementation. See [expression semantics](workflow
 for recognition, types, errors and execution limits. The
 [data pipeline](workflow-data-flow.md) documents schema/transformation/export
 ordering and descriptor scope separately from jq syntax.
+The [control-flow contract](workflow-control-flow.md) defines scoped routing,
+switch defaults, iteration and graceful end behavior.
 
 Currently rejected reusable components are `use.authentications`, `errors`,
 `extensions`, `functions`, `retries`, `secrets` and `timeouts`. Named errors

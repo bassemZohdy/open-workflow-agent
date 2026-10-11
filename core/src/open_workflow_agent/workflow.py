@@ -184,15 +184,22 @@ def validate_capabilities(
     *,
     trusted_catalogs: Mapping[str, Any] | None = None,
     _prefix: str = "/do",
+    _indexed: bool = True,
 ) -> None:
     _validate_definition_profile(workflow)
     _validate_catalog_capability(workflow, trusted_catalogs=trusted_catalogs)
     use = workflow.get("use")
     catalogs = use.get("catalogs") if isinstance(use, Mapping) else None
     _validate_schedule_capability(workflow)
+    scope_names = {
+        _pointer_name(reference.rsplit("/", 1)[-1])
+        for reference, _ in _walk_tasks(workflow.get("do", []), prefix=_prefix, indexed=_indexed)
+    }
     seen: set[str] = set()
-    for reference, definition in _walk_tasks(workflow.get("do", []), prefix=_prefix):
-        name = reference.rsplit("/", 1)[-1]
+    for reference, definition in _walk_tasks(
+        workflow.get("do", []), prefix=_prefix, indexed=_indexed
+    ):
+        name = _pointer_name(reference.rsplit("/", 1)[-1])
         if name in seen:
             raise WorkflowSemanticError(
                 "duplicate task name in scope", details={"reference": reference}
@@ -201,6 +208,7 @@ def validate_capabilities(
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError(f"task {reference} must be an object")
         _validate_data_profile(definition, reference)
+        _validate_transitions(definition, reference, scope_names)
         if isinstance(definition.get("timeout"), str):
             _unsupported("named timeout", f"{reference}/timeout")
         raised = definition.get("raise")
@@ -240,7 +248,10 @@ def validate_capabilities(
             if isinstance(catalogs, Mapping):
                 nested["use"] = {"catalogs": catalogs}
             validate_capabilities(
-                nested, trusted_catalogs=trusted_catalogs, _prefix=f"{reference}/{suffix}"
+                nested,
+                trusted_catalogs=trusted_catalogs,
+                _prefix=f"{reference}/{suffix}",
+                _indexed=not suffix.startswith("fork/branches/"),
             )
         if "emit" in definition:
             _validate_emit_capability(definition["emit"], reference)
@@ -296,8 +307,8 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
         if isinstance(declaration, Mapping) and slot in declaration:
             check(declaration[slot], scope, f"{reference}/{section}/{slot}")
 
-    def tasks(task_list: Any, scope: set[str], prefix: str) -> None:
-        for reference, definition in _walk_tasks(task_list, prefix=prefix):
+    def tasks(task_list: Any, scope: set[str], prefix: str, *, indexed: bool = True) -> None:
+        for reference, definition in _walk_tasks(task_list, prefix=prefix, indexed=indexed):
             raw_scope = scope | {"task"}
             body_scope = raw_scope | {"input"}
             data_slot(definition, "input", "from", raw_scope, reference)
@@ -319,14 +330,14 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
                 loop_scope = scope | {item, index}
                 check(loop.get("in"), body_scope, f"{reference}/for/in")
             check(definition.get("while"), body_scope | loop_scope, f"{reference}/while")
-            for case in definition.get("switch", []):
+            for case_index, case in enumerate(definition.get("switch", [])):
                 if isinstance(case, Mapping):
                     for name, case_definition in case.items():
                         if isinstance(case_definition, Mapping):
                             check(
                                 case_definition.get("when"),
                                 body_scope,
-                                f"{reference}/switch/{name}/when",
+                                f"{reference}/switch/{case_index}/{_pointer_token(name)}/when",
                             )
             for key, member in (("emit", "event"), ("listen", "to"), ("raise", "error")):
                 declaration = definition.get(key)
@@ -359,7 +370,12 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
                 child_scope = loop_scope if suffix == "do" and isinstance(loop, Mapping) else scope
                 if suffix == "catch/do":
                     child_scope = catch_scope
-                tasks(nested, child_scope, f"{reference}/{suffix}")
+                tasks(
+                    nested,
+                    child_scope,
+                    f"{reference}/{suffix}",
+                    indexed=not suffix.startswith("fork/branches/"),
+                )
 
     data_slot(workflow, "input", "from", globals_, "")
     data_slot(workflow, "output", "as", globals_ | {"context"}, "")
@@ -586,7 +602,7 @@ def normalize_workflow(workflow: Mapping[str, Any]) -> WorkflowPlan:
         tasks.append(
             TaskPlan(
                 name=str(task_name),
-                reference=f"/do/{index}/{task_name}",
+                reference=f"/do/{index}/{_pointer_token(str(task_name))}",
                 kind=kind,
                 definition_json=json.dumps(definition, sort_keys=True, separators=(",", ":")),
             )
@@ -630,9 +646,56 @@ def _date_time_descriptor() -> dict[str, Any]:
     }
 
 
+def _pointer_token(name: str) -> str:
+    return name.replace("~", "~0").replace("/", "~1")
+
+
+def _pointer_name(token: str) -> str:
+    return token.replace("~1", "/").replace("~0", "~")
+
+
+def _validate_transitions(definition: Mapping[str, Any], reference: str, names: set[str]) -> None:
+    def validate(target: Any, path: str) -> None:
+        if target is not None and target not in {"continue", "exit", "end"} and target not in names:
+            raise WorkflowSemanticError(
+                "transition target must belong to the current scope",
+                details={"reference": path, "target": target},
+            )
+
+    validate(definition.get("then"), f"{reference}/then")
+    catch = definition.get("catch")
+    if isinstance(catch, Mapping):
+        validate(catch.get("then"), f"{reference}/catch/then")
+    defaults = 0
+    cases_seen: set[str] = set()
+    for index, entry in enumerate(definition.get("switch", [])):
+        for name, case in entry.items():
+            path = f"{reference}/switch/{index}/{_pointer_token(name)}"
+            if name in cases_seen:
+                raise WorkflowSemanticError(
+                    "duplicate switch case name", details={"reference": path}
+                )
+            cases_seen.add(name)
+            defaults += "when" not in case
+            validate(case.get("then"), f"{path}/then")
+    if defaults > 1:
+        raise WorkflowSemanticError(
+            "switch must have at most one default case",
+            details={"reference": f"{reference}/switch"},
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class _SkippedTask:
     data: Any
+
+
+@dataclass(slots=True)
+class _FlowControl:
+    ended: asyncio.Event = field(default_factory=asyncio.Event)
+    owners: tuple[asyncio.Task[Any], ...] = ()
+    output: Any = None
+    context: Any = None
 
 
 @dataclass(slots=True)
@@ -645,6 +708,10 @@ class ExecutionState:
     stop: bool = False
     expressions: ExpressionEvaluator | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    scope_exit: bool = False
+    transition_selected: bool = False
+    flow: _FlowControl = field(default_factory=_FlowControl)
+    branch_owners: tuple[asyncio.Task[Any], ...] = ()
 
 
 class WorkflowExecutor:
@@ -673,6 +740,8 @@ class WorkflowExecutor:
             context=copy.deepcopy(state.context),
             expressions=self._expressions(state),
             metadata=dict(state.metadata),
+            flow=state.flow,
+            branch_owners=state.branch_owners,
         )
         child.variables["context"] = child.context
         return child
@@ -794,11 +863,19 @@ class WorkflowExecutor:
         return result
 
     async def _run_tasks(
-        self, task_list: Iterable[Any], state: ExecutionState, *, prefix: str = "/do"
+        self,
+        task_list: Iterable[Any],
+        state: ExecutionState,
+        *,
+        prefix: str = "/do",
+        indexed: bool = True,
     ) -> None:
         tasks = list(task_list)
         index = 0
         while index < len(tasks):
+            if state.flow.ended.is_set():
+                state.stop = True
+                return
             self._token(state).checkpoint()
             item = tasks[index]
             if not isinstance(item, Mapping) or len(item) != 1:
@@ -806,7 +883,8 @@ class WorkflowExecutor:
             name, definition = next(iter(item.items()))
             if not isinstance(definition, Mapping):
                 raise WorkflowExecutionError(f"task {name} definition must be an object")
-            reference = f"{prefix}/{index}/{name}"
+            task_prefix = f"{prefix}/{index}" if indexed else prefix
+            reference = f"{task_prefix}/{_pointer_token(str(name))}"
             local = self._copy_state(state)
             for key in ("input", "output", "task"):
                 local.variables.pop(key, None)
@@ -835,6 +913,18 @@ class WorkflowExecutor:
                     if skipped
                     else self._apply_task_data(definition, result, local)
                 )
+            except asyncio.CancelledError:
+                if state.flow.ended.is_set():
+                    self._emit(
+                        "TaskCancelled",
+                        {
+                            **self._task_event(reference, name, local),
+                            "duration": time.perf_counter() - task_started,
+                            "status": "cancelled",
+                            "reason": "workflow_end",
+                        },
+                    )
+                raise
             except InvocationCancelled as exc:
                 self._emit(
                     "TaskCancelled",
@@ -891,6 +981,8 @@ class WorkflowExecutor:
                 if key in local.variables:
                     state.variables[key] = copy.deepcopy(local.variables[key])
             state.jump_to, state.stop = local.jump_to, local.stop
+            state.scope_exit = local.scope_exit
+            state.transition_selected = local.transition_selected
             self._emit(
                 "TaskCompleted",
                 {
@@ -899,9 +991,12 @@ class WorkflowExecutor:
                     "status": "completed",
                 },
             )
-            if state.jump_to is None and not state.stop:
+            if not state.transition_selected and not state.stop:
                 self._apply_transition(definition.get("then"), state)
             if state.stop:
+                return
+            if state.scope_exit:
+                state.scope_exit = False
                 return
             if state.jump_to is not None:
                 target = state.jump_to
@@ -1085,7 +1180,7 @@ class WorkflowExecutor:
                             {
                                 **self._task_event(
                                     failed_reference,
-                                    failed_reference.rsplit("/", 1)[-1],
+                                    _pointer_name(failed_reference.rsplit("/", 1)[-1]),
                                     state,
                                 ),
                                 "status": "retrying",
@@ -1173,44 +1268,19 @@ class WorkflowExecutor:
         return await self.catalog.call(call, payload, context)
 
     async def _run_switch(self, switch: Any, state: ExecutionState) -> Any:
-        entries = (
-            switch
-            if isinstance(switch, list)
-            else switch.get("cases", [])
-            if isinstance(switch, Mapping)
-            else []
-        )
-        otherwise: Any = None
-        for entry in entries:
-            if not isinstance(entry, Mapping):
+        default = None
+        for entry in switch:
+            case = next(iter(entry.values()))
+            if "when" not in case:
+                default = case
                 continue
-            case = entry
-            if len(entry) == 1:
-                candidate = next(iter(entry.values()))
-                if isinstance(candidate, Mapping):
-                    case = candidate
-            if "otherwise" in entry:
-                otherwise = entry["otherwise"]
-                continue
-            condition = case.get("when", case.get("case", case.get("if")))
-            if condition is None or self._expressions(state).condition(
-                condition, state.data, variables=state.variables
+            if self._expressions(state).condition(
+                case["when"], state.data, variables=state.variables
             ):
-                body = case.get("do")
-                if body is not None:
-                    await self._run_tasks(
-                        _task_body(body),
-                        state,
-                        prefix=self._nested_prefix(state, "switch"),
-                    )
                 self._apply_transition(case.get("then"), state)
                 return state.data
-        if otherwise is not None:
-            await self._run_tasks(
-                _task_body(otherwise),
-                state,
-                prefix=self._nested_prefix(state, "switch/otherwise"),
-            )
+        if default is not None:
+            self._apply_transition(default.get("then"), state)
         return state.data
 
     async def _run_for(self, definition: Any, state: ExecutionState) -> Any:
@@ -1224,20 +1294,27 @@ class WorkflowExecutor:
             state.data,
             variables=state.variables,
         )
-        if values is None:
-            return state.data
+        if not isinstance(values, list):
+            raise WorkflowSemanticError("for.in must evaluate to an array")
         variable = str(configuration.get("each", configuration.get("as", "item")))
         body = _task_body(definition.get("do", definition.get("body", [])))
         results: list[Any] = []
         for index, value in enumerate(values):
             child = self._copy_state(state)
-            child.variables[variable] = value
+            child.variables[variable] = copy.deepcopy(value)
             child.variables[str(configuration.get("at", "index"))] = index
+            if "while" in definition and not self._expressions(child).condition(
+                definition["while"], child.data, variables=child.variables
+            ):
+                break
             await self._run_tasks(body, child, prefix=self._nested_prefix(child, "do"))
             state.data = child.data
             state.context = copy.deepcopy(child.context)
             state.variables["context"] = state.context
             results.append(child.data)
+            if child.stop:
+                state.stop = True
+                break
         if definition.get("output") == "array":
             return results
         return results[-1] if results else state.data
@@ -1254,29 +1331,62 @@ class WorkflowExecutor:
 
         async def run_branch(index: int, branch: Any) -> Any:
             child = self._copy_state(state)
+            owner = asyncio.current_task()
+            assert owner is not None
+            child.branch_owners += (owner,)
             await self._run_tasks(
-                _task_body(branch.get("do", branch) if isinstance(branch, Mapping) else branch),
+                _task_body(branch),
                 child,
-                prefix=self._nested_prefix(child, f"branches/{index}"),
+                prefix=self._nested_prefix(child, f"fork/branches/{index}"),
+                indexed=False,
             )
+            if state.flow.ended.is_set() and owner in state.flow.owners:
+                state.flow.output = copy.deepcopy(child.data)
+                state.flow.context = copy.deepcopy(child.context)
             return child.data
 
-        if compete:
-            branch_tasks = [
-                asyncio.create_task(run_branch(index, branch))
-                for index, branch in enumerate(branches)
-            ]
-            if not branch_tasks:
+        branch_tasks = [
+            asyncio.create_task(run_branch(index, branch)) for index, branch in enumerate(branches)
+        ]
+        ending = asyncio.create_task(state.flow.ended.wait())
+        joined = None if compete else asyncio.gather(*branch_tasks)
+        try:
+            if compete and not branch_tasks:
                 return state.data
-            done, pending = await asyncio.wait(branch_tasks, return_when=asyncio.FIRST_COMPLETED)
-            for task in pending:
-                task.cancel()
-            await asyncio.gather(*pending, return_exceptions=True)
-            return next(iter(done)).result()
-
-        results = await asyncio.gather(
-            *(run_branch(index, branch) for index, branch in enumerate(branches))
-        )
+            watched: set[asyncio.Future[Any]]
+            if compete:
+                watched = set(branch_tasks)
+            else:
+                assert joined is not None
+                watched = {joined}
+            done, _ = await asyncio.wait(watched | {ending}, return_when=asyncio.FIRST_COMPLETED)
+            if state.flow.ended.is_set():
+                for branch_task in branch_tasks:
+                    if branch_task not in state.flow.owners:
+                        branch_task.cancel()
+                terminal_results = await asyncio.gather(*branch_tasks, return_exceptions=True)
+                for branch_task, terminal_result in zip(
+                    branch_tasks, terminal_results, strict=True
+                ):
+                    if branch_task in state.flow.owners and isinstance(
+                        terminal_result, BaseException
+                    ):
+                        raise terminal_result
+                state.stop = True
+                state.context = copy.deepcopy(state.flow.context)
+                state.variables["context"] = state.context
+                return copy.deepcopy(state.flow.output)
+            if compete:
+                return next(task for task in branch_tasks if task in done).result()
+            assert joined is not None
+            results = joined.result()
+        finally:
+            for pending in (*branch_tasks, ending):
+                if not pending.done():
+                    pending.cancel()
+            await asyncio.gather(*branch_tasks, ending, return_exceptions=True)
+            if joined is not None:
+                await asyncio.gather(joined, return_exceptions=True)
         if results and all(isinstance(result, Mapping) for result in results):
             merged = dict(state.data) if isinstance(state.data, Mapping) else {}
             for result in results:
@@ -1412,10 +1522,21 @@ class WorkflowExecutor:
 
     @staticmethod
     def _apply_transition(transition: Any, state: ExecutionState) -> None:
-        if transition is None or transition == "continue":
+        if transition is None:
             return
-        if transition in {"end", "exit"}:
+        state.transition_selected = True
+        if transition == "continue":
+            return
+        if transition == "exit":
+            state.scope_exit = True
+            return
+        if transition == "end":
             state.stop = True
+            if not state.flow.ended.is_set():
+                state.flow.output = copy.deepcopy(state.data)
+                state.flow.context = copy.deepcopy(state.context)
+                state.flow.owners = state.branch_owners
+                state.flow.ended.set()
             return
         if isinstance(transition, str):
             state.jump_to = transition
@@ -1812,7 +1933,7 @@ def _task_scopes(definition: Mapping[str, Any]) -> Iterable[tuple[str, list[Any]
             yield f"fork/branches/{index}", _task_body(branch)
 
 
-def _walk_tasks(task_list: Any, *, prefix: str) -> Iterable[tuple[str, Any]]:
+def _walk_tasks(task_list: Any, *, prefix: str, indexed: bool = True) -> Iterable[tuple[str, Any]]:
     if not isinstance(task_list, list):
         return
     for index, item in enumerate(task_list):
@@ -1820,5 +1941,6 @@ def _walk_tasks(task_list: Any, *, prefix: str) -> Iterable[tuple[str, Any]]:
             yield f"{prefix}/{index}", item
             continue
         for name, definition in item.items():
-            reference = f"{prefix}/{index}/{name}"
+            task_prefix = f"{prefix}/{index}" if indexed else prefix
+            reference = f"{task_prefix}/{_pointer_token(str(name))}"
             yield reference, definition

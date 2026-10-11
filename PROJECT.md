@@ -150,6 +150,36 @@ Both native/CTK, runtime-image, external-sandbox and native PostgreSQL gates
 passed, along with Windows, mutation, manifests, security and docs. No
 release or broader conformance claim was published.
 
+### S1-04 control-flow work — remote acceptance pending
+
+Common task routing now distinguishes scope exit from workflow end, validates
+named transition targets in scope before effects, preserves backward jumps,
+defers switch defaults until no predicate matches, rejects multiple defaults,
+and respects explicit case/catch directives. Ordered loop bodies honor
+`while`, carry data/context and reject non-array collections before effects.
+Original JSON pointers escape names and preserve fork branch structure.
+Workflow end cancels/awaits active fork siblings while preserving the ending
+branch's ancestor scopes. Cancellation events distinguish graceful end from
+invocation cancellation. [Control-flow details](docs/workflow-control-flow.md)
+record the contract and the historical operation-id compatibility boundary.
+
+Independent native testing exposed that LangGraph and optional Agent Framework
+treat native `None` as a control/no-input signal. The bridges now encode/decode
+JSON null with a private non-JSON bytes marker; non-null LangGraph checkpoint
+inputs remain unchanged. Shared fixtures verify all JSON types, nested forks,
+scope exit/end, original references, early loop stop, routing and cycles.
+Later native task lowering, reducers, durable winner/recovery/migration and
+independent JS delivery remain unclaimed. S1-04 remains open until remote
+acceptance passes for the exact code commit.
+
+Local root validation before the final ending-ancestor failure assertions
+passed 972 tests, 14 skips and 90.49% coverage. Independent native
+adapter/contract/CTK matrices passed ADK 385, LangGraph 384 and optional Agent
+Framework 520. The final scoped-flow revision passed 60 fixtures in each ADK
+and LangGraph environment, and 88 in the optional Agent Framework environment.
+Ruff, formatting, strict mypy, four lock checks, Markdown links and root/core
+builds passed. Windows CI includes the new shared flow fixtures.
+
 The runtime pipeline is:
 
 ```text
