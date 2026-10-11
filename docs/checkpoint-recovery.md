@@ -43,6 +43,20 @@ path remains; general pending side-effect reconciliation is still required.
 
 ## Evidence and remaining work
 
+The private action journal foundation is being verified separately. It retains
+a first-owner intent and the first completed value/null/fault outcome on the
+common datasource, with stable private occurrence identity and a request digest.
+Conditional writes reject another owner. An unresolved pending intent differs
+from a completed null result. This store is being composed into RuntimeServices;
+workflow dispatcher integration, recovery leases and pending-outcome resolution
+are still open. Its presence does not change current replay or advertised
+execution guarantees.
+
+[Journal fixtures](../tests/core/test_effect_journal.py) cover owner contention,
+reopening, first outcomes, source/occurrence separation, common errors, corrupt
+receipts and failed SQLite commit. PostgreSQL equivalents are part of the
+configured store gate. Native checkpoint state is not stored in this journal.
+
 [Shared fixtures](../tests/contract/test_checkpoint_recovery.py) cover original
 null/false/object/array inputs, all six empty/false JSON resume values, input
 transformation, duplicate terminal resume, successful null completion, and

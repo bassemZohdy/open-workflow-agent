@@ -8,6 +8,8 @@ from uuid import uuid4
 
 import pytest
 from open_workflow_agent.approvals import APPROVAL_REQUEST_EVENT, ApprovalStore
+from open_workflow_agent.effects import EffectIdentity, EffectJournal, effect_request_digest
+from open_workflow_agent.errors import WorkflowExecutionError
 from open_workflow_agent.events import EventEnvelope
 from open_workflow_agent.forks import ForkDecision, ForkDecisionStore, ForkIdentity
 from open_workflow_agent.knowledge import DeterministicEmbeddingProvider, KnowledgeService
@@ -30,6 +32,40 @@ def test_postgres_datasource_normalization_and_engine_namespace() -> None:
     assert resolve_datasource(url) == url
     namespaced = namespaced_datasource(url, "owa_langgraph")
     assert "owa_langgraph%2Cpublic" in namespaced
+
+
+@pytest.mark.parametrize("outcome", ["value", "null", "fault"])
+def test_postgres_effect_intent_owner_and_first_outcome_survive_reopening(outcome) -> None:
+    url = _postgres_url()
+    pytest.importorskip("psycopg")
+    identity = EffectIdentity(str(uuid4()), "fingerprint", "/do/0/action", (("action", 1),), "http")
+    digest = effect_request_digest("http", {"body": {"operation": "test"}})
+    first = EffectJournal(url)
+    other = EffectJournal(url)
+    try:
+        pending = first.begin(identity, digest, "owner", operation_id="operation")
+        assert other.begin(identity, digest, "other-owner") == pending
+        with pytest.raises(WorkflowExecutionError, match="does not own"):
+            other.finish(identity, "other-owner", output={"incorrect": True})
+        receipt = first.finish(
+            identity,
+            "owner",
+            output={"recorded": True} if outcome == "value" else None,
+            error={"code": "model_error", "message": "recorded", "details": {}}
+            if outcome == "fault"
+            else None,
+            error_status_code=500 if outcome == "fault" else None,
+        )
+        assert receipt.status == ("faulted" if outcome == "fault" else "completed")
+        assert other.finish(identity, "owner", output={"late": True}) == receipt
+    finally:
+        first.close()
+        other.close()
+    reopened = EffectJournal(url)
+    try:
+        assert reopened.begin(identity, digest, "recovered-owner") == receipt
+    finally:
+        reopened.close()
 
 
 @pytest.mark.parametrize("original", [None, False, {"raw": [1, 2]}])

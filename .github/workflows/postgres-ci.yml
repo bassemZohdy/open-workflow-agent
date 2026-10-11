@@ -15,6 +15,7 @@ on:
       - "core/src/open_workflow_agent/storage.py"
       - "core/src/open_workflow_agent/services.py"
       - "core/src/open_workflow_agent/forks.py"
+      - "core/src/open_workflow_agent/effects.py"
       - "core/src/open_workflow_agent/config.py"
       - "core/src/open_workflow_agent/approvals.py"
       - "core/src/open_workflow_agent/scheduling.py"

@@ -69,8 +69,41 @@ passes 1,319 root tests with 136 skips, three known expected gap failures and
 LangGraph 684 (105 skips) and optional Agent Framework 909 (149 skips), each with
 the same three expected gap failures. Formatting, lint, strict typing, all locks,
 five builds, documentation links and six inventory/source checks pass. These
-additions await exact revision GitHub/database acceptance; configured database
-skips do not prove acceptance. See [recovery boundaries](docs/checkpoint-recovery.md).
+additions passed all exact gates at `6840605`: [CI
+38156628780](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38156628780),
+[push CI 38156626150](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38156626150),
+[PostgreSQL 38156628821](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38156628821),
+[external sandbox 38156628799](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38156628799),
+[Agent Framework 38156628812](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38156628812),
+[security 38156628794](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38156628794)
+and [documentation 38156628828](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38156628828).
+Linux root CI passed 1,323 tests with 132 skips, three expected gap failures and
+91.75% coverage; shared contracts passed 569 with 98 skips and three expected
+failures. The actual configured PostgreSQL matrix passed 36 new invocation
+recovery cases plus 13 prior fork cases on each principal adapter. The optional
+common bridge passed 34 new cases plus 13 prior fork cases, with two explicit
+native-boundary skips. Both PostgreSQL runtime images passed restart acceptance.
+See [recovery boundaries](docs/checkpoint-recovery.md).
+
+The next action-receipt foundation passes broad local verification. RuntimeServices
+composes a private journal on the same SQLite or PostgreSQL datasource. It
+separates pending intents from completed null/value/fault receipts, retains the
+first execution owner and outcome through conditional writes, and rejects
+changed requests or completion by another owner. Identity includes invocation,
+workflow fingerprint, task call site, execution occurrences and operation kind.
+Request digests avoid storing request bodies in this journal. Thirty-four
+focused cases cover concurrent connections, reopening, malformed data and
+errors, owner mismatch, repeated execution identities and failed SQLite commit.
+Three corresponding PostgreSQL store cases are wired into the existing gate.
+Frozen-source validation passes 1,353 root tests with 139 skips, three expected
+gap failures and 91.78% coverage. Independent native/shared/CTK suites pass ADK
+671 (98 skips), LangGraph 684 (105 skips) and optional Agent Framework 909
+(149 skips), retaining the same three expected gaps. Formatting, lint, strict
+typing, four dependency locks, five builds, documentation links and six
+audit/source-preservation checks pass. Exact new revision GitHub/database
+acceptance is pending.
+Dispatcher integration, recovery leases and resolution of pending outcomes
+remain open; this foundation adds no advertised execution guarantee.
 
 S2-03 stays open. This fix does not reconcile all native/common invocation or
 side-effect records. General pending-effect receipts, fenced recovery ownership,

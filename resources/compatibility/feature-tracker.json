@@ -65093,8 +65093,32 @@
             ],
             "negative_probes": "Original input replacement: 2 root failures. Native ADK successful null: 1 failure before callback receipt. Terminal status without value/error: 4 failures and 2 null passes. Late native fault/value overwrite: 12 failures before terminal reconciliation.",
             "targeted_root": "87 passed, 72 unconfigured PostgreSQL skips; includes 15 common-store cases.",
-            "full_local_validation": "Frozen-source root: 1319 passed, 136 skipped, 3 expected gap failures, 91.73% coverage. Independent native/shared/CTK: ADK 671 passed/98 skipped; LangGraph 684 passed/105 skipped; optional Agent Framework 909 passed/149 skipped, each with 3 expected gap failures. Format/lint/typing, four locks, five builds, docs links and six audit/source checks passed. Exact new GitHub/database gates remain pending.",
+            "full_local_validation": "Frozen-source root at 51f7259: 1319 passed, 136 skipped, 3 expected gap failures, 91.73% coverage. Independent native/shared/CTK: ADK 671 passed/98 skipped; LangGraph 684 passed/105 skipped; optional Agent Framework 909 passed/149 skipped, each with 3 expected gap failures. Format/lint/typing, four locks, five builds, docs links and six audit/source checks passed.",
+            "remote_acceptance": {
+              "commit": "684060598978bc44dd766298d43af141fbf9542b",
+              "runtime_source": "51f7259874b7f99b0e49200725ee19b54c2e9006",
+              "runs": {
+                "CI": 38156628780,
+                "CI (push)": 38156626150,
+                "PostgreSQL CI": 38156628821,
+                "External Sandbox CI": 38156628799,
+                "Agent Framework CI (optional)": 38156628812,
+                "Security": 38156628794,
+                "Docs": 38156628828
+              },
+              "result": "All success",
+              "ci_root": {"passed": 1323, "skipped": 132, "expected_gap_failures": 3, "coverage_percent": 91.75},
+              "configured_postgresql": {"adk_recovery": 36, "langgraph_recovery": 36, "optional_common_bridge_recovery": 34, "optional_native_boundary_skips": 2},
+              "scope": "Original-input and terminal-record recovery; S2-03 remains in progress"
+            },
             "documentation": "docs/checkpoint-recovery.md"
+          },
+          "journal_storage_foundation": {
+            "status": "Under verification; dispatcher integration pending",
+            "scope": "Private common first-owner intents and first value/null/fault receipts. Conditional outcome writes, request digests and invocation/definition/task/occurrence/kind identity; no recovery lease or new execution guarantee.",
+            "code": "core/src/open_workflow_agent/effects.py",
+            "tests": ["tests/core/test_effect_journal.py", "tests/core/test_postgres_persistence.py"],
+            "local_validation": "34 focused store cases. Frozen-source root 1353 passed/139 skipped/3 expected gap failures, 91.78%. Independent native/shared/CTK: ADK 671/98, LangGraph 684/105, optional Agent Framework 909/149, all with 3 expected gaps. Format/lint/typing, four locks, five builds, docs and six audit/source checks passed. Three configured PostgreSQL store cases and exact new revision gates are pending."
           },
           "remaining": [
             "Reconcile native completion/checkpoint state with common invocation records after interruption.",

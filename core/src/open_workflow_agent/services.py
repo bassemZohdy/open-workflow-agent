@@ -8,6 +8,7 @@ from typing import Any
 from .approvals import ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
+from .effects import EffectJournal
 from .events import EventBus, InMemoryEventBus
 from .external_catalog import ExternalCatalogResolver
 from .forks import ForkDecisionStore
@@ -123,6 +124,7 @@ class RuntimeServices:
         self.memory = MemoryService(str(memory_database) if memory_database else None)
         self.invocations = InvocationStore(invocation_path)
         self.fork_decisions = ForkDecisionStore(invocation_path)
+        self.effect_journal = EffectJournal(invocation_path)
         self.schedules = ScheduleStore(invocation_path)
         self.catalog = FunctionCatalog.default(
             self.model, instruction=self.agent_instruction, services=self
@@ -229,4 +231,5 @@ class RuntimeServices:
         self.schedules.close()
         self.invocations.close()
         self.fork_decisions.close()
+        self.effect_journal.close()
         self.approvals.close()
