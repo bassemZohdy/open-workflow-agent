@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "reviewed_implementation_commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
+  "reviewed_implementation_commit": "51f7259874b7f99b0e49200725ee19b54c2e9006",
   "acceptance_record_commit": null,
   "purpose": "Exhaustive current implementation audit, not a full conformance certificate or feature completion claim",
   "review_method": "Each semantic construct and schema parent was compared with active admission/execution/native code and existing assertion scope. Missing/inert/mismatched behavior retains explicit owners. Source/API availability and copied material are not runtime proof.",
@@ -23,53 +23,43 @@
   "schema_constraint_status": "774 structural inventory constraints remain separate from runtime behavior and complete schema execution coverage",
   "acceptance": {
     "local_root": {
-      "commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
-      "passed": 1218,
-      "skipped": 51,
+      "commit": "51f7259874b7f99b0e49200725ee19b54c2e9006",
+      "passed": 1319,
+      "skipped": 136,
       "expected_assertion_failures": 3,
-      "coverage_percent": 91.72
+      "coverage_percent": 91.73
     },
     "native_matrices": {
-      "commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
+      "commit": "51f7259874b7f99b0e49200725ee19b54c2e9006",
       "adk": {
-        "passed": 585,
-        "skipped": 16,
+        "passed": 671,
+        "skipped": 98,
         "expected_assertion_failures": 3
       },
       "langgraph": {
-        "passed": 598,
-        "skipped": 23,
+        "passed": 684,
+        "skipped": 105,
         "expected_assertion_failures": 3
       },
       "agent_framework_optional": {
-        "passed": 782,
-        "skipped": 24,
+        "passed": 909,
+        "skipped": 149,
         "expected_assertion_failures": 3
       }
     },
     "additional_focused": {
-      "commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
-      "competitive_root": 56,
-      "competitive_adk": 56,
-      "competitive_langgraph": 56,
-      "competitive_agent_framework_optional": 84,
-      "postgresql_cases": {
-        "adk": 13,
-        "langgraph": 13,
-        "agent_framework_optional_common_bridge": 13
-      }
+      "shared_recovery_root_and_common_store": 87,
+      "unconfigured_postgresql_skips": 72,
+      "common_store_cases": 15
     },
-    "scope": "Runtime code is unchanged from exact accepted 2fbe548; additional repeated-scope/end fixtures pass independently. Full proposed criteria and JS remain unverified.",
-    "remote_status": "All exact runtime, additional fixture/audit and final common PostgreSQL bridge gates passed.",
-    "remote_runs": {
-      "CI": 38152109920,
-      "CI (push)": 38152106466,
-      "External Sandbox CI": 38152109950,
-      "PostgreSQL CI": 38152109956,
-      "Agent Framework CI (optional)": 38152109988,
-      "Security": 38152110041,
-      "Docs": 38152109917
-    }
+    "negative_probes": {
+      "original_input_replacement": 2,
+      "native_adk_null_completion": 1,
+      "terminal_value_error_loss": 4,
+      "late_adapter_outcome_replacement": 12
+    },
+    "scope": "Original-input and terminal-record recovery only. S2-03 remains in progress; general pending effects, ownership and native checkpoint consistency remain open.",
+    "remote_status": "Exact new revision GitHub/database gates pending; old green gates qualify their own source only."
   },
   "evidence_groups": {
     "loading": {
@@ -996,7 +986,7 @@
     },
     "lifecycle": {
       "outcome": "partial",
-      "observed": "Common invocation transitions cover running/waiting/completed/faulted/cancelled; active cancellation drains waits/operations and emits common events.",
+      "observed": "Common invocation transitions cover running/waiting/completed/faulted/cancelled; active cancellation drains waits/operations and emits common events. Terminal outcomes include their result/error in one common update and survive interrupted or late native finalization. Deterministically injected late native resume values/faults preserve committed common cancellation; no cross-worker ownership guarantee follows.",
       "remaining_scope": "General suspended/manual-pause control, durable cancellation/termination policies and full crash recovery are not implemented.",
       "remediation_tasks": [
         "S2-03",
@@ -1011,6 +1001,14 @@
         {
           "path": "core/src/open_workflow_agent/lifecycle.py",
           "symbol": "LifecycleControl"
+        },
+        {
+          "path": "core/src/open_workflow_agent/engine.py",
+          "symbol": "WorkflowEngine._record_result"
+        },
+        {
+          "path": "core/src/open_workflow_agent/persistence.py",
+          "symbol": "InvocationStore.update"
         }
       ],
       "tests": [
@@ -1025,6 +1023,10 @@
         {
           "path": "tests/contract/test_operator_lifecycle.py",
           "symbol": "test_operator_matrix_wait_resume_and_cancellation"
+        },
+        {
+          "path": "tests/contract/test_checkpoint_recovery.py",
+          "symbol": "test_late_native_resume_result_preserves_committed_cancellation"
         }
       ],
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
@@ -1203,8 +1205,8 @@
     },
     "recovery": {
       "outcome": "partial",
-      "observed": "Native synchronous LangGraph scope checkpoints skip completed calls in root/nested/loop/function/import/schema fixtures; ADK explicitly replays with stable operation IDs. Common persistence is separate.",
-      "remaining_scope": "Pending effects/native writes are not atomically reconciled; explicit null restart resume is lost by a None sentinel; migration/replay from history remains unqualified.",
+      "observed": "Private native LangGraph scope checkpoints skip completed calls. First raw workflow input is separately retained across common-store connections and envelope restart; all six empty/false resume inputs retain original null/false/object/array input and transformation. Terminal status/output/error are stored together before adapter finalization. Fresh services preserve values/null/faults across interruption and late adapter results; successful ADK null callback completion no longer requests another portable execution.",
+      "remaining_scope": "General pending effects/native writes, fenced recovery ownership and missing/inconsistent native checkpoints are not reconciled. Legacy rows without raw-input records have no new migration guarantee. Configured PostgreSQL follow-up, history/replay/migration, full proposed criteria and independent JS qualification remain pending.",
       "remediation_tasks": [
         "S2-03",
         "S2-09",
@@ -1222,6 +1224,26 @@
         {
           "path": "engines/langgraph/src/open_workflow_agent_langgraph/native.py",
           "symbol": "LangGraphFunctionalAdapter.prepare_storage"
+        },
+        {
+          "path": "core/src/open_workflow_agent/persistence.py",
+          "symbol": "InvocationStore.bind_input"
+        },
+        {
+          "path": "core/src/open_workflow_agent/persistence.py",
+          "symbol": "InvocationStore.update"
+        },
+        {
+          "path": "core/src/open_workflow_agent/engine.py",
+          "symbol": "WorkflowEngine._prepare_workflow_input"
+        },
+        {
+          "path": "core/src/open_workflow_agent/engine.py",
+          "symbol": "WorkflowEngine._record_result"
+        },
+        {
+          "path": "engines/adk/src/open_workflow_agent_adk/__init__.py",
+          "symbol": "AdkWorkflowEngine.resume"
         }
       ],
       "tests": [
@@ -1236,9 +1258,41 @@
         {
           "path": "tests/contract/test_operator_lifecycle.py",
           "symbol": "test_operator_matrix_restart_resume_reuses_side_effect_operation"
+        },
+        {
+          "path": "tests/contract/test_checkpoint_recovery.py",
+          "symbol": "test_fresh_wait_resume_preserves_all_json_inputs"
+        },
+        {
+          "path": "tests/contract/test_checkpoint_recovery.py",
+          "symbol": "test_successful_null_resume_does_not_repeat_completed_execution"
+        },
+        {
+          "path": "tests/contract/test_checkpoint_recovery.py",
+          "symbol": "test_completion_record_survives_interruption_before_adapter_finalization"
+        },
+        {
+          "path": "tests/core/test_invocation_inputs.py",
+          "symbol": "test_input_first_claim_survives_independent_connection_and_reopening"
+        },
+        {
+          "path": "tests/core/test_invocation_inputs.py",
+          "symbol": "test_input_definition_identity_cannot_be_rebound"
+        },
+        {
+          "path": "tests/core/test_invocation_inputs.py",
+          "symbol": "test_corrupt_record_fails_closed_without_raw_data"
+        },
+        {
+          "path": "tests/core/test_invocation_inputs.py",
+          "symbol": "test_failed_terminal_commit_preserves_running_handle_and_persisted_result"
+        },
+        {
+          "path": "tests/core/test_postgres_persistence.py",
+          "symbol": "test_postgres_raw_input_and_terminal_result_survive_reopening"
         }
       ],
-      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
+      "test_scope": "Full local regressions and deterministic fresh-service fixtures through independent native SDK environments; PostgreSQL cases are wired but new exact database gates remain pending. This is scoped invocation recovery, not general effect reconciliation or exactly-once actions."
     },
     "migration": {
       "outcome": "unimplemented",
@@ -16615,7 +16669,7 @@
     "core/src/open_workflow_agent/approvals.py": "2496d6ed23b3494d65fc042f3ea1dc42899f59eb94782539ea1a099abadedae2",
     "core/src/open_workflow_agent/catalog.py": "84dc1aa4c20fe543d982b20283aab7bf68ab7f9a80e70318971738ac21557faa",
     "core/src/open_workflow_agent/definitions.py": "8da00d8ef717c688462b09696d50f6957b962fc90aa45585c9b52104887065c7",
-    "core/src/open_workflow_agent/engine.py": "895bb6d5a081190b4c72228466f054e67bcb1c040777c19e72f17268697ab951",
+    "core/src/open_workflow_agent/engine.py": "4cb285d4efff6422e7400ab5c5aa865f8d7efef5507f01ba1f3e5ad0fd0c9147",
     "core/src/open_workflow_agent/errors.py": "b1f718d2ab04d6c8acd60bba47f39139660bc688deb7f1eeaf51d0bd35de306e",
     "core/src/open_workflow_agent/events.py": "de8b1a59b0ea3903b3c18766e31e061f2c014ea38140c48ef3262da6df733a67",
     "core/src/open_workflow_agent/expressions.py": "636b7f7157dfaefd1e2a526855e73b7e764100e86a09dd810043aff2dcedf555",
@@ -16624,6 +16678,7 @@
     "core/src/open_workflow_agent/lifecycle.py": "4ded49a2189ab7d949f3d28eaa62c9b1a5f09ccd00f36e29b2469ab4ce04386d",
     "core/src/open_workflow_agent/metrics.py": "ae77ce4fb502ac7e45783a3553256a3d867216fdedacfa4b57944f2391ab730d",
     "core/src/open_workflow_agent/observability.py": "dcc23fa1bd4e84cb4bcb0f2db5758e483a4d6cf24b7f85c4be80e9f7e434c7c9",
+    "core/src/open_workflow_agent/persistence.py": "57b20bfe4dfb5c482bb9fe275fff8ed27bf42f143c2bba745c686536fca2a1c7",
     "core/src/open_workflow_agent/protocols.py": "58de0b788c8c057ce4d68fc70e9bd5cd4d0f6e7280be3a55a21e446e5b55a737",
     "core/src/open_workflow_agent/resources.py": "940d169d815db3aa52b39a9b2ef797f380f808907969cc6b1ea8346fbf7a46b7",
     "core/src/open_workflow_agent/sandbox/executor.py": "5b7781c38b8b8810d86b88739a4da0e2f7bb0f98e879dabaea3434a5d3845548",
@@ -16632,11 +16687,13 @@
     "core/src/open_workflow_agent/security.py": "8ff318e0a96e8a54b833abc279d5a43f1a574d5f3ecca6c2a3c3856e564c566a",
     "core/src/open_workflow_agent/services.py": "3bb2eb84de7b86b93d411b534ab9e1d6e6da2ed672958134c82155dffc5a45cf",
     "core/src/open_workflow_agent/versions.py": "c1654fcf4326705628b9e2aa4983af5a5d038915afa0e911b63c2dff712e31d5",
-    "core/src/open_workflow_agent/workflow.py": "eb599ff527c91b4dc4b050c7ca138bbdf8dec370b1daa37c7346e0cc964785bf",
+    "core/src/open_workflow_agent/workflow.py": "56f7fbd89922d845c5bcd00e754b670834d6702dda6edfd2db0fd514c4af1c96",
     "core/src/open_workflow_agent/workflow_catalog.py": "eef1ccfaa2238c25f6c9b5378475b8d105da9373697c09dec58596a192f6321a",
+    "engines/adk/src/open_workflow_agent_adk/__init__.py": "87dde2286486d64a8efb64e921300af42283fa5098022788214438ec3fac2e66",
     "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "3358b9015a4e28d742a3bae05d1d93794a638b7510d10928025145c1c4c018c7",
     "engines/langgraph/src/open_workflow_agent_langgraph/native.py": "32806907d0c4b5d415966060281cfaf7485edcbd4c87568a110e1fda3ca3b7f7",
     "tests/contract/test_catalog_bindings.py": "92f619a91d0d2de0e54b3d1a137abeb8c02c1c6753930e28d7f07dd104228bef",
+    "tests/contract/test_checkpoint_recovery.py": "eb5119f2ef816460f7621d591b2e3701f9dd47d261028203172e08a95f2e09c1",
     "tests/contract/test_cloud_events.py": "db37015b35d525268aae32c261d91839ab9c5b4834450a74e0eacbb5664cdbcc",
     "tests/contract/test_competitive_forks.py": "e80f3b5c906c65b9f05b5c91e67aadd8e25d8fb53ef75bc43eff2070f637dc75",
     "tests/contract/test_container_sandbox_contract.py": "0fddc4b529f6fa2a195334c499c110b9252f6eb98a7ad67a750027001c349457",
@@ -16662,10 +16719,11 @@
     "tests/core/test_events.py": "b828873bbfa3e6fe3680c6dcaf6dd49262ccac2649f45fb25a677298014c36a9",
     "tests/core/test_fork.py": "4effe82efbdc812b546b8e3cab38d51fe20d613926edceac638168fb9a61fa27",
     "tests/core/test_fork_decisions.py": "edda71c33ba4c69979dd95f778afcd7acb197671083038a046c1c57982942ee7",
+    "tests/core/test_invocation_inputs.py": "f5ad56c52ae5f9d9977b4981c1e66c36a6d544af2c5ab26b766f4cea3af1c690",
     "tests/core/test_lifecycle.py": "77284929b7c478c6296b37a5aeb39871d063ece7d428b8273e333b0b34352f64",
     "tests/core/test_metrics.py": "849dad8e0308ff6262cf2da1a4bb9b1a224a2dfb92fe2ac46ce670c833436072",
     "tests/core/test_observability.py": "62045b6f53fba0eac7616fb0a19ae981dd780e4ffc6de9b56e8eff8da7fa3f06",
-    "tests/core/test_postgres_persistence.py": "4a42a2406763f407f8214feea52319b28c59810d8d8dd028f517df12f53771d9",
+    "tests/core/test_postgres_persistence.py": "1289c7f82742dd6bd23db819e77463010a38a7b532f84d46ef785722f80345f6",
     "tests/core/test_protocols.py": "2dcb17cb0e111901cdb85eea44edb7f7762c3c3106dd9387b9219efdf0701681",
     "tests/core/test_sandbox_validation.py": "fe06321287414eb1b0808600c38d31a0641b117097500862b5d9b7a18f0877a8",
     "tests/core/test_security.py": "ebb77bd3bea00c442d2f23ca1a214e4616e1d8d3c056155266c06626a0607044",
@@ -16903,122 +16961,213 @@
           }
         }
       }
+    },
+    {
+      "artifact_commit": "f2943c6cd793d5b9d6d54ae33a0aefbe3c80e513",
+      "path": "resources/compatibility/implementation-audit.json",
+      "reviewed_implementation_commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
+      "acceptance_record_commit": null,
+      "acceptance": {
+        "local_root": {
+          "commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
+          "passed": 1218,
+          "skipped": 51,
+          "expected_assertion_failures": 3,
+          "coverage_percent": 91.72
+        },
+        "native_matrices": {
+          "commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
+          "adk": {
+            "passed": 585,
+            "skipped": 16,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 598,
+            "skipped": 23,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 782,
+            "skipped": 24,
+            "expected_assertion_failures": 3
+          }
+        },
+        "additional_focused": {
+          "commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
+          "competitive_root": 56,
+          "competitive_adk": 56,
+          "competitive_langgraph": 56,
+          "competitive_agent_framework_optional": 84,
+          "postgresql_cases": {
+            "adk": 13,
+            "langgraph": 13,
+            "agent_framework_optional_common_bridge": 13
+          }
+        },
+        "scope": "Runtime code is unchanged from exact accepted 2fbe548; additional repeated-scope/end fixtures pass independently. Full proposed criteria and JS remain unverified.",
+        "remote_status": "All exact runtime, additional fixture/audit and final common PostgreSQL bridge gates passed.",
+        "remote_runs": {
+          "CI": 38152109920,
+          "CI (push)": 38152106466,
+          "External Sandbox CI": 38152109950,
+          "PostgreSQL CI": 38152109956,
+          "Agent Framework CI (optional)": 38152109988,
+          "Security": 38152110041,
+          "Docs": 38152109917
+        }
+      },
+      "audit_acceptance": {
+        "commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
+        "runs": {
+          "CI": 38152109920,
+          "CI (push)": 38152106466,
+          "External Sandbox CI": 38152109950,
+          "PostgreSQL CI": 38152109956,
+          "Agent Framework CI (optional)": 38152109988,
+          "Security": 38152110041,
+          "Docs": 38152109917
+        },
+        "result": "All success",
+        "ci_root": {
+          "passed": 1222,
+          "skipped": 47,
+          "expected_assertion_failures": 3,
+          "coverage_percent": 91.76
+        },
+        "ci_shared_contract": {
+          "passed": 483,
+          "skipped": 16,
+          "expected_assertion_failures": 3
+        },
+        "native_ci": {
+          "adk": {
+            "passed": 489,
+            "skipped": 16,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 502,
+            "skipped": 23,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 782,
+            "skipped": 24,
+            "expected_assertion_failures": 3
+          }
+        },
+        "configured_postgresql": {
+          "adk_winner_restarts": 8,
+          "langgraph_winner_restarts": 8,
+          "common_native_job": 114507511474,
+          "runtime_images": "Both principal images passed start/restart acceptance"
+        },
+        "additional_shared_recovery_commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
+        "scope": "All exact runtime, repeated-scope/audit and final common PostgreSQL bridge gates pass. Full proposed criteria, independent JS, general effects and optional native checkpoint hardening remain unclaimed.",
+        "follow_up": {
+          "commit": "51c204e4474fa0c0e512c79b144c5e3d5014c76b",
+          "runs": {
+            "CI": 38152858220,
+            "CI (push)": 38152854446,
+            "External Sandbox CI": 38152858243,
+            "PostgreSQL CI": 38152858245,
+            "Agent Framework CI (optional)": 38152858272,
+            "Security": 38152858238,
+            "Docs": 38152858223
+          },
+          "result": "All success",
+          "ci_root": {
+            "passed": 1236,
+            "skipped": 57,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.79
+          },
+          "ci_shared_contract": {
+            "passed": 497,
+            "skipped": 26,
+            "expected_assertion_failures": 3
+          },
+          "native_ci": {
+            "adk": {
+              "passed": 503,
+              "skipped": 26,
+              "expected_assertion_failures": 3
+            },
+            "langgraph": {
+              "passed": 516,
+              "skipped": 33,
+              "expected_assertion_failures": 3
+            },
+            "agent_framework_optional": {
+              "passed": 803,
+              "skipped": 39,
+              "expected_assertion_failures": 3
+            }
+          },
+          "configured_postgresql": {
+            "adk": 13,
+            "langgraph": 13,
+            "job": 114509716719
+          },
+          "scope": "All repeated-scope fixtures and refreshed audit gates passed. The optional Agent Framework package exposes common PostgreSQL binding; its newly added independent database gate is pending."
+        },
+        "final_gate_acceptance": {
+          "commit": "81d27b33d521517fd912d3bc02c51074c0341289",
+          "runs": {
+            "CI": 38153550708,
+            "CI (push)": 38153548023,
+            "External Sandbox CI": 38153550759,
+            "PostgreSQL CI": 38153550655,
+            "Agent Framework CI (optional)": 38153550700,
+            "Security": 38153550667,
+            "Docs": 38153550675
+          },
+          "result": "All success",
+          "configured_postgresql": {
+            "adk": 13,
+            "langgraph": 13,
+            "agent_framework_optional_common_bridge": 13,
+            "job": 114511774405
+          },
+          "scope": "Exact final database-gate revision passes all required gates. Runtime remains unchanged from 2fbe548 and recovery fixtures from 5dbc181. Optional bridge acceptance does not activate production/native checkpoint hardening."
+        }
+      },
+      "outcome_counts": {
+        "behavior_mismatch": 32,
+        "inert": 27,
+        "internal_only": 9,
+        "partial": 149,
+        "qualified_subset": 181,
+        "rejected": 197,
+        "unimplemented": 63
+      },
+      "gap_probes": {
+        "path": "tests/contract/test_implementation_audit_gaps.py",
+        "passed": 8,
+        "expected_assertion_failures": 3,
+        "unexpected_passes": 0,
+        "scope": "Ordered fork probes now pass; OpenAPI, raw binary and null event-data assertion failures retain strict expected-failure markers and repair owners.",
+        "independent_environments": {
+          "adk": {
+            "passed": 8,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 8,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 9,
+            "expected_assertion_failures": 3
+          }
+        }
+      }
     }
   ],
   "audit_acceptance": {
-    "commit": "2fbe548c7bc801badd08a901e48c78879d0de31a",
-    "runs": {
-      "CI": 38152109920,
-      "CI (push)": 38152106466,
-      "External Sandbox CI": 38152109950,
-      "PostgreSQL CI": 38152109956,
-      "Agent Framework CI (optional)": 38152109988,
-      "Security": 38152110041,
-      "Docs": 38152109917
-    },
-    "result": "All success",
-    "ci_root": {
-      "passed": 1222,
-      "skipped": 47,
-      "expected_assertion_failures": 3,
-      "coverage_percent": 91.76
-    },
-    "ci_shared_contract": {
-      "passed": 483,
-      "skipped": 16,
-      "expected_assertion_failures": 3
-    },
-    "native_ci": {
-      "adk": {
-        "passed": 489,
-        "skipped": 16,
-        "expected_assertion_failures": 3
-      },
-      "langgraph": {
-        "passed": 502,
-        "skipped": 23,
-        "expected_assertion_failures": 3
-      },
-      "agent_framework_optional": {
-        "passed": 782,
-        "skipped": 24,
-        "expected_assertion_failures": 3
-      }
-    },
-    "configured_postgresql": {
-      "adk_winner_restarts": 8,
-      "langgraph_winner_restarts": 8,
-      "common_native_job": 114507511474,
-      "runtime_images": "Both principal images passed start/restart acceptance"
-    },
-    "additional_shared_recovery_commit": "5dbc1814c855489ecb471bd5d7764cfda3de8283",
-    "scope": "All exact runtime, repeated-scope/audit and final common PostgreSQL bridge gates pass. Full proposed criteria, independent JS, general effects and optional native checkpoint hardening remain unclaimed.",
-    "follow_up": {
-      "commit": "51c204e4474fa0c0e512c79b144c5e3d5014c76b",
-      "runs": {
-        "CI": 38152858220,
-        "CI (push)": 38152854446,
-        "External Sandbox CI": 38152858243,
-        "PostgreSQL CI": 38152858245,
-        "Agent Framework CI (optional)": 38152858272,
-        "Security": 38152858238,
-        "Docs": 38152858223
-      },
-      "result": "All success",
-      "ci_root": {
-        "passed": 1236,
-        "skipped": 57,
-        "expected_assertion_failures": 3,
-        "coverage_percent": 91.79
-      },
-      "ci_shared_contract": {
-        "passed": 497,
-        "skipped": 26,
-        "expected_assertion_failures": 3
-      },
-      "native_ci": {
-        "adk": {
-          "passed": 503,
-          "skipped": 26,
-          "expected_assertion_failures": 3
-        },
-        "langgraph": {
-          "passed": 516,
-          "skipped": 33,
-          "expected_assertion_failures": 3
-        },
-        "agent_framework_optional": {
-          "passed": 803,
-          "skipped": 39,
-          "expected_assertion_failures": 3
-        }
-      },
-      "configured_postgresql": {
-        "adk": 13,
-        "langgraph": 13,
-        "job": 114509716719
-      },
-      "scope": "All repeated-scope fixtures and refreshed audit gates passed. The optional Agent Framework package exposes common PostgreSQL binding; its newly added independent database gate is pending."
-    },
-    "final_gate_acceptance": {
-      "commit": "81d27b33d521517fd912d3bc02c51074c0341289",
-      "runs": {
-        "CI": 38153550708,
-        "CI (push)": 38153548023,
-        "External Sandbox CI": 38153550759,
-        "PostgreSQL CI": 38153550655,
-        "Agent Framework CI (optional)": 38153550700,
-        "Security": 38153550667,
-        "Docs": 38153550675
-      },
-      "result": "All success",
-      "configured_postgresql": {
-        "adk": 13,
-        "langgraph": 13,
-        "agent_framework_optional_common_bridge": 13,
-        "job": 114511774405
-      },
-      "scope": "Exact final database-gate revision passes all required gates. Runtime remains unchanged from 2fbe548 and recovery fixtures from 5dbc181. Optional bridge acceptance does not activate production/native checkpoint hardening."
-    }
+    "commit": null,
+    "result": "Pending",
+    "scope": "Fresh audit/source review and exact new gates pending; immutable earlier receipts are retained."
   }
 }

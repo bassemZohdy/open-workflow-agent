@@ -9,12 +9,16 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`5dbc181`, which retains the ordered fork correction, adds durable competitive
-decisions and verifies repeated-scope restart across adapters. Exact runtime
-GitHub acceptance at `2fbe548` and additional fixture/audit gates at `51c204e`
-passed. All three common PostgreSQL bindings and exact final gates passed at
-`81d27b3`. S2-02 is verified; see
-[current evidence](../PROJECT.md#s2-02-competitive-fork-decisions--2026-10-11-verified).
+`51f7259`, which retains the verified ordered/competitive fork corrections and
+adds original-input binding, atomic terminal records and adapter finalization
+reconciliation. Its full local suites passed; exact new GitHub/database gates
+are pending. Recovery and lifecycle remain partial, and S2-03 remains open for
+general effects, recovery ownership and native checkpoint consistency.
+
+Earlier competitive runtime, fixture/audit and all three common PostgreSQL
+gates passed at `2fbe548`, `51c204e` and `81d27b3`. The JSON null wake-up fix also
+passed every exact gate at `f2943c6`. See [competitive acceptance](../PROJECT.md#s2-02-competitive-fork-decisions--2026-10-11-verified)
+and [recovery progress](../PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 Hashes of reviewed Git file contents preserve the evidence baseline. The
 manifest's `previous_reviews` retains the earlier S1-08 acceptance and points
 to its immutable artifact. Historical green gates do not qualify changed code.
@@ -54,7 +58,7 @@ not be read as current delivery status.
 | --- | --- | --- |
 | Ordered fork output and collisions | Ordered branch arrays, isolated exports, explicit jq aggregation and failure cleanup pass shared fixtures. SQLite/PostgreSQL native fork restart and exact runtime GitHub gates pass; additional shared output restart passes every adapter | S2-01 verified; full criteria remain S4-03/S4-04 |
 | Competitive fork durability | First observed completion, cancellation intents and distinct occurrence identity are persisted. SQLite/PostgreSQL replay preserves values/null/fault/end and repeated occurrences without branch calls on both principal adapters and the optional common bridge. All exact acceptance gates passed. External-action reconciliation/compensation is not established | S2-02 verified; general effects S2-03/S2-08; full criteria S4-03/S4-04 |
-| Native checkpoint recovery | Root/nested/loop/function/import/schema scopes recover completed calls with private savers; pending effects and common/native transactions remain unproved, and explicit null resume uses a missing-value sentinel | S2-03 |
+| Native checkpoint recovery | Private scope savers recover completed calls. Original raw input and empty/false resume values are separate; atomic terminal value/null/error records survive interruption and late finalization. General pending effects, ownership, checkpoint consistency and legacy migration remain unproved; new configured database acceptance is pending | S2-03 in progress; migration S2-09 |
 | Retry and timeout declarations | Predicates/count/basic backoff work; jitter and duration limits are inert, and original deadlines are not persisted | S2-04 |
 | Events and timers | Active process-local listeners and persisted after/every schedules exist; durable general inbox/outbox/timers/correlation/cron/on are missing. Explicit null event data is omitted | S2-05, S2-06 |
 | Child workflow recovery | Synchronous child invocation/parent identity exists; recursive budgets, asynchronous children, durable cancellation and compatible version migration remain missing | S2-07, S2-09 |

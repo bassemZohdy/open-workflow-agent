@@ -48,7 +48,7 @@ pass. All exact `f2943c6` GitHub gates passed: [CI
 [security 38155232528](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38155232528)
 and [documentation 38155232566](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38155232566).
 
-The next follow-up passes broad local verification. A private common input table
+The follow-up at `51f7259` passes broad local verification. A private common input table
 retains the first raw input by invocation and fingerprint, separately from
 resume messages. Terminal status, output and common error are written together
 before adapter finalization. In-memory handles change only after a successful
