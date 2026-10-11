@@ -1,0 +1,15 @@
+component_type: Agent
+agentspec_version: '26.1.2'
+id: conformance.support/support-agent-with-tools@1.0.0
+name: support-agent-with-tools
+system_prompt: You have tools.
+llm_config:
+  component_type: OpenAiConfig
+  name: tools-model
+  model_id: gpt-4o-mini
+tools:
+  - component_type: ClientTool
+    name: lookup
+    description: Look up an order.
+    inputs: []
+    outputs: []

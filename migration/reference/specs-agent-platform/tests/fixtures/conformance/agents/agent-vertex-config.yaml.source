@@ -1,0 +1,16 @@
+component_type: Agent
+agentspec_version: '26.1.2'
+id: conformance.support/support-agent-vertex@1.0.0
+name: support-agent-vertex
+system_prompt: Using Vertex AI.
+llm_config:
+  component_type: GeminiConfig
+  name: vertex-model
+  model_id: gemini-2.0-flash
+  default_generation_parameters:
+    temperature: 0.5
+  auth:
+    component_type: GeminiVertexAIAuthConfig
+    name: vertex-auth
+    project_id: my-project
+    location: us-central1

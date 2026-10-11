@@ -1,0 +1,24 @@
+---
+# YAML style for this repository.
+#
+# Extends the yamllint defaults with the deviations this project
+# deliberately makes:
+# - line-length: 100, matching ruff's line-length for Python. GitHub
+#   Actions pinned to full commit SHAs with a Dependabot version comment
+#   (`org/action@<40-hex> # vN`) routinely exceed yamllint's 80-column
+#   default and cannot be wrapped.
+# - comments: the pin convention uses a single space before the `#`
+#   version comment, as documented by GitHub and Dependabot.
+# - document-start: GitHub workflows (and docker-compose files) do not
+#   start with `---`.
+# - truthy: the `on:` workflow trigger key is checked as a value, not a
+#   key.
+extends: default
+rules:
+  comments:
+    min-spaces-from-content: 1
+  document-start: disable
+  line-length:
+    max: 100
+  truthy:
+    check-keys: false

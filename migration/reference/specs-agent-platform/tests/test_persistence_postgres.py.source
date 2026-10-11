@@ -1,0 +1,160 @@
+import os
+import uuid
+from collections.abc import AsyncGenerator
+
+import pytest
+import pytest_asyncio
+from open_agent_core import PostgresCheckpointStore, RetentionPolicy, checkpoint_store_from_env
+
+
+def _postgres_dsn() -> str | None:
+    dsn = os.getenv("CHECKPOINT_DATABASE_URL") or os.getenv("DATABASE_URL")
+    if isinstance(dsn, str) and (dsn.startswith("postgresql://") or dsn.startswith("postgres://")):
+        return dsn
+    return None
+
+
+@pytest_asyncio.fixture
+async def pg_store() -> AsyncGenerator[PostgresCheckpointStore, None]:
+    dsn = _postgres_dsn()
+    if dsn is None:
+        pytest.skip("Postgres DSN not configured via CHECKPOINT_DATABASE_URL or DATABASE_URL")
+    store = PostgresCheckpointStore(dsn)
+    try:
+        await store.setup()
+        await store.ping()
+    except Exception as exc:  # pragma: no cover - depends on external service
+        pytest.skip(f"Postgres unavailable: {exc}")
+    pool = await store._ensure_pool()
+    async with pool.acquire() as connection:
+        await connection.execute("DELETE FROM checkpoints")
+    try:
+        yield store
+    finally:
+        await store.close()
+
+
+def _run_id() -> str:
+    return f"test-run-{uuid.uuid4().hex}"
+
+
+@pytest.mark.asyncio
+async def test_postgres_store_round_trip(pg_store: PostgresCheckpointStore) -> None:
+    run_id = _run_id()
+    await pg_store.save(run_id, "entry@1", {"value": 42}, "completed")
+
+    record = await pg_store.load(run_id)
+    assert record is not None
+    assert record["entrypoint"] == "entry@1"
+    assert record["status"] == "completed"
+    assert record["values"] == {"value": 42}
+
+
+@pytest.mark.asyncio
+async def test_postgres_store_returns_none_for_unknown_run_id(
+    pg_store: PostgresCheckpointStore,
+) -> None:
+    assert await pg_store.load(_run_id()) is None
+
+
+@pytest.mark.asyncio
+async def test_postgres_store_updates_existing_run_id(pg_store: PostgresCheckpointStore) -> None:
+    run_id = _run_id()
+    await pg_store.save(run_id, "entry@1", {"value": 1}, "running")
+    await pg_store.save(run_id, "entry@1", {"value": 2}, "completed")
+
+    record = await pg_store.load(run_id)
+    assert record is not None
+    assert record["values"] == {"value": 2}
+    assert record["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_postgres_store_delete_removes_run_id(pg_store: PostgresCheckpointStore) -> None:
+    run_id = _run_id()
+    await pg_store.save(run_id, "entry@1", {"value": 1}, "completed")
+    assert await pg_store.load(run_id) is not None
+
+    await pg_store.delete(run_id)
+    assert await pg_store.load(run_id) is None
+
+
+@pytest.mark.asyncio
+async def test_postgres_store_load_recovers_from_corrupt_values_json(
+    pg_store: PostgresCheckpointStore,
+) -> None:
+    run_id = _run_id()
+
+    await pg_store.save(run_id, "entry@1", {"value": 1}, "completed")
+    pool = await pg_store._ensure_pool()
+    async with pool.acquire() as connection:
+        await connection.execute(
+            "UPDATE checkpoints SET values_json = $1 WHERE run_id = $2",
+            "{not valid json",
+            run_id,
+        )
+
+    record = await pg_store.load(run_id)
+    assert record is not None
+    assert record["values"] == {}
+    assert record["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_postgres_store_expire_by_age(pg_store: PostgresCheckpointStore) -> None:
+    run_id = _run_id()
+    await pg_store.save(run_id, "entry@1", {"value": 1}, "completed")
+
+    removed = await pg_store.expire(RetentionPolicy(max_age_seconds=0.001))
+    if removed == 0:
+        import asyncio
+
+        await asyncio.sleep(0.01)
+        removed = await pg_store.expire(RetentionPolicy(max_age_seconds=0.001))
+
+    assert removed == 1
+    assert await pg_store.load(run_id) is None
+
+
+@pytest.mark.asyncio
+async def test_postgres_store_expire_by_count_per_entrypoint(
+    pg_store: PostgresCheckpointStore,
+) -> None:
+    for index in range(3):
+        await pg_store.save(_run_id(), "entry@1", {"index": index}, "completed")
+
+    removed = await pg_store.expire(RetentionPolicy(max_count_per_entrypoint=2))
+
+    assert removed == 1
+
+
+@pytest.mark.asyncio
+async def test_checkpoint_store_from_env_selects_postgres_when_dsn_is_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CHECKPOINT_DATABASE_URL", "postgresql://u:p@host:5432/db")
+    monkeypatch.delenv("CHECKPOINT_DB_PATH", raising=False)
+    store = checkpoint_store_from_env()
+    assert isinstance(store, PostgresCheckpointStore)
+    assert store.dsn == "postgresql://u:p@host:5432/db"
+
+
+def test_checkpoint_store_from_env_prefers_postgres_dsn_over_sqlite_path() -> None:
+    import os
+
+    previous_dsn = os.getenv("CHECKPOINT_DATABASE_URL")
+    previous_path = os.getenv("CHECKPOINT_DB_PATH")
+    try:
+        os.environ["CHECKPOINT_DATABASE_URL"] = "postgresql://u:p@host:5432/db"
+        os.environ["CHECKPOINT_DB_PATH"] = "/tmp/checkpoints.db"
+        store = checkpoint_store_from_env()
+        assert isinstance(store, PostgresCheckpointStore)
+    finally:
+        if previous_dsn is None:
+            os.environ.pop("CHECKPOINT_DATABASE_URL", None)
+        else:
+            os.environ["CHECKPOINT_DATABASE_URL"] = previous_dsn
+        if previous_path is None:
+            os.environ.pop("CHECKPOINT_DB_PATH", None)
+        else:
+            os.environ["CHECKPOINT_DB_PATH"] = previous_path

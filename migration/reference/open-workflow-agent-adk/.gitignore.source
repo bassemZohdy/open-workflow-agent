@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual envs
+.venv/
+
+# Tooling caches
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.hypothesis/
+
+# Test / coverage
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Environment & secrets (.env.example stays committed)
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# OS / editor noise
+.DS_Store
+.idea/
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+
+# Runtime artifacts (created by SQLiteRunHistory, JsonRunLogger, etc.)
+*.sqlite
+*.sqlite3
+*.db
+*.log
+
+# Local Python version pins (uv/python pin) — keep pyproject.toml as the source of truth
+.python-version
+
+# Build artifacts / scratch directories
+*.whl
+*.tar.gz
+_dist-check/
+.tmp-test/

@@ -1,0 +1,117 @@
+"""Tests for graceful shutdown, lifespan handling, and MCP lifecycle."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any, cast
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from open_agent_adk.runner import create_app as create_adk_app
+from open_agent_core import InMemoryEngine, load_application
+from open_agent_core.mcp_runtime import McpProcessManager
+from open_agent_lang.mcp import McpToolRegistry as LangMcpRegistry
+from open_agent_lang.runner import LangGraphEngine
+from open_agent_lang.runner import create_app as create_lang_app
+
+ROOT = Path(__file__).parents[1]
+
+
+class _MockEngine(InMemoryEngine):
+    def __init__(self, application: Any) -> None:
+        super().__init__(application)
+        self.started = False
+        self.closed = False
+
+    async def start(self) -> None:
+        self.started = True
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+@pytest.mark.asyncio
+async def test_mcp_process_manager_close_blocks_new_calls() -> None:
+    manager = McpProcessManager({"noop": {"command": "python", "args": ["-c", "pass"]}})
+    await manager.close()
+
+    with pytest.raises(RuntimeError, match="closed"):
+        await manager.call("noop", {})
+
+
+@pytest.mark.asyncio
+async def test_mcp_process_manager_can_restart_after_close() -> None:
+    manager = McpProcessManager({})
+    await manager.close()
+    await manager.start()
+
+    with pytest.raises(KeyError):
+        await manager.discover("missing")
+
+
+@pytest.mark.asyncio
+async def test_mcp_registry_start_close_delegate() -> None:
+    registry = LangMcpRegistry({"noop": {"command": "python", "args": ["-c", "pass"]}})
+    await registry.start()
+    await registry.close()
+
+
+def test_shutdown_middleware_rejects_requests_when_shutting_down() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    engine = _MockEngine(application)
+    app = create_lang_app(application=application, engine=engine)
+
+    with TestClient(app) as client:
+        assert client.get("/health/ready").status_code == 200
+        cast(FastAPI, client.app).state.shutting_down = True
+        response = client.get("/health/ready")
+
+    assert response.status_code == 503
+    assert response.json()["error"]["type"] == "shutdown_error"
+
+
+def test_lifespan_starts_and_closes_engine() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    engine = _MockEngine(application)
+
+    with TestClient(create_lang_app(application=application, engine=engine)) as client:
+        assert engine.started is True
+        assert engine.closed is False
+        assert client.get("/health/ready").status_code == 200
+
+    assert engine.closed is True
+
+
+def test_adk_lifespan_starts_and_closes_engine(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ADK_NATIVE_UI", "0")
+    application = load_application(ROOT / "examples" / "application")
+    engine = _MockEngine(application)
+
+    with TestClient(create_adk_app(application=application, engine=engine)) as client:
+        assert engine.started is True
+        assert engine.closed is False
+        assert client.get("/health/ready").status_code == 200
+
+    assert engine.closed is True
+
+
+def test_request_counter_tracks_active_requests() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    engine = InMemoryEngine(application)
+    app = create_lang_app(application=application, engine=engine)
+
+    with TestClient(app) as client:
+        state = cast(FastAPI, client.app).state
+        assert state.active_requests == 0
+        response = client.get("/health/ready")
+        assert response.status_code == 200
+        assert state.active_requests == 0
+
+
+def test_lang_graph_engine_has_lifecycle_methods() -> None:
+    application = load_application(ROOT / "examples" / "application")
+    engine = LangGraphEngine(application)
+
+    assert hasattr(engine, "start")
+    assert hasattr(engine, "close")

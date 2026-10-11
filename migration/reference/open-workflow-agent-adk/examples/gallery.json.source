@@ -1,0 +1,7 @@
+[
+  {"name": "hello", "file": "hello.yaml", "description": "Minimal deterministic workflow"},
+  {"name": "echo", "file": "echo.yaml", "description": "HTTP call against the compose echo service"},
+  {"name": "approval", "file": "approval.yaml", "description": "Event-driven approval listener with switch routing"},
+  {"name": "multi-agent", "file": "multi-agent.yaml", "description": "Two sequential agent tasks: draft then review"},
+  {"name": "rag", "file": "rag.yaml", "description": "Retrieval HTTP call followed by an agent task"}
+]

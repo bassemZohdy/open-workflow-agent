@@ -551,14 +551,30 @@ these readiness foundations.
 
 ## Current Backlog State
 
-The authoritative scoped backlog is `TODO.md`. The readiness foundation is
-complete and there are no active implementation blockers for the current
-open-source core. `ENGINE-5` through `ENGINE-8` are optional Agent Framework
-community-hardening tasks, and `EVENT-1` through `EVENT-5` are optional external
-integration tasks that activate only when a concrete user/deployment
-requirement exists. A2A push notifications, broad conformance, multi-tenancy,
-and delegated identity remain intentionally deferred until their separate
-product or security prerequisites exist.
+The authoritative backlog is `TODO.md`. The earlier core/readiness foundation
+remains complete at its recorded scope. The accepted 2026-10-11 consolidation
+roadmap adds staged work and full tracking; runtime claims expand only after
+verification. `ENGINE-5` through `ENGINE-8`, `EVENT-1` through `EVENT-5`, push
+notifications, multi-tenancy and delegated identity stay visible conditional work.
+
+## Canonical repository consolidation — 2026-10-11
+
+This repository is the selected implementation home. All 284 tracked files of
+the public standalone ADK predecessor are preserved as frozen Apache references;
+selected fixtures are adapted for canonical contract verification. Independent
+assistant/pipeline recipes and an eight-family catalog preserve useful patterns
+without copying unlicensed source. All 109 Apache files of `specs-agent-platform`
+are now imported as references after the user authorized the explained
+private-to-public transfer. The origin remains private. Archival remains pending
+and currently needs user action because the browser is not authenticated. The full tracker records 658 features, 443
+proposed tests and 774 schema constraints. This is source consolidation and gap
+tracking, not completed native lowering or full OWS/LangGraph conformance.
+
+Local consolidation validation passed: 679 root tests passed, 8 skipped, with
+90.47% core coverage; the 16 added fixture/tracker checks passed. Repository Ruff,
+formatting, strict mypy and Markdown links passed. These selected fixture runs
+use canonical ADK/LangGraph adapters in the root environment, not proof of new
+native compiler behavior or JS parity. Remote CI remains a publication gate.
 
 ## Intentionally Deferred
 
@@ -589,3 +605,5 @@ uv run --directory engines/adk --locked --extra native --extra knowledge --with 
 uv run --directory engines/langgraph --locked --extra sqlite --extra knowledge --with pytest --with pytest-asyncio pytest ../../tests/langgraph ../../tests/contract ../../tests/ctk -q
 uv run --directory engines/agent-framework --locked --extra native --extra knowledge --with pytest --with pytest-asyncio pytest ../../tests/agent_framework ../../tests/contract ../../tests/ctk -q
 ```
+
+The CI source-integrity gate caught three ignored predecessor reference files missing from the initial PR. Those exact source bytes are now explicitly tracked; the gate remains enforced. MIG-01 transfer/license disposition is complete: both imported sources retain Apache attribution, and unlicensed generic source stays at origin. No active compiler, checkpoint service or unsafe approval implementation is introduced by the frozen reference import.

@@ -1,0 +1,47 @@
+# Source-control and automation metadata
+.git
+.github
+.gitattributes
+.gitignore
+.pre-commit-config.yaml
+
+# Local environments, secrets, and caches
+.venv
+.env*
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.hypothesis
+.tox
+.nox
+.trivy
+
+# Generated build, test, and runtime data
+dist
+build
+tmp
+data
+htmlcov
+.coverage*
+coverage.xml
+junit*.xml
+*.egg-info
+*.sarif
+sbom*.json
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.log
+
+# Files not required by either runtime image
+docs
+scripts
+tests
+CHANGELOG.md
+CONTRIBUTING.md
+SECURITY.md
+TODO.md
+docker-compose.yaml

@@ -1,0 +1,14 @@
+document:
+  dsl: '1.0.3'
+  namespace: patterns
+  name: pipeline
+  version: '1.0.0'
+do:
+  - draft:
+      call: agent:1.0.0@default
+      with:
+        input: ${ .question }
+  - refine:
+      call: agent:1.0.0@default
+      with:
+        input: ${ . }

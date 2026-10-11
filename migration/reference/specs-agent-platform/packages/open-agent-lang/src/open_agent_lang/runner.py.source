@@ -1,0 +1,627 @@
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import json
+import logging
+import os
+import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any
+
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from open_agent_core import (
+    AgentIR,
+    ApplicationIR,
+    ChatCompletionRequest,
+    EchoAgentInvoker,
+    ExecutionEvent,
+    InMemoryEngine,
+    RetentionPolicy,
+    RuntimeContext,
+    RuntimeEngine,
+    authorize_dependency,
+    chat_response,
+    checkpoint_store_from_env,
+    load_application,
+    paginate,
+    retention_interval_seconds_from_env,
+    retention_policy_from_env,
+    run_expiry_loop,
+    stream_events_response,
+)
+from open_agent_core.http_security import (
+    MaxRequestBodyMiddleware,
+    cors_kwargs_from_env,
+    rate_limit_middleware_from_env,
+)
+from open_agent_core.telemetry import init_telemetry, instrument_fastapi, instrument_httpx
+
+from .compiler import LangGraphCompiler
+from .mcp import McpToolError, McpToolRegistry
+
+logger = logging.getLogger(__name__)
+
+
+async def _first_event(stream: AsyncIterator[Any]) -> Any:
+    """Return the first event from *stream*; used for timeout validation."""
+    return await stream.__anext__()
+
+
+async def _restore_stream(first: Any, stream: AsyncIterator[Any]) -> AsyncIterator[Any]:
+    """Yield *first* then continue yielding from *stream*."""
+    yield first
+    async for event in stream:
+        yield event
+
+
+_UI_HTML = """<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Specs Agent LangGraph</title>
+  <style>
+    body { font: 16px system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    textarea { width: 100%; min-height: 9rem; box-sizing: border-box; }
+    button { margin: .75rem 0; padding: .55rem 1rem; cursor: pointer; }
+    select { max-width: 100%; padding: .4rem; }
+    pre { white-space: pre-wrap; background: #f4f4f4; padding: 1rem; min-height: 5rem; }
+  </style>
+</head>
+<body>
+  <h1>Specs Agent LangGraph</h1>
+  <label>API key <input id="key" type="password" placeholder="optional"></label>
+  <p>
+  <label>Entrypoint <select id="model"></select></label>
+  </p><p><textarea id="message" placeholder="Ask the workflow or agent..."></textarea></p>
+  <button id="send">Send</button>
+  <pre id="output"></pre>
+  <script>
+    const model = document.querySelector('#model');
+    const key = document.querySelector('#key');
+    const message = document.querySelector('#message');
+    const output = document.querySelector('#output');
+    const headers = () => key.value ? {'authorization': `Bearer ${key.value}`} : {};
+    fetch('/v1/models', {headers: headers()}).then(r => r.json()).then(data => {
+      data.data.forEach(item => model.add(new Option(item.id, item.id)));
+    });
+    document.querySelector('#send').onclick = async () => {
+      output.textContent = 'Running...';
+      const response = await fetch('/v1/chat/completions', {
+        method: 'POST', headers: {'content-type': 'application/json', ...headers()},
+        body: JSON.stringify({
+          model: model.value,
+          messages: [{role: 'user', content: message.value}]
+        })
+      });
+      const data = await response.json();
+      output.textContent = data.choices?.[0]?.message?.content || JSON.stringify(data, null, 2);
+    };
+  </script>
+</body>
+</html>"""
+
+
+class LangGraphAgentInvoker:
+    """Use ChatOpenAI when configured, retaining an offline local fallback."""
+
+    def __init__(self, mcp_tools: McpToolRegistry | None = None, max_tool_rounds: int = 8) -> None:
+        self.fallback = EchoAgentInvoker()
+        self.mcp_tools = mcp_tools
+        self.max_tool_rounds = max(0, max_tool_rounds)
+
+    def _tool_definitions(self, agent: AgentIR) -> tuple[list[dict[str, Any]], dict[str, str]]:
+        if self.mcp_tools is None:
+            return [], {}
+        definitions: list[dict[str, Any]] = []
+        bindings: dict[str, str] = {}
+        for item in agent.tools:
+            binding = item.get("binding", item.get("mcp_binding", item.get("name")))
+            if not isinstance(binding, str) or binding not in self.mcp_tools.bindings:
+                continue
+            name = item.get("name", binding)
+            if not isinstance(name, str) or not name:
+                continue
+            parameters = item.get("parameters", item.get("input_schema", {}))
+            if not isinstance(parameters, dict):
+                parameters = {}
+            if "type" not in parameters:
+                parameters = {"type": "object", **parameters}
+            definition: dict[str, Any] = {
+                "type": "function",
+                "function": {
+                    "name": name,
+                    "description": str(item.get("description", "")),
+                    "parameters": parameters,
+                },
+            }
+            definitions.append(definition)
+            bindings[name] = binding
+        return definitions, bindings
+
+    async def invoke(
+        self,
+        agent: AgentIR,
+        messages: list[dict[str, Any]],
+        context: RuntimeContext,
+    ) -> Any:
+        del context
+        if not os.getenv("OPENAI_API_KEY"):
+            return await self.fallback.invoke(agent, messages, RuntimeContext({}))
+        try:
+            from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+            from langchain_openai import ChatOpenAI
+        except ImportError:
+            return await self.fallback.invoke(agent, messages, RuntimeContext({}))
+
+        llm_config = agent.document.get("llm_config", {})
+        if not isinstance(llm_config, dict):
+            llm_config = {}
+        model = str(llm_config.get("model_id", llm_config.get("model", "gpt-4o-mini")))
+        temperature = llm_config.get("temperature")
+        chat_kwargs: dict[str, Any] = {"model": model}
+        if isinstance(temperature, (int, float)):
+            chat_kwargs["temperature"] = temperature
+        if os.getenv("OPENAI_BASE_URL"):
+            chat_kwargs["base_url"] = os.environ["OPENAI_BASE_URL"]
+        chat: Any = ChatOpenAI(**chat_kwargs)
+        lc_messages: list[Any] = []
+        if agent.system_prompt:
+            lc_messages.append(SystemMessage(content=agent.system_prompt))
+        for message in messages:
+            content = message.get("content", "")
+            if not isinstance(content, str):
+                content = json.dumps(content, ensure_ascii=False, default=str)
+            role = message.get("role", "user")
+            message_type = {
+                "assistant": AIMessage,
+                "system": SystemMessage,
+            }.get(role, HumanMessage)
+            if role == "tool":
+                lc_messages.append(
+                    ToolMessage(
+                        content=content,
+                        tool_call_id=str(message.get("tool_call_id", "unknown")),
+                        name=message.get("name"),
+                    )
+                )
+            else:
+                message_kwargs: dict[str, Any] = {"content": content}
+                if role == "assistant" and message.get("tool_calls"):
+                    message_kwargs["tool_calls"] = message["tool_calls"]
+                lc_messages.append(message_type(**message_kwargs))
+
+        tool_definitions, tool_bindings = self._tool_definitions(agent)
+        if tool_definitions:
+            chat = chat.bind_tools(tool_definitions)
+        response: Any = None
+        for _ in range(self.max_tool_rounds + 1):
+            response = await chat.ainvoke(lc_messages)
+            tool_calls = getattr(response, "tool_calls", None) or []
+            if not tool_calls or self.mcp_tools is None or not tool_bindings:
+                break
+            lc_messages.append(response)
+            for call in tool_calls:
+                if not isinstance(call, dict):
+                    continue
+                name = str(call.get("name", ""))
+                binding = tool_bindings.get(name)
+                arguments = call.get("args", {})
+                if not isinstance(arguments, dict):
+                    arguments = {}
+                call_id = str(call.get("id", uuid.uuid4()))
+                if binding is None:
+                    result: Any = {"error": f"Tool {name!r} is not bound"}
+                else:
+                    try:
+                        result = await self.mcp_tools.call(binding, arguments)
+                    except McpToolError as exc:
+                        result = exc.as_dict()
+                lc_messages.append(
+                    ToolMessage(
+                        content=json.dumps(result, ensure_ascii=False, default=str),
+                        tool_call_id=call_id,
+                        name=name or None,
+                    )
+                )
+        if response is None:  # pragma: no cover - loop always executes at least once
+            return await self.fallback.invoke(agent, messages, RuntimeContext({}))
+        content = response.content
+        if not isinstance(content, str):
+            content = json.dumps(content, ensure_ascii=False, default=str)
+        return {"content": content}
+
+
+class LangGraphEngine:
+    """Engine implementation shipped by the LangGraph Docker image."""
+
+    def __init__(self, application: ApplicationIR):
+        self.application = application
+        self.checkpoint_store = checkpoint_store_from_env()
+        self.retention_policy: RetentionPolicy = retention_policy_from_env()
+        self._expiry_shutdown: asyncio.Event | None = None
+        self._expiry_task: asyncio.Task[None] | None = None
+        self.mcp_tools = McpToolRegistry(application.bindings.tool_bindings)
+        self.agent_invoker = LangGraphAgentInvoker(self.mcp_tools)
+        call_handlers = {
+            name: (lambda arguments, name=name: self.mcp_tools.call(name, arguments))
+            for name in application.bindings.tool_bindings
+        }
+        self.fallback = InMemoryEngine(
+            application,
+            agent_invoker=self.agent_invoker,
+            call_handlers=call_handlers,
+            checkpoint_store=self.checkpoint_store,
+            retention_policy=self.retention_policy,
+        )
+        self.graphs = {
+            workflow.id: LangGraphCompiler(
+                application,
+                runtime=self.fallback,
+                checkpoint_store=self.checkpoint_store,
+                retention_policy=self.retention_policy,
+            ).compile(workflow.id)
+            for workflow in application.workflows
+        }
+
+    async def invoke(
+        self,
+        entrypoint: str,
+        payload: dict[str, Any],
+        *,
+        run_id: str | None = None,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        resolved = self.application.resolve_entrypoint(entrypoint)
+        graph = self.graphs.get(resolved)
+        if graph is None:
+            return await self.fallback.invoke(resolved, payload, run_id=run_id, messages=messages)
+        result = await graph.ainvoke(
+            {"payload": payload, "messages": messages or [], "run_id": run_id or ""}
+        )
+        output = result.get("output", result)
+        return output if isinstance(output, dict) else {"output": output}
+
+    async def stream(
+        self,
+        entrypoint: str,
+        payload: dict[str, Any],
+        *,
+        run_id: str | None = None,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> AsyncIterator[ExecutionEvent]:
+        resolved = self.application.resolve_entrypoint(entrypoint)
+        graph = self.graphs.get(resolved)
+        current_run_id = run_id or str(uuid.uuid4())
+        if graph is None:
+            async for event in self.fallback.stream(
+                resolved, payload, run_id=current_run_id, messages=messages
+            ):
+                yield event
+            return
+        final_state: dict[str, Any] = {}
+        async for step in graph.astream(
+            {"payload": payload, "messages": messages or [], "run_id": current_run_id}
+        ):
+            for node_name, state in step.items():
+                if isinstance(state, dict):
+                    final_state = state
+                if node_name == "__end__":
+                    continue
+                task_name = node_name.rsplit("_", 1)[0]
+                yield ExecutionEvent(current_run_id, "task.completed", task_name, data=state)
+        output = final_state.get("output", final_state)
+        yield ExecutionEvent(
+            current_run_id,
+            "completed",
+            data=output if isinstance(output, dict) else {"output": output},
+        )
+
+    async def execute_task(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        return await self.fallback.execute_task(*args, **kwargs)
+
+    async def start(self) -> None:
+        if self.checkpoint_store is not None and hasattr(self.checkpoint_store, "setup"):
+            await self.checkpoint_store.setup()
+        if self.checkpoint_store is not None:
+            interval = retention_interval_seconds_from_env()
+            if interval > 0:
+                self._expiry_shutdown = asyncio.Event()
+                self._expiry_task = asyncio.create_task(
+                    run_expiry_loop(
+                        self.checkpoint_store,
+                        self.retention_policy,
+                        interval,
+                        self._expiry_shutdown,
+                    )
+                )
+        if self.mcp_tools is not None:
+            await self.mcp_tools.start()
+
+    async def close(self) -> None:
+        if self.mcp_tools is not None:
+            await self.mcp_tools.close()
+        if self._expiry_shutdown is not None:
+            self._expiry_shutdown.set()
+        if self._expiry_task is not None:
+            try:
+                await asyncio.wait_for(self._expiry_task, timeout=5.0)
+            except TimeoutError:
+                self._expiry_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await self._expiry_task
+        if self.checkpoint_store is not None:
+            await self.checkpoint_store.close()
+
+
+def create_app(
+    application: ApplicationIR | None = None,
+    engine: RuntimeEngine | None = None,
+    *,
+    application_path: str | None = None,
+    workflow_path: str | None = None,
+    agent_path: str | None = None,
+) -> FastAPI:
+    init_telemetry(service_name="specs-agent-lang")
+    if application is None:
+        root = application_path or (None if workflow_path or agent_path else "examples/application")
+        application = load_application(root, workflow_path=workflow_path, agent_path=agent_path)
+    engine = engine or LangGraphEngine(application)
+    expected_api_key = os.getenv("SPECS_AGENT_API_KEY", os.getenv("OPEN_AGENT_API_KEY", "")).strip()
+    try:
+        request_timeout = max(0.0, float(os.getenv("REQUEST_TIMEOUT_SECONDS", "120")))
+    except ValueError:
+        request_timeout = 120.0
+    try:
+        max_request_bytes = max(0, int(os.getenv("MAX_REQUEST_BYTES", "1048576")))
+    except ValueError:
+        max_request_bytes = 1048576
+    try:
+        shutdown_grace = max(0.0, float(os.getenv("SHUTDOWN_GRACE_PERIOD_SECONDS", "30")))
+    except ValueError:
+        shutdown_grace = 30.0
+
+    async def _drain_active_requests() -> None:
+        if shutdown_grace <= 0:
+            return
+        deadline = asyncio.get_event_loop().time() + shutdown_grace
+        while (
+            getattr(app.state, "active_requests", 0) > 0
+            and asyncio.get_event_loop().time() < deadline
+        ):
+            await asyncio.sleep(0.05)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        instrument_httpx()
+        if hasattr(engine, "start"):
+            await engine.start()
+        app.state.shutting_down = False
+        app.state.active_requests = 0
+        try:
+            yield
+        finally:
+            app.state.shutting_down = True
+            await _drain_active_requests()
+            if hasattr(engine, "close"):
+                await engine.close()
+
+    app = FastAPI(title="Specs Agent Platform (LangGraph)", version="0.1.0", lifespan=lifespan)
+    instrument_fastapi(app)
+    app.add_middleware(MaxRequestBodyMiddleware, max_bytes=max_request_bytes)
+    cors_kwargs = cors_kwargs_from_env()
+    if cors_kwargs is not None:
+        app.add_middleware(CORSMiddleware, **cors_kwargs)
+    rate_limit_kwargs = rate_limit_middleware_from_env()
+    if rate_limit_kwargs is not None:
+        from open_agent_core.http_security import RateLimitMiddleware
+
+        app.add_middleware(RateLimitMiddleware, **rate_limit_kwargs)
+
+    @app.middleware("http")
+    async def shutdown_and_request_tracking_middleware(request: Request, call_next: Any) -> Any:
+        if getattr(request.app.state, "shutting_down", False):
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "error": {
+                        "message": "server is shutting down",
+                        "type": "shutdown_error",
+                    }
+                },
+            )
+        request.app.state.active_requests = getattr(request.app.state, "active_requests", 0) + 1
+        try:
+            return await call_next(request)
+        finally:
+            request.app.state.active_requests = getattr(request.app.state, "active_requests", 0) - 1
+
+    authorize = authorize_dependency(expected_api_key)
+
+    @app.exception_handler(Exception)
+    async def runtime_error(request: Request, exc: Exception) -> JSONResponse:
+        logger.exception(
+            "unhandled error for %s %s", request.method, request.url.path, exc_info=exc
+        )
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": {
+                    "message": "engine execution failed",
+                    "type": "server_error",
+                }
+            },
+        )
+
+    @app.exception_handler(HTTPException)
+    async def http_error(request: Request, exc: HTTPException) -> JSONResponse:
+        del request
+        detail = exc.detail
+        content = (
+            detail
+            if isinstance(detail, dict) and "error" in detail
+            else {"error": {"message": str(detail), "type": "invalid_request_error"}}
+        )
+        return JSONResponse(status_code=exc.status_code, content=content, headers=exc.headers)
+
+    @app.get("/health/live")
+    async def live() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.get("/health/ready")
+    async def ready() -> JSONResponse:
+        checkpoint_store = getattr(engine, "checkpoint_store", None)
+        if checkpoint_store is not None:
+            try:
+                await checkpoint_store.ping()
+            except Exception:
+                logger.exception("readiness check failed: checkpoint store unreachable")
+                return JSONResponse(
+                    status_code=503,
+                    content={"status": "not_ready", "reason": "checkpoint store unreachable"},
+                )
+        return JSONResponse(status_code=200, content={"status": "ready"})
+
+    @app.get("/health/mcp")
+    async def mcp_health(_: None = Depends(authorize)) -> dict[str, Any]:
+        mcp_tools = getattr(engine, "mcp_tools", None)
+        summary = mcp_tools.health_summary() if mcp_tools is not None else {}
+        return {"object": "list", "data": summary}
+
+    @app.get("/ui", include_in_schema=False)
+    @app.get("/ui/", include_in_schema=False)
+    async def ui() -> HTMLResponse:
+        return HTMLResponse(_UI_HTML)
+
+    @app.get("/v1/models/{model_id:path}")
+    async def get_model(model_id: str, _: None = Depends(authorize)) -> dict[str, Any]:
+        resolved = application.resolve_entrypoint(model_id)
+        if resolved not in application.entrypoints():
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": {
+                        "message": f"Unknown model: {model_id}",
+                        "type": "invalid_request_error",
+                    }
+                },
+            )
+        return {
+            "id": resolved,
+            "object": "model",
+            "created": 0,
+            "owned_by": "open-agent-lang",
+        }
+
+    @app.get("/v1/models")
+    async def models(
+        limit: int = 20,
+        after: str | None = None,
+        _: None = Depends(authorize),
+    ) -> dict[str, Any]:
+        items = [
+            {
+                "id": application.resolve_entrypoint(identifier),
+                "object": "model",
+                "created": 0,
+                "owned_by": "open-agent-lang",
+            }
+            for identifier in application.entrypoints()
+        ]
+        return paginate(items, limit=limit, after=after).model_dump()
+
+    @app.get("/v1/tools")
+    async def tools(
+        limit: int = 20,
+        after: str | None = None,
+        _: None = Depends(authorize),
+    ) -> dict[str, Any]:
+        items = [
+            {
+                "id": name,
+                "transport": config.get("transport", "stdio"),
+            }
+            for name, config in application.bindings.tool_bindings.items()
+        ]
+        return paginate(items, limit=limit, after=after).model_dump()
+
+    @app.post("/v1/chat/completions")
+    async def chat_completions(
+        body: ChatCompletionRequest,
+        x_open_agent_thread_id: str | None = Header(default=None),
+        _: None = Depends(authorize),
+    ) -> Any:
+        run_id = x_open_agent_thread_id or str(uuid.uuid4())
+        payload = {"messages": [message.model_dump(exclude_none=True) for message in body.messages]}
+        if body.stream:
+            stream = engine.stream(body.model, payload, run_id=run_id, messages=payload["messages"])
+            try:
+                if request_timeout:
+                    first = await asyncio.wait_for(_first_event(stream), timeout=request_timeout)
+                    stream = _restore_stream(first, stream)
+            except TimeoutError as exc:
+                raise HTTPException(
+                    status_code=504,
+                    detail={"error": {"message": "request timed out", "type": "timeout_error"}},
+                ) from exc
+            except Exception as exc:
+                if isinstance(exc, HTTPException):
+                    raise
+                raise HTTPException(
+                    status_code=500,
+                    detail={
+                        "error": {"message": "engine execution failed", "type": "server_error"}
+                    },
+                ) from exc
+            return StreamingResponse(
+                stream_events_response(body.model, stream),
+                media_type="text/event-stream",
+            )
+        try:
+            invocation = engine.invoke(
+                body.model, payload, run_id=run_id, messages=payload["messages"]
+            )
+            result = (
+                await asyncio.wait_for(invocation, timeout=request_timeout)
+                if request_timeout
+                else await invocation
+            )
+        except KeyError as exc:
+            raise HTTPException(
+                status_code=404,
+                detail={"error": {"message": str(exc), "type": "invalid_request_error"}},
+            ) from exc
+        except TimeoutError as exc:
+            raise HTTPException(
+                status_code=504,
+                detail={"error": {"message": "request timed out", "type": "timeout_error"}},
+            ) from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail={"error": {"message": "engine execution failed", "type": "server_error"}},
+            ) from exc
+        response = chat_response(body.model, result, f"chatcmpl-{uuid.uuid4().hex}")
+        return response
+
+    @app.post("/v1/events", status_code=202)
+    async def events(request: Request, _: None = Depends(authorize)) -> dict[str, Any]:
+        raw = await request.body()
+        try:
+            data = json.loads(raw or b"{}")
+        except json.JSONDecodeError as exc:
+            raise HTTPException(status_code=400, detail="CloudEvent body must be JSON") from exc
+        return {
+            "accepted": True,
+            "event_id": request.headers.get("ce-id") or data.get("id"),
+            "event_type": request.headers.get("ce-type") or data.get("type"),
+        }
+
+    return app
+
+
+__all__ = ["LangGraphEngine", "create_app"]

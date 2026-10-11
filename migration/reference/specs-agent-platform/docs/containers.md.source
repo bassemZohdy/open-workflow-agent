@@ -1,0 +1,144 @@
+# Container images
+
+The release workflow publishes two alternative multi-arch Linux images to GitHub
+Container Registry (GHCR):
+
+| Engine | Image | API and UI |
+| --- | --- | --- |
+| LangGraph | `ghcr.io/bassemzohdy/specs-agent-lang` | API at `/v1`, console at `/ui` |
+| Google ADK | `ghcr.io/bassemzohdy/specs-agent-adk` | API at `/v1`, ADK UI at `/dev-ui/` and fallback console at `/ui` |
+
+Choose one engine for a deployment. Both expose port `8080` in the container
+and use the same health and OpenAI-compatible API surface.
+
+## Pulling images
+
+Packages are private by default, so authenticate before pulling unless a
+maintainer has explicitly made the package public:
+
+```bash
+docker pull ghcr.io/bassemzohdy/specs-agent-lang:0.1.0
+docker pull ghcr.io/bassemzohdy/specs-agent-adk:0.1.0
+```
+
+Replace `0.1.0` with a published full release version (without the Git tag's
+leading `v`). Full version tags are immutable. For a private package, use a
+classic personal access token with the `read:packages` scope:
+
+```bash
+echo "$GHCR_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+```
+
+Images are published for `linux/amd64` and `linux/arm64`. Docker selects the
+matching architecture automatically; on a host that does not match either,
+explicitly opt into emulation with `--platform linux/amd64` or
+`--platform linux/arm64`. The release workflow uses a registry-backed
+`buildcache` tag for layer caching; that tag is not a deployment target.
+
+## Run an image
+
+The image includes the example application, so this starts LangGraph on host
+port 8081:
+
+```bash
+docker run --rm -p 8081:8080 \
+  -e OPENAI_API_KEY \
+  ghcr.io/bassemzohdy/specs-agent-lang:0.1.0
+```
+
+Use `http://localhost:8081/v1` for the API and
+`http://localhost:8081/ui` for the LangGraph console. The equivalent ADK
+command is:
+
+```bash
+docker run --rm -p 8082:8080 \
+  -e GOOGLE_API_KEY \
+  ghcr.io/bassemzohdy/specs-agent-adk:0.1.0
+```
+
+Its API is `http://localhost:8082/v1`; its native UI is
+`http://localhost:8082/dev-ui/` (with `/ui` available as a fallback). Set
+`SPECS_AGENT_API_KEY` to require a bearer token or `X-API-Key` on protected
+API endpoints. Do not pass provider credentials in an image, Dockerfile, or
+version-controlled environment file.
+
+Both images expose interactive API documentation at `/docs`, ReDoc at `/redoc`,
+and the runtime OpenAPI document at `/openapi.json`. Set
+`SHUTDOWN_GRACE_PERIOD_SECONDS` to control in-flight request draining when the
+container receives a termination signal; the default is 30 seconds.
+
+### Mount specifications and persistent data
+
+Mount an application bundle read-only and override the image command with its
+path. A named volume retains SQLite checkpoints at `/data/checkpoints.db`:
+
+```bash
+docker volume create specs-lang-data
+docker run --rm -p 8081:8080 \
+  -v "$PWD/examples/application:/specs:ro" \
+  -v specs-lang-data:/data \
+  -e CHECKPOINT_DB_PATH=/data/checkpoints.db \
+  -e OPENAI_API_KEY \
+  ghcr.io/bassemzohdy/specs-agent-lang:0.1.0 \
+  /app/.venv/bin/open-agent-lang serve --application /specs --host 0.0.0.0
+```
+
+For ADK, substitute the image and executable with
+`specs-agent-adk` and `/app/.venv/bin/open-agent-adk`, and supply
+`GOOGLE_API_KEY` as appropriate. Keep LangGraph and ADK checkpoint volumes
+separate. You may instead mount individual files and set
+`WORKFLOW_SPEC_PATH` and `AGENT_SPEC_PATH`.
+
+For local source builds and Compose profiles, see the Docker Compose section
+in the [README](../README.md#docker-compose-deployment). Compose uses distinct
+`lang_data` and `adk_data` volumes and local image names;
+`specs-agent-lang:local` and `specs-agent-adk:local` are not GHCR packages.
+
+## Tags and visibility
+
+Each image receives an immutable `sha-<full-commit-SHA>` traceability tag and,
+for a release, its immutable full semantic version (for example, `0.1.0`).
+Builds also carry standard OCI labels for source, revision, and version.
+Stable releases also update the
+`0`, `0.1`, and `latest` aliases; prereleases do not update `latest`.
+Deploy production workloads by full version or digest, not a moving alias.
+
+New GHCR packages default to private. Repository linkage can inherit repository
+*access permissions*, but it does not make a package public or inherit
+visibility. Keep packages private unless public consumption is explicitly
+approved. Changing a package to public is irreversible: anyone can pull its
+current and future public versions. If made public, retain stable full-version
+tags and their OCI attestations; clean up short-lived prerelease tags only
+under a documented retention policy.
+`edge` is not currently published; do not introduce or retain an `edge` tag
+until an approved main-branch policy exists. Do not delete a digest still
+referenced by a release, deployment, SBOM, or attestation.
+
+## Supply-chain artifacts
+
+Release images are built as untagged OCI digests with BuildKit provenance
+(`mode=max`) and SBOM attestations stored alongside the GHCR image. Each remote
+digest is then scanned with Trivy before release tags are added. The workflow
+uploads SARIF vulnerability results and a review SBOM artifact. Pull requests
+build and scan both images but never receive package-write permission and never
+publish.
+The Trivy severity gate is always enforced for fixable HIGH and CRITICAL
+findings. Unfixed findings remain visible in the generated report so they can be
+tracked without making every release permanently impossible. SARIF upload is
+best-effort because GitHub code scanning for a private repository requires
+GitHub Advanced Security; the SARIF and SBOM files remain workflow artifacts
+when that upload is not available.
+
+Inspect the OCI attestations stored with a digest:
+
+```bash
+docker buildx imagetools inspect \
+  ghcr.io/bassemzohdy/specs-agent-lang@sha256:REPLACE_WITH_DIGEST
+```
+
+Use the digest shown by `docker buildx imagetools inspect` or the package page,
+and inspect its attestations with a registry-aware OCI tool as needed; repeat
+the command with `specs-agent-adk` for the ADK image. GitHub artifact
+attestations remain deferred because they are unsupported for this private
+personal repository. See
+[release operations](releasing.md) for the publishing checklist.

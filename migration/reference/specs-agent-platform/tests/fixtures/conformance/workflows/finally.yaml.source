@@ -1,0 +1,18 @@
+document:
+  dsl: '1.0.3'
+  namespace: conformance.support
+  name: finally
+  version: '1.0.0'
+do:
+  - risky:
+      call: flaky
+      catch:
+        do:
+          - recover:
+              set:
+                recovered: true
+      finally:
+        do:
+          - cleanup:
+              set:
+                cleaned: true

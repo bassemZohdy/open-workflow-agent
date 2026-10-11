@@ -1,0 +1,124 @@
+from __future__ import annotations
+
+import json
+import re
+from pathlib import Path
+from typing import Any
+
+import yaml
+from pyagentspec.serialization import AgentSpecDeserializer
+from pydantic import ValidationError
+
+from ..diagnostics import Diagnostic, SpecValidationError, source_location
+from ..ir import AgentIR
+from .models import AgentDocument
+
+
+def _error(message: str, source: Path, path: str | None = None) -> SpecValidationError:
+    return SpecValidationError(
+        [Diagnostic(code="AGENT_SPEC_INVALID", message=message, source=source, path=path)]
+    )
+
+
+def _validation_error(exc: ValidationError, source: Path) -> SpecValidationError:
+    return SpecValidationError(
+        [
+            Diagnostic(
+                code="AGENT_SPEC_INVALID",
+                message=str(item["msg"]),
+                source=source,
+                path=".".join(str(part) for part in item["loc"]) or None,
+                line=source_location(source, tuple(item["loc"]))[0],
+                column=source_location(source, tuple(item["loc"]))[1],
+            )
+            for item in exc.errors()
+        ]
+    )
+
+
+def _read(path: Path) -> dict[str, Any]:
+    try:
+        text = path.read_text(encoding="utf-8")
+        value = json.loads(text) if path.suffix.lower() == ".json" else yaml.safe_load(text)
+    except (OSError, UnicodeError, json.JSONDecodeError, yaml.YAMLError) as exc:
+        raise _error(str(exc), path) from exc
+    if not isinstance(value, dict):
+        raise _error("document root must be an object", path)
+    return value
+
+
+def _is_envelope(document: dict[str, Any]) -> bool:
+    return isinstance(document.get("document"), dict) and isinstance(document.get("spec"), dict)
+
+
+def is_agent_document(path: Path) -> bool:
+    value = _read(path)
+    if "component_type" in value or "agentspec_version" in value:
+        return True
+    return _is_envelope(value) and "agentspec" in value["document"]
+
+
+def _flatten_envelope(document: dict[str, Any]) -> dict[str, Any]:
+    """Convert a document/spec envelope into the flat shape AgentDocument expects."""
+    meta = document["document"]
+    spec = document["spec"]
+    namespace = meta.get("namespace", "")
+    name = meta.get("name", "")
+    version = meta.get("version", "")
+    component_id = f"{namespace}/{name}@{version}" if namespace and name else name
+    return {
+        "component_type": "Agent",
+        "agentspec_version": meta.get("agentspec"),
+        "id": component_id,
+        "name": name,
+        **spec,
+    }
+
+
+def load_agent(path: str | Path) -> AgentIR:
+    source = Path(path).resolve()
+    document = _read(source)
+    if _is_envelope(document):
+        normalized = _flatten_envelope(document)
+        spec = document["spec"]
+    else:
+        normalized = dict(document)
+        spec = document
+    normalized.setdefault("component_type", normalized.get("type"))
+    normalized.setdefault("id", normalized.get("name"))
+    try:
+        parsed = AgentDocument.model_validate(normalized)
+    except ValidationError as exc:
+        raise _validation_error(exc, source) from exc
+    agentspec_version = parsed.agentspec_version
+    if agentspec_version is not None and not re.fullmatch(r"26\.1(?:\.\d+)?", agentspec_version):
+        raise SpecValidationError(
+            [
+                Diagnostic(
+                    code="AGENT_SPEC_VERSION_UNSUPPORTED",
+                    message=(f"expected Agent Spec 26.1.x, received {agentspec_version}"),
+                    source=source,
+                    path="agentspec_version",
+                )
+            ]
+        )
+    try:
+        AgentSpecDeserializer().from_dict(document)
+    except Exception as exc:
+        raise _error(str(exc), source) from exc
+    tools = spec.get("tools", spec.get("tool_configurations", []))
+    if not isinstance(tools, list):
+        tools = []
+    memory = parsed.memory
+    if memory is not None and not isinstance(memory, dict):
+        raise _error("memory must be an object", source, "memory")
+    return AgentIR(
+        id=parsed.id,
+        name=parsed.name or parsed.id,
+        component_type=parsed.component_type,
+        source=str(source),
+        document=document,
+        system_prompt=parsed.system_prompt,
+        tools=tuple(item for item in tools if isinstance(item, dict)),
+        memory=memory,
+    )

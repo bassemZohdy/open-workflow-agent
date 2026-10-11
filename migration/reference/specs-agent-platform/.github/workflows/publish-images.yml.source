@@ -1,0 +1,299 @@
+name: Publish container images
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing semantic-version Git tag to publish (for example v1.2.3)
+        required: true
+        type: string
+
+# The requested version is the release identity for both tag and manual runs.
+concurrency:
+  group: publish-images-${{ inputs.version || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: [self-hosted, linux, x64, specs-agent]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.target.outputs.version }}
+      tag_version: ${{ steps.target.outputs.tag_version }}
+      major_tag: ${{ steps.target.outputs.major_tag }}
+      minor_tag: ${{ steps.target.outputs.minor_tag }}
+      stable: ${{ steps.target.outputs.stable }}
+      owner: ${{ steps.target.outputs.owner }}
+      source_sha: ${{ steps.target.outputs.source_sha }}
+    steps:
+      - name: Check out the requested release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.version || github.ref }}
+          fetch-depth: 0
+
+      - name: Validate release tag and package versions
+        id: target
+        shell: bash
+        env:
+          REQUESTED_VERSION: ${{ inputs.version || github.ref_name }}
+        run: |
+          set -euo pipefail
+          python .github/scripts/release_target.py "$REQUESTED_VERSION" --github-output "$GITHUB_OUTPUT"
+          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+          tag_commit="$(git rev-parse "refs/tags/${REQUESTED_VERSION}^{commit}")"
+          head_commit="$(git rev-parse HEAD)"
+          if [[ "$tag_commit" != "$head_commit" ]]; then
+            echo "${REQUESTED_VERSION} resolves to $tag_commit, not checked-out HEAD $head_commit" >&2
+            exit 1
+          fi
+          echo "source_sha=$head_commit" >> "$GITHUB_OUTPUT"
+          expected="${REQUESTED_VERSION#v}"
+          python - "$expected" <<'PY'
+          import sys
+          import tomllib
+          from pathlib import Path
+
+          expected = sys.argv[1]
+          paths = [Path("pyproject.toml"), *Path("packages").glob("*/pyproject.toml")]
+          mismatches = [str(path) for path in paths if tomllib.loads(path.read_text())["project"]["version"] != expected]
+          if mismatches:
+              raise SystemExit(f"package versions must equal {expected}: {', '.join(mismatches)}")
+          PY
+
+  quality:
+    needs: prepare
+    uses: ./.github/workflows/_quality.yml
+    with:
+      ref: ${{ needs.prepare.outputs.source_sha }}
+    permissions:
+      contents: read
+
+  build-and-scan:
+    name: Build and scan ${{ matrix.name }}
+    needs: [prepare, quality]
+    runs-on: [self-hosted, linux, x64, specs-agent]
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: LangGraph
+            suffix: lang
+            dockerfile: packages/open-agent-lang/Dockerfile
+          - name: ADK
+            suffix: adk
+            dockerfile: packages/open-agent-adk/Dockerfile
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    steps:
+      - name: Check out the release commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.prepare.outputs.source_sha }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Generate OCI labels
+        id: metadata
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ needs.prepare.outputs.owner }}/specs-agent-${{ matrix.suffix }}
+          tags: type=raw,value=${{ needs.prepare.outputs.tag_version }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ needs.prepare.outputs.source_sha }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.tag_version }}
+
+      - name: Build and push an untagged OCI digest with attestations
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64,linux/arm64
+          provenance: mode=max
+          sbom: true
+          labels: ${{ steps.metadata.outputs.labels }}
+          outputs: type=image,name=ghcr.io/${{ needs.prepare.outputs.owner }}/specs-agent-${{ matrix.suffix }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=registry,ref=ghcr.io/${{ needs.prepare.outputs.owner }}/specs-agent-${{ matrix.suffix }}:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ needs.prepare.outputs.owner }}/specs-agent-${{ matrix.suffix }}:buildcache,mode=max
+
+      - name: Gate remote digest on high and critical vulnerabilities
+        id: vulnerability_gate
+        uses: aquasecurity/trivy-action@v0.36.0
+        continue-on-error: true
+        with:
+          image-ref: ghcr.io/${{ needs.prepare.outputs.owner }}/specs-agent-${{ matrix.suffix }}@${{ steps.build.outputs.digest }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - name: Create vulnerability report
+        if: always()
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/${{ needs.prepare.outputs.owner }}/specs-agent-${{ matrix.suffix }}@${{ steps.build.outputs.digest }}
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+
+      - name: Upload vulnerability report to GitHub
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        continue-on-error: true
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Create CycloneDX SBOM for review
+        if: always()
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/${{ needs.prepare.outputs.owner }}/specs-agent-${{ matrix.suffix }}@${{ steps.build.outputs.digest }}
+          format: cyclonedx
+          output: sbom.cdx.json
+
+      - name: Save digest for coordinated publication
+        if: always()
+        shell: bash
+        run: echo '${{ steps.build.outputs.digest }}' > digest.txt
+
+      - name: Upload security and digest artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.suffix }}-release-artifacts
+          path: |
+            digest.txt
+            trivy-results.sarif
+            sbom.cdx.json
+          if-no-files-found: error
+
+      - name: Enforce vulnerability gate before promotion
+        if: steps.vulnerability_gate.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "Trivy found configured high or critical vulnerabilities." >&2
+          exit 1
+
+  publish-release-tags:
+    name: Publish coordinated release tags
+    needs: [prepare, quality, build-and-scan]
+    runs-on: [self-hosted, linux, x64, specs-agent]
+    timeout-minutes: 30
+    environment:
+      name: ${{ needs.prepare.outputs.stable == 'true' && 'release' || '' }}
+      url: https://github.com/${{ github.repository }}/packages
+    permissions:
+      actions: read
+      packages: write
+    steps:
+      - name: Download both image digests
+        uses: actions/download-artifact@v8
+        with:
+          pattern: "*-release-artifacts"
+          merge-multiple: false
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Preflight immutable tags and publish aliases
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.tag_version }}
+          SHA_TAG: sha-${{ needs.prepare.outputs.source_sha }}
+          MAJOR: ${{ needs.prepare.outputs.major_tag }}
+          MINOR: ${{ needs.prepare.outputs.minor_tag }}
+          STABLE: ${{ needs.prepare.outputs.stable }}
+          OWNER: ${{ needs.prepare.outputs.owner }}
+        run: |
+          set -euo pipefail
+          lang_digest="$(<lang-release-artifacts/digest.txt)"
+          adk_digest="$(<adk-release-artifacts/digest.txt)"
+          for pair in "lang:$lang_digest" "adk:$adk_digest"; do
+            suffix="${pair%%:*}"; digest="${pair#*:}"
+            image="ghcr.io/${OWNER}/specs-agent-${suffix}"
+            for immutable_tag in "$VERSION" "$SHA_TAG"; do
+              set +e
+              inspect_output="$(docker buildx imagetools inspect "$image:$immutable_tag" --format '{{.Manifest.Digest}}' 2>&1)"
+              inspect_status=$?
+              set -e
+              if [[ "$inspect_status" -eq 0 ]]; then
+                remote="$inspect_output"
+              # Docker Buildx reports a missing tag as either a manifest error
+              # or the exact inspected reference followed by ": not found".
+              elif [[ "$inspect_output" == *"manifest unknown"* || "$inspect_output" == *"MANIFEST_UNKNOWN"* || "$inspect_output" == *"no such manifest"* || "$inspect_output" == *"tag not found"* || "$inspect_output" == *"$image:$immutable_tag: not found"* ]]; then
+                remote=""
+              else
+                echo "Could not inspect $image:$immutable_tag; refusing to publish:" >&2
+                echo "$inspect_output" >&2
+                exit 1
+              fi
+              if [[ -n "$remote" && "$remote" != "$digest" ]]; then
+                echo "Refusing to replace $image:$immutable_tag ($remote != $digest)" >&2
+                exit 1
+              fi
+            done
+          done
+          for pair in "lang:$lang_digest" "adk:$adk_digest"; do
+            suffix="${pair%%:*}"; digest="${pair#*:}"
+            image="ghcr.io/${OWNER}/specs-agent-${suffix}"
+            tags=("$VERSION" "$SHA_TAG")
+            if [[ "$STABLE" == true ]]; then tags+=("$MAJOR" "$MINOR" latest); fi
+            for tag in "${tags[@]}"; do
+              docker buildx imagetools create --tag "$image:$tag" "$image@$digest"
+            done
+          done
+
+      - name: Smoke test both published digests
+        shell: bash
+        env:
+          OWNER: ${{ needs.prepare.outputs.owner }}
+        run: |
+          set -euo pipefail
+          containers=(specs-agent-lang-smoke specs-agent-adk-smoke)
+          cleanup() {
+            for container in "${containers[@]}"; do
+              docker rm --force "$container" >/dev/null 2>&1 || true
+            done
+          }
+          trap cleanup EXIT
+          for suffix in lang adk; do
+            digest="$(<${suffix}-release-artifacts/digest.txt)"
+            image="ghcr.io/${OWNER}/specs-agent-${suffix}@$digest"
+            container="specs-agent-${suffix}-smoke"
+            port=18080
+            [[ "$suffix" == adk ]] && port=18081
+            docker rm --force "$container" >/dev/null 2>&1 || true
+            docker pull "$image"
+            docker run --detach --name "$container" --publish "$port:8080" "$image"
+            for attempt in {1..30}; do
+              curl --fail --silent "http://127.0.0.1:$port/health/ready" && break
+              [[ "$attempt" == 30 ]] && docker logs "$container" && exit 1
+              sleep 2
+            done
+            docker rm --force "$container" >/dev/null
+          done

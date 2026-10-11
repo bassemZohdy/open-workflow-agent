@@ -1,0 +1,20 @@
+document:
+  dsl: '1.0.3'
+  namespace: conformance.support
+  name: switch-default
+  version: '1.0.0'
+do:
+  - branch:
+      case: '${ .mode }'
+      switch:
+        - name: fast
+          then:
+            - set_fast:
+                set:
+                  strategy: fast
+        - name: default
+          default: true
+          then:
+            - set_default:
+                set:
+                  strategy: default

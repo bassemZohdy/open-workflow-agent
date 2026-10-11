@@ -1,0 +1,14 @@
+document:
+  dsl: '1.0.3'
+  namespace: fixtures
+  name: for
+  version: '1.0.0'
+do:
+  - loop:
+      for:
+        each: item
+        in: .items
+      do:
+        - save:
+            set:
+              last: '${ .item }'

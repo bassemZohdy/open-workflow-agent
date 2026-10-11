@@ -1,0 +1,513 @@
+"""Optional checkpoint store for durable runner state."""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import sqlite3
+from collections.abc import Mapping
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from datetime import UTC
+from pathlib import Path
+from typing import Any, Protocol
+
+
+class CheckpointStore(Protocol):
+    async def load(self, run_id: str) -> Mapping[str, Any] | None: ...
+
+    async def save(
+        self,
+        run_id: str,
+        entrypoint: str,
+        values: Mapping[str, Any],
+        status: str,
+        *,
+        expires_at: float | None = None,
+    ) -> None: ...
+
+    async def delete(self, run_id: str) -> None: ...
+
+    async def expire(self, policy: RetentionPolicy) -> int:
+        """Apply *policy* and return the number of checkpoints removed."""
+        ...
+
+    async def ping(self) -> None:
+        """Raise if the store is not reachable; used by readiness checks."""
+        ...
+
+    async def close(self) -> None:
+        """Release any resources held by the store."""
+        ...
+
+
+@dataclass(frozen=True)
+class RetentionPolicy:
+    """Retention rules for checkpoint expiry.
+
+    A checkpoint is removed when any rule matches, unless its status is in
+    *keep_statuses*. ``max_age_seconds <= 0`` and ``max_count_per_entrypoint <= 0``
+    disable the corresponding rule.
+    """
+
+    max_age_seconds: float = 0.0
+    max_count_per_entrypoint: int = 0
+    keep_statuses: frozenset[str] = frozenset()
+
+    def expires_at(self, now: float) -> float | None:
+        """Return the absolute expiry timestamp for a new checkpoint, if any."""
+        if self.max_age_seconds <= 0:
+            return None
+        return now + self.max_age_seconds
+
+
+def retention_policy_from_env(environ: Mapping[str, str] | None = None) -> RetentionPolicy:
+    """Build a retention policy from environment variables.
+
+    Variables:
+      - ``CHECKPOINT_RETENTION_MAX_AGE_SECONDS``
+      - ``CHECKPOINT_RETENTION_MAX_COUNT_PER_ENTRYPOINT``
+      - ``CHECKPOINT_RETENTION_KEEP_STATUSES`` (comma-separated)
+    """
+    env = dict(environ or os.environ)
+    max_age = 0.0
+    try:
+        max_age = float(env.get("CHECKPOINT_RETENTION_MAX_AGE_SECONDS", "0") or "0")
+    except ValueError:
+        max_age = 0.0
+    max_count = 0
+    try:
+        max_count = int(env.get("CHECKPOINT_RETENTION_MAX_COUNT_PER_ENTRYPOINT", "0") or "0")
+    except ValueError:
+        max_count = 0
+    keep_raw = env.get("CHECKPOINT_RETENTION_KEEP_STATUSES", "") or ""
+    keep_statuses = frozenset(status.strip() for status in keep_raw.split(",") if status.strip())
+    return RetentionPolicy(
+        max_age_seconds=max_age,
+        max_count_per_entrypoint=max_count,
+        keep_statuses=keep_statuses,
+    )
+
+
+class SQLiteCheckpointStore:
+    """Persist the latest JSON-serializable execution state per run ID.
+
+    SQLite I/O is delegated to a thread pool so the event loop is not blocked.
+    """
+
+    def __init__(self, path: str | Path):
+        self.path = str(path)
+        self._memory_connection: sqlite3.Connection | None = (
+            sqlite3.connect(":memory:", check_same_thread=False)
+            if self.path == ":memory:"
+            else None
+        )
+        if self.path != ":memory:":
+            Path(self.path).expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="sqlite-checkpoint-")
+        self._setup()
+
+    def _connect(self) -> sqlite3.Connection:
+        if self._memory_connection is not None:
+            return self._memory_connection
+        connection = sqlite3.connect(self.path, timeout=10)
+        connection.execute("PRAGMA busy_timeout = 10000")
+        return connection
+
+    def _setup(self) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS checkpoints (
+                    run_id TEXT PRIMARY KEY,
+                    entrypoint TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    values_json TEXT NOT NULL,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    expires_at TEXT
+                )
+                """
+            )
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_checkpoints_entrypoint ON checkpoints (entrypoint)"
+            )
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_checkpoints_expires_at
+                ON checkpoints (expires_at)
+                WHERE expires_at IS NOT NULL
+                """
+            )
+            connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_checkpoints_created_at
+                ON checkpoints (entrypoint, created_at)
+                """
+            )
+
+    async def ping(self) -> None:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(self._executor, self._ping)
+
+    def _ping(self) -> None:
+        with self._connect() as connection:
+            connection.execute("SELECT 1")
+
+    async def close(self) -> None:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(self._executor, self._close)
+        self._executor.shutdown(wait=True)
+
+    def _close(self) -> None:
+        if self._memory_connection is not None:
+            self._memory_connection.close()
+            self._memory_connection = None
+
+    async def load(self, run_id: str) -> Mapping[str, Any] | None:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, self._load, run_id)
+
+    def _load(self, run_id: str) -> Mapping[str, Any] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT entrypoint, status, values_json FROM checkpoints WHERE run_id = ?",
+                (run_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        try:
+            values = json.loads(row[2])
+        except (TypeError, ValueError, json.JSONDecodeError):
+            values = {}
+        return {
+            "entrypoint": str(row[0]),
+            "status": str(row[1]),
+            "values": values if isinstance(values, dict) else {},
+        }
+
+    async def save(
+        self,
+        run_id: str,
+        entrypoint: str,
+        values: Mapping[str, Any],
+        status: str,
+        *,
+        expires_at: float | None = None,
+    ) -> None:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            self._executor, self._save, run_id, entrypoint, values, status, expires_at
+        )
+
+    def _save(
+        self,
+        run_id: str,
+        entrypoint: str,
+        values: Mapping[str, Any],
+        status: str,
+        expires_at: float | None = None,
+    ) -> None:
+        encoded = json.dumps(dict(values), ensure_ascii=False, default=str)
+        expires_value = sqlite3_datetime(expires_at) if expires_at is not None else None
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO checkpoints(run_id, entrypoint, status, values_json, expires_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(run_id) DO UPDATE SET
+                    entrypoint = excluded.entrypoint,
+                    status = excluded.status,
+                    values_json = excluded.values_json,
+                    updated_at = CURRENT_TIMESTAMP,
+                    expires_at = excluded.expires_at
+                """,
+                (run_id, entrypoint, status, encoded, expires_value),
+            )
+            connection.commit()
+
+    async def delete(self, run_id: str) -> None:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(self._executor, self._delete, run_id)
+
+    def _delete(self, run_id: str) -> None:
+        with self._connect() as connection:
+            connection.execute("DELETE FROM checkpoints WHERE run_id = ?", (run_id,))
+            connection.commit()
+
+    async def expire(self, policy: RetentionPolicy) -> int:
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, self._expire, policy)
+
+    def _expire(self, policy: RetentionPolicy) -> int:
+        removed = 0
+        with self._connect() as connection:
+            keep_clause = ""
+            params: tuple[Any, ...] = ()
+            if policy.keep_statuses:
+                placeholders = ", ".join("?" for _ in policy.keep_statuses)
+                keep_clause = f"AND status NOT IN ({placeholders})"
+                params = tuple(policy.keep_statuses)
+
+            if policy.max_age_seconds > 0:
+                cursor = connection.execute(
+                    f"""
+                    DELETE FROM checkpoints
+                    WHERE (julianday('now') - julianday(updated_at)) * 86400 > ?
+                    {keep_clause}
+                    """,
+                    (policy.max_age_seconds,) + params,
+                )
+                removed += cursor.rowcount
+
+            if policy.max_count_per_entrypoint > 0:
+                cursor = connection.execute(
+                    f"""
+                    DELETE FROM checkpoints
+                    WHERE rowid IN (
+                        SELECT rowid FROM (
+                            SELECT rowid,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY entrypoint ORDER BY created_at DESC, run_id DESC
+                                ) AS rank
+                            FROM checkpoints
+                            WHERE 1=1 {keep_clause}
+                        )
+                        WHERE rank > ?
+                    )
+                    """,
+                    params + (policy.max_count_per_entrypoint,),
+                )
+                removed += cursor.rowcount
+
+            connection.commit()
+        return removed
+
+
+class PostgresCheckpointStore:
+    """Persist checkpoints in PostgreSQL using asyncpg."""
+
+    def __init__(self, dsn: str):
+        self.dsn = dsn
+        self._pool: Any | None = None
+
+    async def _ensure_pool(self) -> Any:
+        if self._pool is None:
+            import asyncpg
+
+            self._pool = await asyncpg.create_pool(self.dsn, min_size=1, max_size=10)
+        return self._pool
+
+    async def ping(self) -> None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as connection:
+            await connection.fetchval("SELECT 1")
+
+    async def close(self) -> None:
+        if self._pool is not None:
+            await self._pool.close()
+            self._pool = None
+
+    async def load(self, run_id: str) -> Mapping[str, Any] | None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as connection:
+            row = await connection.fetchrow(
+                "SELECT entrypoint, status, values_json FROM checkpoints WHERE run_id = $1",
+                run_id,
+            )
+        if row is None:
+            return None
+        try:
+            values = json.loads(row["values_json"])
+        except (TypeError, ValueError, json.JSONDecodeError):
+            values = {}
+        return {
+            "entrypoint": str(row["entrypoint"]),
+            "status": str(row["status"]),
+            "values": values if isinstance(values, dict) else {},
+        }
+
+    async def save(
+        self,
+        run_id: str,
+        entrypoint: str,
+        values: Mapping[str, Any],
+        status: str,
+        *,
+        expires_at: float | None = None,
+    ) -> None:
+        pool = await self._ensure_pool()
+        encoded = json.dumps(dict(values), ensure_ascii=False, default=str)
+        expires_value = postgres_timestamp(expires_at) if expires_at is not None else None
+        async with pool.acquire() as connection:
+            await connection.execute(
+                """
+                INSERT INTO checkpoints (run_id, entrypoint, status, values_json, expires_at)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (run_id) DO UPDATE SET
+                    entrypoint = excluded.entrypoint,
+                    status = excluded.status,
+                    values_json = excluded.values_json,
+                    updated_at = CURRENT_TIMESTAMP,
+                    expires_at = excluded.expires_at
+                """,
+                run_id,
+                entrypoint,
+                status,
+                encoded,
+                expires_value,
+            )
+
+    async def delete(self, run_id: str) -> None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as connection:
+            await connection.execute("DELETE FROM checkpoints WHERE run_id = $1", run_id)
+
+    async def setup(self) -> None:
+        """Create the checkpoints table if it does not exist."""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as connection:
+            await connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS checkpoints (
+                    run_id TEXT PRIMARY KEY,
+                    entrypoint TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    values_json TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    expires_at TIMESTAMPTZ
+                )
+                """
+            )
+            await connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_checkpoints_entrypoint
+                ON checkpoints (entrypoint)
+                """
+            )
+            await connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_checkpoints_expires_at
+                ON checkpoints (expires_at)
+                WHERE expires_at IS NOT NULL
+                """
+            )
+            await connection.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_checkpoints_created_at
+                ON checkpoints (entrypoint, created_at)
+                """
+            )
+
+    async def expire(self, policy: RetentionPolicy) -> int:
+        pool = await self._ensure_pool()
+        removed = 0
+        async with pool.acquire() as connection:
+            keep_clause = ""
+            params: list[Any] = []
+            if policy.keep_statuses:
+                placeholders = ", ".join(
+                    f"${index + 1}" for index in range(len(policy.keep_statuses))
+                )
+                keep_clause = f"AND status NOT IN ({placeholders})"
+                params = list(policy.keep_statuses)
+
+            if policy.max_age_seconds > 0:
+                cursor = await connection.execute(
+                    f"""
+                    DELETE FROM checkpoints
+                    WHERE updated_at < NOW() - INTERVAL '{policy.max_age_seconds} seconds'
+                    {keep_clause}
+                    """,
+                    *params,
+                )
+                removed += int(cursor.split()[-1]) if cursor.startswith("DELETE") else 0
+
+            if policy.max_count_per_entrypoint > 0:
+                offset = len(params) + 1
+                cursor = await connection.execute(
+                    f"""
+                    DELETE FROM checkpoints
+                    WHERE ctid IN (
+                        SELECT ctid FROM (
+                            SELECT ctid,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY entrypoint ORDER BY created_at DESC, run_id DESC
+                                ) AS rank
+                            FROM checkpoints
+                            WHERE TRUE {keep_clause}
+                        ) ranked
+                        WHERE rank > ${offset}
+                    )
+                    """,
+                    *params,
+                    policy.max_count_per_entrypoint,
+                )
+                removed += int(cursor.split()[-1]) if cursor.startswith("DELETE") else 0
+
+        return removed
+
+
+def sqlite3_datetime(timestamp: float) -> str:
+    """Return an ISO-8601 string suitable for SQLite datetime comparisons."""
+    from datetime import datetime
+
+    return datetime.fromtimestamp(timestamp, tz=UTC).isoformat()
+
+
+def postgres_timestamp(timestamp: float) -> Any:
+    """Return a timezone-aware datetime for asyncpg."""
+    from datetime import datetime
+
+    return datetime.fromtimestamp(timestamp, tz=UTC)
+
+
+def checkpoint_store_from_env() -> CheckpointStore | None:
+    """Return a checkpoint store chosen from environment variables."""
+
+    dsn = os.getenv("CHECKPOINT_DATABASE_URL") or os.getenv("DATABASE_URL", "").strip()
+    if dsn.startswith("postgresql://") or dsn.startswith("postgres://"):
+        return PostgresCheckpointStore(dsn)
+    path = os.getenv("CHECKPOINT_DB_PATH", "").strip()
+    if path:
+        return SQLiteCheckpointStore(path)
+    return None
+
+
+def retention_interval_seconds_from_env(environ: Mapping[str, str] | None = None) -> float:
+    """Return the configured background expiry interval, or 0 to disable."""
+    env = dict(environ or os.environ)
+    raw = env.get("CHECKPOINT_RETENTION_INTERVAL_SECONDS", "0") or "0"
+    try:
+        return max(0.0, float(raw))
+    except ValueError:
+        return 0.0
+
+
+async def run_expiry_loop(
+    store: CheckpointStore,
+    policy: RetentionPolicy,
+    interval_seconds: float,
+    shutdown_event: asyncio.Event,
+) -> None:
+    """Run ``store.expire(policy)`` every *interval_seconds* until shutdown.
+
+    The first run happens immediately. Exceptions are logged and the loop
+    continues so a transient database issue does not crash the runner.
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+    while not shutdown_event.is_set():
+        try:
+            removed = await store.expire(policy)
+            if removed:
+                logger.info("expired %d checkpoint(s)", removed)
+        except Exception:  # pragma: no cover - best-effort background task
+            logger.exception("checkpoint expiry failed")
+        try:
+            await asyncio.wait_for(shutdown_event.wait(), timeout=interval_seconds)
+        except TimeoutError:
+            pass

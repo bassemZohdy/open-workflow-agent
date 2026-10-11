@@ -1,0 +1,24 @@
+{
+  "Agent task": {
+    "prefix": "owf-agent",
+    "body": [
+      "metadata:",
+      "  adk:",
+      "    agent:",
+      "      model: ${1:gemini-2.5-flash}",
+      "      instruction: ${2:Describe the task}",
+      "      output_key: ${3:result}"
+    ],
+    "description": "OpenWorkflow ADK agent-characteristics extension"
+  },
+  "HTTP call": {
+    "prefix": "owf-http",
+    "body": [
+      "call: http",
+      "with:",
+      "  method: ${1:get}",
+      "  endpoint: ${2:https://example.test}"
+    ],
+    "description": "OpenWorkflow HTTP call task"
+  }
+}

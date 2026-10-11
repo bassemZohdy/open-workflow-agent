@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""Validate canonical release versions used by the container publication workflow."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+IDENTIFIER = r"(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)"
+SEMVER = re.compile(
+    rf"^v(?P<major>0|[1-9][0-9]*)\.(?P<minor>0|[1-9][0-9]*)\."
+    rf"(?P<patch>0|[1-9][0-9]*)(?:-(?P<prerelease>{IDENTIFIER}(?:\.{IDENTIFIER})*))?$"
+)
+
+
+def release_target(version: str) -> dict[str, str]:
+    """Return Docker-safe canonical tags, or reject non-canonical SemVer."""
+    match = SEMVER.fullmatch(version)
+    if not match:
+        raise ValueError(
+            "version must be strict SemVer with a v prefix, no leading zeroes, "
+            "non-empty prerelease identifiers, and no build metadata"
+        )
+    values = match.groupdict(default="")
+    return {
+        "version": version,
+        "tag_version": version[1:],
+        "major_tag": values["major"],
+        "minor_tag": f"{values['major']}.{values['minor']}",
+        "stable": str(not values["prerelease"]).lower(),
+    }
+
+
+def self_test() -> None:
+    valid = {"v0.0.0", "v1.2.3", "v1.2.3-rc.1", "v1.2.3-0", "v1.2.3-01a"}
+    invalid = {
+        "1.2.3",
+        "v01.2.3",
+        "v1.02.3",
+        "v1.2.03",
+        "v1.2.3-",
+        "v1.2.3-.1",
+        "v1.2.3-01",
+        "v1.2.3+build.1",
+        "v1.2.3-rc+build",
+        "v1.2",
+    }
+    for version in valid:
+        release_target(version)
+    for version in invalid:
+        try:
+            release_target(version)
+        except ValueError:
+            continue
+        raise AssertionError(f"accepted invalid version: {version}")
+    assert release_target("v1.2.3-rc.1")["tag_version"] == "1.2.3-rc.1"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("version", nargs="?")
+    parser.add_argument("--github-output", type=Path)
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
+    if args.self_test:
+        self_test()
+        return
+    if not args.version:
+        parser.error("version is required unless --self-test is used")
+    try:
+        target = release_target(args.version)
+    except ValueError as error:
+        print(str(error), file=sys.stderr)
+        raise SystemExit(2) from error
+    if args.github_output:
+        with args.github_output.open("a", encoding="utf-8") as output:
+            for key, value in target.items():
+                output.write(f"{key}={value}\n")
+    else:
+        print(json.dumps(target, sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()

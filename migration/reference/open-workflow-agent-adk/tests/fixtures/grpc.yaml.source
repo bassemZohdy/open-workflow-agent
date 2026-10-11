@@ -1,0 +1,19 @@
+document:
+  dsl: '1.0.3'
+  namespace: fixtures
+  name: grpc
+  version: '1.0.0'
+do:
+  - request:
+      call: grpc
+      with:
+        proto:
+          endpoint:
+            uri: https://example.test/echo.proto
+        service:
+          name: Echo
+          host: example.test
+          port: 443
+        method: Ping
+        arguments:
+          name: Ada

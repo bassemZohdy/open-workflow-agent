@@ -1,0 +1,12 @@
+component_type: Agent
+agentspec_version: "26.1.2"
+id: "example.support/support-agent@1.0.0"
+name: "support-agent"
+system_prompt: "You are a concise support assistant."
+llm_config:
+  component_type: OpenAiConfig
+  name: "support-model"
+  model_id: "gpt-4o-mini"
+tools: []
+memory:
+  type: conversation

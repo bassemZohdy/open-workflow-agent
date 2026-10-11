@@ -1,0 +1,19 @@
+"""Pydantic view of the Agent Spec fields consumed by the platform."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class AgentDocument(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    component_type: str
+    agentspec_version: str | None = None
+    id: str
+    name: str | None = None
+    system_prompt: str | None = None
+    tools: list[dict[str, Any]] = Field(default_factory=list)
+    memory: dict[str, Any] | None = None

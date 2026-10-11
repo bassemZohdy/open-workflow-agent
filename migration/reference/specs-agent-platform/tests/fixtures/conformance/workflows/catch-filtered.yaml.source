@@ -1,0 +1,17 @@
+document:
+  dsl: '1.0.3'
+  namespace: conformance.support
+  name: catch-filtered
+  version: '1.0.0'
+do:
+  - risky:
+      call: flaky
+      catch:
+        errors:
+          with:
+            type: RuntimeError
+        as: caught
+        do:
+          - recover:
+              set:
+                recovered: '${ .caught.message }'

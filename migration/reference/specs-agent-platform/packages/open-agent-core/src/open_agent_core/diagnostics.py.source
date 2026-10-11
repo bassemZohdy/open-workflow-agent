@@ -1,0 +1,71 @@
+from __future__ import annotations
+
+from enum import StrEnum
+from pathlib import Path
+from typing import Any
+
+import yaml
+from pydantic import BaseModel, ConfigDict
+from yaml.nodes import MappingNode, Node, SequenceNode
+
+
+class DiagnosticSeverity(StrEnum):
+    ERROR = "error"
+    WARNING = "warning"
+
+
+class Diagnostic(BaseModel):
+    """A stable, machine-readable validation or lowering diagnostic."""
+
+    model_config = ConfigDict(frozen=True)
+
+    code: str
+    message: str
+    severity: DiagnosticSeverity = DiagnosticSeverity.ERROR
+    source: Path | None = None
+    path: str | None = None
+    line: int | None = None
+    column: int | None = None
+
+    def format(self) -> str:
+        location = str(self.source) if self.source else "application"
+        if self.line is not None:
+            location += f":{self.line}"
+            if self.column is not None:
+                location += f":{self.column}"
+        pointer = f" ({self.path})" if self.path else ""
+        return f"{location}{pointer}: [{self.code}] {self.message}"
+
+
+def source_location(source: Path, path: tuple[Any, ...]) -> tuple[int | None, int | None]:
+    """Return one-based YAML source coordinates for a structured field path."""
+    if source.suffix.lower() == ".json":
+        return None, None
+    try:
+        root = yaml.compose(source.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, yaml.YAMLError):
+        return None, None
+    node: Node | None = root
+    for part in path:
+        if isinstance(node, MappingNode):
+            next_node = next(
+                (value for key, value in node.value if str(key.value) == str(part)),
+                None,
+            )
+            node = next_node
+        elif isinstance(node, SequenceNode) and isinstance(part, int):
+            node = node.value[part] if 0 <= part < len(node.value) else None
+        else:
+            node = None
+        if node is None:
+            return None, None
+    if node is None:
+        return None, None
+    return node.start_mark.line + 1, node.start_mark.column + 1
+
+
+class SpecValidationError(ValueError):
+    def __init__(self, diagnostics: list[Diagnostic]):
+        self.diagnostics = diagnostics
+        message = "\n".join(item.format() for item in diagnostics)
+        super().__init__(message)

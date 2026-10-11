@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Generate OpenAPI documents for both engine runners."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+
+os.environ.setdefault("ADK_NATIVE_UI", "0")
+os.environ.setdefault("CHECKPOINT_DB_PATH", "")
+
+from open_agent_adk.runner import create_app as create_adk_app
+from open_agent_lang.runner import create_app as create_lang_app
+
+ROOT = Path(__file__).resolve().parent.parent
+DOCS_DIR = ROOT / "docs"
+LANG_PATH = DOCS_DIR / "openapi-lang.json"
+ADK_PATH = DOCS_DIR / "openapi-adk.json"
+
+
+def _generate() -> tuple[dict[str, object], dict[str, object]]:
+    lang_app = create_lang_app(application_path=str(ROOT / "examples" / "application"))
+    adk_app = create_adk_app(application_path=str(ROOT / "examples" / "application"))
+    return lang_app.openapi(), adk_app.openapi()
+
+
+def _dump(spec: dict[str, object]) -> str:
+    return json.dumps(spec, indent=2, sort_keys=True) + "\n"
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Generate OpenAPI specs for both runners")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Fail if the generated specs differ from the checked-in files.",
+    )
+    args = parser.parse_args(argv)
+
+    lang_spec, adk_spec = _generate()
+    lang_text = _dump(lang_spec)
+    adk_text = _dump(adk_spec)
+
+    if args.check:
+        errors: list[str] = []
+        if not LANG_PATH.exists():
+            errors.append(f"missing {LANG_PATH}")
+        elif LANG_PATH.read_text(encoding="utf-8") != lang_text:
+            errors.append(f"{LANG_PATH} is out of date")
+        if not ADK_PATH.exists():
+            errors.append(f"missing {ADK_PATH}")
+        elif ADK_PATH.read_text(encoding="utf-8") != adk_text:
+            errors.append(f"{ADK_PATH} is out of date")
+        if errors:
+            print("OpenAPI drift detected:", file=sys.stderr)
+            for error in errors:
+                print(f"  - {error}", file=sys.stderr)
+            print("Run `python scripts/generate_openapi.py` to regenerate.", file=sys.stderr)
+            return 1
+        print("OpenAPI specs are up to date.")
+        return 0
+
+    DOCS_DIR.mkdir(parents=True, exist_ok=True)
+    LANG_PATH.write_text(lang_text, encoding="utf-8")
+    ADK_PATH.write_text(adk_text, encoding="utf-8")
+    print(f"Wrote {LANG_PATH}")
+    print(f"Wrote {ADK_PATH}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

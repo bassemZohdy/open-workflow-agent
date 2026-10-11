@@ -1,0 +1,35 @@
+name: Setup OWF environment
+
+description: >-
+  Install uv and Python, and sync dependencies after the caller checks out
+  the repository.
+
+inputs:
+  python-version:
+    description: Python version to install
+    required: true
+  sync-args:
+    description: Arguments passed to uv sync
+    required: false
+    default: "--frozen --all-extras"
+
+runs:
+  using: composite
+  steps:
+    # setup-uv publishes v9.0.0 without a moving v9 tag.
+    - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      with:
+        enable-cache: true
+        cache-dependency-glob: |
+          uv.lock
+          pyproject.toml
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Sync dependencies
+      shell: bash
+      env:
+        SYNC_ARGS: ${{ inputs.sync-args }}
+      run: |
+        read -r -a sync_arg_list <<< "$SYNC_ARGS"
+        uv sync "${sync_arg_list[@]}"

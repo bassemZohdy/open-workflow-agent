@@ -1,0 +1,13 @@
+document:
+  dsl: '1.0.3'
+  namespace: examples
+  name: echo
+  version: '1.0.0'
+do:
+  - callEcho:
+      call: http
+      with:
+        method: get
+        endpoint: http://echo:8080/hello
+      output:
+        as: response

@@ -1,0 +1,734 @@
+"""Small framework-neutral execution contract used by adapter packages."""
+
+from __future__ import annotations
+
+import asyncio
+import time
+import uuid
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
+from dataclasses import dataclass, field
+from typing import Any, Protocol
+
+import httpx
+from opentelemetry import metrics, trace
+
+from .expressions import call_function, condition_allows, duration_seconds, evaluate, resolve_value
+from .ir import AgentIR, ApplicationIR, TaskIR
+from .persistence import CheckpointStore, RetentionPolicy, retention_policy_from_env
+from .retry import parse_retry_config
+
+_TASK_EXECUTIONS: metrics.Counter | None = None
+_TASK_RETRIES: metrics.Counter | None = None
+_TASK_FAILURES: metrics.Counter | None = None
+_TASK_DURATION: metrics.Histogram | None = None
+_INVOKE_DURATION: metrics.Histogram | None = None
+
+
+def _task_counter(name: str, description: str) -> metrics.Counter:
+    return metrics.get_meter(__name__).create_counter(name, unit="1", description=description)
+
+
+def _task_histogram(name: str, description: str) -> metrics.Histogram:
+    return metrics.get_meter(__name__).create_histogram(name, unit="s", description=description)
+
+
+def _task_executions() -> metrics.Counter:
+    global _TASK_EXECUTIONS  # noqa: PLW0603
+    if _TASK_EXECUTIONS is None:
+        _TASK_EXECUTIONS = _task_counter("specs_agent.task.executions", "Number of task executions")
+    return _TASK_EXECUTIONS
+
+
+def _task_retries() -> metrics.Counter:
+    global _TASK_RETRIES  # noqa: PLW0603
+    if _TASK_RETRIES is None:
+        _TASK_RETRIES = _task_counter("specs_agent.task.retries", "Number of task retry attempts")
+    return _TASK_RETRIES
+
+
+def _task_failures() -> metrics.Counter:
+    global _TASK_FAILURES  # noqa: PLW0603
+    if _TASK_FAILURES is None:
+        _TASK_FAILURES = _task_counter("specs_agent.task.failures", "Number of task failures")
+    return _TASK_FAILURES
+
+
+def _task_duration() -> metrics.Histogram:
+    global _TASK_DURATION  # noqa: PLW0603
+    if _TASK_DURATION is None:
+        _TASK_DURATION = _task_histogram("specs_agent.task.duration", "Task execution duration")
+    return _TASK_DURATION
+
+
+def _invoke_duration() -> metrics.Histogram:
+    global _INVOKE_DURATION  # noqa: PLW0603
+    if _INVOKE_DURATION is None:
+        _INVOKE_DURATION = _task_histogram(
+            "specs_agent.invoke.duration", "Entrypoint invocation duration"
+        )
+    return _INVOKE_DURATION
+
+
+def _lookup_expression(expression: str, context: RuntimeContext) -> Any:
+    """Backward-compatible alias for :func:`open_agent_core.expressions.evaluate`."""
+    return evaluate(expression, context)
+
+
+def _resolve_value(value: Any, context: RuntimeContext) -> Any:
+    """Backward-compatible alias for :func:`open_agent_core.expressions.resolve_value`."""
+    return resolve_value(value, context)
+
+
+def _call_function(name: str, arguments: list[Any]) -> Any:
+    """Backward-compatible alias for :func:`open_agent_core.expressions.call_function`."""
+    return call_function(name, arguments)
+
+
+class AgentInvoker(Protocol):
+    async def invoke(
+        self, agent: AgentIR, messages: list[dict[str, Any]], context: RuntimeContext
+    ) -> Any: ...
+
+
+class EchoAgentInvoker:
+    async def invoke(
+        self, agent: AgentIR, messages: list[dict[str, Any]], context: RuntimeContext
+    ) -> Any:
+        del context
+        latest = messages[-1].get("content", "") if messages else ""
+        return {"content": f"{agent.name}: {latest}"}
+
+
+@dataclass
+class RuntimeContext:
+    input: dict[str, Any]
+    values: dict[str, Any] = field(default_factory=dict)
+    run_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    entrypoint: str | None = None
+    events: list[ExecutionEvent] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class ExecutionEvent:
+    run_id: str
+    kind: str
+    task: str | None = None
+    data: Mapping[str, Any] = field(default_factory=dict)
+    timestamp: float = field(default_factory=time.time)
+
+
+class RuntimeEngine(Protocol):
+    async def invoke(
+        self,
+        entrypoint: str,
+        payload: dict[str, Any],
+        *,
+        run_id: str | None = None,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]: ...
+
+    def stream(
+        self,
+        entrypoint: str,
+        payload: dict[str, Any],
+        *,
+        run_id: str | None = None,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> AsyncIterator[ExecutionEvent]: ...
+
+    async def execute_task(
+        self,
+        entrypoint: str,
+        task_name: str,
+        payload: dict[str, Any],
+        *,
+        values: dict[str, Any] | None = None,
+        run_id: str | None = None,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]: ...
+
+
+class InMemoryEngine:
+    """Deterministic local executor for tests and adapter smoke tests.
+
+    Implements the ``RuntimeEngine`` protocol by evaluating the normalized task
+    tree directly. Agent calls are dispatched through ``agent_invoker``; named
+    call handlers and HTTP endpoints are dispatched through ``call_handlers``.
+    Checkpoints are saved via ``checkpoint_store`` when configured.
+    """
+
+    def __init__(
+        self,
+        application: ApplicationIR,
+        *,
+        agent_invoker: AgentInvoker | None = None,
+        call_handlers: Mapping[str, Callable[[dict[str, Any]], Awaitable[Any]]] | None = None,
+        checkpoint_store: CheckpointStore | None = None,
+        retention_policy: RetentionPolicy | None = None,
+    ) -> None:
+        self.application = application
+        self.agent_invoker = agent_invoker or EchoAgentInvoker()
+        self.call_handlers = dict(call_handlers or {})
+        self.checkpoint_store = checkpoint_store
+        self.retention_policy = retention_policy or retention_policy_from_env()
+
+    async def _checkpoint(self, context: RuntimeContext, status: str) -> None:
+        """Persist the current execution values when checkpointing is enabled."""
+        if self.checkpoint_store is not None and context.entrypoint:
+            with trace.get_tracer(__name__).start_as_current_span(
+                "checkpoint.save",
+                attributes={"specs_agent.checkpoint.status": status},
+            ):
+                await self.checkpoint_store.save(
+                    context.run_id,
+                    context.entrypoint,
+                    context.values,
+                    status,
+                    expires_at=self.retention_policy.expires_at(time.time()),
+                )
+
+    async def _resolve_or_resume(
+        self,
+        resolved: str,
+        current_run_id: str,
+        payload: dict[str, Any],
+        messages: list[dict[str, Any]] | None,
+    ) -> tuple[RuntimeContext, bool]:
+        """Return a context and a flag indicating whether the run was resumed.
+
+        Loads a completed checkpoint and returns its values without re-executing
+        when one exists.
+        """
+        checkpoint = (
+            await self.checkpoint_store.load(current_run_id) if self.checkpoint_store else None
+        )
+        if (
+            checkpoint
+            and checkpoint.get("entrypoint") == resolved
+            and checkpoint.get("status") == "completed"
+        ):
+            values = checkpoint.get("values", {})
+            context = RuntimeContext(payload, run_id=current_run_id, entrypoint=resolved)
+            context.values = dict(values) if isinstance(values, dict) else {"output": values}
+            return context, True
+        return RuntimeContext(payload, run_id=current_run_id, entrypoint=resolved), False
+
+    @staticmethod
+    def _output(context: RuntimeContext) -> dict[str, Any]:
+        """Return the invocation output, wrapping non-dict values."""
+        output = context.values.get("output", context.values)
+        return output if isinstance(output, dict) else {"output": output}
+
+    async def invoke(
+        self,
+        entrypoint: str,
+        payload: dict[str, Any],
+        *,
+        run_id: str | None = None,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Invoke a workflow or agent entrypoint and return its output.
+
+        Resolves aliases, resumes from a completed checkpoint if one exists, and
+        saves checkpoints on completion or failure.
+        """
+        resolved = self.application.resolve_entrypoint(entrypoint)
+        current_run_id = run_id or str(uuid.uuid4())
+        with trace.get_tracer(__name__).start_as_current_span(
+            "invoke",
+            attributes={
+                "specs_agent.entrypoint": entrypoint,
+                "specs_agent.run_id": current_run_id,
+            },
+        ):
+            context, resumed = await self._resolve_or_resume(
+                resolved, current_run_id, payload, messages
+            )
+            if resumed:
+                return self._output(context)
+
+            workflow = next(
+                (item for item in self.application.workflows if item.id == resolved), None
+            )
+            if workflow is None:
+                agent = next(
+                    (item for item in self.application.agents if item.id == resolved), None
+                )
+                if agent is None:
+                    raise KeyError(f"Unknown entrypoint: {entrypoint}")
+                with trace.get_tracer(__name__).start_as_current_span("invoke.agent"):
+                    result = await self.agent_invoker.invoke(
+                        agent,
+                        messages or [{"role": "user", **payload}],
+                        context,
+                    )
+                context.values["output"] = (
+                    result if isinstance(result, dict) else {"output": result}
+                )
+                await self._checkpoint(context, "completed")
+                return result if isinstance(result, dict) else {"output": result}
+
+            if messages:
+                context.values["messages"] = messages
+            start = time.perf_counter()
+            try:
+                async for _event in self._run_tasks_streamed(workflow.tasks, context):
+                    pass
+            except (Exception, asyncio.CancelledError):
+                await self._checkpoint(context, "failed")
+                raise
+            finally:
+                _invoke_duration().record(time.perf_counter() - start, {"entrypoint": resolved})
+            await self._checkpoint(context, "completed")
+            return self._output(context)
+
+    async def stream(
+        self,
+        entrypoint: str,
+        payload: dict[str, Any],
+        *,
+        run_id: str | None = None,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> AsyncIterator[ExecutionEvent]:
+        """Invoke an entrypoint and yield execution events.
+
+        Yields ``task.started``/``task.completed`` events for each workflow task
+        and a final ``completed`` event carrying the output values. Agent-only
+        entrypoints yield the final event directly.
+        """
+        resolved = self.application.resolve_entrypoint(entrypoint)
+        current_run_id = run_id or str(uuid.uuid4())
+        context, resumed = await self._resolve_or_resume(
+            resolved, current_run_id, payload, messages
+        )
+        if resumed:
+            yield ExecutionEvent(current_run_id, "completed", data=self._output(context))
+            return
+
+        workflow = next((item for item in self.application.workflows if item.id == resolved), None)
+        if workflow is None:
+            agent = next((item for item in self.application.agents if item.id == resolved), None)
+            if agent is None:
+                raise KeyError(f"Unknown entrypoint: {entrypoint}")
+            with trace.get_tracer(__name__).start_as_current_span("invoke.agent"):
+                result = await self.agent_invoker.invoke(
+                    agent,
+                    messages or [{"role": "user", **payload}],
+                    context,
+                )
+            context.values["output"] = result if isinstance(result, dict) else {"output": result}
+            await self._checkpoint(context, "completed")
+            yield ExecutionEvent(current_run_id, "completed", data=self._output(context))
+            return
+
+        if messages:
+            context.values["messages"] = messages
+        start = time.perf_counter()
+        try:
+            async for event in self._run_tasks_streamed(workflow.tasks, context):
+                yield event
+        except (Exception, asyncio.CancelledError):
+            await self._checkpoint(context, "failed")
+            raise
+        finally:
+            _invoke_duration().record(time.perf_counter() - start, {"entrypoint": resolved})
+        await self._checkpoint(context, "completed")
+        yield ExecutionEvent(current_run_id, "completed", data=self._output(context))
+
+    async def execute_task(
+        self,
+        entrypoint: str,
+        task_name: str,
+        payload: dict[str, Any],
+        *,
+        values: dict[str, Any] | None = None,
+        run_id: str | None = None,
+        messages: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Execute a single named task from a workflow and return its values."""
+        resolved = self.application.resolve_entrypoint(entrypoint)
+        workflow = next((item for item in self.application.workflows if item.id == resolved), None)
+        if workflow is None:
+            raise KeyError(f"Unknown workflow entrypoint: {entrypoint}")
+        task = next((item for item in workflow.tasks if item.name == task_name), None)
+        if task is None:
+            raise KeyError(f"Unknown task {task_name!r} in workflow {resolved!r}")
+        context = RuntimeContext(
+            payload,
+            values=dict(values or {}),
+            run_id=run_id or str(uuid.uuid4()),
+            entrypoint=resolved,
+        )
+        if messages:
+            context.values["messages"] = messages
+        await self._run_task(task, context)
+        await self._checkpoint(context, "completed")
+        return dict(context.values)
+
+    async def _run_tasks_streamed(
+        self, tasks: tuple[TaskIR, ...], context: RuntimeContext
+    ) -> AsyncIterator[ExecutionEvent]:
+        """Execute tasks in order while yielding lifecycle events."""
+        for task in tasks:
+            event = ExecutionEvent(context.run_id, "task.started", task.name)
+            context.events.append(event)
+            yield event
+            with trace.get_tracer(__name__).start_as_current_span(
+                "task",
+                attributes={
+                    "specs_agent.task.name": task.name,
+                    "specs_agent.task.kind": task.kind,
+                },
+            ):
+                start = time.perf_counter()
+                try:
+                    await self._run_with_controls(task, context)
+                except Exception:
+                    _task_failures().add(1, {"task": task.name, "kind": task.kind})
+                    event = ExecutionEvent(context.run_id, "task.failed", task.name)
+                    context.events.append(event)
+                    yield event
+                    raise
+                else:
+                    await self._checkpoint(context, "running")
+                    event = ExecutionEvent(context.run_id, "task.completed", task.name)
+                    context.events.append(event)
+                    yield event
+                finally:
+                    _task_duration().record(time.perf_counter() - start, {"task": task.name})
+                    _task_executions().add(1, {"task": task.name, "kind": task.kind})
+
+    async def _run_tasks(self, tasks: tuple[TaskIR, ...], context: RuntimeContext) -> None:
+        """Execute tasks in order while recording lifecycle events and checkpoints."""
+        async for _event in self._run_tasks_streamed(tasks, context):
+            pass
+
+    @staticmethod
+    def _retry_attempts(task: TaskIR, context: RuntimeContext) -> tuple[int, float]:
+        """Return the total number of attempts and initial delay for a task.
+
+        Interprets several common ``retry`` config shapes, including
+        ``max_attempts``, ``limit.attempt.count``, ``attempts``, ``count``,
+        ``delay``, and ``backoff_seconds``. The returned attempt count is always
+        at least one.
+        """
+        policy = parse_retry_config(
+            task.config.get("retry"), resolve=lambda value: resolve_value(value, context)
+        )
+        return policy.max_attempts, policy.initial_delay_seconds
+
+    @staticmethod
+    def _retry_allowed(task: TaskIR, context: RuntimeContext) -> bool:
+        """Return whether a failed retry attempt should be retried.
+
+        Honors ``retry.when`` and ``retry.exceptWhen`` expressions when present.
+        """
+        retry = task.config.get("retry")
+        if not isinstance(retry, dict):
+            return True
+        return condition_allows(retry, context)
+
+    @staticmethod
+    def _catch_allowed(task: TaskIR, context: RuntimeContext) -> bool:
+        """Return whether a task failure should be caught and recovered.
+
+        Checks ``catch.errors.with`` against the current ``error`` value, then
+        evaluates ``catch.when`` and ``catch.exceptWhen`` expressions.
+        """
+        catch = task.config.get("catch")
+        if not isinstance(catch, dict):
+            return bool(task.catch_tasks)
+        errors = catch.get("errors", {})
+        expected = errors.get("with", {}) if isinstance(errors, dict) else {}
+        actual = context.values.get("error", {})
+        if isinstance(expected, dict) and isinstance(actual, dict):
+            for key, value in expected.items():
+                if actual.get(str(key)) != _resolve_value(value, context):
+                    return False
+        return condition_allows(catch, context)
+
+    async def _run_with_controls(self, task: TaskIR, context: RuntimeContext) -> None:
+        """Run a single task with retry, catch, and finally controls.
+
+        Retries are attempted up to the computed limit while retry conditions
+        allow. If all attempts fail and catch conditions allow, the catch tasks
+        run. Finally tasks always run if declared, even after success or failure.
+        """
+        attempts, backoff = self._retry_attempts(task, context)
+        failure: Exception | None = None
+        with trace.get_tracer(__name__).start_as_current_span(
+            "task.controls",
+            attributes={
+                "specs_agent.task.name": task.name,
+                "specs_agent.task.retry_attempts": attempts,
+            },
+        ):
+            try:
+                for attempt in range(attempts):
+                    try:
+                        await self._run_task(task, context)
+                        failure = None
+                        break
+                    except Exception as exc:
+                        failure = exc
+                        context.values["error"] = {
+                            "message": str(exc),
+                            "type": type(exc).__name__,
+                        }
+                        context.values["retry_attempt"] = attempt + 1
+                        _task_retries().add(1, {"task": task.name, "kind": task.kind})
+                        if attempt + 1 < attempts and self._retry_allowed(task, context):
+                            await asyncio.sleep(backoff)
+                            backoff = self._retry_delay(task, context, attempt + 1, backoff)
+                if failure is not None:
+                    if task.catch_tasks and self._catch_allowed(task, context):
+                        catch = task.config.get("catch")
+                        if isinstance(catch, dict):
+                            alias = catch.get("as", "error")
+                            if isinstance(alias, str):
+                                context.values[alias] = context.values.get("error")
+                        with trace.get_tracer(__name__).start_as_current_span("task.catch"):
+                            await self._run_tasks(task.catch_tasks, context)
+                    else:
+                        raise failure
+            finally:
+                if task.finally_tasks:
+                    with trace.get_tracer(__name__).start_as_current_span("task.finally"):
+                        await self._run_tasks(task.finally_tasks, context)
+
+    @staticmethod
+    def _retry_delay(task: TaskIR, context: RuntimeContext, attempt: int, previous: float) -> float:
+        """Compute the next retry delay from the task's backoff configuration.
+
+        Supports ``linear`` (adds the configured increment), ``exponential``
+        (doubles the previous delay), and ``constant`` backoff shapes.
+        """
+        retry = task.config.get("retry")
+        if not isinstance(retry, dict):
+            return previous
+        policy = parse_retry_config(retry, resolve=lambda value: resolve_value(value, context))
+        return policy.retry_delay(attempt, previous)
+
+    async def _run_task(self, task: TaskIR, context: RuntimeContext) -> None:
+        """Evaluate one normalized task and merge its result into runtime state."""
+        config = task.config
+        condition = config.get("if")
+        if condition is not None and not bool(_resolve_value(condition, context)):
+            context.values[task.name] = context.input
+            return
+        if task.kind == "fork" and task.fork_branches:
+
+            async def run_branch(branch: tuple[TaskIR, ...]) -> RuntimeContext:
+                branch_context = RuntimeContext(
+                    context.input,
+                    values=dict(context.values),
+                    run_id=context.run_id,
+                    entrypoint=context.entrypoint,
+                )
+                await self._run_tasks(branch, branch_context)
+                return branch_context
+
+            branch_tasks = [
+                asyncio.create_task(run_branch(branch)) for branch in task.fork_branches
+            ]
+            fork_config = config.get("fork", {})
+            compete = isinstance(fork_config, dict) and bool(fork_config.get("compete", False))
+            if compete:
+                done, pending = await asyncio.wait(
+                    branch_tasks, return_when=asyncio.FIRST_COMPLETED
+                )
+                for pending_task in pending:
+                    pending_task.cancel()
+                contexts = [await item for item in done]
+            else:
+                contexts = await asyncio.gather(*branch_tasks)
+            for branch_context in contexts:
+                context.values.update(branch_context.values)
+            context.values[task.name] = [item.values for item in contexts]
+            context.values["output"] = (
+                contexts[0].values if compete else [item.values for item in contexts]
+            )
+            return
+        if task.kind in {"do", "fork", "try", "for"}:
+            if task.kind == "for":
+                for_config = config.get("for", {})
+                if isinstance(for_config, dict):
+                    values = _resolve_value(for_config.get("in", []), context)
+                    variable = str(
+                        for_config.get("each", for_config.get("as", config.get("as", "item")))
+                    )
+                    index_name = str(for_config.get("at", config.get("at", "index")))
+                else:
+                    values = _resolve_value(for_config, context)
+                    variable = str(config.get("as", config.get("item", "item")))
+                    index_name = str(config.get("at", "index"))
+                if isinstance(values, dict):
+                    variable = str(values.get("as", variable))
+                    values = values.get("in", values.get("items", []))
+                if isinstance(values, list):
+                    _missing = object()
+                    previous = {
+                        variable: context.values.get(variable, _missing),
+                        index_name: context.values.get(index_name, _missing),
+                    }
+                    try:
+                        for index, value in enumerate(values):
+                            context.values[variable] = value
+                            context.values[index_name] = index
+                            while_condition = config.get("while")
+                            if while_condition is not None and not bool(
+                                _resolve_value(while_condition, context)
+                            ):
+                                break
+                            await self._run_tasks(task.children, context)
+                    finally:
+                        for key, old in previous.items():
+                            if old is _missing:
+                                context.values.pop(key, None)
+                            else:
+                                context.values[key] = old
+            else:
+                await self._run_tasks(task.children, context)
+            return
+        if task.kind == "set":
+            assignments = config.get("set", config)
+            if isinstance(assignments, dict):
+                for key, value in assignments.items():
+                    context.values[str(key)] = _resolve_value(value, context)
+            return
+        if task.kind == "switch":
+            selected = _resolve_value(config.get("case"), context)
+            switch_key: str | None = str(selected) if selected is not None else None
+            clauses = config.get("switch")
+            if isinstance(clauses, list):
+                for clause in clauses:
+                    if not isinstance(clause, dict):
+                        continue
+                    clause_name = str(clause.get("name", clause.get("when", "")))
+                    when = clause.get("when")
+                    if (selected is not None and clause_name == switch_key) or (
+                        selected is None
+                        and when is not None
+                        and bool(_resolve_value(when, context))
+                    ):
+                        switch_key = clause_name
+                        break
+                else:
+                    switch_key = next(
+                        (
+                            str(clause.get("name"))
+                            for clause in clauses
+                            if isinstance(clause, dict) and clause.get("default")
+                        ),
+                        switch_key,
+                    )
+            if switch_key is None:
+                switch_key = next(iter(task.branches), None)
+            if switch_key in task.branches:
+                await self._run_tasks(task.branches[switch_key], context)
+            return
+        if task.kind == "raise":
+            raise RuntimeError(
+                str(config.get("raise", config.get("error", "workflow raised an error")))
+            )
+        if task.kind == "wait":
+            await asyncio.sleep(duration_seconds(_resolve_value(config.get("wait"), context)))
+            return
+        if task.kind == "listen":
+            listen = config.get("listen", {})
+            incoming: Any = context.input.get("events", context.values.get("events", []))
+            if "event" in context.input:
+                incoming = [context.input["event"]]
+            if not isinstance(incoming, list):
+                incoming = [incoming]
+            filters: list[Any] = []
+            if isinstance(listen, dict):
+                target = listen.get("to", {})
+                if isinstance(target, dict):
+                    candidate = target.get("one", target.get("any", target.get("all", [])))
+                    if isinstance(candidate, list):
+                        filters = candidate
+                    elif isinstance(candidate, dict):
+                        filters = [candidate]
+            matched = [
+                event
+                for event in incoming
+                if not filters
+                or any(
+                    isinstance(item, dict)
+                    and isinstance(item.get("with", item), dict)
+                    and isinstance(event, dict)
+                    and all(
+                        event.get(key) == value for key, value in item.get("with", item).items()
+                    )
+                    for item in filters
+                )
+            ]
+            if not matched:
+                raise RuntimeError("no matching event available for listen task")
+            context.values[task.name] = matched
+            context.values["output"] = matched
+            return
+        if task.kind == "call":
+            target = config.get("call")
+            arguments = _resolve_value(config.get("with", config.get("input", {})), context)
+            if not isinstance(arguments, dict):
+                arguments = {"value": arguments}
+            if isinstance(target, str) and target in self.application.bindings.agent_calls:
+                agent_id = self.application.bindings.agent_calls[target]
+                agent = next(
+                    (item for item in self.application.agents if item.id == agent_id), None
+                )
+                if agent is None:
+                    raise KeyError(f"Unknown bound agent: {agent_id}")
+                result = await self.agent_invoker.invoke(
+                    agent,
+                    context.values.get("messages", [{"role": "user", "content": arguments}]),
+                    context,
+                )
+            elif isinstance(target, str) and target in self.call_handlers:
+                result = await self.call_handlers[target](arguments)
+            elif isinstance(target, str) and target.startswith(("http://", "https://")):
+                method = str(config.get("method", "POST")).upper()
+                headers = config.get("headers", {})
+                if not isinstance(headers, dict):
+                    headers = {}
+                try:
+                    timeout = float(config.get("timeout_seconds", 30.0))
+                except ValueError:
+                    timeout = 30.0
+                with trace.get_tracer(__name__).start_as_current_span(
+                    "task.call.http",
+                    attributes={"http.url": target, "http.method": method},
+                ):
+                    async with httpx.AsyncClient(timeout=timeout) as client:
+                        response = await client.request(
+                            method,
+                            target,
+                            json=arguments,
+                            headers={str(key): str(value) for key, value in headers.items()},
+                        )
+                        response.raise_for_status()
+                        try:
+                            result = response.json()
+                        except ValueError:
+                            result = {"status_code": response.status_code, "text": response.text}
+            else:
+                result = {"call": target, "with": arguments}
+            context.values[task.name] = result
+            context.values["output"] = result if isinstance(result, dict) else {"result": result}
+            return
+        if task.kind in {"emit", "run"}:
+            context.events.append(ExecutionEvent(context.run_id, task.kind, task.name, config))
+            return
+        context.values[task.name] = config
+
+
+async def wait_for_engine(
+    engine: RuntimeEngine, entrypoint: str, payload: dict[str, Any]
+) -> dict[str, Any]:
+    return await engine.invoke(entrypoint, payload)
+
+
+def run_sync(engine: RuntimeEngine, entrypoint: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return asyncio.run(wait_for_engine(engine, entrypoint, payload))

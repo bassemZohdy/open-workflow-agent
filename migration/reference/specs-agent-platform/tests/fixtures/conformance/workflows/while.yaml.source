@@ -1,0 +1,12 @@
+document:
+  dsl: '1.0.3'
+  namespace: conformance.support
+  name: while
+  version: '1.0.0'
+do:
+  - loop:
+      while: '${ .counter < 3 }'
+      do:
+        - bump:
+            set:
+              counter: '${ .counter + 1 }'

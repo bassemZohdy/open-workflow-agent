@@ -1,0 +1,71 @@
+"""MCP stdio tools adapted to Google ADK's native BaseTool contract."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from google.genai import types
+from open_agent_core import McpProcessManager, McpToolError
+
+
+class McpToolRegistry:
+    """Resolve `bindings.tool_bindings` entries through MCP stdio servers."""
+
+    def __init__(self, bindings: dict[str, dict[str, Any]]):
+        self._manager = McpProcessManager(bindings)
+
+    @property
+    def bindings(self) -> dict[str, dict[str, Any]]:
+        return self._manager.bindings
+
+    async def start(self) -> None:
+        await self._manager.start()
+
+    async def close(self) -> None:
+        await self._manager.close()
+
+    async def discover(self, binding_name: str) -> list[dict[str, Any]]:
+        return await self._manager.discover(binding_name)
+
+    async def call(self, binding_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        return await self._manager.call(binding_name, arguments)
+
+    def health_summary(self) -> dict[str, dict[str, Any]]:
+        return self._manager.health_summary()
+
+
+class AdkMcpTool:
+    """Native ADK BaseTool wrapper for one declarative Agent Spec tool."""
+
+    def __new__(
+        cls,
+        name: str,
+        description: str,
+        parameters: dict[str, Any],
+        binding: str,
+        registry: McpToolRegistry,
+    ) -> Any:
+        from google.adk.tools.base_tool import BaseTool
+
+        class _Tool(BaseTool):
+            def __init__(self) -> None:
+                super().__init__(name=name, description=description)
+
+            def _get_declaration(self) -> types.FunctionDeclaration:
+                return types.FunctionDeclaration(
+                    name=name,
+                    description=description,
+                    parameters_json_schema=parameters,
+                )
+
+            async def run_async(self, *, args: dict[str, Any], tool_context: Any) -> Any:
+                del tool_context
+                try:
+                    return await registry.call(binding, args)
+                except McpToolError as exc:
+                    return exc.as_dict()
+
+        return _Tool()
+
+
+__all__ = ["AdkMcpTool", "McpToolError", "McpToolRegistry"]

@@ -1,0 +1,140 @@
+[project]
+name = "open-workflow-agent-adk"
+version = "0.2.1"
+description = "Translates OpenWorkflow Specification documents into runnable ADK agentic components"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "OpenWorkflow ADK contributors" }]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "google-adk==2.6.3",
+    "greenlet>=3.0",
+    "httpx",
+    "asyncpg>=0.29",
+    "defusedxml>=0.7",
+    "opentelemetry-api>=1.30",
+    "jsonschema",
+    "jsonata-python",
+    "packaging>=23",
+    "pydantic>=2",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+bedrock = [
+    "boto3>=1.34",
+]
+temporal = [
+    "temporalio>=1.7",
+]
+containers = [
+    "docker>=7.0",
+]
+grpc = [
+    "grpcio>=1.60",
+    "grpcio-tools>=1.60",
+]
+redis = [
+    "redis>=5.0",
+]
+database = [
+    "sqlalchemy>=2.0",
+]
+dev = [
+    "google-adk[eval]==2.6.3",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pip-audit>=2.7",
+    "opentelemetry-sdk>=1.30",
+    "respx",
+    "ruff",
+    "testcontainers[postgres,redis]>=4.15.0",
+    "hypothesis>=6.100",
+    "mutmut>=3.2",
+    "import-linter>=2.0",
+]
+brokers = [
+    "aiokafka>=0.10",
+    "aio-pika>=9.4",
+    "nats-py>=2.7",
+]
+server = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+]
+all = [
+    "open-workflow-agent-adk[bedrock,temporal,containers,grpc,redis,database,brokers,server]",
+]
+
+[project.urls]
+Repository = "https://github.com/bassemZohdy/open-workflow-agent-adk"
+Documentation = "https://github.com/bassemZohdy/open-workflow-agent-adk/blob/main/docs/index.md"
+Changelog = "https://github.com/bassemZohdy/open-workflow-agent-adk/blob/main/CHANGELOG.md"
+Issues = "https://github.com/bassemZohdy/open-workflow-agent-adk/issues"
+
+[project.scripts]
+owf-adk = "openworkflow_adk.cli:main"
+spec-drift-check = "openworkflow_adk.schema:spec_drift_check"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/openworkflow_adk"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.mutmut]
+source_paths = ["src/openworkflow_adk/expressions.py"]
+also_copy = ["src/openworkflow_adk"]
+pytest_add_cli_args_test_selection = [
+    "tests/core/test_expressions.py",
+    "tests/security/test_expression_safety.py",
+    "tests/core/test_expression_properties.py",
+]
+
+[tool.importlinter]
+root_package = "openworkflow_adk"
+exclude_type_checking_imports = true
+
+[[tool.importlinter.contracts]]
+name = "Translator and runtime never import tools"
+type = "forbidden"
+source_modules = [
+    "openworkflow_adk.translator",
+    "openworkflow_adk.runtime",
+    "openworkflow_adk.tasks",
+]
+forbidden_modules = ["openworkflow_adk.tools", "openworkflow_adk.interop", "openworkflow_adk.devtools"]
+
+[[tool.importlinter.contracts]]
+name = "Core never imports ops services"
+type = "forbidden"
+source_modules = [
+    "openworkflow_adk.translator",
+    "openworkflow_adk.registry",
+    "openworkflow_adk.run_config",
+    "openworkflow_adk.state",
+    "openworkflow_adk.models",
+    "openworkflow_adk.durations",
+    "openworkflow_adk.suspension",
+]
+forbidden_modules = ["openworkflow_adk.ops", "openworkflow_adk.tools", "openworkflow_adk.interop", "openworkflow_adk.devtools"]

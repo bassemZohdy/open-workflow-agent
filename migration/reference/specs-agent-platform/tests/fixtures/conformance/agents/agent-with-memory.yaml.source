@@ -1,0 +1,12 @@
+component_type: Agent
+agentspec_version: '26.1.2'
+id: conformance.support/support-agent-with-memory@1.0.0
+name: support-agent-with-memory
+system_prompt: You remember things.
+llm_config:
+  component_type: OpenAiConfig
+  name: memory-model
+  model_id: gpt-4o-mini
+memory:
+  type: buffer
+  k: 5

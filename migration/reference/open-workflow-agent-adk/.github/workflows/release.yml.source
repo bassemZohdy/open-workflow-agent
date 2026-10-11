@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-owf
+        with:
+          python-version: "3.12"
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run pytest
+
+  version-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          enable-cache: false
+      - name: Assert tag matches pyproject.toml version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VERSION=$(uvx --from toml-cli toml get \
+            --toml-path pyproject.toml project.version)
+          if [ "$TAG" != "$VERSION" ]; then
+            echo "Tag v$TAG does not match pyproject.toml version $VERSION"
+            exit 1
+          fi
+
+  publish:
+    needs: [test, version-check]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-owf
+        with:
+          python-version: "3.12"
+          sync-args: "--frozen --no-dev"
+      - run: uv build
+      - name: Validate distributions
+        run: uvx --from twine twine check dist/*
+      - name: Smoke-test built wheel
+        run: |
+          uv venv /tmp/owf-smoke --python python3.12
+          uv pip install --python /tmp/owf-smoke/bin/python dist/*.whl
+          /tmp/owf-smoke/bin/owf-adk --version
+          /tmp/owf-smoke/bin/python -c "import openworkflow_adk"
+      - name: Publish to PyPI with trusted publishing
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+
+  release-notes:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Extract CHANGELOG section for release
+        id: changelog
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          SECTION=$(awk -v ver="$VERSION" '
+            /^## / {
+              if (found) exit
+              if ($2 == ver " —" || $2 == ver) found = 1
+            }
+            found
+          ' CHANGELOG.md)
+          EOF=$(openssl rand -hex 12)
+          {
+            echo "body<<$EOF"
+            echo "$SECTION"
+            echo "$EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_BODY: ${{ steps.changelog.outputs.body }}
+        run: |
+          if [ -z "$RELEASE_BODY" ]; then
+            gh release create "$GITHUB_REF_NAME" --generate-notes
+          else
+            printf '%s\n' "$RELEASE_BODY" > /tmp/owf-release-notes.md
+            gh release create "$GITHUB_REF_NAME" \
+              --notes-file /tmp/owf-release-notes.md
+          fi

@@ -1,0 +1,335 @@
+"""Shared MCP stdio runtime with sandboxing, lifecycle limits, and health."""
+
+from __future__ import annotations
+
+import asyncio
+import os
+import shutil
+import time
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, TypeVar
+
+_T = TypeVar("_T")
+
+
+class McpToolError(RuntimeError):
+    """Structured MCP invocation failure that can be returned to an agent."""
+
+    def __init__(self, binding: str, tool: str, message: str):
+        self.binding = binding
+        self.tool = tool
+        self.message = message
+        super().__init__(message)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "error": {
+                "type": "mcp_tool_error",
+                "message": self.message,
+                "binding": self.binding,
+                "tool": self.tool,
+            }
+        }
+
+
+@dataclass
+class McpBindingHealth:
+    """Mutable health record for one MCP binding."""
+
+    status: str = "unknown"
+    last_success_at: float | None = None
+    last_failure_at: float | None = None
+    consecutive_failures: int = 0
+    last_error: str | None = None
+
+    def record_success(self) -> None:
+        self.status = "healthy"
+        self.last_success_at = time.monotonic()
+        self.consecutive_failures = 0
+        self.last_error = None
+
+    def record_failure(self, message: str) -> None:
+        self.status = "unhealthy"
+        self.last_failure_at = time.monotonic()
+        self.consecutive_failures += 1
+        self.last_error = message
+
+
+class McpSandboxPolicy:
+    """Validate MCP binding configuration against deployment policy.
+
+    Environment variables:
+
+    - ``MCP_ALLOWED_COMMANDS``: comma-separated allow list (empty means allow all
+      except denied commands).
+    - ``MCP_DENIED_COMMANDS``: comma-separated deny list (default shell
+      interpreters).
+    - ``MCP_ALLOW_SHELL``: set to ``1``/``true`` to allow shell interpreters.
+    - ``MCP_ALLOWED_ENV_VARS``: comma-separated env vars that may be passed
+      through to the subprocess.
+    - ``MCP_DENIED_ENV_VARS``: comma-separated env vars that must be stripped.
+    - ``MCP_ALLOWED_CWD_ROOT``: if set, ``cwd`` must be under this directory.
+    """
+
+    DEFAULT_DENIED = {"sh", "bash", "zsh", "cmd", "powershell", "pwsh", "fish", "csh"}
+
+    def __init__(self) -> None:
+        allowed = os.getenv("MCP_ALLOWED_COMMANDS", "").strip()
+        self.allowed_commands = {c.strip() for c in allowed.split(",") if c.strip()} or None
+        denied = os.getenv("MCP_DENIED_COMMANDS", "").strip()
+        self.denied_commands = (
+            {c.strip().lower() for c in denied.split(",") if c.strip()}
+            if denied
+            else set(self.DEFAULT_DENIED)
+        )
+        self.allow_shell = os.getenv("MCP_ALLOW_SHELL", "").lower() in {"1", "true", "yes"}
+        allowed_env = os.getenv("MCP_ALLOWED_ENV_VARS", "").strip()
+        self.allowed_env_vars = (
+            {v.strip() for v in allowed_env.split(",") if v.strip()} if allowed_env else None
+        )
+        denied_env = os.getenv("MCP_DENIED_ENV_VARS", "").strip()
+        self.denied_env_vars = {v.strip() for v in denied_env.split(",") if v.strip()}
+        root = os.getenv("MCP_ALLOWED_CWD_ROOT", "").strip()
+        self.allowed_cwd_root = Path(root).expanduser().resolve() if root else None
+
+    def validate(self, binding_name: str, binding: dict[str, Any]) -> None:
+        """Raise ``ValueError`` if the binding violates sandbox policy."""
+        command = binding.get("command")
+        if not isinstance(command, str) or not command:
+            raise ValueError(f"MCP binding {binding_name!r} requires a command")
+
+        base = Path(command).name.lower()
+        if self.allowed_commands is not None and base not in self.allowed_commands:
+            raise ValueError(f"MCP binding {binding_name!r} command is not in allowed list")
+        if base in self.denied_commands and not self.allow_shell:
+            raise ValueError(f"MCP binding {binding_name!r} uses denied shell interpreter")
+        if shutil.which(command) is None and not Path(command).is_absolute():
+            # Allow absolute paths even if not in PATH; relative paths must resolve.
+            pass
+
+        cwd = binding.get("cwd")
+        if cwd is not None and self.allowed_cwd_root is not None:
+            cwd_path = Path(cwd).expanduser().resolve()
+            try:
+                cwd_path.relative_to(self.allowed_cwd_root)
+            except ValueError as exc:
+                raise ValueError(
+                    f"MCP binding {binding_name!r} cwd is outside allowed root"
+                ) from exc
+
+    def filtered_env(self, binding_name: str, binding: dict[str, Any]) -> dict[str, str]:
+        """Return environment variables safe to pass to the subprocess."""
+        configured = binding.get("env", {})
+        if not isinstance(configured, dict):
+            raise ValueError(f"MCP binding {binding_name!r}.env must be a mapping")
+        base = {str(k): str(v) for k, v in os.environ.items()}
+        if self.allowed_env_vars is not None:
+            base = {k: v for k, v in base.items() if k in self.allowed_env_vars}
+        base = {k: v for k, v in base.items() if k not in self.denied_env_vars}
+        base.update({str(k): str(v) for k, v in configured.items()})
+        return base
+
+
+class McpProcessManager:
+    """Resolve bindings through MCP stdio servers with lifecycle controls.
+
+    Environment variables:
+
+    - ``MCP_TOOL_TIMEOUT_SECONDS``: per-call timeout (default 30).
+    - ``MCP_DISCOVERY_TIMEOUT_SECONDS``: discovery timeout (default 5).
+    - ``MCP_MAX_OUTPUT_BYTES``: max output bytes per call (default 1 MiB).
+    - ``MCP_MAX_CONCURRENT_SESSIONS``: max concurrent MCP sessions (default 10).
+    - ``MCP_DISCOVERY_TTL_SECONDS``: discovery cache lifetime (default 60).
+    """
+
+    def __init__(self, bindings: Mapping[str, Mapping[str, Any]]) -> None:
+        self.bindings = {str(name): dict(config) for name, config in bindings.items()}
+        self.sandbox = McpSandboxPolicy()
+        self.tool_timeout = self._float_env("MCP_TOOL_TIMEOUT_SECONDS", 30.0)
+        self.discovery_timeout = self._float_env("MCP_DISCOVERY_TTL_SECONDS", 5.0)
+        self.max_output_bytes = max(0, self._int_env("MCP_MAX_OUTPUT_BYTES", 1_048_576))
+        max_sessions = max(1, self._int_env("MCP_MAX_CONCURRENT_SESSIONS", 10))
+        self._semaphore = asyncio.Semaphore(max_sessions)
+        self._discovery_cache: dict[str, tuple[float, list[dict[str, Any]]]] = {}
+        self.health: dict[str, McpBindingHealth] = {
+            name: McpBindingHealth() for name in self.bindings
+        }
+        self._closed = False
+        self._active_tasks: set[asyncio.Task[Any]] = set()
+
+    @staticmethod
+    def _float_env(name: str, default: float) -> float:
+        try:
+            return max(0.0, float(os.getenv(name, str(default))))
+        except ValueError:
+            return default
+
+    @staticmethod
+    def _int_env(name: str, default: int) -> int:
+        try:
+            return max(0, int(os.getenv(name, str(default))))
+        except ValueError:
+            return default
+
+    async def start(self) -> None:
+        """Lifecycle hook for the MCP registry.
+
+        Sessions are created on demand. Starting reopens a manager that was
+        closed by an earlier application lifespan so test and embedding hosts
+        can safely reuse the same engine instance.
+        """
+        self._closed = False
+
+    async def close(self) -> None:
+        """Cancel in-flight MCP calls and wait for their sessions to drain."""
+        self._closed = True
+        current = asyncio.current_task()
+        tasks = [task for task in self._active_tasks if task is not current and not task.done()]
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self._active_tasks.clear()
+
+    async def _with_session(
+        self,
+        binding_name: str,
+        operation: Callable[[Any], Awaitable[_T]],
+    ) -> _T:
+        """Run ``operation`` inside an MCP session and track it for cancellation."""
+        if self._closed:
+            raise RuntimeError("MCP process manager is closed")
+        task = asyncio.current_task()
+        if task is not None:
+            self._active_tasks.add(task)
+        try:
+            async with self._session(binding_name) as session:
+                return await operation(session)
+        finally:
+            if task is not None:
+                self._active_tasks.discard(task)
+
+    @asynccontextmanager
+    async def _session(self, binding_name: str) -> AsyncIterator[Any]:
+        binding = self.bindings.get(binding_name)
+        if binding is None:
+            raise KeyError(f"Unknown MCP tool binding: {binding_name}")
+        transport = str(binding.get("transport", "stdio")).lower()
+        if transport != "stdio":
+            raise ValueError(f"Unsupported MCP transport: {transport}")
+
+        self.sandbox.validate(binding_name, binding)
+
+        args = binding.get("args", [])
+        if not isinstance(args, list):
+            raise ValueError(f"MCP binding {binding_name!r}.args must be a list")
+
+        from mcp import ClientSession, StdioServerParameters
+        from mcp.client.stdio import stdio_client
+
+        parameters = StdioServerParameters(
+            command=str(binding["command"]),
+            args=[str(item) for item in args],
+            env=self.sandbox.filtered_env(binding_name, binding),
+            cwd=str(binding["cwd"]) if binding.get("cwd") else None,
+        )
+        async with self._semaphore:
+            async with stdio_client(parameters) as (read_stream, write_stream):
+                async with ClientSession(read_stream, write_stream) as session:
+                    await session.initialize()
+                    yield session
+
+    async def discover(self, binding_name: str) -> list[dict[str, Any]]:
+        cached = self._discovery_cache.get(binding_name)
+        ttl = self._float_env("MCP_DISCOVERY_TTL_SECONDS", 60.0)
+        if cached and ttl > 0 and time.monotonic() - cached[0] < ttl:
+            return [dict(tool) for tool in cached[1]]
+        try:
+            async with asyncio.timeout(self.discovery_timeout):
+                result = await self._with_session(
+                    binding_name, lambda session: session.list_tools()
+                )
+        except Exception as exc:
+            self.health[binding_name].record_failure(str(exc))
+            raise
+        tools: list[dict[str, Any]] = []
+        for tool in result.tools:
+            if hasattr(tool, "model_dump"):
+                tools.append(tool.model_dump(mode="json"))
+            else:
+                tools.append({"name": getattr(tool, "name", str(tool))})
+        self._discovery_cache[binding_name] = (time.monotonic(), tools)
+        self.health[binding_name].record_success()
+        return [dict(tool) for tool in tools]
+
+    async def call(self, binding_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
+        binding = self.bindings.get(binding_name)
+        if binding is None:
+            raise KeyError(f"Unknown MCP tool binding: {binding_name}")
+        tool_name = str(binding.get("tool", binding.get("name", binding_name)))
+        try:
+            async with asyncio.timeout(self.tool_timeout):
+                result = await self._with_session(
+                    binding_name, lambda session: session.call_tool(tool_name, arguments)
+                )
+        except TimeoutError as exc:
+            self.health[binding_name].record_failure("MCP tool timed out")
+            raise McpToolError(binding_name, tool_name, "MCP tool timed out") from exc
+        except Exception as exc:
+            self.health[binding_name].record_failure(str(exc))
+            raise
+        if getattr(result, "isError", False):
+            self.health[binding_name].record_failure("MCP server returned an error")
+            raise McpToolError(binding_name, tool_name, "MCP server returned an error")
+        content: list[Any] = []
+        total_bytes = 0
+        for item in getattr(result, "content", []):
+            piece: Any
+            if getattr(item, "text", None) is not None:
+                piece = item.text
+            elif hasattr(item, "model_dump"):
+                piece = item.model_dump(mode="json")
+            else:
+                piece = str(item)
+            total_bytes += len(str(piece).encode("utf-8"))
+            if self.max_output_bytes and total_bytes > self.max_output_bytes:
+                self.health[binding_name].record_failure("MCP output exceeded max size")
+                raise McpToolError(binding_name, tool_name, "MCP output exceeded max size")
+            content.append(piece)
+        self.health[binding_name].record_success()
+        return {
+            "tool": tool_name,
+            "content": content,
+            "metadata": {"binding": binding_name, "transport": "stdio"},
+        }
+
+    def health_summary(self) -> dict[str, dict[str, Any]]:
+        """Return a JSON-serializable health map for all configured bindings."""
+        now = time.monotonic()
+        return {
+            name: {
+                "status": record.status,
+                "last_success_at": record.last_success_at,
+                "last_failure_at": record.last_failure_at,
+                "consecutive_failures": record.consecutive_failures,
+                "last_error": record.last_error,
+                "seconds_since_success": (
+                    None if record.last_success_at is None else now - record.last_success_at
+                ),
+                "seconds_since_failure": (
+                    None if record.last_failure_at is None else now - record.last_failure_at
+                ),
+            }
+            for name, record in self.health.items()
+        }
+
+
+__all__ = [
+    "McpBindingHealth",
+    "McpProcessManager",
+    "McpSandboxPolicy",
+    "McpToolError",
+]

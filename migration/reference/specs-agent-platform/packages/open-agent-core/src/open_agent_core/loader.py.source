@@ -1,0 +1,264 @@
+from __future__ import annotations
+
+import os
+import re
+from collections.abc import Iterable
+from pathlib import Path
+
+import yaml
+
+from .agent_spec import is_agent_document, load_agent
+from .diagnostics import Diagnostic, SpecValidationError
+from .ir import AgentIR, ApplicationIR, BindingsIR, TaskIR, WorkflowIR
+from .workflow import is_workflow_document, load_workflow
+
+
+def _source_files(root: Path, explicit: tuple[Path, ...] = ()) -> Iterable[Path]:
+    if explicit:
+        seen: set[Path] = set()
+        for path in explicit:
+            if path not in seen:
+                seen.add(path)
+                yield path
+        return
+    if root.is_file():
+        yield root
+        return
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.name == "bindings.yaml":
+            continue
+        if path.suffix.lower() in {".yaml", ".yml", ".json"}:
+            yield path
+
+
+def _bindings(root: Path) -> BindingsIR:
+    path = root / "bindings.yaml"
+    if not path.exists():
+        return BindingsIR()
+    try:
+        value = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, yaml.YAMLError) as exc:
+        raise SpecValidationError(
+            [Diagnostic(code="BINDINGS_READ_ERROR", message=str(exc), source=path)]
+        ) from exc
+    if not isinstance(value, dict):
+        raise SpecValidationError(
+            [
+                Diagnostic(
+                    code="BINDINGS_ROOT_TYPE",
+                    message="bindings must be an object",
+                    source=path,
+                )
+            ]
+        )
+    for section in ("agent_calls", "tool_bindings", "aliases"):
+        if section in value and not isinstance(value[section], dict):
+            raise SpecValidationError(
+                [
+                    Diagnostic(
+                        code="BINDINGS_SECTION_TYPE",
+                        message=f"bindings.{section} must be a mapping.",
+                        source=path,
+                        path=section,
+                    )
+                ]
+            )
+    return BindingsIR(
+        agent_calls={str(k): str(v) for k, v in value.get("agent_calls", {}).items()},
+        tool_bindings={str(k): v for k, v in value.get("tool_bindings", {}).items()},
+        aliases={str(k): str(v) for k, v in value.get("aliases", {}).items()},
+    )
+
+
+_AGENT_ID_RE = re.compile(r"^.+/[^/]+@[^@/]+$")
+
+
+def _collect_call_targets(tasks: tuple[TaskIR, ...]) -> list[tuple[str, TaskIR]]:
+    """Return all call targets with their source task."""
+    targets: list[tuple[str, TaskIR]] = []
+    for task in tasks:
+        if task.kind == "call":
+            call = task.config.get("call")
+            if isinstance(call, str):
+                targets.append((call, task))
+        targets.extend(_collect_call_targets(task.children))
+        for branch in task.branches.values():
+            targets.extend(_collect_call_targets(branch))
+        for branch in task.fork_branches:
+            targets.extend(_collect_call_targets(branch))
+        targets.extend(_collect_call_targets(task.catch_tasks))
+        targets.extend(_collect_call_targets(task.finally_tasks))
+    return targets
+
+
+def _validate_workflow_versions(workflows: list[WorkflowIR]) -> list[Diagnostic]:
+    """Reject mixed Open Workflow DSL versions across an application bundle."""
+    if len(workflows) <= 1:
+        return []
+    versions = {workflow.document.get("document", {}).get("dsl") for workflow in workflows}
+    if len(versions) > 1:
+        return [
+            Diagnostic(
+                code="WORKFLOW_VERSION_MIXED",
+                message=(
+                    "all workflows must declare the same Open Workflow DSL version; "
+                    f"found {sorted(str(v) for v in versions)}"
+                ),
+                source=Path(workflows[0].source),
+                path="document.dsl",
+            )
+        ]
+    return []
+
+
+def _validate_agent_calls(
+    workflows: list[WorkflowIR],
+    agents: list[AgentIR],
+    bindings: BindingsIR,
+) -> list[Diagnostic]:
+    """Ensure inline call targets that look like agent IDs resolve to declared agents."""
+    declared = {agent.id for agent in agents}
+    diagnostics: list[Diagnostic] = []
+    for workflow in workflows:
+        for target, task in _collect_call_targets(workflow.tasks):
+            if target.startswith(("http://", "https://")):
+                continue
+            if target in bindings.agent_calls:
+                continue
+            if target in declared:
+                continue
+            if _AGENT_ID_RE.match(target):
+                diagnostics.append(
+                    Diagnostic(
+                        code="UNRESOLVED_AGENT_CALL",
+                        message=(f"call target '{target}' does not match any declared agent"),
+                        source=Path(workflow.source),
+                        path=f"do.{task.name}.call",
+                    )
+                )
+    return diagnostics
+
+
+def _validate_agent_tool_bindings(
+    agents: list[AgentIR],
+    bindings: BindingsIR,
+) -> list[Diagnostic]:
+    """Ensure explicit agent tool binding names are declared in bindings.yaml."""
+    diagnostics: list[Diagnostic] = []
+    for agent in agents:
+        for index, tool in enumerate(agent.tools):
+            binding = tool.get("binding") or tool.get("mcp_binding")
+            if not isinstance(binding, str):
+                continue
+            if binding not in bindings.tool_bindings:
+                diagnostics.append(
+                    Diagnostic(
+                        code="UNRESOLVED_TOOL_BINDING",
+                        message=(
+                            f"agent tool binding '{binding}' is not declared in bindings.yaml"
+                        ),
+                        source=Path(agent.source),
+                        path=f"tools[{index}].binding",
+                    )
+                )
+    return diagnostics
+
+
+class ApplicationLoader:
+    """Compose the two standards into one framework-neutral application IR."""
+
+    def __init__(
+        self,
+        root: str | Path | None = None,
+        *,
+        workflow_path: str | Path | None = None,
+        agent_path: str | Path | None = None,
+    ):
+        explicit = tuple(
+            path.expanduser().resolve()
+            for path in (Path(item) for item in (workflow_path, agent_path) if item)
+        )
+        if root is None and explicit:
+            common = os.path.commonpath([str(path.parent) for path in explicit])
+            root = common
+        self.root = Path(root or ".").expanduser().resolve()
+        self.explicit_sources = explicit
+
+    def load(self) -> ApplicationIR:
+        if not self.root.exists() or (not self.root.is_dir() and not self.explicit_sources):
+            raise SpecValidationError(
+                [
+                    Diagnostic(
+                        code="APPLICATION_NOT_FOUND",
+                        message="Application directory does not exist.",
+                    )
+                ]
+            )
+        workflows: list[WorkflowIR] = []
+        agents: list[AgentIR] = []
+        diagnostics: list[Diagnostic] = []
+        for source in _source_files(self.root, self.explicit_sources):
+            try:
+                if is_workflow_document(source):
+                    workflows.append(load_workflow(source))
+                elif is_agent_document(source):
+                    agents.append(load_agent(source))
+            except SpecValidationError as exc:
+                diagnostics.extend(exc.diagnostics)
+        if diagnostics:
+            raise SpecValidationError(diagnostics)
+
+        ids = [item.id for item in workflows] + [item.id for item in agents]
+        duplicates = sorted({identifier for identifier in ids if ids.count(identifier) > 1})
+        if duplicates:
+            raise SpecValidationError(
+                [
+                    Diagnostic(
+                        code="DUPLICATE_ENTRYPOINT",
+                        message=f"Entrypoint ID is declared more than once: {identifier}.",
+                    )
+                    for identifier in duplicates
+                ]
+            )
+
+        bindings = _bindings(self.root)
+        declared_agents = {item.id for item in agents}
+        missing = sorted(set(bindings.agent_calls.values()) - declared_agents)
+        if missing:
+            raise SpecValidationError(
+                [
+                    Diagnostic(
+                        code="UNRESOLVED_AGENT_BINDING",
+                        message=f"Binding refers to unknown Agent Spec component {identifier}.",
+                    )
+                    for identifier in missing
+                ]
+            )
+
+        diagnostics = (
+            _validate_workflow_versions(workflows)
+            + _validate_agent_calls(workflows, agents, bindings)
+            + _validate_agent_tool_bindings(agents, bindings)
+        )
+        if diagnostics:
+            raise SpecValidationError(diagnostics)
+
+        return ApplicationIR(
+            root=str(self.root),
+            workflows=tuple(workflows),
+            agents=tuple(agents),
+            bindings=bindings,
+        )
+
+
+def load_application(
+    root: str | Path | None = None,
+    *,
+    workflow_path: str | Path | None = None,
+    agent_path: str | Path | None = None,
+) -> ApplicationIR:
+    return ApplicationLoader(
+        root,
+        workflow_path=workflow_path,
+        agent_path=agent_path,
+    ).load()

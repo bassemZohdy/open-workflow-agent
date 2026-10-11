@@ -1,0 +1,101 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+from open_agent_core import InMemoryEngine, load_application
+from open_agent_core.runtime import run_sync
+from open_agent_core.telemetry import (
+    get_in_memory_span_exporter,
+    init_telemetry,
+    instrument_fastapi,
+    instrument_httpx,
+)
+from opentelemetry import trace
+from starlette.testclient import TestClient
+
+
+@pytest.fixture(autouse=True)
+def _reset_telemetry(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep telemetry disabled unless a test explicitly opts in."""
+    monkeypatch.setenv("OTEL_TRACES_EXPORTER", "none")
+    trace._TRACER_PROVIDER = None
+
+
+def test_init_telemetry_is_noop_by_default() -> None:
+    assert init_telemetry() is False
+
+
+def test_init_telemetry_configures_provider_when_exporter_set(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OTEL_TRACES_EXPORTER", "console")
+    provider_before = trace.get_tracer_provider()
+    assert init_telemetry(service_name="test") is True
+    provider_after = trace.get_tracer_provider()
+    assert provider_after is not provider_before
+
+
+def test_instrument_fastapi_is_noop_when_telemetry_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from fastapi import FastAPI
+
+    monkeypatch.delenv("OTEL_TRACES_EXPORTER", raising=False)
+    app = FastAPI()
+    instrument_fastapi(app)  # should not raise
+
+
+def test_instrument_httpx_is_noop_when_telemetry_disabled() -> None:
+    instrument_httpx()  # should not raise
+
+
+def test_runtime_emits_spans_when_telemetry_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("OTEL_TRACES_EXPORTER", "in_memory")
+
+    workflow = tmp_path / "workflow.yaml"
+    workflow.write_text(
+        "document:\n"
+        "  dsl: '1.0.3'\n"
+        "  namespace: x\n"
+        "  name: w\n"
+        "  version: '1'\n"
+        "do:\n"
+        "  - copy:\n"
+        "      set:\n"
+        "        value: '${ .value }'\n",
+        encoding="utf-8",
+    )
+    application = load_application(tmp_path)
+    init_telemetry(service_name="test-runtime")
+    engine = InMemoryEngine(application)
+
+    result = run_sync(engine, "x/w@1", {"value": "hello"})
+    assert result["value"] == "hello"
+
+    exporter = get_in_memory_span_exporter()
+    assert exporter is not None
+    spans = exporter.get_finished_spans()
+    assert any(span.name == "invoke" for span in spans)
+    assert any(span.name == "task" for span in spans)
+
+
+def test_runner_instruments_fastapi_when_telemetry_enabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OTEL_TRACES_EXPORTER", "in_memory")
+
+    from open_agent_lang.runner import create_app as create_lang_app
+
+    app = create_lang_app(application_path="examples/application")
+    with TestClient(app) as client:
+        response = client.get("/health/ready")
+    assert response.status_code == 200
+    exporter = get_in_memory_span_exporter()
+    assert exporter is not None
+    spans = exporter.get_finished_spans()
+    span_names = {span.name for span in spans}
+    assert any("/health/ready" in name for name in span_names)

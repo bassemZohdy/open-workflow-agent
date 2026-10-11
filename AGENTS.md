@@ -10,7 +10,7 @@ Treat `Project Definition.md` as authoritative; read it before implementation. U
 
 ## Critical Constraints
 
-- Open Workflow 1.0.3 is the only public DSL. Do not modify its schema or expose the internal execution plan.
+- Open Workflow 1.0.3 is the public DSL. Do not modify its official schema or expose the internal execution plan. The accepted 2026-10-11 roadmap permits versioned custom metadata extensions for declared native capabilities; unsupported required features must fail admission. Extension implementation remains staged work.
 - Every invocation runs a workflow; missing workflow means the generated one-task workflow calling `agent:1.0.0@default`.
 - The plan is typed, immutable, derived, and internal. Core owns loading, validation, `jq` semantics, normalization, catalog resolution, common services, and runtime errors.
 - Core must not import ADK or LangGraph. Engine state and checkpointing remain engine-native; public identity and workflow fingerprints remain common.
@@ -19,6 +19,8 @@ Treat `Project Definition.md` as authoritative; read it before implementation. U
 - Executable workflow operations must use the common sandbox execution contract. ADK and LangGraph must never create independent subprocess, Docker, or Kubernetes execution paths.
 - The internal sandbox is a controlled execution boundary, not a hard isolation boundary. Do not describe subprocess restrictions as equivalent to container, pod, VM, or microVM isolation.
 - Docker/Kubernetes remain optional deployment-selected backends, not core runtime prerequisites. The internal sandbox and the restricted controller boundary precede and underpin them.
+- The accepted consolidation roadmap in `TODO.md` expands the earlier completed core scope. Reuse native graphs/tasks/checkpoints where semantics match; default to one container and embedded storage with optional external bootstrap bindings. Track all gaps without treating research rows as shipped capabilities.
+- Frozen predecessor material in `migration/reference/` is not active runtime code or a conformance oracle. Preserve provenance. Do not publish private source or copy unlicensed predecessor code without resolved transfer/license disposition.
 
 ## Development and Verification
 

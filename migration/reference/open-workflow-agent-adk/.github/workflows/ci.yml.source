@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  push:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "examples/**"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "examples/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-owf
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      # Architecture layering contract: the translator/runtime must never pull
+      # tools/ops into core (C24.18).
+      - run: uv run lint-imports
+      # Fast unit job: Docker-backed integration tests run in the separate
+      # `integration` job below. Unit coverage gate is set lower because the
+      # Docker-covered modules (postgres history, polling worker) are excluded.
+      - run: |
+          uv run pytest -m "not integration" \
+            --cov=openworkflow_adk --cov-report=term-missing \
+            --cov-report=xml --cov-fail-under=70
+      - uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-owf
+        with:
+          python-version: "3.12"
+      - name: Run Docker-backed integration suite
+        run: |
+          uv run pytest -m integration \
+            --cov=openworkflow_adk --cov-report=xml
+      - uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  compatibility-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+        adk-version: ["2.6.3"]
+        spec-version: ["1.0.3"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-owf
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: |
+          uv run python -c "
+          import importlib.metadata as m
+          assert m.version('google-adk') == '${{ matrix.adk-version }}'
+          "
+      - run: uv run pytest -m "not integration"
+
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-owf
+        with:
+          python-version: "3.12"
+      - run: |
+          uv export --no-dev --no-emit-project --format requirements-txt \
+            > /tmp/owf-requirements.txt
+      - run: |
+          uv run pip-audit -r /tmp/owf-requirements.txt \
+            --no-deps --disable-pip --strict
+      - uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          path: .
+          artifact-name: owf-adk-sbom.spdx.json
+
+  memory-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-owf
+        with:
+          python-version: "3.12"
+      - run: uv run pytest tests/resources/test_memory_integration.py
+        env:
+          WORKFLOW_RUN_INTEGRATION_TESTS: "1"
+
+  workflow-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install actionlint-py zizmor
+      - run: actionlint
+      - run: zizmor --format sarif .github/workflows > zizmor-results.sarif
+      - uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
+        with:
+          sarif_file: zizmor-results.sarif

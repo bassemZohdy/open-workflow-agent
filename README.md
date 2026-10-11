@@ -356,6 +356,9 @@ Source checkout is only needed when contributing to or customizing the runtime. 
 
 ## Predecessor consolidation
 
-[Agent-runtime consolidation gates](docs/agent-runtime-consolidation.md)
-track legacy presets, source/license preservation and package compatibility.
-They do not extend the advertised runtime contract or mark a migration complete.
+[Agent-runtime consolidation](docs/agent-runtime-consolidation.md) records this
+repository as the canonical home, imported ADK references, portable recipes and
+pending archival. [TODO.md](TODO.md) contains staged implementation gaps; the
+[full tracker](resources/compatibility/feature-tracker.json) preserves every
+reviewed feature and proposed test. Imported references are not advertised as
+implemented capabilities.

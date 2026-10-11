@@ -1,0 +1,22 @@
+{
+  "eval_set_id": "openworkflow-adk-smoke",
+  "name": "deterministic agent quality",
+  "eval_cases": [
+    {
+      "evalId": "answer-case",
+      "conversation": [
+        {
+          "invocationId": "turn-1",
+          "userContent": {
+            "role": "user",
+            "parts": [{"text": "hello"}]
+          },
+          "finalResponse": {
+            "role": "model",
+            "parts": [{"text": "evaluation answer"}]
+          }
+        }
+      ]
+    }
+  ]
+}

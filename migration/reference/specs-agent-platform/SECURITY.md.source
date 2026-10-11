@@ -1,0 +1,53 @@
+# Security Policy
+
+## Supported versions
+
+This project is pre-1.0 (`0.1.0`). Security fixes land on `main`; there is no
+separate maintenance branch at this stage. The release automation can publish
+versioned images, but consumers should verify that a tag exists in GHCR before
+using the examples in this repository.
+
+## Reporting a vulnerability
+
+Please do not open a public GitHub issue for security vulnerabilities.
+
+Instead, report it privately via [GitHub Security
+Advisories](https://github.com/bassemZohdy/specs-agent-platform/security/advisories/new)
+for this repository, or by emailing bassem.zohdy@gmail.com with a description
+of the issue, steps to reproduce, and its potential impact.
+
+You should expect an initial response within 5 business days. We will work
+with you to confirm the issue, develop a fix, and coordinate disclosure
+timing before any public write-up.
+
+## Scope
+
+Relevant areas for this platform include (non-exhaustive):
+
+- Document loading and parsing (`open_agent_core.loader`,
+  `open_agent_core.workflow.loader`, and `open_agent_core.agent_spec.loader`) —
+  especially handling of untrusted YAML/JSON application bundles.
+- API authentication and request handling in the LangGraph and ADK runners
+  (`open_agent_lang.runner`, `open_agent_adk.runner`).
+- MCP process/tool invocation (`open_agent_lang.mcp`, `open_agent_adk.mcp`).
+- Checkpoint persistence (`open_agent_core.persistence`).
+
+Issues in third-party dependencies should generally be reported upstream,
+but feel free to flag them here too if they materially affect this project's
+deployments.
+
+## Published container images
+
+Release images are scanned before release tags are published and have BuildKit
+OCI SBOM and provenance attestations attached to their GHCR digests. Inspect a
+deployed image by digest rather than relying on a moving tag:
+
+```bash
+docker buildx imagetools inspect \
+  ghcr.io/bassemzohdy/specs-agent-lang@sha256:REPLACE_WITH_DIGEST
+```
+
+See [Container images](docs/containers.md) for the equivalent ADK command and
+deployment guidance. GitHub artifact attestations are deferred because they do
+not support this private personal repository. Report a suspected compromised
+image or OCI attestation using the private vulnerability-reporting process.

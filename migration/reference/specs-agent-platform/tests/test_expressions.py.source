@@ -1,0 +1,91 @@
+"""Tests for expression functions, coercion, and scoped variable shadowing."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import pytest
+from open_agent_core import InMemoryEngine, load_application
+from open_agent_core.runtime import RuntimeContext, _call_function, _lookup_expression
+
+
+def _ctx(values: dict[str, Any] | None = None, input_data: Any = None) -> RuntimeContext:
+    return RuntimeContext(input_data if input_data is not None else {}, values=values or {})
+
+
+def test_string_functions() -> None:
+    ctx = _ctx({"name": "Alice", "items": ["a", "b", "c"]})
+    assert _lookup_expression("upper(context.name)", ctx) == "ALICE"
+    assert _lookup_expression("lower(context.name)", ctx) == "alice"
+    assert _lookup_expression("concat('a', 'b', 'c')", ctx) == "abc"
+    assert _lookup_expression("join('-', context.items)", ctx) == "a-b-c"
+    assert _lookup_expression("split('a,b,c', ',')", ctx) == ["a", "b", "c"]
+
+
+def test_length_exists_default() -> None:
+    ctx = _ctx({"items": [1, 2, 3], "empty": None, "name": "Bob"})
+    assert _lookup_expression("length(context.items)", ctx) == 3
+    assert _lookup_expression("length(context.missing)", ctx) == 0
+    assert _lookup_expression("exists(context.name)", ctx) is True
+    assert _lookup_expression("exists(context.missing)", ctx) is False
+    assert _lookup_expression("default(context.missing, 'fallback')", ctx) == "fallback"
+    assert _lookup_expression("default(context.name, 'fallback')", ctx) == "Bob"
+
+
+def test_matches_and_now() -> None:
+    ctx = _ctx({"email": "user@example.com"})
+    assert _lookup_expression("matches(context.email, '@')", ctx) is True
+    assert _lookup_expression("matches(context.email, '^[0-9]+$')", ctx) is False
+    now = _lookup_expression("now()", ctx)
+    assert isinstance(now, str)
+    assert "T" in now
+
+
+def test_function_coercion_errors_are_defined() -> None:
+    assert _call_function("length", [None]) == 0
+    assert _call_function("upper", [123]) == "123"
+    assert _call_function("matches", ["hello"]) is False
+    assert _call_function("split", ["hello"]) == []
+
+
+def test_nested_functions() -> None:
+    ctx = _ctx({"tags": "a,b,c"})
+    assert _lookup_expression("length(split(context.tags, ','))", ctx) == 3
+
+
+@pytest.mark.asyncio
+async def test_scoped_variable_shadowing_in_nested_loops(tmp_path: Path) -> None:
+    workflow_path = tmp_path / "workflow.yaml"
+    workflow_path.write_text(
+        """\
+document:
+  dsl: '1.0.3'
+  namespace: integration
+  name: nested
+  version: '1.0.0'
+do:
+  - outer:
+      for:
+        in: [1, 2]
+        each: item
+      do:
+        - inner:
+            for:
+              in: [10, 20]
+              each: item
+            do:
+              - collect:
+                  set:
+                    result: "${ context.item }"
+        - after_inner:
+            set:
+              outer_item: "${ context.item }"
+""",
+        encoding="utf-8",
+    )
+    application = load_application(workflow_path=workflow_path)
+    engine = InMemoryEngine(application)
+    result = await engine.invoke("integration/nested@1.0.0", {})
+
+    assert result["outer_item"] == 2

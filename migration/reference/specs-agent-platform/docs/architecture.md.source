@@ -1,0 +1,189 @@
+# Architecture
+
+The Specs Agent Platform turns declarative workflow and agent documents into
+portable executions through a framework-neutral intermediate representation.
+The same application directory can be served by either the LangGraph engine or
+the Google ADK engine without changing the specifications.
+
+## Component flow
+
+The Mermaid source below is the maintainable diagram. A rendered
+[static SVG](architecture.svg) is checked in for offline viewers and package
+browsers that do not render Mermaid.
+
+```mermaid
+flowchart LR
+    subgraph Inputs
+        WF[Open Workflow<br/>YAML/JSON]
+        AS[Open Agent Spec<br/>YAML/JSON]
+    end
+
+    subgraph Core
+        OWL[workflow/loader.py]
+        ASL[agent_spec/loader.py]
+        IR[ApplicationIR<br/>WorkflowIR / AgentIR /<br/>BindingsIR]
+    end
+
+    subgraph Engines
+        LC["LangGraphCompiler<br/>linear StateGraph<br/>(native mapping planned)"]
+        AC[AdkCompiler<br/>LlmAgent only]
+        INT[InMemoryEngine<br/>interprets task tree]
+        LE[LangGraphEngine<br/>FastAPI runner]
+        AE[AdkEngine<br/>FastAPI runner]
+    end
+
+    WF --> OWL
+    AS --> ASL
+    OWL --> IR
+    ASL --> IR
+    IR --> LC
+    IR --> AC
+    IR --> INT
+    LC -.calls per node.-> INT
+    LC --> LE
+    AC --> AE
+    AE -.delegates whole tree.-> INT
+    LE --> API[/v1/chat/completions]
+    AE --> API
+```
+
+### Static rendering
+
+![Static architecture diagram](architecture.svg)
+
+## Loading and validation
+
+1. `ApplicationLoader` discovers YAML/JSON files in the application directory
+   (or uses explicit paths).
+2. `workflow/loader.py` validates Open Workflow documents and lowers them into
+   `WorkflowIR`.
+3. `agent_spec/loader.py` validates Open Agent Specification documents and
+   lowers them into `AgentIR`.
+4. `bindings.yaml` resolves `agent_calls`, `tool_bindings`, and `aliases`.
+5. Bundle validation rejects mixed workflow DSL versions, unsupported Agent
+   Spec versions, unresolved direct agent calls, and missing explicit MCP tool
+   bindings before either engine starts.
+
+## Runtime
+
+- `InMemoryEngine` executes the normalized task tree deterministically.
+- `RuntimeContext` carries input, accumulated values, events, and the run ID.
+- Expression evaluation in `_lookup_expression` supports literals, operators,
+  comparisons, membership tests, built-in functions, and dotted path lookups.
+- FastAPI lifespan hooks start engine resources, drain active requests during
+  graceful shutdown, close MCP sessions, and release checkpoint connections.
+
+## Engine adapters
+
+- `open-agent-lang` compiles `WorkflowIR` into a LangGraph `StateGraph` and
+  bridges agent calls to `ChatOpenAI` with optional MCP tool rounds.
+- `open-agent-adk` compiles `AgentIR` into Google ADK agents and exposes the
+  native ADK developer UI alongside the shared OpenAI-compatible API.
+
+Both runners share HTTP security middleware, request/response models, and the
+`/health` endpoints from `open-agent-core`.
+
+## Current compilation fidelity (known limitation)
+
+The diagram above shows `IR --> LC/AC` as if both engines translate the task
+tree into native framework structure. The LangGraph side is now a genuine
+translation for the core control-flow kinds, while the remaining kinds still
+call back into the interpreter:
+
+- **Native (`open_agent_lang/compiler.py`)** — `set`/`call`/`run` compile to
+  dedicated node functions that evaluate values through
+  `open_agent_core.expressions` directly. `switch` tasks compile to a router
+  node plus `add_conditional_edges` with one chain of native nodes per
+  branch. `fork` tasks compile to a fan-out node, per-branch node chains
+  writing isolated slots in a reducer-merged `fork` state channel, and a
+  join node that merges branch values back in deterministic branch order
+  (LangGraph has no first-completion cancellation, so `compete` mode
+  resolves to the first declared branch rather than the first completed
+  one). `for` tasks compile to a setup node, body chain, and continuation
+  router looping back via `add_conditional_edges`, with loop variables
+  restored at exit and a configurable max-iteration guard
+  (`MAX_LOOP_ITERATIONS`). Static `retry` configs map onto LangGraph's
+  `RetryPolicy` (constant/linear/exponential, `jitter=False`); `catch`
+  branches wire as the node's `error_handler` with the interpreter's
+  filtering/aliasing semantics; `finally` chains run on the success,
+  handled-error, and unhandled-error paths, with the unhandled path
+  re-raising a fresh exception so the failure still propagates. Dynamic
+  retry conditions (`when`/`exceptWhen`), expression-bearing retry values,
+  and `retry`/`catch`/`finally` on switch/fork/for tasks remain
+  interpreter-backed because LangGraph policies are static and regional
+  retry has no native equivalent. Nested switches, forks, and loops compile
+  recursively inside branch chains.
+- **Still interpreter-backed** — `wait`/`listen`/`raise`/`emit` and bare
+  `do` tasks run through `InMemoryEngine.execute_task()` from each node
+  until **COMPILE-007** replaces them. `retry` configs with dynamic
+  `when`/`exceptWhen` conditions or expression-bearing values, and
+  `retry`/`catch`/`finally` declared on switch/fork/for tasks, also stay on
+  the delegated path because LangGraph policies are static and regional
+  retry has no native equivalent.
+- **`AdkCompiler`** (`open_agent_adk/compiler.py`) only compiles `AgentIR`
+  into a native `LlmAgent`. There is no ADK workflow compiler at all:
+  `AdkEngine.invoke()` always delegates the whole task tree to
+  `InMemoryEngine`, regardless of workflow shape. ADK workflow compilation
+  is tracked as **COMPILE-009** through **COMPILE-013**.
+
+`InMemoryEngine` remains the parity-test reference implementation
+(**COMPILE-014**) and the offline validate/dry-run path for the core CLI.
+Replacing the shared-interpreter wrapper with real per-engine native
+compilers is tracked as **COMPILE-001** through **COMPILE-015** in
+[TODO.md](../TODO.md#p1---native-framework-compilation), including a target
+task-kind-to-primitive mapping table and a
+parity-test plan to keep both engines behaviorally equivalent without a
+shared interpreter underneath.
+
+## Known gap: agent memory has no storage abstraction
+
+`AgentIR.memory` (`agent_spec/models.py`, `agent_spec/loader.py`) is parsed
+and validated but not wired into execution anywhere. Neither
+`LangGraphAgentInvoker` nor `AdkAgentInvoker` reads or writes it. Google
+ADK's `ADK_MEMORY_SERVICE_URI` only configures ADK's own native dev-ui
+memory service; it does not implement the declarative `memory` field, and
+LangGraph has no equivalent at all. Unlike workflow checkpoints
+(`CheckpointStore`, see below), there is currently no storage abstraction
+for agent conversational memory.
+
+The planned fix mirrors the `CheckpointStore` design in the persistence
+layer below: an async `MemoryStore` protocol (`append`/`history`/`clear`/
+`ping`) with in-memory, SQLite, and Postgres implementations, a
+configuration-driven factory, a plugin mechanism for backends this repo
+doesn't ship, and availability reported through `/health/ready` and a new
+`/health/memory` route — tracked as **MEM-001** through **MEM-006** in
+[TODO.md](../TODO.md#p2---pluggable-agent-memory).
+
+## Known gap: default model is hardcoded per call site, not configurable
+
+`LangGraphAgentInvoker.invoke()` (`open_agent_lang/runner.py`) and
+`AdkCompiler.compile()` (`open_agent_adk/compiler.py`) each read
+`llm_config.model_id`/`model` from the Agent Spec document, but if neither is
+declared, each falls back to a model name hardcoded inline at that one call
+site — `"gpt-4o-mini"` and `"gemini-2.0-flash"` respectively. There is no
+environment variable to override either default, and because the fallback
+lives inline rather than in a shared helper, any future place that compiles
+an agent — most notably the planned ADK workflow compiler's nested
+`LlmAgent` instances (**COMPILE-009**) — would have to repeat its own copy of
+this logic rather than inherit one consistent default.
+
+The planned fix centralizes this in a single `resolve_model()` helper in
+`open_agent_core/model_config.py`, with a precedence order of: the agent's
+own declared model, an engine-specific default env var
+(`OPENAI_DEFAULT_MODEL` / `GOOGLE_DEFAULT_MODEL`), a generic cross-engine
+`DEFAULT_MODEL` env var, then the existing hardcoded value as the final
+fallback — tracked as **MODEL-001** through **MODEL-005** in
+[TODO.md](../TODO.md#p2---default-model-configuration).
+
+## Persistence
+
+- `CheckpointStore` is an async protocol (`load`, `save`, `ping`, `delete`)
+  implemented by `SQLiteCheckpointStore` (thread-pool-offloaded blocking
+  I/O) and `PostgresCheckpointStore` (`asyncpg`). A factory selects the
+  backend from `CHECKPOINT_DB_PATH` or `DATABASE_URL`/
+  `CHECKPOINT_DATABASE_URL`.
+- Checkpoints resume a *workflow run* by `run_id`. They are a different
+  concern from agent memory (see the gap above): checkpoints are workflow
+  execution state; memory is an agent's conversational context across turns.
+- Readiness (`/health/ready`) awaits the checkpoint store's `ping()` before
+  reporting healthy.

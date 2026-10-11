@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: Apache-2.0
+# Source: bassemZohdy/open-workflow-agent-adk/tests/fixtures/wait.yaml
+# Revision: 48db0cf5e1a1d3202cbbec6021736e1d89e94cd0
+# Changes: Unchanged workflow; attribution added.
+document:
+  dsl: '1.0.3'
+  namespace: fixtures
+  name: wait
+  version: '1.0.0'
+do:
+  - pause:
+      wait:
+        seconds: 0
