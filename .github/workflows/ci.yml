@@ -22,6 +22,29 @@ env:
   IMAGE_SIZE_LIMIT_BYTES: "2147483648"
 
 jobs:
+  windows-expressions:
+    name: Windows jq expression and admission tests
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify native jq cleanup, data semantics and shared admission
+        run: >-
+          uv run --locked pytest -q
+          tests/core/test_expressions.py
+          tests/core/test_workflow.py
+          tests/core/test_sandbox_validation.py
+          tests/contract/test_jq_portability.py
+          tests/contract/test_definition_admission.py
+
   manifests:
     name: Validate deployment manifests
     runs-on: ubuntu-latest
