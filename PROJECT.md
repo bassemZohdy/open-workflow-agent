@@ -65,6 +65,45 @@ PostgreSQL acceptance were verified in remote CI. No release, image publication,
 schema modification, broader conformance claim or later-stage delivery is
 recorded by this work.
 
+### S1-02 expression work — local validation; remote acceptance pending
+
+Core now uses `jq==1.12.0` (bundled jq 1.8.2) in every dependency environment.
+Strict/loose recognition, scoped syntax admission, native jq operators and
+filters, single-result enforcement, finite JSON/safe-integer handling and
+sanitized common errors replace the partial evaluator. Input-derived strings
+remain data. Invocation modes are isolated; sandbox argument/stdin/environment
+conversion is shared and script code remains literal. Ambient I/O, module and
+clock access are blocked, with an admission check for libjq's automatic home
+module loading. [Expression limits](docs/workflow-expressions.md) document the
+in-process boundary and the outstanding data-flow/descriptor work.
+
+Local root validation: 849 passed, 13 skipped, 90.54% core coverage before the
+last numeric/custom-index edge cases; the final core jq suite passes 102 tests.
+Independent native adapter/contract/CTK suites passed: ADK 264, LangGraph 262,
+optional Agent Framework 355. The added sandbox jq cases then passed in each
+native environment (16 ADK, 16 LangGraph, 24 optional Agent Framework shared
+expression tests). Final root validation passed 851 tests, 13 skipped, with
+91.04% coverage; Windows expression/admission CI also passed. Concurrent jq
+invocations exposed a fresh-SQLite WAL initialization race in native LangGraph.
+The native saver now prepares storage before first concurrent writers, without
+serializing workflow execution or moving checkpoint ownership into core. A
+12-workflow barrier/checkpoint regression and the complete LangGraph matrix
+(265 passed) verify the correction. Ruff, formatting, strict mypy, four lock checks, Markdown
+links and root/standalone-core builds passed. Exact-commit remote acceptance is green at `3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd`. Adapted CTK
+syntax is documented; proposed inventory tests and JS delivery are unclaimed.
+
+
+| Gate | Run | Result |
+| --- | --- | --- |
+| CI | [38133078110](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38133078110) | success |
+| External Sandbox CI | [38133078098](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38133078098) | success |
+| PostgreSQL CI | [38133078062](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38133078062) | success |
+| Agent Framework CI (optional) | [38133078074](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38133078074) | success |
+| Security | [38133078050](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38133078050) | success |
+| Docs | [38133078048](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38133078048) | success |
+
+CI root validation passed 855 tests, 10 skipped, with 91.07% coverage. All native/CTK, Windows, mutation, manifests, runtime-image, external-sandbox and persistence gates passed. This qualifies the jq foundation; S1-03 data-flow/descriptors and all later stages remain open. No release was published.
+
 The runtime pipeline is:
 
 ```text
@@ -621,33 +660,6 @@ native compiler behavior or JS parity. Remote CI remains a publication gate.
 
 ## Intentionally Deferred
 
-### S1-02 expression work — local validation; remote acceptance pending
-
-Core now uses `jq==1.12.0` (bundled jq 1.8.2) in every dependency environment.
-Strict/loose recognition, scoped syntax admission, native jq operators and
-filters, single-result enforcement, finite JSON/safe-integer handling and
-sanitized common errors replace the partial evaluator. Input-derived strings
-remain data. Invocation modes are isolated; sandbox argument/stdin/environment
-conversion is shared and script code remains literal. Ambient I/O, module and
-clock access are blocked, with an admission check for libjq's automatic home
-module loading. [Expression limits](docs/workflow-expressions.md) document the
-in-process boundary and the outstanding data-flow/descriptor work.
-
-Local root validation: 849 passed, 13 skipped, 90.54% core coverage before the
-last numeric/custom-index edge cases; the final core jq suite passes 102 tests.
-Independent native adapter/contract/CTK suites passed: ADK 264, LangGraph 262,
-optional Agent Framework 355. The added sandbox jq cases then passed in each
-native environment (16 ADK, 16 LangGraph, 24 optional Agent Framework shared
-expression tests). Final root validation passed 851 tests, 13 skipped, with
-91.04% coverage; Windows expression/admission CI also passed. Concurrent jq
-invocations exposed a fresh-SQLite WAL initialization race in native LangGraph.
-The native saver now prepares storage before first concurrent writers, without
-serializing workflow execution or moving checkpoint ownership into core. A
-12-workflow barrier/checkpoint regression and the complete LangGraph matrix
-(265 passed) verify the correction. Ruff, formatting, strict mypy, four lock checks, Markdown
-links and root/standalone-core builds passed. Required remote acceptance for
-the submitted commit remains pending; S1-02 remains unchecked. Adapted CTK
-syntax is documented; proposed inventory tests and JS delivery are unclaimed.
 
 - A2A push notifications.
 - Broad/full A2A conformance claim until async/streaming/interoperability gates are green.

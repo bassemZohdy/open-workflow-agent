@@ -40223,8 +40223,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A039",
@@ -40243,8 +40263,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A040",
@@ -40263,8 +40303,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A041",
@@ -40283,8 +40343,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A042",
@@ -40303,8 +40383,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A043",
@@ -40323,8 +40423,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A044",
@@ -40343,8 +40463,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A045",
@@ -40363,8 +40503,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A046",
@@ -40383,8 +40543,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A047",
@@ -40403,8 +40583,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A048",
@@ -40423,8 +40623,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A049",
@@ -40443,8 +40663,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A050",
@@ -40463,8 +40703,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A051",
@@ -40483,8 +40743,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A052",
@@ -40503,8 +40783,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A053",
@@ -40523,8 +40823,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A054",
@@ -40543,8 +40863,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A055",
@@ -40563,8 +40903,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A056",
@@ -40583,8 +40943,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A057",
@@ -40603,8 +40983,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A058",
@@ -40623,8 +41023,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A059",
@@ -40643,8 +41063,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A060",
@@ -40663,8 +41103,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A061",
@@ -43267,8 +43727,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A188",
@@ -43287,8 +43767,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A189",
@@ -43307,8 +43807,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A190",
@@ -43327,8 +43847,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A191",
@@ -43347,8 +43887,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A192",
@@ -43367,8 +43927,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A193",
@@ -43387,8 +43967,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A194",
@@ -43407,8 +44007,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A195",
@@ -43427,8 +44047,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A196",
@@ -43447,8 +44087,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A197",
@@ -43467,8 +44127,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A198",
@@ -43487,8 +44167,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A199",
@@ -43507,8 +44207,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A200",
@@ -43527,8 +44247,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A201",
@@ -43547,8 +44287,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A202",
@@ -43567,8 +44327,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A203",
@@ -43587,8 +44367,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "A204",
@@ -43607,8 +44407,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS001",
@@ -43660,8 +44480,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS003",
@@ -43768,8 +44608,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS007",
@@ -44421,8 +45281,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS030",
@@ -44441,8 +45321,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS031",
@@ -44461,8 +45361,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS032",
@@ -45490,8 +46410,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS082",
@@ -45510,8 +46450,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS083",
@@ -45530,8 +46490,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS084",
@@ -45550,8 +46530,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS085",
@@ -45710,8 +46710,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS093",
@@ -45730,8 +46750,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS094",
@@ -45750,8 +46790,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS095",
@@ -45770,8 +46830,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS096",
@@ -50477,8 +51557,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS315",
@@ -50497,8 +51597,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS316",
@@ -50517,8 +51637,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS317",
@@ -50537,8 +51677,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS318",
@@ -50557,8 +51717,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS319",
@@ -50577,8 +51757,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS320",
@@ -50927,8 +52127,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS336",
@@ -50947,8 +52167,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS337",
@@ -50967,8 +52207,28 @@
           "S1-02",
           "S1-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": []
+        "repository_status": "S1-02 expression foundation verified; remaining mapped stages unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S1-02",
+            "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+            "scope": "Pinned jq engine, strict/loose recognition, scoped syntax admission, finite JSON/safe integers, exact-one result, input-data non-evaluation, disabled ambient access and sanitized errors. Descriptor/data-flow and other mapped stages remain open; proposed inventory tests and JS are unclaimed.",
+            "tests": [
+              "tests/core/test_expressions.py",
+              "tests/contract/test_jq_portability.py",
+              "tests/contract/test_definition_admission.py",
+              "tests/langgraph/test_native_langgraph.py"
+            ],
+            "validation": {
+              "CI": 38133078110,
+              "External Sandbox CI": 38133078098,
+              "PostgreSQL CI": 38133078062,
+              "Agent Framework CI (optional)": 38133078074,
+              "Security": 38133078050,
+              "Docs": 38133078048
+            }
+          }
+        ]
       },
       {
         "feature_id": "AS338",
@@ -53464,7 +54724,7 @@
         "module": "M02",
         "description": "Replace the partial expression evaluator with validated jq behavior and consistent data/type handling.",
         "effort": "L",
-        "status": "In progress",
+        "status": "Complete",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "evidence": {
           "scope": "Pinned jq expression implementation; descriptor/data-flow and later-stage mappings remain open",
@@ -53484,14 +54744,28 @@
             "langgraph": 16,
             "agent_framework_optional": 24
           },
-          "remote_acceptance": "Pending",
+          "remote_acceptance": "All success",
           "full_conformance": false,
           "local_root": {
             "passed": 851,
             "skipped": 13,
             "coverage_percent": 91.04
           },
-          "native_sqlite_concurrency_regression": "12 simultaneous first invocations; native checkpoints retained; no workflow serialization"
+          "native_sqlite_concurrency_regression": "12 simultaneous first invocations; native checkpoints retained; no workflow serialization",
+          "commit": "3ab2e73d29fcfd94afa1c6efe23bb481d53c41dd",
+          "runs": {
+            "CI": 38133078110,
+            "External Sandbox CI": 38133078098,
+            "PostgreSQL CI": 38133078062,
+            "Agent Framework CI (optional)": 38133078074,
+            "Security": 38133078050,
+            "Docs": 38133078048
+          },
+          "ci_root": {
+            "passed": 855,
+            "skipped": 10,
+            "coverage_percent": 91.07
+          }
         }
       },
       {

@@ -13,7 +13,9 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 - [x] **S1-01** (M) — Pin the supported OWS schema, release status and semantic profile; reject unsupported definitions clearly.
   Verified at `df47361`: [admission profile](docs/workflow-admission.md) and
   [acceptance evidence](PROJECT.md#stage-1-admission-work--2026-10-11-verified).
-- [ ] **S1-02** (L) — Replace the partial expression evaluator with validated jq behavior and consistent data/type handling.
+- [x] **S1-02** (L) — Replace the partial expression evaluator with validated jq behavior and consistent data/type handling.
+  Verified at `3ab2e73`: [jq semantics and limits](docs/workflow-expressions.md) and
+  [acceptance evidence](PROJECT.md#s1-02-expression-work--2026-10-11-verified).
 - [ ] **S1-03** (M) — Fix input/output/export ordering, context replacement, task-local data and immutable branch input.
 - [ ] **S1-04** (M) — Preserve transitions, loop/condition rules, and the different scopes of exit and end.
 - [ ] **S1-05** (L) — Compile individual tasks and routing to native LangGraph nodes/tasks; keep native checkpoints private.
