@@ -77,8 +77,8 @@ def test_expression_evaluator_supports_paths_templates_and_conditions():
     data = {"customer": {"name": "Ada"}, "items": [2, 3]}
     assert evaluator.evaluate("${ .customer.name }", data) == "Ada"
     assert evaluator.evaluate("Hello ${ .customer.name }", data) == "Hello Ada"
-    assert evaluator.evaluate(".items[1]", data) == 3
-    assert evaluator.evaluate(".items | length", data) == 2
+    assert evaluator.evaluate("${ .items[1] }", data) == 3
+    assert evaluator.evaluate("${ .items | length }", data) == 2
     assert evaluator.condition("${ .items[1] == 3 }", data)
 
 
@@ -89,18 +89,18 @@ def test_expression_evaluator_covers_composites_variables_and_boolean_operators(
     assert evaluator.evaluate({"x": "${ .value }"}, data) == {"x": 3}
     assert evaluator.evaluate(["${ .value }", "literal"], data) == [3, "literal"]
     assert evaluator.evaluate("${ $extra.name }", data, variables=variables) == "Grace"
-    assert evaluator.evaluate("${ @flag }", data, variables=variables) is True
+    assert evaluator.evaluate("${ $flag }", data, variables=variables) is True
     assert evaluator.evaluate("${ .items + [3] }", data) == [1, 2, 3]
-    assert evaluator.evaluate("${ { 'value': .value, 'name': .nested.name } }", data) == {
+    assert evaluator.evaluate('${ { "value": .value, "name": .nested.name } }', data) == {
         "value": 3,
         "name": "Ada",
     }
     assert evaluator.evaluate("${ [ .value, true, null ] }", data) == [3, True, None]
-    assert evaluator.evaluate("${ 'quoted' }", data) == "quoted"
-    assert evaluator.condition(".value > 2 and not .value < 2", data)
-    assert evaluator.condition(".value == 3 or .value == 99", data)
-    assert evaluator.condition("false", data) is False
-    assert evaluator.evaluate(".missing[9]", data) is None
+    assert evaluator.evaluate('${ "quoted" }', data) == "quoted"
+    assert evaluator.condition("${ (.value > 2) and (.value < 2 | not) }", data)
+    assert evaluator.condition("${ .value == 3 or .value == 99 }", data)
+    assert evaluator.condition("${ false }", data) is False
+    assert evaluator.evaluate("${ .missing[9] }", data) is None
 
 
 def test_workflow_helpers_cover_validation_and_retry_edges():
@@ -122,14 +122,16 @@ def test_workflow_helpers_cover_validation_and_retry_edges():
     assert _retry_delay({"delay": "1s"}, 2) == 1
     assert _retry_delay(None, 2) is None
     assert _retry_allowed(None, state, expressions) is True
-    assert _retry_allowed({"when": "false"}, state, expressions) is False
-    assert _retry_allowed({"exceptWhen": "true"}, state, expressions) is False
+    assert _retry_allowed({"when": "${ false }"}, state, expressions) is False
+    assert _retry_allowed({"exceptWhen": "${ true }"}, state, expressions) is False
     assert _catch_matches(
         {"errors": {"with": {"type": "x"}}}, {"code": "x", "details": {}}, state, expressions
     )
-    assert not _catch_matches({"when": "false"}, {"code": "x", "details": {}}, state, expressions)
     assert not _catch_matches(
-        {"exceptWhen": "true"}, {"code": "x", "details": {}}, state, expressions
+        {"when": "${ false }"}, {"code": "x", "details": {}}, state, expressions
+    )
+    assert not _catch_matches(
+        {"exceptWhen": "${ true }"}, {"code": "x", "details": {}}, state, expressions
     )
     error = WorkflowExecutionError("boom")
     assert _error_details(error)["message"] == "boom"
@@ -161,11 +163,11 @@ def test_workflow_helpers_cover_task_shapes_and_endpoint_templates():
         _resolve_protocol_endpoints({"endpoint": "https://{missing}"}, {}, {})
 
 
-def test_expression_evaluator_supports_bare_object_and_list_expressions():
+def test_expression_evaluator_supports_wrapped_object_and_list_expressions():
     evaluator = ExpressionEvaluator()
 
     assert evaluator.evaluate(
-        "{ ids: [ $input, .id ] }",
+        "${ { ids: [ $input, .id ] } }",
         {"id": 2},
         variables={"input": 1},
     ) == {"ids": [1, 2]}
@@ -205,7 +207,7 @@ async def test_plan_executes_set_switch_for_fork_and_calls(services):
                     "switch": [
                         {
                             "yes": {
-                                "when": "${ .kind == 'yes' }",
+                                "when": '${ .kind == "yes" }',
                                 "then": "set_route",
                             }
                         },

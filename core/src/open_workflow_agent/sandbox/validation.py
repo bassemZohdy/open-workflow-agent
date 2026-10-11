@@ -16,6 +16,7 @@ from ..workflow import (
     load_workflow,
     normalize_workflow,
     validate_capabilities,
+    validate_expression_profile,
     validate_schema,
 )
 from .contract import RESERVED_ENVIRONMENT
@@ -30,6 +31,7 @@ def validate_sandbox_capabilities(
     rewritten = copy.deepcopy(dict(workflow))
     _rewrite_executable_runs(rewritten, sandbox=sandbox, reference="")
     validate_capabilities(rewritten, trusted_catalogs=trusted_catalogs)
+    validate_expression_profile(workflow)
 
 
 def compile_sandbox_workflow(

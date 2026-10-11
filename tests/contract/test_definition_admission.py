@@ -135,7 +135,6 @@ def test_authentication_named_payload_field_is_ordinary_application_data():
     "evaluation,reference",
     [
         ({"language": "jsonata"}, "/evaluate/language"),
-        ({"mode": "loose"}, "/evaluate/mode"),
     ],
 )
 def test_unsupported_expression_configuration_is_rejected(evaluation, reference):

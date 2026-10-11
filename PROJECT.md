@@ -621,6 +621,28 @@ native compiler behavior or JS parity. Remote CI remains a publication gate.
 
 ## Intentionally Deferred
 
+### S1-02 expression work — local validation; remote acceptance pending
+
+Core now uses `jq==1.12.0` (bundled jq 1.8.2) in every dependency environment.
+Strict/loose recognition, scoped syntax admission, native jq operators and
+filters, single-result enforcement, finite JSON/safe-integer handling and
+sanitized common errors replace the partial evaluator. Input-derived strings
+remain data. Invocation modes are isolated; sandbox argument/stdin/environment
+conversion is shared and script code remains literal. Ambient I/O, module and
+clock access are blocked, with an admission check for libjq's automatic home
+module loading. [Expression limits](docs/workflow-expressions.md) document the
+in-process boundary and the outstanding data-flow/descriptor work.
+
+Local root validation: 849 passed, 13 skipped, 90.54% core coverage before the
+last numeric/custom-index edge cases; the final core jq suite passes 102 tests.
+Independent native adapter/contract/CTK suites passed: ADK 264, LangGraph 262,
+optional Agent Framework 355. The added sandbox jq cases then passed in each
+native environment (16 ADK, 16 LangGraph, 24 optional Agent Framework shared
+expression tests). Ruff, formatting, strict mypy, four lock checks, Markdown
+links and root/standalone-core builds passed. Required remote acceptance for
+the submitted commit remains pending; S1-02 remains unchecked. Adapted CTK
+syntax is documented; proposed inventory tests and JS delivery are unclaimed.
+
 - A2A push notifications.
 - Broad/full A2A conformance claim until async/streaming/interoperability gates are green.
 - Multi-tenancy.

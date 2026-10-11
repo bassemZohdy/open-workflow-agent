@@ -8,6 +8,7 @@ from typing import Any, cast
 from uuid import uuid4
 
 from ..errors import SandboxPolicyError, WorkflowSemanticError
+from ..expressions import expression_string
 from ..workflow import ExecutionState, WorkflowExecutor
 from .contract import SandboxExecutionRequest, SandboxExecutionResult, SandboxSecretReference
 
@@ -32,7 +33,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
         request = SandboxExecutionRequest(
             execution_id=self._execution_id(state),
             kind="script",
-            arguments=tuple(str(value) for value in definition.get("arguments", [])),
+            arguments=self._arguments(definition, state),
             stdin=self._stdin(definition, state),
             environment=self._environment(definition, state),
             script_language=str(definition.get("language", "")),
@@ -49,7 +50,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             execution_id=self._execution_id(state),
             kind="shell",
             command=str(definition.get("command", "")),
-            arguments=tuple(str(value) for value in definition.get("arguments", [])),
+            arguments=self._arguments(definition, state),
             stdin=self._stdin(definition, state),
             environment=self._environment(definition, state),
             invocation_id=cast(str | None, state.context.get("invocation_id")),
@@ -65,7 +66,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             kind="container",
             image=str(definition.get("image", "")),
             command=(str(definition["command"]) if definition.get("command") else None),
-            arguments=tuple(str(value) for value in definition.get("arguments", [])),
+            arguments=self._arguments(definition, state),
             stdin=self._stdin(definition, state),
             environment=self._environment(definition, state),
             invocation_id=cast(str | None, state.context.get("invocation_id")),
@@ -138,12 +139,20 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
         )
         return typed_result.as_output()
 
+    def _arguments(self, definition: Mapping[str, Any], state: ExecutionState) -> tuple[str, ...]:
+        values = self._expressions(state).evaluate(
+            definition.get("arguments", []), state.data, variables=state.variables
+        )
+        if not isinstance(values, list):
+            raise WorkflowSemanticError("sandbox arguments must evaluate to an array")
+        return tuple(expression_string(value) for value in values)
+
     def _stdin(self, definition: Mapping[str, Any], state: ExecutionState) -> str | None:
         value = definition.get("stdin")
         if value is None:
             return None
-        evaluated = self.expressions.evaluate(value, state.data, variables=state.variables)
-        return evaluated if isinstance(evaluated, str) else str(evaluated)
+        evaluated = self._expressions(state).evaluate(value, state.data, variables=state.variables)
+        return expression_string(evaluated)
 
     def _environment(
         self, definition: Mapping[str, Any], state: ExecutionState
@@ -159,8 +168,10 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
                     raise WorkflowSemanticError("sandbox fromEnv reference must be a string")
                 result.append((str(name), SandboxSecretReference(reference)))
                 continue
-            evaluated = self.expressions.evaluate(raw, state.data, variables=state.variables)
-            result.append((str(name), evaluated if isinstance(evaluated, str) else str(evaluated)))
+            evaluated = self._expressions(state).evaluate(
+                raw, state.data, variables=state.variables
+            )
+            result.append((str(name), expression_string(evaluated)))
         return tuple(result)
 
     @staticmethod

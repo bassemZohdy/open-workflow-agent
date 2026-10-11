@@ -16,9 +16,10 @@ must be unique within their scope. Document identity, title, summary, tags
 and metadata survive normalization; clients cannot mutate the plan by
 mutating their source or a returned source copy.
 
-`evaluate.language` supports only `jq`, and `evaluate.mode` only `strict`.
-The evaluator's remaining jq/data-flow gaps are tracked by S1-02 and S1-03;
-admission is not a claim that those stages have been delivered.
+`evaluate.language` supports only `jq`. Both `strict` (default) and `loose`
+modes use the same pinned jq implementation. See [expression semantics](workflow-expressions.md)
+for recognition, types, errors and execution limits. Data-flow ordering and
+descriptor gaps remain tracked by S1-03; jq support does not close those gaps.
 
 Currently rejected reusable components are `use.authentications`, `errors`,
 `extensions`, `functions`, `retries`, `secrets` and `timeouts`. Named errors

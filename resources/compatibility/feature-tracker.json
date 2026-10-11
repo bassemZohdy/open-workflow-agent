@@ -53464,8 +53464,29 @@
         "module": "M02",
         "description": "Replace the partial expression evaluator with validated jq behavior and consistent data/type handling.",
         "effort": "L",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "In progress",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "scope": "Pinned jq expression implementation; descriptor/data-flow and later-stage mappings remain open",
+          "local_core_jq_passed": 102,
+          "local_root_before_final_edge_cases": {
+            "passed": 849,
+            "skipped": 13,
+            "coverage_percent": 90.54
+          },
+          "native_matrices": {
+            "adk": 264,
+            "langgraph": 262,
+            "agent_framework_optional": 355
+          },
+          "final_shared_expression_tests": {
+            "adk": 16,
+            "langgraph": 16,
+            "agent_framework_optional": 24
+          },
+          "remote_acceptance": "Pending",
+          "full_conformance": false
+        }
       },
       {
         "id": "S1-03",

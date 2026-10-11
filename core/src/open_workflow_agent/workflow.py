@@ -29,6 +29,8 @@ from .errors import (
     WorkflowSchemaError,
     WorkflowSemanticError,
 )
+from .expressions import ExpressionEvaluator as ExpressionEvaluator
+from .expressions import ExpressionMode, validate_expression_data
 from .external_catalog import parse_catalog_function_reference
 from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
@@ -245,6 +247,81 @@ def validate_capabilities(
                 _unsupported("listen foreach iteration", f"{reference}/foreach")
         if "run" in definition:
             _validate_run_capability(definition["run"], reference)
+    if _prefix == "/do":
+        validate_expression_profile(workflow)
+
+
+def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
+    """Compile workflow-owned expression slots without interpreting literal code/schema."""
+    evaluator = ExpressionEvaluator(
+        mode=cast(ExpressionMode, workflow.get("evaluate", {}).get("mode", "strict"))
+    )
+    variables = {"input", "context", "event", "resume_input"}
+
+    def check(value: Any, scope: set[str], reference: str) -> None:
+        try:
+            evaluator.validate(value, variables=scope)
+        except ExpressionError as exc:
+            raise ExpressionError(exc.message, details={"reference": reference}) from exc
+
+    def data_slots(value: Mapping[str, Any], scope: set[str], reference: str) -> None:
+        for section, field_name in (("input", "from"), ("output", "as"), ("export", "as")):
+            declaration = value.get(section)
+            if isinstance(declaration, Mapping) and field_name in declaration:
+                check(declaration[field_name], scope, f"{reference}/{section}/{field_name}")
+
+    def tasks(task_list: Any, scope: set[str], prefix: str) -> None:
+        for reference, definition in _walk_tasks(task_list, prefix=prefix):
+            data_slots(definition, scope, reference)
+            for key in ("if", "set", "with", "wait", "while"):
+                if key in definition:
+                    check(definition[key], scope, f"{reference}/{key}")
+            loop = definition.get("for")
+            if isinstance(loop, Mapping):
+                check(loop.get("in"), scope, f"{reference}/for/in")
+            for case in definition.get("switch", []):
+                if isinstance(case, Mapping):
+                    for name, case_definition in case.items():
+                        if isinstance(case_definition, Mapping):
+                            check(
+                                case_definition.get("when"),
+                                scope,
+                                f"{reference}/switch/{name}/when",
+                            )
+            for key, member in (("emit", "event"), ("listen", "to"), ("raise", "error")):
+                declaration = definition.get(key)
+                if isinstance(declaration, Mapping):
+                    check(declaration.get(member), scope, f"{reference}/{key}/{member}")
+            run = definition.get("run")
+            if isinstance(run, Mapping):
+                for kind, configuration in run.items():
+                    if not isinstance(configuration, Mapping):
+                        continue
+                    for slot in ("input", "stdin", "environment", "arguments"):
+                        if slot in configuration:
+                            check(configuration[slot], scope, f"{reference}/run/{kind}/{slot}")
+            catch = definition.get("catch")
+            if isinstance(catch, Mapping):
+                catch_scope = scope | {str(catch.get("as", "error"))}
+                for slot in ("when", "exceptWhen"):
+                    check(catch.get(slot), catch_scope, f"{reference}/catch/{slot}")
+                retry = catch.get("retry")
+                if isinstance(retry, Mapping):
+                    for slot in ("when", "exceptWhen"):
+                        check(retry.get(slot), catch_scope, f"{reference}/catch/retry/{slot}")
+            for suffix, nested in _task_scopes(definition):
+                child_scope = scope
+                if suffix == "do" and isinstance(loop, Mapping):
+                    child_scope = scope | {
+                        str(loop.get("each", "item")),
+                        str(loop.get("at", "index")),
+                    }
+                if suffix == "catch/do" and isinstance(catch, Mapping):
+                    child_scope = scope | {str(catch.get("as", "error"))}
+                tasks(nested, child_scope, f"{reference}/{suffix}")
+
+    data_slots(workflow, variables, "")
+    tasks(workflow.get("do", []), variables, "/do")
 
 
 def _unsupported(feature: str, reference: str) -> NoReturn:
@@ -277,7 +354,7 @@ def _validate_definition_profile(workflow: Mapping[str, Any]) -> None:
     if isinstance(evaluation, Mapping):
         if evaluation.get("language", "jq") != "jq":
             _unsupported("expression language", "/evaluate/language")
-        if evaluation.get("mode", "strict") != "strict":
+        if evaluation.get("mode", "strict") not in {"strict", "loose"}:
             _unsupported("expression mode", "/evaluate/mode")
     use = workflow.get("use", {})
     if isinstance(use, Mapping):
@@ -483,149 +560,6 @@ def normalize_workflow(workflow: Mapping[str, Any]) -> WorkflowPlan:
     )
 
 
-class ExpressionEvaluator:
-    """Small trusted-workflow expression evaluator for the jq portable subset."""
-
-    _template = re.compile(r"\$\{\s*(.*?)\s*\}")
-
-    def evaluate(
-        self, expression: Any, data: Any, *, variables: Mapping[str, Any] | None = None
-    ) -> Any:
-        variables = variables or {}
-        if not isinstance(expression, str):
-            if isinstance(expression, Mapping):
-                return {
-                    key: self.evaluate(value, data, variables=variables)
-                    for key, value in expression.items()
-                }
-            if isinstance(expression, list):
-                return [self.evaluate(item, data, variables=variables) for item in expression]
-            return expression
-        text = expression.strip()
-        if text.startswith("${") and text.endswith("}"):
-            text = text[2:-1].strip()
-        if self._template.fullmatch(expression):
-            return self._evaluate_atom(text, data, variables)
-        if "${" in expression:
-            return self._template.sub(
-                lambda match: str(self._evaluate_atom(match.group(1).strip(), data, variables)),
-                expression,
-            )
-        if text.startswith((".", "$", "@", "{", "[")):
-            return self._evaluate_atom(text, data, variables)
-        return expression
-
-    def condition(
-        self, expression: Any, data: Any, *, variables: Mapping[str, Any] | None = None
-    ) -> bool:
-        variables = variables or {}
-        if not isinstance(expression, str):
-            return bool(self.evaluate(expression, data, variables=variables))
-        text = expression.strip()
-        if text.startswith("${") and text.endswith("}"):
-            text = text[2:-1].strip()
-        for operator in (" or ", " and "):
-            if operator in text:
-                parts = text.split(operator)
-                values = [self.condition(part, data, variables=variables) for part in parts]
-                return any(values) if operator.strip() == "or" else all(values)
-        if text.startswith("not "):
-            return not self.condition(text[4:], data, variables=variables)
-        for operator in ("==", "!=", ">=", "<=", ">", "<"):
-            if operator in text:
-                left, right = text.split(operator, 1)
-                lhs = self._evaluate_atom(left.strip(), data, variables)
-                rhs = self._evaluate_atom(right.strip(), data, variables)
-                return bool(
-                    {
-                        "==": lhs == rhs,
-                        "!=": lhs != rhs,
-                        ">=": lhs >= rhs,
-                        "<=": lhs <= rhs,
-                        ">": lhs > rhs,
-                        "<": lhs < rhs,
-                    }[operator]
-                )
-        return bool(self._evaluate_atom(text, data, variables))
-
-    def _evaluate_atom(self, expression: str, data: Any, variables: Mapping[str, Any]) -> Any:
-        expression = expression.strip()
-        while _is_wrapped(expression, "(", ")"):
-            expression = expression[1:-1].strip()
-        pipeline = _split_top_level(expression, "|")
-        if len(pipeline) > 1:
-            result = self._evaluate_atom(pipeline[0], data, variables)
-            for stage in pipeline[1:]:
-                stage = stage.strip()
-                if stage == "length":
-                    if result is None:
-                        result = 0
-                    elif isinstance(result, (Mapping, Sequence)) and not isinstance(
-                        result, (str, bytes)
-                    ):
-                        result = len(result)
-                    elif isinstance(result, str):
-                        result = len(result)
-                    else:
-                        raise ExpressionError("length filter requires an array, object, or string")
-                else:
-                    result = self._evaluate_atom(stage, result, variables)
-            return result
-        if expression in (".", "$"):
-            return data
-        if expression.startswith("@"):
-            return variables.get(expression[1:])
-        if expression.startswith(".") and len(_split_top_level(expression, "+")) == 1:
-            return _path_get(data, expression[1:])
-        if expression.startswith("$"):
-            variable_path = expression[1:].lstrip(".")
-            variable_name, _, remainder = variable_path.partition(".")
-            if variable_name in variables:
-                return (
-                    _path_get(variables[variable_name], remainder)
-                    if remainder
-                    else variables[variable_name]
-                )
-            return _path_get(data, variable_path)
-        if expression in variables:
-            return variables[expression]
-        if expression in {"true", "false", "null"}:
-            return {"true": True, "false": False, "null": None}[expression]
-        addition = _split_top_level(expression, "+")
-        if len(addition) > 1:
-            values = [self._evaluate_atom(part, data, variables) for part in addition]
-            result = values[0]
-            for value in values[1:]:
-                if isinstance(result, list) and isinstance(value, list):
-                    result = result + value
-                elif isinstance(result, dict) and isinstance(value, dict):
-                    result = {**result, **value}
-                elif result is None:
-                    result = value
-                elif value is None:
-                    continue
-                else:
-                    result = result + value
-            return result
-        if expression.startswith("{") and expression.endswith("}"):
-            return {
-                key.strip(" '\""): self._evaluate_atom(value, data, variables)
-                for item in _split_top_level(expression[1:-1], ",")
-                if item.strip()
-                for key, value in [_split_mapping_item(item)]
-            }
-        if expression.startswith("[") and expression.endswith("]"):
-            return [
-                self._evaluate_atom(item, data, variables)
-                for item in _split_top_level(expression[1:-1], ",")
-                if item.strip()
-            ]
-        try:
-            return json.loads(expression)
-        except json.JSONDecodeError:
-            return expression.strip("'\"")
-
-
 def _path_get(value: Any, path: str) -> Any:
     if not path:
         return value
@@ -644,57 +578,6 @@ def _path_get(value: Any, path: str) -> Any:
     return current
 
 
-def _is_wrapped(value: str, opening: str, closing: str) -> bool:
-    if not (value.startswith(opening) and value.endswith(closing)):
-        return False
-    depth = 0
-    quote: str | None = None
-    for index, character in enumerate(value):
-        if quote:
-            if character == quote and (index == 0 or value[index - 1] != "\\"):
-                quote = None
-            continue
-        if character in {"'", '"'}:
-            quote = character
-        elif character == opening:
-            depth += 1
-        elif character == closing:
-            depth -= 1
-            if depth == 0 and index != len(value) - 1:
-                return False
-    return depth == 0 and quote is None
-
-
-def _split_top_level(value: str, separator: str) -> list[str]:
-    parts: list[str] = []
-    start = 0
-    depth = 0
-    quote: str | None = None
-    for index, character in enumerate(value):
-        if quote:
-            if character == quote and (index == 0 or value[index - 1] != "\\"):
-                quote = None
-            continue
-        if character in {"'", '"'}:
-            quote = character
-        elif character in "([{":
-            depth += 1
-        elif character in ")]}":
-            depth -= 1
-        elif character == separator and depth == 0:
-            parts.append(value[start:index].strip())
-            start = index + 1
-    parts.append(value[start:].strip())
-    return parts
-
-
-def _split_mapping_item(value: str) -> tuple[str, str]:
-    parts = _split_top_level(value, ":")
-    if len(parts) < 2:
-        raise ExpressionError(f"invalid object expression: {value}")
-    return parts[0], ":".join(parts[1:])
-
-
 @dataclass(slots=True)
 class ExecutionState:
     data: Any
@@ -703,6 +586,7 @@ class ExecutionState:
     context: dict[str, Any] = field(default_factory=dict)
     jump_to: str | None = None
     stop: bool = False
+    expressions: ExpressionEvaluator | None = None
 
 
 class WorkflowExecutor:
@@ -719,6 +603,9 @@ class WorkflowExecutor:
         self.services = services
         self.expressions = ExpressionEvaluator()
         self.event_sink = event_sink or NullEventSink()
+
+    def _expressions(self, state: ExecutionState) -> ExpressionEvaluator:
+        return state.expressions or self.expressions
 
     async def execute(
         self, plan: WorkflowPlan, input_data: Any, *, metadata: dict[str, Any] | None = None
@@ -742,13 +629,17 @@ class WorkflowExecutor:
             data=copy.deepcopy(input_data),
             context=context,
             variables={"context": context, "input": copy.deepcopy(input_data)},
+            expressions=ExpressionEvaluator(
+                mode=cast(ExpressionMode, workflow.get("evaluate", {}).get("mode", "strict"))
+            ),
         )
         try:
+            validate_expression_data(input_data)
             self._validate_data_schema(workflow.get("input"), input_data, "workflow input")
             initial_data = input_data
             input_spec = workflow.get("input")
             if isinstance(input_spec, Mapping) and "from" in input_spec:
-                initial_data = self.expressions.evaluate(input_spec["from"], input_data)
+                initial_data = self._expressions(state).evaluate(input_spec["from"], input_data)
                 state.data = copy.deepcopy(initial_data)
             workflow_timeout = _duration_seconds(workflow.get("timeout"))
             if workflow_timeout is None:
@@ -790,9 +681,12 @@ class WorkflowExecutor:
             raise
         output = plan.source.get("output")
         if isinstance(output, Mapping) and "as" in output:
-            result = self.expressions.evaluate(output["as"], state.data, variables=state.variables)
+            result = self._expressions(state).evaluate(
+                output["as"], state.data, variables=state.variables
+            )
         else:
             result = state.data
+        validate_expression_data(result)
         self._validate_data_schema(output, result, "workflow output")
         self._emit(
             "WorkflowCompleted",
@@ -971,29 +865,34 @@ class WorkflowExecutor:
         self, name: str, definition: Mapping[str, Any], state: ExecutionState
     ) -> Any:
         task_reference = str(state.variables.get("_task_reference", "/do"))
-        if "if" in definition and not self.expressions.condition(
+        if "if" in definition and not self._expressions(state).condition(
             definition["if"], state.data, variables=state.variables
         ):
             return state.data
         task_input = state.data
         input_spec = definition.get("input")
         if isinstance(input_spec, Mapping) and "from" in input_spec:
-            task_input = self.expressions.evaluate(
+            task_input = self._expressions(state).evaluate(
                 input_spec["from"], state.data, variables=state.variables
             )
         elif input_spec is not None and not isinstance(input_spec, Mapping):
-            task_input = self.expressions.evaluate(
+            task_input = self._expressions(state).evaluate(
                 input_spec, state.data, variables=state.variables
             )
         self._validate_data_schema(input_spec, task_input, f"task {name} input")
         state.variables["input"] = copy.deepcopy(task_input)
         if "set" in definition:
-            return self.expressions.evaluate(
+            return self._expressions(state).evaluate(
                 definition["set"], task_input, variables=state.variables
             )
         if "call" in definition:
-            payload = definition.get("with", task_input)
-            payload = self.expressions.evaluate(payload, state.data, variables=state.variables)
+            payload = (
+                self._expressions(state).evaluate(
+                    definition["with"], task_input, variables=state.variables
+                )
+                if "with" in definition
+                else copy.deepcopy(task_input)
+            )
             if str(definition["call"]) in {"http", "mcp", "a2a", "openapi"} and isinstance(
                 payload, Mapping
             ):
@@ -1048,10 +947,10 @@ class WorkflowExecutor:
                         raise
                     error = _error_details(exc)
                     state.variables["error"] = error
-                    if not _catch_matches(catch, error, state, self.expressions):
+                    if not _catch_matches(catch, error, state, self._expressions(state)):
                         raise
                     if attempt + 1 < attempts and _retry_allowed(
-                        catch_retry, state, self.expressions
+                        catch_retry, state, self._expressions(state)
                     ):
                         delay = _retry_delay(catch_retry, attempt)
                         if delay:
@@ -1081,7 +980,7 @@ class WorkflowExecutor:
                     self._apply_transition(catch.get("then"), state)
                     return state.data
         if "wait" in definition:
-            wait_value = self.expressions.evaluate(
+            wait_value = self._expressions(state).evaluate(
                 definition["wait"], state.data, variables=state.variables
             )
             seconds = max(0.0, min(_duration_seconds(wait_value) or 0, 300.0))
@@ -1127,7 +1026,9 @@ class WorkflowExecutor:
             else:
                 message = raise_value
                 details = {}
-            message = self.expressions.evaluate(message, state.data, variables=state.variables)
+            message = self._expressions(state).evaluate(
+                message, state.data, variables=state.variables
+            )
             raise WorkflowExecutionError(str(message), details=details)
         raise UnsupportedWorkflowFeature(f"unsupported task {name}")
 
@@ -1167,7 +1068,7 @@ class WorkflowExecutor:
                 otherwise = entry["otherwise"]
                 continue
             condition = case.get("when", case.get("case", case.get("if")))
-            if condition is None or self.expressions.condition(
+            if condition is None or self._expressions(state).condition(
                 condition, state.data, variables=state.variables
             ):
                 body = case.get("do")
@@ -1193,7 +1094,7 @@ class WorkflowExecutor:
         configuration = definition.get("for", definition)
         if not isinstance(configuration, Mapping):
             raise WorkflowSemanticError("for configuration must be an object")
-        values = self.expressions.evaluate(
+        values = self._expressions(state).evaluate(
             configuration.get("in", configuration.get("over", [])),
             state.data,
             variables=state.variables,
@@ -1209,9 +1110,10 @@ class WorkflowExecutor:
                 dict(state.outputs),
                 dict(state.variables),
                 dict(state.context),
+                expressions=self._expressions(state),
             )
             child.variables[variable] = value
-            child.variables["index"] = index
+            child.variables[str(configuration.get("at", "index"))] = index
             await self._run_tasks(body, child, prefix=self._nested_prefix(child, "do"))
             state.data = child.data
             results.append(child.data)
@@ -1235,6 +1137,7 @@ class WorkflowExecutor:
                 dict(state.outputs),
                 dict(state.variables),
                 dict(state.context),
+                expressions=self._expressions(state),
             )
             await self._run_tasks(
                 _task_body(branch.get("do", branch) if isinstance(branch, Mapping) else branch),
@@ -1278,8 +1181,13 @@ class WorkflowExecutor:
         if not isinstance(reference, Mapping):
             raise WorkflowSemanticError("run.workflow must be an object")
         plan = self.services.workflow_catalog.resolve(reference)
-        child_input = reference.get("input", state.data)
-        child_input = self.expressions.evaluate(child_input, state.data, variables=state.variables)
+        child_input = (
+            self._expressions(state).evaluate(
+                reference["input"], state.data, variables=state.variables
+            )
+            if "input" in reference
+            else copy.deepcopy(state.data)
+        )
         task_reference = str(state.variables.get("_task_reference", "unknown-task"))
         return await runner(plan, child_input, state.context, task_reference)
 
@@ -1292,7 +1200,9 @@ class WorkflowExecutor:
         properties = event.get("with") if isinstance(event, Mapping) else None
         if not isinstance(properties, Mapping):
             raise WorkflowSemanticError("emit event.with must be an object")
-        evaluated = self.expressions.evaluate(properties, state.data, variables=state.variables)
+        evaluated = self._expressions(state).evaluate(
+            properties, state.data, variables=state.variables
+        )
         if not isinstance(evaluated, Mapping):
             raise WorkflowSemanticError("emit event.with must evaluate to an object")
         try:
@@ -1322,7 +1232,7 @@ class WorkflowExecutor:
             raise WorkflowSemanticError("listen configuration must be an object")
         if not isinstance(definition.get("to"), Mapping):
             raise WorkflowSemanticError("listen.to must be an object")
-        strategy = self.expressions.evaluate(
+        strategy = self._expressions(state).evaluate(
             definition["to"], state.data, variables=state.variables
         )
         if not isinstance(strategy, Mapping):
@@ -1398,14 +1308,17 @@ class WorkflowExecutor:
     def _apply_task_data(
         self, definition: Mapping[str, Any], result: Any, before: Any, state: ExecutionState
     ) -> Any:
+        validate_expression_data(result)
         output = result
         output_spec = definition.get("output")
         if isinstance(output_spec, Mapping) and "as" in output_spec:
-            output = self.expressions.evaluate(output_spec["as"], result, variables=state.variables)
+            output = self._expressions(state).evaluate(
+                output_spec["as"], result, variables=state.variables
+            )
         self._validate_data_schema(output_spec, output, "task output")
         export_spec = definition.get("export")
         if isinstance(export_spec, Mapping) and "as" in export_spec:
-            exported = self.expressions.evaluate(
+            exported = self._expressions(state).evaluate(
                 export_spec["as"], result, variables=state.variables
             )
             state.context = _merge(state.context, exported)

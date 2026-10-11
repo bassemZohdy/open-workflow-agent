@@ -18,4 +18,14 @@ def workflow_profile() -> dict[str, Any]:
         "schemaSha256": SCHEMA_SHA256,
         "semanticProfile": WORKFLOW_PROFILE,
         "fullConformance": False,
+        "expressions": {
+            "language": "jq",
+            "binding": "jq==1.12.0",
+            "implementation": "jq 1.8.2",
+            "modes": ["strict", "loose"],
+            "resultCardinality": 1,
+            "ambientIo": False,
+            "ambientTime": False,
+            "integerRange": [-(2**53 - 1), 2**53 - 1],
+        },
     }

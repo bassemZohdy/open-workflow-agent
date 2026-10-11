@@ -2,7 +2,10 @@
 
 The original Gherkin files are selected from the upstream Open Workflow CTK at commit
 `2dd2c84170d5f3e05d58e913e9ca298dcf8d543a` (the repository head used during
-integration). The adapter executes the upstream `do`, `set`, `switch`, `for`,
+integration). Selected data-flow, loop and switch expression strings were
+adapted to the pinned DSL's default strict `${ ... }` syntax in S1-02;
+the active selection is therefore adapted source, not a byte-identical CTK
+snapshot. The adapter executes the upstream `do`, `set`, `switch`, `for`,
 `branch`, `raise`, and deterministic data-flow input-, output-, and
 non-object-output filtering scenarios plus the upstream HTTP and OpenAPI
 content/response-output projection cases and caught/uncaught protocol errors, plus
