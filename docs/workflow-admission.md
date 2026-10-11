@@ -34,6 +34,9 @@ including boolean schemas and local fragment references. Malformed inline
 schemas fail admission. External schema resources/references and other
 formats fail the capability gate without a network request. Credentials
 are supplied through runtime security profiles, never ordinary workflows.
+Inline OWS endpoint authentication policies are rejected because the common
+protocol clients cannot interpret them. A field named `authentication` inside
+an application request body remains data, not protocol configuration.
 
 The existing single-event listener supports `data`, `envelope` and `raw`
 reads. Iterators and correlation are rejected until implemented. Registered

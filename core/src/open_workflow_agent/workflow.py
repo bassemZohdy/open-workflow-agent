@@ -221,6 +221,8 @@ def validate_capabilities(
                 raise UnsupportedWorkflowFeature(
                     f"call '{call}' is not enabled", details={"reference": reference}
                 )
+            if call in SUPPORTED_PROTOCOL_CALLS:
+                _validate_protocol_authentication(definition.get("with"), f"{reference}/with")
             if call == "mcp":
                 with_value = definition.get("with")
                 transport = with_value.get("transport") if isinstance(with_value, Mapping) else None
@@ -250,6 +252,24 @@ def _unsupported(feature: str, reference: str) -> NoReturn:
         f"{feature} is not supported by the current OWA profile",
         details={"reference": reference},
     )
+
+
+def _validate_protocol_authentication(value: Any, reference: str) -> None:
+    """Workflow authentication declarations are not deployment security profiles.
+
+    Inspect protocol configuration, not application payloads, so a body field
+    named authentication remains ordinary data. The common protocol client
+    uses deployment-owned authentication and cannot interpret inline OWS
+    endpoint policies; accepting them would silently make unauthenticated calls.
+    """
+    if not isinstance(value, Mapping):
+        return
+    for key, item in value.items():
+        path = f"{reference}/{key}"
+        if key == "authentication":
+            _unsupported("workflow protocol authentication", path)
+        if key not in {"body", "parameters", "arguments", "input", "message", "headers"}:
+            _validate_protocol_authentication(item, path)
 
 
 def _validate_definition_profile(workflow: Mapping[str, Any]) -> None:

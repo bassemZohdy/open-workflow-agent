@@ -90,6 +90,47 @@ def test_unused_reusable_definitions_fail_closed(use):
     assert "secret-value" not in str(failure.value)
 
 
+def test_inline_endpoint_authentication_is_not_silently_ignored_or_exposed():
+    workflow = generate_default_workflow()
+    workflow["do"] = [
+        {
+            "request": {
+                "call": "http",
+                "with": {
+                    "method": "get",
+                    "endpoint": {
+                        "uri": "https://service.test",
+                        "authentication": {"bearer": {"token": "secret-value"}},
+                    },
+                },
+            }
+        }
+    ]
+    with pytest.raises(UnsupportedWorkflowFeature) as failure:
+        compile_workflow(workflow)
+    assert failure.value.details == {"reference": "/do/0/request/with/endpoint/authentication"}
+    assert "secret-value" not in str(failure.value)
+
+
+def test_authentication_named_payload_field_is_ordinary_application_data():
+    workflow = generate_default_workflow()
+    workflow["do"] = [
+        {
+            "request": {
+                "call": "http",
+                "with": {
+                    "method": "post",
+                    "endpoint": "https://service.test",
+                    "body": {"authentication": "data"},
+                },
+            }
+        }
+    ]
+    assert compile_workflow(workflow).tasks[0].definition["with"]["body"] == {
+        "authentication": "data"
+    }
+
+
 @pytest.mark.parametrize(
     "evaluation,reference",
     [
