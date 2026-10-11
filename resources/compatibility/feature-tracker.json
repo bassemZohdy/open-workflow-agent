@@ -65066,7 +65066,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "work_in_progress": {
-          "scope": "Selected input/terminal/journal/leaf-call foundations and corrected dependency acceptance are verified. Conditional common writes have full local proof and pending exact new-source database gates. Durable exclusive ownership, native checkpoint consistency and broader effects remain open.",
+          "scope": "Input/terminal/journal/leaf-call foundations and conditional common writes are verified. Initial native/input-binding admission has full local proof and pending new-source database gates. Exclusive execution ownership, atomic native checkpoint fencing/full consistency, forced process-crash qualification and broader effects remain open.",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -65342,7 +65342,7 @@
           },
           "conditional_invocation_write_followup": {
             "commit": "31f64ac5ba42dc9f62da887e9f013c6330688aff",
-            "status": "Local validation passed; exact new-source GitHub/PostgreSQL acceptance pending",
+            "status": "Verified at 6954db8; no execution lease/native fence claim",
             "scope": "Conditional common state writes and terminal reconciliation. No durable execution lease, native checkpoint fence or S2-03 completion.",
             "negative_probes": {
               "invocation_store_writes": 13,
@@ -65379,7 +65379,87 @@
               "tests/contract/test_invocation_writes.py",
               "tests/core/test_postgres_persistence.py"
             ],
-            "remaining": "Durable execution leases/fences, native checkpoint consistency, hard-process-crash qualification and broader effects remain open."
+            "remaining": "Durable execution leases/fences, native checkpoint consistency, hard-process-crash qualification and broader effects remain open.",
+            "remote_acceptance": {
+              "commit": "6954db892aa7a787794b2cb2fa25cfd0f9316882",
+              "runtime_source": "31f64ac5ba42dc9f62da887e9f013c6330688aff",
+              "result": "Success",
+              "runs": {
+                "ci_pr": 38163682555,
+                "ci_push": 38163678738,
+                "postgresql": 38163682598,
+                "external_sandbox": 38163682554,
+                "agent_framework_optional": 38163682536,
+                "security_pr": 38163682524,
+                "docs": 38163682518
+              },
+              "linux_root": {
+                "passed": 1465,
+                "skipped": 198,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.87
+              },
+              "postgresql": {
+                "store_passed": 14,
+                "native_langgraph_passed": 10,
+                "native_langgraph_skipped": 8,
+                "shared_adk_passed": 78,
+                "shared_langgraph_passed": 78,
+                "shared_agent_framework_passed": 76,
+                "shared_agent_framework_skipped": 2
+              },
+              "remote_security_dependency_counts": {
+                "root": 71,
+                "adk": 109,
+                "langgraph": 96,
+                "agent_framework_optional": 74,
+                "sandbox_controller": 13,
+                "kubernetes_sandbox_controller": 16
+              },
+              "remote_known_advisories": 0,
+              "scope": "Conditional common state writes and first-terminal reconciliation; not execution leases or native checkpoint fencing."
+            }
+          },
+          "native_input_admission_followup": {
+            "commit": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+            "status": "Full local validation passed; fresh GitHub/PostgreSQL acceptance pending",
+            "scope": "Read-only original-input recovery and initial native session/root-checkpoint input admission. Shared-session input bindings remain invocation-specific. No execution lease, checkpoint fence or full S2-03 completion.",
+            "negative_probes": {
+              "native_input_binding_admission": 8,
+              "shared_adk_session_input": 1,
+              "native_cleanup_error_boundary": 1
+            },
+            "local_root": {
+              "passed": 1473,
+              "skipped": 230,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.83,
+              "commit": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7"
+            },
+            "native_matrices": {
+              "commit": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+              "adk": {
+                "passed": 739,
+                "skipped": 173,
+                "expected_assertion_failures": 3
+              },
+              "langgraph": {
+                "passed": 749,
+                "skipped": 180,
+                "expected_assertion_failures": 3
+              },
+              "agent_framework_optional": {
+                "passed": 999,
+                "skipped": 269,
+                "expected_assertion_failures": 3
+              }
+            },
+            "tests": [
+              "tests/contract/test_recovery_admission.py",
+              "tests/core/test_invocation_inputs.py",
+              "tests/core/test_postgres_persistence.py"
+            ],
+            "remaining": "Durable exclusive execution ownership/leases and atomic native checkpoint fencing remain open. Initial session/root-input checks do not establish complete nested checkpoint consistency or atomic common/native reconciliation. New admission PostgreSQL acceptance is pending. Conditional writes passed at 6954db8. Executable run/event/child effects, ambiguous outcomes, forced process-crash qualification, legacy input/version migration, full proposed criteria and independent JS remain unqualified."
           }
         }
       },

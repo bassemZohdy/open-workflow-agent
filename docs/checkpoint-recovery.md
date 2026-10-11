@@ -65,11 +65,35 @@ immutable identity, legacy metadata and sanitized corruption errors.
 [Shared worker fixtures](../tests/contract/test_invocation_writes.py) execute
 late outcomes, loaded operator handles and conflict routing through independent
 SDK environments. Their PostgreSQL equivalents are wired into the same
-configured gate; new-source database acceptance is pending.
+configured gate and passed at `6954db8`.
 
 These guards do not exclude competing executions, renew a durable execution
 lease or atomically fence native checkpoint writes. Exclusive ownership and
 native consistency remain S2-03 work.
+
+## Initial native recovery admission
+
+Fresh recovery reads an existing common original-input binding. It cannot
+create a missing binding from a resume message. Before accepting a status
+transition, principal adapters require an ADK session event for the private
+native invocation or a LangGraph root checkpoint, with original input matching
+the common record. Missing/deleted native records, missing/changed input and
+unavailable installed native persistence reject admission without execution or
+a common-state write. Native storage/cleanup failures use sanitized common errors.
+
+ADK sessions may contain multiple invocations. Each invocation's bound input
+drives execution; session-wide state cannot substitute the first invocation's
+input for another invocation. The native SDK remains responsible for its events
+and checkpoint format. Shared-session restart fixtures verify both results.
+
+[Admission fixtures](../tests/contract/test_recovery_admission.py) exercise the
+actual principal SDKs and have the same configured PostgreSQL assertions.
+The optional Agent Framework common bridge explicitly skips native admission
+qualification. Full local suites passed at `58516fb`; fresh GitHub and configured
+database acceptance are pending.
+These checks validate initial input bindings. They do not validate every nested
+checkpoint field, atomically reconcile common/native state, fence native writes
+or establish exclusive execution ownership. Those remain S2-03 requirements.
 
 ## Evidence and remaining work
 

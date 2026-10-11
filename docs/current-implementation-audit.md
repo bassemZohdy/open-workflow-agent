@@ -9,16 +9,24 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`31f64ac`, which retains the verified fork, original-input, terminal-record and
-leaf-call corrections and adds conditional common state writes. Completed outcomes are
+`58516fb`, which retains the verified fork, original-input, terminal-record,
+leaf-call and conditional common write corrections. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
 competitive actions cannot establish a winner. Stale writes cannot replace newer
 records or terminal outcomes, and stale state conflicts stop retry/fork routing.
+Fresh recovery now reads an existing original-input binding without inserting
+resume data. Principal native adapters validate initial ADK invocation/root
+LangGraph checkpoint input before a status transition. Missing/deleted native
+records, missing/changed original input and unavailable installed native
+persistence reject admission. ADK invocations sharing a session retain distinct
+original inputs. Admission storage/cleanup errors are sanitized.
 Full local suites passed; exact new-source GitHub/database acceptance is pending.
-The prior leaf-call and corrected dependency gates passed at `fc53574`. Recovery, action idempotency and lifecycle
+The conditional-write gates passed at `6954db8`; prior leaf-call and corrected
+dependency gates passed at `fc53574`. Recovery, action idempotency and lifecycle
 remain partial. S2-03 remains open for broader effects, fenced ownership and
-native checkpoint consistency.
+full native checkpoint consistency. Initial input-binding checks do not
+establish nested checkpoint validation or atomic native write fences.
 
 Earlier competitive runtime, fixture/audit and all three common PostgreSQL
 gates passed at `2fbe548`, `51c204e` and `81d27b3`. The JSON null wake-up fix also

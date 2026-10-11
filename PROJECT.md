@@ -217,9 +217,43 @@ ADK 729 (156 skips), LangGraph 742 (163 skips) and optional Agent Framework
 tests pass 78 with 34 unconfigured database skips. Formatting, lint, strict
 typing, four locks, five builds and documentation checks pass. Five new
 PostgreSQL store cases and the same shared worker assertions are wired into the
-configured gate; exact new-source GitHub/database acceptance remains pending.
+configured gate and passed at `6954db8`. All seven exact gates passed: [PR
+CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38163682555),
+[push CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38163678738),
+[PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38163682598),
+[external sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38163682554),
+[optional Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38163682536),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38163682524)
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38163682518).
+Actual Linux root validation passed 1,465 tests, 198 skips, three expected gaps
+and 91.87% coverage. Configured PostgreSQL passed 14 common-store cases,
+10 native LangGraph cases with eight skips, and 78 shared cases on each
+principal adapter; the optional bridge passed 76 with two native-boundary
+skips. Both PostgreSQL runtime-image restart jobs passed. The six downloaded
+Linux audit reports contain zero known advisories.
 Conditional metadata writes are not an exclusive execution lease or an atomic
 fence around native checkpoint writes.
+
+New source `58516fb` reads the existing original-input binding without inserting
+resume data. Before changing common status, principal native recovery checks
+that the input agrees with an existing ADK invocation event or LangGraph root
+checkpoint. Missing/deleted native records, missing/changed original input and
+unavailable installed native persistence reject admission without dispatch or
+a new common state. ADK now selects input for each invocation rather than
+session-wide input, preserving two invocations that share a session. Native
+admission storage/cleanup failures have sanitized common errors.
+
+Before these changes, eight principal SDK admission cases failed and a shared
+ADK session recovered the first invocation's input for its second invocation.
+A separate cleanup probe showed a framework error escaping the common contract.
+Frozen-source full local validation passed 1,473 root tests, 230 skips, three
+expected gaps and 91.83% coverage. Independent native/shared/CTK suites passed
+ADK 739 (173 skips), LangGraph 749 (180 skips) and optional Agent Framework
+999 (269 skips), each with the same three gaps. Formatting, lint, strict typing,
+four locks, five builds and documentation checks pass. Fresh GitHub and
+configured PostgreSQL acceptance for this source remains pending. These are
+initial input-binding admission checks, not complete nested checkpoint
+validation, an execution lease or atomic native checkpoint fencing.
 
 S2-03 stays open. This fix does not reconcile all native/common invocation or
 side-effect records. General pending-effect reconciliation, fenced recovery ownership,
