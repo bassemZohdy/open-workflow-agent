@@ -1,9 +1,52 @@
 # S2-05 embedded event acceptance
 
-Decision: **focused implementation verified; full and configured acceptance pending**.
-The task in [TODO.md](../TODO.md) remains open. The embedded event qualification
-flag remains false. No entry here closes a backlog checkbox, promotes a full
-feature/proposed-test flag or claims the entire user goal is complete.
+Decision: **runtime qualified at `143d38a`; capability publication checks pending**.
+All four frozen local suites and all seven configured workflows passed. The
+task in [TODO.md](../TODO.md) remains open until the subsequent capability
+publication revision passes its final configured checks. No entry here promotes
+a full feature/proposed-test flag or claims the entire user goal is complete.
+
+## Qualified runtime and publication delta
+
+The immutable runtime source is `143d38a44f74bf3d0aa837c48f02d8fe2671fb21`.
+All 254 source inputs remain unchanged during the four complete local runs:
+core **1,910 passed, 888 skipped, two expected gaps, 91.32% coverage**;
+ADK **1,109/688/two**; LangGraph **1,151/661/two**; optional Agent Framework
+**1,408/946/two**. The two expected gaps retain S3-03 owners. Five distributions
+match source, package/version and unchanged schema bytes. Full lint, 228-file
+formatting, strict 73-source typing, changed-fixture typing and 51 audit checks
+pass. Skipped PostgreSQL cases in local runs are qualified by actual configured
+execution below, rather than inferred from skips.
+
+All seven exact-source workflows succeed: [push CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38199785274),
+[PR CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38199789374),
+[PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38199789380),
+[optional Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38199789439),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38199789381),
+[external sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38199789379)
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38199789378).
+Actual PostgreSQL executes **41 durable event cases and five OS process stops
+per principal**, **195 core cases**, and the real delayed-commit ordering-lock
+test. Both PostgreSQL images execute initial/restarted invocation assertions.
+Initial image HTTP logs are unavailable because their exit trap runs after
+deliberate initial-container removal; initial success is evidenced by executed
+curl/JSON assertions, while restarted HTTP 200 logs are retained.
+
+Both CI runs pass both Windows stages, both principal restart images and native
+benchmarks. Downloaded benchmark results confirm actual SDK availability and one
+side-effect call across interruption/resume. Six downloaded nonempty nested
+security reports contain zero vulnerabilities across 71 root, 109 ADK,
+96 LangGraph, 74 optional Agent Framework and 13/16 controller dependencies.
+External acceptance executes 55 contracts and both restricted Docker adapters.
+
+The subsequent publication delta changes only the generic event capability
+helper, API expectation, image assertion and one typed shared capability matrix.
+It qualifies the actual embedded bus and its approval delegate; memory and an
+arbitrary custom bus declaring durable=true remain false. Native SPI scope and
+CloudEvents snapshot durability are unchanged. Bounded checks pass **73 root,
+76 ADK, 76 LangGraph and 111 optional Agent Framework** tests. Runtime execution
+bytes remain those of the fully qualified source; the changed publication bytes
+and image assertions still require fresh exact-revision configured acceptance.
 
 The scope is the full S2-05 event contribution: durable inbox/outbox, one/all/any
 and until consumption, filter/correlation semantics, ordered array projections,
@@ -17,6 +60,9 @@ invocations remain S2-06; external transport acceptance remains S4-10.
 Each E01–E14 requirement is mandatory. Focused SQLite/native checks below are
 supporting evidence on the working implementation, not substitutes for the
 final frozen-source suites or actual configured PostgreSQL execution.
+The table retains the earlier implementation-stage evidence notes. The complete
+qualified runtime evidence above supersedes their pending validation statuses;
+only the final publication revision remains pending for E13/E14.
 
 | ID | Requirement and concrete proof | Implemented evidence and current status |
 | --- | --- | --- |
@@ -141,7 +187,9 @@ native benchmarks and all six nonempty zero-advisory dependency reports on
 the exact published source. All seven configured workflows must succeed;
 cancelled, absent, skipped or earlier-revision results do not qualify a gate.
 
-Only then may the task, stage record and qualification flag be updated together.
+Only after the publication artifact passes may the task and stage record close.
+The capability flag is based on the qualified runtime and explicit backend
+matrix above; its publication validation is recorded separately.
 Full feature/proposed/JavaScript claims, compatible migration, durable timers,
 external brokers and broader lifecycle history retain their later owners. The
 complete backlog remains the user goal.

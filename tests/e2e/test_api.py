@@ -33,7 +33,7 @@ async def test_invoke_capabilities_health_and_reload(tmp_path):
             assert capabilities["features"]["events"] == {
                 "emit": True,
                 "listen": True,
-                "durable": False,
+                "durable": True,
             }
             assert capabilities["features"]["cloudEvents"] == {
                 "lifecycle": True,

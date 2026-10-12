@@ -98,10 +98,15 @@ principal native engines and optional Agent Framework; actual process-stop
 recovery passes on both principal engines. A prior-source probe fails eight
 desired-behavior assertions, demonstrating the original gap.
 
-Full suites now run against frozen source in four separate environments.
-Configured PostgreSQL, Windows, image restart, benchmark, distribution and
-security acceptance remain pending. S2-05 remains unchecked and its public
-durability qualification remains disabled. There are no deferred tasks.
+At `143d38a`, all four full suites and all seven configured workflows pass.
+Core passes 1,910/888/two tracked gaps at 91.32% coverage; ADK 1,109/688/two,
+LangGraph 1,151/661/two and optional Agent Framework 1,408/946/two. Actual
+PostgreSQL executes all 41 durable event and five process cases per principal;
+Windows, both image/restart pairs, benchmarks, distributions and six nested
+zero-vulnerability reports are verified. The capability publication update
+reports durability only for the qualified embedded bus and its approval
+delegate; root/native focused checks pass. Its final configured checks remain
+pending. S2-05 remains unchecked until they pass. There are no deferred tasks.
 
 Seven desired error-context cases fail on actual native LangGraph at `d8f3f7a`:
 built-in status filters lose the common status code, while catch/retry predicates

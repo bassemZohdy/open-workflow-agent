@@ -169,8 +169,9 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
   In progress: common storage and matching, native consumption/iterator
   recovery, scope and approval guards are implemented. Focused native and
-  process-stop checks pass. Frozen full suites and configured acceptance are
-  pending; public durability remains unqualified. See
+  process-stop checks pass. All four full suites and seven configured gates
+  qualify runtime source `143d38a`. Capability publication passes root/native
+  focus; its final configured checks are pending. See
   [current progress](PROJECT.md#s2-05-embedded-event-work--2026-10-12-in-progress).
 - [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.
 - [ ] **S2-07** (L) — Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.

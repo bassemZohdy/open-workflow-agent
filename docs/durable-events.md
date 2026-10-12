@@ -1,10 +1,13 @@
 # Embedded durable events
 
-Status: implemented, with S2-05 acceptance in progress. The qualification flag
-in [event capabilities](../core/src/open_workflow_agent/event_capabilities.py)
-remains false until the [finite acceptance record](s2-05-event-acceptance.md)
-qualifies the complete source. This document describes the implemented code,
-not a claim that the remaining full or configured validation has passed.
+Status: embedded runtime qualified at `143d38a`, with all four full suites and
+seven configured gates passed. The [event capability report](../core/src/open_workflow_agent/event_capabilities.py)
+now advertises this verified embedded profile, including its approval delegate.
+Memory and arbitrary custom buses remain unqualified, even if a custom bus
+declares its own durability. Lifecycle CloudEvents remain bounded snapshots.
+The publication revision's final configured checks are pending in the
+[finite acceptance record](s2-05-event-acceptance.md); S2-05 remains open until
+they pass.
 
 ## Deployment
 

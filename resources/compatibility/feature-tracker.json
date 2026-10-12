@@ -67643,9 +67643,9 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "evidence": {
-          "status": "Focused checks pass; frozen full and configured acceptance pending",
+          "status": "All four full suites and seven exact runtime gates passed at 143d38a; capability publication artifact pending",
           "finite_acceptance": "docs/s2-05-event-acceptance.md",
-          "scope": "Embedded durable event inbox/outbox, ordered consumption, correlation, duplicate/late policy, sequential foreach and process recovery. Default capability qualification remains disabled.",
+          "scope": "Embedded durable inbox/outbox, ordered consumption, correlation, duplicate/late policy, foreach and native process recovery qualified. API capability publication is limited to the known embedded bus and approval delegate; unknown custom buses remain unqualified.",
           "prior_source_negative_probe": {
             "commit": "9e121d5db8d8f8a70ec409fa4961bbb166df472a",
             "failed": 8,
@@ -67655,7 +67655,47 @@
             "durable_contract": 41,
             "actual_process_stop": 5
           },
-          "remaining": "All E01-E14 qualification gates; no whole-goal completion or full-feature promotion"
+          "remaining": "Fresh capability-publication revision configured acceptance, source/distribution delta verification and finite E01-E14 closure. Whole goal and full proposed/JS flags remain open.",
+          "runtime_qualification": {
+            "commit": "143d38a44f74bf3d0aa837c48f02d8fe2671fb21",
+            "local": {
+              "root": [
+                1910,
+                888,
+                2
+              ],
+              "adk": [
+                1109,
+                688,
+                2
+              ],
+              "langgraph": [
+                1151,
+                661,
+                2
+              ],
+              "optional_agent_framework": [
+                1408,
+                946,
+                2
+              ]
+            },
+            "root_coverage_percent": 91.32,
+            "all_seven_configured_runs": "Success with actual terminal artifact inspection",
+            "postgresql_cases_per_principal": {
+              "durable_events": 41,
+              "process_stop": 5
+            },
+            "postgresql_core_passed": 195,
+            "six_nonempty_nested_security_reports": "Zero vulnerabilities"
+          },
+          "capability_publication_focus": {
+            "root_passed": 73,
+            "adk_passed": 76,
+            "langgraph_passed": 76,
+            "optional_agent_framework_passed": 111,
+            "skipped": 0
+          }
         }
       },
       {
