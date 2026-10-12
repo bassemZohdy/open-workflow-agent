@@ -10,6 +10,7 @@ from typing import Any
 from uuid import uuid4
 
 import pytest
+from open_workflow_agent._schedule_storage import initialize_schedule_tables
 from open_workflow_agent.errors import (
     ScheduleOperationConflict,
     ScheduleValidationError,
@@ -17,6 +18,7 @@ from open_workflow_agent.errors import (
 )
 from open_workflow_agent.persistence import InvocationStore
 from open_workflow_agent.scheduling import ScheduleStore
+from open_workflow_agent.storage import open_storage
 from open_workflow_agent.workflow import WorkflowPlan, compile_workflow
 
 
@@ -43,6 +45,109 @@ def database(request: pytest.FixtureRequest, tmp_path: Path) -> str:
             pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
         return url
     return str(tmp_path / "runtime.sqlite3")
+
+
+def test_epoch_fractional_schedule_clocks_survive_reopen_and_binding(database: str) -> None:
+    epoch = 1_791_787_000.125
+    due, claim_at = epoch + 2, epoch + 2.25
+    store = ScheduleStore(database)
+    created = store.create(_plan("every"), {"original": True}, now=epoch)
+    assert created.next_run_at == due
+    store.close()
+    store = ScheduleStore(database)
+    try:
+        saved = store.get(created.schedule_id)
+        assert saved is not None and saved.next_run_at == due
+        assert store.claim_due(now=due - 0.125, schedule_id=created.schedule_id) is None
+        claimed = store.claim_due(
+            now=claim_at, lease_seconds=30.125, schedule_id=created.schedule_id
+        )
+        assert claimed is not None and claimed._claim is not None
+        assert claimed._claim.lease_until == claim_at + 30.125
+        handle = store.bind_invocation(claimed, engine="test", now=claim_at)
+        assert store.invocations.read_input(handle) == {"original": True}
+        clocks = store.connection.execute(
+            "SELECT nominal_at,lease_until FROM schedule_slots WHERE schedule_id=?",
+            (created.schedule_id,),
+        ).fetchone()
+        assert clocks == (due, claim_at + 30.125)
+        store.close()
+        store = ScheduleStore(database)
+        assert (
+            store.bind_invocation(claimed, engine="test", now=claim_at).invocation_id
+            == handle.invocation_id
+        )
+        saved = store.get(created.schedule_id)
+        assert saved is not None and saved.next_run_at == due + 2
+        with store.transactions.transaction() as connection:
+            connection.execute(
+                "UPDATE schedules SET next_run_at=? WHERE schedule_id=?",
+                (saved.next_run_at + 0.125, created.schedule_id),
+            )
+        try:
+            with pytest.raises(ScheduleValidationError, match="inconsistent"):
+                store.get(created.schedule_id)
+        finally:
+            with store.transactions.transaction() as connection:
+                connection.execute(
+                    "UPDATE schedules SET next_run_at=? WHERE schedule_id=?",
+                    (saved.next_run_at, created.schedule_id),
+                )
+    finally:
+        store.cancel(created.schedule_id)
+        store.close()
+
+
+def test_postgresql_legacy_float4_clocks_widen_without_repairing_evidence() -> None:
+    url = os.getenv("OWA_TEST_POSTGRES_URL")
+    if not url:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+    namespace = "owa_schedule_precision_" + uuid4().hex
+    connection = open_storage(url, namespace)
+    try:
+        connection.execute(
+            "CREATE TABLE schedules (schedule_id TEXT PRIMARY KEY,payload TEXT NOT NULL,"
+            "status TEXT NOT NULL,next_run_at REAL NOT NULL,lease_until REAL,"
+            "operation_key TEXT UNIQUE)"
+        )
+        connection.execute(
+            "CREATE TABLE schedule_slots (slot_key TEXT PRIMARY KEY,schedule_id TEXT NOT NULL,"
+            "occurrence_key TEXT NOT NULL,nominal_at REAL NOT NULL,state TEXT NOT NULL,"
+            "owner TEXT NOT NULL,generation BIGINT NOT NULL,lease_until REAL,"
+            "invocation_id TEXT UNIQUE,input_payload TEXT NOT NULL,"
+            "UNIQUE(schedule_id,occurrence_key))"
+        )
+        epoch = 1_791_787_000.125
+        payload = '{"next_run_at":1791787000.125,"legacy":"preserve"}'
+        connection.execute(
+            "INSERT INTO schedules VALUES ('legacy',?,'active',?,?,NULL)",
+            (payload, epoch, epoch + 30.375),
+        )
+        connection.execute(
+            "INSERT INTO schedule_slots VALUES "
+            "('slot','legacy','slot:1',?,'claimed','old',1,?,NULL,?)",
+            (epoch + 2.25, epoch + 30.375, '{"original":true}'),
+        )
+        schedule_before = connection.execute("SELECT * FROM schedules").fetchone()
+        slot_before = connection.execute("SELECT * FROM schedule_slots").fetchone()
+        assert schedule_before[3] != epoch  # The old float4 value already lost precision.
+        initialize_schedule_tables(connection)
+        initialize_schedule_tables(connection)  # Reopening the widened layout is idempotent.
+        assert connection.execute("SELECT * FROM schedules").fetchone() == schedule_before
+        assert connection.execute("SELECT * FROM schedule_slots").fetchone() == slot_before
+        types = connection.execute(
+            "SELECT udt_name FROM information_schema.columns "
+            "WHERE table_schema=current_schema() AND "
+            "((table_name='schedules' AND column_name IN ('next_run_at','lease_until')) OR "
+            "(table_name='schedule_slots' AND column_name IN ('nominal_at','lease_until')))"
+        ).fetchall()
+        assert len(types) == 4 and all(row[0] == "float8" for row in types)
+    finally:
+        try:
+            # This identifier contains only the fixed fixture prefix and UUID hex.
+            connection.execute(f"DROP SCHEMA {namespace} CASCADE")
+        finally:
+            connection.close()
 
 
 def test_independent_connections_atomically_claim_one_after_slot(database: str) -> None:

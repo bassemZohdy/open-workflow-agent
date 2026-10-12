@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from threading import RLock
 from typing import Any
 
+from .errors import ScheduleValidationError
 from .storage import StorageConnection
 
 
@@ -23,8 +24,8 @@ class ScheduleClaim:
 def initialize_schedule_tables(connection: StorageConnection) -> None:
     connection.execute(
         "CREATE TABLE IF NOT EXISTS schedules (schedule_id TEXT PRIMARY KEY, "
-        "payload TEXT NOT NULL, status TEXT NOT NULL, next_run_at REAL NOT NULL, "
-        "lease_until REAL, operation_key TEXT UNIQUE)"
+        "payload TEXT NOT NULL, status TEXT NOT NULL, next_run_at DOUBLE PRECISION NOT NULL, "
+        "lease_until DOUBLE PRECISION, operation_key TEXT UNIQUE)"
     )
     connection.execute(
         "CREATE TABLE IF NOT EXISTS schedule_definitions "
@@ -33,8 +34,8 @@ def initialize_schedule_tables(connection: StorageConnection) -> None:
     connection.execute(
         "CREATE TABLE IF NOT EXISTS schedule_slots ("
         "slot_key TEXT PRIMARY KEY, schedule_id TEXT NOT NULL, occurrence_key TEXT NOT NULL, "
-        "nominal_at REAL NOT NULL, state TEXT NOT NULL, owner TEXT NOT NULL, "
-        "generation BIGINT NOT NULL, lease_until REAL, invocation_id TEXT UNIQUE, "
+        "nominal_at DOUBLE PRECISION NOT NULL, state TEXT NOT NULL, owner TEXT NOT NULL, "
+        "generation BIGINT NOT NULL, lease_until DOUBLE PRECISION, invocation_id TEXT UNIQUE, "
         "input_payload TEXT NOT NULL, UNIQUE(schedule_id, occurrence_key))"
     )
     connection.execute(
@@ -44,7 +45,40 @@ def initialize_schedule_tables(connection: StorageConnection) -> None:
         "CREATE TABLE IF NOT EXISTS schedule_bindings "
         "(slot_key TEXT PRIMARY KEY, payload TEXT NOT NULL)"
     )
+    if connection.is_postgresql:
+        _widen_postgresql_schedule_clocks(connection)
     connection.commit()
+
+
+def _widen_postgresql_schedule_clocks(connection: StorageConnection) -> None:
+    """Widen private legacy float4 columns without repairing stored evidence."""
+    columns = (
+        ("schedules", "next_run_at"),
+        ("schedules", "lease_until"),
+        ("schedule_slots", "nominal_at"),
+        ("schedule_slots", "lease_until"),
+    )
+    with connection.raw.transaction():
+        rows = connection.execute(
+            "SELECT table_name,column_name,udt_name FROM information_schema.columns "
+            "WHERE table_schema=current_schema() AND "
+            "((table_name='schedules' AND column_name IN ('next_run_at','lease_until')) "
+            "OR (table_name='schedule_slots' AND column_name IN ('nominal_at','lease_until')))"
+        ).fetchall()
+        types = {(table, column): kind for table, column, kind in rows}
+        if set(types) != set(columns) or any(
+            kind not in {"float4", "float8"} for kind in types.values()
+        ):
+            raise ScheduleValidationError("schedule clock storage types are inconsistent")
+        for table, column in columns:
+            if types[table, column] == "float4":
+                # Identifiers come only from the fixed private table/column list.
+                # The existing SQL value is authoritative: JSON cannot restore
+                # precision already lost in a legacy float4 record.
+                connection.execute(
+                    f"ALTER TABLE {table} ALTER COLUMN {column} TYPE DOUBLE PRECISION "
+                    f"USING {column}::double precision"
+                )
 
 
 def slot_row(connection: StorageConnection, schedule_id: str, occurrence_key: str) -> Any:

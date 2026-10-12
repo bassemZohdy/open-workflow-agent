@@ -262,7 +262,7 @@ changes. Local timer-store and benchmark focus passes 12 cases with one truthful
 PostgreSQL-unconfigured skip. Actual PostgreSQL execution remains pending.
 
 Current lint, formatting, strict runtime typing and audit/tracker consistency
-checks pass. Both final root/core wheels contain all 54 matching core modules
+checks pass. Both initial root/core wheels contain 54 matching top-level core modules
 and pinned croniter 6.2.4/tzdata 2026.5; the schema bytes remain unchanged.
 The post-freeze correction manifest records only `benchmarks/engines.py` and
 `tests/core/test_timer_store.py` as deltas. This record does not close S2-06 or
@@ -278,3 +278,65 @@ pytest node passes in 4.11 seconds. Evidence is
 `tmp/s2-06-lg-benchmark-tracked.json` and its terminal manifest. No input
 changes occur during those checks; the only deltas from the frozen full
 snapshot remain the two explicitly recorded harness files.
+
+
+## First configured source and PostgreSQL corrections
+
+Source `4cdf552fcfe1a48c66f52d9131684b71e3357ca2` is not a qualified configured
+baseline. PostgreSQL run 38213965259 fails its common-store step: 251 pass,
+two fail and one intentional SQLite variant skip. Both native recovery
+stages and both PostgreSQL images are skipped. The new two-connection timer
+claim test passes claim/expiry/generation/stale-release assertions, then
+fails its due-key query because PostgreSQL cannot infer the untyped nullable
+parameter. The optional invocation filter now uses a conditional WHERE clause;
+scoped and unscoped query paths retain their original bounds.
+
+The other actual database failure is schedule reopen at current epoch time:
+legacy PostgreSQL REAL clocks use float4 while JSON evidence retains float8.
+New schedule/slot timestamp columns use DOUBLE PRECISION. The private DDL
+initializer explicitly widens existing float4 columns in a transaction while
+preserving stored SQL values and payload bytes; it never reconstructs lost
+precision from JSON. Already inconsistent rows remain rejected. New fixtures
+cover epoch/fractional due and lease times, reopen, binding, strict changed
+column rejection and isolated legacy layout/value preservation. Local focus
+passes 21 cases with 17 unavailable PostgreSQL skips; fresh actual database
+execution remains mandatory.
+
+Both configured root jobs also fail two ordered-fork restart fixtures that
+still expect cancellation of a resident sleeping task. Push root records
+2 failed/2,075 passed/1,004 skipped/two tracked gaps; PR root has the same
+counts and 91.06% coverage. The fixture now awaits acknowledged suspension
+and verifies no active execution/task/lease plus original input. Its original
+ordered branch and persisted terminal output assertions remain unchanged.
+Both actual SDK environments pass the entire 18-case file; root fork/timer
+store/dispatcher focus passes 29 cases with one unavailable PostgreSQL skip.
+
+Both Security runs (38213965964/38213961619) pass. Each has six nonempty nested
+reports with zero fixable or unfixable advisories: root 73, ADK 111, LangGraph
+98, optional Agent Framework 76, Docker controller 13 and Kubernetes
+controller 16 dependencies. Each runtime report includes the pinned croniter
+and tzdata versions. External Sandbox run 38213965264 passes all four jobs.
+These successful slices do not replace the failed root/database or skipped
+main image gates. Raw failed logs, per-node outcomes and report hashes are
+preserved under `tmp/ci-4cdf552-*`; corrected-source acceptance remains open.
+
+The first optional Agent Framework run also fails: 1,541 pass, 1,077 skip,
+two tracked gaps and two failing legacy ADK counterpart fixtures. Its fork
+failure has the same corrected oracle; its shared-session recovery failure
+comes from cancelling before ownership cleanup. The latter now awaits each
+acknowledged suspended invocation, verifies released execution and exact saved
+input, and retains distinct invocation IDs, a shared session and all reopened
+output/input/model-call assertions. Actual ADK and LangGraph each pass seven
+cases with 17 unavailable-profile skips. Optional Agent Framework passes
+three applicable cases with 33 unavailable-profile skips; root passes two
+with 22 skips. Existing native corruption/admission controls are preserved.
+
+Combined corrected core scheduling/timer/dispatcher, shared schedule/trigger
+and audit/tracker checks pass 77 cases with 62 unavailable PostgreSQL skips.
+The corrected fork file also passes all 27 optional Agent Framework environment
+cases. Current quality checks pass 252 formatted files, all lint, three CI and
+79 strict runtime sources, and Markdown links. Both corrected root/core builds
+are inspected recursively: all 64 core Python files match current source bytes
+and both dependency pins are present. These newer distributions supersede the
+initial pre-PostgreSQL-correction builds. Actual PostgreSQL, exact corrected
+full CI and runtime images remain required; no failing source is qualified.

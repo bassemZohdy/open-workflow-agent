@@ -140,6 +140,7 @@ def test_due_claim_is_fenced_across_connections_and_stale_release(tmp_path, back
         assert owner.due_keys(now=1071, invocation_id=timer_identity.invocation_id) == [
             armed.timer_key
         ]
+        assert armed.timer_key in owner.due_keys(now=1071, limit=1000)
     finally:
         try:
             first.connection.execute(

@@ -566,8 +566,9 @@ class TimerStore:
             "SELECT identity FROM workflow_timers WHERE "
             "(state='woken' OR (state='pending' AND wake_at<=?)) "
             "AND (lease_until IS NULL OR lease_until<=?) "
-            "AND (? IS NULL OR invocation_id=?) ORDER BY wake_at,identity LIMIT ?",
-            (now, now, invocation_id, invocation_id, limit),
+            + ("AND invocation_id=? " if invocation_id is not None else "")
+            + "ORDER BY wake_at,identity LIMIT ?",
+            (now, now, invocation_id, limit) if invocation_id is not None else (now, now, limit),
         ).fetchall()
         return [str(row[0]) for row in rows]
 

@@ -221,15 +221,18 @@ async def test_shared_session_keeps_each_invocations_original_input_after_restar
             handles.append(handle)
             running = asyncio.create_task(engine.invoke(plan, handle, original))
             try:
-                async with asyncio.timeout(10):
-                    while handle.status != "waiting":
-                        await asyncio.sleep(0.005)
-                running.cancel()
-                with pytest.raises(asyncio.CancelledError):
-                    await asyncio.wait_for(running, 10)
+                waiting = await asyncio.wait_for(asyncio.shield(running), 10)
+                assert waiting.status == "waiting", waiting.error
+                assert handle.invocation_id not in engine._active
+                assert handle.invocation_id not in engine._ownership_tasks
+                assert handle._execution_lease is None
+                assert first.invocations.read_input(handle) == original
             finally:
                 running.cancel()
                 await asyncio.gather(running, return_exceptions=True)
+        assert len({handle.invocation_id for handle in handles}) == 2
+        assert {handle.session_id for handle in handles} == {session_id}
+        assert first.model.calls == []
     finally:
         await engine.shutdown()
         first.close()

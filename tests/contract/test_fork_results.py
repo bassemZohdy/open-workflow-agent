@@ -375,9 +375,12 @@ async def test_restart_preserves_ordered_fork_output_on_each_adapter(
                 if running.done():
                     pytest.fail(str(running.result()))
                 await asyncio.sleep(0.01)
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await running
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=20)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
+        assert services.invocations.read_input(handle) == {}
     finally:
         running.cancel()
         await asyncio.gather(running, return_exceptions=True)
