@@ -437,3 +437,43 @@ Detailed raw JSONs and per-run hashes are retained in
 attempts remain separate. No parent-test or production-runtime assertion is
 relaxed. All ten fixture/helper corrections are held for the next exact-source
 configured full, PostgreSQL and image acceptance. S2-06 remains unchecked.
+
+
+## Exact runtime validation at ec94b17 and event-worker isolation
+
+Five configured runs at `ec94b17dc965b99aac237e960da475cb36baeb3d` succeed:
+PR CI, Docs, Security, External Sandbox and optional Agent Framework. Actual
+PR root full passes 2,078/1,006 skipped/two tracked gaps with 91.00% coverage;
+shared repeat passes 1,006/868/two. Native LangGraph passes 1,160/750/two and
+ADK 1,117/777/two; optional Agent Framework passes 1,543/1,077/two. Both main
+runtime images complete their configured default/startup/restart/sandbox/catalog
+steps. All four downloaded PR/push native benchmark JSONs match the source,
+run 10 iterations/four concurrent invocations, report native checkpoint growth
+and preserve one side effect/immutable operation after recovery.
+
+The PostgreSQL run passes 256 core cases with one intentional skip and all
+343 native LangGraph recovery cases. Native ADK records 308 passes and one
+partial-all event process-stop failure: the helper's model counter is two,
+not the required one. Its global automatic timer poller can consume unrelated
+due invocations from preceding fixtures in the shared database. The worker's
+model counter must cover only its explicit event invocation/recovery. Both
+event and timing workers now suppress automatic timer startup before asynchronous
+native storage initialization; current-runtime invoke/resume still uses all
+normal common/native admission and receipts. The historical producer path is
+unchanged. Prompt diagnostics are retained for test-only investigation; the
+exact one/two-call assertions are not weakened and no shared rows are deleted.
+
+All eight event/timing OS-stop cases pass on each actual SDK after isolation:
+ADK eight passes/24 deselections in 86.46 seconds and LangGraph eight/24 in
+70.69 seconds. Both 180-second supervisors finish normally with all 274 inputs
+unchanged. Evidence is `tmp/s2-06-isolated-worker-qualification.json` and the
+two full logs/result manifests. Fresh actual PostgreSQL remains required;
+its optional Agent Framework and image stages were skipped by the ADK failure.
+
+The push CI Windows job reaches its unchanged twenty-minute limit after its
+first stage succeeds and 693 native-stage passes/567 skips. It is cancelled,
+not green; the other push jobs, including both main images, pass. PR CI's
+Windows run succeeds independently. No timeout or assertion is waived. The
+corrected source will receive fresh configured validation before publication.
+Parallel worker account limits have ended the observers; the root agent is
+inspecting actual job logs and artifacts directly. S2-06 remains unchecked.

@@ -9,6 +9,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 from _process_recovery_worker import write_json
 from open_workflow_agent.catalog import FakeModel
@@ -48,7 +49,17 @@ async def run(directory: Path, mode: str) -> None:
         "langgraph": ("open_workflow_agent_langgraph", "LangGraphWorkflowEngine"),
     }[engine_name]
     engine = getattr(importlib.import_module(module), class_name)()
-    await engine.initialize(services)
+
+    async def no_background_timer_delivery(_dispatcher: Any) -> None:
+        # Original-deadline recovery is delivered explicitly below. Shared
+        # PostgreSQL fixtures must not run unrelated timers through this model.
+        return None
+
+    with patch(
+        "open_workflow_agent.timer_dispatcher.TimerDispatcher.start",
+        new=no_background_timer_delivery,
+    ):
+        await engine.initialize(services)
     engine._execution_ownership_seconds = 5
     action = {"action": {"call": "llm:1.0.0@default", "with": {"prompt": "value"}}}
     workflow: dict[str, Any] = {

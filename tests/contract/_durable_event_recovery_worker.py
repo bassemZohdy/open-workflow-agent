@@ -9,6 +9,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 from _process_recovery_worker import write_json
 from open_workflow_agent.catalog import FakeModel
@@ -32,6 +33,10 @@ async def run(directory: Path, mode: str) -> None:
         write_json(counter, {"calls": 0})
 
     async def response(prompt: Any) -> Any:
+        prompts = directory / "model-call-prompts.json"
+        observed = json.loads(prompts.read_text(encoding="utf-8")) if prompts.exists() else []
+        observed.append(prompt)
+        write_json(prompts, observed)
         counts = json.loads(counter.read_text(encoding="utf-8"))
         counts["calls"] += 1
         write_json(counter, counts)
@@ -74,7 +79,21 @@ async def run(directory: Path, mode: str) -> None:
         "langgraph": ("open_workflow_agent_langgraph", "LangGraphWorkflowEngine"),
     }[engine_name]
     engine = getattr(importlib.import_module(adapter_module), class_name)()
-    await engine.initialize(services)
+
+    async def no_background_timer_delivery(_dispatcher: Any) -> None:
+        # These event recovery workers use explicit invoke/resume delivery and
+        # share PostgreSQL with other fixtures. Do not drain their due timers.
+        return None
+
+    if mode == "legacy-start":
+        # The archived producer predates the common timer dispatcher.
+        await engine.initialize(services)
+    else:
+        with patch(
+            "open_workflow_agent.timer_dispatcher.TimerDispatcher.start",
+            new=no_background_timer_delivery,
+        ):
+            await engine.initialize(services)
     engine._execution_ownership_seconds = 5
     first = {
         "with": {"type": "fixture.first", "subject": subject},

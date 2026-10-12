@@ -121,7 +121,14 @@ recovery passes 342 cases with one schedule-fixture contamination failure.
 A bounded fixture sweep preserves all receipts/inputs/corruption controls,
 isolates controlled schedule delivery, and validates six actual deadline/retry
 process stops plus two historical checkpoint stops across both SDKs.
-Native database, image and full corrected-source acceptance remain required.
+At `ec94b17`, PR CI, Docs, Security, External Sandbox and optional Agent
+Framework pass; all four native benchmark artifacts and both main images are
+inspected. PostgreSQL passes the core and all LangGraph recovery cases, then
+fails one ADK event-worker counter contaminated by unrelated timer delivery.
+Worker-only isolation preserves exact call assertions; all eight event/timing
+process cases pass on each actual SDK. Fresh PostgreSQL/images and all configured
+acceptance remain required; the push Windows job is cancelled at its existing
+limit, not qualified.
 
 S2-06 remains unchecked pending actual PostgreSQL, exact-source configured
 full suites, image observations and qualified capability publication. The
