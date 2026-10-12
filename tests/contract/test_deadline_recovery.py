@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
@@ -93,9 +94,9 @@ async def test_original_deadline_is_reused_after_native_waiting_restart(
         "do": [{"frame": group}],
     }
     if boundary == "workflow":
-        workflow["timeout"] = {"after": {"seconds": 2}}
+        workflow["timeout"] = {"after": {"seconds": 30}}
     else:
-        group["timeout"] = {"after": {"seconds": 2}}
+        group["timeout"] = {"after": {"seconds": 30}}
     plan = compile_workflow(workflow)
     await engine.initialize(services)
     engine.executor._absolute_clock = lambda: 1000.0
@@ -132,7 +133,23 @@ async def test_original_deadline_is_reused_after_native_waiting_restart(
     restarted = _services(tmp_path, backend, model)
     resumed = engine_type()
     await resumed.initialize(restarted)
-    resumed.executor._absolute_clock = lambda: 1003.0 if expired else 1001.0
+    # Leave room for real SDK/storage work on slow Windows runners while
+    # checking the exact original remaining budget rather than a fresh one.
+    resumed.executor._absolute_clock = lambda: 1031.0 if expired else 1010.0
+    remaining_budgets: list[float] = []
+    original_timed = resumed.executor._run_timed
+
+    async def record_timed(
+        operation: Callable[[], Awaitable[Any]],
+        seconds: float | None,
+        message: str,
+        details: dict[str, Any],
+    ) -> Any:
+        if seconds is not None:
+            remaining_budgets.append(seconds)
+        return await original_timed(operation, seconds, message, details)
+
+    resumed.executor._run_timed = record_timed
     persisted = restarted.invocations.get(handle.invocation_id)
     assert persisted is not None
     try:
@@ -167,6 +184,7 @@ async def test_original_deadline_is_reused_after_native_waiting_restart(
         result = await asyncio.wait_for(
             resumed.resume(persisted, {"continue": True}, plan), timeout=10
         )
+        assert remaining_budgets and remaining_budgets[0] == (0.0 if expired else 20.0)
         if expired:
             assert result.status == "faulted", result.output
             assert result.error and "timed out" in result.error["message"]
