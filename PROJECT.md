@@ -126,6 +126,40 @@ full S2-04 acceptance remain required. The task stays unchecked. The eight
 previously inert jitter/duration inventory fields are now partial, rather than
 complete, and full proposed/JavaScript flags remain unchanged.
 
+Runtime-timing artifact `cbb06b2` passes all seven configured runs. Terminal
+logs confirm eleven PostgreSQL timing cases per principal adapter: 239 LangGraph,
+205 ADK and 147 optional bridge passes (seven optional skips), plus 119 store checks
+and both images. Core passes 1,718/659/three tracked gaps at 91.80%; native ADK
+863/531 and LangGraph 905/504 plus 96 CTK each. Optional Agent Framework passes
+1,262/756/three gaps. Windows passes 460/12 core and 499/321 native; both main
+image restart and native benchmark steps pass in both CI runs. Six nested
+dependency reports contain zero known advisories. Later deadline source is separate.
+
+Source `17d4197` persists the common policy clock and per-occurrence task deadline
+anchors. Internal decisions and their invocation index commit atomically with
+ownership fencing, without a pending external intent. The two adapters retain
+opaque receipt references in their own formats, accepting the exact root-clock
+identity only for a timed plan. Fresh native recovery reuses original timestamps:
+expired workflow/task budgets stop before another call, and remaining budgets
+continue. Deleted/changed root clocks or task anchors reject before invocation
+mutation or dispatch. Legacy nonterminal timed records without a policy clock
+fail closed; no silent budget renewal or migration guarantee is introduced.
+Both expired outcomes incorrectly complete on archived `cbb06b2` native LangGraph
+source. Current focus passes 49/61 per SDK, including eight actual SQLite deadline
+cases per principal. Broader recovery/admission/receipt/lifecycle regression passes
+124/167 per SDK. Core passes 66/2, including atomic rollback, immutable decision
+replay and stale-owner guards. Thirteen real collection guards select eight new
+PostgreSQL deadline cases per principal adapter; PostgreSQL atomic storage and
+changed-source full/configured acceptance remain required. Strict 68-source/fixture
+typing and full scoped lint/formatting pass. The existing in-flight-key fixture
+now gives one second for dispatch after clock/native storage, with a fake response
+stalled for thirty seconds; a one-millisecond budget expired before dispatch.
+Production deadline enforcement is unchanged by that fixture correction.
+
+Durable retry clock/count/schedule and stable jitter choices, complete scoped
+exceptions, real process-stop timing boundaries and full S2-04 acceptance remain
+open. The task stays unchecked; later migration and proposed/JS owners remain.
+
 ### S2-03 checkpoint recovery — 2026-10-12 (verified)
 
 Fresh-runtime tests reproduce a common resume defect: a submitted JSON null was

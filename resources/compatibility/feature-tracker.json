@@ -66919,7 +66919,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "known_issues": [
-          "Persist original workflow/task deadlines and retry clock/count/schedule across restart, including stable jitter decisions; prove fresh native recovery without renewed budgets or repeated uncertain dispatch. Complete scoped catch/exception vocabulary/order and frozen full/configured S2-04 acceptance. Full proposed/JavaScript criteria retain Stage 4 owners."
+          "Persist retry clock/count/schedule and stable jitter decisions across restart without renewed budgets, lost known outcomes or repeated uncertain dispatch. Finish full scoped exception/vocabulary/order and frozen full/configured S2-04 acceptance, including real process-stop deadline/retry boundaries. Explicit legacy/version migration remains S2-09; full proposed/JavaScript criteria retain Stage 4 owners."
         ],
         "resolved_issues": [
           {
@@ -67030,7 +67030,7 @@
             "known_advisories": 0,
             "scope": "Qualifies the error-context correction only; later timing source and full S2-04 remain open"
           },
-          "remaining": "Persist original workflow/task deadlines and retry clock/count/schedule across restart, including stable jitter decisions; prove fresh native recovery without renewed budgets or repeated uncertain dispatch. Complete scoped catch/exception vocabulary/order and frozen full/configured S2-04 acceptance. Full proposed/JavaScript criteria retain Stage 4 owners.",
+          "remaining": "Persist retry clock/count/schedule and stable jitter decisions across restart without renewed budgets, lost known outcomes or repeated uncertain dispatch. Finish full scoped exception/vocabulary/order and frozen full/configured S2-04 acceptance, including real process-stop deadline/retry boundaries. Explicit legacy/version migration remains S2-09; full proposed/JavaScript criteria retain Stage 4 owners.",
           "runtime_timing_followup": {
             "commit": "f2b5c02b49f24d5d191f16bf5242e05fb258cbab",
             "status": "Runtime timing locally verified; durable deadlines and full S2-04 remain open",
@@ -67062,8 +67062,99 @@
               "new_timing_postgresql_cases_selected_per_principal": 11
             },
             "quality": "Full scoped lint/formatting (208 files), strict 67-source package typing and three fixture/CI modules pass",
-            "configured_acceptance": "Pending for changed timing source; no local PostgreSQL execution claimed",
+            "configured_acceptance": {
+              "commit": "cbb06b2d425c788b916ea141fef16ae1aea4ca52",
+              "runtime_commit": "f2b5c02b49f24d5d191f16bf5242e05fb258cbab",
+              "result": "All seven successful",
+              "remote_runs": {
+                "38189741220": "success",
+                "38189741240": "success",
+                "38189741202": "success",
+                "38189741155": "success",
+                "38189741148": "success",
+                "38189741175": "success",
+                "38189736653": "success"
+              },
+              "core": {
+                "passed": 1718,
+                "skipped": 659,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.8
+              },
+              "native": {
+                "adk_passed": 863,
+                "adk_skipped": 531,
+                "langgraph_passed": 905,
+                "langgraph_skipped": 504,
+                "ctk_per_adapter": 96,
+                "expected_assertion_failures_per_adapter": 3
+              },
+              "windows": {
+                "core_passed": 460,
+                "core_skipped": 12,
+                "native_passed": 499,
+                "native_skipped": 321
+              },
+              "postgresql": {
+                "store_passed": 119,
+                "shared_langgraph_passed": 239,
+                "shared_adk_passed": 205,
+                "optional_common_bridge_passed": 147,
+                "optional_skipped": 7,
+                "timing_cases_actually_passed_per_principal": 11
+              },
+              "optional_agent_framework": {
+                "passed": 1262,
+                "skipped": 756,
+                "expected_assertion_failures": 3
+              },
+              "both_main_images_and_native_benchmarks_in_both_ci_runs": "Success",
+              "both_postgresql_images": "Success",
+              "security_dependency_counts": {
+                "dependency-audit-adk": 109,
+                "dependency-audit-agent-framework": 74,
+                "dependency-audit-kubernetes-sandbox-controller": 16,
+                "dependency-audit-langgraph": 96,
+                "dependency-audit-root": 71,
+                "dependency-audit-sandbox-controller": 13
+              },
+              "known_advisories": 0,
+              "scope": "Qualifies runtime timing only; later persisted-deadline source and full S2-04 remain open"
+            },
             "remaining": "Persist original workflow/task deadlines and retry clock/count/schedule across restart, including stable jitter decisions; prove fresh native recovery without renewed budgets or repeated uncertain dispatch. Complete scoped catch/exception vocabulary/order and frozen full/configured S2-04 acceptance. Full proposed/JavaScript criteria retain Stage 4 owners."
+          },
+          "deadline_anchor_followup": {
+            "commit": "17d419714ea8ccf8b45e24b32183a790b4900e24",
+            "status": "Original deadlines locally verified; retry scheduling and full S2-04 remain open",
+            "scope": "A common policy clock and per-occurrence task deadline anchors retain original timestamps across fresh native recovery. Internal choices and their invocation index commit atomically, with no pending external intent and no native state in core. Both adapters accept only the exact timing-enabled root clock identity and retain receipt bindings in existing formats. Expired workflow/task deadlines stop before the next call; remaining budgets resume. Missing/changed clock or deadline records reject before parent mutation or dispatch. Old nonterminal timed records without the required clock fail closed rather than silently receiving a fresh budget.",
+            "negative_probe": {
+              "archived_runtime_commit": "cbb06b2d425c788b916ea141fef16ae1aea4ca52",
+              "actual_native_langgraph_failed": 2,
+              "deselected": 14,
+              "failure": "Expired workflow and task both complete and call the model on prior source"
+            },
+            "local_core": {
+              "passed": 66,
+              "skipped": 2
+            },
+            "native_deadline_timing_error_focus_per_principal": {
+              "passed": 49,
+              "skipped": 61
+            },
+            "native_recovery_admission_receipt_lifecycle_regression_per_principal": {
+              "passed": 124,
+              "skipped": 167
+            },
+            "actual_deadline_cases_passed_per_principal_sqlite": 8,
+            "actual_collection_guards": {
+              "passed": 13,
+              "new_postgresql_deadline_cases_selected_per_principal": 8
+            },
+            "atomic_policy_decision": "SQLite second-write rollback, immutable replay/factory count and stale-owner fencing pass; configured PostgreSQL atomic test is required",
+            "fixture_correction": "One-millisecond operator timeout expires during newly required clock/native writes before dispatch. Its in-flight-key fixture now gives one second with a response stalled for thirty seconds; production deadlines are not changed.",
+            "quality": "Full scoped lint/formatting (211 files), strict 68-source package typing and three fixture/CI modules pass",
+            "configured_acceptance": "Pending for changed deadline source; no local PostgreSQL execution claimed",
+            "remaining": "Persist retry clock/count/schedule and stable jitter decisions across restart without renewed budgets, lost known outcomes or repeated uncertain dispatch. Finish full scoped exception/vocabulary/order and frozen full/configured S2-04 acceptance, including real process-stop deadline/retry boundaries. Explicit legacy/version migration remains S2-09; full proposed/JavaScript criteria retain Stage 4 owners."
           }
         }
       },

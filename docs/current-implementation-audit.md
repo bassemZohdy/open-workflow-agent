@@ -9,7 +9,7 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`f2b5c02`, which retains the verified fork, original-input, terminal-record,
+`17d4197`, which retains the verified fork, original-input, terminal-record,
 leaf-call and conditional common write corrections. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
@@ -129,8 +129,12 @@ That error-context source passes all seven configured runs at `b6aef8c`.
 Runtime timing source `f2b5c02` additionally passes jitter, duration and deadline
 cleanup assertions locally: 85/39 timing/error/recovery and 93/26 lifecycle/fork
 checks per principal environment. Eight previously inert timing fields are now
-partial. Original deadlines/retry schedule and full scoped exception/configured
-acceptance remain open. The earlier S2-03
+partial. That runtime source passes all seven configured gates at `cbb06b2`, including
+eleven PostgreSQL timing cases per principal. Source `17d4197` adds atomic
+original clock/task anchors with eight SQLite deadline cases per principal and
+124/167 broader recovery checks per environment. Durable retry schedule/jitter,
+full scoped exceptions and changed-source full/process-stop/configured acceptance
+remain open. The earlier S2-03
 acceptance at `ddd194e` does not qualify changed S2-04 code.
 
 ## Outcomes
@@ -170,7 +174,7 @@ not be read as current delivery status.
 | Competitive fork durability | First observed completion, cancellation intents and distinct occurrence identity are persisted. SQLite/PostgreSQL replay preserves values/null/fault/end and repeated occurrences without branch calls on both principal adapters and the optional common bridge. All exact acceptance gates passed. External-action reconciliation/compensation is not established | S2-02 verified; general effects S2-03/S2-08; full criteria S4-03/S4-04 |
 | Native checkpoint recovery | Invocation/input/terminal outcomes, SDK state/routing/scope consistency, action/child dependencies, atomic admission and ownership fencing pass identical SQLite/PostgreSQL assertions, forced process-stop, Windows and both actual runtime images. The finite recovery audit passes all configured gates at `ddd194e`; legacy/version migration and later full criteria retain their owners | S2-03 verified; migration S2-09; full criteria S4-03/S4-04 |
 | Action idempotency and compensation | A080 is partial: selected call receipts prevent completed replay and block uncertain actions. A079 remains unimplemented: no compensation/saga state machine exists. Known sandbox/event/child outcomes and pre-admission descendant reconciliation pass S2-03. Redrive, ambiguous outcome resolution, compensation and exactly-once external actions remain unqualified | S2-08; full criteria S4-03/S4-04 |
-| Retry and timeout declarations | Runtime count/backoff/jitter and attempt/aggregate budgets pass recorded-clock/RNG fixtures; timeout cleanup preserves uncertain intents. Original deadlines and retry schedule are not persisted, and changed-source full/configured acceptance remains open | S2-04 |
+| Retry and timeout declarations | Runtime count/backoff/jitter and attempt/aggregate budgets pass recorded-clock/RNG fixtures; timeout cleanup preserves uncertain intents. Original workflow/task deadline anchors pass native SQLite restart; retry clock/schedule/jitter remain unpersisted and changed-source full/configured acceptance remains open | S2-04 |
 | Events and timers | Active process-local listeners and persisted after/every schedules exist; durable general inbox/outbox/timers/correlation/cron/on are missing. Explicit null event data is omitted | S2-05, S2-06 |
 | Child workflow recovery | Synchronous child invocation/parent identity exists; recursive budgets, asynchronous children, durable cancellation and compatible version migration remain missing | S2-07, S2-09 |
 | MCP | Seven bounded HTTP methods exist; full official SDK sessions/transports/notifications are not qualified, and options/client description are inert | S3-01 |

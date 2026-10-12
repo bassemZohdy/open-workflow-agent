@@ -141,8 +141,12 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   qualify that block, including five PostgreSQL provider cases per SDK.
   Runtime timing at `f2b5c02` passes 85/39 timing/recovery and 93/26 lifecycle/
   fork checks per SDK. Jitter and duration fields now operate during a run.
-  Persisted deadlines/retry schedule, full scoped exceptions and changed-source
-  full/configured qualification remain open. See
+  All seven `cbb06b2` gates qualify runtime timing, with eleven PostgreSQL
+  timing cases per SDK. Original workflow/task deadline anchors at `17d4197`
+  pass 49/61 focus and 124/167 broader recovery checks per SDK; eight actual
+  deadline cases cover expiry/remaining time and missing/changed records.
+  Durable retry clock/count/schedule, stable jitter, full scoped exceptions and
+  changed-source full/configured/process-stop qualification remain open. See
   [current work](PROJECT.md#s2-04-retry-timeout-and-exception-work--2026-10-12-in-progress).
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
 - [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.

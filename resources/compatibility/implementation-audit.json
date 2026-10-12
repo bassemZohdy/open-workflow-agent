@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "reviewed_implementation_commit": "f2b5c02b49f24d5d191f16bf5242e05fb258cbab",
+  "reviewed_implementation_commit": "17d419714ea8ccf8b45e24b32183a790b4900e24",
   "acceptance_record_commit": null,
   "purpose": "Exhaustive current implementation audit, not a full conformance certificate or feature completion claim",
   "review_method": "Each semantic construct and schema parent was compared with active admission/execution/native code and existing assertion scope. Missing/inert/mismatched behavior retains explicit owners. Source/API availability and copied material are not runtime proof.",
@@ -135,7 +135,7 @@
     },
     "dependency_gate_qualification": "Historical Security jobs used a defective top-level report parser. Independently recorded behavioral tests remain source-scoped; dependency safety requires the corrected gate and fresh reports.",
     "scope": "Known child outcomes bind the terminal common record, original input, parent identity and original prepared fingerprint/input request. A common identity index is admitted atomically with intents. Read-only pre-admission validation checks associated receipts and descendant child actions even when native task progress has not saved a receipt reference. Missing/changed child records, input, native references, descendant receipts and index metadata reject before parent mutation or dispatch. No native checkpoint or execution plan moves into core. Fresh exact-source configured/remote qualification and final S2-03 requirement audit remain open. Pending intents still require explicit resolution; event inbox/outbox, child scheduling/budgets, compensation, workflow-version migration and full proposed/JavaScript qualification retain later owners. Existing non-child digest formats are preserved; older unbound child outcomes fail closed without a migration guarantee.",
-    "remote_status": "b6aef8c qualifies error-context source at all seven gates; changed f2b5c02 timing source awaits fresh acceptance. S2-04 remains open.",
+    "remote_status": "cbb06b2 qualifies runtime timing at all seven gates; changed 17d4197 deadline source requires fresh acceptance. S2-04 remains open.",
     "forced_process_crash_followup": {
       "commit": "68722d3aae5f8d9b5421abd5d3ab4f1ed2a61cb0",
       "runtime_source": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
@@ -1870,8 +1870,99 @@
         "new_timing_postgresql_cases_selected_per_principal": 11
       },
       "quality": "Full scoped lint/formatting (208 files), strict 67-source package typing and three fixture/CI modules pass",
-      "configured_acceptance": "Pending for changed timing source; no local PostgreSQL execution claimed",
+      "configured_acceptance": {
+        "commit": "cbb06b2d425c788b916ea141fef16ae1aea4ca52",
+        "runtime_commit": "f2b5c02b49f24d5d191f16bf5242e05fb258cbab",
+        "result": "All seven successful",
+        "remote_runs": {
+          "38189741220": "success",
+          "38189741240": "success",
+          "38189741202": "success",
+          "38189741155": "success",
+          "38189741148": "success",
+          "38189741175": "success",
+          "38189736653": "success"
+        },
+        "core": {
+          "passed": 1718,
+          "skipped": 659,
+          "expected_assertion_failures": 3,
+          "coverage_percent": 91.8
+        },
+        "native": {
+          "adk_passed": 863,
+          "adk_skipped": 531,
+          "langgraph_passed": 905,
+          "langgraph_skipped": 504,
+          "ctk_per_adapter": 96,
+          "expected_assertion_failures_per_adapter": 3
+        },
+        "windows": {
+          "core_passed": 460,
+          "core_skipped": 12,
+          "native_passed": 499,
+          "native_skipped": 321
+        },
+        "postgresql": {
+          "store_passed": 119,
+          "shared_langgraph_passed": 239,
+          "shared_adk_passed": 205,
+          "optional_common_bridge_passed": 147,
+          "optional_skipped": 7,
+          "timing_cases_actually_passed_per_principal": 11
+        },
+        "optional_agent_framework": {
+          "passed": 1262,
+          "skipped": 756,
+          "expected_assertion_failures": 3
+        },
+        "both_main_images_and_native_benchmarks_in_both_ci_runs": "Success",
+        "both_postgresql_images": "Success",
+        "security_dependency_counts": {
+          "dependency-audit-adk": 109,
+          "dependency-audit-agent-framework": 74,
+          "dependency-audit-kubernetes-sandbox-controller": 16,
+          "dependency-audit-langgraph": 96,
+          "dependency-audit-root": 71,
+          "dependency-audit-sandbox-controller": 13
+        },
+        "known_advisories": 0,
+        "scope": "Qualifies runtime timing only; later persisted-deadline source and full S2-04 remain open"
+      },
       "remaining": "Persist original workflow/task deadlines and retry clock/count/schedule across restart, including stable jitter decisions; prove fresh native recovery without renewed budgets or repeated uncertain dispatch. Complete scoped catch/exception vocabulary/order and frozen full/configured S2-04 acceptance. Full proposed/JavaScript criteria retain Stage 4 owners."
+    },
+    "s2_04_deadline_anchors": {
+      "commit": "17d419714ea8ccf8b45e24b32183a790b4900e24",
+      "status": "Original deadlines locally verified; retry scheduling and full S2-04 remain open",
+      "scope": "A common policy clock and per-occurrence task deadline anchors retain original timestamps across fresh native recovery. Internal choices and their invocation index commit atomically, with no pending external intent and no native state in core. Both adapters accept only the exact timing-enabled root clock identity and retain receipt bindings in existing formats. Expired workflow/task deadlines stop before the next call; remaining budgets resume. Missing/changed clock or deadline records reject before parent mutation or dispatch. Old nonterminal timed records without the required clock fail closed rather than silently receiving a fresh budget.",
+      "negative_probe": {
+        "archived_runtime_commit": "cbb06b2d425c788b916ea141fef16ae1aea4ca52",
+        "actual_native_langgraph_failed": 2,
+        "deselected": 14,
+        "failure": "Expired workflow and task both complete and call the model on prior source"
+      },
+      "local_core": {
+        "passed": 66,
+        "skipped": 2
+      },
+      "native_deadline_timing_error_focus_per_principal": {
+        "passed": 49,
+        "skipped": 61
+      },
+      "native_recovery_admission_receipt_lifecycle_regression_per_principal": {
+        "passed": 124,
+        "skipped": 167
+      },
+      "actual_deadline_cases_passed_per_principal_sqlite": 8,
+      "actual_collection_guards": {
+        "passed": 13,
+        "new_postgresql_deadline_cases_selected_per_principal": 8
+      },
+      "atomic_policy_decision": "SQLite second-write rollback, immutable replay/factory count and stale-owner fencing pass; configured PostgreSQL atomic test is required",
+      "fixture_correction": "One-millisecond operator timeout expires during newly required clock/native writes before dispatch. Its in-flight-key fixture now gives one second with a response stalled for thirty seconds; production deadlines are not changed.",
+      "quality": "Full scoped lint/formatting (211 files), strict 68-source package typing and three fixture/CI modules pass",
+      "configured_acceptance": "Pending for changed deadline source; no local PostgreSQL execution claimed",
+      "remaining": "Persist retry clock/count/schedule and stable jitter decisions across restart without renewed budgets, lost known outcomes or repeated uncertain dispatch. Finish full scoped exception/vocabulary/order and frozen full/configured S2-04 acceptance, including real process-stop deadline/retry boundaries. Explicit legacy/version migration remains S2-09; full proposed/JavaScript criteria retain Stage 4 owners."
     }
   },
   "evidence_groups": {
@@ -2993,8 +3084,8 @@
     },
     "timeouts": {
       "outcome": "partial",
-      "observed": "Task/workflow relative timeouts and cancellation are translated into common errors with stable side-effect keys. Runtime deadline cleanup now drains and preserves uncertain external intents and distinguishes foreign timeout errors.",
-      "remaining_scope": "Original absolute deadlines and remaining duration are not persisted across restart; deadline extension/native policy parity is unqualified.",
+      "observed": "A common policy clock and per-occurrence task deadline anchors retain original timestamps across fresh native recovery. Internal choices and their invocation index commit atomically, with no pending external intent and no native state in core. Both adapters accept only the exact timing-enabled root clock identity and retain receipt bindings in existing formats. Expired workflow/task deadlines stop before the next call; remaining budgets resume. Missing/changed clock or deadline records reject before parent mutation or dispatch. Old nonterminal timed records without the required clock fail closed rather than silently receiving a fresh budget.",
+      "remaining_scope": "Persist retry clock/count/schedule and stable jitter decisions across restart without renewed budgets, lost known outcomes or repeated uncertain dispatch. Finish full scoped exception/vocabulary/order and frozen full/configured S2-04 acceptance, including real process-stop deadline/retry boundaries. Explicit legacy/version migration remains S2-09; full proposed/JavaScript criteria retain Stage 4 owners.",
       "remediation_tasks": [
         "S2-04",
         "S4-04"
@@ -3011,6 +3102,14 @@
         {
           "path": "core/src/open_workflow_agent/workflow.py",
           "symbol": "WorkflowExecutor._run_timed"
+        },
+        {
+          "path": "core/src/open_workflow_agent/timing.py",
+          "symbol": "DeadlineAnchor"
+        },
+        {
+          "path": "core/src/open_workflow_agent/effects.py",
+          "symbol": "EffectJournal.record_value"
         }
       ],
       "tests": [
@@ -3021,9 +3120,21 @@
         {
           "path": "tests/contract/test_retry_timing.py",
           "symbol": "test_timeout_drains_an_uncertain_action_without_catch_retry"
+        },
+        {
+          "path": "tests/contract/test_deadline_recovery.py",
+          "symbol": "test_original_deadline_is_reused_after_native_waiting_restart"
+        },
+        {
+          "path": "tests/core/test_policy_decisions.py",
+          "symbol": "test_policy_decision_is_atomic_immutable_and_factory_runs_once"
+        },
+        {
+          "path": "tests/core/test_policy_decisions.py",
+          "symbol": "test_stale_owner_cannot_create_or_resample_a_policy_clock"
         }
       ],
-      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
+      "test_scope": "Original workflow/task deadlines and corruption admission pass actual native SQLite restart; PostgreSQL/full/process-stop and durable retry schedule remain unqualified."
     },
     "errors": {
       "outcome": "qualified_subset",
@@ -18950,8 +19061,8 @@
     "core/src/open_workflow_agent/approvals.py": "2496d6ed23b3494d65fc042f3ea1dc42899f59eb94782539ea1a099abadedae2",
     "core/src/open_workflow_agent/catalog.py": "84dc1aa4c20fe543d982b20283aab7bf68ab7f9a80e70318971738ac21557faa",
     "core/src/open_workflow_agent/definitions.py": "8da00d8ef717c688462b09696d50f6957b962fc90aa45585c9b52104887065c7",
-    "core/src/open_workflow_agent/effects.py": "fba7712d67ad9d89973fdbe35cbec13809d269903745b0ce4e86deb465b534e9",
-    "core/src/open_workflow_agent/engine.py": "d5cad8241973546569f8772bfbd6cda19af2ee28c48ec75dbc0cb139ef2fdc6d",
+    "core/src/open_workflow_agent/effects.py": "efc3e3b4882742df7fe0c5d54e555eb1e9bab698ff510306400e8bdd1099dfbf",
+    "core/src/open_workflow_agent/engine.py": "561bded2dcecaee2a3745e2bc7a40c22346f606ae26c8628aa15f37b28953851",
     "core/src/open_workflow_agent/errors.py": "822b0f793d28aab2674654e0a4d3ab47a180e595e5292b5ebc241733631f65c1",
     "core/src/open_workflow_agent/events.py": "de8b1a59b0ea3903b3c18766e31e061f2c014ea38140c48ef3262da6df733a67",
     "core/src/open_workflow_agent/expressions.py": "636b7f7157dfaefd1e2a526855e73b7e764100e86a09dd810043aff2dcedf555",
@@ -18970,16 +19081,17 @@
     "core/src/open_workflow_agent/scheduling.py": "1754a966ad88005f73a868ae8436a2561d5c94ea651ba720a28f59f49fe42340",
     "core/src/open_workflow_agent/security.py": "8ff318e0a96e8a54b833abc279d5a43f1a574d5f3ecca6c2a3c3856e564c566a",
     "core/src/open_workflow_agent/services.py": "58e3559872eb1e1c780ee9fa23dd30abfd3b37fac947b758fbfce2103cdda3ac",
+    "core/src/open_workflow_agent/timing.py": "44546fbf2e64052fee894af05d8530af2996d14b7c4f67dc351a114b3bf32d05",
     "core/src/open_workflow_agent/versions.py": "c1654fcf4326705628b9e2aa4983af5a5d038915afa0e911b63c2dff712e31d5",
-    "core/src/open_workflow_agent/workflow.py": "da635afe92b0e394077868fa389835952de2b358c7a7006ccf881f5446a68d2b",
+    "core/src/open_workflow_agent/workflow.py": "7dda748ab9e30074c0e0ef47dd794d504d043a492908a550cd09dc8d95be6fd9",
     "core/src/open_workflow_agent/workflow_catalog.py": "eef1ccfaa2238c25f6c9b5378475b8d105da9373697c09dec58596a192f6321a",
-    "engines/adk/src/open_workflow_agent_adk/__init__.py": "bfbe5e39b5a44c37c1d9ae6e65ae2d74d5c92b284713d46f3ea26a6700527998",
-    "engines/adk/src/open_workflow_agent_adk/native.py": "4c7b642f2c82bb3eb7168a3cfa5b06f22b766013816ebd546283330b9161b8dc",
-    "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "169a340bf2ed762a1bc04720ca092935feb13f1c87882c0a1b4793d7087b7c82",
+    "engines/adk/src/open_workflow_agent_adk/__init__.py": "28c3f563c939835379508c2687c37599dad02c4ffe6bd9b13e421d8948c855bf",
+    "engines/adk/src/open_workflow_agent_adk/native.py": "5d512dbc7e492c2f2e3c4a596c576b042b3f5abae86d985052aaec8177775de0",
+    "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "6439c1261369250ea7370f24c03e9c77a154d567bc0a640d665c6dc996e2b094",
     "engines/langgraph/src/open_workflow_agent_langgraph/native.py": "d4460844a51501a2297ae3523ef1a6dc4a4f934b5b02ad89064fd6fecbfad9ee",
     "tests/adk/test_adk_adapter.py": "b0ad35c5151ee7fd0f5b485653c5adddb829182ae0c0de4072205458ce9d3bfa",
     "tests/adk/test_native_read_drain.py": "d5149b0493807226a9b72362e270277e4a05724701facbf14ec7d723b566f1f7",
-    "tests/ci/test_postgres_recovery_selection.py": "35790e80d9eacdca53a41084564237e0eb54e0927331c2bcc7853c9849f9cf45",
+    "tests/ci/test_postgres_recovery_selection.py": "511f651e543d9b8c792332743e1808f747ae5c9813ced2f348fea37c5122bc02",
     "tests/contract/_process_recovery_worker.py": "84ea1dd2a6445c7a954afa3c8d091f227ea4bd899414cdb2696c5177f7ea8f16",
     "tests/contract/test_action_execution_authority.py": "17bee27b3c4d3f117299274b6228e1fa8a50976674b03f7a88dd0f7a8e71ddc8",
     "tests/contract/test_adk_native_event_consistency.py": "13b9526dbe3b0387c36e508d05d014c25149badfe3b455f2acf90a76d91be585",
@@ -18992,6 +19104,7 @@
     "tests/contract/test_contract_scheduling.py": "5a601e9f11ff4228782bbceb8302e5ce04d656a85952fe3cb214b0c68b40aaee",
     "tests/contract/test_contract_subworkflows.py": "8013d2d302ea4fd4342aabbddbeb44a969b12f042f64165a367097944f670ab2",
     "tests/contract/test_data_pipeline.py": "b0cc83febc4bf0857d08e4841bd3fa1d02e592ef84f4e47fab21608c7c49da30",
+    "tests/contract/test_deadline_recovery.py": "3d02d25a1a8d26a5d716751e782133be4ec4dba9ce390f14fba3871c3825cf7d",
     "tests/contract/test_definition_admission.py": "b3b8ec606e7211feca4af52a78a6e608ebdd3c5d9df2a5a3de5c027d64288eef",
     "tests/contract/test_durable_approvals.py": "3d771a642fb65e809765d8c265003cdcf9cdd80b36322afbc2b1723085428847",
     "tests/contract/test_effect_recovery.py": "3a47cea4b3b88bcc104a09506e0ffde38271c397a9166711590801ac7f8fd174",
@@ -19006,7 +19119,7 @@
     "tests/contract/test_native_receipt_fork_consistency.py": "5caab6b53afcb2549ed2fd869431718ac078cf70c9ed6da2f84a5e37aac3f11c",
     "tests/contract/test_native_scope_dependencies.py": "2437c0a0e9900bf89f1a5e8c55b5de431e3661b954e1c8bce783c3cd7af4dc8e",
     "tests/contract/test_native_state_consistency.py": "267ad07224864cf6977f0d53928238bf2642cddace6312f85e0c12eb23845919",
-    "tests/contract/test_operator_lifecycle.py": "91d6eea1378769efca0cf74ce4242a77cae6e59e91b2655337ca67f9e243627e",
+    "tests/contract/test_operator_lifecycle.py": "46d6ac24c2938b24ee7696bb8390b3c4cac82199fa17635a50ae87dbef163791",
     "tests/contract/test_process_crash_recovery.py": "91eb0f8cfccf7943f422a59ca21d93430da34d658e220aa5c27ef6e15c24d76d",
     "tests/contract/test_recovery_admission.py": "1e460abc4c56e64b43c64a1a8924991971028e67e1e3704754fa39950abf8b82",
     "tests/contract/test_retry_error_context.py": "0ef0ff29fae12a94e97a82569fdbb8fdfdb5b383db6c3aa406f64111d5e1a6e4",
@@ -19034,6 +19147,7 @@
     "tests/core/test_metrics.py": "849dad8e0308ff6262cf2da1a4bb9b1a224a2dfb92fe2ac46ce670c833436072",
     "tests/core/test_native_write_fence_storage.py": "08da77a28abbcc2d6db57171125870c2e6c65f6c720b655e7cf67aa98f410ca2",
     "tests/core/test_observability.py": "62045b6f53fba0eac7616fb0a19ae981dd780e4ffc6de9b56e8eff8da7fa3f06",
+    "tests/core/test_policy_decisions.py": "96dec29f652b637dec68a816a057c66f6bd76fdcff212e17d9e8e092c992af17",
     "tests/core/test_postgres_persistence.py": "5b9a27a4a28171412c5f063957bb579fde98e2f85395cb06f21cddcca77e844a",
     "tests/core/test_protocols.py": "2dcb17cb0e111901cdb85eea44edb7f7762c3c3106dd9387b9219efdf0701681",
     "tests/core/test_sandbox_validation.py": "fe06321287414eb1b0808600c38d31a0641b117097500862b5d9b7a18f0877a8",
@@ -34191,12 +34305,1907 @@
           }
         }
       }
+    },
+    {
+      "artifact_commit": "cbb06b2d425c788b916ea141fef16ae1aea4ca52",
+      "path": "resources/compatibility/implementation-audit.json",
+      "reviewed_implementation_commit": "f2b5c02b49f24d5d191f16bf5242e05fb258cbab",
+      "acceptance_record_commit": null,
+      "acceptance": {
+        "local_root": {
+          "passed": 1532,
+          "skipped": 304,
+          "expected_assertion_failures": 3,
+          "coverage_percent": 91.85,
+          "commit": "b2dfc5c451b94e0d8d1848e404b46e80d7b06dd3",
+          "source_scope": "Full frozen suites precede the final PostgreSQL-only ADK schema-read binding adjustment. Final ADK SQLite focus passed 33 cases (22 database skips); exact b2 configured PostgreSQL proves that adjustment."
+        },
+        "native_matrices": {
+          "commit": "b2dfc5c451b94e0d8d1848e404b46e80d7b06dd3",
+          "adk": {
+            "passed": 771,
+            "skipped": 219,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 781,
+            "skipped": 226,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 1037,
+            "skipped": 340,
+            "expected_assertion_failures": 3
+          },
+          "scope": "Full frozen suites precede the final PostgreSQL-only ADK schema-read binding adjustment. Final ADK SQLite focus passed 33 cases (22 database skips); exact b2 configured PostgreSQL proves that adjustment."
+        },
+        "negative_probes": {
+          "native_input_binding_admission": 8,
+          "shared_adk_session_input": 1,
+          "native_cleanup_error_boundary": 1
+        },
+        "prior_conditional_invocation_write_acceptance": {
+          "commit": "6954db892aa7a787794b2cb2fa25cfd0f9316882",
+          "runtime_source": "31f64ac5ba42dc9f62da887e9f013c6330688aff",
+          "result": "Success",
+          "runs": {
+            "ci_pr": 38163682555,
+            "ci_push": 38163678738,
+            "postgresql": 38163682598,
+            "external_sandbox": 38163682554,
+            "agent_framework_optional": 38163682536,
+            "security_pr": 38163682524,
+            "docs": 38163682518
+          },
+          "linux_root": {
+            "passed": 1465,
+            "skipped": 198,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.87
+          },
+          "postgresql": {
+            "store_passed": 14,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_adk_passed": 78,
+            "shared_langgraph_passed": 78,
+            "shared_agent_framework_passed": 76,
+            "shared_agent_framework_skipped": 2
+          },
+          "remote_security_dependency_counts": {
+            "root": 71,
+            "adk": 109,
+            "langgraph": 96,
+            "agent_framework_optional": 74,
+            "sandbox_controller": 13,
+            "kubernetes_sandbox_controller": 16
+          },
+          "remote_known_advisories": 0,
+          "scope": "Conditional common state writes and first-terminal reconciliation; not execution leases or native checkpoint fencing."
+        },
+        "prior_action_and_dependency_acceptance": {
+          "commit": "fc535749561a7f2c03a8b919a3bd5176a07e5f32",
+          "runtime_source": "8da4de3cebfb988206ae28f8eb59187c754fa2a7",
+          "result": "Success",
+          "runs": {
+            "ci_pr": 38161547695,
+            "ci_push": 38161544737,
+            "postgresql": 38161547613,
+            "external_sandbox": 38161547672,
+            "agent_framework_optional": 38161547666,
+            "security_pr": 38161547761,
+            "security_push": 38161544729,
+            "docs": 38161547668
+          },
+          "linux_root": {
+            "passed": 1407,
+            "skipped": 159,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.82
+          },
+          "remote_security_dependency_counts": {
+            "root": 71,
+            "adk": 109,
+            "langgraph": 96,
+            "agent_framework_optional": 74,
+            "sandbox_controller": 13,
+            "kubernetes_sandbox_controller": 16
+          },
+          "remote_known_advisories": 0,
+          "postgresql": {
+            "store_passed": 9,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_adk_passed": 61,
+            "shared_langgraph_passed": 61,
+            "shared_agent_framework_passed": 59,
+            "shared_agent_framework_skipped": 2
+          },
+          "scope": "Selected leaf-call recovery and corrected dependency gate, not full S2-03 or full conformance."
+        },
+        "dependency_gate_qualification": "Historical Security jobs used a defective top-level report parser. Independently recorded behavioral tests remain source-scoped; dependency safety requires the corrected gate and fresh reports.",
+        "scope": "Known child outcomes bind the terminal common record, original input, parent identity and original prepared fingerprint/input request. A common identity index is admitted atomically with intents. Read-only pre-admission validation checks associated receipts and descendant child actions even when native task progress has not saved a receipt reference. Missing/changed child records, input, native references, descendant receipts and index metadata reject before parent mutation or dispatch. No native checkpoint or execution plan moves into core. Fresh exact-source configured/remote qualification and final S2-03 requirement audit remain open. Pending intents still require explicit resolution; event inbox/outbox, child scheduling/budgets, compensation, workflow-version migration and full proposed/JavaScript qualification retain later owners. Existing non-child digest formats are preserved; older unbound child outcomes fail closed without a migration guarantee.",
+        "remote_status": "b6aef8c qualifies error-context source at all seven gates; changed f2b5c02 timing source awaits fresh acceptance. S2-04 remains open.",
+        "forced_process_crash_followup": {
+          "commit": "68722d3aae5f8d9b5421abd5d3ab4f1ed2a61cb0",
+          "runtime_source": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+          "backend": "sqlite",
+          "local": {
+            "adk": {
+              "passed": 8,
+              "skipped": 24,
+              "native_checkpoint_qualification": true
+            },
+            "langgraph": {
+              "passed": 8,
+              "skipped": 24,
+              "native_checkpoint_qualification": true
+            },
+            "agent_framework_optional": {
+              "passed": 8,
+              "skipped": 40,
+              "native_checkpoint_qualification": false
+            }
+          },
+          "status": "Verified at ef29f23 for the selected boundaries; no full S2-03 or optional native durability claim",
+          "tests": [
+            "tests/contract/test_process_crash_recovery.py"
+          ],
+          "worker": "tests/contract/_process_recovery_worker.py",
+          "boundaries": [
+            "native wait with null resume",
+            "completed value/null/fault receipt before native task commit",
+            "external action committed with unresolved pending receipt",
+            "common terminal value/null/fault before native finalization"
+          ],
+          "scope": "Owned OS worker is forcibly killed without graceful cleanup, then a distinct process recovers persisted original input and first outcomes without repeating fake external dispatch. Optional Agent Framework qualifies its common bridge only.",
+          "remaining": "Selected SQLite/PostgreSQL and Linux/Windows crash boundaries passed at ef29f23. Durable exclusive ownership, native checkpoint fences, full nested consistency, ambiguous effect resolution, full proposed criteria and independent JS remain unqualified.",
+          "remote_acceptance": {
+            "commit": "ef29f23a8c3504a2e5b888119195a7be04aa2b00",
+            "result": "Success",
+            "runs": {
+              "ci_pr": 38166819912,
+              "ci_push": 38166816341,
+              "postgresql": 38166819900,
+              "security_pr": 38166819956,
+              "external_sandbox": 38166819907,
+              "agent_framework_optional": 38166819944,
+              "docs": 38166819917
+            },
+            "linux_root": {
+              "passed": 1477,
+              "skipped": 258,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.86
+            },
+            "postgresql": {
+              "store_passed": 20,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_adk_passed": 92,
+              "shared_langgraph_passed": 92,
+              "shared_agent_framework_passed": 85,
+              "shared_agent_framework_skipped": 7
+            },
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0,
+            "fixture_source": "68722d3aae5f8d9b5421abd5d3ab4f1ed2a61cb0",
+            "runtime_source": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+            "scope": "Eight selected actual OS process crash boundaries per principal SDK and optional common bridge across SQLite/PostgreSQL. Optional Agent Framework native durability remains unqualified."
+          }
+        },
+        "prior_local_runtime_validation": {
+          "local_root": {
+            "passed": 1473,
+            "skipped": 230,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.83,
+            "commit": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7"
+          },
+          "native_matrices": {
+            "commit": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+            "adk": {
+              "passed": 739,
+              "skipped": 173,
+              "expected_assertion_failures": 3
+            },
+            "langgraph": {
+              "passed": 749,
+              "skipped": 180,
+              "expected_assertion_failures": 3
+            },
+            "agent_framework_optional": {
+              "passed": 999,
+              "skipped": 269,
+              "expected_assertion_failures": 3
+            }
+          }
+        },
+        "prior_native_input_admission_acceptance": {
+          "commit": "b9a2b31107da047b834987c896a8ad155daad60f",
+          "result": "Success",
+          "runs": {
+            "ci_pr": 38165502013,
+            "ci_push": 38165496479,
+            "postgresql": 38165501863,
+            "security_pr": 38165501873,
+            "external_sandbox": 38165501903,
+            "agent_framework_optional": 38165501878,
+            "docs": 38165501890
+          },
+          "linux_root": {
+            "passed": 1477,
+            "skipped": 226,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.86
+          },
+          "postgresql": {
+            "store_passed": 20,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_adk_passed": 84,
+            "shared_langgraph_passed": 84,
+            "shared_agent_framework_passed": 77,
+            "shared_agent_framework_skipped": 7
+          },
+          "remote_security_dependency_counts": {
+            "dependency-audit-adk": 109,
+            "dependency-audit-agent-framework": 74,
+            "dependency-audit-kubernetes-sandbox-controller": 16,
+            "dependency-audit-langgraph": 96,
+            "dependency-audit-root": 71,
+            "dependency-audit-sandbox-controller": 13
+          },
+          "remote_known_advisories": 0,
+          "runtime_source": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
+          "scope": "Existing original input and initial ADK invocation/root LangGraph input admission, not full nested consistency or exclusive execution ownership."
+        },
+        "execution_ownership_storage_foundation": {
+          "commit": "75fbc0d7bdfb242c4e8b92490a57627f85aa6a0c",
+          "status": "Verified for storage-only scope at cdd6e17; historical runtime admission probe remains source-scoped",
+          "scope": "Private database-clock claims, renewal, release and retained generations across connections. RuntimeServices owns composition/cleanup. Execution admission, heartbeat supervision and atomic common/native write fencing are not integrated.",
+          "tests": [
+            "tests/core/test_execution_ownership.py"
+          ],
+          "local_targeted": {
+            "passed": 25,
+            "skipped": 12
+          },
+          "negative_probe": "A corrupted infinite SQLite expiry could be renewed at f00a7a0; 75fbc0d rejects verify/renew/release without changing it.",
+          "runtime_admission_probe": "Two independent common runtimes enter the same invocation at 75fbc0d; ownership storage is not integrated with execution admission.",
+          "composition_probe": "Independent RuntimeServices share the ownership record and close their owned storage connections.",
+          "remaining": "Runtime invocation/resume ownership and heartbeat integration, lease-loss cancellation, atomic common/native write fencing and complete native consistency remain open.",
+          "remote_acceptance": {
+            "commit": "cdd6e17803583291cf69bd61183214a637a522c6",
+            "runtime_source": "75fbc0d7bdfb242c4e8b92490a57627f85aa6a0c",
+            "result": "Success",
+            "runs": {
+              "38168042885": "success",
+              "38168042878": "success",
+              "38168042905": "success",
+              "38168042875": "success",
+              "38168042914": "success",
+              "38168042957": "success",
+              "38168038764": "success"
+            },
+            "linux_root": {
+              "passed": 1502,
+              "skipped": 270,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.91
+            },
+            "postgresql": {
+              "store_passed": 57,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_adk_passed": 92,
+              "shared_langgraph_passed": 92,
+              "shared_agent_framework_passed": 85,
+              "shared_agent_framework_skipped": 7,
+              "both_runtime_image_jobs": "Success"
+            },
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0,
+            "scope": "Ownership storage foundation only; runtime admission and native fences were not integrated in this source."
+          }
+        },
+        "prior_ownership_foundation_local": {
+          "local_root": {
+            "passed": 1498,
+            "skipped": 274,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.89,
+            "commit": "75fbc0d7bdfb242c4e8b92490a57627f85aa6a0c"
+          },
+          "native_matrices": {
+            "commit": "f00a7a0307c71db5acb796afe0c1ab1c7ffd3189",
+            "adk": {
+              "passed": 747,
+              "skipped": 197,
+              "expected_assertion_failures": 3
+            },
+            "langgraph": {
+              "passed": 757,
+              "skipped": 204,
+              "expected_assertion_failures": 3
+            },
+            "agent_framework_optional": {
+              "passed": 1007,
+              "skipped": 309,
+              "expected_assertion_failures": 3
+            },
+            "scope": "Independent native/shared/CTK regression baseline. Adapters and service composition are unchanged by the subsequent unused-store expiry guard and fixture typing fix."
+          }
+        },
+        "runtime_and_native_execution_fences": {
+          "commit": "b2dfc5c451b94e0d8d1848e404b46e80d7b06dd3",
+          "status": "Bounded local, PostgreSQL, Windows and native suite proof; main CI image restart acceptance failed",
+          "scope": "Private invocation/resume admission, local caller coalescing, renewal/loss/shutdown supervision and common/native storage transaction fencing. Native SQL, checkpoint formats and engine state remain SDK-owned.",
+          "local_frozen_regression": {
+            "root": {
+              "passed": 1532,
+              "skipped": 304,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.85
+            },
+            "adk": {
+              "passed": 771,
+              "skipped": 219,
+              "expected_assertion_failures": 3
+            },
+            "langgraph": {
+              "passed": 781,
+              "skipped": 226,
+              "expected_assertion_failures": 3
+            },
+            "agent_framework_optional": {
+              "passed": 1037,
+              "skipped": 340,
+              "expected_assertion_failures": 3
+            }
+          },
+          "local_source_scope": "Full frozen suites precede the final PostgreSQL-only ADK schema-read binding adjustment. Final ADK SQLite focus passed 33 cases (22 database skips); exact b2 configured PostgreSQL proves that adjustment.",
+          "remote_runs": {
+            "38172139237": "success",
+            "38172139248": "success",
+            "38172139233": "success",
+            "38172139245": "success",
+            "38172139241": "success",
+            "38172139235": "failure",
+            "38172134981": "failure"
+          },
+          "linux_root": {
+            "passed": 1536,
+            "skipped": 300,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.87
+          },
+          "linux_shared": {
+            "passed": 649,
+            "skipped": 236,
+            "expected_assertion_failures": 3
+          },
+          "linux_native": {
+            "adk": {
+              "passed": 675,
+              "skipped": 219,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "langgraph": {
+              "passed": 685,
+              "skipped": 226,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "agent_framework_optional": {
+              "passed": 1037,
+              "skipped": 340,
+              "expected_assertion_failures": 3
+            }
+          },
+          "windows": {
+            "root_passed": 452,
+            "root_skipped": 4,
+            "native_passed": 279,
+            "native_skipped": 53
+          },
+          "postgresql": {
+            "store_passed": 65,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_adk_passed": 101,
+            "shared_langgraph_passed": 101,
+            "shared_agent_framework_passed": 90,
+            "shared_agent_framework_skipped": 7,
+            "both_runtime_image_jobs": "Success"
+          },
+          "remote_security_dependency_counts": {
+            "dependency-audit-adk": 109,
+            "dependency-audit-agent-framework": 74,
+            "dependency-audit-kubernetes-sandbox-controller": 16,
+            "dependency-audit-langgraph": 96,
+            "dependency-audit-root": 71,
+            "dependency-audit-sandbox-controller": 13
+          },
+          "remote_known_advisories": 0,
+          "main_ci_failure": "Both main CI runs fail immediate LangGraph image resume with HTTP 409 while the killed owner lease remains live. ADK image jobs are cancelled by fail-fast. Root, Windows, native and CTK jobs pass. Restart acceptance must wait for actual production lease expiry; no runtime lease bypass is accepted.",
+          "remaining": "Action/fork admission generation guards and their fresh acceptance, complete nested native/common consistency, ambiguous effects, full proposed criteria and independent JavaScript remain unqualified. Optional Agent Framework common bridge proof does not establish native checkpoint durability."
+        },
+        "action_progress_admission_followup": {
+          "status": "Verified bounded authority and actual production-expiry image recovery at 2acf632",
+          "parent_commit": "b2dfc5c451b94e0d8d1848e404b46e80d7b06dd3",
+          "source_scope": "Follow-up artifact runtime, fixture and CI Git file contents are bound below by SHA-256. The reviewed b2 source and its two failed main CI gates retain separate evidence.",
+          "source_file_sha256": {
+            "core/src/open_workflow_agent/effects.py": "41187891af210735e756f91f4ab401db8c9503a187ea5a55c5a9823262f2e430",
+            "core/src/open_workflow_agent/forks.py": "3a260a4da7c11be52bc7c4d9ca833c52aa8a47aab81759b64f3741efcb58021b",
+            "core/src/open_workflow_agent/ownership.py": "a67eb678e8512f094147c1e01258137b80959ebaab9314cf516ce874ff0c09d5",
+            "core/src/open_workflow_agent/workflow.py": "084ac5cd100b33bd63061acc89ed900708d0678e7e39c9503c82392ab6600e48",
+            "tests/core/test_action_progress_ownership.py": "8fa0a100caae0d75be90fd167870daa006e7ca6196ccb0fa507683d275d4ae53",
+            "tests/contract/test_action_execution_authority.py": "17bee27b3c4d3f117299274b6228e1fa8a50976674b03f7a88dd0f7a8e71ddc8",
+            "tests/contract/test_competitive_forks.py": "6a8c6e424021122530618ac9e9822152da973e5d6d22e2335f8bcc54a1a2d401",
+            ".github/workflows/ci.yml": "1bfb64a22e5807d9609861502fcc628585970d272fa918f99a58aedc40fef037",
+            ".github/workflows/postgres-ci.yml": "28d0c2c799bf6b87e656382d54ef4ffc3643c2ed0066035d1697574f9624f344"
+          },
+          "local_frozen_regression": {
+            "root": {
+              "passed": 1544,
+              "skipped": 316,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.81
+            },
+            "adk": {
+              "passed": 775,
+              "skipped": 223,
+              "expected_assertion_failures": 3
+            },
+            "langgraph": {
+              "passed": 785,
+              "skipped": 230,
+              "expected_assertion_failures": 3
+            },
+            "agent_framework_optional": {
+              "passed": 1043,
+              "skipped": 346,
+              "expected_assertion_failures": 3
+            }
+          },
+          "scope": "Action intent insertion/replay and fork winner/drain progress lock valid execution authority through commit. Existing first-dispatch owners can retain truthful external outcomes after expiry. Standalone unowned storage contracts remain compatible.",
+          "local_lock_proof": "SQLite guarded progress transaction blocks a competing ownership write through commit, then permits it. Matching PostgreSQL lock-timeout proof is wired for the fresh database gate, not counted as local acceptance.",
+          "image_acceptance_correction": "Wait for the persisted waiting boundary before forced stop, then retry only the exact live-owner conflict until real production lease expiry. No deletion/shortening of a production lease. Four deterministic actual-poll harness scenarios pass: eventual success, unrelated conflict rejection, server failure rejection, bounded never-expiring failure.",
+          "quality_checks": "Formatting, lint, strict package/CI/new-fixture typing, four locks, five builds, all five current-source wheel checks, pinned official schema bytes, six audit/tracker checks and Markdown links pass.",
+          "remaining": "Full native/common consistency and broader pending effects remain open; bounded generation guards and production-expiry image recovery are verified. No compensation, migration, JavaScript or full conformance claim.",
+          "commit": "2acf632f0efaf55d7c9c3211278e9f16c6c45a47",
+          "remote_runs": {
+            "38173674509": "success",
+            "38173674526": "success",
+            "38173674506": "success",
+            "38173674571": "success",
+            "38173674499": "success",
+            "38173674497": "success",
+            "38173670848": "success"
+          },
+          "linux_root": {
+            "passed": 1548,
+            "skipped": 312,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.83
+          },
+          "linux_shared": {
+            "passed": 653,
+            "skipped": 240,
+            "expected_assertion_failures": 3
+          },
+          "linux_native": {
+            "adk": {
+              "passed": 679,
+              "skipped": 223,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "langgraph": {
+              "passed": 689,
+              "skipped": 230,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "agent_framework_optional": {
+              "passed": 1043,
+              "skipped": 346,
+              "expected_assertion_failures": 3
+            }
+          },
+          "windows": {
+            "root_passed": 460,
+            "root_skipped": 12,
+            "native_passed": 283,
+            "native_skipped": 57
+          },
+          "postgresql": {
+            "store_passed": 81,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_adk_passed": 103,
+            "shared_langgraph_passed": 103,
+            "shared_agent_framework_passed": 92,
+            "shared_agent_framework_skipped": 7,
+            "both_runtime_image_jobs": "Success"
+          },
+          "main_ci_forced_stop_images": {
+            "Docker adk acceptance": "Success with actual production lease expiry",
+            "Docker langgraph acceptance": "Success with actual production lease expiry"
+          },
+          "remote_security_dependency_counts": {
+            "dependency-audit-adk": 109,
+            "dependency-audit-agent-framework": 74,
+            "dependency-audit-kubernetes-sandbox-controller": 16,
+            "dependency-audit-langgraph": 96,
+            "dependency-audit-root": 71,
+            "dependency-audit-sandbox-controller": 13
+          },
+          "remote_known_advisories": 0
+        },
+        "native_checkpoint_consistency_followup": {
+          "commit": "556da47a422f51fe61b9e7f15e68291ac1ce4101",
+          "status": "Local, native, Windows and image checks pass at fc54600; PostgreSQL corruption fixture fails before mutation",
+          "source_file_sha256": {
+            "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "2ab2df39c4b9217bb79b8c7e0e6c3cdaa2614faa20a77d0443fb875a6272dc8d",
+            "tests/contract/test_native_state_consistency.py": "4351e16332bd7bebf92539660bca5bdbe61f91fafe0b698160d847f6761f2224",
+            ".github/workflows/ci.yml": "335cc449517c31141aa363baae5b3d392a30906c87c7dcf12d9623ea2d96a1ec",
+            ".github/workflows/postgres-ci.yml": "d80d7a0ffada088f1b4d5b2ebb8ab07631941f763aef8bf19dd4f9ede17e89fe"
+          },
+          "scope": "Validate actual SDK-owned root and stored nested scope snapshots before common resume admission: finite unambiguous JSON, exact field/control types, plan/task/scope identities and self occurrence, execution path visits, workflow input/definition and context binding. Restore validates whole snapshots before live-state changes.",
+          "negative_probe": "Two actual root/nested SQLite corruption probes on prior code fail to reject malformed outputs. No dispatch count is asserted from those failing probes.",
+          "local_native_sqlite_cases": 24,
+          "local_focus": {
+            "passed": 35,
+            "skipped": 31
+          },
+          "local_langgraph_native_shared_ctk": {
+            "passed": 809,
+            "skipped": 254,
+            "expected_assertion_failures": 3
+          },
+          "quality_checks": "Formatting, lint, strict 66-package-source typing and new fixture typing pass. LangGraph wheel/sdist build passes; wheel code bytes match current adapter source.",
+          "remaining": "Fresh configured acceptance of corrected corruption fixture; all-event ADK input checks; full native/common consistency remain open.",
+          "remote_commit": "fc54600db3bb45ebfcd36b741fc5174142fa994f",
+          "remote_runs": {
+            "38174918205": "success",
+            "38174918209": "success",
+            "38174918271": "failure",
+            "38174918180": "success",
+            "38174918227": "success",
+            "38174918185": "success",
+            "38174915227": "success"
+          },
+          "linux_root": {
+            "passed": 1548,
+            "skipped": 360,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.83
+          },
+          "linux_shared": {
+            "passed": 653,
+            "skipped": 288,
+            "expected_assertion_failures": 3
+          },
+          "linux_native": {
+            "adk": {
+              "passed": 679,
+              "skipped": 271,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "langgraph": {
+              "passed": 713,
+              "skipped": 254,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "agent_framework_optional": {
+              "passed": 1043,
+              "skipped": 394,
+              "expected_assertion_failures": 3
+            }
+          },
+          "windows": {
+            "root_passed": 460,
+            "root_skipped": 12,
+            "native_passed": 307,
+            "native_skipped": 81
+          },
+          "postgresql": {
+            "store_passed": 81,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_langgraph_passed": 105,
+            "shared_langgraph_failed": 22,
+            "both_runtime_image_jobs": "Not run after common-store job failure",
+            "adk_shared": "Not run after preceding failure",
+            "optional_bridge": "Not run after preceding failure"
+          },
+          "postgresql_failure": "All 22 corruption cases update zero checkpoint_blobs rows. The installed SDK inlines primitive JSON-text snapshot/counter channels in checkpoint JSONB. Two clean cases and the existing 103 shared cases pass. This is failed fixture admission, not accepted corrupted-state recovery.",
+          "remote_security_dependency_counts": {
+            "dependency-audit-adk": 109,
+            "dependency-audit-agent-framework": 74,
+            "dependency-audit-kubernetes-sandbox-controller": 16,
+            "dependency-audit-langgraph": 96,
+            "dependency-audit-root": 71,
+            "dependency-audit-sandbox-controller": 13
+          },
+          "remote_known_advisories": 0
+        },
+        "adk_native_event_consistency_followup": {
+          "commit": "005ab5b15140908c06ce42eb5788dd11b333a8c5",
+          "status": "Verified bounded native consistency and corrected PostgreSQL fixture at 4058895",
+          "source_file_sha256": {
+            "engines/adk/src/open_workflow_agent_adk/native.py": "794bd22293a77c6ff2bc7bd506586d8dc6ec62ecd59e81344739a32c8e3c35d4",
+            "tests/contract/test_adk_native_event_consistency.py": "13b9526dbe3b0387c36e508d05d014c25149badfe3b455f2acf90a76d91be585",
+            "tests/contract/test_native_state_consistency.py": "b59f4a0fef01e2b7bd369445db671a1d28ce766eb7d0eff998fb327f338e3b03",
+            ".github/workflows/postgres-ci.yml": "ac45a0c9786acc0f29ddf79a40f7bebfed41cd3a14a4cb10e996ca680421c3f6"
+          },
+          "scope": "ADK reads every saved user input for the specific native invocation, rejects contradictory/malformed or duplicate-key JSON, and accepts repeated matching inputs. Unrelated session invocations remain separate. PostgreSQL corruption fixture updates actual SDK-inline primitive channels and re-reads the exact checkpoint to prove mutation; SQLite keeps SDK serialization.",
+          "negative_probe": "Actual saved contradictory later user event is accepted by the prior first-event validator; the before-fix contract assertion fails. That failing assertion does not establish a fake dispatch count.",
+          "local_adk_native_shared_ctk": {
+            "passed": 780,
+            "skipped": 276,
+            "expected_assertion_failures": 3
+          },
+          "local_focus": {
+            "passed": 12,
+            "skipped": 22
+          },
+          "local_corrected_langgraph_fixture": {
+            "passed": 24,
+            "skipped": 24
+          },
+          "quality_checks": "Formatting, lint, strict 66-package-source and two fixture typing pass. ADK wheel/sdist build and current adapter source-byte verification pass. LangGraph runtime is unchanged from 556da47; its 809/254/three-gap full local baseline remains separately scoped.",
+          "remaining": "This qualifies the corrected SQLite/PostgreSQL fixture and all-input ADK checks. Complete native/common receipt consistency remains open; subsequent routing-control changes require fresh acceptance.",
+          "remote_commit": "40588958886ae4d0aaf5058c8b5ac7702eff8e22",
+          "remote_runs": {
+            "38175692474": "success",
+            "38175692465": "success",
+            "38175692469": "success",
+            "38175692651": "success",
+            "38175692473": "success",
+            "38175692483": "success",
+            "38175689112": "success"
+          },
+          "linux_root": {
+            "passed": 1548,
+            "skipped": 370,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.83
+          },
+          "linux_shared": {
+            "passed": 653,
+            "skipped": 298,
+            "expected_assertion_failures": 3
+          },
+          "linux_native": {
+            "adk": {
+              "passed": 684,
+              "skipped": 276,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "langgraph": {
+              "passed": 713,
+              "skipped": 264,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "agent_framework_optional": {
+              "passed": 1043,
+              "skipped": 404,
+              "expected_assertion_failures": 3
+            }
+          },
+          "windows": {
+            "root_passed": 460,
+            "root_skipped": 12,
+            "native_passed": 307,
+            "native_skipped": 81
+          },
+          "postgresql": {
+            "store_passed": 81,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_langgraph_passed": 127,
+            "shared_adk_passed": 108,
+            "shared_agent_framework_passed": 92,
+            "shared_agent_framework_skipped": 7,
+            "both_runtime_image_jobs": "Success"
+          },
+          "main_ci_forced_stop_images": {
+            "Docker langgraph acceptance": "Success with actual production lease expiry",
+            "Docker adk acceptance": "Success with actual production lease expiry"
+          },
+          "remote_security_dependency_counts": {
+            "dependency-audit-adk": 109,
+            "dependency-audit-agent-framework": 74,
+            "dependency-audit-kubernetes-sandbox-controller": 16,
+            "dependency-audit-langgraph": 96,
+            "dependency-audit-root": 71,
+            "dependency-audit-sandbox-controller": 13
+          },
+          "remote_known_advisories": 0
+        },
+        "native_routing_consistency_followup": {
+          "commit": "e61c6a56c55fd1052b3be931955ad0e3e4d049e1",
+          "status": "Bounded routing acceptance verified at 6af95cf; PR CI benchmark fails",
+          "source_file_sha256": {
+            "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "6e495919d4b8d8a6f179f630a0dab4a58a9ba80896875cf6a0e22ff2537b801d",
+            "tests/contract/test_native_state_consistency.py": "267ad07224864cf6977f0d53928238bf2642cddace6312f85e0c12eb23845919"
+          },
+          "scope": "Reject stop, scope-exit or workflow-end flags that disagree with saved task routing. Native task completion routes immediately to END when workflow end is already set, preserving terminal control semantics.",
+          "negative_probe": "Six actual SQLite root/nested cases with Boolean stop/exit/end flags fail the prior recovery rejection assertion.",
+          "local_focus": {
+            "passed": 41,
+            "skipped": 37
+          },
+          "local_langgraph_native_shared_ctk": {
+            "passed": 815,
+            "skipped": 270,
+            "expected_assertion_failures": 3
+          },
+          "quality_checks": "Formatting, lint, strict 66-package-source and fixture typing, LangGraph wheel/sdist build and current adapter source-byte checks pass.",
+          "remaining": "Full native/common consistency remains open; subsequent receipt bindings and native-reader correction need fresh acceptance.",
+          "remote_commit": "6af95cfd53381f86cc65c19063635a524d4fc215",
+          "remote_runs": {
+            "38176500056": "success",
+            "38176500028": "success",
+            "38176500060": "success",
+            "38176500054": "success",
+            "38176500068": "success",
+            "38176500015": "failure",
+            "38176495800": "success"
+          },
+          "linux_root": {
+            "passed": 1548,
+            "skipped": 382,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.83
+          },
+          "linux_native": {
+            "adk": {
+              "passed": 684,
+              "skipped": 288,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "langgraph": {
+              "passed": 719,
+              "skipped": 270,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "agent_framework_optional": {
+              "passed": 1043,
+              "skipped": 416,
+              "expected_assertion_failures": 3
+            }
+          },
+          "windows": {
+            "root_passed": 460,
+            "root_skipped": 12,
+            "native_passed": 313,
+            "native_skipped": 87
+          },
+          "postgresql": {
+            "store_passed": 81,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_langgraph_passed": 133,
+            "shared_adk_passed": 108,
+            "shared_agent_framework_passed": 92,
+            "shared_agent_framework_skipped": 7,
+            "both_runtime_image_jobs": "Success"
+          },
+          "main_push_forced_stop_images": "Both actual restart steps pass; PR image jobs are skipped after the ADK benchmark failure",
+          "remote_security_dependency_counts": {
+            "dependency-audit-adk": 109,
+            "dependency-audit-agent-framework": 74,
+            "dependency-audit-kubernetes-sandbox-controller": 16,
+            "dependency-audit-langgraph": 96,
+            "dependency-audit-root": 71,
+            "dependency-audit-sandbox-controller": 13
+          },
+          "remote_known_advisories": 0,
+          "failure": "PR CI native ADK/shared and CTK steps pass, then its 10-iteration/concurrency-4 benchmark fails storing common invocation status. LangGraph native is cancelled and PR image jobs are skipped. The separate push CI succeeds. This revision is not all-gates green."
+        },
+        "native_common_receipt_reconciliation_probe": {
+          "commit": "e61c6a56c55fd1052b3be931955ad0e3e4d049e1",
+          "status": "Gap reproduced in actual native SDK recovery; implementation pending",
+          "scope": "A native root checkpoint already passed the first HTTP call before waiting. Deleting or changing its common completed receipt is not reconciled on recovery.",
+          "observed": "Both cases complete, execute the next fake HTTP call and change the common invocation. Call history is /once then /next; this does not repeat /once but accepts disagreement with its known durable receipt.",
+          "remaining": "Record and verify checkpoint dependencies on common action receipts before recovery admission, including missing/changed outcomes and payload consistency."
+        },
+        "native_receipt_dependencies_followup": {
+          "commit": "9755e96cef402d674e51335e99327f2cb84ce895",
+          "status": "Bounded receipt/native-reader acceptance verified at c276f40",
+          "source_file_sha256": {
+            "core/src/open_workflow_agent/effects.py": "21f91c93c14c41f2b056ab2e0f6840f03927605e014bde57902ec198b9b12046",
+            "core/src/open_workflow_agent/workflow.py": "7d377da599f07b6fbfd131fe7bfeef663634c42e7322480ac3a8c86e578046ca",
+            "engines/adk/src/open_workflow_agent_adk/__init__.py": "bfbe5e39b5a44c37c1d9ae6e65ae2d74d5c92b284713d46f3ea26a6700527998",
+            "engines/adk/src/open_workflow_agent_adk/native.py": "4c7b642f2c82bb3eb7168a3cfa5b06f22b766013816ebd546283330b9161b8dc",
+            "engines/langgraph/src/open_workflow_agent_langgraph/__init__.py": "9139b480d2e1c866a7a62377c9830ec5022d2c7b56acd8e9378db29fca46f463",
+            "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "a31613970926be1a7acc79d0bc0189e82e7b9fa2ac94ecd8c5cf626275805a6c",
+            "engines/langgraph/src/open_workflow_agent_langgraph/native.py": "d4460844a51501a2297ae3523ef1a6dc4a4f934b5b02ad89064fd6fecbfad9ee",
+            "tests/adk/test_native_read_drain.py": "d5149b0493807226a9b72362e270277e4a05724701facbf14ec7d723b566f1f7",
+            "tests/contract/test_native_receipt_consistency.py": "3f413b3b965837788cd2031e5f1d0f083f572e8fb2393a287c4b0e2e6e52df2d",
+            "tests/contract/test_native_receipt_fork_consistency.py": "5caab6b53afcb2549ed2fd869431718ac078cf70c9ed6da2f84a5e37aac3f11c",
+            ".github/workflows/ci.yml": "efccd7c4479e9ce30b00e04b3db46b5bb43e01b428d5f7c134cd4a72af33feff",
+            ".github/workflows/postgres-ci.yml": "de1859e593a7d0fb506ce0ad79244859bbd3d18ea4d67599c00ec543614ca0c2"
+          },
+          "scope": "Native adapters retain immutable references to terminal common receipts and validate them before recovery admission. LangGraph binds receipt references to its saved snapshot/counters/routing checksum. ADK retains sequenced SDK metadata events, awaits native receipt/wait persistence and permits later sibling receipts while a branch remains waiting. Core owns neither SDK state nor SDK SQL. Digests detect disagreement; they are not checkpoint authentication or proof of exactly-once execution.",
+          "shared_fixture": "Identical root/nested value/null/fault recovery cases on both principal SDKs reject missing, changed and pending receipts before another fake external call or common invocation mutation. Clean receipts recover without repeating their first call. Configured PostgreSQL cases are wired but not locally qualified.",
+          "negative_probes": "The missing-receipt admission assertion fails on exact prior 6af95cf source on both actual SDKs. A separate actual ADK fork probe reproduces rejection of a valid wait followed by a sibling receipt before the waiting-history correction.",
+          "local_root": {
+            "passed": 1544,
+            "skipped": 484,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.46
+          },
+          "local_adk_native_shared_ctk": {
+            "passed": 808,
+            "skipped": 366,
+            "expected_assertion_failures": 3
+          },
+          "local_langgraph_native_shared_ctk": {
+            "passed": 839,
+            "skipped": 342,
+            "expected_assertion_failures": 3
+          },
+          "local_agent_framework_optional_native_shared_ctk": {
+            "passed": 1043,
+            "skipped": 512,
+            "expected_assertion_failures": 3
+          },
+          "local_focus_adk": {
+            "passed": 28,
+            "skipped": 78
+          },
+          "local_focus_langgraph_fork": {
+            "passed": 2,
+            "skipped": 6
+          },
+          "regression_scope": "Four complete regressions ran on identical frozen sources. Only ADK waiting-history admission and a shared fork fixture changed afterward: the final full ADK rerun and focused unchanged LangGraph fork checks pass. Core/other adapters retain the complete frozen regression. Optional Agent Framework receipts exercise the common bridge; its native checkpoint durability remains unqualified.",
+          "native_read_drain": "A controlled actual SQLite reader and fenced SDK commit reproduce the previous main-loop lock cycle. The synchronous common write fails before the reader is moved to the existing worker, and succeeds afterward. Both assertions pass. SDK formats and SQL remain SDK-owned.",
+          "adk_benchmark": {
+            "concurrency": 4,
+            "concurrent_seconds_total": 0.7591224999632686,
+            "concurrent_throughput_per_second": 5.269241789294279,
+            "engine": "adk",
+            "engine_compile_seconds_per_iteration": 6.100046448409557e-07,
+            "engine_compile_seconds_total": 6.100046448409557e-06,
+            "interruption_resume": {
+              "operation_ids": [
+                "a90a0526-109e-45a7-ad68-b312d77a6e82:/do/0/side_effect"
+              ],
+              "side_effect_calls": 1,
+              "status": "completed",
+              "unique_operation_ids": 1
+            },
+            "iterations": 10,
+            "native_available": true,
+            "native_checkpoint_bytes_after": 73728,
+            "native_checkpoint_bytes_before": 0,
+            "native_checkpoint_bytes_delta": 73728,
+            "sequential_seconds_per_invocation": 0.24324373999843374,
+            "sequential_seconds_total": 2.4324373999843374
+          },
+          "quality_checks": "Formatting, lint, strict 66-package-source and three-fixture typing pass. Five wheel/sdist builds and current Python source/pinned-schema bytes pass; ADK is rebuilt after its final condition change.",
+          "remaining": "This qualifies bounded receipt consistency and the native-reader correction. Full native/common consistency remains open; subsequent completed-scope dependencies need fresh acceptance. The prior 6af95cf benchmark failure remains recorded.",
+          "remote_commit": "c276f40cb875b815eddd8e35fedfecd3c3ff9acb",
+          "remote_runs": {
+            "38179200495": "success",
+            "38179200516": "success",
+            "38179200475": "success",
+            "38179200484": "success",
+            "38179200396": "success",
+            "38179200384": "success",
+            "38179197842": "success"
+          },
+          "linux_root": {
+            "passed": 1548,
+            "skipped": 488,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.49
+          },
+          "linux_native": {
+            "adk": {
+              "passed": 712,
+              "skipped": 366,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "langgraph": {
+              "passed": 745,
+              "skipped": 348,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "agent_framework_optional": {
+              "passed": 1043,
+              "skipped": 520,
+              "expected_assertion_failures": 3
+            }
+          },
+          "windows": {
+            "root_passed": 460,
+            "root_skipped": 12,
+            "native_passed": 339,
+            "native_skipped": 165
+          },
+          "postgresql": {
+            "store_passed": 81,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_langgraph_passed": 159,
+            "shared_adk_passed": 134,
+            "shared_agent_framework_passed": 92,
+            "shared_agent_framework_skipped": 7,
+            "both_runtime_image_jobs": "Success"
+          },
+          "main_ci_forced_stop_images": "Both principal SDK restart steps pass in both actual main CI runs with production lease expiry",
+          "adk_and_langgraph_remote_benchmarks": "Success in both main CI runs",
+          "remote_security_dependency_counts": {
+            "dependency-audit-adk": 109,
+            "dependency-audit-agent-framework": 74,
+            "dependency-audit-kubernetes-sandbox-controller": 16,
+            "dependency-audit-langgraph": 96,
+            "dependency-audit-root": 71,
+            "dependency-audit-sandbox-controller": 13
+          },
+          "remote_known_advisories": 0
+        },
+        "native_completed_scope_dependencies_followup": {
+          "commit": "968ec8fe1f030fe85533c1b97e7729080105f742",
+          "status": "Bounded implementation verified, including actual corrected PostgreSQL scope/sandbox cases at c7b70ad",
+          "source_file_sha256": {
+            "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "169a340bf2ed762a1bc04720ca092935feb13f1c87882c0a1b4793d7087b7c82",
+            "tests/contract/test_native_scope_dependencies.py": "2437c0a0e9900bf89f1a5e8c55b5de431e3661b954e1c8bce783c3cd7af4dc8e",
+            ".github/workflows/ci.yml": "511e2904aae758760004f92cd9ae2446d338bf117c5957318d78f11cf2cfc162",
+            ".github/workflows/postgres-ci.yml": "a10ceb1e716dc769cacebb18884d7a4d9c9e629cdde3d01f757deecf19d42447"
+          },
+          "scope": "Completed native scopes publish immutable checkpoint dependencies into subsequent SDK-owned state. Admission verifies each required scope exists, has terminal routing and agrees with its retained digest. The native consistency checksum includes receipt/scope dependencies as well as snapshot/counters/routing. Core owns no native checkpoint state or SQL.",
+          "negative_probes": "Actual recovery accepts deletion of a completed nested checkpoint at c276f40 and changes common state while dispatching the next fake HTTP call. Two actual prior-source assertions fail: deleted completed scope and internally consistent changed child payload/checksum. The new dependency check rejects both before dispatch or common mutation.",
+          "local_focus": {
+            "passed": 65,
+            "skipped": 117
+          },
+          "local_langgraph_native_shared_ctk": {
+            "passed": 850,
+            "skipped": 357,
+            "expected_assertion_failures": 3
+          },
+          "fixture_scope": "Nested completed scopes, earlier completed loop occurrences, and a cancelled competing child whose cursor advanced before its first SDK checkpoint. A missing cancelled/uncompleted child remains valid; the completed winner remains required. SQLite and configured PostgreSQL fixtures use actual SDK deletion/serialization; PostgreSQL acceptance is pending.",
+          "quality_checks": "Formatting, lint, strict 66-package-source and fixture typing, LangGraph wheel/sdist build and current wheel source/pinned-schema bytes pass. Runtime/test source stays frozen during native checks.",
+          "remaining": "Actual configured completed-scope acceptance and full native/common consistency remain open. Seven successful jobs do not imply coverage of deselected requirements.",
+          "remote_commit": "ac478e17c9626501b062fe7cae9b46a85aaeaded",
+          "remote_runs": {
+            "38180361574": "success",
+            "38180361571": "success",
+            "38180361580": "success",
+            "38180361598": "success",
+            "38180361576": "success",
+            "38180361586": "success",
+            "38180357460": "success"
+          },
+          "linux_root": {
+            "passed": 1548,
+            "skipped": 506,
+            "expected_assertion_failures": 3,
+            "coverage_percent": 91.49
+          },
+          "linux_native": {
+            "adk": {
+              "passed": 712,
+              "skipped": 384,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "langgraph": {
+              "passed": 754,
+              "skipped": 357,
+              "expected_assertion_failures": 3,
+              "ctk_passed": 96
+            },
+            "agent_framework_optional": {
+              "passed": 1043,
+              "skipped": 538,
+              "expected_assertion_failures": 3
+            }
+          },
+          "windows": {
+            "root_passed": 460,
+            "root_skipped": 12,
+            "native_passed": 348,
+            "native_skipped": 174
+          },
+          "postgresql": {
+            "store_passed": 81,
+            "native_langgraph_passed": 10,
+            "native_langgraph_skipped": 8,
+            "shared_langgraph_passed": 159,
+            "shared_adk_passed": 134,
+            "shared_agent_framework_passed": 92,
+            "shared_agent_framework_skipped": 7,
+            "completed_scope_cases_executed": 0,
+            "completed_scope_cases_deselected": 9,
+            "both_runtime_image_jobs": "Success"
+          },
+          "coverage_limit": "The PostgreSQL command includes the scope fixture, but its original langgraph keyword filter selects none of that fixture. The 159 cases are existing coverage; none qualify completed-scope PostgreSQL corruption. Current source corrects the actual selector and verifies nine scope cases through real pytest collection.",
+          "remote_security_dependency_counts": {
+            "dependency-audit-adk": 109,
+            "dependency-audit-agent-framework": 74,
+            "dependency-audit-kubernetes-sandbox-controller": 16,
+            "dependency-audit-langgraph": 96,
+            "dependency-audit-root": 71,
+            "dependency-audit-sandbox-controller": 13
+          },
+          "remote_known_advisories": 0,
+          "configured_acceptance_followup": {
+            "commit": "c7b70ad9ef5c6fa59ae7d00ea39064e9486a4aad",
+            "runtime_commit": "3df61f685ea14a8fe996da88bea052f2fad71163",
+            "status": "All seven actual jobs successful; required scope/sandbox cases executed",
+            "remote_runs": {
+              "38182130965": "success",
+              "38182130946": "success",
+              "38182130947": "success",
+              "38182130944": "success",
+              "38182130956": "success",
+              "38182130936": "success",
+              "38182128750": "success"
+            },
+            "postgresql": {
+              "store_passed": 81,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_langgraph_passed": 186,
+              "shared_adk_passed": 152,
+              "shared_agent_framework_passed": 110,
+              "shared_agent_framework_skipped": 7,
+              "completed_scope_cases_passed": 9,
+              "sandbox_cases_passed_per_adapter": 18,
+              "both_runtime_images": "Success"
+            },
+            "main_ci_summary_lines": [
+              "1587 passed, 542 skipped, 3 xfailed",
+              "689 passed, 468 skipped, 3 xfailed",
+              "460 passed, 12 skipped",
+              "384 passed, 210 skipped",
+              "790 passed, 393 skipped, 3 xfailed",
+              "96 passed",
+              "748 passed, 420 skipped, 3 xfailed",
+              "96 passed"
+            ],
+            "optional_agent_framework": {
+              "passed": 1097,
+              "skipped": 592,
+              "expected_assertion_failures": 3
+            },
+            "linux_root": {
+              "passed": 1587,
+              "skipped": 542,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.52
+            },
+            "linux_shared_contracts": {
+              "passed": 689,
+              "skipped": 468,
+              "expected_assertion_failures": 3
+            },
+            "linux_native": {
+              "langgraph": {
+                "passed": 790,
+                "skipped": 393,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "adk": {
+                "passed": 748,
+                "skipped": 420,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              }
+            },
+            "windows": {
+              "root_passed": 460,
+              "root_skipped": 12,
+              "native_passed": 384,
+              "native_skipped": 210
+            },
+            "both_main_ci_forced_stop_images": "Success",
+            "both_native_benchmark_steps_in_both_main_ci": "Success",
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0,
+            "coverage_limit": "This qualifies the unchanged completed-scope and sandbox source. It does not qualify subsequent event/child changes; the ac478e1 deselection limit and raw snapshots remain preserved."
+          }
+        },
+        "sandbox_receipt_recovery_followup": {
+          "commit": "3df61f685ea14a8fe996da88bea052f2fad71163",
+          "status": "Bounded implementation verified, including actual corrected PostgreSQL scope/sandbox cases at c7b70ad",
+          "source_file_sha256": {
+            "core/src/open_workflow_agent/workflow.py": "cfd7d179a571ac51f3bda03f29ba2e0721828be94c3899357ed67536f49a2a8b",
+            "core/src/open_workflow_agent/sandbox/executor.py": "9e48b15494897c85be5b01a1b86c13646f70f1c9358ba33f45c88f676f09edbe",
+            "tests/contract/test_sandbox_effect_recovery.py": "b001a3eae51e47fa2147c3785f25fa19269b69fe1025ee0af99abde4e11e6476",
+            "tests/ci/test_postgres_recovery_selection.py": "b57628fe8448ae2f5a873acbb9d799ab328eaeaa22c48a938820da6e4a1d86a1",
+            ".github/workflows/ci.yml": "43d4997b40258b147e0b87bfa5ce2ddc0b825bde7ae6bb10118ac8f8d6fa9d65",
+            ".github/workflows/postgres-ci.yml": "14f208e176cf0434a461eb29129458aee10c817ee93cd13f748ee94c2f575214"
+          },
+          "scope": "The common sandbox executor records a private intent before dispatch and value/fault receipts before native task progress. Script, shell and container replay reuse known outcomes, reject changed prepared requests and stop at uncertain intents. Execution identity is stable per private occurrence while retry attempts stay distinct. All actual dispatch remains through SandboxManager; deployment policy, enforced isolation profiles and public capabilities are unchanged.",
+          "negative_probe": "Actual prior native LangGraph interruption before task commit causes the sandbox fake to execute twice. Its unchanged call-count assertion fails; recorded-outcome replay now retains one execution.",
+          "full_regression": {
+            "root": {
+              "passed": 1583,
+              "skipped": 546,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.5
+            },
+            "adk": {
+              "passed": 844,
+              "skipped": 420,
+              "expected_assertion_failures": 3
+            },
+            "lg": {
+              "passed": 886,
+              "skipped": 393,
+              "expected_assertion_failures": 3
+            },
+            "af": {
+              "passed": 1097,
+              "skipped": 592,
+              "expected_assertion_failures": 3
+            }
+          },
+          "local_focus": {
+            "adk": {
+              "passed": 49,
+              "skipped": 36
+            },
+            "langgraph": {
+              "passed": 49,
+              "skipped": 36
+            }
+          },
+          "selection_guard": "Three tests run actual PostgreSQL keyword expressions through real pytest collection: nine completed-scope cases, eighteen LangGraph sandbox cases and eighteen ADK sandbox cases are selected. The optional bridge command includes the sandbox fixture separately.",
+          "quality_checks": "Formatting, lint, strict 66-package-source and fixture/CI typing, five wheel/sdist builds and current wheel source/pinned-schema bytes pass on frozen runtime/test source.",
+          "remaining": "Fresh exact-source seven-gate and configured sandbox/scope acceptance, event/child operation receipts and complete native/common consistency remain open. General ambiguous-outcome resolution, compensation, migration, JavaScript and full conformance retain their owners. Fakes qualify common dispatch behavior, not stronger isolation or real-cluster acceptance.",
+          "configured_acceptance_followup": {
+            "commit": "c7b70ad9ef5c6fa59ae7d00ea39064e9486a4aad",
+            "runtime_commit": "3df61f685ea14a8fe996da88bea052f2fad71163",
+            "status": "All seven actual jobs successful; required scope/sandbox cases executed",
+            "remote_runs": {
+              "38182130965": "success",
+              "38182130946": "success",
+              "38182130947": "success",
+              "38182130944": "success",
+              "38182130956": "success",
+              "38182130936": "success",
+              "38182128750": "success"
+            },
+            "postgresql": {
+              "store_passed": 81,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_langgraph_passed": 186,
+              "shared_adk_passed": 152,
+              "shared_agent_framework_passed": 110,
+              "shared_agent_framework_skipped": 7,
+              "completed_scope_cases_passed": 9,
+              "sandbox_cases_passed_per_adapter": 18,
+              "both_runtime_images": "Success"
+            },
+            "main_ci_summary_lines": [
+              "1587 passed, 542 skipped, 3 xfailed",
+              "689 passed, 468 skipped, 3 xfailed",
+              "460 passed, 12 skipped",
+              "384 passed, 210 skipped",
+              "790 passed, 393 skipped, 3 xfailed",
+              "96 passed",
+              "748 passed, 420 skipped, 3 xfailed",
+              "96 passed"
+            ],
+            "optional_agent_framework": {
+              "passed": 1097,
+              "skipped": 592,
+              "expected_assertion_failures": 3
+            },
+            "linux_root": {
+              "passed": 1587,
+              "skipped": 542,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.52
+            },
+            "linux_shared_contracts": {
+              "passed": 689,
+              "skipped": 468,
+              "expected_assertion_failures": 3
+            },
+            "linux_native": {
+              "langgraph": {
+                "passed": 790,
+                "skipped": 393,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "adk": {
+                "passed": 748,
+                "skipped": 420,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              }
+            },
+            "windows": {
+              "root_passed": 460,
+              "root_skipped": 12,
+              "native_passed": 384,
+              "native_skipped": 210
+            },
+            "both_main_ci_forced_stop_images": "Success",
+            "both_native_benchmark_steps_in_both_main_ci": "Success",
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0,
+            "coverage_limit": "This qualifies the unchanged completed-scope and sandbox source. It does not qualify subsequent event/child changes; the ac478e1 deselection limit and raw snapshots remain preserved."
+          }
+        },
+        "event_child_receipt_recovery_followup": {
+          "commit": "5506277f792f2ba0f00c8c0aa7cf55df0a6b6808",
+          "status": "Bounded receipts verified including configured SQLite/PostgreSQL/native/Windows/image acceptance",
+          "source_file_sha256": {
+            "core/src/open_workflow_agent/workflow.py": "fc395254a394323373b8f2636b997c76cbef31c73145ae180292e0659ed3773c",
+            "tests/contract/test_event_child_effect_recovery.py": "bde01f9d41113812eca0ad9d14ba13e248319870f5d69adb390144e25805519c",
+            "tests/ci/test_postgres_recovery_selection.py": "940870c31685f76dd78c56c11e4aa1a8655f21342cff7f8b52a9af603b591834",
+            ".github/workflows/ci.yml": "39c9e8f55e7d5ef081fe00646f8e5c0af392ac58d393f4f62b9a3670e89d9788",
+            ".github/workflows/postgres-ci.yml": "8766ba0dc0a45e5e65640c1c659ac15869a5fd5817d4a5a790fe8873ce6a33ea"
+          },
+          "scope": "Event emission and existing synchronous child calls use the common intent/outcome journal before native task progress. Event requests bind evaluated properties/default source; child requests bind resolved workflow fingerprint/input. Value/null/fault receipts retain known results; changed requests/child definitions reject redispatch, and uncertain intents remain unresolved. Actual child invocations retain existing separate parent/task/user identity. No event delivery, child scheduling/budget or stronger isolation capability is added.",
+          "negative_probes": "Both event and actual child interruption assertions fail on prior source because recovery dispatches twice. Known event acknowledgement identity and actual child invocation records are checked after correction.",
+          "full_regression": {
+            "root": {
+              "passed": 1625,
+              "skipped": 586,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.58
+            },
+            "adk": {
+              "passed": 884,
+              "skipped": 460,
+              "expected_assertion_failures": 3
+            },
+            "lg": {
+              "passed": 926,
+              "skipped": 433,
+              "expected_assertion_failures": 3
+            },
+            "af": {
+              "passed": 1157,
+              "skipped": 652,
+              "expected_assertion_failures": 3
+            }
+          },
+          "local_focus": {
+            "adk": {
+              "passed": 70,
+              "skipped": 64
+            },
+            "langgraph": {
+              "passed": 70,
+              "skipped": 64
+            }
+          },
+          "quality_checks": "Formatting, lint, strict 66-package-source and fixture/CI typing, five wheel/sdist builds and current Python/pinned-schema wheel bytes pass. Five actual collection guards select nine scope cases, eighteen sandbox cases and twenty event/child cases per principal adapter.",
+          "remaining": "Fresh exact-source acceptance and complete native/common consistency remain open. Actual probes on both principal SDKs delete the completed child invocation after parent receipt retention; recovery still accepts the known output. Child record dependency reconciliation is not established by these receipts. General ambiguous-outcome resolution, event inbox/outbox, child budgets/asynchrony, compensation, version migration and full proposed/JavaScript criteria retain their owners.",
+          "configured_acceptance_followup": {
+            "commit": "33cd41f329ede67f2c33882a9fe3b45f9a032445",
+            "runtime_commit": "5506277f792f2ba0f00c8c0aa7cf55df0a6b6808",
+            "status": "All seven actual jobs successful; configured event/child cases executed",
+            "remote_runs": {
+              "38183195906": "success",
+              "38183196141": "success",
+              "38183195924": "success",
+              "38183195937": "success",
+              "38183195938": "success",
+              "38183196057": "success",
+              "38183191872": "success"
+            },
+            "linux_root": {
+              "passed": 1629,
+              "skipped": 582,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.61
+            },
+            "linux_shared_contracts": {
+              "passed": 729,
+              "skipped": 508,
+              "expected_assertion_failures": 3
+            },
+            "linux_native": {
+              "adk": {
+                "passed": 788,
+                "skipped": 460,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              },
+              "langgraph": {
+                "passed": 830,
+                "skipped": 433,
+                "expected_assertion_failures": 3,
+                "ctk_passed": 96
+              }
+            },
+            "optional_agent_framework": {
+              "passed": 1157,
+              "skipped": 652,
+              "expected_assertion_failures": 3
+            },
+            "windows": {
+              "root_passed": 460,
+              "root_skipped": 12,
+              "native_passed": 424,
+              "native_skipped": 250
+            },
+            "postgresql": {
+              "store_passed": 81,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_langgraph_passed": 206,
+              "shared_adk_passed": 172,
+              "shared_agent_framework_passed": 130,
+              "shared_agent_framework_skipped": 7,
+              "event_child_cases_passed_per_adapter": 20,
+              "both_runtime_images": "Success"
+            },
+            "both_main_ci_forced_stop_images": "Success",
+            "both_native_benchmarks_in_both_main_ci": "Success",
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0,
+            "coverage_limit": "This qualifies the preceding event/child receipt source. Child record/index reconciliation changes require fresh acceptance; raw earlier limits remain preserved."
+          }
+        },
+        "child_invocation_dependency_followup": {
+          "commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+          "status": "Local child/index reconciliation verified; fresh configured acceptance pending",
+          "source_file_sha256": {
+            "core/src/open_workflow_agent/effects.py": "fba7712d67ad9d89973fdbe35cbec13809d269903745b0ce4e86deb465b534e9",
+            "core/src/open_workflow_agent/engine.py": "d5cad8241973546569f8772bfbd6cda19af2ee28c48ec75dbc0cb139ef2fdc6d",
+            "core/src/open_workflow_agent/services.py": "58e3559872eb1e1c780ee9fa23dd30abfd3b37fac947b758fbfce2103cdda3ac",
+            "core/src/open_workflow_agent/workflow.py": "4221bfb9343a015dbaee7150189054c3e298182d08bb732820b4d8d7dcd44849",
+            "tests/contract/test_child_invocation_dependencies.py": "d85ab12597ef63799c1d636c1e0c157edaa11810a71908361a821d46ad2b33ac",
+            "tests/core/test_effect_journal.py": "da9331b0e9634108ca62ff60cbd21728a62d0b1ce139062f1ef371e236a0211e",
+            "tests/ci/test_postgres_recovery_selection.py": "dc73bf1a535d9f2146112d8df0fc16c22f66f625a96c6f0643eddd92a8924453",
+            ".github/workflows/ci.yml": "2da264f3ef66753c06a9ae6ab1c9e17224b53fd14f4c5999222dcc31ecadf714",
+            ".github/workflows/postgres-ci.yml": "9c3d32ee0758cb2a1958eaf4ebdef9ef7e34924517ad51a682d3e811e396eb35"
+          },
+          "scope": "Known child outcomes bind the terminal common record, original input, parent identity and original prepared fingerprint/input request. A common identity index is admitted atomically with intents. Read-only pre-admission validation checks associated receipts and descendant child actions even when native task progress has not saved a receipt reference. Missing/changed child records, input, native references, descendant receipts and index metadata reject before parent mutation or dispatch. No native checkpoint or execution plan moves into core.",
+          "negative_probe": "The same current deletion assertions on exact archived 5506277 runtime fail to raise for task-gap and waiting recovery; current source rejects both with common InvocationStateError and unchanged parent payload.",
+          "full_regression": {
+            "root": {
+              "passed": 1664,
+              "skipped": 621,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.67
+            },
+            "adk": {
+              "passed": 918,
+              "skipped": 494,
+              "expected_assertion_failures": 3
+            },
+            "lg": {
+              "passed": 960,
+              "skipped": 467,
+              "expected_assertion_failures": 3
+            },
+            "af": {
+              "passed": 1208,
+              "skipped": 703,
+              "expected_assertion_failures": 3
+            }
+          },
+          "local_focus": {
+            "adk": {
+              "passed": 77,
+              "skipped": 74
+            },
+            "langgraph": {
+              "passed": 77,
+              "skipped": 74
+            }
+          },
+          "foundation": {
+            "passed": 52,
+            "skipped": 9
+          },
+          "quality_checks": "Formatting, lint, strict 66-package-source and fixture/CI typing, five wheel/sdist builds and current Python/pinned-schema wheel bytes pass on frozen runtime/test source. Seven actual collection guards include seventeen configured child-dependency cases per principal adapter. SQLite rollback injection proves atomic index/intent admission; a configured PostgreSQL counterpart is added to its real CI command.",
+          "remaining": "Fresh exact-source configured/remote qualification and final S2-03 requirement audit remain open. Pending intents still require explicit resolution; event inbox/outbox, child scheduling/budgets, compensation, workflow-version migration and full proposed/JavaScript qualification retain later owners. Existing non-child digest formats are preserved; older unbound child outcomes fail closed without a migration guarantee.",
+          "configured_acceptance_followup": {
+            "commit": "29c681d6f9759d70c93b7a20e99e2313a82102f7",
+            "runtime_commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+            "status": "Six runs successful; push CI Windows cancelled after two process-boundary failures",
+            "remote_runs": {
+              "38185163160": "success",
+              "38185163054": "success",
+              "38185162991": "success",
+              "38185163037": "success",
+              "38185163003": "success",
+              "38185162994": "success",
+              "38185159483": "cancelled"
+            },
+            "all_seven_successful": false,
+            "postgresql": {
+              "store_passed": 119,
+              "native_langgraph_passed": 10,
+              "native_langgraph_skipped": 8,
+              "shared_langgraph_passed": 223,
+              "shared_adk_passed": 189,
+              "shared_agent_framework_passed": 147,
+              "shared_agent_framework_skipped": 7,
+              "child_dependency_cases_passed_per_adapter": 17,
+              "standalone_index_intent_atomic_rollback": "Passed",
+              "both_runtime_images": "Success"
+            },
+            "both_main_ci_runtime_image_restarts": "Success",
+            "both_native_benchmarks_in_both_main_ci": "Success",
+            "pr_linux_root": {
+              "passed": 1668,
+              "skipped": 617,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.69
+            },
+            "pr_native": {
+              "adk_passed": 822,
+              "adk_skipped": 494,
+              "langgraph_passed": 864,
+              "langgraph_skipped": 467,
+              "ctk_per_adapter": 96,
+              "expected_assertion_failures_per_adapter": 3
+            },
+            "pr_windows": {
+              "root_passed": 460,
+              "root_skipped": 12,
+              "native_passed": 458,
+              "native_skipped": 284
+            },
+            "push_windows": {
+              "result": "Cancelled",
+              "observed_passed": 389,
+              "observed_skipped": 216,
+              "observed_failed": 2,
+              "failure_scope": "terminal-null short lease ownership loss; terminal-fault readiness while common record remains running; job cancelled at ten-minute bound",
+              "remaining_cases": "Not qualified"
+            },
+            "remote_security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "remote_known_advisories": 0
+          }
+        },
+        "windows_process_boundary_followup": {
+          "commit": "d2d5934e9e38c666ef76172e3a9fc14db5c6e60c",
+          "runtime_commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+          "status": "Verified at ddd194e; original cancelled push result remains historical",
+          "source_file_sha256": {
+            "tests/contract/_process_recovery_worker.py": "84ea1dd2a6445c7a954afa3c8d091f227ea4bd899414cdb2696c5177f7ea8f16",
+            ".github/workflows/ci.yml": "8117fec2f618ce8e699b7fd84c3058debe43069abaeedb09de33f35780efeef6"
+          },
+          "scope": "The force-stop worker verifies the expected committed terminal outcome before signalling readiness, retains actual expiry with a five-second test lease, and leaves production ownership unchanged. The expanded Windows root/native job is bounded at twenty minutes. Runtime/core/SDK implementation remains the already-tested e39a7c0 source.",
+          "local_process_focus": {
+            "adk": {
+              "passed": 8,
+              "skipped": 24
+            },
+            "langgraph": {
+              "passed": 8,
+              "skipped": 24
+            }
+          },
+          "remaining": "Fresh Windows/process fixture acceptance and final S2-03 audit are open. Cancelled push acceptance is preserved as incomplete, not all-seven success. Pending resolution and later features retain their owners.",
+          "configured_acceptance": {
+            "artifact_commit": "ddd194ec990b1d0239cec3eaa88f2fa50d874bf7",
+            "runtime_commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+            "fixture_commit": "d2d5934e9e38c666ef76172e3a9fc14db5c6e60c",
+            "result": "All seven configured runs successful; finite S2-03 requirements verified",
+            "requirement_audit": "docs/s2-03-recovery-acceptance.md",
+            "remote_runs": {
+              "38186559212": "success",
+              "38186559195": "success",
+              "38186559206": "success",
+              "38186559202": "success",
+              "38186559187": "success",
+              "38186559193": "success",
+              "38186556635": "success"
+            },
+            "remote_test_summaries": {
+              "push": [
+                "Root quality gates\tTests\t2026-10-12T00:05:41.1804618Z ===== 1668 passed, 617 skipped, 3 xfailed, 2 warnings in 120.60s (0:02:00) =====",
+                "Root quality gates\tShared contract tests\t2026-10-12T00:06:34.6271537Z =========== 763 passed, 542 skipped, 3 xfailed, 2 warnings in 52.39s ===========",
+                "adk native and contract tests\tNative and shared contract tests\t2026-10-12T00:08:59.3895292Z ===== 822 passed, 494 skipped, 3 xfailed, 3 warnings in 128.70s (0:02:08) ======",
+                "adk native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:09:09.4481119Z ======================== 96 passed, 1 warning in 7.89s =========================",
+                "langgraph native and contract tests\tNative and shared contract tests\t2026-10-12T00:09:26.5112036Z ====== 864 passed, 467 skipped, 3 xfailed, 1 warning in 151.51s (0:02:31) ======",
+                "langgraph native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:09:34.1287417Z ============================== 96 passed in 6.38s =============================="
+              ],
+              "pr": [
+                "Root quality gates\tTests\t2026-10-12T00:07:13.3970357Z ===== 1668 passed, 617 skipped, 3 xfailed, 2 warnings in 201.08s (0:03:21) =====",
+                "Root quality gates\tShared contract tests\t2026-10-12T00:08:37.4523364Z ====== 763 passed, 542 skipped, 3 xfailed, 2 warnings in 82.70s (0:01:22) ======",
+                "adk native and contract tests\tNative and shared contract tests\t2026-10-12T00:11:34.5929691Z ===== 822 passed, 494 skipped, 3 xfailed, 3 warnings in 156.09s (0:02:36) ======",
+                "adk native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:11:44.4986249Z ======================== 96 passed, 1 warning in 7.70s =========================",
+                "langgraph native and contract tests\tNative and shared contract tests\t2026-10-12T00:11:21.7488404Z ====== 864 passed, 467 skipped, 3 xfailed, 1 warning in 142.64s (0:02:22) ======",
+                "langgraph native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:11:29.0681520Z ============================== 96 passed in 5.96s =============================="
+              ],
+              "postgres": [
+                "PostgreSQL common-store integration\tRun isolated PostgreSQL store tests\t2026-10-12T00:03:51.0453136Z ============================= 119 passed in 2.28s ==============================",
+                "PostgreSQL common-store integration\tVerify native LangGraph task checkpoints and interrupted restart\t2026-10-12T00:03:59.1161784Z ======================== 10 passed, 8 skipped in 5.27s =========================",
+                "PostgreSQL common-store integration\tVerify competitive fork and invocation recovery on native LangGraph with PostgreSQL\t2026-10-12T00:06:05.6612667Z =============== 223 passed, 631 deselected in 125.46s (0:02:05) ================",
+                "PostgreSQL common-store integration\tVerify competitive fork and invocation recovery on native ADK with PostgreSQL\t2026-10-12T00:09:47.9832894Z ========== 189 passed, 597 deselected, 1 warning in 220.05s (0:03:40) ==========",
+                "PostgreSQL common-store integration\tVerify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL\t2026-10-12T00:11:10.5214269Z ========== 147 passed, 7 skipped, 830 deselected in 75.12s (0:01:15) ==========="
+              ],
+              "af": [
+                "native\tRun native, shared contract, and CTK suites\t2026-10-12T00:06:39.3031483Z ===== 1208 passed, 703 skipped, 3 xfailed, 2 warnings in 183.22s (0:03:03) ====="
+              ]
+            },
+            "postgresql_actual_selection": {
+              "adk": {
+                "child_invocation_dependencies": 17,
+                "event_child_effect_recovery": 20,
+                "sandbox_effect_recovery": 18
+              },
+              "langgraph": {
+                "child_invocation_dependencies": 17,
+                "event_child_effect_recovery": 20,
+                "sandbox_effect_recovery": 18
+              },
+              "agent-framework": {
+                "child_invocation_dependencies": 17,
+                "event_child_effect_recovery": 20,
+                "sandbox_effect_recovery": 18
+              }
+            },
+            "completed_scope_cases_passed": 9,
+            "postgresql_index_intent_atomic_rollback": "Passed",
+            "main_ci_windows_and_both_images": "Success in both push and PR CI",
+            "both_native_benchmarks": "Success in both push and PR CI",
+            "both_postgresql_images": "Success",
+            "security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "known_advisories": 0,
+            "local_frozen_runtime": {
+              "commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+              "root_passed": 1664,
+              "root_skipped": 621,
+              "root_coverage_percent": 91.67,
+              "adk_passed": 918,
+              "adk_skipped": 494,
+              "langgraph_passed": 960,
+              "langgraph_skipped": 467,
+              "optional_agent_framework_passed": 1208,
+              "optional_agent_framework_skipped": 703,
+              "tracked_expected_failures_per_suite": 3
+            },
+            "quality_and_builds": "Formatting, lint, strict package/fixture typing, five package wheel/sdist builds and pinned schema/source wheel bytes verified for frozen runtime; fixture follow-up typing/lint and process tests pass",
+            "remaining_scope": "S2-03 native/common recovery and reconciliation is verified. Retry/deadlines remain S2-04; inbox/outbox/timers S2-05/S2-06; asynchronous child budgets S2-07; general ambiguous-outcome resolution/compensation S2-08; version/legacy migration S2-09; full proposed/native extensions/history and JavaScript qualification remain Stage 4.",
+            "full_conformance": false
+          }
+        },
+        "s2_03_final_acceptance": {
+          "artifact_commit": "ddd194ec990b1d0239cec3eaa88f2fa50d874bf7",
+          "runtime_commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+          "fixture_commit": "d2d5934e9e38c666ef76172e3a9fc14db5c6e60c",
+          "result": "All seven configured runs successful; finite S2-03 requirements verified",
+          "requirement_audit": "docs/s2-03-recovery-acceptance.md",
+          "remote_runs": {
+            "38186559212": "success",
+            "38186559195": "success",
+            "38186559206": "success",
+            "38186559202": "success",
+            "38186559187": "success",
+            "38186559193": "success",
+            "38186556635": "success"
+          },
+          "remote_test_summaries": {
+            "push": [
+              "Root quality gates\tTests\t2026-10-12T00:05:41.1804618Z ===== 1668 passed, 617 skipped, 3 xfailed, 2 warnings in 120.60s (0:02:00) =====",
+              "Root quality gates\tShared contract tests\t2026-10-12T00:06:34.6271537Z =========== 763 passed, 542 skipped, 3 xfailed, 2 warnings in 52.39s ===========",
+              "adk native and contract tests\tNative and shared contract tests\t2026-10-12T00:08:59.3895292Z ===== 822 passed, 494 skipped, 3 xfailed, 3 warnings in 128.70s (0:02:08) ======",
+              "adk native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:09:09.4481119Z ======================== 96 passed, 1 warning in 7.89s =========================",
+              "langgraph native and contract tests\tNative and shared contract tests\t2026-10-12T00:09:26.5112036Z ====== 864 passed, 467 skipped, 3 xfailed, 1 warning in 151.51s (0:02:31) ======",
+              "langgraph native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:09:34.1287417Z ============================== 96 passed in 6.38s =============================="
+            ],
+            "pr": [
+              "Root quality gates\tTests\t2026-10-12T00:07:13.3970357Z ===== 1668 passed, 617 skipped, 3 xfailed, 2 warnings in 201.08s (0:03:21) =====",
+              "Root quality gates\tShared contract tests\t2026-10-12T00:08:37.4523364Z ====== 763 passed, 542 skipped, 3 xfailed, 2 warnings in 82.70s (0:01:22) ======",
+              "adk native and contract tests\tNative and shared contract tests\t2026-10-12T00:11:34.5929691Z ===== 822 passed, 494 skipped, 3 xfailed, 3 warnings in 156.09s (0:02:36) ======",
+              "adk native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:11:44.4986249Z ======================== 96 passed, 1 warning in 7.70s =========================",
+              "langgraph native and contract tests\tNative and shared contract tests\t2026-10-12T00:11:21.7488404Z ====== 864 passed, 467 skipped, 3 xfailed, 1 warning in 142.64s (0:02:22) ======",
+              "langgraph native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:11:29.0681520Z ============================== 96 passed in 5.96s =============================="
+            ],
+            "postgres": [
+              "PostgreSQL common-store integration\tRun isolated PostgreSQL store tests\t2026-10-12T00:03:51.0453136Z ============================= 119 passed in 2.28s ==============================",
+              "PostgreSQL common-store integration\tVerify native LangGraph task checkpoints and interrupted restart\t2026-10-12T00:03:59.1161784Z ======================== 10 passed, 8 skipped in 5.27s =========================",
+              "PostgreSQL common-store integration\tVerify competitive fork and invocation recovery on native LangGraph with PostgreSQL\t2026-10-12T00:06:05.6612667Z =============== 223 passed, 631 deselected in 125.46s (0:02:05) ================",
+              "PostgreSQL common-store integration\tVerify competitive fork and invocation recovery on native ADK with PostgreSQL\t2026-10-12T00:09:47.9832894Z ========== 189 passed, 597 deselected, 1 warning in 220.05s (0:03:40) ==========",
+              "PostgreSQL common-store integration\tVerify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL\t2026-10-12T00:11:10.5214269Z ========== 147 passed, 7 skipped, 830 deselected in 75.12s (0:01:15) ==========="
+            ],
+            "af": [
+              "native\tRun native, shared contract, and CTK suites\t2026-10-12T00:06:39.3031483Z ===== 1208 passed, 703 skipped, 3 xfailed, 2 warnings in 183.22s (0:03:03) ====="
+            ]
+          },
+          "postgresql_actual_selection": {
+            "adk": {
+              "child_invocation_dependencies": 17,
+              "event_child_effect_recovery": 20,
+              "sandbox_effect_recovery": 18
+            },
+            "langgraph": {
+              "child_invocation_dependencies": 17,
+              "event_child_effect_recovery": 20,
+              "sandbox_effect_recovery": 18
+            },
+            "agent-framework": {
+              "child_invocation_dependencies": 17,
+              "event_child_effect_recovery": 20,
+              "sandbox_effect_recovery": 18
+            }
+          },
+          "completed_scope_cases_passed": 9,
+          "postgresql_index_intent_atomic_rollback": "Passed",
+          "main_ci_windows_and_both_images": "Success in both push and PR CI",
+          "both_native_benchmarks": "Success in both push and PR CI",
+          "both_postgresql_images": "Success",
+          "security_dependency_counts": {
+            "dependency-audit-adk": 109,
+            "dependency-audit-agent-framework": 74,
+            "dependency-audit-kubernetes-sandbox-controller": 16,
+            "dependency-audit-langgraph": 96,
+            "dependency-audit-root": 71,
+            "dependency-audit-sandbox-controller": 13
+          },
+          "known_advisories": 0,
+          "local_frozen_runtime": {
+            "commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+            "root_passed": 1664,
+            "root_skipped": 621,
+            "root_coverage_percent": 91.67,
+            "adk_passed": 918,
+            "adk_skipped": 494,
+            "langgraph_passed": 960,
+            "langgraph_skipped": 467,
+            "optional_agent_framework_passed": 1208,
+            "optional_agent_framework_skipped": 703,
+            "tracked_expected_failures_per_suite": 3
+          },
+          "quality_and_builds": "Formatting, lint, strict package/fixture typing, five package wheel/sdist builds and pinned schema/source wheel bytes verified for frozen runtime; fixture follow-up typing/lint and process tests pass",
+          "remaining_scope": "S2-03 native/common recovery and reconciliation is verified. Retry/deadlines remain S2-04; inbox/outbox/timers S2-05/S2-06; asynchronous child budgets S2-07; general ambiguous-outcome resolution/compensation S2-08; version/legacy migration S2-09; full proposed/native extensions/history and JavaScript qualification remain Stage 4.",
+          "full_conformance": false
+        },
+        "s2_04_error_context": {
+          "commit": "23b9d35c33b938fc74c6db2d2bb9ea67cfa7df5b",
+          "status": "Error-context block locally verified; S2-04 remains in progress",
+          "scope": "Catch filters and catch/retry predicates see the configured OWS error alias before evaluation. Built-in common status and declared OWS fields remain available. Common provider error codes are preserved at task/journal boundaries and reconstructed on receipt replay; unexpected provider exceptions remain sanitized. No public error fields or schema changes.",
+          "negative_probe": {
+            "runtime_commit": "d8f3f7af5aa42780c2736c2bbe1901af788190f5",
+            "actual_native_langgraph_failed": 7,
+            "deselected": 7,
+            "scope": "Unchanged default/custom alias, built-in status, declared raise, when/exceptWhen and retry context assertions fail before the correction"
+          },
+          "local_core": {
+            "passed": 54,
+            "skipped": 1
+          },
+          "native_portable_and_recovery_focus": {
+            "adk": {
+              "passed": 95,
+              "skipped": 29
+            },
+            "langgraph": {
+              "passed": 95,
+              "skipped": 29
+            },
+            "scope": "Real principal SDK environment plus shared portable, named retry/error and leaf receipt fixtures"
+          },
+          "final_error_fixture": {
+            "adk": {
+              "passed": 19,
+              "skipped": 15
+            },
+            "langgraph": {
+              "passed": 19,
+              "skipped": 15
+            },
+            "native_receipt_cases_per_principal": 5,
+            "unavailable_other_sdk_cases_per_environment": 5,
+            "postgresql_cases_skipped_per_environment": 10
+          },
+          "actual_postgresql_selection_guards": {
+            "passed": 9,
+            "new_provider_cases_selected_per_principal": 5
+          },
+          "quality": "Strict 66-source package typing, two fixture/CI modules, lint and formatting pass",
+          "configured_acceptance": {
+            "commit": "b6aef8c6be8dea61fdd79bf42c999a28ab04e43b",
+            "runtime_commit": "23b9d35c33b938fc74c6db2d2bb9ea67cfa7df5b",
+            "result": "All seven successful",
+            "remote_runs": {
+              "38188084450": "success",
+              "38188084468": "success",
+              "38188084474": "success",
+              "38188084436": "success",
+              "38188084438": "success",
+              "38188084394": "success",
+              "38188081440": "success"
+            },
+            "core": {
+              "passed": 1684,
+              "skipped": 637,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.68
+            },
+            "native": {
+              "adk_passed": 841,
+              "adk_skipped": 509,
+              "langgraph_passed": 883,
+              "langgraph_skipped": 482,
+              "ctk_per_adapter": 96,
+              "expected_assertion_failures_per_adapter": 3
+            },
+            "windows": {
+              "core_passed": 460,
+              "core_skipped": 12,
+              "native_passed": 477,
+              "native_skipped": 299
+            },
+            "postgresql": {
+              "store_passed": 119,
+              "shared_langgraph_passed": 228,
+              "shared_adk_passed": 194,
+              "optional_common_bridge_passed": 147,
+              "optional_skipped": 7,
+              "provider_receipt_cases_actually_passed_per_principal": 5
+            },
+            "optional_agent_framework": {
+              "passed": 1229,
+              "skipped": 723,
+              "expected_assertion_failures": 3
+            },
+            "both_main_images_and_native_benchmarks_in_both_ci_runs": "Success",
+            "both_postgresql_images": "Success",
+            "security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "known_advisories": 0,
+            "scope": "Qualifies the error-context correction only; later timing source and full S2-04 remain open"
+          },
+          "remaining": "Complete jitter and retry count/duration behavior, per-attempt/aggregate budgets, task/workflow timeout cleanup and exception attribution, stable deadlines/retry state across restart, scoped catch ordering and predicate-failure handling, then frozen full/configured acceptance. Full proposed/JavaScript criteria retain Stage 4 owners."
+        },
+        "s2_04_runtime_timing": {
+          "commit": "f2b5c02b49f24d5d191f16bf5242e05fb258cbab",
+          "status": "Runtime timing locally verified; durable deadlines and full S2-04 remain open",
+          "scope": "Typed immutable retry policy enforces count/no-count declarations, constant/linear/exponential delay, bounded additive jitter and per-retry/aggregate runtime budgets. Aggregate timing starts at the first selected retry and includes waits. Timer-origin errors are distinguished from foreign TimeoutError, and synchronous elapsed work is checked. Deadline cancellation drains external actions and retains uncertain intent instead of ordinary catch retry; shared timer-owner uncertainty survives cancellation wrappers.",
+          "negative_probe": {
+            "archived_runtime_commit": "b6aef8c6be8dea61fdd79bf42c999a28ab04e43b",
+            "native_langgraph_failed": 10,
+            "passed": 1,
+            "deselected": 11
+          },
+          "local_core": {
+            "passed": 64,
+            "skipped": 1
+          },
+          "native_timing_error_and_receipt_focus_per_principal": {
+            "passed": 85,
+            "skipped": 39
+          },
+          "lifecycle_and_fork_regression_per_principal": {
+            "passed": 93,
+            "skipped": 26
+          },
+          "final_timing_fixture_per_environment": {
+            "passed": 22,
+            "postgresql_skipped": 22
+          },
+          "actual_collection_guards": {
+            "passed": 11,
+            "new_timing_postgresql_cases_selected_per_principal": 11
+          },
+          "quality": "Full scoped lint/formatting (208 files), strict 67-source package typing and three fixture/CI modules pass",
+          "configured_acceptance": "Pending for changed timing source; no local PostgreSQL execution claimed",
+          "remaining": "Persist original workflow/task deadlines and retry clock/count/schedule across restart, including stable jitter decisions; prove fresh native recovery without renewed budgets or repeated uncertain dispatch. Complete scoped catch/exception vocabulary/order and frozen full/configured S2-04 acceptance. Full proposed/JavaScript criteria retain Stage 4 owners."
+        }
+      },
+      "audit_acceptance": {
+        "commit": null,
+        "result": "S2-04 in progress",
+        "scope": "Persist original workflow/task deadlines and retry clock/count/schedule across restart, including stable jitter decisions; prove fresh native recovery without renewed budgets or repeated uncertain dispatch. Complete scoped catch/exception vocabulary/order and frozen full/configured S2-04 acceptance. Full proposed/JavaScript criteria retain Stage 4 owners.",
+        "last_verified_milestone": "S2-03 at ddd194e"
+      },
+      "outcome_counts": {
+        "qualified_subset": 181,
+        "unimplemented": 62,
+        "partial": 158,
+        "rejected": 197,
+        "behavior_mismatch": 32,
+        "inert": 19,
+        "internal_only": 9
+      },
+      "gap_probes": {
+        "path": "tests/contract/test_implementation_audit_gaps.py",
+        "passed": 8,
+        "expected_assertion_failures": 3,
+        "unexpected_passes": 0,
+        "scope": "Ordered fork probes now pass; OpenAPI, raw binary and null event-data assertion failures retain strict expected-failure markers and repair owners.",
+        "independent_environments": {
+          "adk": {
+            "passed": 8,
+            "expected_assertion_failures": 3
+          },
+          "langgraph": {
+            "passed": 8,
+            "expected_assertion_failures": 3
+          },
+          "agent_framework_optional": {
+            "passed": 9,
+            "expected_assertion_failures": 3
+          }
+        }
+      }
     }
   ],
   "audit_acceptance": {
     "commit": null,
     "result": "S2-04 in progress",
-    "scope": "Persist original workflow/task deadlines and retry clock/count/schedule across restart, including stable jitter decisions; prove fresh native recovery without renewed budgets or repeated uncertain dispatch. Complete scoped catch/exception vocabulary/order and frozen full/configured S2-04 acceptance. Full proposed/JavaScript criteria retain Stage 4 owners.",
+    "scope": "Persist retry clock/count/schedule and stable jitter decisions across restart without renewed budgets, lost known outcomes or repeated uncertain dispatch. Finish full scoped exception/vocabulary/order and frozen full/configured S2-04 acceptance, including real process-stop deadline/retry boundaries. Explicit legacy/version migration remains S2-09; full proposed/JavaScript criteria retain Stage 4 owners.",
     "last_verified_milestone": "S2-03 at ddd194e"
   }
 }
