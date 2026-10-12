@@ -475,5 +475,4 @@ first stage succeeds and 693 native-stage passes/567 skips. It is cancelled,
 not green; the other push jobs, including both main images, pass. PR CI's
 Windows run succeeds independently. No timeout or assertion is waived. The
 corrected source will receive fresh configured validation before publication.
-Parallel worker account limits have ended the observers; the root agent is
-inspecting actual job logs and artifacts directly. S2-06 remains unchecked.
+S2-06 remains unchecked.
