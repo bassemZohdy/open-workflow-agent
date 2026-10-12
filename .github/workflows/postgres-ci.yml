@@ -58,6 +58,8 @@ on:
       - "tests/contract/test_child_invocation_dependencies.py"
       - "tests/contract/test_retry_error_context.py"
       - "tests/contract/test_retry_timing.py"
+      - "tests/contract/test_deadline_recovery.py"
+      - "tests/core/test_policy_decisions.py"
       - "tests/core/test_postgres_persistence.py"
       - "docker/Dockerfile.adk"
       - "docker/Dockerfile.langgraph"
@@ -118,6 +120,7 @@ jobs:
           timeout --signal=TERM --kill-after=30s 5m \
             uv run --locked --extra knowledge --extra postgres pytest tests/core/test_postgres_persistence.py \
             tests/core/test_effect_journal.py \
+            tests/core/test_policy_decisions.py \
             tests/core/test_execution_ownership.py tests/core/test_execution_ownership_fences.py \
             tests/core/test_action_progress_ownership.py -vv --durations=20
       - name: Verify native LangGraph task checkpoints and interrupted restart
@@ -154,6 +157,7 @@ jobs:
             ../../tests/contract/test_child_invocation_dependencies.py \
             ../../tests/contract/test_retry_error_context.py \
             ../../tests/contract/test_retry_timing.py \
+            ../../tests/contract/test_deadline_recovery.py \
             ../../tests/contract/test_process_crash_recovery.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
@@ -184,6 +188,7 @@ jobs:
             ../../tests/contract/test_child_invocation_dependencies.py \
             ../../tests/contract/test_retry_error_context.py \
             ../../tests/contract/test_retry_timing.py \
+            ../../tests/contract/test_deadline_recovery.py \
             -k 'postgresql and adk' -vv --durations=20
       - name: Verify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL
         env:

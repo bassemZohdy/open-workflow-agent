@@ -18,6 +18,7 @@ from open_workflow_agent.effects import (
 )
 from open_workflow_agent.errors import InvocationStateError, OwaError, WorkflowExecutionError
 from open_workflow_agent.expressions import validate_expression_data
+from open_workflow_agent.timing import root_clock_identity
 from open_workflow_agent.workflow import (
     ExecutionState,
     ScopePlan,
@@ -274,7 +275,14 @@ class LangGraphScopeExecutor:
             if (
                 identity.invocation_id != self.invocation_id
                 or identity.workflow_fingerprint != self.plan.fingerprint
-                or identity.task_reference not in self.task_references
+                or (
+                    identity.task_reference not in self.task_references
+                    and not (
+                        self.plan.uses_timing
+                        and identity
+                        == root_clock_identity(self.invocation_id, self.plan.fingerprint)
+                    )
+                )
                 or identity.key in seen
                 or self.effect_journal is None
             ):

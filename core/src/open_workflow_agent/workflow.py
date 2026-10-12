@@ -62,6 +62,7 @@ from .protocols import PROTOCOL_DATA_FIELDS
 from .resources import SchemaResource, materialize_schema_resources
 from .resources import schema_registry as build_schema_registry
 from .retry import RetryPolicy
+from .timing import DeadlineAnchor, clock_started_at, root_clock_identity
 from .workflow_profile import SCHEMA_SHA256, WORKFLOW_DSL
 
 DEFAULT_WORKFLOW: dict[str, Any] = {
@@ -839,6 +840,20 @@ class WorkflowPlan:
         return cast(dict[str, Any], json.loads(self.execution_json or self.source_json))
 
     @property
+    def uses_timing(self) -> bool:
+        if self.execution_source.get("timeout") is not None:
+            return True
+        for scope in self.scopes:
+            for task in scope.tasks:
+                definition = task.definition
+                catch = definition.get("catch")
+                if definition.get("timeout") is not None or (
+                    isinstance(catch, Mapping) and catch.get("retry") is not None
+                ):
+                    return True
+        return False
+
+    @property
     def fingerprint(self) -> str:
         import hashlib
 
@@ -1144,7 +1159,60 @@ class WorkflowExecutor:
         self.expressions = ExpressionEvaluator()
         self.event_sink = event_sink or NullEventSink()
         self._policy_clock: Callable[[], float] = time.monotonic
+        self._absolute_clock: Callable[[], float] = time.time
         self._retry_random: Callable[[float, float], float] = random.uniform
+
+    async def _record_policy(
+        self,
+        state: ExecutionState,
+        identity: EffectIdentity,
+        payload: Any,
+        create: Callable[[], Any],
+    ) -> Any:
+        journal = getattr(self.services, "effect_journal", None)
+        if journal is None:
+            return create()
+        try:
+            receipt = journal.record_value(
+                identity,
+                effect_request_digest(identity.operation, payload),
+                create,
+                execution_lease=self._execution_lease(state),
+            )
+        except InvocationStateConflict:
+            raise
+        except WorkflowExecutionError as exc:
+            raise _EffectRecoveryRequired(exc.message, details=exc.details) from exc
+        await self._notify_receipt(state, identity, receipt)
+        return copy.deepcopy(receipt.output)
+
+    async def _deadline_remaining(
+        self,
+        state: ExecutionState,
+        seconds: float | None,
+        *,
+        workflow: bool = False,
+    ) -> float | None:
+        if seconds is None:
+            return None
+        if workflow:
+            started = cast(float, state.metadata["_policy_started_at"])
+            return max(0.0, started + seconds - self._absolute_clock())
+        identity = self._effect_identity(state, "policy:task-deadline:v1")
+        raw = await self._record_policy(
+            state,
+            identity,
+            {"duration": seconds},
+            lambda: {
+                "profile": "owa/deadline/v1",
+                "started_at": self._absolute_clock(),
+                "duration": seconds,
+            },
+        )
+        try:
+            return DeadlineAnchor.from_value(raw, seconds).remaining(self._absolute_clock())
+        except WorkflowExecutionError as exc:
+            raise _EffectRecoveryRequired(exc.message) from exc
 
     async def _run_timed(
         self,
@@ -1269,6 +1337,14 @@ class WorkflowExecutor:
             ),
         )
         try:
+            if plan.uses_timing:
+                clock = await self._record_policy(
+                    state,
+                    root_clock_identity(str(metadata["invocation_id"]), plan.fingerprint),
+                    {"profile": "owa/timing/v1"},
+                    lambda: {"profile": "owa/timing/v1", "started_at": self._absolute_clock()},
+                )
+                state.metadata["_policy_started_at"] = clock_started_at(clock)
             if plan.resources:
                 if self.services is None:
                     raise UnsupportedWorkflowFeature(
@@ -1285,9 +1361,12 @@ class WorkflowExecutor:
             state.context = copy.deepcopy(state.data)
             state.variables["context"] = state.context
             workflow_timeout = _duration_seconds(workflow.get("timeout"))
+            remaining_workflow_timeout = await self._deadline_remaining(
+                state, workflow_timeout, workflow=True
+            )
             await self._run_timed(
                 lambda: self._run_tasks(workflow.get("do", []), state),
-                workflow_timeout,
+                remaining_workflow_timeout,
                 "workflow timed out",
                 {"timeout_seconds": workflow_timeout},
             )
@@ -1527,6 +1606,7 @@ class WorkflowExecutor:
             attempts = int(retry) + 1
         timeout = definition.get("timeout")
         timeout_seconds = _duration_seconds(timeout)
+        remaining_timeout = await self._deadline_remaining(state, timeout_seconds)
         last_error: Exception | None = None
         raw_input = copy.deepcopy(state.data)
         execution_path = state.execution_path
@@ -1550,7 +1630,7 @@ class WorkflowExecutor:
                     lambda: self._await_with_cancellation(
                         self._run_task(name, definition, state), state
                     ),
-                    timeout_seconds,
+                    remaining_timeout,
                     f"task {name} timed out",
                     {"task": name, "timeout_seconds": timeout_seconds},
                 )

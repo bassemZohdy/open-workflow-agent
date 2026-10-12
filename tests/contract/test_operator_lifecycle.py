@@ -337,7 +337,9 @@ async def test_operator_matrix_timeout_and_cancellation_preserve_side_effect_key
                 {
                     "timed_side_effect": {
                         "call": "http",
-                        "timeout": {"after": {"milliseconds": 1}},
+                        # Reach the in-flight boundary after durable clock/native
+                        # writes; the fake response remains stalled for 30 seconds.
+                        "timeout": {"after": {"seconds": 1}},
                         "with": {
                             "method": "POST",
                             "endpoint": "https://service.test/timeout",

@@ -27,6 +27,7 @@ from .ownership import ExecutionLease
 from .persistence import ExecutionHandle
 from .sandbox import SandboxWorkflowExecutor
 from .services import RuntimeServices
+from .timing import clock_started_at, root_clock_identity
 from .workflow import (
     SUPPORTED_FUNCTION_CALLS,
     SUPPORTED_PROTOCOL_CALLS,
@@ -449,6 +450,13 @@ class WorkflowEngine:
         original_input = self.services.invocations.read_input(handle)
         try:
             self.services.effect_journal.verify_invocation(handle.invocation_id, plan.fingerprint)
+            if plan.uses_timing:
+                clock = self.services.effect_journal.get(
+                    root_clock_identity(handle.invocation_id, plan.fingerprint)
+                )
+                if clock is None or clock.status != "completed":
+                    raise WorkflowExecutionError("workflow policy clock is missing")
+                clock_started_at(clock.output)
         except WorkflowExecutionError:
             raise InvocationStateError(
                 "workflow action recovery evidence is unavailable or inconsistent"

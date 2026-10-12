@@ -78,6 +78,7 @@ jobs:
           ../../tests/contract/test_child_invocation_dependencies.py
           ../../tests/contract/test_retry_error_context.py
           ../../tests/contract/test_retry_timing.py
+          ../../tests/contract/test_deadline_recovery.py
 
   manifests:
     name: Validate deployment manifests

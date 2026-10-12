@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Literal
@@ -367,6 +368,76 @@ class EffectJournal:
         if recorded.request_digest != request_digest:
             raise WorkflowExecutionError("workflow effect request differs from the saved intent")
         return recorded
+
+    def record_value(
+        self,
+        identity: EffectIdentity,
+        request_digest: str,
+        create: Callable[[], Any],
+        *,
+        execution_lease: ExecutionLease | None = None,
+    ) -> EffectReceipt:
+        """Atomically retain a private internal decision, without a pending intent.
+
+        The factory must be synchronous and side-effect free. Clock/RNG choices
+        are common policy decisions, not external dispatch or native checkpoints.
+        """
+        if not identity.operation.startswith("policy:"):
+            raise WorkflowExecutionError("atomic decisions require an internal policy identity")
+        try:
+            transaction = (
+                self.connection.raw.transaction()
+                if self.connection.is_postgresql and execution_lease is None
+                else owned_write_transaction(
+                    self.connection,
+                    execution_lease,
+                    invocation_id=identity.invocation_id,
+                    workflow_fingerprint=identity.workflow_fingerprint,
+                )
+            )
+            with transaction:
+                existing = self.get(identity)
+                if existing is None:
+                    output = create()
+                    validate_expression_data(output)
+                    proposed = EffectReceipt(
+                        request_digest, "policy", status="completed", output=output
+                    )
+                    self.connection.execute(
+                        """INSERT INTO workflow_effect_invocations(
+                        identity, invocation_id, fingerprint, payload)
+                        VALUES (?, ?, ?, ?) ON CONFLICT(identity) DO NOTHING""",
+                        (
+                            identity.key,
+                            identity.invocation_id,
+                            identity.workflow_fingerprint,
+                            json.dumps(asdict(identity), allow_nan=False),
+                        ),
+                    )
+                    self.connection.execute(
+                        """INSERT INTO workflow_effects(identity, owner, status, payload)
+                        VALUES (?, ?, ?, ?) ON CONFLICT(identity) DO NOTHING""",
+                        (
+                            identity.key,
+                            proposed.owner,
+                            proposed.status,
+                            json.dumps(_receipt_payload(proposed), allow_nan=False),
+                        ),
+                    )
+                recorded = self.get(identity)
+                if (
+                    recorded is None
+                    or recorded.status != "completed"
+                    or recorded.request_digest != request_digest
+                ):
+                    raise WorkflowExecutionError("workflow policy decision is inconsistent")
+            return recorded
+        except InvocationStateConflict:
+            self._rollback()
+            raise
+        except Exception:
+            self._rollback()
+            raise WorkflowExecutionError("workflow policy decision could not be stored") from None
 
     def verify_invocation(self, invocation_id: str, fingerprint: str) -> None:
         """Reconcile known common effects even before a native task checkpoint.

@@ -211,6 +211,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         require_waiting: bool = False,
     ) -> AdkRecoveryContext:
         return AdkRecoveryContext(
+            uses_timing=plan.uses_timing,
             invocation_id=handle.invocation_id,
             workflow_fingerprint=plan.fingerprint,
             task_references=frozenset(

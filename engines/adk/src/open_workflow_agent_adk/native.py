@@ -28,6 +28,7 @@ from open_workflow_agent.ownership import (
     translate_native_fence_error,
 )
 from open_workflow_agent.storage import is_postgresql_datasource
+from open_workflow_agent.timing import root_clock_identity
 
 try:
     from google.adk.agents.context import Context
@@ -72,6 +73,7 @@ class AdkRecoveryContext:
     journal: EffectJournal
     metadata: dict[str, Any]
     require_waiting: bool = False
+    uses_timing: bool = False
 
 
 class _ReceiptEvents:
@@ -118,7 +120,16 @@ class _ReceiptEvents:
                 if (
                     identity.invocation_id != self.context.invocation_id
                     or identity.workflow_fingerprint != self.context.workflow_fingerprint
-                    or identity.task_reference not in self.context.task_references
+                    or (
+                        identity.task_reference not in self.context.task_references
+                        and not (
+                            self.context.uses_timing
+                            and identity
+                            == root_clock_identity(
+                                self.context.invocation_id, self.context.workflow_fingerprint
+                            )
+                        )
+                    )
                     or identity.key in dependencies
                 ):
                     raise ValueError("native receipt dependency identity is invalid")
