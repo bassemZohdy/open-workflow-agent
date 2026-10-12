@@ -313,7 +313,9 @@ async def test_imported_tasks_use_the_common_pipeline_and_descriptors(
 
     resolver = _resolver(services, handler)
     workflow = _workflow()
-    workflow["use"]["timeouts"] = {"bounded": {"after": {"seconds": 1}}}
+    # This case verifies imported descriptors and data flow. Give real SDK and
+    # storage work room on Windows; dedicated control cases assert expiry.
+    workflow["use"]["timeouts"] = {"bounded": {"after": {"seconds": 30}}}
     workflow["do"][0]["remote"].update(
         {
             "input": {"from": "${ .start }"},
@@ -323,7 +325,7 @@ async def test_imported_tasks_use_the_common_pipeline_and_descriptors(
     )
     plan = await _compile(services, resolver, workflow)
     assert plan.imports[0].definition["timeout"] == "bounded"
-    assert plan.imports[0].execution_definition["timeout"] == {"after": {"seconds": 1}}
+    assert plan.imports[0].execution_definition["timeout"] == {"after": {"seconds": 30}}
     result = await _invoke_plan(services, engine_name, engine_type, plan, {"start": 2})
     assert result.status == "completed", result.error
     assert result.output == {
