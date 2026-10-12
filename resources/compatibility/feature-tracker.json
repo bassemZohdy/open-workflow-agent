@@ -66916,11 +66916,64 @@
         "module": "M05",
         "description": "Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.",
         "effort": "M",
-        "status": "Pending",
+        "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "known_issues": [
-          "Built-in OwaError status_code is absent from _error_details/as_dict, so catch.errors.with.status cannot use the _catch_matches fallback unless details.status is explicitly declared. Declared OWS error status filtering works; private fork error replay retains the common status code."
-        ]
+          "Complete jitter and retry count/duration behavior, per-attempt/aggregate budgets, task/workflow timeout cleanup and exception attribution, stable deadlines/retry state across restart, scoped catch ordering and predicate-failure handling, then frozen full/configured acceptance. Full proposed/JavaScript criteria retain Stage 4 owners."
+        ],
+        "resolved_issues": [
+          {
+            "commit": "23b9d35c33b938fc74c6db2d2bb9ea67cfa7df5b",
+            "description": "Built-in OwaError status_code is absent from _error_details/as_dict, so catch.errors.with.status cannot use the _catch_matches fallback unless details.status is explicitly declared. Declared OWS error status filtering works; private fork error replay retains the common status code.",
+            "evidence": "Default/custom alias and status predicates now pass; known provider receipt status/code survives native replay."
+          }
+        ],
+        "work_in_progress": {
+          "commit": "23b9d35c33b938fc74c6db2d2bb9ea67cfa7df5b",
+          "status": "Error-context block locally verified; S2-04 remains in progress",
+          "scope": "Catch filters and catch/retry predicates see the configured OWS error alias before evaluation. Built-in common status and declared OWS fields remain available. Common provider error codes are preserved at task/journal boundaries and reconstructed on receipt replay; unexpected provider exceptions remain sanitized. No public error fields or schema changes.",
+          "negative_probe": {
+            "runtime_commit": "d8f3f7af5aa42780c2736c2bbe1901af788190f5",
+            "actual_native_langgraph_failed": 7,
+            "deselected": 7,
+            "scope": "Unchanged default/custom alias, built-in status, declared raise, when/exceptWhen and retry context assertions fail before the correction"
+          },
+          "local_core": {
+            "passed": 54,
+            "skipped": 1
+          },
+          "native_portable_and_recovery_focus": {
+            "adk": {
+              "passed": 95,
+              "skipped": 29
+            },
+            "langgraph": {
+              "passed": 95,
+              "skipped": 29
+            },
+            "scope": "Real principal SDK environment plus shared portable, named retry/error and leaf receipt fixtures"
+          },
+          "final_error_fixture": {
+            "adk": {
+              "passed": 19,
+              "skipped": 15
+            },
+            "langgraph": {
+              "passed": 19,
+              "skipped": 15
+            },
+            "native_receipt_cases_per_principal": 5,
+            "unavailable_other_sdk_cases_per_environment": 5,
+            "postgresql_cases_skipped_per_environment": 10
+          },
+          "actual_postgresql_selection_guards": {
+            "passed": 9,
+            "new_provider_cases_selected_per_principal": 5
+          },
+          "quality": "Strict 66-source package typing, two fixture/CI modules, lint and formatting pass",
+          "configured_acceptance": "Pending for changed source; no local PostgreSQL run claimed",
+          "remaining": "Complete jitter and retry count/duration behavior, per-attempt/aggregate budgets, task/workflow timeout cleanup and exception attribution, stable deadlines/retry state across restart, scoped catch ordering and predicate-failure handling, then frozen full/configured acceptance. Full proposed/JavaScript criteria retain Stage 4 owners."
+        }
       },
       {
         "id": "S2-05",

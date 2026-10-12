@@ -135,6 +135,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   are verified; later-stage features retain their owners.
   See [acceptance evidence](PROJECT.md#s2-03-checkpoint-recovery--2026-10-12-verified).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
+  Error-variable/status binding and common provider error replay are corrected
+  at `23b9d35`; native/portable/recovery focus passes 95/29 per SDK, and the
+  final error fixture passes 19/15 per environment. Timing/deadline behavior
+  and full/configured qualification remain open. See
+  [current work](PROJECT.md#s2-04-retry-timeout-and-exception-work--2026-10-12-in-progress).
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
 - [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.
 - [ ] **S2-07** (L) — Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.

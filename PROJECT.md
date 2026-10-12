@@ -73,6 +73,30 @@ The patched versions are confirmed by the
 [multidict advisory](https://github.com/aio-libs/multidict/security/advisories/GHSA-54p9-h82j-f925)
 and [pypdf release](https://github.com/py-pdf/pypdf/releases/tag/6.19.0).
 
+### S2-04 retry, timeout and exception work — 2026-10-12 (in progress)
+
+Seven desired error-context cases fail on actual native LangGraph at `d8f3f7a`:
+built-in status filters lose the common status code, while catch/retry predicates
+cannot consistently read the configured default/custom error variable. Source
+`23b9d35` binds that variable before filter and predicate evaluation, preserves
+declared OWS fields, and provides built-in common status without changing public
+error serialization. Common provider errors retain their code/message/status at
+task and receipt boundaries; fresh native recovery reconstructs Model, Agent,
+Knowledge and Memory errors. Unexpected provider exceptions remain sanitized.
+
+Core workflow/journal focus passes 54/1. Native/portable/recovery suites pass
+95/29 in each independent principal SDK environment. The final error fixture
+passes 19/15 per environment, including five actual native provider-receipt
+replays; the missing other SDK and unconfigured PostgreSQL cases are skips.
+Nine real collection guards select the five new PostgreSQL recovery cases per
+principal adapter. Strict package/fixture typing, lint and formatting pass.
+Changed-source PostgreSQL and full/configured regression remain pending.
+
+The task stays unchecked: jitter, retry duration/attempt limits, stable deadlines
+and retry state, timeout cleanup/attribution, complete scoped exception behavior
+and full task acceptance remain required. Later proposed/JavaScript criteria
+retain their Stage 4 owners. The prior S2-03 acceptance remains source-bound.
+
 ### S2-03 checkpoint recovery — 2026-10-12 (verified)
 
 Fresh-runtime tests reproduce a common resume defect: a submitted JSON null was
@@ -756,7 +780,8 @@ native checkpoint hardening. S2-02 is complete at the recorded scope.
 These records do not establish
 general pending-effect reconciliation, exactly-once external actions, durable
 timers, native metadata extensions or full conformance. A separate observed
-built-in error-status catch fallback gap remains tracked for S2-04.
+built-in error-status catch fallback gap was tracked for S2-04 and is corrected
+in its `23b9d35` error-context block; broader S2-04 work remains open.
 
 ### S2-01 ordered fork results — 2026-10-11 (verified)
 

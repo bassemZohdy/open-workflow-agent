@@ -9,7 +9,7 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`e39a7c0` (fixture correction `d2d5934`), which retains the verified fork, original-input, terminal-record,
+`23b9d35`, which retains the verified fork, original-input, terminal-record,
 leaf-call and conditional common write corrections. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
@@ -119,6 +119,15 @@ Historical successful Security jobs used a parser that missed nested advisory
 records and therefore do not prove absence of fixable dependency advisories.
 The source-scoped behavioral results remain independently recorded. See the
 [dependency audit correction](../PROJECT.md#dependency-audit-correction--2026-10-11-verified).
+
+Source `23b9d35` starts S2-04: catch filters and catch/retry predicates now
+read the configured error variable with structured fields and built-in status.
+Known provider error codes survive task/journal boundaries and native replay;
+unexpected exceptions remain sanitized. Local portable/recovery focus passes
+95/29 per principal environment, with five actual provider-receipt replays each.
+Jitter, duration budgets, original deadlines, timeout attribution/cleanup and
+full scoped exception/configured acceptance remain open. The earlier S2-03
+acceptance at `ddd194e` does not qualify changed S2-04 code.
 
 ## Outcomes
 
