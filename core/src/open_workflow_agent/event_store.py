@@ -25,6 +25,23 @@ EventEvaluator = Callable[[EventEnvelope, EventProgress], EventDecision | None]
 
 
 @dataclass(frozen=True, slots=True)
+class EventArrival:
+    sequence: int
+    envelope: EventEnvelope
+    digest: str
+
+
+@dataclass(frozen=True, slots=True)
+class EventConsumerPin:
+    """Private non-invocation consumer retention cursor."""
+
+    consumer_key: str
+    scope: str
+    cursor: int
+    active: bool = True
+
+
+@dataclass(frozen=True, slots=True)
 class EventStoreLimits:
     max_event_bytes: int = 1_048_576
     max_retained_events: int = 10_000
@@ -115,6 +132,12 @@ class EventStore:
             """CREATE TABLE IF NOT EXISTS event_invocation_profiles (
             invocation_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL,
             scope TEXT NOT NULL, profile TEXT NOT NULL, digest TEXT NOT NULL)""",
+            """CREATE TABLE IF NOT EXISTS event_consumer_pins (
+            consumer_key TEXT PRIMARY KEY, scope TEXT NOT NULL,
+            cursor BIGINT NOT NULL, active INTEGER NOT NULL)""",
+            """CREATE TABLE IF NOT EXISTS event_consumer_selections (
+            consumer_key TEXT NOT NULL, inbox_sequence BIGINT NOT NULL, digest TEXT NOT NULL,
+            PRIMARY KEY(consumer_key, inbox_sequence))""",
             "CREATE INDEX IF NOT EXISTS event_inbox_scope ON event_inbox(scope, sequence)",
             "CREATE INDEX IF NOT EXISTS event_subscription_invocation "
             "ON event_subscriptions(invocation_id)",
@@ -248,6 +271,139 @@ class EventStore:
                 (sequence, self._decode_envelope(encoded, digest))
                 for sequence, encoded, digest in rows
             )
+
+    def arrivals_in_transaction(
+        self,
+        *,
+        scope: str,
+        after: int,
+        limit: int | None = None,
+    ) -> tuple[EventArrival, ...]:
+        """Read committed candidates inside the caller's existing event transaction."""
+        self._scope(scope)
+        maximum = self.limits.scan_batch if limit is None else limit
+        if (
+            type(after) is not int
+            or after < 0
+            or type(maximum) is not int
+            or not 0 < maximum <= self.limits.scan_batch
+        ):
+            raise EventValidationError("event consumer scan is invalid")
+        rows = self.connection.execute(
+            "SELECT sequence,envelope,digest FROM event_inbox WHERE scope=? AND sequence>? "
+            "ORDER BY sequence LIMIT ?",
+            (scope, after, maximum),
+        ).fetchall()
+        return tuple(
+            EventArrival(sequence, self._decode_envelope(encoded, digest), digest)
+            for sequence, encoded, digest in rows
+        )
+
+    def consumer_pin_in_transaction(self, consumer_key: str) -> EventConsumerPin | None:
+        row = self.connection.execute(
+            "SELECT scope,cursor,active FROM event_consumer_pins WHERE consumer_key=?",
+            (consumer_key,),
+        ).fetchone()
+        if row is None:
+            return None
+        if type(row[1]) is not int or row[1] < 0 or row[2] not in (0, 1):
+            raise WorkflowExecutionError("event consumer retention evidence is inconsistent")
+        self._scope(row[0])
+        return EventConsumerPin(consumer_key, row[0], row[1], bool(row[2]))
+
+    def pin_consumer_in_transaction(
+        self,
+        pin: EventConsumerPin,
+        *,
+        selected: tuple[EventArrival, ...] = (),
+    ) -> None:
+        """Advance a typed external consumer's cursor and retain immutable selections."""
+        self._scope(pin.scope)
+        if (
+            not pin.consumer_key
+            or len(pin.consumer_key.encode()) > 1024
+            or type(pin.cursor) is not int
+            or pin.cursor < 0
+            or type(pin.active) is not bool
+        ):
+            raise EventValidationError("event consumer retention pin is invalid")
+        existing = self.consumer_pin_in_transaction(pin.consumer_key)
+        maximum = self.connection.execute(
+            "SELECT value FROM event_counters WHERE counter='arrival'"
+        ).fetchone()
+        if maximum is None or pin.cursor > maximum[0]:
+            raise WorkflowExecutionError("event consumer cursor exceeds admitted arrivals")
+        if existing is None:
+            count = self.connection.execute(
+                "SELECT (SELECT COUNT(*) FROM event_subscriptions) + "
+                "(SELECT COUNT(*) FROM event_consumer_pins)"
+            ).fetchone()[0]
+            if count >= self.limits.max_subscriptions:
+                raise EventValidationError("durable event subscription capacity is exhausted")
+        elif (
+            existing.scope != pin.scope
+            or existing.cursor > pin.cursor
+            or (not existing.active and pin.active)
+        ):
+            raise WorkflowExecutionError("event consumer retention cursor changed its binding")
+        for arrival in selected:
+            row = self.connection.execute(
+                "SELECT scope,envelope,digest FROM event_inbox WHERE sequence=?",
+                (arrival.sequence,),
+            ).fetchone()
+            if (
+                row is None
+                or row[0] != pin.scope
+                or row[2] != arrival.digest
+                or _json(self._decode_envelope(row[1], row[2]).as_dict())
+                != _json(arrival.envelope.as_dict())
+                or arrival.sequence > pin.cursor
+            ):
+                raise WorkflowExecutionError("event consumer selection evidence disagrees")
+            previous = self.connection.execute(
+                "SELECT digest FROM event_consumer_selections WHERE consumer_key=? "
+                "AND inbox_sequence=?",
+                (pin.consumer_key, arrival.sequence),
+            ).fetchone()
+            if previous is not None and previous[0] != arrival.digest:
+                raise WorkflowExecutionError("event consumer selection digest changed")
+            self.connection.execute(
+                "INSERT INTO event_consumer_selections(consumer_key,inbox_sequence,digest) "
+                "VALUES (?, ?, ?) ON CONFLICT(consumer_key,inbox_sequence) DO NOTHING",
+                (pin.consumer_key, arrival.sequence, arrival.digest),
+            )
+        self.connection.execute(
+            "INSERT INTO event_consumer_pins(consumer_key,scope,cursor,active) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(consumer_key) DO UPDATE SET cursor=excluded.cursor,active=excluded.active",
+            (pin.consumer_key, pin.scope, pin.cursor, int(pin.active)),
+        )
+
+    def verify_consumer_selection_in_transaction(
+        self,
+        consumer_key: str,
+        *,
+        scope: str,
+        sequence: int,
+        digest: str,
+    ) -> EventArrival:
+        selected = self.connection.execute(
+            "SELECT digest FROM event_consumer_selections WHERE consumer_key=? "
+            "AND inbox_sequence=?",
+            (consumer_key, sequence),
+        ).fetchone()
+        row = self.connection.execute(
+            "SELECT scope,envelope,digest FROM event_inbox WHERE sequence=?",
+            (sequence,),
+        ).fetchone()
+        if (
+            selected is None
+            or selected[0] != digest
+            or row is None
+            or row[0] != scope
+            or row[2] != digest
+        ):
+            raise WorkflowExecutionError("event consumer selection evidence is missing or changed")
+        return EventArrival(sequence, self._decode_envelope(row[1], row[2]), digest)
 
     def _scope(self, scope: str) -> None:
         if not isinstance(scope, str) or not scope or len(scope.encode()) > 1024:
@@ -541,9 +697,10 @@ class EventStore:
                 raise InvocationStateConflict(
                     "terminal invocation cannot create an event subscription"
                 )
-            count = self.connection.execute("SELECT COUNT(*) FROM event_subscriptions").fetchone()[
-                0
-            ]
+            count = self.connection.execute(
+                "SELECT (SELECT COUNT(*) FROM event_subscriptions) + "
+                "(SELECT COUNT(*) FROM event_consumer_pins)"
+            ).fetchone()[0]
             if count >= self.limits.max_subscriptions:
                 raise EventValidationError("durable event subscription capacity is exhausted")
             self.connection.execute(
@@ -1154,6 +1311,8 @@ class EventStore:
                 "SELECT sequence, scope, source, event_id FROM event_inbox WHERE created_at < ? "
                 "AND NOT EXISTS (SELECT 1 FROM event_selections s "
                 "WHERE s.inbox_sequence = event_inbox.sequence) "
+                "AND NOT EXISTS (SELECT 1 FROM event_consumer_selections s "
+                "WHERE s.inbox_sequence = event_inbox.sequence) "
                 "ORDER BY sequence LIMIT ?",
                 (cutoff, limit),
             ).fetchall()
@@ -1169,6 +1328,12 @@ class EventStore:
                     for (encoded,) in subscriptions
                     for value in (json.loads(encoded),)
                 ):
+                    continue
+                pinned = self.connection.execute(
+                    "SELECT 1 FROM event_consumer_pins WHERE scope=? AND active=1 AND cursor<?",
+                    (scope, sequence),
+                ).fetchone()
+                if pinned is not None:
                     continue
                 published = self.connection.execute(
                     "SELECT envelope, digest FROM event_outbox WHERE scope = ? AND delivered = 1",

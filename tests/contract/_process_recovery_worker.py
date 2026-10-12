@@ -197,12 +197,19 @@ async def run(directory: Path, mode: str) -> None:
         if mode == "start":
             running = asyncio.create_task(engine.invoke(plan, handle, original))
             if boundary == "wait":
-                while handle.status != "waiting":
-                    if running.done():
-                        await running
-                        raise RuntimeError("worker did not reach waiting")
-                    await asyncio.sleep(0.01)
+                result = await asyncio.wait_for(running, timeout=30)
+                if result.status != "waiting" or handle.status != "waiting":
+                    raise RuntimeError("worker did not acknowledge waiting")
+                if (
+                    handle.invocation_id in engine._active
+                    or handle.invocation_id in engine._ownership_tasks
+                    or handle._execution_lease is not None
+                ):
+                    raise RuntimeError("waiting worker retained resident invocation ownership")
                 ready()
+                # The parent must kill this actual process after the native
+                # waiting checkpoint and common ownership release are known.
+                await asyncio.Event().wait()
             await running
         else:
             async with asyncio.timeout(15):

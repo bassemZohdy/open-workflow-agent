@@ -128,15 +128,20 @@ async def test_native_progress_requires_unchanged_common_action_receipts(
                 if running.done():
                     pytest.fail(str(running.result()))
                 await asyncio.sleep(0.005)
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await running
+        waiting = await asyncio.wait_for(asyncio.shield(running), 20)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
         assert calls == ["/once"]
+        assert len(first.timers.pending_for_invocation(handle.invocation_id, plan.fingerprint)) == 1
         keys = {
             row[0]
             for row in first.effect_journal.connection.execute(
-                "SELECT identity FROM workflow_effects"
+                "SELECT identity,payload FROM workflow_effect_invocations WHERE invocation_id=?",
+                (handle.invocation_id,),
             ).fetchall()
+            if json.loads(row[1])["operation"] == "call:http"
         } - existing
         assert len(keys) == 1
         receipt_key = keys.pop()

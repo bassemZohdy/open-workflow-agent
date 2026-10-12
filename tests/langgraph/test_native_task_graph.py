@@ -219,12 +219,15 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
                 else "/do/0/parent/do/0/sideEffect"
             )
         ]
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await running
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=10)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
     finally:
         running.cancel()
         await asyncio.gather(running, return_exceptions=True)
+        await engine.shutdown()
         services.close()
 
     restarted = RuntimeServices(config, model=FakeModel(), database_root=database_root)
@@ -259,6 +262,7 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
             for event in restarted.events.events
         )
     finally:
+        await resumed_engine.shutdown()
         restarted.close()
 
 
@@ -371,15 +375,18 @@ async def test_completed_fork_branch_does_not_advance_pending_sibling_cursor_on_
                 if running.done():
                     pytest.fail(str(running.result()))
                 await asyncio.sleep(0.01)
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await running
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=10)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
         result = await asyncio.wait_for(engine.resume(handle, {}, plan), timeout=10)
         assert result.status == "completed", result.error
         assert sorted(calls) == ["https://service.test/complete", "https://service.test/pending"]
     finally:
         running.cancel()
         await asyncio.gather(running, return_exceptions=True)
+        await engine.shutdown()
 
 
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
@@ -461,12 +468,15 @@ async def test_restart_preserves_ordered_fork_results_and_completed_branch_effec
                         pytest.fail(str(running.result()))
                     await asyncio.sleep(0.01)
                 assert json.loads(saved.values["snapshot"])["data"] == {"shared": "completed"}
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await running
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=10)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
     finally:
         running.cancel()
         await asyncio.gather(running, return_exceptions=True)
+        await engine.shutdown()
         services.close()
 
     restarted = RuntimeServices(config, model=FakeModel(), database_root=database_root)
@@ -491,4 +501,5 @@ async def test_restart_preserves_ordered_fork_results_and_completed_branch_effec
             saved = await graph.aget_state(driver.checkpoint_config("/do", 1))
             assert json.loads(saved.values["snapshot"])["data"] == expected
     finally:
+        await resumed_engine.shutdown()
         restarted.close()

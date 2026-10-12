@@ -86,6 +86,11 @@ jobs:
           ../../tests/contract/test_timing_process_recovery.py
           ../../tests/contract/test_durable_events.py
           ../../tests/contract/test_durable_event_process_recovery.py
+          ../../tests/contract/test_durable_timers.py
+          ../../tests/contract/test_durable_timer_forks.py
+          ../../tests/contract/test_durable_timer_process_recovery.py
+          ../../tests/contract/test_durable_scheduling.py
+          ../../tests/contract/test_schedule_event_triggers.py
           ../../tests/contract/test_event_backend_admission.py
 
   manifests:

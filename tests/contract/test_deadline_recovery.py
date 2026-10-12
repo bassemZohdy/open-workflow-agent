@@ -16,6 +16,7 @@ from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import InvocationStateError
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
+from test_durable_timers import _use_clock
 
 
 def _services(path: Path, backend: str, model: FakeModel) -> RuntimeServices:
@@ -62,6 +63,7 @@ def _policy_records(services: RuntimeServices, invocation_id: str) -> list[tuple
 )
 async def test_original_deadline_is_reused_after_native_waiting_restart(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     engine_name: str,
     engine_type: Any,
     backend: str,
@@ -69,6 +71,8 @@ async def test_original_deadline_is_reused_after_native_waiting_restart(
     expired: bool,
     damage: str,
 ) -> None:
+    now = 1000.0
+    _use_clock(monkeypatch, lambda: now)
     model = FakeModel({"done": True})
     services = _services(tmp_path, backend, model)
     engine = engine_type()
@@ -99,7 +103,8 @@ async def test_original_deadline_is_reused_after_native_waiting_restart(
         group["timeout"] = {"after": {"seconds": 30}}
     plan = compile_workflow(workflow)
     await engine.initialize(services)
-    engine.executor._absolute_clock = lambda: 1000.0
+    assert engine._timer_dispatcher is not None
+    await engine._timer_dispatcher.stop()
     handle = services.invocations.create(
         engine=engine_name,
         session_id=None,
@@ -111,31 +116,33 @@ async def test_original_deadline_is_reused_after_native_waiting_restart(
     running = asyncio.create_task(engine.invoke(plan, handle, {"original": True}))
     before: list[tuple[str, str]] = []
     try:
-        async with asyncio.timeout(10):
-            while True:
-                saved = services.invocations.get(handle.invocation_id)
-                if saved is not None and saved.status == "waiting":
-                    break
-                if running.done():
-                    raise AssertionError(await running)
-                await asyncio.sleep(0.01)
+        waiting = await asyncio.wait_for(running, timeout=10)
+        assert waiting.status == "waiting", waiting.error
+        saved = services.invocations.get(handle.invocation_id)
+        assert saved is not None and saved.status == "waiting"
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
+        pending = services.timers.pending_for_invocation(handle.invocation_id, plan.fingerprint)
+        assert len(pending) == 1 and pending[0].due_at == 1010
         before = _policy_records(services, handle.invocation_id)
         assert len(model.calls) == 0
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await asyncio.wait_for(running, timeout=10)
+        assert running.done()
     finally:
         running.cancel()
         await asyncio.gather(running, return_exceptions=True)
         await engine.shutdown()
         services.close()
 
+    now = 1031.0 if expired else 1010.0
     restarted = _services(tmp_path, backend, model)
     resumed = engine_type()
     await resumed.initialize(restarted)
+    assert resumed._timer_dispatcher is not None
+    await resumed._timer_dispatcher.stop()
     # Leave room for real SDK/storage work on slow Windows runners while
     # checking the exact original remaining budget rather than a fresh one.
-    resumed.executor._absolute_clock = lambda: 1031.0 if expired else 1010.0
+    assert resumed.executor._absolute_clock() == now
     remaining_budgets: list[float] = []
     original_timed = resumed.executor._run_timed
 
@@ -144,14 +151,19 @@ async def test_original_deadline_is_reused_after_native_waiting_restart(
         seconds: float | None,
         message: str,
         details: dict[str, Any],
+        *,
+        absolute_due: float | None = None,
     ) -> Any:
         if seconds is not None:
             remaining_budgets.append(seconds)
-        return await original_timed(operation, seconds, message, details)
+        return await original_timed(operation, seconds, message, details, absolute_due=absolute_due)
 
     resumed.executor._run_timed = record_timed
     persisted = restarted.invocations.get(handle.invocation_id)
     assert persisted is not None
+    assert restarted.invocations.read_input(persisted) == {"original": True}
+    recovered_timer = restarted.timers.registration_for_key(pending[0].timer_key)
+    assert recovered_timer.identity == pending[0].identity and recovered_timer.due_at == 1010
     try:
         original_parent = persisted._persisted_payload
         if damage != "clean":

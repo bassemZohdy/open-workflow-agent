@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 from typing import Any, Literal
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -698,6 +699,25 @@ class EventConfig(StrictModel):
     poll_interval_seconds: float = Field(default=0.05, ge=0.01, le=5)
 
 
+class ExecutionTimingConfig(StrictModel):
+    """Deployment calendar and bounded embedded dispatch controls."""
+
+    timezone: str = "UTC"
+    max_pending_timers: int = Field(default=1000, ge=1, le=100_000)
+    max_concurrency: int = Field(default=16, ge=1, le=1000)
+    schedule_batch_size: int = Field(default=128, ge=1, le=1000)
+    poll_interval_seconds: float = Field(default=0.05, ge=0.01, le=5)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError("timezone must be an available IANA timezone") from exc
+        return value
+
+
 class RuntimeConfig(StrictModel):
     agent: AgentConfig = Field(default_factory=AgentConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
@@ -716,6 +736,7 @@ class RuntimeConfig(StrictModel):
     server: ServerConfig = Field(default_factory=ServerConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     events: EventConfig = Field(default_factory=EventConfig)
+    execution_timing: ExecutionTimingConfig = Field(default_factory=ExecutionTimingConfig)
 
     @model_validator(mode="after")
     def validate_a2a_security_profile(self) -> RuntimeConfig:

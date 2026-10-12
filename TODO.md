@@ -174,6 +174,12 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   embedded capability reports are verified. See
   [acceptance evidence](PROJECT.md#s2-05-embedded-event-work--2026-10-12-verified).
 - [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.
+  Implemented: common timer decisions, native nonresident suspension, fenced
+  schedule slots, calendars and atomic event-created invocations. Frozen root,
+  LangGraph and optional Agent Framework full suites pass; ADK has one isolated
+  benchmark harness failure with a proven correction. Actual PostgreSQL,
+  exact-source configured validation and capability publication remain open
+  in the [finite record](docs/s2-06-timer-schedule-acceptance.md).
 - [ ] **S2-07** (L) — Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.
 - [ ] **S2-08** (L) — Complete cancellation, termination, compensation and idempotent external-action recovery.
 - [ ] **S2-09** (L) — Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.

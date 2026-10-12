@@ -5292,7 +5292,7 @@
     "schedule": {
       "outcome": "partial",
       "observed": "Embedded persisted schedule.after/every and one-runtime claims/leases produce equivalent child invocation results.",
-      "remaining_scope": "Wait timers/cron/event triggers remain missing; dispatcher recompiles source instead of preserving captured dependency closure and crash/lease semantics need stronger proof.",
+      "remaining_scope": "S2-06 durable timer, calendar, trigger and fenced slot implementation is under finite native/process/PostgreSQL/full qualification; compatible version migration and full proposed criteria remain later scope.",
       "remediation_tasks": [
         "S2-06",
         "S2-09",
@@ -5300,7 +5300,7 @@
       ],
       "code": [
         {
-          "path": "core/src/open_workflow_agent/scheduling.py",
+          "path": "core/src/open_workflow_agent/_schedule_store.py",
           "symbol": "ScheduleStore.claim_due"
         },
         {
@@ -5317,9 +5317,9 @@
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
     },
     "schedule_rejected": {
-      "outcome": "rejected",
-      "observed": "Workflow schedule.cron/on fail admission; only after/every are enabled.",
-      "remaining_scope": "Add durable cron/on semantics and replay/correlation/dependency-identity tests.",
+      "outcome": "partial",
+      "observed": "S2-06 working source admits the finite cron/on profile and rejects unsupported combinations; common focused calendar/trigger checks pass. Public scheduling capability expansion remains unqualified until native, process, PostgreSQL and frozen full gates pass.",
+      "remaining_scope": "Complete S2-06 actual principal SDK/process/PostgreSQL and frozen full validation before advertising cron/on; broader proposed full criteria remain unexecuted.",
       "remediation_tasks": [
         "S2-06",
         "S4-04"
@@ -5333,7 +5333,7 @@
       "tests": [
         {
           "path": "tests/core/test_core_scheduling.py",
-          "symbol": "test_schedule_profile_rejects_cron_and_requires_one_supported_mode"
+          "symbol": "test_schedule_profile_admits_cron_and_requires_one_supported_mode"
         }
       ],
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
@@ -8650,7 +8650,7 @@
       "construct": "schedule.cron",
       "category": "Events and time",
       "evidence_group": "schedule_rejected",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of A101 (Cron scheduling) at schedule.cron: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -8671,7 +8671,7 @@
       "construct": "schedule.on",
       "category": "Events and time",
       "evidence_group": "schedule_rejected",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of A102 (Event-triggered workflow creation) at schedule.on: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -11323,7 +11323,7 @@
       "construct": "/properties/schedule/properties/cron",
       "category": "Events and time",
       "evidence_group": "schedule_rejected",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS025 (cron) at /properties/schedule/properties/cron: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -11366,7 +11366,7 @@
       "construct": "/properties/schedule/properties/on",
       "category": "Events and time",
       "evidence_group": "schedule_rejected",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS027 (on) at /properties/schedule/properties/on: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -20574,8 +20574,8 @@
   "outcome_counts": {
     "qualified_subset": 218,
     "unimplemented": 62,
-    "partial": 135,
-    "rejected": 183,
+    "partial": 139,
+    "rejected": 179,
     "behavior_mismatch": 32,
     "inert": 19,
     "internal_only": 9
@@ -20709,7 +20709,8 @@
     "core/src/open_workflow_agent/event_store.py": "8e019106191b6cf4759d99b7830a63bdd67772eb9c6414cfa3299590a39fb1e1",
     "core/src/open_workflow_agent/durable_events.py": "1333971573b472bce695813c9c6781e56905a8988731dfb475290cfe148b239c",
     "core/src/open_workflow_agent/event_matching.py": "055b64ae6e6bfe8c194fa863350c6da1614b863336cba85ac0336948459cbfa7",
-    "core/src/open_workflow_agent/event_capabilities.py": "58c53142d2303476bbf9be06b83485006824589c25ddec46bcdb25129d77bb69"
+    "core/src/open_workflow_agent/event_capabilities.py": "58c53142d2303476bbf9be06b83485006824589c25ddec46bcdb25129d77bb69",
+    "core/src/open_workflow_agent/_schedule_store.py": "30d91c41bef295f9fd890c8d7bb7a76c5b0b4f71d112d865c4f25b159a5993c8"
   },
   "audit_integrity_checks": {
     "passed": 4,
@@ -44419,5 +44420,16 @@
       ],
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
     }
+  },
+  "pending_source_anchor_updates": {
+    "task": "S2-06",
+    "status": "unqualified working source",
+    "changes": [
+      {
+        "path": "core/src/open_workflow_agent/_schedule_store.py",
+        "symbol": "ScheduleStore.claim_due",
+        "reason": "Existing schedule store moved from scheduling.py; finite schedule acceptance and final commit-level provenance remain pending."
+      }
+    ]
   }
 }

@@ -10,6 +10,7 @@ from dataclasses import asdict
 from typing import Any, TypedDict, cast
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command, interrupt
 from open_workflow_agent.effects import (
     EffectIdentity,
     EffectJournal,
@@ -18,6 +19,7 @@ from open_workflow_agent.effects import (
 )
 from open_workflow_agent.errors import InvocationStateError, OwaError, WorkflowExecutionError
 from open_workflow_agent.expressions import validate_expression_data
+from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.timing import root_clock_identity
 from open_workflow_agent.workflow import (
     ExecutionState,
@@ -171,15 +173,34 @@ class LangGraphScopeExecutor:
         *,
         resume: bool = False,
         effect_journal: EffectJournal | None = None,
+        timer_wake: dict[str, Any] | None = None,
+        timer_wakes: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         self.plan = plan
         self.saver = saver
         self.invocation_id = invocation_id
         self.resume = resume
+        self.timer_wake = timer_wake
+        self.timer_wakes = timer_wakes
+        if timer_wakes is not None:
+            validate_expression_data(timer_wakes)
+            if not isinstance(timer_wakes, dict) or any(
+                not isinstance(key, str)
+                or not isinstance(value, dict)
+                or set(value) != {"timer_key", "due_at", "reason"}
+                or value["timer_key"] != key
+                or type(value["due_at"]) not in {int, float}
+                or value["due_at"] <= 0
+                or not isinstance(value["reason"], str)
+                or value["reason"] not in {"timer_due", "resume_requested"}
+                for key, value in timer_wakes.items()
+            ):
+                raise InvocationStateError("native timer wake map is inconsistent")
         self.effect_journal = effect_journal
         self.receipts: dict[str, ReceiptDependency] = {}
         self.completed_scopes: dict[tuple[str, int], str] = {}
         self._required_scopes: dict[tuple[str, int], str] = {}
+        self._resume_interrupts: dict[tuple[str, int, str], tuple[Any, list[Any]]] = {}
         self.scopes = {scope.reference: scope for scope in plan.scopes}
         self.counters: dict[str, int] = {}
         self.task_references = {
@@ -248,6 +269,91 @@ class LangGraphScopeExecutor:
         if existing is not None and existing != dependency:
             raise InvocationStateError("native receipt dependency changed")
         self.receipts[identity.key] = dependency
+
+    def _timer_interrupt(self, value: Any) -> TimerSuspension:
+        """Reconcile SDK interruption evidence without adopting checkpoint state."""
+        if not isinstance(value, dict) or set(value) != {"timer", "receipts"}:
+            raise InvocationStateError("native timer interruption is inconsistent")
+        suspension = TimerSuspension.from_value(value["timer"])
+        identity = suspension.identity
+        if (
+            identity.invocation_id != self.invocation_id
+            or identity.workflow_fingerprint != self.plan.fingerprint
+            or identity.task_reference not in self.task_references
+            or not isinstance(value["receipts"], list)
+            or self.effect_journal is None
+        ):
+            raise InvocationStateError("native timer identity is inconsistent")
+        seen: set[str] = set()
+        for item in value["receipts"]:
+            dependency = ReceiptDependency.from_value(item)
+            reference = dependency.identity
+            if (
+                reference.invocation_id != self.invocation_id
+                or reference.workflow_fingerprint != self.plan.fingerprint
+                or (
+                    reference.task_reference not in self.task_references
+                    and reference != root_clock_identity(self.invocation_id, self.plan.fingerprint)
+                )
+                or reference.key in seen
+            ):
+                raise InvocationStateError("native timer receipt identity is inconsistent")
+            seen.add(reference.key)
+            dependency.verify(self.effect_journal)
+            previous = self.receipts.get(reference.key)
+            if previous is not None and previous != dependency:
+                raise InvocationStateError("native timer receipt dependency changed")
+            self.receipts[reference.key] = dependency
+        armed = self.effect_journal.get(identity)
+        if (
+            identity.key not in seen
+            or armed is None
+            or armed.status != "completed"
+            or not isinstance(armed.output, dict)
+            or armed.output.get("due_at") != suspension.due_at
+        ):
+            raise InvocationStateError("native timer arming evidence is inconsistent")
+        return suspension
+
+    def _validate_wake(self, suspension: TimerSuspension) -> dict[str, Any]:
+        if self.timer_wakes is not None:
+            wake = self.timer_wakes.get(suspension.timer_key)
+            if wake is None:
+                raise suspension
+        else:
+            wake = self.timer_wake
+        if (
+            not isinstance(wake, dict)
+            or set(wake) != {"timer_key", "due_at", "reason"}
+            or wake["timer_key"] != suspension.timer_key
+            or type(wake["due_at"]) not in {int, float}
+            or wake["due_at"] != suspension.due_at
+            or not isinstance(wake["reason"], str)
+            or wake["reason"] not in {"timer_due", "resume_requested"}
+        ):
+            raise InvocationStateError("native timer wake does not match pending interruption")
+        return dict(wake)
+
+    def _known_resume(self, value: Any) -> dict[str, Any]:
+        if (
+            not isinstance(value, dict)
+            or set(value) != {"timer_key", "due_at", "reason"}
+            or not isinstance(value["timer_key"], str)
+        ):
+            raise InvocationStateError("native timer resume history is inconsistent")
+        dependency = self.receipts.get(value["timer_key"])
+        if dependency is None or dependency.identity.operation != "wait:arm:v1":
+            raise InvocationStateError("native timer resume arming reference is absent")
+        suspension = TimerSuspension(dependency.identity, value["due_at"])
+        try:
+            expected = self._validate_wake(suspension)
+        except TimerSuspension:
+            raise InvocationStateError(
+                "native timer resume history has no authorized wake"
+            ) from None
+        if _json_identity(value) != _json_identity(expected):
+            raise InvocationStateError("native timer resume history changed")
+        return expected
 
     @staticmethod
     def _state_digest(native: dict[str, Any]) -> str:
@@ -420,6 +526,10 @@ class LangGraphScopeExecutor:
                 continue
             channels = checkpoint.checkpoint["channel_values"]
             _, counters = self._validate_native(channels, reference, occurrence)
+            for _task_id, channel, value in checkpoint.pending_writes or ():
+                if channel == "__interrupt__":
+                    for pending_interrupt in value:
+                        self._timer_interrupt(pending_interrupt.value)
             observed[(reference, occurrence)] = (
                 self._state_digest(channels),
                 channels["next_node"],
@@ -484,13 +594,50 @@ class LangGraphScopeExecutor:
                     state.stop = True
                     return self._write(state, reference=scope.reference)
                 executor._token(state).checkpoint()
-                await executor._run_task_item(
-                    task.name,
-                    task.definition,
-                    state,
-                    task.reference,
-                    execution_reference=task.execution_reference,
+                pending = self._resume_interrupts.get(
+                    (scope.reference, self.counters[scope.reference], _node_name(task))
                 )
+                if pending is not None:
+                    payload, previous_resumes = pending
+                    # SDK dynamic interrupts match by call index. Reproduce the
+                    # acknowledged prefix before common replay can suspend for a
+                    # different timer in this same native node.
+                    for previous in previous_resumes:
+                        expected = self._known_resume(previous)
+                        if _json_identity(interrupt({"timer_key": expected["timer_key"]})) != (
+                            _json_identity(expected)
+                        ):
+                            raise InvocationStateError("native timer resume history changed")
+                    suspension = self._timer_interrupt(payload)
+                    if _json_identity(interrupt(payload)) != _json_identity(
+                        self._validate_wake(suspension)
+                    ):
+                        raise InvocationStateError("native timer resume does not match its wake")
+                try:
+                    await executor._run_task_item(
+                        task.name,
+                        task.definition,
+                        state,
+                        task.reference,
+                        execution_reference=task.execution_reference,
+                    )
+                except TimerSuspension as suspension:
+                    payload = {
+                        "timer": suspension.as_value(),
+                        "receipts": json.loads(
+                            json.dumps(
+                                [asdict(self.receipts[key]) for key in sorted(self.receipts)],
+                                allow_nan=False,
+                            )
+                        ),
+                    }
+                    self._timer_interrupt(payload)
+                    interrupt(payload)
+                    # A validated wake must make the common timer consumable.
+                    # Never treat an unconsumed suspension as a task result.
+                    raise InvocationStateError(
+                        "native timer wake did not complete its wait"
+                    ) from None
                 halted = state.stop or state.scope_exit or state.flow.ended.is_set()
                 target = END if halted else following
                 if state.jump_to is not None and not halted:
@@ -544,7 +691,7 @@ class LangGraphScopeExecutor:
         if prefix != "/do" or self.resume:
             saved = await graph.aget_state(config)
             if saved.values:
-                if not saved.next:
+                if not saved.next and not saved.interrupts:
                     self._read(cast(_GraphState, saved.values), state, prefix)
                     self._record_completed_scope(
                         cast(_GraphState, saved.values), prefix, occurrence
@@ -552,6 +699,32 @@ class LangGraphScopeExecutor:
                     state.scope_exit = False
                     return
                 native_input = None
+                if saved.interrupts:
+                    if len(saved.interrupts) != 1:
+                        raise InvocationStateError("native scope has ambiguous timer interruptions")
+                    suspension = self._timer_interrupt(saved.interrupts[0].value)
+                    native_input = Command(resume=self._validate_wake(suspension))
+                    pending_tasks = [task for task in saved.tasks if task.interrupts]
+                    if len(pending_tasks) != 1:
+                        raise InvocationStateError("native pending timer task is ambiguous")
+                    pending_task = pending_tasks[0]
+                    if pending_task.name not in {_node_name(task) for task in scope.tasks}:
+                        raise InvocationStateError(
+                            "native pending timer task belongs to another scope"
+                        )
+                    checkpoint = await self.saver.aget_tuple(config)
+                    if checkpoint is None:
+                        raise InvocationStateError("native pending timer checkpoint is absent")
+                    previous_resumes: list[Any] = []
+                    for task_id, channel, value in checkpoint.pending_writes or ():
+                        if task_id == pending_task.id and channel == "__resume__":
+                            previous_resumes = value if isinstance(value, list) else [value]
+                    for previous in previous_resumes:
+                        self._known_resume(previous)
+                    self._resume_interrupts[(prefix, occurrence, pending_task.name)] = (
+                        saved.interrupts[0].value,
+                        previous_resumes,
+                    )
         try:
             result = await graph.ainvoke(native_input, config=config, durability="sync")
         except Exception as exc:
@@ -568,6 +741,11 @@ class LangGraphScopeExecutor:
             raise WorkflowExecutionError(
                 "native task execution failed", details={"reference": prefix}
             ) from None
+        saved = await graph.aget_state(config)
+        if saved.interrupts:
+            if len(saved.interrupts) != 1:
+                raise InvocationStateError("native scope has ambiguous timer interruptions")
+            raise self._timer_interrupt(saved.interrupts[0].value)
         self._read(cast(_GraphState, result), state, prefix)
         self._record_completed_scope(cast(_GraphState, result), prefix, occurrence)
         state.scope_exit = False

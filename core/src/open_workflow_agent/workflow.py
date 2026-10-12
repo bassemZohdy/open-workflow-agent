@@ -44,6 +44,7 @@ from .errors import (
     MemoryError,
     ModelError,
     OwaError,
+    ScheduleValidationError,
     ToolError,
     UnsupportedWorkflowFeature,
     WorkflowExecutionError,
@@ -64,6 +65,7 @@ from .protocols import PROTOCOL_DATA_FIELDS
 from .resources import SchemaResource, materialize_schema_resources
 from .resources import schema_registry as build_schema_registry
 from .retry import RetryPolicy
+from .timers import TimerSuspension
 from .timing import DeadlineAnchor, RetrySchedule, clock_started_at, root_clock_identity
 from .workflow_profile import SCHEMA_SHA256, WORKFLOW_DSL
 
@@ -83,6 +85,7 @@ OFFICIAL_SCHEMA_RELATIVE_PATH = Path("resources/open-workflow/1.0.3/workflow.yam
 @dataclass(slots=True)
 class _DeadlineScope:
     deadline: asyncio.Timeout
+    absolute_due: float | None = None
     unresolved_reference: str | None = None
 
 
@@ -128,7 +131,22 @@ class _NoCancellationToken:
         return await operation
 
 
-class _WorkflowLoader(yaml.SafeLoader):
+class _JsonBooleanLoader(yaml.SafeLoader):
+    """Use YAML 1.2 booleans; OWS's `on` is an ordinary string key."""
+
+
+_JsonBooleanLoader.yaml_implicit_resolvers = {
+    key: [rule for rule in rules if rule[0] != "tag:yaml.org,2002:bool"]
+    for key, rules in yaml.SafeLoader.yaml_implicit_resolvers.items()
+}
+_JsonBooleanLoader.add_implicit_resolver(
+    "tag:yaml.org,2002:bool",
+    re.compile(r"^(?:true|True|TRUE|false|False|FALSE)$"),
+    list("tTfF"),
+)
+
+
+class _WorkflowLoader(_JsonBooleanLoader):
     """Reject ambiguous duplicate keys instead of silently overwriting tasks."""
 
     def construct_document(self, node: yaml.Node) -> Any:
@@ -273,7 +291,7 @@ def _official_schema() -> dict[str, Any]:
             raw = path.read_bytes()
             if hashlib.sha256(raw).hexdigest() != SCHEMA_SHA256:
                 raise WorkflowSchemaError("official schema does not match the reviewed SHA-256 pin")
-            schema = yaml.safe_load(raw)
+            schema = yaml.load(raw, Loader=_JsonBooleanLoader)
         except (OSError, yaml.YAMLError) as exc:
             raise WorkflowSchemaError(f"unable to load official schema: {path}") from exc
         if not isinstance(schema, dict):
@@ -536,6 +554,9 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
 
     data_slot(workflow, "input", "from", globals_, "")
     data_slot(workflow, "output", "as", globals_ | {"context"}, "")
+    schedule = workflow.get("schedule")
+    if isinstance(schedule, Mapping) and "on" in schedule:
+        check(schedule["on"], globals_ | {"context", "event"}, "/schedule/on")
     tasks(workflow.get("do", []), ambient, "/do")
     for name, definition in workflow.get("use", {}).get("functions", {}).items():
         tasks([{name: definition}], ambient, "/use/functions", indexed=False)
@@ -727,23 +748,15 @@ def _is_trusted_catalog_call(
 
 
 def _validate_schedule_capability(workflow: Mapping[str, Any]) -> None:
+    from .schedule_profile import parse_schedule
+
     schedule = workflow.get("schedule")
     if schedule is None:
         return
-    if not isinstance(schedule, Mapping):
-        raise WorkflowSemanticError("workflow schedule must be an object")
-    unsupported = sorted(set(schedule) & {"cron", "on", "read"})
-    if unsupported:
-        raise UnsupportedWorkflowFeature(
-            "schedule features are unsupported in the bounded profile",
-            details={"unsupported": unsupported},
-        )
-    configured = [key for key in ("after", "every") if key in schedule]
-    if len(configured) != 1:
-        raise WorkflowSemanticError("schedule requires exactly one of after or every")
-    duration = _duration_seconds(schedule[configured[0]])
-    if duration is None or duration <= 0:
-        raise WorkflowSemanticError("schedule duration must be greater than zero")
+    try:
+        parse_schedule(schedule)
+    except ScheduleValidationError as exc:
+        raise WorkflowSemanticError(exc.message, details={"reference": "/schedule"}) from exc
 
 
 def compile_workflow(
@@ -1249,6 +1262,7 @@ class WorkflowExecutor:
         started: float | None,
     ) -> None:
         timeout: float | None = None
+        absolute_due: float | None = None
         admitted = False
         if attempt:
             identity = self._effect_identity(state, "policy:retry-attempt:v1")
@@ -1270,8 +1284,13 @@ class WorkflowExecutor:
             attempt_started = clock_started_at(raw)
             timeout = policy.attempt_duration
             if timeout is not None:
+                absolute_due = attempt_started + timeout
                 timeout -= self._absolute_clock() - attempt_started
             if remaining is not None:
+                aggregate_due = cast(float, started) + cast(float, policy.duration)
+                absolute_due = (
+                    min(absolute_due, aggregate_due) if absolute_due is not None else aggregate_due
+                )
                 timeout = min(timeout, remaining) if timeout is not None else remaining
         reconcile = admitted and timeout is not None and timeout <= 0
         token = _RECONCILE_EXPIRED_RETRY.set(_RECONCILE_EXPIRED_RETRY.get() or reconcile)
@@ -1287,6 +1306,7 @@ class WorkflowExecutor:
                     "retry_attempt": attempt,
                     "timeout_seconds": timeout,
                 },
+                absolute_due=absolute_due,
             )
         finally:
             _RECONCILE_EXPIRED_RETRY.reset(token)
@@ -1299,9 +1319,11 @@ class WorkflowExecutor:
         workflow: bool = False,
     ) -> float | None:
         if seconds is None:
+            state.metadata["_latest_deadline_at"] = None
             return None
         if workflow:
             started = cast(float, state.metadata["_policy_started_at"])
+            state.metadata["_latest_deadline_at"] = started + seconds
             return max(0.0, started + seconds - self._absolute_clock())
         identity = self._effect_identity(state, "policy:task-deadline:v1")
         raw = await self._record_policy(
@@ -1315,7 +1337,9 @@ class WorkflowExecutor:
             },
         )
         try:
-            return DeadlineAnchor.from_value(raw, seconds).remaining(self._absolute_clock())
+            anchor = DeadlineAnchor.from_value(raw, seconds)
+            state.metadata["_latest_deadline_at"] = anchor.started_at + anchor.duration
+            return anchor.remaining(self._absolute_clock())
         except WorkflowExecutionError as exc:
             raise _EffectRecoveryRequired(exc.message) from exc
 
@@ -1325,6 +1349,8 @@ class WorkflowExecutor:
         seconds: float | None,
         message: str,
         details: dict[str, Any],
+        *,
+        absolute_due: float | None = None,
     ) -> Any:
         if seconds is None:
             return await operation()
@@ -1344,7 +1370,7 @@ class WorkflowExecutor:
             raise timeout_error()
         started = self._policy_clock()
         deadline = asyncio.timeout(seconds)
-        scope = _DeadlineScope(deadline)
+        scope = _DeadlineScope(deadline, absolute_due=absolute_due)
         token = _ACTIVE_TIMEOUTS.set((*_ACTIVE_TIMEOUTS.get(), scope))
 
         def timed_out() -> WorkflowExecutionError:
@@ -1400,6 +1426,7 @@ class WorkflowExecutor:
         workflow = plan.execution_source
         metadata = dict(metadata or {})
         metadata["_workflow_fingerprint"] = plan.fingerprint
+        metadata["_workflow_source"] = plan.source
         metadata["_source_references"] = {
             task.execution_reference or task.reference: task.reference
             for scope in plan.scopes
@@ -1486,6 +1513,7 @@ class WorkflowExecutor:
                 remaining_workflow_timeout,
                 "workflow timed out",
                 {"timeout_seconds": workflow_timeout},
+                absolute_due=state.metadata.get("_latest_deadline_at"),
             )
             output = workflow.get("output")
             output_variables = {
@@ -1750,6 +1778,7 @@ class WorkflowExecutor:
                     remaining_timeout,
                     f"task {name} timed out",
                     {"task": name, "timeout_seconds": timeout_seconds, "instance": reference},
+                    absolute_due=state.metadata.get("_latest_deadline_at"),
                 )
             except Exception as exc:
                 last_error = exc
@@ -1985,11 +2014,26 @@ class WorkflowExecutor:
                     return state.data
         if "wait" in definition:
             if _RECONCILE_EXPIRED_RETRY.get():
-                raise WorkflowExecutionError("retry budget expired before a pending wait")
+                wait_timeout_error = WorkflowExecutionError(
+                    "retry budget expired before a pending wait",
+                    details={
+                        "type": "https://serverlessworkflow.io/spec/1.0.0/errors/timeout",
+                        "status": 408,
+                        "instance": state.variables.get("_task_reference", "/do"),
+                    },
+                )
+                wait_timeout_error.status_code = 408
+                raise wait_timeout_error
             wait_value = self._expressions(state).evaluate(
                 definition["wait"], state.data, variables=state.variables
             )
-            seconds = max(0.0, min(_duration_seconds(wait_value) or 0, 300.0))
+            seconds = max(0.0, _duration_seconds(wait_value) or 0)
+            if (
+                seconds > 0
+                and self.services is not None
+                and isinstance(state.metadata.get("_invocation_handle"), ExecutionHandle)
+            ):
+                return await self._durable_wait(name, state, seconds)
             await self._notify_waiting(state)
             self._set_invocation_status(state, "waiting")
             task_reference = str(state.variables.get("_task_reference", "unknown-task"))
@@ -2212,6 +2256,62 @@ class WorkflowExecutor:
             operation,
         )
 
+    async def _durable_wait(self, name: str, state: ExecutionState, seconds: float) -> Any:
+        assert self.services is not None
+        handle = cast(ExecutionHandle, state.metadata["_invocation_handle"])
+        identity = self._effect_identity(state, "wait:arm:v1")
+        deadlines = [
+            scope.absolute_due for scope in _ACTIVE_TIMEOUTS.get() if scope.absolute_due is not None
+        ]
+        registration = self.services.timers.arm(
+            identity,
+            seconds,
+            now=self._absolute_clock(),
+            workflow_source=state.metadata["_workflow_source"],
+            execution_lease=handle._execution_lease,
+            deadline_at=min(deadlines) if deadlines else None,
+        )
+        await self._notify_receipt(state, identity, registration.receipt)
+        wake = self.services.timers.wake_for(registration)
+        if wake is None and self._absolute_clock() >= registration.wake_at:
+            wake = self.services.timers.wake(
+                registration,
+                "timer_due",
+                now=self._absolute_clock(),
+                execution_lease=handle._execution_lease,
+            )
+        reference = str(state.variables.get("_task_reference", "unknown-task"))
+        if wake is not None:
+            await self._notify_receipt(
+                state, replace(identity, operation="wait:wake:v1"), wake.receipt
+            )
+            self.services.timers.consume(registration, execution_lease=handle._execution_lease)
+            if wake.reason == "resume_requested":
+                state.variables["resume_input"] = copy.deepcopy(wake.resume_input)
+            self._set_invocation_status(state, "running")
+            event = {
+                **self._task_event(reference, name, state),
+                "status": "running",
+                "reason": "resume_requested"
+                if wake.reason == "resume_requested"
+                else "wait_elapsed",
+                "progress": {"phase": "resumed"},
+            }
+            self._emit("TaskProgress", event)
+            self._emit("WorkflowResumed", event)
+            return state.data
+        await self._notify_waiting(state)
+        self._set_invocation_status(state, "waiting")
+        event = {
+            **self._task_event(reference, name, state),
+            "status": "waiting",
+            "progress": {"phase": "waiting", "seconds": seconds, "due_at": registration.due_at},
+        }
+        self._emit("TaskProgress", event)
+        self._emit("TaskWaiting", event)
+        self._emit("WorkflowWaiting", event)
+        raise TimerSuspension(identity, registration.due_at)
+
     @staticmethod
     async def _notify_receipt(
         state: ExecutionState, identity: EffectIdentity, receipt: EffectReceipt
@@ -2377,12 +2477,17 @@ class WorkflowExecutor:
             owner = asyncio.current_task()
             assert owner is not None
             child.branch_owners += (owner,)
-            await self._run_tasks(
-                _task_body(branch),
-                child,
-                prefix=self._nested_prefix(child, f"fork/branches/{index}"),
-                indexed=False,
-            )
+            try:
+                await self._run_tasks(
+                    _task_body(branch),
+                    child,
+                    prefix=self._nested_prefix(child, f"fork/branches/{index}"),
+                    indexed=False,
+                )
+            except TimerSuspension as suspension:
+                # A paused branch has released its execution. Drain runnable
+                # siblings before handing suspension back to the native scope.
+                return suspension
             if state.flow.ended.is_set() and owner in state.flow.owners:
                 state.flow.output = copy.deepcopy(child.data)
                 state.flow.context = copy.deepcopy(child.context)
@@ -2413,6 +2518,10 @@ class WorkflowExecutor:
                 state.variables["context"] = state.context
                 return copy.deepcopy(state.flow.output)
             results = joined.result()
+            suspensions = [result for result in results if isinstance(result, TimerSuspension)]
+            if suspensions:
+                self._set_invocation_status(state, "waiting")
+                raise min(suspensions, key=lambda value: (value.due_at, value.timer_key))
         finally:
             for pending in (*branch_tasks, ending):
                 if not pending.done():
@@ -2442,6 +2551,7 @@ class WorkflowExecutor:
 
         completion: asyncio.Future[ForkDecision] = asyncio.get_running_loop().create_future()
         branch_tasks: list[asyncio.Task[Any]] = []
+        suspensions: dict[int, TimerSuspension] = {}
 
         def cancel_siblings(owner: asyncio.Task[Any]) -> None:
             for pending in branch_tasks:
@@ -2462,6 +2572,9 @@ class WorkflowExecutor:
                     prefix=self._nested_prefix(child, f"fork/branches/{index}"),
                     indexed=False,
                 )
+            except TimerSuspension as suspension:
+                suspensions[index] = suspension
+                return
             except (_EffectRecoveryRequired, InvocationStateConflict) as exc:
                 # Uncertain actions have no branch outcome. Preserve recovery
                 # routing and drain siblings without fabricating a winner.
@@ -2507,8 +2620,9 @@ class WorkflowExecutor:
             asyncio.create_task(run_branch(index, branch)) for index, branch in enumerate(branches)
         ]
         ending = asyncio.create_task(state.flow.ended.wait())
+        joined = asyncio.gather(*branch_tasks, return_exceptions=True)
         try:
-            watched: set[asyncio.Future[Any]] = {completion, ending}
+            watched: set[asyncio.Future[Any]] = {completion, ending, joined}
             await asyncio.wait(watched, return_when=asyncio.FIRST_COMPLETED)
             if state.flow.ended.is_set() and not completion.done():
                 if not any(branch_task in state.flow.owners for branch_task in branch_tasks):
@@ -2518,13 +2632,24 @@ class WorkflowExecutor:
                 # The ending branch may still be saving its native checkpoint.
                 # Commit its decision before cancelling any losing branch.
                 decision = await completion
-            else:
+            elif completion.done():
                 decision = completion.result()
+            else:
+                for branch_result in joined.result():
+                    if isinstance(branch_result, BaseException):
+                        raise branch_result
+                if suspensions:
+                    self._set_invocation_status(state, "waiting")
+                    raise min(
+                        suspensions.values(), key=lambda value: (value.due_at, value.timer_key)
+                    )
+                raise WorkflowExecutionError("competitive fork has no completed branch outcome")
         finally:
             for pending in (*branch_tasks, ending):
                 if not pending.done() and not pending.cancelling():
                     pending.cancel()
             await asyncio.gather(*branch_tasks, ending, return_exceptions=True)
+            await asyncio.gather(joined, return_exceptions=True)
             # Retrieve any storage failure even when cancellation interrupted the
             # parent, avoiding an abandoned exception on its completion future.
             if completion.done() and not completion.cancelled():
@@ -3045,7 +3170,14 @@ class WorkflowExecutor:
     def _set_invocation_status(self, state: ExecutionState, status: str, **changes: Any) -> None:
         handle = state.metadata.get("_invocation_handle")
         if handle is not None and self.services is not None:
-            self.services.invocations.update(handle, status=status, **changes)
+            self.services.invocations.update(
+                handle,
+                status=status,
+                completed_at=self._absolute_clock()
+                if status in {"completed", "faulted", "cancelled"}
+                else None,
+                **changes,
+            )
 
     def _task_event(self, reference: str, name: Any, state: ExecutionState) -> dict[str, Any]:
         context = state.metadata

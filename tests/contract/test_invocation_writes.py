@@ -135,6 +135,9 @@ async def test_operator_loaded_handle_controls_the_existing_active_invocation(
         async with asyncio.timeout(10):
             while original.status != "waiting":
                 await asyncio.sleep(0.005)
+        waiting = await asyncio.wait_for(asyncio.shield(running), 10)
+        assert waiting.status == "waiting" and original._execution_lease is None
+        assert original.invocation_id not in engine._active
         requested = services.invocations.get(original.invocation_id)
         assert requested is not original and requested.status == "waiting"
         result = await asyncio.wait_for(
@@ -143,8 +146,8 @@ async def test_operator_loaded_handle_controls_the_existing_active_invocation(
             else engine.cancel(requested, operation_id="loaded-handle"),
             10,
         )
-        completed = await asyncio.wait_for(running, 10)
-        assert completed.as_dict() == result.as_dict()
+        assert waiting.status == "waiting"
+        services.invocations.refresh(original)
         assert original.status == result.status
         assert result.status == ("completed" if action == "resume" else "cancelled")
         if action == "resume":
@@ -339,13 +342,16 @@ async def test_terminal_commit_during_operator_refresh_wins_without_another_tran
         async with asyncio.timeout(10):
             while original.status != "waiting":
                 await asyncio.sleep(0.005)
+        waiting = await asyncio.wait_for(asyncio.shield(running), 10)
+        assert waiting.status == "waiting" and original._execution_lease is None
+        assert original.invocation_id not in engine._active
         requested = services.invocations.get(original.invocation_id)
         refresh = InvocationStore.refresh
         committed = {"code": "invocation_cancelled", "message": "other worker", "details": {}}
         transitions = []
 
         def racing_refresh(store, handle, **kwargs):
-            if store is services.invocations and handle is original and not transitions:
+            if store is services.invocations and handle is requested and not transitions:
                 fresh = other.invocations.get(original.invocation_id)
                 other.invocations.update(fresh, status="cancelled", error=committed)
                 transitions.append("committed")

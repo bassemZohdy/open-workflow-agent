@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import os
+import re
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from importlib import import_module
 from typing import Any
 
 from open_workflow_agent.errors import (
@@ -237,6 +241,8 @@ class LangGraphFunctionalAdapter:
                 invocation_id,
                 resume=resume,
                 effect_journal=getattr(executor.services, "effect_journal", None),
+                timer_wake=metadata.get("_timer_wake"),
+                timer_wakes=metadata.get("_timer_wakes"),
             )
             raw_input = await scopes.original_input(input_data) if resume else input_data
             try:
@@ -276,6 +282,104 @@ class LangGraphFunctionalAdapter:
             raise
         except Exception:
             raise InvocationStateError("native execution state could not be recovered") from None
+
+    async def scheduled_state_exists(
+        self, plan: WorkflowPlan, invocation_id: str, workflow_input: Any, effect_journal: Any
+    ) -> bool:
+        """Read the SDK's authoritative root checkpoint without starting a run."""
+        from .graph import LangGraphScopeExecutor
+
+        async def inspect(saver: Any) -> bool:
+            scopes = LangGraphScopeExecutor(
+                plan, saver, invocation_id, effect_journal=effect_journal
+            )
+            checkpoint = await saver.aget_tuple(scopes.checkpoint_config("/do", 1))
+            if checkpoint is None:
+                return False
+            channels = checkpoint.checkpoint.get("channel_values")
+            if (
+                isinstance(channels, dict)
+                and set(channels) == {"__start__"}
+                and checkpoint.metadata.get("step") == -1
+                and not checkpoint.pending_writes
+            ):
+                value, _ = scopes._validate_native(channels["__start__"], "/do", 1)
+                if json.dumps(
+                    value["variables"]["workflow"]["input"], sort_keys=True, allow_nan=False
+                ) != json.dumps(workflow_input, sort_keys=True, allow_nan=False):
+                    raise InvocationStateError("native initial workflow input is inconsistent")
+                return False
+            # Malformed state is never mistaken for absence. The normal resume
+            # admission validates every scope and immutable receipt before mutation.
+            await scopes.original_input(workflow_input)
+            return True
+
+        if not self.database_path:
+            return await inspect(self.checkpointer)
+        if is_postgresql_datasource(self.database_path):
+            if AsyncPostgresSaver is None:
+                raise InvocationStateError("native PostgreSQL persistence is unavailable")
+            try:
+                async with AsyncPostgresSaver.from_conn_string(self.database_path) as saver:
+                    # Read the installed SDK's declared table set without running
+                    # its setup migrations during scheduled dispatch admission.
+                    required = {
+                        match.group(1)
+                        for migration in saver.MIGRATIONS
+                        for match in re.finditer(r"CREATE TABLE IF NOT EXISTS ([a-z_]+)", migration)
+                    }
+                    if not required:
+                        raise InvocationStateError(
+                            "native PostgreSQL schema contract is unavailable"
+                        )
+                    async with saver.conn.transaction():
+                        await saver.conn.execute("SET TRANSACTION READ ONLY")
+                        async with saver.conn.cursor() as cursor:
+                            await cursor.execute(
+                                "SELECT table_name FROM information_schema.tables "
+                                "WHERE table_schema = current_schema()"
+                            )
+                            rows = await cursor.fetchall()
+                        tables = {
+                            row["table_name"] if isinstance(row, dict) else row[0] for row in rows
+                        }
+                        if not tables:
+                            return False
+                        if not required.issubset(tables):
+                            raise InvocationStateError(
+                                "native scheduled storage schema is incomplete"
+                            )
+                        return await inspect(saver)
+            except InvocationStateError:
+                raise
+            except Exception:
+                raise InvocationStateError("native scheduled storage could not be read") from None
+        if AsyncSqliteSaver is None:
+            raise InvocationStateError("native SQLite persistence is unavailable")
+        if not os.path.exists(self.database_path):
+            return False
+        aiosqlite = import_module("aiosqlite")
+
+        try:
+            async with aiosqlite.connect(
+                "file:" + self.database_path.replace("\\", "/") + "?mode=ro", uri=True
+            ) as connection:
+                async with connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                ) as cursor:
+                    tables = {row[0] for row in await cursor.fetchall()}
+                if not tables:
+                    return False
+                if not {"checkpoints", "writes"}.issubset(tables):
+                    raise InvocationStateError("native scheduled storage schema is incomplete")
+                sqlite_saver = AsyncSqliteSaver(connection)
+                # Skip SDK setup DDL only after inspecting its current table set.
+                sqlite_saver.is_setup = True
+                return await inspect(sqlite_saver)
+        except InvocationStateError:
+            raise
+        except Exception:
+            raise InvocationStateError("native scheduled storage could not be read") from None
 
     async def _with_saver(
         self,

@@ -4,12 +4,32 @@ from __future__ import annotations
 
 import copy
 from collections.abc import Callable, Mapping
-from dataclasses import replace
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Protocol
 
 from .errors import EventValidationError
-from .events import EventDecision, EventEnvelope, EventProgress
+from .events import EventDecision, EventEnvelope
 from .expressions import ExpressionEvaluator, validate_expression_data
+
+
+class MatchProgress(Protocol):
+    """Matcher state shared by workflow listeners and pre-invocation triggers."""
+
+    @property
+    def correlations(self) -> Mapping[str, Any]: ...
+
+    @property
+    def matched_filters(self) -> tuple[int, ...]: ...
+
+    @property
+    def progress(self) -> Mapping[str, Any]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class _MatchState:
+    correlations: Mapping[str, Any] = field(default_factory=dict)
+    matched_filters: tuple[int, ...] = ()
+    progress: Mapping[str, Any] = field(default_factory=dict)
 
 
 def json_equal(left: Any, right: Any) -> bool:
@@ -48,7 +68,7 @@ def candidate_matcher(
     variables: Mapping[str, Any] | None = None,
     read: str = "data",
     filter_guard: Callable[[Mapping[str, Any], EventEnvelope], bool] | None = None,
-) -> Callable[[EventEnvelope, EventProgress], EventDecision | None]:
+) -> Callable[[EventEnvelope, MatchProgress], EventDecision | None]:
     """Expectations are already evaluated against registration input by Core.
 
     Property predicates use the property's value, correlation extraction uses
@@ -122,7 +142,7 @@ def candidate_matcher(
         return result
 
     def decide(
-        current: Mapping[str, Any], event: EventEnvelope, progress: EventProgress
+        current: Mapping[str, Any], event: EventEnvelope, progress: MatchProgress
     ) -> EventDecision | None:
         mode, filters = filters_for(current)
         until = current.get("until")
@@ -130,8 +150,7 @@ def candidate_matcher(
             saved_until = progress.progress.get("until", {})
             if not isinstance(saved_until, Mapping):
                 raise EventValidationError("event terminator progress is invalid")
-            terminator_progress = replace(
-                progress,
+            terminator_progress = _MatchState(
                 correlations=saved_until.get("correlations", {}),
                 matched_filters=tuple(saved_until.get("matched_filters", ())),
                 progress=saved_until.get("progress", {}),

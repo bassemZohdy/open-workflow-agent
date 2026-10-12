@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -119,7 +120,8 @@ async def test_waiting_fork_retains_a_later_sibling_receipt_before_recovery(
         async def notified(state: Any, identity: Any, receipt: Any) -> None:
             await notify(state, identity, receipt)
             # ADK's observer has committed its actual SDK event by return.
-            receipt_saved.set()
+            if identity.operation == "call:http":
+                receipt_saved.set()
 
         monkeypatch.setattr(engine.executor, "_notify_receipt", notified)
     else:
@@ -152,14 +154,19 @@ async def test_waiting_fork_retains_a_later_sibling_receipt_before_recovery(
     try:
         await asyncio.wait_for(receipt_saved.wait(), 20)
         assert handle.status == "waiting" and calls == ["/once"]
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await running
+        waiting = await asyncio.wait_for(asyncio.shield(running), 20)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
+        assert len(first.timers.pending_for_invocation(handle.invocation_id, plan.fingerprint)) == 1
         keys = {
             row[0]
             for row in first.effect_journal.connection.execute(
-                "SELECT identity FROM workflow_effects"
+                "SELECT identity,payload FROM workflow_effect_invocations WHERE invocation_id=?",
+                (handle.invocation_id,),
             ).fetchall()
+            if json.loads(row[1])["operation"] == "call:http"
         } - existing
         assert len(keys) == 1
         receipt_key = keys.pop()

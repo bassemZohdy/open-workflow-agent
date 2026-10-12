@@ -117,9 +117,11 @@ async def test_langgraph_corrupt_root_or_nested_checkpoint_rejects_before_recove
                 if running.done():
                     pytest.fail(str(running.result()))
                 await asyncio.sleep(0.005)
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await running
+        waiting = await asyncio.wait_for(asyncio.shield(running), 20)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
         assert calls == ["/once"]
     finally:
         running.cancel()

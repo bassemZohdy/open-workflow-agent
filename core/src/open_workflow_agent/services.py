@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from .approvals import ApprovalService
+from ._event_triggers import EventTriggerStore
+from .approvals import ApprovalEventBus, ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
 from .durable_events import DurableEventBus
@@ -26,6 +29,7 @@ from .sandbox.backends.docker import DockerSandboxBackend
 from .sandbox.backends.kubernetes import KubernetesSandboxBackend
 from .scheduling import ScheduleStore
 from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
+from .timers import TimerStore
 from .tools import AgentToolBinding, ToolRegistry
 from .workflow_catalog import WorkflowCatalog
 
@@ -103,6 +107,10 @@ class RuntimeServices:
         self.execution_ownership = ExecutionOwnershipStore(invocation_path)
         self.fork_decisions = ForkDecisionStore(invocation_path)
         self.effect_journal = EffectJournal(invocation_path, invocations=self.invocations)
+        self.timers = TimerStore(
+            self.effect_journal, max_pending=config.execution_timing.max_pending_timers
+        )
+        self._event_triggers: dict[str, EventTriggerStore] = {}
         self.event_store: EventStore | None = None
         if event_bus is not None:
             raw_event_bus = event_bus
@@ -142,7 +150,7 @@ class RuntimeServices:
             else None
         )
         self.memory = MemoryService(str(memory_database) if memory_database else None)
-        self.schedules = ScheduleStore(invocation_path)
+        self.schedules = ScheduleStore(invocation_path, invocations=self.invocations)
         self.catalog = FunctionCatalog.default(
             self.model, instruction=self.agent_instruction, services=self
         )
@@ -151,6 +159,27 @@ class RuntimeServices:
             self.catalog.register("add_memory", self._add_memory)
             self.catalog.register("search_memory", self._search_memory)
             self.catalog.register("delete_memory", self._delete_memory)
+
+    def event_triggers(
+        self, engine: str, *, clock: Callable[[], float] | None = None
+    ) -> EventTriggerStore | None:
+        if self.event_store is None:
+            return None
+        store = self._event_triggers.get(engine)
+        if store is None:
+            store = EventTriggerStore(
+                self.event_store,
+                self.schedules,
+                engine=engine,
+                clock=clock if clock is not None else time.time,
+                filter_guard=(
+                    self.event_bus.event_filter_allowed
+                    if isinstance(self.event_bus, ApprovalEventBus)
+                    else None
+                ),
+            )
+            self._event_triggers[engine] = store
+        return store
 
     def engine_database_path(self, engine: str) -> str:
         """Return the native persistence path without exposing engine state publicly."""

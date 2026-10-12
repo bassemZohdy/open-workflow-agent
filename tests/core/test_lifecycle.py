@@ -61,7 +61,9 @@ async def test_wait_resume_and_state_transitions(tmp_path):
     assert handle.status == "completed"
     assert [event.event_type for event in services.events.events].count("WorkflowWaiting") == 1
     assert [event.event_type for event in services.events.events].count("WorkflowResumed") == 1
-    assert (await running).status == "completed"
+    assert (await running).status == "waiting"
+    assert handle.invocation_id not in engine._active
+    await engine.shutdown()
     services.close()
 
 

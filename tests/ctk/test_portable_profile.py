@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -184,12 +185,28 @@ async def test_upstream_ctk_portable_profile_scenarios(
         result = await invocation
     else:
         result = await engine.invoke(plan, handle, scenario.get("input", {}))
+    if scenario["name"] == "Wait Task Resumes After The Requested Duration":
+        if result.status == "waiting":
+            assert handle.invocation_id not in engine._active
+            assert handle._execution_lease is None
+            async with asyncio.timeout(10):
+                while True:
+                    services.invocations.refresh(handle)
+                    if handle.status in {"completed", "faulted", "cancelled"}:
+                        break
+                    await asyncio.sleep(0.005)
+            result = engine._stored_result(handle)
+        wakes = services.timers.known_wakes(handle.invocation_id, plan.fingerprint)
+        assert len(wakes) == 1
+        wake = next(iter(wakes.values()))
+        assert wake.reason == "timer_due" and time.time() >= wake.due_at
     if scenario.get("fault") or "fault_error" in scenario:
         assert result.status == "faulted"
         if "fault_error" in scenario:
             assert result.error is not None
             details = result.error.get("details", {})
             assert all(details.get(key) == value for key, value in scenario["fault_error"].items())
+        await engine.shutdown()
         services.close()
         return
     assert result.status == "completed"
@@ -240,4 +257,5 @@ async def test_upstream_ctk_portable_profile_scenarios(
         published_types.update(envelope["type"] for envelope in envelopes)
     for event_type in scenario.get("event_types", []):
         assert event_type in published_types
+    await engine.shutdown()
     services.close()

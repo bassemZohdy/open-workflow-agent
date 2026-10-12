@@ -89,6 +89,31 @@ success/failure artifacts remain historical evidence, not qualified releases.
 S2-04 is checked; 13 of 37 tasks are verified. Full proposed
 criteria, JavaScript and later dependency/capability gates remain open.
 
+### S2-06 durable timer and schedule work — 2026-10-12 (in progress)
+
+Common durable timer decisions, adapter-owned nonresident suspension, fenced
+nominal schedule slots, atomic invocation/input binding and event-created
+invocations are implemented. Actual ADK/LangGraph timer, deadline, fork,
+receipt-corruption and forced process-stop checks pass. The Open Workflow
+1.0.3 schema remains unchanged; calendars include UTC/Dubai, DST and the
+specified day-of-month/day-of-week OR behavior.
+
+Frozen local suites pass root 2,073/1,007 skipped with 91.05% coverage,
+LangGraph 1,256/750 and optional Agent Framework 1,543/1,077; each retains two
+tracked integration gaps. ADK passes 1,212/777 with those same gaps and one
+isolated benchmark failure: its 50 ms wait legitimately elapsed during native
+receipt persistence. A deterministic probe-clock correction preserves that
+duration and performance measurement. All 274 frozen inputs remained
+unchanged during each full run. The only subsequent source changes are the
+benchmark harness and a direct PostgreSQL two-connection timer-claim fixture.
+Production modules retain the frozen full-suite bytes.
+
+S2-06 remains unchecked pending actual PostgreSQL, exact-source configured
+full suites, image observations and qualified capability publication. The
+[finite acceptance record](docs/s2-06-timer-schedule-acceptance.md) retains
+both the failed benchmark and scoped corrective evidence. Fourteen of 37
+active tasks are verified; no task is deferred.
+
 ### S2-05 embedded event work — 2026-10-12 (verified)
 
 The working implementation adds an embedded durable inbox/outbox, immutable

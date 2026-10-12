@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator
+import time
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
@@ -28,6 +29,8 @@ from .ownership import ExecutionLease
 from .persistence import ExecutionHandle
 from .sandbox import SandboxWorkflowExecutor
 from .services import RuntimeServices
+from .timer_dispatcher import TimerDispatcher
+from .timers import _CURRENT_TIMER_CLAIM, TimerClaim, TimerSuspension, TimerWake
 from .timing import clock_started_at, root_clock_identity
 from .workflow import (
     SUPPORTED_FUNCTION_CALLS,
@@ -128,6 +131,10 @@ class WorkflowEngine:
         self._restart_resume_inputs: dict[str, Any] = {}
         self._execution_leases: dict[str, ExecutionLease] = {}
         self._ownership_tasks: dict[str, asyncio.Task[Any]] = {}
+        self._timer_dispatcher: TimerDispatcher | None = None
+        self._timer_claims: dict[str, TimerClaim] = {}
+        self._timer_wakes: dict[str, dict[str, TimerWake]] = {}
+        self._ownership_released: dict[str, asyncio.Event] = {}
 
     async def _wait_for_ownership_renewal(self) -> None:
         await asyncio.sleep(self._execution_ownership_seconds / 3)
@@ -136,6 +143,8 @@ class WorkflowEngine:
     async def _own_execution(self, handle: ExecutionHandle) -> AsyncIterator[None]:
         store = self.services.execution_ownership
         lease = store.acquire(handle, seconds=self._execution_ownership_seconds)
+        released = asyncio.Event()
+        self._ownership_released[handle.invocation_id] = released
         self._execution_leases[handle.invocation_id] = lease
         handle._execution_lease = lease
         owner_task = asyncio.current_task()
@@ -182,6 +191,9 @@ class WorkflowEngine:
                 # Expiry, another owner or unavailable storage cannot justify a
                 # fresh state write. A failed release expires naturally.
                 pass
+            finally:
+                self._ownership_released.pop(handle.invocation_id, None)
+                released.set()
 
     async def initialize(self, services: RuntimeServices) -> None:
         self.services = services
@@ -294,6 +306,64 @@ class WorkflowEngine:
     ) -> InvocationResult:
         raise NotImplementedError
 
+    async def _scheduled_native_state_exists(
+        self, handle: ExecutionHandle, plan: WorkflowPlan
+    ) -> bool:
+        return False
+
+    async def dispatch_scheduled(
+        self, handle: ExecutionHandle, plan: WorkflowPlan, input_data: Any
+    ) -> InvocationResult:
+        """Reconcile a bound schedule handle without guessing SDK initialization."""
+        self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+        self._verify_execution_engine(handle)
+        triggers = self.services.event_triggers(self.engine_name)
+        if triggers is not None:
+            triggers.verify_invocation(handle.invocation_id)
+        self.services.invocations.refresh(handle)
+        if handle.status in TERMINAL_INVOCATION_STATES:
+            return self._stored_result(handle)
+        active = self._active.get(handle.invocation_id)
+        if active is not None:
+            return await asyncio.shield(active.result)
+        async with self._own_execution(handle):
+            self.services.invocations.refresh(handle)
+            if handle.status in TERMINAL_INVOCATION_STATES:
+                return self._stored_result(handle)
+            if await self._scheduled_native_state_exists(handle, plan):
+                await self._verify_resume_state(handle, plan)
+                self._prepare_timer_wake(handle, plan, None)
+                return await self._resume_owned(handle, None, plan)
+            return await self._invoke_owned(plan, handle, input_data)
+
+    async def _dispatch_timer(
+        self, claim: TimerClaim, load_plan: Callable[[], Awaitable[WorkflowPlan]]
+    ) -> InvocationResult | None:
+        handle = self.services.invocations.get(claim.registration.identity.invocation_id)
+        if handle is None:
+            return None
+        self._verify_execution_engine(handle)
+        self.services.invocations.verify_fingerprint(
+            handle, claim.registration.identity.workflow_fingerprint
+        )
+        async with self._own_execution(handle):
+            self.services.invocations.refresh(handle)
+            if handle.status in TERMINAL_INVOCATION_STATES:
+                return self._stored_result(handle)
+            # Resolve dependencies only after acquiring invocation ownership.
+            # A competing manual/cross-process resume performs no duplicate I/O.
+            now = (
+                self._timer_dispatcher.clock()
+                if self._timer_dispatcher is not None
+                else time.time()
+            )
+            self.services.timers.verify_claim(claim, now=now)
+            plan = await load_plan()
+            self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+            await self._verify_resume_state(handle, plan)
+            self._prepare_timer_wake(handle, plan, None)
+            return await self._resume_owned(handle, None, plan)
+
     async def resume(
         self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
     ) -> InvocationResult:
@@ -302,12 +372,19 @@ class WorkflowEngine:
         active_result = await self._resume_active_or_terminal(handle, resume_input)
         if active_result is not None:
             return active_result
+        released = self._ownership_released.get(handle.invocation_id)
+        if (
+            released is not None
+            and self._ownership_tasks.get(handle.invocation_id) is not asyncio.current_task()
+        ):
+            await released.wait()
         try:
             async with self._own_execution(handle):
                 self.services.invocations.refresh(handle)
                 if handle.status in TERMINAL_INVOCATION_STATES:
                     return self._stored_result(handle)
                 await self._verify_resume_state(handle, plan)
+                self._prepare_timer_wake(handle, plan, resume_input)
                 return await self._resume_owned(handle, resume_input, plan)
         except InvocationStateConflict as error:
             try:
@@ -325,6 +402,36 @@ class WorkflowEngine:
         if handle.status != "running":
             return self._stored_result(handle)
         return await self._invoke_owned(plan, handle, resume_input)
+
+    def _prepare_timer_wake(
+        self, handle: ExecutionHandle, plan: WorkflowPlan, resume_input: Any
+    ) -> None:
+        store = self.services.timers
+        executor = getattr(self, "executor", None)
+        now = executor._absolute_clock() if executor is not None else time.time()
+        store.verify_invocation(handle.invocation_id, plan.fingerprint)
+        claim = _CURRENT_TIMER_CLAIM.get()
+        if claim is not None and claim.registration.identity.invocation_id != handle.invocation_id:
+            claim = None
+        if claim is not None:
+            store.verify_claim(claim, now=now)
+            store.wake(
+                claim.registration, "timer_due", now=now, execution_lease=handle._execution_lease
+            )
+        elif handle.status == "waiting":
+            for registration in store.resumable_for_invocation(
+                handle.invocation_id, plan.fingerprint
+            ):
+                store.wake(
+                    registration,
+                    "resume_requested",
+                    resume_input,
+                    now=now,
+                    execution_lease=handle._execution_lease,
+                )
+        self._timer_wakes[handle.invocation_id] = store.known_wakes(
+            handle.invocation_id, plan.fingerprint
+        )
 
     async def cancel(
         self, handle: ExecutionHandle, *, operation_id: str | None = None
@@ -371,6 +478,7 @@ class WorkflowEngine:
             self.services.event_store.close_invocation(
                 handle.invocation_id, handle.workflow_fingerprint
             )
+        self.services.timers.close_invocation(handle.invocation_id, handle.workflow_fingerprint)
         if active is None:
             self.services.lifecycle_events.emit(
                 WorkflowEvent(
@@ -405,11 +513,13 @@ class WorkflowEngine:
 
     def _finish_active(self, handle: ExecutionHandle, result: InvocationResult) -> None:
         active = self._active.pop(handle.invocation_id, None)
+        self._timer_wakes.pop(handle.invocation_id, None)
         if active is not None and not active.result.done():
             active.result.set_result(result)
 
     def _abandon_active(self, handle: ExecutionHandle) -> None:
         active = self._active.pop(handle.invocation_id, None)
+        self._timer_wakes.pop(handle.invocation_id, None)
         if active is not None and not active.result.done():
             active.result.set_exception(
                 InvocationStateConflict(
@@ -429,6 +539,14 @@ class WorkflowEngine:
         active = self._active.get(handle.invocation_id)
         if active is None:
             return None
+        if self.services.timers.resumable_for_invocation(
+            handle.invocation_id, handle.workflow_fingerprint
+        ):
+            await asyncio.shield(active.result)
+            self.services.invocations.refresh(handle)
+            return (
+                self._stored_result(handle) if handle.status in TERMINAL_INVOCATION_STATES else None
+            )
         if handle.status == "waiting":
             owned_handle = active.handle if active.handle is not None else handle
             if owned_handle is not handle:
@@ -455,6 +573,7 @@ class WorkflowEngine:
     def _metadata(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, active: ActiveInvocation
     ) -> dict[str, Any]:
+        wakes = self._timer_wakes.get(invocation.invocation_id, {})
         return {
             "invocation_id": invocation.invocation_id,
             "session_id": invocation.session_id,
@@ -466,6 +585,8 @@ class WorkflowEngine:
             "parent_task_reference": invocation.parent_task_reference,
             "_invocation_handle": invocation,
             "_lifecycle": active.control,
+            "_timer_wakes": {key: wake.as_value() for key, wake in wakes.items()},
+            "_timer_wake": next(iter(wakes.values())).as_value() if wakes else None,
         }
 
     def _prepare_workflow_input(
@@ -473,6 +594,7 @@ class WorkflowEngine:
     ) -> Any:
         self.services.invocations.verify_fingerprint(invocation, workflow.fingerprint)
         self._verify_event_requirements(workflow)
+        self.services.timers.verify_invocation(invocation.invocation_id, workflow.fingerprint)
         original = self.services.invocations.bind_input(invocation, input_data)
         if workflow.uses_durable_events and self.services.event_store is not None:
             self.services.event_store.bind_invocation(
@@ -490,6 +612,7 @@ class WorkflowEngine:
         original_input = self.services.invocations.read_input(handle)
         try:
             self.services.effect_journal.verify_invocation(handle.invocation_id, plan.fingerprint)
+            self.services.timers.verify_invocation(handle.invocation_id, plan.fingerprint)
             if self.services.event_store is not None:
                 self.services.event_store.verify_invocation(
                     handle.invocation_id,
@@ -521,8 +644,17 @@ class WorkflowEngine:
             raise ValueError(f"unsupported invocation status: {status}")
         if handle.status in TERMINAL_INVOCATION_STATES:
             return self._stored_result(handle)
+        executor = getattr(self, "executor", None)
         try:
-            self.services.invocations.update(handle, status=status, output=output, error=error)
+            self.services.invocations.update(
+                handle,
+                status=status,
+                output=output,
+                error=error,
+                completed_at=(executor._absolute_clock() if executor is not None else time.time())
+                if status in TERMINAL_INVOCATION_STATES
+                else None,
+            )
         except InvocationStateConflict:
             self.services.invocations.refresh(handle, terminal_only=True)
             return self._stored_result(handle)
@@ -532,6 +664,8 @@ class WorkflowEngine:
         return EngineCapabilities(engine=self.engine_name)
 
     async def shutdown(self) -> None:
+        if self._timer_dispatcher is not None:
+            await self._timer_dispatcher.stop()
         tasks = {
             active.task
             for active in self._active.values()
@@ -553,6 +687,14 @@ class PortableWorkflowEngine(WorkflowEngine):
         self.executor = SandboxWorkflowExecutor(
             services.catalog, services=services, event_sink=services.lifecycle_events
         )
+        self._timer_dispatcher = TimerDispatcher(
+            services,
+            self,
+            clock=lambda: self.executor._absolute_clock(),
+            poll_seconds=services.config.execution_timing.poll_interval_seconds,
+            max_concurrency=services.config.execution_timing.max_concurrency,
+        )
+        await self._timer_dispatcher.start()
 
     async def invoke(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
@@ -584,6 +726,9 @@ class PortableWorkflowEngine(WorkflowEngine):
                 )
             else:
                 result = self._record_result(invocation, status="completed", output=output)
+            return result
+        except TimerSuspension:
+            result = self._stored_result(invocation)
             return result
         except InvocationCancelled as exc:
             result = self._record_result(

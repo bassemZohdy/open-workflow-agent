@@ -349,3 +349,22 @@ def test_bootstrap_validation_errors_exclude_input_values_and_yaml_source(tmp_pa
         RuntimeConfig.from_file(file)
     assert "bootstrap-secret-value" not in json.dumps(error.value.as_dict())
     assert "bootstrap-secret-value" not in "".join(traceback.format_exception(error.value))
+
+
+def test_execution_timing_bootstrap_timezone_and_bounds():
+    assert RuntimeConfig().execution_timing.timezone == "UTC"
+    config = RuntimeConfig.model_validate(
+        {"execution_timing": {"timezone": "Asia/Dubai", "max_pending_timers": 12}}
+    )
+    assert config.execution_timing.timezone == "Asia/Dubai"
+    assert config.execution_timing.max_pending_timers == 12
+    for options in (
+        {"timezone": "No/Such/Zone"},
+        {"timezone": ""},
+        {"max_pending_timers": 0},
+        {"max_concurrency": 0},
+        {"schedule_batch_size": 1001},
+        {"poll_interval_seconds": 0},
+    ):
+        with pytest.raises(ValueError):
+            RuntimeConfig.model_validate({"execution_timing": options})

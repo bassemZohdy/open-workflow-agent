@@ -33,10 +33,12 @@ from .errors import (
     InvocationNotFound,
     OwaError,
     ScheduleNotFound,
+    ScheduleValidationError,
 )
 from .event_capabilities import event_capabilities
 from .metrics import MetricsMiddleware
 from .sandbox import compile_sandbox_workflow, resolve_and_compile_sandbox_workflow
+from .schedule_profile import parse_schedule
 from .scheduling import WorkflowScheduler
 from .security import static_principal
 from .security_headers import SecurityHeadersMiddleware
@@ -288,7 +290,13 @@ def create_app(
     runtime_config = config or RuntimeConfig()
     runtime_services = services or RuntimeServices(runtime_config)
     runtime_engine = engine or PortableWorkflowEngine()
-    scheduler = WorkflowScheduler(runtime_services, runtime_engine)
+    scheduler = WorkflowScheduler(
+        runtime_services,
+        runtime_engine,
+        poll_seconds=runtime_config.execution_timing.poll_interval_seconds,
+        max_concurrency=runtime_config.execution_timing.max_concurrency,
+        batch_size=runtime_config.execution_timing.schedule_batch_size,
+    )
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -620,6 +628,7 @@ def create_app(
     @app.post("/v1/schedules")
     async def create_schedule(
         request: CreateScheduleRequest,
+        http_request: Request,
         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     ) -> dict[str, Any]:
         plan = getattr(
@@ -627,10 +636,18 @@ def create_app(
             "plan",
             compile_sandbox_workflow(sandbox=runtime_config.sandbox),
         )
+        if (
+            parse_schedule(plan.source.get("schedule")).kind == "on"
+            and runtime_services.event_store is None
+        ):
+            raise ScheduleValidationError("event schedules require the embedded event store")
         record = runtime_services.schedules.create(
             plan,
             request.input,
             operation_key=idempotency_key,
+            owner_principal=_trusted_event_scope(http_request),
+            event_scope=_trusted_event_scope(http_request),
+            timezone=runtime_config.execution_timing.timezone,
         )
         return record.as_dict()
 

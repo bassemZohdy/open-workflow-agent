@@ -43,17 +43,17 @@ async def test_scheduled_invocation_has_equivalent_results_on_both_engines(tmp_p
         )
         engine = engine_type()
         await engine.initialize(services)
-        scheduler = WorkflowScheduler(services, engine, poll_seconds=0.001)
+        scheduler = WorkflowScheduler(services, engine, poll_seconds=0.001, clock=lambda: 1000.001)
         await scheduler.start()
         plan = compile_workflow(_workflow())
-        schedule = services.schedules.create(plan, {"source": engine_name})
+        schedule = services.schedules.create(plan, {"source": engine_name}, now=1000)
 
         def completed(
             store=services.schedules,
             schedule_id=schedule.schedule_id,
             fallback=schedule,
         ):
-            return (store.get(schedule_id) or fallback).status == "completed"
+            return (store.get(schedule_id) or fallback).last_status == "completed"
 
         await _wait_for(completed)
         completed = services.schedules.get(schedule.schedule_id)
@@ -61,10 +61,15 @@ async def test_scheduled_invocation_has_equivalent_results_on_both_engines(tmp_p
         assert completed.last_invocation_id is not None
         invocation = services.invocations.get(completed.last_invocation_id)
         assert invocation is not None
+        assert (
+            completed.next_run_at == services.invocations.terminal_completed_at(invocation) + 0.001
+        )
         signatures.append(
             (completed.status, completed.last_status, invocation.status, invocation.output)
         )
         await scheduler.stop()
         services.close()
 
-    assert signatures[0] == signatures[1] == ("completed", "completed", "completed", {"done": True})
+    assert all(
+        value == ("active", "completed", "completed", {"done": True}) for value in signatures
+    )

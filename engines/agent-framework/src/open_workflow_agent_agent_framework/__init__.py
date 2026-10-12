@@ -5,6 +5,7 @@ from typing import Any
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
 from open_workflow_agent.errors import InvocationCancelled
 from open_workflow_agent.persistence import ExecutionHandle
+from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.workflow import WorkflowPlan
 
 from .native import AgentFrameworkNativeAdapter
@@ -49,6 +50,9 @@ class AgentFrameworkWorkflowEngine(PortableWorkflowEngine):
                 result = self._stored_result(invocation)
             else:
                 result = self._record_result(invocation, status="completed", output=output)
+            return result
+        except TimerSuspension:
+            result = self._stored_result(invocation)
             return result
         except InvocationCancelled as exc:
             result = self._record_result(invocation, status="cancelled", error=exc.as_dict())

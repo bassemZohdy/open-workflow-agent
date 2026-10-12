@@ -230,18 +230,117 @@ async def test_api_schedule_is_durable_and_idempotent(tmp_path):
             schedule_id = first.json()["schedule_id"]
             for _ in range(100):
                 current = await client.get(f"/v1/schedules/{schedule_id}")
-                if current.json()["status"] == "completed":
+                assert current.status_code == 200, current.text
+                if current.json().get("last_status") == "completed":
                     break
                 await asyncio.sleep(0.005)
-            assert current.json()["status"] == "completed"
+            assert current.json()["status"] == "active"
             assert current.json()["last_status"] == "completed"
             cancelled = await client.post(
                 f"/v1/schedules/{schedule_id}/cancel",
                 headers={"Idempotency-Key": "schedule-cancel-1"},
             )
             assert cancelled.status_code == 200
-            assert cancelled.json()["status"] == "completed"
+            assert cancelled.json()["status"] == "cancelled"
     services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("backend", ["embedded", "memory"])
+@pytest.mark.parametrize("authenticated", [False, True])
+async def test_api_event_schedule_dispatches_projected_input_and_stops_after_cancel(
+    tmp_path, backend, authenticated, monkeypatch
+):
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake"},
+            "execution_timing": {"timezone": "Asia/Dubai"},
+            "events": {"backend": backend},
+            "workflow": {
+                "definition": {
+                    "document": {
+                        "dsl": "1.0.3",
+                        "namespace": "tests",
+                        "name": "api-event-schedule",
+                        "version": "1.0.0",
+                    },
+                    "schedule": {"on": {"one": {"with": {"type": "ready"}}}},
+                    "do": [{"finish": {"set": {"triggered": "${ $workflow.input }"}}}],
+                }
+            },
+        }
+    )
+    headers = {}
+    principal = "anonymous"
+    if authenticated:
+        monkeypatch.setenv("SCHEDULE_TEST_TOKEN", "schedule-test-token")
+        settings = config.model_dump(exclude_unset=True)
+        settings["server"] = {"api_security_profile": "schedule-auth"}
+        settings["security"] = {
+            "profiles": {
+                "schedule-auth": {
+                    "type": "bearer",
+                    "token": {"from_env": "SCHEDULE_TEST_TOKEN"},
+                    "principal": "schedule-test-client",
+                }
+            }
+        }
+        config = RuntimeConfig.model_validate(settings)
+        headers = {"Authorization": "Bearer schedule-test-token"}
+        principal = "schedule-test-client"
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    try:
+        async with app.router.lifespan_context(app):
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test", headers=headers
+            ) as client:
+                if authenticated:
+                    denied = await client.post(
+                        "/v1/schedules", json={"input": {}}, headers={"Authorization": ""}
+                    )
+                    assert denied.status_code == 401
+                    assert services.schedules.active_triggers() == ()
+                created = await client.post("/v1/schedules", json={"input": {"registration": True}})
+                if backend == "memory":
+                    assert created.status_code == 400, created.text
+                    assert created.json()["error"]["code"] == "schedule_validation_error"
+                    assert services.schedules.active_triggers() == ()
+                    return
+                assert created.status_code == 200, created.text
+                schedule_id = created.json()["schedule_id"]
+                record = services.schedules.get(schedule_id)
+                assert record is not None and record.timezone == "Asia/Dubai"
+                assert record.owner_principal == record.event_scope == principal
+                # Register before publication so pre-registration events cannot start a cycle.
+                await app.state.scheduler.tick()
+                published = await client.post(
+                    "/v1/events", json={"event": {"type": "ready", "data": {"value": None}}}
+                )
+                assert published.status_code == 200, published.text
+                for _ in range(200):
+                    current = await client.get(f"/v1/schedules/{schedule_id}")
+                    assert current.status_code == 200, current.text
+                    if current.json().get("last_status") == "completed":
+                        break
+                    await asyncio.sleep(0.005)
+                assert current.json().get("last_status") == "completed", current.text
+                handle = services.invocations.get(current.json()["last_invocation_id"])
+                assert handle is not None and handle.output == {"triggered": [{"value": None}]}
+                cancelled = await client.post(f"/v1/schedules/{schedule_id}/cancel")
+                assert cancelled.status_code == 200 and cancelled.json()["status"] == "cancelled"
+                assert (
+                    await client.post(
+                        "/v1/events", json={"event": {"type": "ready", "data": {"value": 2}}}
+                    )
+                ).status_code == 200
+                await app.state.scheduler.tick()
+                assert (
+                    services.schedules.get(schedule_id).last_invocation_id == handle.invocation_id
+                )
+    finally:
+        services.close()
 
 
 @pytest.mark.asyncio

@@ -10,6 +10,7 @@ from open_workflow_agent.errors import (
     WorkflowExecutionError,
 )
 from open_workflow_agent.persistence import ExecutionHandle
+from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.workflow import WorkflowPlan
 
 from .agent import LangGraphAgentFactory
@@ -81,6 +82,11 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             else:
                 result = self._record_result(invocation, status="completed", output=output)
             return result
+        except TimerSuspension:
+            if invocation.status == "running":
+                self.services.invocations.update(invocation, status="waiting")
+            result = self._stored_result(invocation)
+            return result
         except InvocationCancelled as exc:
             result = self._record_result(invocation, status="cancelled", error=exc.as_dict())
             return result
@@ -138,6 +144,11 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 else self._record_result(handle, status="completed", output=output)
             )
             return result
+        except TimerSuspension:
+            if handle.status == "running":
+                self.services.invocations.update(handle, status="waiting")
+            result = self._stored_result(handle)
+            return result
         except InvocationCancelled as exc:
             result = self._record_result(handle, status="cancelled", error=exc.as_dict())
             return result
@@ -173,6 +184,20 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 effect_journal=self.services.effect_journal,
             )
         return workflow_input
+
+    async def _scheduled_native_state_exists(
+        self, handle: ExecutionHandle, plan: WorkflowPlan
+    ) -> bool:
+        if not self.native.task_nodes_available:
+            if LANGGRAPH_AVAILABLE:
+                raise InvocationStateError("native scheduled execution storage is unavailable")
+            return False
+        return await self.native.scheduled_state_exists(
+            plan,
+            handle.invocation_id,
+            self.services.invocations.read_input(handle),
+            self.services.effect_journal,
+        )
 
 
 __all__ = ["LangGraphWorkflowEngine"]

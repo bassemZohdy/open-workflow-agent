@@ -172,9 +172,15 @@ async def test_child_invocation_dependency_reconciles_before_parent_recovery(
         assert child is not None and child.status == (
             "faulted" if outcome == "fault" else "completed"
         )
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await running
+        if point == "waiting":
+            acknowledged = await asyncio.wait_for(asyncio.shield(running), timeout=20)
+            assert acknowledged.status == "waiting", acknowledged.error
+            assert handle.invocation_id not in engine._active
+            assert handle._execution_lease is None
+        else:
+            running.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await running
     finally:
         running.cancel()
         await asyncio.gather(running, return_exceptions=True)
@@ -245,9 +251,10 @@ async def test_child_invocation_dependency_reconciles_before_parent_recovery(
         )
     elif damage == "old-binding":
         rows = connection.execute(
-            "SELECT identity FROM workflow_effect_invocations WHERE invocation_id = ?",
+            "SELECT identity,payload FROM workflow_effect_invocations WHERE invocation_id = ?",
             (handle.invocation_id,),
         ).fetchall()
+        rows = [row for row in rows if json.loads(row[1])["operation"] == "run:workflow"]
         assert len(rows) == 1
         payload = json.loads(
             connection.execute(

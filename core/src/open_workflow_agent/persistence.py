@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import math
+import time
 import uuid
 from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
@@ -17,6 +20,8 @@ from .errors import (
 from .expressions import validate_expression_data
 from .lifecycle import TERMINAL_INVOCATION_STATES, VALID_INVOCATION_TRANSITIONS
 from .storage import StorageConnection, open_storage
+
+_UNBOUND_INPUT = object()
 
 if TYPE_CHECKING:
     from .ownership import ExecutionLease
@@ -103,6 +108,10 @@ class InvocationStore:
             """CREATE TABLE IF NOT EXISTS invocation_inputs (
             invocation_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL, payload TEXT NOT NULL)"""
         )
+        self.connection.execute(
+            "CREATE TABLE IF NOT EXISTS invocation_terminal_times "
+            "(invocation_id TEXT PRIMARY KEY, payload TEXT NOT NULL)"
+        )
         self.connection.commit()
 
     def bind_input(self, handle: ExecutionHandle, input_data: Any) -> Any:
@@ -165,6 +174,45 @@ class InvocationStore:
         parent_task_reference: str | None = None,
         owner_principal: str | None = None,
     ) -> ExecutionHandle:
+        handle = self.create_in_transaction(
+            self.connection,
+            engine=engine,
+            session_id=session_id,
+            user_id=user_id,
+            workflow_name=workflow_name,
+            workflow_version=workflow_version,
+            workflow_fingerprint=workflow_fingerprint,
+            parent_invocation_id=parent_invocation_id,
+            parent_task_reference=parent_task_reference,
+            owner_principal=owner_principal,
+        )
+        self.connection.commit()
+        return handle
+
+    def create_in_transaction(
+        self,
+        connection: StorageConnection,
+        *,
+        engine: str,
+        session_id: str | None,
+        user_id: str | None,
+        workflow_name: str,
+        workflow_version: str,
+        workflow_fingerprint: str,
+        parent_invocation_id: str | None = None,
+        parent_task_reference: str | None = None,
+        owner_principal: str | None = None,
+        input_data: Any = _UNBOUND_INPUT,
+    ) -> ExecutionHandle:
+        """Insert common identity/input as a participant; the caller owns commit.
+
+        Schedule slots and event trigger cycles use the same handle encoding
+        and input binding as ordinary invocations. No engine state is inserted.
+        """
+        encoded_input: str | None = None
+        if input_data is not _UNBOUND_INPUT:
+            validate_expression_data(input_data)
+            encoded_input = json.dumps(input_data, ensure_ascii=False, allow_nan=False)
         handle = ExecutionHandle(
             invocation_id=str(uuid.uuid4()),
             engine=engine,
@@ -179,11 +227,16 @@ class InvocationStore:
             owner_principal=owner_principal,
         )
         encoded = _encode_handle(handle)
-        self.connection.execute(
+        connection.execute(
             "INSERT INTO invocations(invocation_id, payload, status) VALUES (?, ?, ?)",
             (handle.invocation_id, encoded, handle.status),
         )
-        self.connection.commit()
+        if encoded_input is not None:
+            connection.execute(
+                "INSERT INTO invocation_inputs(invocation_id, fingerprint, payload) "
+                "VALUES (?, ?, ?)",
+                (handle.invocation_id, handle.workflow_fingerprint, encoded_input),
+            )
         handle._persisted_payload = encoded
         return handle
 
@@ -218,7 +271,9 @@ class InvocationStore:
         handle._persisted_payload = current._persisted_payload
         return handle
 
-    def update(self, handle: ExecutionHandle, **changes: Any) -> ExecutionHandle:
+    def update(
+        self, handle: ExecutionHandle, *, completed_at: float | None = None, **changes: Any
+    ) -> ExecutionHandle:
         expected = handle._persisted_payload
         if expected is None:
             raise InvocationStateError("invocation handle must be loaded before writing")
@@ -277,9 +332,22 @@ class InvocationStore:
                     # lock until commit, including evaluation of this guard.
                     statement += f" AND EXISTS ({guard})"
                     parameters = (*parameters, *owner_parameters)
-            updated = self.connection.execute(statement, parameters)
-            if updated.rowcount != 1:
-                raise InvocationStateConflict("invocation state has changed; reload before retry")
+
+            def write() -> None:
+                updated = self.connection.execute(statement, parameters)
+                if updated.rowcount != 1:
+                    raise InvocationStateConflict(
+                        "invocation state has changed; reload before retry"
+                    )
+                if candidate.status in TERMINAL_INVOCATION_STATES:
+                    self._record_terminal_time(candidate, encoded, completed_at)
+
+            if self.connection.is_postgresql and candidate.status in TERMINAL_INVOCATION_STATES:
+                # The owner/CAS update and completion timestamp share one commit.
+                with self.connection.raw.transaction():
+                    write()
+            else:
+                write()
             self.connection.commit()
         except InvocationStateConflict:
             try:
@@ -297,6 +365,70 @@ class InvocationStore:
             setattr(handle, key, value)
         handle._persisted_payload = encoded
         return handle
+
+    def _record_terminal_time(
+        self, handle: ExecutionHandle, snapshot: str, completed_at: float | None
+    ) -> None:
+        instant = time.time() if completed_at is None else completed_at
+        if isinstance(instant, bool) or not math.isfinite(instant) or instant <= 0:
+            raise InvocationStateError("terminal completion timestamp is invalid")
+        payload = json.dumps(
+            {
+                "profile": "owa/terminal-time/v1",
+                "fingerprint": handle.workflow_fingerprint,
+                "status": handle.status,
+                "completed_at": instant,
+                "snapshot_digest": hashlib.sha256(snapshot.encode()).hexdigest(),
+            },
+            sort_keys=True,
+            allow_nan=False,
+        )
+        existing = self.connection.execute(
+            "SELECT payload FROM invocation_terminal_times WHERE invocation_id=?",
+            (handle.invocation_id,),
+        ).fetchone()
+        if existing is not None and existing[0] != payload:
+            raise InvocationStateConflict("terminal completion timestamp already disagrees")
+        self.connection.execute(
+            "INSERT INTO invocation_terminal_times(invocation_id,payload) VALUES (?, ?) "
+            "ON CONFLICT(invocation_id) DO NOTHING",
+            (handle.invocation_id, payload),
+        )
+
+    def terminal_completed_at(self, handle: ExecutionHandle) -> float:
+        """Read the original terminal instant bound to the immutable common snapshot."""
+        try:
+            current = self.get(handle.invocation_id)
+            if current is None or current.status not in TERMINAL_INVOCATION_STATES:
+                raise ValueError("invocation is not terminal")
+            _verify_identity(handle, _public_fields(current))
+            row = self.connection.execute(
+                "SELECT payload FROM invocation_terminal_times WHERE invocation_id=?",
+                (handle.invocation_id,),
+            ).fetchone()
+            if row is None or current._persisted_payload is None:
+                raise ValueError("terminal timestamp is absent")
+            value = json.loads(row[0])
+            instant = value["completed_at"]
+            if (
+                set(value)
+                != {"profile", "fingerprint", "status", "completed_at", "snapshot_digest"}
+                or value["profile"] != "owa/terminal-time/v1"
+                or value["fingerprint"] != current.workflow_fingerprint
+                or value["status"] != current.status
+                or value["snapshot_digest"]
+                != hashlib.sha256(current._persisted_payload.encode()).hexdigest()
+                or isinstance(instant, bool)
+                or not isinstance(instant, (int, float))
+                or not math.isfinite(instant)
+                or instant <= 0
+            ):
+                raise ValueError("terminal timestamp disagrees")
+            return float(instant)
+        except Exception:
+            raise WorkflowExecutionError(
+                "terminal completion time is unavailable or inconsistent"
+            ) from None
 
     def verify_fingerprint(self, handle: ExecutionHandle, fingerprint: str) -> None:
         if handle.workflow_fingerprint != fingerprint:

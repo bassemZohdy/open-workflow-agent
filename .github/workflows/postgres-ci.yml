@@ -24,6 +24,12 @@ on:
       - "core/src/open_workflow_agent/event_matching.py"
       - "core/src/open_workflow_agent/_effect_storage.py"
       - "core/src/open_workflow_agent/scheduling.py"
+      - "core/src/open_workflow_agent/timers.py"
+      - "core/src/open_workflow_agent/timer_dispatcher.py"
+      - "core/src/open_workflow_agent/schedule_profile.py"
+      - "core/src/open_workflow_agent/_schedule_store.py"
+      - "core/src/open_workflow_agent/_schedule_storage.py"
+      - "core/src/open_workflow_agent/_event_triggers.py"
       - "engines/adk/src/open_workflow_agent_adk/__init__.py"
       - "engines/adk/src/open_workflow_agent_adk/native.py"
       - "engines/langgraph/src/open_workflow_agent_langgraph/__init__.py"
@@ -70,6 +76,16 @@ on:
       - "tests/contract/test_durable_events.py"
       - "tests/contract/test_durable_event_process_recovery.py"
       - "tests/contract/_durable_event_recovery_worker.py"
+      - "tests/contract/test_durable_timers.py"
+      - "tests/contract/test_durable_timer_forks.py"
+      - "tests/contract/test_durable_timer_process_recovery.py"
+      - "tests/contract/_durable_timer_recovery_worker.py"
+      - "tests/contract/test_durable_scheduling.py"
+      - "tests/contract/test_schedule_event_triggers.py"
+      - "tests/core/test_timer_store.py"
+      - "tests/core/test_timer_dispatcher_ownership.py"
+      - "tests/core/test_schedule_store.py"
+      - "tests/core/test_event_triggers.py"
       - "tests/core/test_event_store.py"
       - "tests/core/test_durable_event_api.py"
       - "tests/core/test_durable_event_approvals.py"
@@ -143,6 +159,10 @@ jobs:
             tests/core/test_event_store.py \
             tests/core/test_durable_event_api.py \
             tests/core/test_durable_event_approvals.py \
+            tests/core/test_timer_store.py \
+            tests/core/test_timer_dispatcher_ownership.py \
+            tests/core/test_schedule_store.py \
+            tests/core/test_event_triggers.py \
             tests/core/test_execution_ownership.py tests/core/test_execution_ownership_fences.py \
             tests/core/test_action_progress_ownership.py -vv --durations=20
       - name: Verify native LangGraph task checkpoints and interrupted restart
@@ -184,6 +204,11 @@ jobs:
             ../../tests/contract/test_timing_process_recovery.py \
             ../../tests/contract/test_durable_events.py \
             ../../tests/contract/test_durable_event_process_recovery.py \
+            ../../tests/contract/test_durable_timers.py \
+            ../../tests/contract/test_durable_timer_forks.py \
+            ../../tests/contract/test_durable_timer_process_recovery.py \
+            ../../tests/contract/test_durable_scheduling.py \
+            ../../tests/contract/test_schedule_event_triggers.py \
             ../../tests/contract/test_process_crash_recovery.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
@@ -219,6 +244,11 @@ jobs:
             ../../tests/contract/test_timing_process_recovery.py \
             ../../tests/contract/test_durable_events.py \
             ../../tests/contract/test_durable_event_process_recovery.py \
+            ../../tests/contract/test_durable_timers.py \
+            ../../tests/contract/test_durable_timer_forks.py \
+            ../../tests/contract/test_durable_timer_process_recovery.py \
+            ../../tests/contract/test_durable_scheduling.py \
+            ../../tests/contract/test_schedule_event_triggers.py \
             -k 'postgresql and adk' -vv --durations=20
       - name: Verify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL
         env:

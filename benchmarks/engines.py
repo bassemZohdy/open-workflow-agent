@@ -104,14 +104,6 @@ def _database_size(path: str) -> int:
     return candidate.stat().st_size if candidate.is_file() else 0
 
 
-async def _wait_for_waiting(handle: Any) -> None:
-    for _ in range(400):
-        if handle.status == "waiting":
-            return
-        await asyncio.sleep(0.005)
-    raise RuntimeError("resume benchmark did not reach a waiting task")
-
-
 async def _resume_probe(
     engine_name: str,
     engine_type: type[Any],
@@ -129,15 +121,17 @@ async def _resume_probe(
     first_services.tools.protocols = first_services.protocols
     first_engine = engine_type()
     await first_engine.initialize(first_services)
+    # Native receipt persistence can outlast this short wait. Keep the
+    # interruption probe deterministic; latency measurements use perf_counter.
+    first_engine.executor._absolute_clock = lambda: 1000.0
+    if first_engine._timer_dispatcher is not None:
+        await first_engine._timer_dispatcher.stop()
     plan = compile_workflow(RESUME_WORKFLOW)
     handle = _handle(first_services, engine_name, plan)
-    running = asyncio.create_task(first_engine.invoke(plan, handle, {}))
-    await _wait_for_waiting(handle)
-    running.cancel()
     try:
-        await running
-    except asyncio.CancelledError:
-        pass
+        waiting = await asyncio.wait_for(first_engine.invoke(plan, handle, {}), timeout=10)
+        if waiting.status != "waiting" or handle._execution_lease is not None:
+            raise RuntimeError("resume benchmark did not acknowledge a suspended invocation")
     finally:
         await first_engine.shutdown()
         first_services.close()
@@ -149,6 +143,9 @@ async def _resume_probe(
     restarted_services.tools.protocols = restarted_services.protocols
     restarted_engine = engine_type()
     await restarted_engine.initialize(restarted_services)
+    restarted_engine.executor._absolute_clock = lambda: 1000.0
+    if restarted_engine._timer_dispatcher is not None:
+        await restarted_engine._timer_dispatcher.stop()
     persisted = restarted_services.invocations.get(handle.invocation_id)
     if persisted is None:
         raise RuntimeError("resume benchmark lost common invocation metadata")

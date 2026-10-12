@@ -44386,7 +44386,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A101",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -44415,7 +44415,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A102",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -49305,7 +49305,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS025",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -49364,7 +49364,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS027",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -68705,8 +68705,15 @@
         "module": "M06",
         "description": "Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.",
         "effort": "L",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "In progress",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "status": "Implementation in progress; not qualified",
+          "finite_acceptance": "docs/s2-06-timer-schedule-acceptance.md",
+          "scope": "Durable nonresident timers and complete interval/completion/cron/event-trigger scheduling; immutable identities, trusted scope, atomic claims and invocation binding. Native checkpoints remain SDK-owned.",
+          "verified_preparation": "Actual ADK RequestInput and LangGraph interrupt/reentry probes; scheduling duplicate-claim negative probe; 15 focused calendar/admission cases. No full timer/scheduler claim follows.",
+          "remaining": "Common timer storage/poller and runtime integration, all finite behavioral/process/SQLite/PostgreSQL cases, full frozen suites, quality/distributions/schema and exact configured gates."
+        }
       },
       {
         "id": "S2-07",
