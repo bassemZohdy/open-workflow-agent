@@ -1,44 +1,39 @@
 # S2-03 recovery acceptance
 
-The implementation baseline is `e39a7c042bd16e92fe760675855504afbeb510c3`.
-Its acceptance artifact is `29c681d6f9759d70c93b7a20e99e2313a82102f7`.
-This audit checks the scoped task in [TODO.md](../TODO.md) against
-[Project Definition.md](../Project%20Definition.md), sections 10–12 and 26,
-and the repository constraints. It does not close the remaining backlog or
-promote the full proposed criteria in the feature tracker.
+The runtime baseline is `e39a7c042bd16e92fe760675855504afbeb510c3`; the process-stop fixture correction is
+`d2d5934e9e38c666ef76172e3a9fc14db5c6e60c`. Final acceptance is
+`ddd194ec990b1d0239cec3eaa88f2fa50d874bf7`. This audit checks the scoped
+task against [Project Definition.md](../Project%20Definition.md), sections
+10–12 and 26, and repository constraints.
 
-Current decision: **pending Windows push follow-up**. PR CI `38185162994`
-succeeds, as do the other five configured runs. Push CI `38185159483` is
-cancelled at its ten-minute Windows job limit; its log records two process-stop
-failures before cancellation (terminal-null ownership loss, terminal-fault
-marker with a still-running record). The push run is not qualified as successful,
-despite its other jobs passing. PostgreSQL run `38185163003` passes 119 store checks, 10 native
-LangGraph checks (eight skips), 223 shared LangGraph, 189 shared ADK and 147
-optional bridge checks (seven skips), plus both runtime images. Logs confirm all
-seventeen child-dependency cases per adapter and the PostgreSQL atomic rollback
-case actually execute and pass. Security, docs, external sandbox and optional
-Agent Framework jobs also succeed for the current artifact.
+Current decision: **verified**. All seven configured runs succeed: push CI
+`38186556635`, PR CI `38186559193`, PostgreSQL `38186559187`, optional
+Agent Framework `38186559206`, security `38186559195`, external sandbox
+`38186559202` and docs `38186559212`. Both push and PR Windows suites,
+native benchmarks and image stop/restart/resume steps pass. PostgreSQL
+terminal logs prove the required fixture selections and atomic rollback test
+actually execute. All six dependency reports have no nested advisory entries.
 
-The follow-up requires the worker's terminal marker to observe the expected
-committed outcome. Its shortened test lease is five seconds rather than two,
-so cold synchronous SDK/jq work on a busy runner can reach the intended boundary;
-the runtime's production lease is unchanged. The Windows job remains bounded at
-twenty minutes to accommodate its expanded root/native suite. Local process-stop
-checks pass eight cases per principal SDK, with 24 dependency/PostgreSQL skips
-per environment. Fresh configured validation of this fixture change is required.
+Historical artifact `29c681d` remains incomplete: its push Windows job was
+cancelled after two process-boundary failures. The follow-up verifies the
+committed expected terminal outcome, uses a five-second test lease and a
+bounded twenty-minute Windows job; production ownership is unchanged.
+The corrected eight process-stop cases pass locally per principal SDK and in
+current configured suites. This completion does not close later backlog work
+or promote full proposed/JavaScript criteria.
 
 | Requirement | Implementation and behavioral evidence | Qualification |
 | --- | --- | --- |
-| Common public invocation identity and fingerprint; reject another engine or changed definition | [Common engine](../core/src/open_workflow_agent/engine.py), [invocation storage](../core/src/open_workflow_agent/persistence.py); [recovery admission](../tests/contract/test_recovery_admission.py) and [execution ownership](../tests/contract/test_runtime_execution_ownership.py) exercise rejection before dispatch or invocation mutation. | Current local root/native suites pass; current configured jobs pending. |
-| Original workflow input remains distinct from resume input; preserve JSON null, false, zero and empty values | [Recovery fixtures](../tests/contract/test_checkpoint_recovery.py) reopen services/engines and check original input, resume value, context and duplicate terminal resume. Shared-session cases in recovery admission preserve each invocation's input independently. | Identical SQLite/PostgreSQL cases; local SQLite passes, configured PostgreSQL passes. |
-| Terminal common outcome survives interruption before adapter finalization | Recovery fixtures cover explicit null and known completed/faulted outcomes without another action; [forced process-stop fixtures](../tests/contract/test_process_crash_recovery.py) kill the actual worker at terminal and receipt boundaries. | Local forced-stop cases pass; current PostgreSQL and image restart acceptance pending. |
-| Native formats/checkpoints stay owned by their adapters; inconsistent state fails admission | [LangGraph state corruption](../tests/contract/test_native_state_consistency.py), [ADK input-event consistency](../tests/contract/test_adk_native_event_consistency.py), [completed scope dependencies](../tests/contract/test_native_scope_dependencies.py) and [native receipt dependencies](../tests/contract/test_native_receipt_consistency.py) mutate actual SDK storage. Public native identifiers and an execution plan are not exposed. | Both independent SDK suites pass; configured corrupt-state cases pass. |
-| Common intent/outcome records agree with native progress; known value/null/fault outcomes do not dispatch twice | [Leaf-action recovery](../tests/contract/test_effect_recovery.py), [sandbox recovery](../tests/contract/test_sandbox_effect_recovery.py), [event/child recovery](../tests/contract/test_event_child_effect_recovery.py) and [waiting-fork receipts](../tests/contract/test_native_receipt_fork_consistency.py) verify call counts, original outcomes, changed requests and uncertain intents. | Current local suites pass; current configured cases pass. Event acknowledgements are not durable delivery. |
-| Child terminal records/input and admitted descendant actions reconcile before parent state changes, including before a native task checkpoint | [Child dependency fixture](../tests/contract/test_child_invocation_dependencies.py) verifies clean value/null/fault results and rejects deleted/changed records, input, execution references, descendant receipts and index metadata with unchanged parent payload and one dispatch. [Common effects](../core/src/open_workflow_agent/effects.py) own the identity index and bindings. | Focus passes 77/74 in each principal environment. All seventeen configured PostgreSQL cases per adapter execute and pass. |
-| Index and intent admission are atomic; previous non-child receipt digests remain valid | [Journal tests](../tests/core/test_effect_journal.py) inject a failed second write and assert both records roll back, check scoped reconciliation, and compare the prior receipt digest format. The PostgreSQL rollback case is in the actual configured store command. | SQLite, compatibility and actual configured PostgreSQL rollback checks pass. Older unbound child receipts require explicit recovery. |
-| Expiring ownership prevents concurrent/stale admission, common writes and native checkpoint commits | [Runtime ownership](../tests/contract/test_runtime_execution_ownership.py), [action authority](../tests/contract/test_action_execution_authority.py), [native fencing](../tests/contract/test_native_checkpoint_fencing.py) and process-stop cases test expiry, takeover, cancellation and resource draining. Container acceptance uses production lease expiry. | Local suites pass; configured ownership/fencing passes; final main CI image checks pending. |
-| Principal-engine portability uses identical deterministic fixtures on both common backends | ADK and LangGraph execute the same shared fixtures with the same expected results. [Selection guards](../tests/ci/test_postgres_recovery_selection.py) inspect the actual CI expressions through pytest collection: nine scope, eighteen sandbox, twenty event/child and seventeen child-dependency cases per principal adapter. | Seven collection guards pass. Native environments remain independent. Required PostgreSQL cases are confirmed in terminal logs. |
-| Current source passes quality, build and deployment regression checks | Frozen full suites: root 1,664/621, ADK 918/494, LangGraph 960/467, optional Agent Framework 1,208/703, each with three tracked expected failures; root coverage 91.67%. Formatting, lint, strict 66-source and fixture/CI typing, five wheel/sdist builds, current Python/pinned-schema wheel bytes, audit integrity and documentation links pass. | Current Windows, both main CI image/benchmark steps, PostgreSQL images and six nested dependency reports remain to qualify. |
+| Common public invocation identity and fingerprint; reject another engine or changed definition | [Common engine](../core/src/open_workflow_agent/engine.py), [invocation storage](../core/src/open_workflow_agent/persistence.py); [recovery admission](../tests/contract/test_recovery_admission.py) and [execution ownership](../tests/contract/test_runtime_execution_ownership.py) exercise rejection before dispatch or invocation mutation. | Verified at `ddd194e`; current local and configured evidence pass. |
+| Original workflow input remains distinct from resume input; preserve JSON null, false, zero and empty values | [Recovery fixtures](../tests/contract/test_checkpoint_recovery.py) reopen services/engines and check original input, resume value, context and duplicate terminal resume. Shared-session cases in recovery admission preserve each invocation's input independently. | Verified at `ddd194e`; current local and configured evidence pass. |
+| Terminal common outcome survives interruption before adapter finalization | Recovery fixtures cover explicit null and known completed/faulted outcomes without another action; [forced process-stop fixtures](../tests/contract/test_process_crash_recovery.py) kill the actual worker at terminal and receipt boundaries. | Verified at `ddd194e`; current local and configured evidence pass. |
+| Native formats/checkpoints stay owned by their adapters; inconsistent state fails admission | [LangGraph state corruption](../tests/contract/test_native_state_consistency.py), [ADK input-event consistency](../tests/contract/test_adk_native_event_consistency.py), [completed scope dependencies](../tests/contract/test_native_scope_dependencies.py) and [native receipt dependencies](../tests/contract/test_native_receipt_consistency.py) mutate actual SDK storage. Checkpoint formats stay private and adapter-owned; the internal execution plan is not exposed. | Verified at `ddd194e`; current local and configured evidence pass. |
+| Common intent/outcome records agree with native progress; known value/null/fault outcomes do not dispatch twice | [Leaf-action recovery](../tests/contract/test_effect_recovery.py), [sandbox recovery](../tests/contract/test_sandbox_effect_recovery.py), [event/child recovery](../tests/contract/test_event_child_effect_recovery.py) and [waiting-fork receipts](../tests/contract/test_native_receipt_fork_consistency.py) verify call counts, original outcomes, changed requests and uncertain intents. | Verified at `ddd194e`; current local and configured evidence pass. |
+| Child terminal records/input and admitted descendant actions reconcile before parent state changes, including before a native task checkpoint | [Child dependency fixture](../tests/contract/test_child_invocation_dependencies.py) verifies clean value/null/fault results and rejects deleted/changed records, input, execution references, descendant receipts and index metadata with unchanged parent payload and one dispatch. [Common effects](../core/src/open_workflow_agent/effects.py) own the identity index and bindings. | Verified at `ddd194e`; current local and configured evidence pass. |
+| Index and intent admission are atomic; previous non-child receipt digests remain valid | [Journal tests](../tests/core/test_effect_journal.py) inject a failed second write and assert both records roll back, check scoped reconciliation, and compare the prior receipt digest format. The PostgreSQL rollback case is in the actual configured store command. | Verified at `ddd194e`; current local and configured evidence pass. |
+| Expiring ownership prevents concurrent/stale admission, common writes and native checkpoint commits | [Runtime ownership](../tests/contract/test_runtime_execution_ownership.py), [action authority](../tests/contract/test_action_execution_authority.py), [native fencing](../tests/contract/test_native_checkpoint_fencing.py) and process-stop cases test expiry, takeover, cancellation and resource draining. Container acceptance uses production lease expiry. | Verified at `ddd194e`; current local and configured evidence pass. |
+| Principal-engine portability uses identical deterministic fixtures on both common backends | ADK and LangGraph execute the same shared fixtures with the same expected results. [Selection guards](../tests/ci/test_postgres_recovery_selection.py) inspect the actual CI expressions through pytest collection: nine scope, eighteen sandbox, twenty event/child and seventeen child-dependency cases per principal adapter. | Verified at `ddd194e`; current local and configured evidence pass. |
+| Current source passes quality, build and deployment regression checks | Frozen full suites: root 1,664/621, ADK 918/494, LangGraph 960/467, optional Agent Framework 1,208/703, each with three tracked expected failures; root coverage 91.67%. Formatting, lint, strict 66-source and fixture/CI typing, five wheel/sdist builds, current Python/pinned-schema wheel bytes, audit integrity and documentation links pass. | Verified at `ddd194e`; current local and configured evidence pass. |
 
 ## Ownership of remaining feature work
 

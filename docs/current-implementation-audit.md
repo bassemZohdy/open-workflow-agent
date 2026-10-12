@@ -9,7 +9,7 @@ remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
 The reviewed implementation is
-`e61c6a5`, which retains the verified fork, original-input, terminal-record,
+`e39a7c0` (fixture correction `d2d5934`), which retains the verified fork, original-input, terminal-record,
 leaf-call and conditional common write corrections. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
@@ -100,8 +100,9 @@ native task progress stores a receipt link. Missing or changed child records,
 input, execution references, descendant receipts and index metadata now reject
 recovery before parent mutation or dispatch. Both focused principal suites pass
 77/74; storage/selection checks pass 52/9. The same deletion assertions fail on
-exact archived `5506277` source. Fresh full/configured acceptance and the final
-S2-03 requirement audit remain pending. Neither old child-receipt migration nor
+exact archived `5506277` source. Full local and all seven configured gates pass
+at acceptance artifact `ddd194e`; all ten scoped
+[S2-03 requirements](s2-03-recovery-acceptance.md) are verified. Neither old child-receipt migration nor
 general pending-intent resolution is implied.
 
 Earlier competitive runtime, fixture/audit and all three common PostgreSQL
@@ -109,7 +110,7 @@ gates passed at `2fbe548`, `51c204e` and `81d27b3`. The JSON null wake-up fix al
 passed every exact gate at `f2943c6`. Original-input and terminal recovery passed
 all exact gates at `6840605`; private journal storage passed at `d197fa1`.
 See [competitive acceptance](../PROJECT.md#s2-02-competitive-fork-decisions--2026-10-11-verified)
-and [recovery progress](../PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
+and [recovery progress](../PROJECT.md#s2-03-checkpoint-recovery--2026-10-12-verified).
 Hashes of reviewed Git file contents preserve the evidence baseline. The
 manifest's `previous_reviews` retains the earlier S1-08 acceptance and points
 to its immutable artifact. Historical green gates do not qualify changed code.
@@ -154,8 +155,8 @@ not be read as current delivery status.
 | --- | --- | --- |
 | Ordered fork output and collisions | Ordered branch arrays, isolated exports, explicit jq aggregation and failure cleanup pass shared fixtures. SQLite/PostgreSQL native fork restart and exact runtime GitHub gates pass; additional shared output restart passes every adapter | S2-01 verified; full criteria remain S4-03/S4-04 |
 | Competitive fork durability | First observed completion, cancellation intents and distinct occurrence identity are persisted. SQLite/PostgreSQL replay preserves values/null/fault/end and repeated occurrences without branch calls on both principal adapters and the optional common bridge. All exact acceptance gates passed. External-action reconciliation/compensation is not established | S2-02 verified; general effects S2-03/S2-08; full criteria S4-03/S4-04 |
-| Native checkpoint recovery | Original input, resume values, terminal outcomes and leaf-call receipts have bounded SQLite/PostgreSQL acceptance. Runtime admission, common/native transaction fencing and action/fork guards pass native, Windows and PostgreSQL fixtures; both main CI images pass actual lease-expiry recovery. Selected root/nested LangGraph snapshot checks pass local regression and await configured acceptance. Full native/common consistency, broader effects and legacy migration remain open | S2-03 in progress; migration S2-09 |
-| Action idempotency and compensation | A080 is partial: selected call receipts prevent completed replay and block uncertain actions. A079 remains unimplemented: no compensation/saga state machine exists. Run/event/child effects, redrive, ambiguous outcome resolution, full process-crash criteria and exactly-once external actions remain unqualified | S2-03, S2-08; full criteria S4-03/S4-04 |
+| Native checkpoint recovery | Invocation/input/terminal outcomes, SDK state/routing/scope consistency, action/child dependencies, atomic admission and ownership fencing pass identical SQLite/PostgreSQL assertions, forced process-stop, Windows and both actual runtime images. The finite recovery audit passes all configured gates at `ddd194e`; legacy/version migration and later full criteria retain their owners | S2-03 verified; migration S2-09; full criteria S4-03/S4-04 |
+| Action idempotency and compensation | A080 is partial: selected call receipts prevent completed replay and block uncertain actions. A079 remains unimplemented: no compensation/saga state machine exists. Known sandbox/event/child outcomes and pre-admission descendant reconciliation pass S2-03. Redrive, ambiguous outcome resolution, compensation and exactly-once external actions remain unqualified | S2-08; full criteria S4-03/S4-04 |
 | Retry and timeout declarations | Predicates/count/basic backoff work; jitter and duration limits are inert, and original deadlines are not persisted | S2-04 |
 | Events and timers | Active process-local listeners and persisted after/every schedules exist; durable general inbox/outbox/timers/correlation/cron/on are missing. Explicit null event data is omitted | S2-05, S2-06 |
 | Child workflow recovery | Synchronous child invocation/parent identity exists; recursive budgets, asynchronous children, durable cancellation and compatible version migration remain missing | S2-07, S2-09 |

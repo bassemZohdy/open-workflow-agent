@@ -65063,10 +65063,10 @@
         "module": "M05",
         "description": "Prove native checkpoint recovery and reconcile native state with common invocation/side-effect records.",
         "effort": "L",
-        "status": "In progress",
+        "status": "Complete",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
-        "work_in_progress": {
-          "scope": "Known child outcomes bind the terminal common record, original input, parent identity and original prepared fingerprint/input request. A common identity index is admitted atomically with intents. Read-only pre-admission validation checks associated receipts and descendant child actions even when native task progress has not saved a receipt reference. Missing/changed child records, input, native references, descendant receipts and index metadata reject before parent mutation or dispatch. No native checkpoint or execution plan moves into core. Fresh exact-source configured/remote qualification and final S2-03 requirement audit remain open. Pending intents still require explicit resolution; event inbox/outbox, child scheduling/budgets, compensation, workflow-version migration and full proposed/JavaScript qualification retain later owners. Existing non-child digest formats are preserved; older unbound child outcomes fail closed without a migration guarantee.",
+        "evidence": {
+          "scope": "Native checkpoint recovery and pre-admission reconciliation of invocation, input, known outcomes, child dependencies and execution ownership",
           "fixture": "tests/contract/test_checkpoint_recovery.py::test_fresh_wait_resume_preserves_all_json_inputs",
           "negative_probe": "Before the fix, null timed out on ADK and LangGraph while false passed (2 failed, 2 passed).",
           "local_targeted_verification": "Root and independent native ADK: 31 passed; independent native LangGraph with task checkpoints: 42 passed, 7 database skips; optional Agent Framework: 46 passed.",
@@ -65157,14 +65157,7 @@
               "scope": "Private store composition only; all prior shared recovery and both PostgreSQL images passed. No dispatcher/lease/exactly-once claim."
             }
           },
-          "remaining": [
-            "Reconcile native completion/checkpoint state with common invocation records after interruption.",
-            "Reconcile pending and completed side-effect records with native state during fresh-service recovery.",
-            "Fence recovery ownership and prove missing/inconsistent native checkpoint handling.",
-            "Do not infer compatible migration for legacy rows lacking original-input records.",
-            "Verify crash boundaries and repeated task occurrences on embedded and configured PostgreSQL backends.",
-            "Keep later retry/deadline, durable event/timer, child workflow, compensation and version-migration tasks open."
-          ],
+          "remaining": "S2-03 native/common recovery and reconciliation is verified. Retry/deadlines remain S2-04; inbox/outbox/timers S2-05/S2-06; asynchronous child budgets S2-07; general ambiguous-outcome resolution/compensation S2-08; version/legacy migration S2-09; full proposed/native extensions/history and JavaScript qualification remain Stage 4.",
           "action_dispatch_followup": {
             "status": "Verified selected leaf-call integration at fc53574; full S2-03 remains open",
             "commit": "fc535749561a7f2c03a8b919a3bd5176a07e5f32",
@@ -66822,7 +66815,99 @@
               }
             },
             "remaining": "Fresh Windows/process fixture acceptance and final S2-03 audit are open. Cancelled push acceptance is preserved as incomplete, not all-seven success. Pending resolution and later features retain their owners."
-          }
+          },
+          "final_acceptance": {
+            "artifact_commit": "ddd194ec990b1d0239cec3eaa88f2fa50d874bf7",
+            "runtime_commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+            "fixture_commit": "d2d5934e9e38c666ef76172e3a9fc14db5c6e60c",
+            "result": "All seven configured runs successful; finite S2-03 requirements verified",
+            "requirement_audit": "docs/s2-03-recovery-acceptance.md",
+            "remote_runs": {
+              "38186559212": "success",
+              "38186559195": "success",
+              "38186559206": "success",
+              "38186559202": "success",
+              "38186559187": "success",
+              "38186559193": "success",
+              "38186556635": "success"
+            },
+            "remote_test_summaries": {
+              "push": [
+                "Root quality gates\tTests\t2026-10-12T00:05:41.1804618Z ===== 1668 passed, 617 skipped, 3 xfailed, 2 warnings in 120.60s (0:02:00) =====",
+                "Root quality gates\tShared contract tests\t2026-10-12T00:06:34.6271537Z =========== 763 passed, 542 skipped, 3 xfailed, 2 warnings in 52.39s ===========",
+                "adk native and contract tests\tNative and shared contract tests\t2026-10-12T00:08:59.3895292Z ===== 822 passed, 494 skipped, 3 xfailed, 3 warnings in 128.70s (0:02:08) ======",
+                "adk native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:09:09.4481119Z ======================== 96 passed, 1 warning in 7.89s =========================",
+                "langgraph native and contract tests\tNative and shared contract tests\t2026-10-12T00:09:26.5112036Z ====== 864 passed, 467 skipped, 3 xfailed, 1 warning in 151.51s (0:02:31) ======",
+                "langgraph native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:09:34.1287417Z ============================== 96 passed in 6.38s =============================="
+              ],
+              "pr": [
+                "Root quality gates\tTests\t2026-10-12T00:07:13.3970357Z ===== 1668 passed, 617 skipped, 3 xfailed, 2 warnings in 201.08s (0:03:21) =====",
+                "Root quality gates\tShared contract tests\t2026-10-12T00:08:37.4523364Z ====== 763 passed, 542 skipped, 3 xfailed, 2 warnings in 82.70s (0:01:22) ======",
+                "adk native and contract tests\tNative and shared contract tests\t2026-10-12T00:11:34.5929691Z ===== 822 passed, 494 skipped, 3 xfailed, 3 warnings in 156.09s (0:02:36) ======",
+                "adk native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:11:44.4986249Z ======================== 96 passed, 1 warning in 7.70s =========================",
+                "langgraph native and contract tests\tNative and shared contract tests\t2026-10-12T00:11:21.7488404Z ====== 864 passed, 467 skipped, 3 xfailed, 1 warning in 142.64s (0:02:22) ======",
+                "langgraph native and contract tests\tPortable Profile CTK subset\t2026-10-12T00:11:29.0681520Z ============================== 96 passed in 5.96s =============================="
+              ],
+              "postgres": [
+                "PostgreSQL common-store integration\tRun isolated PostgreSQL store tests\t2026-10-12T00:03:51.0453136Z ============================= 119 passed in 2.28s ==============================",
+                "PostgreSQL common-store integration\tVerify native LangGraph task checkpoints and interrupted restart\t2026-10-12T00:03:59.1161784Z ======================== 10 passed, 8 skipped in 5.27s =========================",
+                "PostgreSQL common-store integration\tVerify competitive fork and invocation recovery on native LangGraph with PostgreSQL\t2026-10-12T00:06:05.6612667Z =============== 223 passed, 631 deselected in 125.46s (0:02:05) ================",
+                "PostgreSQL common-store integration\tVerify competitive fork and invocation recovery on native ADK with PostgreSQL\t2026-10-12T00:09:47.9832894Z ========== 189 passed, 597 deselected, 1 warning in 220.05s (0:03:40) ==========",
+                "PostgreSQL common-store integration\tVerify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL\t2026-10-12T00:11:10.5214269Z ========== 147 passed, 7 skipped, 830 deselected in 75.12s (0:01:15) ==========="
+              ],
+              "af": [
+                "native\tRun native, shared contract, and CTK suites\t2026-10-12T00:06:39.3031483Z ===== 1208 passed, 703 skipped, 3 xfailed, 2 warnings in 183.22s (0:03:03) ====="
+              ]
+            },
+            "postgresql_actual_selection": {
+              "adk": {
+                "child_invocation_dependencies": 17,
+                "event_child_effect_recovery": 20,
+                "sandbox_effect_recovery": 18
+              },
+              "langgraph": {
+                "child_invocation_dependencies": 17,
+                "event_child_effect_recovery": 20,
+                "sandbox_effect_recovery": 18
+              },
+              "agent-framework": {
+                "child_invocation_dependencies": 17,
+                "event_child_effect_recovery": 20,
+                "sandbox_effect_recovery": 18
+              }
+            },
+            "completed_scope_cases_passed": 9,
+            "postgresql_index_intent_atomic_rollback": "Passed",
+            "main_ci_windows_and_both_images": "Success in both push and PR CI",
+            "both_native_benchmarks": "Success in both push and PR CI",
+            "both_postgresql_images": "Success",
+            "security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "known_advisories": 0,
+            "local_frozen_runtime": {
+              "commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+              "root_passed": 1664,
+              "root_skipped": 621,
+              "root_coverage_percent": 91.67,
+              "adk_passed": 918,
+              "adk_skipped": 494,
+              "langgraph_passed": 960,
+              "langgraph_skipped": 467,
+              "optional_agent_framework_passed": 1208,
+              "optional_agent_framework_skipped": 703,
+              "tracked_expected_failures_per_suite": 3
+            },
+            "quality_and_builds": "Formatting, lint, strict package/fixture typing, five package wheel/sdist builds and pinned schema/source wheel bytes verified for frozen runtime; fixture follow-up typing/lint and process tests pass",
+            "remaining_scope": "S2-03 native/common recovery and reconciliation is verified. Retry/deadlines remain S2-04; inbox/outbox/timers S2-05/S2-06; asynchronous child budgets S2-07; general ambiguous-outcome resolution/compensation S2-08; version/legacy migration S2-09; full proposed/native extensions/history and JavaScript qualification remain Stage 4.",
+            "full_conformance": false
+          },
+          "history_note": "Earlier per-commit pending/failure snapshots are preserved; final_acceptance is the current verified decision."
         }
       },
       {

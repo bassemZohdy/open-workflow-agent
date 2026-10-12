@@ -300,7 +300,7 @@ closed storage and failed SQLite commit. The same shared recovery matrix and
 into the configured database gate for both principal adapters and the optional
 common Agent Framework bridge. Local database skips are not database acceptance.
 
-See [current validation](../PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
+See [current validation](../PROJECT.md#s2-03-checkpoint-recovery--2026-10-12-verified).
 General pending effects and complete missing/inconsistent native
 checkpoints remain open in S2-03. Retry/deadline, durable event/timer, child
 workflow, compensation/idempotency and migration retain S2-04 through S2-09.

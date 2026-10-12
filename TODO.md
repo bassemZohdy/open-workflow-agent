@@ -63,7 +63,7 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   common PostgreSQL bindings at `81d27b3`: [fork behavior](docs/workflow-forks.md) and
   [acceptance evidence](PROJECT.md#s2-02-competitive-fork-decisions--2026-10-11-verified).
   General pending effects/compensation and full native/JS/proposed criteria retain later-stage owners.
-- [ ] **S2-03** (L) — Prove native checkpoint recovery and reconcile native state with common invocation/side-effect records.
+- [x] **S2-03** (L) — Prove native checkpoint recovery and reconcile native state with common invocation/side-effect records.
   JSON resume-value preservation is verified at `f2943c6`; original-input and
   terminal-result recovery at `6840605`, and journal storage at `d197fa1`.
   Leaf-call action receipts and corrected dependency validation are verified at
@@ -129,8 +129,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   it is not an all-seven-success artifact. The worker now requires a committed
   terminal marker, uses a five-second test lease and retains production settings;
   the Windows job is bounded at twenty minutes. Process-stop focus passes 8/24
-  per SDK. Fresh configured fixture acceptance and the final S2-03 audit remain open.
-  See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
+  per SDK. Final acceptance at `ddd194e` passes all seven configured runs,
+  both Windows suites, both main and PostgreSQL runtime images and both native
+  benchmarks. All ten scoped [recovery requirements](docs/s2-03-recovery-acceptance.md)
+  are verified; later-stage features retain their owners.
+  See [acceptance evidence](PROJECT.md#s2-03-checkpoint-recovery--2026-10-12-verified).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
 - [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.

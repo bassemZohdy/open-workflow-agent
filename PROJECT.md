@@ -73,7 +73,7 @@ The patched versions are confirmed by the
 [multidict advisory](https://github.com/aio-libs/multidict/security/advisories/GHSA-54p9-h82j-f925)
 and [pypdf release](https://github.com/py-pdf/pypdf/releases/tag/6.19.0).
 
-### S2-03 checkpoint recovery — 2026-10-11 (in progress)
+### S2-03 checkpoint recovery — 2026-10-12 (verified)
 
 Fresh-runtime tests reproduce a common resume defect: a submitted JSON null was
 treated as absent input, leaving a recovered wait asleep. The common lifecycle
@@ -643,7 +643,20 @@ committed common outcome, changes only the test lease from two to five seconds,
 and bounds the growing Windows suite at twenty minutes. Production ownership
 settings remain unchanged. Local actual process-stop fixtures pass 8/24 per
 principal SDK; current root/engine runtime source remains `e39a7c0`.
-Fresh configured fixture acceptance and the final audit remain open.
+Final acceptance at `ddd194e` supersedes that pending follow-up: all seven
+configured runs succeed. Both push/PR Windows suites pass 460 core/458 native
+cases (12/284 skips), and both main CI image restart and native benchmark steps
+pass in each run. Linux core passes 1,668/617/three tracked gaps at 91.69%
+coverage; shared contracts pass 763/542/three gaps. Native ADK passes 822/494
+and LangGraph 864/467, each with three tracked gaps plus 96 CTK cases. Optional
+Agent Framework passes 1,208/703/three gaps. PostgreSQL passes 119 store, 223
+LangGraph, 189 ADK and 147 optional bridge checks (seven optional skips), plus
+both runtime images. Terminal logs confirm seventeen child-dependency, twenty
+event/child and eighteen sandbox cases per adapter, all nine completed-scope
+cases and the actual PostgreSQL atomic rollback test. Six fresh nested dependency
+reports contain zero known advisories. The ten scoped recovery requirements in
+the linked audit are verified, so S2-03 is complete. The earlier cancellation
+and failures remain preserved; S2-04 is the next ready task.
 General pending-effect resolution remains later-stage work.
 Legacy rows without an original-input record
 have no new migration guarantee. Later-stage retry/deadline,
