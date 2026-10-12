@@ -1,7 +1,7 @@
 {
   "format_version": 1,
-  "reviewed_implementation_commit": "29eeb3b783359905dd5768464c67265d55cb6bd2",
-  "acceptance_record_commit": "6f8e95d5bff0f5cd70a1f7047d0ed02ffbeaee1d",
+  "reviewed_implementation_commit": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+  "acceptance_record_commit": "58de90e816a1118252aec507cfd2425f60c2a1bd",
   "purpose": "Exhaustive current implementation audit, not a full conformance certificate or feature completion claim",
   "review_method": "Each semantic construct and schema parent was compared with active admission/execution/native code and existing assertion scope. Missing/inert/mismatched behavior retains explicit owners. Source/API availability and copied material are not runtime proof.",
   "outcome_definitions": {
@@ -2439,6 +2439,1025 @@
       ],
       "provenance": "All production/schema/CI bytes equal full-local a0ee9c0; only descriptor/deadline fixture allowances differ at 29eeb3b, with explicit restored20/0 assertion and additional native qualification",
       "remaining_owners": "Durable events S2-05, timers S2-06, child lifecycle S2-07, compensation/ambiguous resolution S2-08, legacy migration S2-09; full proposed criteria and JavaScript retain Stage 4 owners"
+    },
+    "s2_05_final_acceptance": {
+      "artifact_commit": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+      "runtime_commit": "143d38a44f74bf3d0aa837c48f02d8fe2671fb21",
+      "record": "docs/s2-05-event-acceptance.md",
+      "configured": {
+        "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+        "manifest": "tmp/s2-05-quality-source-manifest-58de90e.json",
+        "frozenInputs": 264,
+        "gates": [
+          {
+            "conclusion": "success",
+            "databaseId": 38201705353,
+            "event": "pull_request",
+            "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+            "status": "completed",
+            "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705353",
+            "workflowName": "PostgreSQL CI"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 38201705287,
+            "event": "pull_request",
+            "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+            "status": "completed",
+            "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705287",
+            "workflowName": "Docs"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 38201705278,
+            "event": "pull_request",
+            "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+            "status": "completed",
+            "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705278",
+            "workflowName": "Security"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 38201705300,
+            "event": "pull_request",
+            "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+            "status": "completed",
+            "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705300",
+            "workflowName": "External Sandbox CI"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 38201705286,
+            "event": "pull_request",
+            "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+            "status": "completed",
+            "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705286",
+            "workflowName": "Agent Framework CI"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 38201705267,
+            "event": "pull_request",
+            "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+            "status": "completed",
+            "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705267",
+            "workflowName": "CI"
+          },
+          {
+            "conclusion": "success",
+            "databaseId": 38201700615,
+            "event": "push",
+            "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+            "status": "completed",
+            "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201700615",
+            "workflowName": "CI"
+          }
+        ],
+        "mainCI": {
+          "push": {
+            "runId": 38201700615,
+            "jobs": [
+              {
+                "id": 114656311838,
+                "name": "Windows jq expression and admission tests",
+                "conclusion": "success"
+              },
+              {
+                "id": 114656311925,
+                "name": "Mutation testing",
+                "conclusion": "success"
+              },
+              {
+                "id": 114656311936,
+                "name": "Root quality gates",
+                "conclusion": "success"
+              },
+              {
+                "id": 114656311976,
+                "name": "Validate deployment manifests",
+                "conclusion": "success"
+              },
+              {
+                "id": 114657165543,
+                "name": "adk native and contract tests",
+                "conclusion": "success"
+              },
+              {
+                "id": 114657165587,
+                "name": "langgraph native and contract tests",
+                "conclusion": "success"
+              },
+              {
+                "id": 114658187853,
+                "name": "Docker langgraph acceptance",
+                "conclusion": "success"
+              },
+              {
+                "id": 114658187901,
+                "name": "Docker adk acceptance",
+                "conclusion": "success"
+              }
+            ],
+            "windows": [
+              {
+                "step": "Verify native jq cleanup, data semantics and shared admission",
+                "passed": 466,
+                "skipped": 12,
+                "actualTerminalLog": "Windows jq expression and admission tests\tVerify native jq cleanup, data semantics and shared admission\t2026-10-12T03:59:33.3667924Z 466 passed, 12 skipped in 206.07s (0:03:26)"
+              },
+              {
+                "step": "Verify native task checkpoints and routing on Windows",
+                "passed": 648,
+                "skipped": 478,
+                "actualTerminalLog": "Windows jq expression and admission tests\tVerify native task checkpoints and routing on Windows\t2026-10-12T04:10:51.8691940Z 648 passed, 478 skipped in 674.87s (0:11:14)"
+              }
+            ],
+            "images": [
+              {
+                "engine": "adk",
+                "jobId": 114658187901,
+                "sizeBytes": 683278054,
+                "executedRequiredAcceptanceSteps": [
+                  {
+                    "name": "Build independent runtime image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Verify image metadata",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Enforce image-size gate",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "External catalog resolver acceptance inside release image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Internal sandbox execution acceptance inside release image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "One-container embedded defaults without configuration or credentials",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Container startup, health, capabilities, invocation, and knowledge",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Container stop, restart, and resume acceptance",
+                    "conclusion": "success"
+                  }
+                ],
+                "downloadedActualLogs": [
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-catalog-image.log",
+                    "sha256": "ac32795bac4631b3fbf3988c41afd98183a241d212dd55332c00a9f7d99193d9",
+                    "ready200": 0,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-container.log",
+                    "sha256": "a1de96e8dab22376d6d64210c92b24c0cf07bf86888bac0116d8214916691b78",
+                    "ready200": 3,
+                    "invoke200": 1,
+                    "capabilities200": 1
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-embedded-restarted.log",
+                    "sha256": "4911cea7297e0e582b8b9e4e9d8093201d852b5921884781804fe54e63a6932c",
+                    "ready200": 1,
+                    "invoke200": 1,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-embedded.log",
+                    "sha256": "e3b9d57e14782791ddd7a54687bc8fdea1050ff45e00a973e6e7ede419622798",
+                    "ready200": 2,
+                    "invoke200": 1,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-resume-restarted.log",
+                    "sha256": "29da0b74fee3690ba8b107ad259e85ce92ffdbc6484531ee20ab155a07984d2e",
+                    "ready200": 2,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-resume.log",
+                    "sha256": "4d0309db429bfd8bb55390fa85c44c99b728e65a711117069b3cad348a22bfbb",
+                    "ready200": 0,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-sandbox-image.log",
+                    "sha256": "de712220e072aebac55dbca23207824a82e5af9d3ab597f81da1ac77e66bcc26",
+                    "ready200": 3,
+                    "invoke200": 2,
+                    "capabilities200": 1
+                  }
+                ]
+              },
+              {
+                "engine": "langgraph",
+                "jobId": 114658187853,
+                "sizeBytes": 623215474,
+                "executedRequiredAcceptanceSteps": [
+                  {
+                    "name": "Build independent runtime image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Verify image metadata",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Enforce image-size gate",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "External catalog resolver acceptance inside release image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Internal sandbox execution acceptance inside release image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "One-container embedded defaults without configuration or credentials",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Container startup, health, capabilities, invocation, and knowledge",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Container stop, restart, and resume acceptance",
+                    "conclusion": "success"
+                  }
+                ],
+                "downloadedActualLogs": [
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-catalog-image.log",
+                    "sha256": "ac32795bac4631b3fbf3988c41afd98183a241d212dd55332c00a9f7d99193d9",
+                    "ready200": 0,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-container.log",
+                    "sha256": "2166c7e46cd0613ad296eff4b430726b5929bb2969ca6f17c29f5ded1227f5e9",
+                    "ready200": 3,
+                    "invoke200": 1,
+                    "capabilities200": 1
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-embedded-restarted.log",
+                    "sha256": "71e197c0efd427e81457157ac800650a83e6c5e530abce0963534433f8370ae0",
+                    "ready200": 1,
+                    "invoke200": 1,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-embedded.log",
+                    "sha256": "f312cd9b3db66d66f18f36446150cd419ededf89ec675a5e5af5af42482c2de4",
+                    "ready200": 1,
+                    "invoke200": 1,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-resume-restarted.log",
+                    "sha256": "b4ceb9d97c7972d9992d10578c23b8c556f21106c39ec77e77f48f173057a35d",
+                    "ready200": 2,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-resume.log",
+                    "sha256": "d4a6774546a158c722009dc807aca8e5c72e55baa5e3df76c581025c4a142027",
+                    "ready200": 0,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-sandbox-image.log",
+                    "sha256": "da4e095a4f6f8e63685fae9858f7fcbfb0567127256f30e79c30e4c16c61807f",
+                    "ready200": 3,
+                    "invoke200": 2,
+                    "capabilities200": 1
+                  }
+                ]
+              }
+            ],
+            "benchmarks": [
+              {
+                "path": "tmp\\ci-58de90e-push-artifacts\\engine-benchmark-adk\\engine-benchmark-adk.json",
+                "sha256": "9e427b2ec8622a93e8ad8c67e62117fd752b0d10de052c9216ee6ee8ca427d2b",
+                "actualResult": {
+                  "concurrency": 4,
+                  "concurrent_seconds_total": 0.20123136500001237,
+                  "concurrent_throughput_per_second": 19.877616990769575,
+                  "engine": "adk",
+                  "engine_compile_seconds_per_iteration": 8.925999964048969e-07,
+                  "engine_compile_seconds_total": 8.92599996404897e-06,
+                  "interruption_resume": {
+                    "operation_ids": [
+                      "1bdc4b9e-a9dd-45d8-8272-27f890b9901f:/do/0/side_effect"
+                    ],
+                    "side_effect_calls": 1,
+                    "status": "completed",
+                    "unique_operation_ids": 1
+                  },
+                  "iterations": 10,
+                  "native_available": true,
+                  "native_checkpoint_bytes_after": 73728,
+                  "native_checkpoint_bytes_before": 0,
+                  "native_checkpoint_bytes_delta": 73728,
+                  "sequential_seconds_per_invocation": 0.04698361940000382,
+                  "sequential_seconds_total": 0.4698361940000382
+                }
+              },
+              {
+                "path": "tmp\\ci-58de90e-push-artifacts\\engine-benchmark-langgraph\\engine-benchmark-langgraph.json",
+                "sha256": "f207897ec6290c0ebb3a9e0a00a5e50ef098492726c827d211f4769d664f56bd",
+                "actualResult": {
+                  "concurrency": 4,
+                  "concurrent_seconds_total": 0.0985760020000157,
+                  "concurrent_throughput_per_second": 40.57782745134422,
+                  "engine": "langgraph",
+                  "engine_compile_seconds_per_iteration": 8.395000008931674e-07,
+                  "engine_compile_seconds_total": 8.395000008931675e-06,
+                  "interruption_resume": {
+                    "operation_ids": [
+                      "01b1b2de-35b3-45c6-91c8-90182113b926:/do/0/side_effect"
+                    ],
+                    "side_effect_calls": 1,
+                    "status": "completed",
+                    "unique_operation_ids": 1
+                  },
+                  "iterations": 10,
+                  "native_available": true,
+                  "native_checkpoint_bytes_after": 221184,
+                  "native_checkpoint_bytes_before": 20480,
+                  "native_checkpoint_bytes_delta": 200704,
+                  "sequential_seconds_per_invocation": 0.02090219149999939,
+                  "sequential_seconds_total": 0.2090219149999939
+                }
+              }
+            ],
+            "qualificationMatrix": {
+              "actualPassedNodes": 64,
+              "perSuite": 16,
+              "suites": [
+                "root",
+                "shared",
+                "nativeADK",
+                "nativeLG"
+              ],
+              "embeddedAPIEventDurable": true,
+              "CloudEventsDurable": false,
+              "nativeBridgeEventDurable": false,
+              "customClaimedDurableDenied": true
+            },
+            "actualImageCapabilityAssertions": "Both images executed explicit API events.durable=true / CloudEvents.durable=false assertion on real HTTP capability response; response body captured by script, mandatory acceptance step success and actual downloaded GET /v1/capabilities200 logs inspected"
+          },
+          "pr": {
+            "runId": 38201705267,
+            "jobs": [
+              {
+                "id": 114660644822,
+                "name": "Validate deployment manifests",
+                "conclusion": "success"
+              },
+              {
+                "id": 114660644451,
+                "name": "Mutation testing",
+                "conclusion": "success"
+              },
+              {
+                "id": 114660644929,
+                "name": "Root quality gates",
+                "conclusion": "success"
+              },
+              {
+                "id": 114660645608,
+                "name": "langgraph native and contract tests",
+                "conclusion": "success"
+              },
+              {
+                "id": 114660645524,
+                "name": "adk native and contract tests",
+                "conclusion": "success"
+              },
+              {
+                "id": 114660645942,
+                "name": "Docker langgraph acceptance",
+                "conclusion": "success"
+              },
+              {
+                "id": 114660646208,
+                "name": "Docker adk acceptance",
+                "conclusion": "success"
+              },
+              {
+                "id": 114660643793,
+                "name": "Windows jq expression and admission tests",
+                "conclusion": "success"
+              }
+            ],
+            "windows": [
+              {
+                "step": "Verify native jq cleanup, data semantics and shared admission",
+                "passed": 466,
+                "skipped": 12,
+                "actualTerminalLog": "Windows jq expression and admission tests\tVerify native jq cleanup, data semantics and shared admission\t2026-10-12T04:19:25.1475836Z 466 passed, 12 skipped in 146.20s (0:02:26)"
+              },
+              {
+                "step": "Verify native task checkpoints and routing on Windows",
+                "passed": 648,
+                "skipped": 478,
+                "actualTerminalLog": "Windows jq expression and admission tests\tVerify native task checkpoints and routing on Windows\t2026-10-12T04:31:41.7348949Z 648 passed, 478 skipped in 733.18s (0:12:13)"
+              }
+            ],
+            "images": [
+              {
+                "engine": "adk",
+                "jobId": 114660646208,
+                "sizeBytes": 683278052,
+                "executedRequiredAcceptanceSteps": [
+                  {
+                    "name": "Build independent runtime image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Verify image metadata",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Enforce image-size gate",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "External catalog resolver acceptance inside release image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Internal sandbox execution acceptance inside release image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "One-container embedded defaults without configuration or credentials",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Container startup, health, capabilities, invocation, and knowledge",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Container stop, restart, and resume acceptance",
+                    "conclusion": "success"
+                  }
+                ],
+                "downloadedActualLogs": [
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-catalog-image.log",
+                    "sha256": "ac32795bac4631b3fbf3988c41afd98183a241d212dd55332c00a9f7d99193d9",
+                    "ready200": 0,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-container.log",
+                    "sha256": "c8f9555173cface1b5e1878c954c02b3bbbabf60acd967ab2d25aac3d36559b8",
+                    "ready200": 2,
+                    "invoke200": 1,
+                    "capabilities200": 1
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-embedded-restarted.log",
+                    "sha256": "bcbae45683707a78509ded6d9c2653eab72897dc3db4eec34ff24024aeda86fa",
+                    "ready200": 1,
+                    "invoke200": 1,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-embedded.log",
+                    "sha256": "5e0c176b09f26369a7a8c1fdea5d40788ec5c1f0f1d45119f1e75bdf4d49ae65",
+                    "ready200": 1,
+                    "invoke200": 1,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-resume-restarted.log",
+                    "sha256": "d6ee37357f49b2af7a3c1d5f2955ac3e00b6b6bce3fad0523a18d92c66664ce2",
+                    "ready200": 2,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-resume.log",
+                    "sha256": "4d0309db429bfd8bb55390fa85c44c99b728e65a711117069b3cad348a22bfbb",
+                    "ready200": 0,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-sandbox-image.log",
+                    "sha256": "1769144d8e7d63ffaa31d842e9a005280b38c93fbfe08caee65e78d88e183303",
+                    "ready200": 3,
+                    "invoke200": 2,
+                    "capabilities200": 1
+                  }
+                ]
+              },
+              {
+                "engine": "langgraph",
+                "jobId": 114660645942,
+                "sizeBytes": 623215474,
+                "executedRequiredAcceptanceSteps": [
+                  {
+                    "name": "Build independent runtime image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Verify image metadata",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Enforce image-size gate",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "External catalog resolver acceptance inside release image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Internal sandbox execution acceptance inside release image",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "One-container embedded defaults without configuration or credentials",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Container startup, health, capabilities, invocation, and knowledge",
+                    "conclusion": "success"
+                  },
+                  {
+                    "name": "Container stop, restart, and resume acceptance",
+                    "conclusion": "success"
+                  }
+                ],
+                "downloadedActualLogs": [
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-catalog-image.log",
+                    "sha256": "ac32795bac4631b3fbf3988c41afd98183a241d212dd55332c00a9f7d99193d9",
+                    "ready200": 0,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-container.log",
+                    "sha256": "f3ab5e747714ae38fa6a15db94ec7ed7e91a842706000caf167c6fc95b90f146",
+                    "ready200": 3,
+                    "invoke200": 1,
+                    "capabilities200": 1
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-embedded-restarted.log",
+                    "sha256": "b7d8714a0009e444be0c82d6c50a0050302560ceb86b29bd018956eb2fe3503d",
+                    "ready200": 1,
+                    "invoke200": 1,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-embedded.log",
+                    "sha256": "645ac8d5e19334cdedaf33e1793d6c659e4768930e5fa4669a77a0416ec7cccb",
+                    "ready200": 1,
+                    "invoke200": 1,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-resume-restarted.log",
+                    "sha256": "57307103f2182cec2122e24d1ab9acbf944f92bf8865abebf0e5401967920515",
+                    "ready200": 2,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-resume.log",
+                    "sha256": "d4a6774546a158c722009dc807aca8e5c72e55baa5e3df76c581025c4a142027",
+                    "ready200": 0,
+                    "invoke200": 0,
+                    "capabilities200": 0
+                  },
+                  {
+                    "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-sandbox-image.log",
+                    "sha256": "079e5f41f8c204ec69620decb82c6e3237aa7000ebe35b9995ef032b00869542",
+                    "ready200": 3,
+                    "invoke200": 2,
+                    "capabilities200": 1
+                  }
+                ]
+              }
+            ],
+            "benchmarks": [
+              {
+                "path": "tmp\\ci-58de90e-pr-artifacts\\engine-benchmark-adk\\engine-benchmark-adk.json",
+                "sha256": "1f0d05e7610bc8f946d37c5ef3450737196d037df51619976f2294c1fa7403d8",
+                "actualResult": {
+                  "concurrency": 4,
+                  "concurrent_seconds_total": 0.2195404699999699,
+                  "concurrent_throughput_per_second": 18.21987536056814,
+                  "engine": "adk",
+                  "engine_compile_seconds_per_iteration": 8.826999987832096e-07,
+                  "engine_compile_seconds_total": 8.826999987832096e-06,
+                  "interruption_resume": {
+                    "operation_ids": [
+                      "5a651142-8a0c-4fb2-805a-7ea689328d48:/do/0/side_effect"
+                    ],
+                    "side_effect_calls": 1,
+                    "status": "completed",
+                    "unique_operation_ids": 1
+                  },
+                  "iterations": 10,
+                  "native_available": true,
+                  "native_checkpoint_bytes_after": 73728,
+                  "native_checkpoint_bytes_before": 0,
+                  "native_checkpoint_bytes_delta": 73728,
+                  "sequential_seconds_per_invocation": 0.04756679190000455,
+                  "sequential_seconds_total": 0.47566791900004546
+                }
+              },
+              {
+                "path": "tmp\\ci-58de90e-pr-artifacts\\engine-benchmark-langgraph\\engine-benchmark-langgraph.json",
+                "sha256": "da3fc188f6f25324c0dbc3509790dbf3c106d94d9c1f20f6b273df3425001324",
+                "actualResult": {
+                  "concurrency": 4,
+                  "concurrent_seconds_total": 0.08960423600001377,
+                  "concurrent_throughput_per_second": 44.64074667183575,
+                  "engine": "langgraph",
+                  "engine_compile_seconds_per_iteration": 7.060999990926576e-07,
+                  "engine_compile_seconds_total": 7.060999990926575e-06,
+                  "interruption_resume": {
+                    "operation_ids": [
+                      "67495e5b-5782-4561-9376-1a2d4ac589fb:/do/0/side_effect"
+                    ],
+                    "side_effect_calls": 1,
+                    "status": "completed",
+                    "unique_operation_ids": 1
+                  },
+                  "iterations": 10,
+                  "native_available": true,
+                  "native_checkpoint_bytes_after": 225280,
+                  "native_checkpoint_bytes_before": 20480,
+                  "native_checkpoint_bytes_delta": 204800,
+                  "sequential_seconds_per_invocation": 0.015752564999999663,
+                  "sequential_seconds_total": 0.15752564999999663
+                }
+              }
+            ],
+            "qualificationMatrix": {
+              "actualPassedNodes": 64,
+              "perSuite": 16,
+              "suites": [
+                "root",
+                "shared",
+                "nativeADK",
+                "nativeLG"
+              ],
+              "embeddedAPIEventDurable": true,
+              "CloudEventsDurable": false,
+              "nativeBridgeEventDurable": false,
+              "customClaimedDurableDenied": true
+            },
+            "actualImageCapabilityAssertions": "Both images executed explicit API events.durable=true / CloudEvents.durable=false assertion on real HTTP capability response; response body captured by script, mandatory acceptance step success and actual downloaded GET /v1/capabilities200 logs inspected",
+            "attemptHistory": {
+              "runId": 38201705267,
+              "attempt1": {
+                "conclusion": "failure",
+                "failedJobId": 114656325388,
+                "failedNode": "test_process_crash_recovery.py::test_forced_process_stop_recovers_committed_state_without_repeating_actions[terminal-value-sqlite-langgraph-LangGraphWorkflowEngine]",
+                "outcome": "InvocationStateConflict before ready.json; ownership lost; test-only lease5seconds",
+                "nativeTotals": {
+                  "failed": 1,
+                  "passed": 647,
+                  "skipped": 478
+                },
+                "retainedSuccessfulOriginalJobs": [
+                  {
+                    "name": "Validate deployment manifests",
+                    "originalJobId": 114656325250,
+                    "conclusion": "success",
+                    "startedAt": "2026-10-12T03:55:55Z",
+                    "completedAt": "2026-10-12T03:56:03Z"
+                  },
+                  {
+                    "name": "Mutation testing",
+                    "originalJobId": 114656325339,
+                    "conclusion": "success",
+                    "startedAt": "2026-10-12T03:55:55Z",
+                    "completedAt": "2026-10-12T03:57:30Z"
+                  },
+                  {
+                    "name": "Root quality gates",
+                    "originalJobId": 114656325368,
+                    "conclusion": "success",
+                    "startedAt": "2026-10-12T03:55:54Z",
+                    "completedAt": "2026-10-12T04:01:25Z"
+                  },
+                  {
+                    "name": "langgraph native and contract tests",
+                    "originalJobId": 114657487819,
+                    "conclusion": "success",
+                    "startedAt": "2026-10-12T04:01:28Z",
+                    "completedAt": "2026-10-12T04:05:06Z"
+                  },
+                  {
+                    "name": "adk native and contract tests",
+                    "originalJobId": 114657487824,
+                    "conclusion": "success",
+                    "startedAt": "2026-10-12T04:01:28Z",
+                    "completedAt": "2026-10-12T04:06:09Z"
+                  },
+                  {
+                    "name": "Docker langgraph acceptance",
+                    "originalJobId": 114658471371,
+                    "conclusion": "success",
+                    "startedAt": "2026-10-12T04:06:12Z",
+                    "completedAt": "2026-10-12T04:07:55Z"
+                  },
+                  {
+                    "name": "Docker adk acceptance",
+                    "originalJobId": 114658471376,
+                    "conclusion": "success",
+                    "startedAt": "2026-10-12T04:06:11Z",
+                    "completedAt": "2026-10-12T04:07:57Z"
+                  }
+                ],
+                "fullStatus": "tmp/ci-58de90e-pr-attempt1-status.json",
+                "fullLog": "tmp/ci-58de90e-pr-attempt1.log",
+                "failureLog": "tmp/ci-58de90e-pr-attempt1-failed.log"
+              },
+              "attempt2": {
+                "scope": "one authorized --failed rerun of only Windows job; successful attempt1 jobs retained with same source",
+                "jobId": 114660643793,
+                "conclusion": "success",
+                "actualLog": "tmp/ci-58de90e-pr.log",
+                "actualWindowsStages": [
+                  {
+                    "step": "Verify native jq cleanup, data semantics and shared admission",
+                    "passed": 466,
+                    "skipped": 12,
+                    "actualTerminalLog": "Windows jq expression and admission tests\tVerify native jq cleanup, data semantics and shared admission\t2026-10-12T04:19:25.1475836Z 466 passed, 12 skipped in 146.20s (0:02:26)"
+                  },
+                  {
+                    "step": "Verify native task checkpoints and routing on Windows",
+                    "passed": 648,
+                    "skipped": 478,
+                    "actualTerminalLog": "Windows jq expression and admission tests\tVerify native task checkpoints and routing on Windows\t2026-10-12T04:31:41.7348949Z 648 passed, 478 skipped in 733.18s (0:12:13)"
+                  }
+                ],
+                "runMetadata": "tmp/ci-58de90e-pr-retry-run.json"
+              }
+            }
+          }
+        },
+        "postgresql": {
+          "runId": 38201705353,
+          "commonJobId": 114656325330,
+          "commonStore": {
+            "passed": 195,
+            "skipped": 1
+          },
+          "orderingLockWaitActualNode": "test_event_store.py::test_postgresql_delayed_commit_cannot_let_later_arrival_cross_cursor[postgresql] PASSED",
+          "nativeLGCheckpoint": {
+            "passed": 10,
+            "skipped": 8
+          },
+          "nativeLGRealPG": {
+            "passed": 301,
+            "deselected": 879
+          },
+          "nativeADKRealPG": {
+            "passed": 267,
+            "deselected": 845
+          },
+          "optionalAFSharedBridge": {
+            "passed": 147,
+            "skipped": 7,
+            "deselected": 830
+          },
+          "actualEventNodes": {
+            "Verify competitive fork and invocation recovery on native LangGraph with PostgreSQL :: test_durable_events.py": {
+              "PASSED": 41
+            },
+            "Verify competitive fork and invocation recovery on native LangGraph with PostgreSQL :: test_durable_event_process_recovery.py": {
+              "PASSED": 5
+            },
+            "Verify competitive fork and invocation recovery on native ADK with PostgreSQL :: test_durable_events.py": {
+              "PASSED": 41
+            },
+            "Verify competitive fork and invocation recovery on native ADK with PostgreSQL :: test_durable_event_process_recovery.py": {
+              "PASSED": 5
+            }
+          },
+          "images": [
+            {
+              "engine": "adk",
+              "jobId": 114658430227,
+              "executedSteps": [
+                {
+                  "name": "Build PostgreSQL-enabled runtime image",
+                  "conclusion": "success"
+                },
+                {
+                  "name": "Start, restart, and invoke against PostgreSQL",
+                  "conclusion": "success"
+                }
+              ],
+              "actualInitialAndRestartedContainerIDs": [
+                "23a90b969b175a58ee5e17e476189a4daea8946a139b286810ce85483366f34a",
+                "a2cb0bbeb37b3d077ba7674f2bf25b32d63dfe8df242581246d6f70c9a9b0891"
+              ],
+              "initialCompletionEvidence": "Executed successful specific acceptance step with explicit ready curl and completed/output postgres JSON assertions; original HTTP logs unavailable after deliberate initial container removal",
+              "downloadedLogs": [
+                {
+                  "path": "tmp\\ci-58de90e-pg-artifacts\\docker-adk-postgres-logs\\owa-adk-postgres-restarted.log",
+                  "sha256": "a75eda5147f7c9842a82791c0f583e28e60b210ca44192d38977446c9a889153",
+                  "restartedHTTP200": true,
+                  "initialLogUnavailableAfterDeliberateRemoval": false
+                },
+                {
+                  "path": "tmp\\ci-58de90e-pg-artifacts\\docker-adk-postgres-logs\\owa-adk-postgres.log",
+                  "sha256": "e63fcfd9329a3a49561d312caaf7022b2c9ac1d4cecf22964e8624709d019a4d",
+                  "restartedHTTP200": false,
+                  "initialLogUnavailableAfterDeliberateRemoval": true
+                }
+              ]
+            },
+            {
+              "engine": "langgraph",
+              "jobId": 114658430252,
+              "executedSteps": [
+                {
+                  "name": "Build PostgreSQL-enabled runtime image",
+                  "conclusion": "success"
+                },
+                {
+                  "name": "Start, restart, and invoke against PostgreSQL",
+                  "conclusion": "success"
+                }
+              ],
+              "actualInitialAndRestartedContainerIDs": [
+                "6d551e1f231ee7253747e7f5ff379133009e8ba65c82177286fa810c10896c72",
+                "1fadb9cf8a0403cbacd028305f33f2435e07951b1eefc6dd2512145c7989735e"
+              ],
+              "initialCompletionEvidence": "Executed successful specific acceptance step with explicit ready curl and completed/output postgres JSON assertions; original HTTP logs unavailable after deliberate initial container removal",
+              "downloadedLogs": [
+                {
+                  "path": "tmp\\ci-58de90e-pg-artifacts\\docker-langgraph-postgres-logs\\owa-langgraph-postgres-restarted.log",
+                  "sha256": "09d3d4681d53144f9b930e285f118dfd210efb260786dc2b07adadd401fa48da",
+                  "restartedHTTP200": true,
+                  "initialLogUnavailableAfterDeliberateRemoval": false
+                },
+                {
+                  "path": "tmp\\ci-58de90e-pg-artifacts\\docker-langgraph-postgres-logs\\owa-langgraph-postgres.log",
+                  "sha256": "1be20be6384b77d35a2654ac68bedacb568d8275801e4cca9e1cc38e07eb2fdd",
+                  "restartedHTTP200": false,
+                  "initialLogUnavailableAfterDeliberateRemoval": true
+                }
+              ]
+            }
+          ]
+        },
+        "companions": {
+          "security": {
+            "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+            "runId": 38201705278,
+            "sourceManifest": "tmp/s2-05-quality-source-manifest-58de90e.json",
+            "jobs": [
+              {
+                "databaseId": 114656325168,
+                "name": "Audit sandbox-controller dependencies",
+                "conclusion": "success"
+              },
+              {
+                "databaseId": 114656325272,
+                "name": "Audit langgraph dependencies",
+                "conclusion": "success"
+              },
+              {
+                "databaseId": 114656325328,
+                "name": "Audit agent-framework dependencies",
+                "conclusion": "success"
+              },
+              {
+                "databaseId": 114656325335,
+                "name": "Audit root dependencies",
+                "conclusion": "success"
+              },
+              {
+                "databaseId": 114656325354,
+                "name": "Audit kubernetes-sandbox-controller dependencies",
+                "conclusion": "success"
+              },
+              {
+                "databaseId": 114656325359,
+                "name": "Audit adk dependencies",
+                "conclusion": "success"
+              }
+            ],
+            "reports": [
+              {
+                "artifact": "dependency-audit-adk",
+                "path": "tmp\\security-58de90e-all\\dependency-audit-adk\\audit.json",
+                "sha256": "5aa2f70303d36e09a228477b1da4f588fe6800bd6890dfe332544c6d956ecd23",
+                "dependencyCount": 109,
+                "vulnerabilityCount": 0
+              },
+              {
+                "artifact": "dependency-audit-agent-framework",
+                "path": "tmp\\security-58de90e-all\\dependency-audit-agent-framework\\audit.json",
+                "sha256": "0d2a08a5d0a772ee52bfd46b895e2642b811b026e27f04756133927dae34504c",
+                "dependencyCount": 74,
+                "vulnerabilityCount": 0
+              },
+              {
+                "artifact": "dependency-audit-kubernetes-sandbox-controller",
+                "path": "tmp\\security-58de90e-all\\dependency-audit-kubernetes-sandbox-controller\\audit.json",
+                "sha256": "90710e5e2de8f09a1f43a635b8681ce335e7eb6ed64735f9d1cbe7f92d3d2891",
+                "dependencyCount": 16,
+                "vulnerabilityCount": 0
+              },
+              {
+                "artifact": "dependency-audit-langgraph",
+                "path": "tmp\\security-58de90e-all\\dependency-audit-langgraph\\audit.json",
+                "sha256": "8e8247a451cafbfedcd54ef8997569f5f1003bf4af60dc15c948ba43caa214c2",
+                "dependencyCount": 96,
+                "vulnerabilityCount": 0
+              },
+              {
+                "artifact": "dependency-audit-root",
+                "path": "tmp\\security-58de90e-all\\dependency-audit-root\\audit.json",
+                "sha256": "7800135da2728a4fdc9b253d4a09fdb683809186f2bb6377835b1f5ae3ff6cad",
+                "dependencyCount": 71,
+                "vulnerabilityCount": 0
+              },
+              {
+                "artifact": "dependency-audit-sandbox-controller",
+                "path": "tmp\\security-58de90e-all\\dependency-audit-sandbox-controller\\audit.json",
+                "sha256": "4e3fd2d677e592a52f4d0057efce51d458417f1fc42f12137582433ce951b2c0",
+                "dependencyCount": 13,
+                "vulnerabilityCount": 0
+              }
+            ]
+          },
+          "agentFramework": {
+            "runId": 38201705286,
+            "passed": 1432,
+            "skipped": 946,
+            "expectedGaps": 2
+          },
+          "externalSandbox": {
+            "runId": 38201705300,
+            "contractsPassed": 55,
+            "actualDockerPrincipals": [
+              "adk",
+              "langgraph"
+            ]
+          },
+          "docs": {
+            "runId": 38201705287,
+            "actualResult": "Markdown relative-link validation passed"
+          }
+        },
+        "retainedPriorFullRuntimeEvidence": "tmp/ci-143d38a-terminal-evidence.json",
+        "exactPublicationDelta": "tmp/s2-05-publication-four-delta.json"
+      },
+      "source_delta": {
+        ".github/workflows/ci.yml": {
+          "before": "6e95b79565db68d32fb0a3ad12a7545b6a78e43872904dd28be65ca930fa3930",
+          "after": "82d8dd647ea939a05759a8f31d5317f508b4cc00e7ec72b0b3517a95c4d13db0"
+        },
+        "core/src/open_workflow_agent/event_capabilities.py": {
+          "before": "641175fdfb2c37a5c29ace18e4bf4c170bbe6c0b88fba3476001435e4d3ff809",
+          "after": "58c53142d2303476bbf9be06b83485006824589c25ddec46bcdb25129d77bb69"
+        },
+        "tests/contract/test_event_capability_qualification.py": {
+          "before": null,
+          "after": "fd0e0094fe6f8223419b0cbce356c779398ac9c875a54f13ef87edde80461b72"
+        },
+        "tests/e2e/test_api.py": {
+          "before": "b62dd6cc15a46c0c290b372d5674935f6803228ebda2fba47b0130fa45a632d9",
+          "after": "d75d818dc455cc5a23fd21582c88904b61766664598536c6f679a43efd75f8d5"
+        }
+      }
     }
   },
   "evidence_groups": {
@@ -4167,9 +5186,9 @@
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
     },
     "events": {
-      "outcome": "partial",
-      "observed": "Process-local emit/listen.one broadcasts to active exact-filter listeners; read data/envelope/raw and shared lifecycle are tested.",
-      "remaining_scope": "No durable inbox/outbox/replay/dedup/late-delivery/correlation; explicit null data is omitted and supplied time is only string-checked.",
+      "outcome": "qualified_subset",
+      "observed": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance.",
+      "remaining_scope": "External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "remediation_tasks": [
         "S2-05",
         "S4-04"
@@ -4190,6 +5209,18 @@
         {
           "path": "core/src/open_workflow_agent/workflow.py",
           "symbol": "WorkflowExecutor._run_listen"
+        },
+        {
+          "path": "core/src/open_workflow_agent/event_store.py",
+          "symbol": "EventStore"
+        },
+        {
+          "path": "core/src/open_workflow_agent/durable_events.py",
+          "symbol": "DurableEventBus"
+        },
+        {
+          "path": "core/src/open_workflow_agent/event_capabilities.py",
+          "symbol": "event_capabilities"
         }
       ],
       "tests": [
@@ -4204,14 +5235,26 @@
         {
           "path": "tests/contract/test_implementation_audit_gaps.py",
           "symbol": "test_event_envelope_preserves_explicit_null_data"
+        },
+        {
+          "path": "tests/core/test_event_store.py",
+          "symbol": "test_event_atomic_failpoints_leave_no_half_acceptance"
+        },
+        {
+          "path": "tests/contract/test_durable_event_process_recovery.py",
+          "symbol": "test_durable_events_survive_actual_native_process_stop"
+        },
+        {
+          "path": "tests/contract/test_event_capability_qualification.py",
+          "symbol": "test_api_qualifies_only_embedded_event_delegate"
         }
       ],
-      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted; desired-behavior gap probe is a strict expected assertion failure, not a completed feature"
+      "test_scope": "Finite E01-E14, four frozen full suites, exact publication configured gates and known-backend API matrix; full proposed criteria remain unexecuted."
     },
     "event_strategies": {
-      "outcome": "partial",
-      "observed": "S2-05 working source implements ordered one/all/any/until, correlation and sequential foreach with durable embedded registrations and receipts. Focused native checks pass; full frozen and configured acceptance remain pending.",
-      "remaining_scope": "Complete E01-E14 frozen full-suite, configured PostgreSQL, Windows, images, benchmarks, distribution and security validation before S2-05 closure or durable capability qualification. Full proposed and independent JavaScript criteria retain later owners.",
+      "outcome": "qualified_subset",
+      "observed": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors.",
+      "remaining_scope": "Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "remediation_tasks": [
         "S2-05",
         "S4-04"
@@ -4220,6 +5263,10 @@
         {
           "path": "core/src/open_workflow_agent/workflow.py",
           "symbol": "_validate_listen_capability"
+        },
+        {
+          "path": "core/src/open_workflow_agent/event_matching.py",
+          "symbol": "candidate_matcher"
         }
       ],
       "tests": [
@@ -4230,9 +5277,17 @@
         {
           "path": "tests/contract/test_definition_admission.py",
           "symbol": "test_listener_iterator_at_its_official_task_location_preserves_child_scope"
+        },
+        {
+          "path": "tests/contract/test_durable_events.py",
+          "symbol": "test_durable_event_semantics_preserve_order_correlation_and_projection"
+        },
+        {
+          "path": "tests/core/test_event_matching.py",
+          "symbol": "test_unrelated_scalar_arrival_is_excluded_before_payload_predicate"
         }
       ],
-      "test_scope": "Current admission and focused native evidence only; full S2-05 and proposed criteria unqualified"
+      "test_scope": "Finite E01-E14 and actual 41 event plus five process cases per principal on PostgreSQL, identical native expectations, guarded optional backend and API profile checks."
     },
     "schedule": {
       "outcome": "partial",
@@ -7341,9 +8396,9 @@
       "construct": "listen.to.one",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of A089 (Listen one event) at listen.to.one: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -7362,9 +8417,9 @@
       "construct": "listen.to.all",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of A090 (Listen all events) at listen.to.all: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -7383,9 +8438,9 @@
       "construct": "listen.to.any",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of A091 (Listen any event) at listen.to.any: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -7404,9 +8459,9 @@
       "construct": "listen.to.until expression",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of A092 (Listen until expression) at listen.to.until expression: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -7425,9 +8480,9 @@
       "construct": "listen.to.until strategy",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of A093 (Listen until event strategy) at listen.to.until strategy: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -7446,9 +8501,9 @@
       "construct": "correlate.*.from",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of A094 (Event correlation extraction) at correlate.*.from: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -7467,9 +8522,9 @@
       "construct": "correlate.*.expect",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of A095 (Correlation expectation) at correlate.*.expect: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -7488,9 +8543,9 @@
       "construct": "emit.event",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of A096 (Event publishing) at emit.event: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -7509,9 +8564,9 @@
       "construct": "No standard dedup retention policy",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of A097 (Duplicate event handling) at No standard dedup retention policy: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -7530,9 +8585,9 @@
       "construct": "No standard late-delivery policy",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of A098 (Late event handling) at No standard late-delivery policy: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -12798,9 +13853,9 @@
       "construct": "/$defs/emitTask/allOf/1/properties/emit",
       "category": "Definition",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS145 (emit) at /$defs/emitTask/allOf/1/properties/emit: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -12820,9 +13875,9 @@
       "construct": "/$defs/emitTask/allOf/1/properties/emit/properties/event",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS146 (event) at /$defs/emitTask/allOf/1/properties/emit/properties/event: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -12841,9 +13896,9 @@
       "construct": "/$defs/emitTask/allOf/1/properties/emit/properties/event/properties/with",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS147 (with) at /$defs/emitTask/allOf/1/properties/emit/properties/event/properties/with: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -12994,9 +14049,9 @@
       "construct": "/$defs/listenTask/allOf/1/properties/listen",
       "category": "Definition",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS154 (listen) at /$defs/listenTask/allOf/1/properties/listen: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -13016,9 +14071,9 @@
       "construct": "/$defs/listenTask/allOf/1/properties/foreach",
       "category": "Definition",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS155 (foreach) at /$defs/listenTask/allOf/1/properties/foreach: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -13038,9 +14093,9 @@
       "construct": "/$defs/listenTask/allOf/1/properties/listen/properties/to",
       "category": "Definition",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS156 (to) at /$defs/listenTask/allOf/1/properties/listen/properties/to: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -13060,9 +14115,9 @@
       "construct": "/$defs/listenTask/allOf/1/properties/listen/properties/read",
       "category": "Definition",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS157 (read) at /$defs/listenTask/allOf/1/properties/listen/properties/read: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -13082,9 +14137,9 @@
       "construct": "/$defs/listenTask/allOf/1/properties/listen/properties/read/enum/data",
       "category": "Definition",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS158 (data) at /$defs/listenTask/allOf/1/properties/listen/properties/read/enum/data: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -13104,9 +14159,9 @@
       "construct": "/$defs/listenTask/allOf/1/properties/listen/properties/read/enum/envelope",
       "category": "Definition",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS159 (envelope) at /$defs/listenTask/allOf/1/properties/listen/properties/read/enum/envelope: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -13126,9 +14181,9 @@
       "construct": "/$defs/listenTask/allOf/1/properties/listen/properties/read/enum/raw",
       "category": "Definition",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS160 (raw) at /$defs/listenTask/allOf/1/properties/listen/properties/read/enum/raw: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15593,9 +16648,9 @@
       "construct": "/$defs/eventProperties/properties/id",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS279 (id) at /$defs/eventProperties/properties/id: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15614,9 +16669,9 @@
       "construct": "/$defs/eventProperties/properties/source",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS280 (source) at /$defs/eventProperties/properties/source: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15635,9 +16690,9 @@
       "construct": "/$defs/eventProperties/properties/type",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS281 (type) at /$defs/eventProperties/properties/type: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15656,9 +16711,9 @@
       "construct": "/$defs/eventProperties/properties/time",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS282 (time) at /$defs/eventProperties/properties/time: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15677,9 +16732,9 @@
       "construct": "/$defs/eventProperties/properties/subject",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS283 (subject) at /$defs/eventProperties/properties/subject: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15698,9 +16753,9 @@
       "construct": "/$defs/eventProperties/properties/datacontenttype",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS284 (datacontenttype) at /$defs/eventProperties/properties/datacontenttype: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15719,9 +16774,9 @@
       "construct": "/$defs/eventProperties/properties/dataschema",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS285 (dataschema) at /$defs/eventProperties/properties/dataschema: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15740,9 +16795,9 @@
       "construct": "/$defs/eventProperties/properties/data",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS286 (data) at /$defs/eventProperties/properties/data: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15761,9 +16816,9 @@
       "construct": "/$defs/eventConsumptionStrategy/oneOf/0/properties/all",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS287 (all) at /$defs/eventConsumptionStrategy/oneOf/0/properties/all: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15782,9 +16837,9 @@
       "construct": "/$defs/eventConsumptionStrategy/oneOf/1/properties/any",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS288 (any) at /$defs/eventConsumptionStrategy/oneOf/1/properties/any: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15803,9 +16858,9 @@
       "construct": "/$defs/eventConsumptionStrategy/oneOf/1/properties/until",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS289 (until) at /$defs/eventConsumptionStrategy/oneOf/1/properties/until: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15824,9 +16879,9 @@
       "construct": "/$defs/eventConsumptionStrategy/oneOf/1/properties/until/oneOf/1/allOf/1/properties/until",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS290 (until) at /$defs/eventConsumptionStrategy/oneOf/1/properties/until/oneOf/1/allOf/1/properties/until: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15845,9 +16900,9 @@
       "construct": "/$defs/eventConsumptionStrategy/oneOf/2/properties/one",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS291 (one) at /$defs/eventConsumptionStrategy/oneOf/2/properties/one: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15866,9 +16921,9 @@
       "construct": "/$defs/eventFilter/properties/with",
       "category": "Events and time",
       "evidence_group": "events",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS292 (with) at /$defs/eventFilter/properties/with: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Embedded SQLite/PostgreSQL inbox/outbox, source+id duplicate/conflict policy, bounded early/late/broadcast behavior, trusted principal scope, null-preserving projections and known emit/selection receipts pass native/process and configured acceptance. Remaining: External brokers/transports, broader lifecycle history, full proposed criteria and independent JavaScript qualification retain S4-10/S4-05/S4-04/S4-03 owners. This is the qualified embedded profile, not universal transport conformance.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15887,9 +16942,9 @@
       "construct": "/$defs/eventFilter/properties/correlate",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS293 (correlate) at /$defs/eventFilter/properties/correlate: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15908,9 +16963,9 @@
       "construct": "/$defs/eventFilter/properties/correlate/additionalProperties/properties/from",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS294 (from) at /$defs/eventFilter/properties/correlate/additionalProperties/properties/from: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -15929,9 +16984,9 @@
       "construct": "/$defs/eventFilter/properties/correlate/additionalProperties/properties/expect",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "partial",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS295 (expect) at /$defs/eventFilter/properties/correlate/additionalProperties/properties/expect: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Ordered one/all/any/until, candidate-context predicates, persisted correlation and sequential foreach including aliases/schema/output/export are verified on the principal native SDKs and configured PostgreSQL. Static exclusions precede predicates; genuine eligible expression faults remain errors. Remaining: Full inventory/proposed criteria and independent JavaScript conformance remain S4-04/S4-03. Memory/custom supports only the declared single-event fallback; arbitrary custom durability is unqualified.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -19517,9 +20572,9 @@
     }
   ],
   "outcome_counts": {
-    "qualified_subset": 181,
+    "qualified_subset": 218,
     "unimplemented": 62,
-    "partial": 172,
+    "partial": 135,
     "rejected": 183,
     "behavior_mismatch": 32,
     "inert": 19,
@@ -19527,22 +20582,22 @@
   },
   "gap_probes": {
     "path": "tests/contract/test_implementation_audit_gaps.py",
-    "passed": 8,
-    "expected_assertion_failures": 3,
+    "passed": 9,
+    "expected_assertion_failures": 2,
     "unexpected_passes": 0,
-    "scope": "Ordered fork probes now pass; OpenAPI, raw binary and null event-data assertion failures retain strict expected-failure markers and repair owners.",
+    "scope": "Explicit-null desired behavior now passes; two OpenAPI/raw-binary gaps retain strict S3-03 expected failures.",
     "independent_environments": {
       "adk": {
-        "passed": 8,
-        "expected_assertion_failures": 3
+        "passed": 9,
+        "expected_assertion_failures": 2
       },
       "langgraph": {
-        "passed": 8,
-        "expected_assertion_failures": 3
+        "passed": 9,
+        "expected_assertion_failures": 2
       },
       "agent_framework_optional": {
-        "passed": 9,
-        "expected_assertion_failures": 3
+        "passed": 10,
+        "expected_assertion_failures": 2
       }
     }
   },
@@ -19550,13 +20605,13 @@
     "core/src/open_workflow_agent/a2a.py": "3094b39634804615bee92bdb5b5cec684308f00239927d7f70b483915f75cb0d",
     "core/src/open_workflow_agent/a2a_streaming.py": "2dfa06885337622608f31f32df7ad6db2a4131a55d69351ff549625dae041999",
     "core/src/open_workflow_agent/a2a_tasks.py": "990fb0917fc518ce16ac74a96df9e44d9ba7ff843e20ce486536f0b05112f16a",
-    "core/src/open_workflow_agent/approvals.py": "2496d6ed23b3494d65fc042f3ea1dc42899f59eb94782539ea1a099abadedae2",
+    "core/src/open_workflow_agent/approvals.py": "84c8bd10b55b40d618209f20ea050e741f1220ae92b385bcacf05e30b09a35d2",
     "core/src/open_workflow_agent/catalog.py": "84dc1aa4c20fe543d982b20283aab7bf68ab7f9a80e70318971738ac21557faa",
-    "core/src/open_workflow_agent/definitions.py": "8da00d8ef717c688462b09696d50f6957b962fc90aa45585c9b52104887065c7",
-    "core/src/open_workflow_agent/effects.py": "c33aa2132af906943a1f49b9f799dddffda78bfd489946c786a476d209d52015",
-    "core/src/open_workflow_agent/engine.py": "561bded2dcecaee2a3745e2bc7a40c22346f606ae26c8628aa15f37b28953851",
+    "core/src/open_workflow_agent/definitions.py": "bbaa144c3ff8973e190b5917acb743edfe5c02b429c9db5b68354381a166663a",
+    "core/src/open_workflow_agent/effects.py": "c3f56fde9228af09221078cdd01270518c1bbcb82037b019a9559bc6ad61c8b6",
+    "core/src/open_workflow_agent/engine.py": "43e8f2cad1b78cd2814a1aa11ea23e7325d00ba2172997cf7b81d62b865f16f3",
     "core/src/open_workflow_agent/errors.py": "822b0f793d28aab2674654e0a4d3ab47a180e595e5292b5ebc241733631f65c1",
-    "core/src/open_workflow_agent/events.py": "de8b1a59b0ea3903b3c18766e31e061f2c014ea38140c48ef3262da6df733a67",
+    "core/src/open_workflow_agent/events.py": "a2ccc2963e9064954d4ae0bbb734cd0b2aeda6e244fda3d08fe2bc98b436f397",
     "core/src/open_workflow_agent/expressions.py": "636b7f7157dfaefd1e2a526855e73b7e764100e86a09dd810043aff2dcedf555",
     "core/src/open_workflow_agent/external_catalog.py": "65fbd1d9ce7bab4cd4c0c894d0235cc2f5b79d94f438759044a3bcc6e0630269",
     "core/src/open_workflow_agent/forks.py": "3a260a4da7c11be52bc7c4d9ca833c52aa8a47aab81759b64f3741efcb58021b",
@@ -19566,24 +20621,24 @@
     "core/src/open_workflow_agent/ownership.py": "a67eb678e8512f094147c1e01258137b80959ebaab9314cf516ce874ff0c09d5",
     "core/src/open_workflow_agent/persistence.py": "cb992cc04fc4f59c8d2d0ca50edcfcb9808b3e50f4382b2bb743fcfff4af6b1b",
     "core/src/open_workflow_agent/protocols.py": "58de0b788c8c057ce4d68fc70e9bd5cd4d0f6e7280be3a55a21e446e5b55a737",
-    "core/src/open_workflow_agent/resources.py": "940d169d815db3aa52b39a9b2ef797f380f808907969cc6b1ea8346fbf7a46b7",
+    "core/src/open_workflow_agent/resources.py": "289b89bed61db337ccbb337a2d8bf918ac347b25f652a7e76aca791b4a77fefc",
     "core/src/open_workflow_agent/retry.py": "124f7fbe6ea471cf927a5f0003a8e7ac1c4c7c93cadc4f3310659ff10c8f0b60",
     "core/src/open_workflow_agent/sandbox/executor.py": "9e48b15494897c85be5b01a1b86c13646f70f1c9358ba33f45c88f676f09edbe",
     "core/src/open_workflow_agent/sandbox/validation.py": "ce392be7a493910554f1f04f5274f0e9fd38feb02de51d69a96926ed261f6f9d",
     "core/src/open_workflow_agent/scheduling.py": "1754a966ad88005f73a868ae8436a2561d5c94ea651ba720a28f59f49fe42340",
     "core/src/open_workflow_agent/security.py": "8ff318e0a96e8a54b833abc279d5a43f1a574d5f3ecca6c2a3c3856e564c566a",
-    "core/src/open_workflow_agent/services.py": "58e3559872eb1e1c780ee9fa23dd30abfd3b37fac947b758fbfce2103cdda3ac",
+    "core/src/open_workflow_agent/services.py": "436baf2b06a8983cd3123744e50bc6a62868c8ab28569356baf42729fac926dc",
     "core/src/open_workflow_agent/timing.py": "e234238f397f5217a477ab8cc038f6f5ae409b1579e08b34603f42734978f627",
     "core/src/open_workflow_agent/versions.py": "c1654fcf4326705628b9e2aa4983af5a5d038915afa0e911b63c2dff712e31d5",
-    "core/src/open_workflow_agent/workflow.py": "8c5d3f0abaad99b56002a604e698da73b5d20e22396aef568c89dd617faf67c5",
+    "core/src/open_workflow_agent/workflow.py": "efb83460e0b93317496b8c605e07bb65e2c3ec1dc1cd1c355a978b4849296ff4",
     "core/src/open_workflow_agent/workflow_catalog.py": "eef1ccfaa2238c25f6c9b5378475b8d105da9373697c09dec58596a192f6321a",
     "engines/adk/src/open_workflow_agent_adk/__init__.py": "28c3f563c939835379508c2687c37599dad02c4ffe6bd9b13e421d8948c855bf",
     "engines/adk/src/open_workflow_agent_adk/native.py": "5d512dbc7e492c2f2e3c4a596c576b042b3f5abae86d985052aaec8177775de0",
-    "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "6439c1261369250ea7370f24c03e9c77a154d567bc0a640d665c6dc996e2b094",
+    "engines/langgraph/src/open_workflow_agent_langgraph/graph.py": "5e2866ef5e067f70fb5a332b738840e15cdbef7e46d91ab2e8a5da67d7cc86b0",
     "engines/langgraph/src/open_workflow_agent_langgraph/native.py": "d4460844a51501a2297ae3523ef1a6dc4a4f934b5b02ad89064fd6fecbfad9ee",
     "tests/adk/test_adk_adapter.py": "b0ad35c5151ee7fd0f5b485653c5adddb829182ae0c0de4072205458ce9d3bfa",
     "tests/adk/test_native_read_drain.py": "d5149b0493807226a9b72362e270277e4a05724701facbf14ec7d723b566f1f7",
-    "tests/ci/test_postgres_recovery_selection.py": "8133715506918a4f487990ec8d326e6441b1740749bdcdf8f6f0b72c81834266",
+    "tests/ci/test_postgres_recovery_selection.py": "475883ccac051dd81a23903024311cf780bc5ca3b22992ae135265efbb1b8b69",
     "tests/contract/_process_recovery_worker.py": "84ea1dd2a6445c7a954afa3c8d091f227ea4bd899414cdb2696c5177f7ea8f16",
     "tests/contract/test_action_execution_authority.py": "17bee27b3c4d3f117299274b6228e1fa8a50976674b03f7a88dd0f7a8e71ddc8",
     "tests/contract/test_adk_native_event_consistency.py": "13b9526dbe3b0387c36e508d05d014c25149badfe3b455f2acf90a76d91be585",
@@ -19597,13 +20652,13 @@
     "tests/contract/test_contract_subworkflows.py": "8013d2d302ea4fd4342aabbddbeb44a969b12f042f64165a367097944f670ab2",
     "tests/contract/test_data_pipeline.py": "b0cc83febc4bf0857d08e4841bd3fa1d02e592ef84f4e47fab21608c7c49da30",
     "tests/contract/test_deadline_recovery.py": "54c0163473be1194d6bd3a7869d3f23827572a981740dccd43d277d516f85593",
-    "tests/contract/test_definition_admission.py": "b3b8ec606e7211feca4af52a78a6e608ebdd3c5d9df2a5a3de5c027d64288eef",
-    "tests/contract/test_durable_approvals.py": "3d771a642fb65e809765d8c265003cdcf9cdd80b36322afbc2b1723085428847",
+    "tests/contract/test_definition_admission.py": "d4d45db7afcf95225fe63e91c52c57427c0fd74ecd9f1cbdb886a50779a6d6a9",
+    "tests/contract/test_durable_approvals.py": "1bc43545a6f5cb28f5667a5a1051f8840e94f2cf3d81faaf563ecd39419c8540",
     "tests/contract/test_effect_recovery.py": "3a47cea4b3b88bcc104a09506e0ffde38271c397a9166711590801ac7f8fd174",
     "tests/contract/test_event_child_effect_recovery.py": "bde01f9d41113812eca0ad9d14ba13e248319870f5d69adb390144e25805519c",
-    "tests/contract/test_eventing.py": "6c75d914574ae12a25d860e7ae5c618abd2acb1da36399d9abd404898b09ef26",
+    "tests/contract/test_eventing.py": "80489c39f2969bf3d68f6d68b947849d782dc87d9de2c3b2555f22ee209e7df1",
     "tests/contract/test_fork_results.py": "5f414fca4e9a29bc1a693d27ca0ce0600a0bd90b11a373d5fcf9f6546f86cb7a",
-    "tests/contract/test_implementation_audit_gaps.py": "6c44d34efd00b0221770a219d212048b37fa62092a5840289e0a79462b9b7ad1",
+    "tests/contract/test_implementation_audit_gaps.py": "657b82da4f13ca692d3b4340dd9da4e0d0b57c780b354e3be58a95082b331c45",
     "tests/contract/test_invocation_writes.py": "7424b3e4461b2a42f738c0e279ac57f90666173a7e0a0c5cd27321e16c253fa0",
     "tests/contract/test_jq_portability.py": "6f953d921345c712ec472f040a36d9346233ea7b405b08b6af034ac84391c75e",
     "tests/contract/test_native_checkpoint_fencing.py": "8e3fd0bd360efab68656af90c60bab63ceb20206ac7eef664c461b04273d646f",
@@ -19622,7 +20677,7 @@
     "tests/contract/test_sandbox_contract.py": "93d427f5637ebdf135c6166dbad67e6099c0f6aa095d5e5e41676cf0ec0c9437",
     "tests/contract/test_sandbox_effect_recovery.py": "b001a3eae51e47fa2147c3785f25fa19269b69fe1025ee0af99abde4e11e6476",
     "tests/contract/test_schema_reference_closure.py": "8a1cc06242a1fc45d90384a474eab978b8c5be1ed94b8ff3e8c9a9455708c4fc",
-    "tests/contract/test_schema_resources.py": "9f48e5ae98dac5d559eb089b6c64e90c72cfab3ecedd6058c8b1f01b20945bf0",
+    "tests/contract/test_schema_resources.py": "a102174c18c64834e308c00e5c5ea531fd7a6e60e386ec268e506978e667d83f",
     "tests/contract/test_scoped_exception_policies.py": "594690c22270e80b734f315f3eb6ed88174f7a7d09dea4ac56214dff77e0d634",
     "tests/contract/test_scoped_flow.py": "84fcd9ca62d47d43e6ec70edcf9317f3256db5665421c16b990f5f29edb9da92",
     "tests/contract/test_timing_process_recovery.py": "45160703f4313eef21376e5c141c7df768fa0c8104c291ad31ed6059b6529a45",
@@ -19631,7 +20686,7 @@
     "tests/core/test_a2a_task_routes.py": "6e873d3c555843f3eb63f74e3f5de3714f6149c51a967de85c247ddd7c0e74bb",
     "tests/core/test_action_progress_ownership.py": "8fa0a100caae0d75be90fd167870daa006e7ca6196ccb0fa507683d275d4ae53",
     "tests/core/test_core_scheduling.py": "586b2edc9696d7b1980861d03f060335e2f33d0aabce55916db3122323b77361",
-    "tests/core/test_events.py": "b828873bbfa3e6fe3680c6dcaf6dd49262ccac2649f45fb25a677298014c36a9",
+    "tests/core/test_events.py": "e89f411e248cb6eabd5a27c6d27f99f7b4f181967cf3936ffba1e67d307d75cb",
     "tests/core/test_execution_ownership.py": "f4d7a842f704992922aa76c2b0f4aa8709b304ef8036c874a133a8b71aa07f1b",
     "tests/core/test_execution_ownership_fences.py": "64854f1b3292895cd32400f9cc3101cc025a1db481ff49fc620ccc737880f2c1",
     "tests/core/test_fork.py": "4effe82efbdc812b546b8e3cab38d51fe20d613926edceac638168fb9a61fa27",
@@ -19650,7 +20705,11 @@
     "tests/core/test_security_oauth2_mtls.py": "2c5511081d600c71552d4c443cc8a4ba27e26ab5ffd8867378d9a58af6a36b99",
     "tests/core/test_workflow_catalog.py": "e6ef50d8fa6a7cd7648d6bb56dd1c05ec4aa8279fb326582e1358727deac173b",
     "tests/langgraph/test_native_state_collisions.py": "50c2c34e2b12a7943523994cabaa3da1955962908c31262d5ae6f5e99e69eaed",
-    "tests/langgraph/test_native_task_graph.py": "efb8c5b3af7249c44d3aed2b98f93594eb2a4b915109b65dac5ca02be9d82ba4"
+    "tests/langgraph/test_native_task_graph.py": "efb8c5b3af7249c44d3aed2b98f93594eb2a4b915109b65dac5ca02be9d82ba4",
+    "core/src/open_workflow_agent/event_store.py": "8e019106191b6cf4759d99b7830a63bdd67772eb9c6414cfa3299590a39fb1e1",
+    "core/src/open_workflow_agent/durable_events.py": "1333971573b472bce695813c9c6781e56905a8988731dfb475290cfe148b239c",
+    "core/src/open_workflow_agent/event_matching.py": "055b64ae6e6bfe8c194fa863350c6da1614b863336cba85ac0336948459cbfa7",
+    "core/src/open_workflow_agent/event_capabilities.py": "58c53142d2303476bbf9be06b83485006824589c25ddec46bcdb25129d77bb69"
   },
   "audit_integrity_checks": {
     "passed": 4,
@@ -43317,13 +44376,21 @@
         }
       },
       "raw_audit_sha256": "67af8256ebe05a1e5b47abcd120a2ef2bb7c6bbb86a98764d6df90210f615c9d"
+    },
+    {
+      "artifact_commit": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+      "path": "resources/compatibility/implementation-audit.json",
+      "reviewed_implementation_commit": "29eeb3b783359905dd5768464c67265d55cb6bd2",
+      "acceptance_record_commit": "6f8e95d5bff0f5cd70a1f7047d0ed02ffbeaee1d",
+      "raw_audit_sha256": "61a9149861a007a32cb3bb3f30db105086f0f36f7edce518831c238befba7fea",
+      "preservation": "Immutable Git reference preserves the complete previous audit without recursive snapshots"
     }
   ],
   "audit_acceptance": {
-    "commit": "6f8e95d5bff0f5cd70a1f7047d0ed02ffbeaee1d",
-    "result": "S2-04 verified",
-    "scope": "Retry predicates/count/backoff/jitter and persisted decisions, attempt/aggregate budgets, original task/workflow deadlines, uncertainty-preserving timeouts, structured errors and lexical catch handling",
-    "last_verified_milestone": "S2-04 at 6f8e95d"
+    "commit": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+    "result": "S2-05 finite profile verified",
+    "scope": "Embedded Python event profile only; full proposed/JS flags remain open",
+    "last_verified_milestone": "S2-05"
   },
   "s2_05_unqualified_progress": {
     "prior_event_strategies": {

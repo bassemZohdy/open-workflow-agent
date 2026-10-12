@@ -89,7 +89,7 @@ success/failure artifacts remain historical evidence, not qualified releases.
 S2-04 is checked; 13 of 37 tasks are verified. Full proposed
 criteria, JavaScript and later dependency/capability gates remain open.
 
-### S2-05 embedded event work — 2026-10-12 (in progress)
+### S2-05 embedded event work — 2026-10-12 (verified)
 
 The working implementation adds an embedded durable inbox/outbox, immutable
 subscription and consumption decisions, ordered one/all/any/until results,
@@ -105,8 +105,10 @@ PostgreSQL executes all 41 durable event and five process cases per principal;
 Windows, both image/restart pairs, benchmarks, distributions and six nested
 zero-vulnerability reports are verified. The capability publication update
 reports durability only for the qualified embedded bus and its approval
-delegate; root/native focused checks pass. Its final configured checks remain
-pending. S2-05 remains unchecked until they pass. There are no deferred tasks.
+delegate; root/native focused checks pass. Final publication `58de90e` passes
+all seven exact configured gates with actual artifact review. All E01-E14
+requirements are verified. S2-05 is checked; 14 of 37 active tasks are verified,
+and S2-06 is next. There are no deferred tasks.
 
 Seven desired error-context cases fail on actual native LangGraph at `d8f3f7a`:
 built-in status filters lose the common status code, while catch/retry predicates

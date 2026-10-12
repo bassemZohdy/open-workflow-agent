@@ -44036,7 +44036,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A089",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -44065,7 +44065,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A090",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -44094,7 +44094,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A091",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -44123,7 +44123,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A092",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -44152,7 +44152,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A093",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -44181,7 +44181,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A094",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -44210,7 +44210,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A095",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -44239,7 +44239,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A096",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -44268,7 +44268,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A097",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -44297,7 +44297,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A098",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -53311,7 +53311,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS145",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -53340,7 +53340,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS146",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -53369,7 +53369,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS147",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -53867,7 +53867,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS154",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -53927,7 +53927,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS155",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -53987,7 +53987,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS156",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -54047,7 +54047,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS157",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -54107,7 +54107,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS158",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -54167,7 +54167,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS159",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -54227,7 +54227,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS160",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58014,7 +58014,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS279",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58043,7 +58043,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS280",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58072,7 +58072,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS281",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58101,7 +58101,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS282",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58130,7 +58130,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS283",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58159,7 +58159,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS284",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58188,7 +58188,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS285",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58217,7 +58217,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS286",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58246,7 +58246,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS287",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58275,7 +58275,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS288",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58304,7 +58304,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS289",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58333,7 +58333,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS290",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58362,7 +58362,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS291",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58391,7 +58391,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS292",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58420,7 +58420,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS293",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58449,7 +58449,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS294",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -58478,7 +58478,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS295",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -67640,10 +67640,10 @@
         "module": "M06",
         "description": "Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.",
         "effort": "L",
-        "status": "In progress",
+        "status": "Complete",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "evidence": {
-          "status": "All four full suites and seven exact runtime gates passed at 143d38a; capability publication artifact pending",
+          "status": "Complete finite E01-E14 and final exact publication acceptance verified",
           "finite_acceptance": "docs/s2-05-event-acceptance.md",
           "scope": "Embedded durable inbox/outbox, ordered consumption, correlation, duplicate/late policy, foreach and native process recovery qualified. API capability publication is limited to the known embedded bus and approval delegate; unknown custom buses remain unqualified.",
           "prior_source_negative_probe": {
@@ -67655,7 +67655,7 @@
             "durable_contract": 41,
             "actual_process_stop": 5
           },
-          "remaining": "Fresh capability-publication revision configured acceptance, source/distribution delta verification and finite E01-E14 closure. Whole goal and full proposed/JS flags remain open.",
+          "remaining": "S2-06 timers/schedules, S4-10 external transports, broader lifecycle/full proposed/JS criteria retain their later owners.",
           "runtime_qualification": {
             "commit": "143d38a44f74bf3d0aa837c48f02d8fe2671fb21",
             "local": {
@@ -67695,6 +67695,1007 @@
             "langgraph_passed": 76,
             "optional_agent_framework_passed": 111,
             "skipped": 0
+          },
+          "final_qualification": {
+            "artifact_commit": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+            "runtime_commit": "143d38a44f74bf3d0aa837c48f02d8fe2671fb21",
+            "record": "docs/s2-05-event-acceptance.md",
+            "configured": {
+              "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+              "manifest": "tmp/s2-05-quality-source-manifest-58de90e.json",
+              "frozenInputs": 264,
+              "gates": [
+                {
+                  "conclusion": "success",
+                  "databaseId": 38201705353,
+                  "event": "pull_request",
+                  "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+                  "status": "completed",
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705353",
+                  "workflowName": "PostgreSQL CI"
+                },
+                {
+                  "conclusion": "success",
+                  "databaseId": 38201705287,
+                  "event": "pull_request",
+                  "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+                  "status": "completed",
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705287",
+                  "workflowName": "Docs"
+                },
+                {
+                  "conclusion": "success",
+                  "databaseId": 38201705278,
+                  "event": "pull_request",
+                  "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+                  "status": "completed",
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705278",
+                  "workflowName": "Security"
+                },
+                {
+                  "conclusion": "success",
+                  "databaseId": 38201705300,
+                  "event": "pull_request",
+                  "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+                  "status": "completed",
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705300",
+                  "workflowName": "External Sandbox CI"
+                },
+                {
+                  "conclusion": "success",
+                  "databaseId": 38201705286,
+                  "event": "pull_request",
+                  "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+                  "status": "completed",
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705286",
+                  "workflowName": "Agent Framework CI"
+                },
+                {
+                  "conclusion": "success",
+                  "databaseId": 38201705267,
+                  "event": "pull_request",
+                  "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+                  "status": "completed",
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705267",
+                  "workflowName": "CI"
+                },
+                {
+                  "conclusion": "success",
+                  "databaseId": 38201700615,
+                  "event": "push",
+                  "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+                  "status": "completed",
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201700615",
+                  "workflowName": "CI"
+                }
+              ],
+              "mainCI": {
+                "push": {
+                  "runId": 38201700615,
+                  "jobs": [
+                    {
+                      "id": 114656311838,
+                      "name": "Windows jq expression and admission tests",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114656311925,
+                      "name": "Mutation testing",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114656311936,
+                      "name": "Root quality gates",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114656311976,
+                      "name": "Validate deployment manifests",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114657165543,
+                      "name": "adk native and contract tests",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114657165587,
+                      "name": "langgraph native and contract tests",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114658187853,
+                      "name": "Docker langgraph acceptance",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114658187901,
+                      "name": "Docker adk acceptance",
+                      "conclusion": "success"
+                    }
+                  ],
+                  "windows": [
+                    {
+                      "step": "Verify native jq cleanup, data semantics and shared admission",
+                      "passed": 466,
+                      "skipped": 12,
+                      "actualTerminalLog": "Windows jq expression and admission tests\tVerify native jq cleanup, data semantics and shared admission\t2026-10-12T03:59:33.3667924Z 466 passed, 12 skipped in 206.07s (0:03:26)"
+                    },
+                    {
+                      "step": "Verify native task checkpoints and routing on Windows",
+                      "passed": 648,
+                      "skipped": 478,
+                      "actualTerminalLog": "Windows jq expression and admission tests\tVerify native task checkpoints and routing on Windows\t2026-10-12T04:10:51.8691940Z 648 passed, 478 skipped in 674.87s (0:11:14)"
+                    }
+                  ],
+                  "images": [
+                    {
+                      "engine": "adk",
+                      "jobId": 114658187901,
+                      "sizeBytes": 683278054,
+                      "executedRequiredAcceptanceSteps": [
+                        {
+                          "name": "Build independent runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify image metadata",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Enforce image-size gate",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "External catalog resolver acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Internal sandbox execution acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "One-container embedded defaults without configuration or credentials",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container startup, health, capabilities, invocation, and knowledge",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container stop, restart, and resume acceptance",
+                          "conclusion": "success"
+                        }
+                      ],
+                      "downloadedActualLogs": [
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-catalog-image.log",
+                          "sha256": "ac32795bac4631b3fbf3988c41afd98183a241d212dd55332c00a9f7d99193d9",
+                          "ready200": 0,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-container.log",
+                          "sha256": "a1de96e8dab22376d6d64210c92b24c0cf07bf86888bac0116d8214916691b78",
+                          "ready200": 3,
+                          "invoke200": 1,
+                          "capabilities200": 1
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-embedded-restarted.log",
+                          "sha256": "4911cea7297e0e582b8b9e4e9d8093201d852b5921884781804fe54e63a6932c",
+                          "ready200": 1,
+                          "invoke200": 1,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-embedded.log",
+                          "sha256": "e3b9d57e14782791ddd7a54687bc8fdea1050ff45e00a973e6e7ede419622798",
+                          "ready200": 2,
+                          "invoke200": 1,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-resume-restarted.log",
+                          "sha256": "29da0b74fee3690ba8b107ad259e85ce92ffdbc6484531ee20ab155a07984d2e",
+                          "ready200": 2,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-resume.log",
+                          "sha256": "4d0309db429bfd8bb55390fa85c44c99b728e65a711117069b3cad348a22bfbb",
+                          "ready200": 0,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-adk-logs\\owa-adk-sandbox-image.log",
+                          "sha256": "de712220e072aebac55dbca23207824a82e5af9d3ab597f81da1ac77e66bcc26",
+                          "ready200": 3,
+                          "invoke200": 2,
+                          "capabilities200": 1
+                        }
+                      ]
+                    },
+                    {
+                      "engine": "langgraph",
+                      "jobId": 114658187853,
+                      "sizeBytes": 623215474,
+                      "executedRequiredAcceptanceSteps": [
+                        {
+                          "name": "Build independent runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify image metadata",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Enforce image-size gate",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "External catalog resolver acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Internal sandbox execution acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "One-container embedded defaults without configuration or credentials",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container startup, health, capabilities, invocation, and knowledge",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container stop, restart, and resume acceptance",
+                          "conclusion": "success"
+                        }
+                      ],
+                      "downloadedActualLogs": [
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-catalog-image.log",
+                          "sha256": "ac32795bac4631b3fbf3988c41afd98183a241d212dd55332c00a9f7d99193d9",
+                          "ready200": 0,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-container.log",
+                          "sha256": "2166c7e46cd0613ad296eff4b430726b5929bb2969ca6f17c29f5ded1227f5e9",
+                          "ready200": 3,
+                          "invoke200": 1,
+                          "capabilities200": 1
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-embedded-restarted.log",
+                          "sha256": "71e197c0efd427e81457157ac800650a83e6c5e530abce0963534433f8370ae0",
+                          "ready200": 1,
+                          "invoke200": 1,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-embedded.log",
+                          "sha256": "f312cd9b3db66d66f18f36446150cd419ededf89ec675a5e5af5af42482c2de4",
+                          "ready200": 1,
+                          "invoke200": 1,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-resume-restarted.log",
+                          "sha256": "b4ceb9d97c7972d9992d10578c23b8c556f21106c39ec77e77f48f173057a35d",
+                          "ready200": 2,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-resume.log",
+                          "sha256": "d4a6774546a158c722009dc807aca8e5c72e55baa5e3df76c581025c4a142027",
+                          "ready200": 0,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-push-artifacts\\docker-langgraph-logs\\owa-langgraph-sandbox-image.log",
+                          "sha256": "da4e095a4f6f8e63685fae9858f7fcbfb0567127256f30e79c30e4c16c61807f",
+                          "ready200": 3,
+                          "invoke200": 2,
+                          "capabilities200": 1
+                        }
+                      ]
+                    }
+                  ],
+                  "benchmarks": [
+                    {
+                      "path": "tmp\\ci-58de90e-push-artifacts\\engine-benchmark-adk\\engine-benchmark-adk.json",
+                      "sha256": "9e427b2ec8622a93e8ad8c67e62117fd752b0d10de052c9216ee6ee8ca427d2b",
+                      "actualResult": {
+                        "concurrency": 4,
+                        "concurrent_seconds_total": 0.20123136500001237,
+                        "concurrent_throughput_per_second": 19.877616990769575,
+                        "engine": "adk",
+                        "engine_compile_seconds_per_iteration": 8.925999964048969e-07,
+                        "engine_compile_seconds_total": 8.92599996404897e-06,
+                        "interruption_resume": {
+                          "operation_ids": [
+                            "1bdc4b9e-a9dd-45d8-8272-27f890b9901f:/do/0/side_effect"
+                          ],
+                          "side_effect_calls": 1,
+                          "status": "completed",
+                          "unique_operation_ids": 1
+                        },
+                        "iterations": 10,
+                        "native_available": true,
+                        "native_checkpoint_bytes_after": 73728,
+                        "native_checkpoint_bytes_before": 0,
+                        "native_checkpoint_bytes_delta": 73728,
+                        "sequential_seconds_per_invocation": 0.04698361940000382,
+                        "sequential_seconds_total": 0.4698361940000382
+                      }
+                    },
+                    {
+                      "path": "tmp\\ci-58de90e-push-artifacts\\engine-benchmark-langgraph\\engine-benchmark-langgraph.json",
+                      "sha256": "f207897ec6290c0ebb3a9e0a00a5e50ef098492726c827d211f4769d664f56bd",
+                      "actualResult": {
+                        "concurrency": 4,
+                        "concurrent_seconds_total": 0.0985760020000157,
+                        "concurrent_throughput_per_second": 40.57782745134422,
+                        "engine": "langgraph",
+                        "engine_compile_seconds_per_iteration": 8.395000008931674e-07,
+                        "engine_compile_seconds_total": 8.395000008931675e-06,
+                        "interruption_resume": {
+                          "operation_ids": [
+                            "01b1b2de-35b3-45c6-91c8-90182113b926:/do/0/side_effect"
+                          ],
+                          "side_effect_calls": 1,
+                          "status": "completed",
+                          "unique_operation_ids": 1
+                        },
+                        "iterations": 10,
+                        "native_available": true,
+                        "native_checkpoint_bytes_after": 221184,
+                        "native_checkpoint_bytes_before": 20480,
+                        "native_checkpoint_bytes_delta": 200704,
+                        "sequential_seconds_per_invocation": 0.02090219149999939,
+                        "sequential_seconds_total": 0.2090219149999939
+                      }
+                    }
+                  ],
+                  "qualificationMatrix": {
+                    "actualPassedNodes": 64,
+                    "perSuite": 16,
+                    "suites": [
+                      "root",
+                      "shared",
+                      "nativeADK",
+                      "nativeLG"
+                    ],
+                    "embeddedAPIEventDurable": true,
+                    "CloudEventsDurable": false,
+                    "nativeBridgeEventDurable": false,
+                    "customClaimedDurableDenied": true
+                  },
+                  "actualImageCapabilityAssertions": "Both images executed explicit API events.durable=true / CloudEvents.durable=false assertion on real HTTP capability response; response body captured by script, mandatory acceptance step success and actual downloaded GET /v1/capabilities200 logs inspected"
+                },
+                "pr": {
+                  "runId": 38201705267,
+                  "jobs": [
+                    {
+                      "id": 114660644822,
+                      "name": "Validate deployment manifests",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114660644451,
+                      "name": "Mutation testing",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114660644929,
+                      "name": "Root quality gates",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114660645608,
+                      "name": "langgraph native and contract tests",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114660645524,
+                      "name": "adk native and contract tests",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114660645942,
+                      "name": "Docker langgraph acceptance",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114660646208,
+                      "name": "Docker adk acceptance",
+                      "conclusion": "success"
+                    },
+                    {
+                      "id": 114660643793,
+                      "name": "Windows jq expression and admission tests",
+                      "conclusion": "success"
+                    }
+                  ],
+                  "windows": [
+                    {
+                      "step": "Verify native jq cleanup, data semantics and shared admission",
+                      "passed": 466,
+                      "skipped": 12,
+                      "actualTerminalLog": "Windows jq expression and admission tests\tVerify native jq cleanup, data semantics and shared admission\t2026-10-12T04:19:25.1475836Z 466 passed, 12 skipped in 146.20s (0:02:26)"
+                    },
+                    {
+                      "step": "Verify native task checkpoints and routing on Windows",
+                      "passed": 648,
+                      "skipped": 478,
+                      "actualTerminalLog": "Windows jq expression and admission tests\tVerify native task checkpoints and routing on Windows\t2026-10-12T04:31:41.7348949Z 648 passed, 478 skipped in 733.18s (0:12:13)"
+                    }
+                  ],
+                  "images": [
+                    {
+                      "engine": "adk",
+                      "jobId": 114660646208,
+                      "sizeBytes": 683278052,
+                      "executedRequiredAcceptanceSteps": [
+                        {
+                          "name": "Build independent runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify image metadata",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Enforce image-size gate",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "External catalog resolver acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Internal sandbox execution acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "One-container embedded defaults without configuration or credentials",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container startup, health, capabilities, invocation, and knowledge",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container stop, restart, and resume acceptance",
+                          "conclusion": "success"
+                        }
+                      ],
+                      "downloadedActualLogs": [
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-catalog-image.log",
+                          "sha256": "ac32795bac4631b3fbf3988c41afd98183a241d212dd55332c00a9f7d99193d9",
+                          "ready200": 0,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-container.log",
+                          "sha256": "c8f9555173cface1b5e1878c954c02b3bbbabf60acd967ab2d25aac3d36559b8",
+                          "ready200": 2,
+                          "invoke200": 1,
+                          "capabilities200": 1
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-embedded-restarted.log",
+                          "sha256": "bcbae45683707a78509ded6d9c2653eab72897dc3db4eec34ff24024aeda86fa",
+                          "ready200": 1,
+                          "invoke200": 1,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-embedded.log",
+                          "sha256": "5e0c176b09f26369a7a8c1fdea5d40788ec5c1f0f1d45119f1e75bdf4d49ae65",
+                          "ready200": 1,
+                          "invoke200": 1,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-resume-restarted.log",
+                          "sha256": "d6ee37357f49b2af7a3c1d5f2955ac3e00b6b6bce3fad0523a18d92c66664ce2",
+                          "ready200": 2,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-resume.log",
+                          "sha256": "4d0309db429bfd8bb55390fa85c44c99b728e65a711117069b3cad348a22bfbb",
+                          "ready200": 0,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-adk-logs\\owa-adk-sandbox-image.log",
+                          "sha256": "1769144d8e7d63ffaa31d842e9a005280b38c93fbfe08caee65e78d88e183303",
+                          "ready200": 3,
+                          "invoke200": 2,
+                          "capabilities200": 1
+                        }
+                      ]
+                    },
+                    {
+                      "engine": "langgraph",
+                      "jobId": 114660645942,
+                      "sizeBytes": 623215474,
+                      "executedRequiredAcceptanceSteps": [
+                        {
+                          "name": "Build independent runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify image metadata",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Enforce image-size gate",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "External catalog resolver acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Internal sandbox execution acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "One-container embedded defaults without configuration or credentials",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container startup, health, capabilities, invocation, and knowledge",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container stop, restart, and resume acceptance",
+                          "conclusion": "success"
+                        }
+                      ],
+                      "downloadedActualLogs": [
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-catalog-image.log",
+                          "sha256": "ac32795bac4631b3fbf3988c41afd98183a241d212dd55332c00a9f7d99193d9",
+                          "ready200": 0,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-container.log",
+                          "sha256": "f3ab5e747714ae38fa6a15db94ec7ed7e91a842706000caf167c6fc95b90f146",
+                          "ready200": 3,
+                          "invoke200": 1,
+                          "capabilities200": 1
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-embedded-restarted.log",
+                          "sha256": "b7d8714a0009e444be0c82d6c50a0050302560ceb86b29bd018956eb2fe3503d",
+                          "ready200": 1,
+                          "invoke200": 1,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-embedded.log",
+                          "sha256": "645ac8d5e19334cdedaf33e1793d6c659e4768930e5fa4669a77a0416ec7cccb",
+                          "ready200": 1,
+                          "invoke200": 1,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-resume-restarted.log",
+                          "sha256": "57307103f2182cec2122e24d1ab9acbf944f92bf8865abebf0e5401967920515",
+                          "ready200": 2,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-resume.log",
+                          "sha256": "d4a6774546a158c722009dc807aca8e5c72e55baa5e3df76c581025c4a142027",
+                          "ready200": 0,
+                          "invoke200": 0,
+                          "capabilities200": 0
+                        },
+                        {
+                          "path": "tmp\\ci-58de90e-pr-artifacts\\docker-langgraph-logs\\owa-langgraph-sandbox-image.log",
+                          "sha256": "079e5f41f8c204ec69620decb82c6e3237aa7000ebe35b9995ef032b00869542",
+                          "ready200": 3,
+                          "invoke200": 2,
+                          "capabilities200": 1
+                        }
+                      ]
+                    }
+                  ],
+                  "benchmarks": [
+                    {
+                      "path": "tmp\\ci-58de90e-pr-artifacts\\engine-benchmark-adk\\engine-benchmark-adk.json",
+                      "sha256": "1f0d05e7610bc8f946d37c5ef3450737196d037df51619976f2294c1fa7403d8",
+                      "actualResult": {
+                        "concurrency": 4,
+                        "concurrent_seconds_total": 0.2195404699999699,
+                        "concurrent_throughput_per_second": 18.21987536056814,
+                        "engine": "adk",
+                        "engine_compile_seconds_per_iteration": 8.826999987832096e-07,
+                        "engine_compile_seconds_total": 8.826999987832096e-06,
+                        "interruption_resume": {
+                          "operation_ids": [
+                            "5a651142-8a0c-4fb2-805a-7ea689328d48:/do/0/side_effect"
+                          ],
+                          "side_effect_calls": 1,
+                          "status": "completed",
+                          "unique_operation_ids": 1
+                        },
+                        "iterations": 10,
+                        "native_available": true,
+                        "native_checkpoint_bytes_after": 73728,
+                        "native_checkpoint_bytes_before": 0,
+                        "native_checkpoint_bytes_delta": 73728,
+                        "sequential_seconds_per_invocation": 0.04756679190000455,
+                        "sequential_seconds_total": 0.47566791900004546
+                      }
+                    },
+                    {
+                      "path": "tmp\\ci-58de90e-pr-artifacts\\engine-benchmark-langgraph\\engine-benchmark-langgraph.json",
+                      "sha256": "da3fc188f6f25324c0dbc3509790dbf3c106d94d9c1f20f6b273df3425001324",
+                      "actualResult": {
+                        "concurrency": 4,
+                        "concurrent_seconds_total": 0.08960423600001377,
+                        "concurrent_throughput_per_second": 44.64074667183575,
+                        "engine": "langgraph",
+                        "engine_compile_seconds_per_iteration": 7.060999990926576e-07,
+                        "engine_compile_seconds_total": 7.060999990926575e-06,
+                        "interruption_resume": {
+                          "operation_ids": [
+                            "67495e5b-5782-4561-9376-1a2d4ac589fb:/do/0/side_effect"
+                          ],
+                          "side_effect_calls": 1,
+                          "status": "completed",
+                          "unique_operation_ids": 1
+                        },
+                        "iterations": 10,
+                        "native_available": true,
+                        "native_checkpoint_bytes_after": 225280,
+                        "native_checkpoint_bytes_before": 20480,
+                        "native_checkpoint_bytes_delta": 204800,
+                        "sequential_seconds_per_invocation": 0.015752564999999663,
+                        "sequential_seconds_total": 0.15752564999999663
+                      }
+                    }
+                  ],
+                  "qualificationMatrix": {
+                    "actualPassedNodes": 64,
+                    "perSuite": 16,
+                    "suites": [
+                      "root",
+                      "shared",
+                      "nativeADK",
+                      "nativeLG"
+                    ],
+                    "embeddedAPIEventDurable": true,
+                    "CloudEventsDurable": false,
+                    "nativeBridgeEventDurable": false,
+                    "customClaimedDurableDenied": true
+                  },
+                  "actualImageCapabilityAssertions": "Both images executed explicit API events.durable=true / CloudEvents.durable=false assertion on real HTTP capability response; response body captured by script, mandatory acceptance step success and actual downloaded GET /v1/capabilities200 logs inspected",
+                  "attemptHistory": {
+                    "runId": 38201705267,
+                    "attempt1": {
+                      "conclusion": "failure",
+                      "failedJobId": 114656325388,
+                      "failedNode": "test_process_crash_recovery.py::test_forced_process_stop_recovers_committed_state_without_repeating_actions[terminal-value-sqlite-langgraph-LangGraphWorkflowEngine]",
+                      "outcome": "InvocationStateConflict before ready.json; ownership lost; test-only lease5seconds",
+                      "nativeTotals": {
+                        "failed": 1,
+                        "passed": 647,
+                        "skipped": 478
+                      },
+                      "retainedSuccessfulOriginalJobs": [
+                        {
+                          "name": "Validate deployment manifests",
+                          "originalJobId": 114656325250,
+                          "conclusion": "success",
+                          "startedAt": "2026-10-12T03:55:55Z",
+                          "completedAt": "2026-10-12T03:56:03Z"
+                        },
+                        {
+                          "name": "Mutation testing",
+                          "originalJobId": 114656325339,
+                          "conclusion": "success",
+                          "startedAt": "2026-10-12T03:55:55Z",
+                          "completedAt": "2026-10-12T03:57:30Z"
+                        },
+                        {
+                          "name": "Root quality gates",
+                          "originalJobId": 114656325368,
+                          "conclusion": "success",
+                          "startedAt": "2026-10-12T03:55:54Z",
+                          "completedAt": "2026-10-12T04:01:25Z"
+                        },
+                        {
+                          "name": "langgraph native and contract tests",
+                          "originalJobId": 114657487819,
+                          "conclusion": "success",
+                          "startedAt": "2026-10-12T04:01:28Z",
+                          "completedAt": "2026-10-12T04:05:06Z"
+                        },
+                        {
+                          "name": "adk native and contract tests",
+                          "originalJobId": 114657487824,
+                          "conclusion": "success",
+                          "startedAt": "2026-10-12T04:01:28Z",
+                          "completedAt": "2026-10-12T04:06:09Z"
+                        },
+                        {
+                          "name": "Docker langgraph acceptance",
+                          "originalJobId": 114658471371,
+                          "conclusion": "success",
+                          "startedAt": "2026-10-12T04:06:12Z",
+                          "completedAt": "2026-10-12T04:07:55Z"
+                        },
+                        {
+                          "name": "Docker adk acceptance",
+                          "originalJobId": 114658471376,
+                          "conclusion": "success",
+                          "startedAt": "2026-10-12T04:06:11Z",
+                          "completedAt": "2026-10-12T04:07:57Z"
+                        }
+                      ],
+                      "fullStatus": "tmp/ci-58de90e-pr-attempt1-status.json",
+                      "fullLog": "tmp/ci-58de90e-pr-attempt1.log",
+                      "failureLog": "tmp/ci-58de90e-pr-attempt1-failed.log"
+                    },
+                    "attempt2": {
+                      "scope": "one authorized --failed rerun of only Windows job; successful attempt1 jobs retained with same source",
+                      "jobId": 114660643793,
+                      "conclusion": "success",
+                      "actualLog": "tmp/ci-58de90e-pr.log",
+                      "actualWindowsStages": [
+                        {
+                          "step": "Verify native jq cleanup, data semantics and shared admission",
+                          "passed": 466,
+                          "skipped": 12,
+                          "actualTerminalLog": "Windows jq expression and admission tests\tVerify native jq cleanup, data semantics and shared admission\t2026-10-12T04:19:25.1475836Z 466 passed, 12 skipped in 146.20s (0:02:26)"
+                        },
+                        {
+                          "step": "Verify native task checkpoints and routing on Windows",
+                          "passed": 648,
+                          "skipped": 478,
+                          "actualTerminalLog": "Windows jq expression and admission tests\tVerify native task checkpoints and routing on Windows\t2026-10-12T04:31:41.7348949Z 648 passed, 478 skipped in 733.18s (0:12:13)"
+                        }
+                      ],
+                      "runMetadata": "tmp/ci-58de90e-pr-retry-run.json"
+                    }
+                  }
+                }
+              },
+              "postgresql": {
+                "runId": 38201705353,
+                "commonJobId": 114656325330,
+                "commonStore": {
+                  "passed": 195,
+                  "skipped": 1
+                },
+                "orderingLockWaitActualNode": "test_event_store.py::test_postgresql_delayed_commit_cannot_let_later_arrival_cross_cursor[postgresql] PASSED",
+                "nativeLGCheckpoint": {
+                  "passed": 10,
+                  "skipped": 8
+                },
+                "nativeLGRealPG": {
+                  "passed": 301,
+                  "deselected": 879
+                },
+                "nativeADKRealPG": {
+                  "passed": 267,
+                  "deselected": 845
+                },
+                "optionalAFSharedBridge": {
+                  "passed": 147,
+                  "skipped": 7,
+                  "deselected": 830
+                },
+                "actualEventNodes": {
+                  "Verify competitive fork and invocation recovery on native LangGraph with PostgreSQL :: test_durable_events.py": {
+                    "PASSED": 41
+                  },
+                  "Verify competitive fork and invocation recovery on native LangGraph with PostgreSQL :: test_durable_event_process_recovery.py": {
+                    "PASSED": 5
+                  },
+                  "Verify competitive fork and invocation recovery on native ADK with PostgreSQL :: test_durable_events.py": {
+                    "PASSED": 41
+                  },
+                  "Verify competitive fork and invocation recovery on native ADK with PostgreSQL :: test_durable_event_process_recovery.py": {
+                    "PASSED": 5
+                  }
+                },
+                "images": [
+                  {
+                    "engine": "adk",
+                    "jobId": 114658430227,
+                    "executedSteps": [
+                      {
+                        "name": "Build PostgreSQL-enabled runtime image",
+                        "conclusion": "success"
+                      },
+                      {
+                        "name": "Start, restart, and invoke against PostgreSQL",
+                        "conclusion": "success"
+                      }
+                    ],
+                    "actualInitialAndRestartedContainerIDs": [
+                      "23a90b969b175a58ee5e17e476189a4daea8946a139b286810ce85483366f34a",
+                      "a2cb0bbeb37b3d077ba7674f2bf25b32d63dfe8df242581246d6f70c9a9b0891"
+                    ],
+                    "initialCompletionEvidence": "Executed successful specific acceptance step with explicit ready curl and completed/output postgres JSON assertions; original HTTP logs unavailable after deliberate initial container removal",
+                    "downloadedLogs": [
+                      {
+                        "path": "tmp\\ci-58de90e-pg-artifacts\\docker-adk-postgres-logs\\owa-adk-postgres-restarted.log",
+                        "sha256": "a75eda5147f7c9842a82791c0f583e28e60b210ca44192d38977446c9a889153",
+                        "restartedHTTP200": true,
+                        "initialLogUnavailableAfterDeliberateRemoval": false
+                      },
+                      {
+                        "path": "tmp\\ci-58de90e-pg-artifacts\\docker-adk-postgres-logs\\owa-adk-postgres.log",
+                        "sha256": "e63fcfd9329a3a49561d312caaf7022b2c9ac1d4cecf22964e8624709d019a4d",
+                        "restartedHTTP200": false,
+                        "initialLogUnavailableAfterDeliberateRemoval": true
+                      }
+                    ]
+                  },
+                  {
+                    "engine": "langgraph",
+                    "jobId": 114658430252,
+                    "executedSteps": [
+                      {
+                        "name": "Build PostgreSQL-enabled runtime image",
+                        "conclusion": "success"
+                      },
+                      {
+                        "name": "Start, restart, and invoke against PostgreSQL",
+                        "conclusion": "success"
+                      }
+                    ],
+                    "actualInitialAndRestartedContainerIDs": [
+                      "6d551e1f231ee7253747e7f5ff379133009e8ba65c82177286fa810c10896c72",
+                      "1fadb9cf8a0403cbacd028305f33f2435e07951b1eefc6dd2512145c7989735e"
+                    ],
+                    "initialCompletionEvidence": "Executed successful specific acceptance step with explicit ready curl and completed/output postgres JSON assertions; original HTTP logs unavailable after deliberate initial container removal",
+                    "downloadedLogs": [
+                      {
+                        "path": "tmp\\ci-58de90e-pg-artifacts\\docker-langgraph-postgres-logs\\owa-langgraph-postgres-restarted.log",
+                        "sha256": "09d3d4681d53144f9b930e285f118dfd210efb260786dc2b07adadd401fa48da",
+                        "restartedHTTP200": true,
+                        "initialLogUnavailableAfterDeliberateRemoval": false
+                      },
+                      {
+                        "path": "tmp\\ci-58de90e-pg-artifacts\\docker-langgraph-postgres-logs\\owa-langgraph-postgres.log",
+                        "sha256": "1be20be6384b77d35a2654ac68bedacb568d8275801e4cca9e1cc38e07eb2fdd",
+                        "restartedHTTP200": false,
+                        "initialLogUnavailableAfterDeliberateRemoval": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              "companions": {
+                "security": {
+                  "headSha": "58de90e816a1118252aec507cfd2425f60c2a1bd",
+                  "runId": 38201705278,
+                  "sourceManifest": "tmp/s2-05-quality-source-manifest-58de90e.json",
+                  "jobs": [
+                    {
+                      "databaseId": 114656325168,
+                      "name": "Audit sandbox-controller dependencies",
+                      "conclusion": "success"
+                    },
+                    {
+                      "databaseId": 114656325272,
+                      "name": "Audit langgraph dependencies",
+                      "conclusion": "success"
+                    },
+                    {
+                      "databaseId": 114656325328,
+                      "name": "Audit agent-framework dependencies",
+                      "conclusion": "success"
+                    },
+                    {
+                      "databaseId": 114656325335,
+                      "name": "Audit root dependencies",
+                      "conclusion": "success"
+                    },
+                    {
+                      "databaseId": 114656325354,
+                      "name": "Audit kubernetes-sandbox-controller dependencies",
+                      "conclusion": "success"
+                    },
+                    {
+                      "databaseId": 114656325359,
+                      "name": "Audit adk dependencies",
+                      "conclusion": "success"
+                    }
+                  ],
+                  "reports": [
+                    {
+                      "artifact": "dependency-audit-adk",
+                      "path": "tmp\\security-58de90e-all\\dependency-audit-adk\\audit.json",
+                      "sha256": "5aa2f70303d36e09a228477b1da4f588fe6800bd6890dfe332544c6d956ecd23",
+                      "dependencyCount": 109,
+                      "vulnerabilityCount": 0
+                    },
+                    {
+                      "artifact": "dependency-audit-agent-framework",
+                      "path": "tmp\\security-58de90e-all\\dependency-audit-agent-framework\\audit.json",
+                      "sha256": "0d2a08a5d0a772ee52bfd46b895e2642b811b026e27f04756133927dae34504c",
+                      "dependencyCount": 74,
+                      "vulnerabilityCount": 0
+                    },
+                    {
+                      "artifact": "dependency-audit-kubernetes-sandbox-controller",
+                      "path": "tmp\\security-58de90e-all\\dependency-audit-kubernetes-sandbox-controller\\audit.json",
+                      "sha256": "90710e5e2de8f09a1f43a635b8681ce335e7eb6ed64735f9d1cbe7f92d3d2891",
+                      "dependencyCount": 16,
+                      "vulnerabilityCount": 0
+                    },
+                    {
+                      "artifact": "dependency-audit-langgraph",
+                      "path": "tmp\\security-58de90e-all\\dependency-audit-langgraph\\audit.json",
+                      "sha256": "8e8247a451cafbfedcd54ef8997569f5f1003bf4af60dc15c948ba43caa214c2",
+                      "dependencyCount": 96,
+                      "vulnerabilityCount": 0
+                    },
+                    {
+                      "artifact": "dependency-audit-root",
+                      "path": "tmp\\security-58de90e-all\\dependency-audit-root\\audit.json",
+                      "sha256": "7800135da2728a4fdc9b253d4a09fdb683809186f2bb6377835b1f5ae3ff6cad",
+                      "dependencyCount": 71,
+                      "vulnerabilityCount": 0
+                    },
+                    {
+                      "artifact": "dependency-audit-sandbox-controller",
+                      "path": "tmp\\security-58de90e-all\\dependency-audit-sandbox-controller\\audit.json",
+                      "sha256": "4e3fd2d677e592a52f4d0057efce51d458417f1fc42f12137582433ce951b2c0",
+                      "dependencyCount": 13,
+                      "vulnerabilityCount": 0
+                    }
+                  ]
+                },
+                "agentFramework": {
+                  "runId": 38201705286,
+                  "passed": 1432,
+                  "skipped": 946,
+                  "expectedGaps": 2
+                },
+                "externalSandbox": {
+                  "runId": 38201705300,
+                  "contractsPassed": 55,
+                  "actualDockerPrincipals": [
+                    "adk",
+                    "langgraph"
+                  ]
+                },
+                "docs": {
+                  "runId": 38201705287,
+                  "actualResult": "Markdown relative-link validation passed"
+                }
+              },
+              "retainedPriorFullRuntimeEvidence": "tmp/ci-143d38a-terminal-evidence.json",
+              "exactPublicationDelta": "tmp/s2-05-publication-four-delta.json"
+            }
           }
         }
       },

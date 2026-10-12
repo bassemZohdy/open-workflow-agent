@@ -8,18 +8,20 @@ its original construct, proposed tests, independent Python/JavaScript outcome,
 remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
-S2-05 working source now implements embedded durable event storage, ordered
-strategies, correlation and sequential listener iterators. The event-strategy
-group is partial while full frozen and configured acceptance remains pending;
-its admission anchors reflect the newly implemented behavior. Explicit JSON
-null event data now passes its desired-behavior probe. The two remaining strict
+S2-05 embedded event storage, ordered strategies, correlation and sequential
+listener iterators are qualified subsets at publication `58de90e`, with runtime
+execution bytes at `143d38a`. All four local suites and seven configured gates
+pass; the updated admission, storage and native/process anchors reflect this
+finite profile. Explicit JSON null event data now passes its desired-behavior
+probe. The two remaining strict
 expected failures retain their S3-03 owners. No full inventory/proposed or
 independent JavaScript qualification is promoted by this progress update.
 
-The reviewed implementation is
-`29eeb3b`, with production bytes and full-local suite provenance at
-`a0ee9c0`; only the two descriptor/deadline fixtures differ. Exact configured
-acceptance `6f8e95d` verifies S2-04. The source retains the verified fork, original-input, terminal-record,
+The reviewed implementation is `58de90e`, with S2-05 runtime/full-suite
+provenance at `143d38a`; only its explicitly tested capability-publication
+inputs differ. S2-04 remains qualified at `6f8e95d`, with earlier production
+and full-local provenance at `a0ee9c0` preserved in the immutable audit history.
+The source retains the verified fork, original-input, terminal-record,
 leaf-call and conditional common write corrections. Completed outcomes are
 reused before native task commit; changed requests and uncertain intents stop
 recovery without repeat dispatch or ordinary task/catch retries. Uncertain
@@ -186,7 +188,7 @@ not be read as current delivery status.
 | Native checkpoint recovery | Invocation/input/terminal outcomes, SDK state/routing/scope consistency, action/child dependencies, atomic admission and ownership fencing pass identical SQLite/PostgreSQL assertions, forced process-stop, Windows and both actual runtime images. The finite recovery audit passes all configured gates at `ddd194e`; legacy/version migration and later full criteria retain their owners | S2-03 verified; migration S2-09; full criteria S4-03/S4-04 |
 | Action idempotency and compensation | A080 is partial: selected call receipts prevent completed replay and block uncertain actions. A079 remains unimplemented: no compensation/saga state machine exists. Known sandbox/event/child outcomes and pre-admission descendant reconciliation pass S2-03. Redrive, ambiguous outcome resolution, compensation and exactly-once external actions remain unqualified | S2-08; full criteria S4-03/S4-04 |
 | Retry and timeout declarations | Runtime count/backoff/jitter and attempt/aggregate budgets pass recorded-clock/RNG fixtures; timeout cleanup preserves uncertain intents. Original workflow/task deadline anchors pass native SQLite restart; retry clock/schedule/jitter and scoped exceptions pass full frozen local acceptance and all seven exact-source configured gates at `6f8e95d` | S2-04 |
-| Events and timers | Active process-local listeners and persisted after/every schedules exist; durable general inbox/outbox/timers/correlation/cron/on are missing. Explicit null event data is omitted | S2-05, S2-06 |
+| Events and timers | Embedded durable inbox/outbox, ordered strategies, correlation, explicit null preservation and sequential foreach pass full native/process/SQLite/PostgreSQL acceptance at `58de90e`. Durable timers and complete every/after/cron/event-trigger scheduling remain open | S2-05 verified; S2-06; external transports S4-10 |
 | Child workflow recovery | Synchronous child invocation/parent identity exists; recursive budgets, asynchronous children, durable cancellation and compatible version migration remain missing | S2-07, S2-09 |
 | MCP | Seven bounded HTTP methods exist; full official SDK sessions/transports/notifications are not qualified, and options/client description are inert | S3-01 |
 | A2A | Inline/imported OWS names translate to current wire names. Outbound ListTasks and GetExtendedAgentCard exist; outbound streaming/push remain unavailable despite bounded inbound streaming. AgentCard URLs are not resolved as descriptions | S3-02; push remains conditional |
@@ -211,12 +213,12 @@ conformance. Existing bounded fixtures remain linked in the manifest to their
 exact reviewed implementation acceptance.
 
 [Gap probes](../tests/contract/test_implementation_audit_gaps.py) assert desired
-fork, OpenAPI, HTTP raw and null-event behavior. Ordered-fork checks now pass
-without expected-failure markers: the root and principal engine environments
-report eight passed and three expected assertion failures; optional Agent
-Framework reports nine passed and three expected assertion failures. The
-remaining failures concern OpenAPI routing, HTTP raw binary data and explicit
-null event data. Prior unmarked runs confirmed the relevant output/request
+fork, OpenAPI, HTTP raw and null-event behavior. Ordered-fork and explicit
+null-event checks pass without expected-failure markers: root and principal
+engine environments report nine passed and two expected assertion failures;
+optional Agent Framework reports ten passed and two expected failures. The
+remaining failures concern OpenAPI routing and HTTP raw binary data. Prior
+unmarked runs confirmed the relevant output/request
 assertions. Their strict, AssertionError-only xfails keep unrelated
 errors failing CI and require marker removal when a repair makes the desired
 behavior pass. Remaining expected failures are open defects. The passing fork

@@ -5,9 +5,9 @@ seven configured gates passed. The [event capability report](../core/src/open_wo
 now advertises this verified embedded profile, including its approval delegate.
 Memory and arbitrary custom buses remain unqualified, even if a custom bus
 declares its own durability. Lifecycle CloudEvents remain bounded snapshots.
-The publication revision's final configured checks are pending in the
-[finite acceptance record](s2-05-event-acceptance.md); S2-05 remains open until
-they pass.
+Final publication `58de90e` passes all seven configured checks in the
+[finite acceptance record](s2-05-event-acceptance.md). The scoped S2-05 profile
+is complete; broader staged owners remain open.
 
 ## Deployment
 

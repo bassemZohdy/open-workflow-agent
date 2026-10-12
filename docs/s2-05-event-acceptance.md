@@ -1,9 +1,9 @@
 # S2-05 embedded event acceptance
 
-Decision: **runtime qualified at `143d38a`; capability publication checks pending**.
+Decision: **complete finite S2-05 profile qualified at `58de90e`**.
 All four frozen local suites and all seven configured workflows passed. The
-task in [TODO.md](../TODO.md) remains open until the subsequent capability
-publication revision passes its final configured checks. No entry here promotes
+task in [TODO.md](../TODO.md) is complete after final publication source
+`58de90e816a1118252aec507cfd2425f60c2a1bd` passes its exact configured checks. No entry here promotes
 a full feature/proposed-test flag or claims the entire user goal is complete.
 
 ## Qualified runtime and publication delta
@@ -46,7 +46,7 @@ arbitrary custom bus declaring durable=true remain false. Native SPI scope and
 CloudEvents snapshot durability are unchanged. Bounded checks pass **73 root,
 76 ADK, 76 LangGraph and 111 optional Agent Framework** tests. Runtime execution
 bytes remain those of the fully qualified source; the changed publication bytes
-and image assertions still require fresh exact-revision configured acceptance.
+and image assertions pass fresh exact-revision configured acceptance below.
 
 The scope is the full S2-05 event contribution: durable inbox/outbox, one/all/any
 and until consumption, filter/correlation semantics, ordered array projections,
@@ -60,26 +60,26 @@ invocations remain S2-06; external transport acceptance remains S4-10.
 Each E01–E14 requirement is mandatory. Focused SQLite/native checks below are
 supporting evidence on the working implementation, not substitutes for the
 final frozen-source suites or actual configured PostgreSQL execution.
-The table retains the earlier implementation-stage evidence notes. The complete
-qualified runtime evidence above supersedes their pending validation statuses;
-only the final publication revision remains pending for E13/E14.
+The table records the final finite qualification. Historical focused runs
+and earlier failures remain below for provenance; final publication acceptance
+also verifies E13/E14, as recorded below.
 
 | ID | Requirement and concrete proof | Implemented evidence and current status |
 | --- | --- | --- |
-| E01 | Embedded inbox/outbox survives complete service reopen; default SQLite and optional PostgreSQL behave equivalently. | [Common store tests](../tests/core/test_event_store.py) reopen the database and preserve canonical envelopes, generated publication values and dedupe. [Runtime composition](../core/src/open_workflow_agent/services.py) defaults to embedded storage. Local SQLite proof passes; actual PostgreSQL qualification pending. |
-| E02 | Publication, delivery, selection and common receipts commit atomically; failed transactions leave no acknowledged half-state. | Store failpoints roll back registration, outbox/receipt, selection/final receipt and delivery. [Durable approval tests](../tests/core/test_durable_event_approvals.py) include request and decision transaction participants. Accepted outbox capacity is reserved before acknowledgement. Focus passes; final source and PostgreSQL proof pending. |
-| E03 | Complete assigned listener semantics: one/all/any, empty strategies, expression/nested until, filtered candidate contexts, ordered data/envelope/raw/null arrays and sequential foreach item/at/do/output/export. | [Shared durable event fixtures](../tests/contract/test_durable_events.py) cover these results, FIFO order, terminator exclusion, schema failures and nested iterator recovery. [CTK listener fixtures](../tests/ctk/features/listen-reads.feature) use corrected arrays. Focused actual ADK/LangGraph checks pass; final complete suites pending. |
-| E04 | Correlation extraction, explicit/omitted expectations and multiple keys persist; mismatches and other trusted scopes do not resume the listener. | Common store immutable progress and shared fixtures bind the first accepted key, reject changed values and recover partial aggregation. Restricted jq evaluates extraction against the envelope and expectations against registration input. Focus passes; actual PostgreSQL cases pending. |
-| E05 | Stable source+id duplicate acknowledgement across connections/reopen causes no additional logical arrival/action; conflicts fail closed. | Store tests exercise separate concurrent connections, changed payload rejection, generated-time reuse and cross-source identity. Shared duplicate fixtures check one downstream action after reopened acknowledgement. Scoped principal boundaries are preserved. Local proof passes; configured proof pending. |
-| E06 | Early replay, sequential occurrences, concurrent broadcast and terminal late delivery obey the documented embedded policy. | Core cursor-cohort fixtures cover different sequential task references, loops, already registered fork consumers and another invocation. Shared fixtures cover repeated listeners, protected decisions and authorized cancellation. Early events are retained rather than requiring republish. Focus passes; final/PG qualification pending. |
-| E07 | Registration precedes waiting observation; selected-event/routing evidence survives native checkpoint gaps with one logical continuation. | [Restart fixtures](../tests/contract/test_durable_events.py) stop at waiting, selected and partial-all boundaries, then reopen actual SDKs; common/native links are reconciled before dispatch. Saved routing receipts prevent cursor/correlation mutation. Focus passes; configured recovery proof pending. |
-| E08 | Actual process kill without cleanup recovers waiting, selected, partial-all and known foreach outcomes; legacy scalar state fails admission. | [Forced process-stop fixtures](../tests/contract/test_durable_event_process_recovery.py) kill the worker and reopen after real ownership expiry using deterministic fake models. Both principal SQLite SDK runs pass all five boundaries. PostgreSQL process execution pending. |
-| E09 | Identity/fingerprint/occurrence, ownership and complete recovery evidence are enforced before parent mutation, including terminal child dependencies. | Store and shared tests delete/change subscriptions, selections, outboxes, profiles and receipts; stale leases fail. Child common dependencies are traversed recursively. JSON evidence distinguishes booleans from numeric one. Native pre-admission failures preserve parent state and call counts. Focus passes; final/PG proof pending. |
-| E10 | Authorized cancellation, terminal status and timeout/termination prevent late resumption; process interruption remains resumable. | Core disposition tests distinguish raw service/process interruption from persisted cancellation. Engine cancellation closes pending subscriptions after terminal commit; selection checks terminal state. Shared cancellation and existing timeout/flow regressions remain required. Focused disposition proof passes; complete lifecycle regression pending. |
-| E11 | Approval state remains separate and authoritative; generic decisions cannot be forged or misrouted. | Approval request/decision and inbox changes share the transaction. Original request scope persists across reopen. [Approval guard fixtures](../tests/contract/test_durable_events.py) reject regex lookalikes and unbacked protected events. The decorator preserves delegate durability. Focus passes; full/configured approval regression pending. |
-| E12 | Size, storage, queue/scan and correlation limits are enforced without silently discarding acknowledged evidence; errors and principal boundaries remain safe. | [API fixtures](../tests/core/test_durable_event_api.py) reject excess/forged input and payload identity overrides. Store tests check bounds, retained/reserved bytes, pinned retention and atomic failures. PostgreSQL transaction-scoped writer ordering has a real delayed-commit/lock-wait fixture; it is locally skipped without PostgreSQL. Final configured proof pending. |
-| E13 | Capability/deployment claims match actual configured behavior and executed evidence; broader staged flags remain open. | Embedded/memory bootstrap and unsupported-backend admission are tested. [Capabilities](../core/src/open_workflow_agent/event_capabilities.py) retain the explicit false qualification gate. [Semantics](durable-events.md) defines duplicate, broadcast, retention, polling and legacy policy. Final metadata/capability review pending; flag remains false. |
-| E14 | The frozen final source passes full root/ADK/LangGraph/optional AF, coverage, quality, distributions/schema bytes, Windows, actual PostgreSQL, principal images/restarts, benchmarks and six security reports. | Focused results below do not establish E14. First full runs were stopped for a remaining legacy admission oracle and retained only as partial logs. Corrected-source refreeze, all four complete runs, builds and exact published seven-gate qualification remain pending. No release/merge/deployment is part of this requirement. |
+| E01 | Embedded inbox/outbox survives complete service reopen; default SQLite and optional PostgreSQL behave equivalently. | Verified: embedded SQLite reopen and actual PostgreSQL acceptance on both principal SDKs. |
+| E02 | Publication, delivery, selection and common receipts commit atomically; failed transactions leave no acknowledged half-state. | Verified: transaction rollback and immutable receipt tests, protected approval participants, reservation limits and configured PostgreSQL. |
+| E03 | Complete assigned listener semantics: one/all/any, empty strategies, expression/nested until, filtered candidate contexts, ordered data/envelope/raw/null arrays and sequential foreach item/at/do/output/export. | Verified: identical shared native results for strategies, predicates, projection and foreach; complete suites and actual PostgreSQL pass. |
+| E04 | Correlation extraction, explicit/omitted expectations and multiple keys persist; mismatches and other trusted scopes do not resume the listener. | Verified: persisted correlation and trusted scope fixtures pass native SQLite/PostgreSQL recovery. |
+| E05 | Stable source+id duplicate acknowledgement across connections/reopen causes no additional logical arrival/action; conflicts fail closed. | Verified: duplicate acknowledgement and changed-payload rejection across independent connections, restart and principal scopes. |
+| E06 | Early replay, sequential occurrences, concurrent broadcast and terminal late delivery obey the documented embedded policy. | Verified: documented early replay, sequential cursor cohorts, concurrent broadcast and terminal late-delivery policy. |
+| E07 | Registration precedes waiting observation; selected-event/routing evidence survives native checkpoint gaps with one logical continuation. | Verified: waiting, partial selection and routing receipt recovery pass native checkpoints and configured acceptance. |
+| E08 | Actual process kill without cleanup recovers waiting, selected, partial-all and known foreach outcomes; legacy scalar state fails admission. | Verified: five actual OS process-stop boundaries per principal on SQLite and PostgreSQL; legacy scalar progress rejects admission. |
+| E09 | Identity/fingerprint/occurrence, ownership and complete recovery evidence are enforced before parent mutation, including terminal child dependencies. | Verified: identity, ownership and evidence-corruption fixtures reject before parent mutation or dispatch, including known terminal child dependencies. |
+| E10 | Authorized cancellation, terminal status and timeout/termination prevent late resumption; process interruption remains resumable. | Verified: terminal cancellation/disposition and full lifecycle regression; transient process interruption remains recoverable. |
+| E11 | Approval state remains separate and authoritative; generic decisions cannot be forged or misrouted. | Verified: atomic protected approvals, authoritative scope and forged-decision guards across complete and configured suites. |
+| E12 | Size, storage, queue/scan and correlation limits are enforced without silently discarding acknowledged evidence; errors and principal boundaries remain safe. | Verified: bounded admission/retention/reservation and actual PostgreSQL delayed-commit ordering lock; API principal boundaries pass. |
+| E13 | Capability/deployment claims match actual configured behavior and executed evidence; broader staged flags remain open. | Verified at `58de90e`: actual embedded bus and approval delegate advertise durability; memory/custom buses remain false. Live image assertions and native API matrix pass; broader claims retain later owners. |
+| E14 | The frozen final source passes full root/ADK/LangGraph/optional AF, coverage, quality, distributions/schema bytes, Windows, actual PostgreSQL, principal images/restarts, benchmarks and six security reports. | Verified: all four frozen local suites, coverage, quality, five distributions and unchanged schema; all seven exact publication workflows, Windows, PostgreSQL, restart images, benchmarks and six nonempty security reports pass. |
 
 ## Inspected focused evidence
 
@@ -193,3 +193,22 @@ matrix above; its publication validation is recorded separately.
 Full feature/proposed/JavaScript claims, compatible migration, durable timers,
 external brokers and broader lifecycle history retain their later owners. The
 complete backlog remains the user goal.
+
+## Final publication acceptance
+
+`58de90e` passes all seven exact workflows: [PostgreSQL CI (pull_request)](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705353), [Docs (pull_request)](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705287), [Security (pull_request)](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705278), [External Sandbox CI (pull_request)](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705300), [Agent Framework CI (pull_request)](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705286), [CI (pull_request)](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705267), [CI (push)](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201700615).
+The terminal inspector verifies actual new embedded capability assertions,
+Windows stages, both principal image/benchmark pairs, PostgreSQL 41 event
+and five process cases per principal, ordering lock, both PostgreSQL images,
+optional package and six nonempty nested zero-vulnerability security reports.
+Only the verified embedded profile is advertised. All E01-E14 are complete;
+14 of 37 active tasks are verified and S2-06 is next. Earlier failures and
+broader staged owners remain preserved.
+
+The [first PR CI attempt](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705267/attempts/1) at publication `58de90e` has one Windows native
+process-stop fixture failure before its terminal marker: the worker loses its
+five-second test ownership lease on that host and correctly fails closed.
+It records 647 passes, 478 skips and one failure; the same-source push stage
+passes 648/478. Only that failed job is rerun, with no source change. The final
+configured decision uses the inspected [retry result](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38201705267/attempts/2); the failed attempt and
+its logs remain preserved in the acceptance evidence.

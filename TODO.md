@@ -166,13 +166,13 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   policy rollback; both Windows stages, main/PG image restarts, native benchmarks
   and all six zero-advisory reports pass. Earlier failures remain historical.
   S2-05 is next; 13 of 37 backlog tasks are verified.
-- [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
-  In progress: common storage and matching, native consumption/iterator
+- [x] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
+  Verified: common storage and matching, native consumption/iterator
   recovery, scope and approval guards are implemented. Focused native and
-  process-stop checks pass. All four full suites and seven configured gates
-  qualify runtime source `143d38a`. Capability publication passes root/native
-  focus; its final configured checks are pending. See
-  [current progress](PROJECT.md#s2-05-embedded-event-work--2026-10-12-in-progress).
+  process-stop, full-suite and configured acceptance qualify runtime source
+  `143d38a` and publication `58de90e`. All fourteen finite requirements pass;
+  embedded capability reports are verified. See
+  [acceptance evidence](PROJECT.md#s2-05-embedded-event-work--2026-10-12-verified).
 - [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.
 - [ ] **S2-07** (L) — Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.
 - [ ] **S2-08** (L) — Complete cancellation, termination, compensation and idempotent external-action recovery.
@@ -211,8 +211,8 @@ Earlier completed release/readiness work and deferred details are preserved in [
 
 ## Deferred tasks
 
-No active backlog tasks are currently deferred. S2-04 is verified; S2-05 is
-the next ready task. The scoped acceptance and prior failures are recorded above.
+No active backlog tasks are currently deferred. S2-05 is verified; S2-06 is
+the next ready task. Scoped acceptance and prior failures are recorded above.
 Move a task's
 entry here when the blocked-task rule applies, keeping its checkbox unchecked
 and including the full deferral record described above.
