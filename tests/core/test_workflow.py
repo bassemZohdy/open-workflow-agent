@@ -176,11 +176,11 @@ def test_expression_evaluator_supports_wrapped_object_and_list_expressions():
 def test_workflow_capability_helpers_reject_invalid_definitions():
     with pytest.raises(WorkflowSemanticError):
         _validate_emit_capability({}, "/do/0/emit")
-    with pytest.raises(UnsupportedWorkflowFeature):
+    with pytest.raises(WorkflowSemanticError, match="listen.all must be an array"):
         _validate_listen_capability({"to": {"all": {}}}, "/do/0/listen")
     with pytest.raises(WorkflowSemanticError):
         _validate_listen_capability({"to": {"one": {}}}, "/do/0/listen")
-    with pytest.raises(UnsupportedWorkflowFeature):
+    with pytest.raises(WorkflowSemanticError, match="event filter.with is required"):
         _validate_listen_capability({"to": {"one": {"with": {}}}, "foreach": {}}, "/do/0/listen")
     with pytest.raises(WorkflowSemanticError):
         _validate_run_capability({}, "/do/0/run")

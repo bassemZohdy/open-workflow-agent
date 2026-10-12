@@ -77,6 +77,17 @@ that an included path or green collection guard proves database behavior.
 
 ## Provenance and remaining gates
 
+Initial published source `d808d36` passes Docs, Security, optional Agent
+Framework and external sandbox workflows. Push and PR CI fail a legacy helper
+oracle: malformed `listen.all` and empty filter definitions correctly raise a
+semantic validation error, while the old assertions expect an unsupported
+feature error. Push root records 1 failed, 1,896 passed, 884 skipped, two
+expected gaps and 91.31% coverage; Windows records 1 failed, 465 passed and
+12 skipped. These failed runs are not qualified acceptance. The follow-up
+changes only those two expectations in the core fixture, preserving malformed
+definition rejection and the runtime source. Focused workflow/event/admission
+checks pass 78 tests; fresh affected full/core and configured checks are required.
+
 Semantic built-in error URIs follow release tag `v1.0.3`, immutable commit
 `9b5b1da29e9d4fff2358580241e11aab22704a16`, using
 `https://serverlessworkflow.io/spec/1.0.0/errors/`. The task/item schema-validation
