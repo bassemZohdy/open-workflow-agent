@@ -137,8 +137,12 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
   Error-variable/status binding and common provider error replay are corrected
   at `23b9d35`; native/portable/recovery focus passes 95/29 per SDK, and the
-  final error fixture passes 19/15 per environment. Timing/deadline behavior
-  and full/configured qualification remain open. See
+  final error fixture passes 19/15 per environment. All seven `b6aef8c` gates
+  qualify that block, including five PostgreSQL provider cases per SDK.
+  Runtime timing at `f2b5c02` passes 85/39 timing/recovery and 93/26 lifecycle/
+  fork checks per SDK. Jitter and duration fields now operate during a run.
+  Persisted deadlines/retry schedule, full scoped exceptions and changed-source
+  full/configured qualification remain open. See
   [current work](PROJECT.md#s2-04-retry-timeout-and-exception-work--2026-10-12-in-progress).
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
 - [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.

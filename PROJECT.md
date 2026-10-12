@@ -97,6 +97,35 @@ and retry state, timeout cleanup/attribution, complete scoped exception behavior
 and full task acceptance remain required. Later proposed/JavaScript criteria
 retain their Stage 4 owners. The prior S2-03 acceptance remains source-bound.
 
+Error-context artifact `b6aef8c` subsequently passes all seven configured runs,
+including five actual PostgreSQL provider-receipt cases per principal adapter,
+both Windows suites, both main/PostgreSQL images and native benchmarks. Core
+passes 1,684/637/three tracked gaps at 91.68% coverage; native ADK 841/509 and
+LangGraph 883/482 plus 96 CTK each; optional Agent Framework 1,229/723/three gaps.
+Windows passes 460/12 core and 477/299 native. Six nested dependency reports
+contain zero known advisories. This qualifies the error block, not full S2-04.
+
+Source `f2b5c02` implements typed retry timing: additional-attempt limits,
+declarations without a count, constant/linear/exponential delay, bounded additive
+jitter, per-retry duration and aggregate runtime duration including waits. The
+aggregate clock starts when the first retry is selected. Foreign TimeoutError
+is distinguished from runtime deadlines, and synchronous elapsed work is checked.
+Deadline cancellation drains the active action and retains uncertain intent;
+cancellation wrappers cannot discard that uncertainty and enter catch retries.
+The same new assertions fail ten actual native LangGraph cases on archived
+`b6aef8c` source (one case passes). Current core passes 64/1; native timing/error/
+receipt focus passes 85/39 per SDK and lifecycle/fork regression 93/26 per SDK.
+The final timing fixture passes 22/22 per environment; those 22 skips require
+configured PostgreSQL. Eleven actual collection guards select eleven timing
+cases per principal adapter. Strict 67-source/fixture typing and full scoped
+lint/formatting pass. Changed timing-source full/configured acceptance is pending.
+
+Persisted original workflow/task deadlines and retry clock/count/schedule,
+stable jitter decisions across restart, complete scoped exception behavior and
+full S2-04 acceptance remain required. The task stays unchecked. The eight
+previously inert jitter/duration inventory fields are now partial, rather than
+complete, and full proposed/JavaScript flags remain unchanged.
+
 ### S2-03 checkpoint recovery — 2026-10-12 (verified)
 
 Fresh-runtime tests reproduce a common resume defect: a submitted JSON null was

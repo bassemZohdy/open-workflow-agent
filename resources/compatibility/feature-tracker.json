@@ -43409,7 +43409,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A068",
-          "python_outcome": "inert",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -43439,7 +43439,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A069",
-          "python_outcome": "inert",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -43559,7 +43559,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A073",
-          "python_outcome": "inert",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -59634,7 +59634,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS325",
-          "python_outcome": "inert",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -59784,7 +59784,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS330",
-          "python_outcome": "inert",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -59844,7 +59844,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS332",
-          "python_outcome": "inert",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -59874,7 +59874,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS333",
-          "python_outcome": "inert",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -59904,7 +59904,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS334",
-          "python_outcome": "inert",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -66919,7 +66919,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "known_issues": [
-          "Complete jitter and retry count/duration behavior, per-attempt/aggregate budgets, task/workflow timeout cleanup and exception attribution, stable deadlines/retry state across restart, scoped catch ordering and predicate-failure handling, then frozen full/configured acceptance. Full proposed/JavaScript criteria retain Stage 4 owners."
+          "Persist original workflow/task deadlines and retry clock/count/schedule across restart, including stable jitter decisions; prove fresh native recovery without renewed budgets or repeated uncertain dispatch. Complete scoped catch/exception vocabulary/order and frozen full/configured S2-04 acceptance. Full proposed/JavaScript criteria retain Stage 4 owners."
         ],
         "resolved_issues": [
           {
@@ -66971,8 +66971,100 @@
             "new_provider_cases_selected_per_principal": 5
           },
           "quality": "Strict 66-source package typing, two fixture/CI modules, lint and formatting pass",
-          "configured_acceptance": "Pending for changed source; no local PostgreSQL run claimed",
-          "remaining": "Complete jitter and retry count/duration behavior, per-attempt/aggregate budgets, task/workflow timeout cleanup and exception attribution, stable deadlines/retry state across restart, scoped catch ordering and predicate-failure handling, then frozen full/configured acceptance. Full proposed/JavaScript criteria retain Stage 4 owners."
+          "configured_acceptance": {
+            "commit": "b6aef8c6be8dea61fdd79bf42c999a28ab04e43b",
+            "runtime_commit": "23b9d35c33b938fc74c6db2d2bb9ea67cfa7df5b",
+            "result": "All seven successful",
+            "remote_runs": {
+              "38188084450": "success",
+              "38188084468": "success",
+              "38188084474": "success",
+              "38188084436": "success",
+              "38188084438": "success",
+              "38188084394": "success",
+              "38188081440": "success"
+            },
+            "core": {
+              "passed": 1684,
+              "skipped": 637,
+              "expected_assertion_failures": 3,
+              "coverage_percent": 91.68
+            },
+            "native": {
+              "adk_passed": 841,
+              "adk_skipped": 509,
+              "langgraph_passed": 883,
+              "langgraph_skipped": 482,
+              "ctk_per_adapter": 96,
+              "expected_assertion_failures_per_adapter": 3
+            },
+            "windows": {
+              "core_passed": 460,
+              "core_skipped": 12,
+              "native_passed": 477,
+              "native_skipped": 299
+            },
+            "postgresql": {
+              "store_passed": 119,
+              "shared_langgraph_passed": 228,
+              "shared_adk_passed": 194,
+              "optional_common_bridge_passed": 147,
+              "optional_skipped": 7,
+              "provider_receipt_cases_actually_passed_per_principal": 5
+            },
+            "optional_agent_framework": {
+              "passed": 1229,
+              "skipped": 723,
+              "expected_assertion_failures": 3
+            },
+            "both_main_images_and_native_benchmarks_in_both_ci_runs": "Success",
+            "both_postgresql_images": "Success",
+            "security_dependency_counts": {
+              "dependency-audit-adk": 109,
+              "dependency-audit-agent-framework": 74,
+              "dependency-audit-kubernetes-sandbox-controller": 16,
+              "dependency-audit-langgraph": 96,
+              "dependency-audit-root": 71,
+              "dependency-audit-sandbox-controller": 13
+            },
+            "known_advisories": 0,
+            "scope": "Qualifies the error-context correction only; later timing source and full S2-04 remain open"
+          },
+          "remaining": "Persist original workflow/task deadlines and retry clock/count/schedule across restart, including stable jitter decisions; prove fresh native recovery without renewed budgets or repeated uncertain dispatch. Complete scoped catch/exception vocabulary/order and frozen full/configured S2-04 acceptance. Full proposed/JavaScript criteria retain Stage 4 owners.",
+          "runtime_timing_followup": {
+            "commit": "f2b5c02b49f24d5d191f16bf5242e05fb258cbab",
+            "status": "Runtime timing locally verified; durable deadlines and full S2-04 remain open",
+            "scope": "Typed immutable retry policy enforces count/no-count declarations, constant/linear/exponential delay, bounded additive jitter and per-retry/aggregate runtime budgets. Aggregate timing starts at the first selected retry and includes waits. Timer-origin errors are distinguished from foreign TimeoutError, and synchronous elapsed work is checked. Deadline cancellation drains external actions and retains uncertain intent instead of ordinary catch retry; shared timer-owner uncertainty survives cancellation wrappers.",
+            "negative_probe": {
+              "archived_runtime_commit": "b6aef8c6be8dea61fdd79bf42c999a28ab04e43b",
+              "native_langgraph_failed": 10,
+              "passed": 1,
+              "deselected": 11
+            },
+            "local_core": {
+              "passed": 64,
+              "skipped": 1
+            },
+            "native_timing_error_and_receipt_focus_per_principal": {
+              "passed": 85,
+              "skipped": 39
+            },
+            "lifecycle_and_fork_regression_per_principal": {
+              "passed": 93,
+              "skipped": 26
+            },
+            "final_timing_fixture_per_environment": {
+              "passed": 22,
+              "postgresql_skipped": 22
+            },
+            "actual_collection_guards": {
+              "passed": 11,
+              "new_timing_postgresql_cases_selected_per_principal": 11
+            },
+            "quality": "Full scoped lint/formatting (208 files), strict 67-source package typing and three fixture/CI modules pass",
+            "configured_acceptance": "Pending for changed timing source; no local PostgreSQL execution claimed",
+            "remaining": "Persist original workflow/task deadlines and retry clock/count/schedule across restart, including stable jitter decisions; prove fresh native recovery without renewed budgets or repeated uncertain dispatch. Complete scoped catch/exception vocabulary/order and frozen full/configured S2-04 acceptance. Full proposed/JavaScript criteria retain Stage 4 owners."
+          }
         }
       },
       {
