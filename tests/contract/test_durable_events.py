@@ -23,6 +23,8 @@ from open_workflow_agent.errors import EventValidationError, InvocationStateErro
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
+pytestmark = pytest.mark.usefixtures("explicit_workflow_delivery")
+
 PRINCIPAL_CASES = [case for case in engine_cases() if case[0] in {"adk", "langgraph"}]
 
 

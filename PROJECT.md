@@ -127,8 +127,12 @@ inspected. PostgreSQL passes the core and all LangGraph recovery cases, then
 fails one ADK event-worker counter contaminated by unrelated timer delivery.
 Worker-only isolation preserves exact call assertions; all eight event/timing
 process cases pass on each actual SDK. Fresh PostgreSQL/images and all configured
-acceptance remain required; the push Windows job is cancelled at its existing
-limit, not qualified.
+acceptance remain required; the original push Windows cancellation remains
+historical. At `5e66f99`, both main CI runs succeed, including Windows and main
+images. The remaining PostgreSQL failure is three explicit timeout fixtures
+followed by the unchanged ADK step limit. Isolated retry/event module focuses
+pass 92 cases per actual SDK, and automatic Wait CTK still passes. Fresh exact
+PostgreSQL acceptance remains required before S2-06 closure.
 
 S2-06 remains unchecked pending actual PostgreSQL, exact-source configured
 full suites, image observations and qualified capability publication. The

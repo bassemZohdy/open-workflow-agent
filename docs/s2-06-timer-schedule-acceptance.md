@@ -476,3 +476,26 @@ not green; the other push jobs, including both main images, pass. PR CI's
 Windows run succeeds independently. No timeout or assertion is waived. The
 corrected source will receive fresh configured validation before publication.
 S2-06 remains unchecked.
+
+
+At stable source `5e66f9940315d6a3e06a99cf15dee665bd329dcf`, six configured
+runs pass: both main CI runs, Docs, Security, optional Agent Framework and
+External Sandbox. Both main image pairs, full root/native/Windows suites and
+benchmark evidence are reviewed. PostgreSQL core and LangGraph pass, but its
+ADK step reports three uncertain-action timeout fixture failures and eventually
+reaches the unchanged nine-minute deadline. The raw step is retained in
+`tmp/ci-5e66f99-pg-failed.log`; no complete ADK summary or later database image
+qualification is inferred from the timed-out output.
+
+The retry-timing and durable-event modules exercise explicit invoke/resume
+and selected event delivery while sharing database state. An opt-in test fixture
+now suppresses only automatic timer startup for those two modules before native
+initialization, preventing an unrelated fixture's due invocation from entering
+their fake model or blocked action. Their original clock/random draws,
+timeout-drainage, ownership, receipt/corruption and exact call assertions are
+unchanged. Actual ADK and LangGraph entire-file focuses each pass 92 cases
+with 116 unavailable-profile skips. Both 300-second supervisors finish normally
+with all 275 inputs unchanged. Explicit timer dispatch, its forced-stop
+fixtures and automatic CTK waits do not use that opt-in fixture. Automatic
+Wait CTK focus still passes two cases in each native environment (94 deselected).
+Fresh actual PostgreSQL and all corrected-source gates remain required.

@@ -16,6 +16,8 @@ from open_workflow_agent.lifecycle import CancellationToken
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
+pytestmark = pytest.mark.usefixtures("explicit_workflow_delivery")
+
 
 def _services(tmp_path: Path, backend: str) -> RuntimeServices:
     datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
