@@ -8,9 +8,11 @@ import hashlib
 import json
 import math
 import os
+import random
 import re
 import time
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
+from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -59,6 +61,7 @@ from .persistence import ExecutionHandle
 from .protocols import PROTOCOL_DATA_FIELDS
 from .resources import SchemaResource, materialize_schema_resources
 from .resources import schema_registry as build_schema_registry
+from .retry import RetryPolicy
 from .workflow_profile import SCHEMA_SHA256, WORKFLOW_DSL
 
 DEFAULT_WORKFLOW: dict[str, Any] = {
@@ -72,6 +75,17 @@ DEFAULT_WORKFLOW: dict[str, Any] = {
 }
 
 OFFICIAL_SCHEMA_RELATIVE_PATH = Path("resources/open-workflow/1.0.3/workflow.yaml")
+
+
+@dataclass(slots=True)
+class _DeadlineScope:
+    deadline: asyncio.Timeout
+    unresolved_reference: str | None = None
+
+
+_ACTIVE_TIMEOUTS: ContextVar[tuple[_DeadlineScope, ...]] = ContextVar(
+    "owa_active_timeouts", default=()
+)
 
 SUPPORTED_TASKS = (
     "do",
@@ -313,6 +327,9 @@ def validate_capabilities(
         _validate_transitions(definition, reference, scope_names)
         if isinstance(definition.get("timeout"), str):
             _unsupported("named timeout", f"{reference}/timeout")
+        catch = definition.get("catch")
+        if isinstance(catch, Mapping) and isinstance(catch.get("retry"), Mapping):
+            RetryPolicy.from_value(catch["retry"], duration=_duration_seconds)
         raised = definition.get("raise")
         if isinstance(raised, Mapping) and isinstance(raised.get("error"), str):
             _unsupported("named error", f"{reference}/raise/error")
@@ -1126,6 +1143,46 @@ class WorkflowExecutor:
         self.services = services
         self.expressions = ExpressionEvaluator()
         self.event_sink = event_sink or NullEventSink()
+        self._policy_clock: Callable[[], float] = time.monotonic
+        self._retry_random: Callable[[float, float], float] = random.uniform
+
+    async def _run_timed(
+        self,
+        operation: Callable[[], Awaitable[Any]],
+        seconds: float | None,
+        message: str,
+        details: dict[str, Any],
+    ) -> Any:
+        if seconds is None:
+            return await operation()
+        if seconds <= 0:
+            raise WorkflowExecutionError(message, details=details)
+        started = self._policy_clock()
+        deadline = asyncio.timeout(seconds)
+        scope = _DeadlineScope(deadline)
+        token = _ACTIVE_TIMEOUTS.set((*_ACTIVE_TIMEOUTS.get(), scope))
+
+        def timed_out() -> WorkflowExecutionError:
+            if scope.unresolved_reference is not None:
+                return _EffectRecoveryRequired(
+                    "workflow action exceeded a deadline with an unresolved execution intent",
+                    details={"instance": scope.unresolved_reference},
+                )
+            return WorkflowExecutionError(message, details=details)
+
+        try:
+            try:
+                async with deadline:
+                    result = await operation()
+            except TimeoutError as exc:
+                if not deadline.expired():
+                    raise
+                raise timed_out() from exc
+            if deadline.expired() or self._policy_clock() - started >= seconds:
+                raise timed_out()
+            return result
+        finally:
+            _ACTIVE_TIMEOUTS.reset(token)
 
     def _expressions(self, state: ExecutionState) -> ExpressionEvaluator:
         return state.expressions or self.expressions
@@ -1228,17 +1285,12 @@ class WorkflowExecutor:
             state.context = copy.deepcopy(state.data)
             state.variables["context"] = state.context
             workflow_timeout = _duration_seconds(workflow.get("timeout"))
-            if workflow_timeout is None:
-                await self._run_tasks(workflow.get("do", []), state)
-            else:
-                try:
-                    await asyncio.wait_for(
-                        self._run_tasks(workflow.get("do", []), state), workflow_timeout
-                    )
-                except TimeoutError as exc:
-                    raise WorkflowExecutionError(
-                        "workflow timed out", details={"timeout_seconds": workflow_timeout}
-                    ) from exc
+            await self._run_timed(
+                lambda: self._run_tasks(workflow.get("do", []), state),
+                workflow_timeout,
+                "workflow timed out",
+                {"timeout_seconds": workflow_timeout},
+            )
             output = workflow.get("output")
             output_variables = {
                 key: value
@@ -1494,18 +1546,14 @@ class WorkflowExecutor:
                         "progress": {"phase": "executing"},
                     },
                 )
-                operation = self._run_task(name, definition, state)
-                if timeout_seconds is not None:
-                    try:
-                        return await asyncio.wait_for(
-                            self._await_with_cancellation(operation, state), timeout_seconds
-                        )
-                    except TimeoutError as exc:
-                        raise WorkflowExecutionError(
-                            f"task {name} timed out",
-                            details={"task": name, "timeout_seconds": timeout_seconds},
-                        ) from exc
-                return await self._await_with_cancellation(operation, state)
+                return await self._run_timed(
+                    lambda: self._await_with_cancellation(
+                        self._run_task(name, definition, state), state
+                    ),
+                    timeout_seconds,
+                    f"task {name} timed out",
+                    {"task": name, "timeout_seconds": timeout_seconds},
+                )
             except Exception as exc:
                 last_error = exc
                 if isinstance(
@@ -1623,17 +1671,40 @@ class WorkflowExecutor:
                 )
                 return state.data
             catch_retry = catch.get("retry") if isinstance(catch, Mapping) else None
-            attempts = _retry_attempts(catch_retry)
+            retry_policy = RetryPolicy.from_value(catch_retry, duration=_duration_seconds)
+            retry_started: float | None = None
+            attempt = 0
             execution_path = state.execution_path
-            for attempt in range(attempts):
+            while True:
                 state.execution_path = execution_path + (
                     (f"{task_reference}/@catch-attempt", attempt + 1),
                 )
                 try:
-                    await self._run_tasks(
-                        _task_body(definition["try"]),
-                        state,
-                        prefix=self._nested_prefix(state, "try"),
+                    remaining = (
+                        retry_policy.duration - (self._policy_clock() - retry_started)
+                        if retry_started is not None and retry_policy.duration is not None
+                        else None
+                    )
+                    attempt_timeout = retry_policy.attempt_duration if attempt else None
+                    if remaining is not None:
+                        attempt_timeout = (
+                            min(remaining, attempt_timeout)
+                            if attempt_timeout is not None
+                            else remaining
+                        )
+                    await self._run_timed(
+                        lambda: self._run_tasks(
+                            _task_body(definition["try"]),
+                            state,
+                            prefix=self._nested_prefix(state, "try"),
+                        ),
+                        attempt_timeout,
+                        "retry attempt timed out",
+                        {
+                            "instance": task_reference,
+                            "retry_attempt": attempt,
+                            "timeout_seconds": attempt_timeout,
+                        },
                     )
                     return state.data
                 except Exception as exc:
@@ -1650,34 +1721,53 @@ class WorkflowExecutor:
                         state.variables[as_name] = catch_error
                     if not _catch_matches(catch, catch_error, state, self._expressions(state)):
                         raise
-                    if attempt + 1 < attempts and _retry_allowed(
+                    if retry_policy.allows_retry(attempt) and _retry_allowed(
                         catch_retry, state, self._expressions(state)
                     ):
-                        delay = _retry_delay(catch_retry, attempt)
-                        if delay:
+                        if retry_started is None:
+                            retry_started = self._policy_clock()
+                        remaining = (
+                            retry_policy.duration - (self._policy_clock() - retry_started)
+                            if retry_policy.duration is not None
+                            else None
+                        )
+                        retry_ready = remaining is None or remaining > 0
+                        delay = (
+                            retry_policy.delay_for(attempt, self._retry_random)
+                            if retry_ready
+                            else 0
+                        )
+                        retry_ready = retry_ready and (remaining is None or delay < remaining)
+                        if retry_ready:
                             await self._token(state).sleep(delay)
-                        failed_reference = str(
-                            error.get("details", {}).get("instance", task_reference)
-                        )
-                        self._emit(
-                            "TaskRetried",
-                            {
-                                **self._task_event(
-                                    failed_reference,
-                                    _pointer_name(failed_reference.rsplit("/", 1)[-1]),
-                                    state,
-                                ),
-                                **(
-                                    {"operation_id": exc._operation_id}
-                                    if isinstance(exc, OwaError) and exc._operation_id is not None
-                                    else {}
-                                ),
-                                "status": "retrying",
-                                "attempt": attempt + 1,
-                                "error": _error_details(exc),
-                            },
-                        )
-                        continue
+                        if retry_ready and (
+                            retry_policy.duration is None
+                            or self._policy_clock() - retry_started < retry_policy.duration
+                        ):
+                            failed_reference = str(
+                                error.get("details", {}).get("instance", task_reference)
+                            )
+                            self._emit(
+                                "TaskRetried",
+                                {
+                                    **self._task_event(
+                                        failed_reference,
+                                        _pointer_name(failed_reference.rsplit("/", 1)[-1]),
+                                        state,
+                                    ),
+                                    **(
+                                        {"operation_id": exc._operation_id}
+                                        if isinstance(exc, OwaError)
+                                        and exc._operation_id is not None
+                                        else {}
+                                    ),
+                                    "status": "retrying",
+                                    "attempt": attempt + 1,
+                                    "error": _error_details(exc),
+                                },
+                            )
+                            attempt += 1
+                            continue
                     await self._run_tasks(
                         _task_body(catch.get("do", [])),
                         state,
@@ -1843,6 +1933,19 @@ class WorkflowExecutor:
         try:
             result = await dispatch()
             validate_expression_data(result)
+        except asyncio.CancelledError:
+            expired = [scope for scope in _ACTIVE_TIMEOUTS.get() if scope.deadline.expired()]
+            if expired:
+                reference = str(state.variables.get("_task_reference", "/do"))
+                for scope in expired:
+                    # Cancellation wrappers may drain and discard a child error.
+                    # Share the uncertainty with the timer owner before unwinding.
+                    scope.unresolved_reference = reference
+                raise _EffectRecoveryRequired(
+                    "workflow action exceeded a deadline with an unresolved execution intent",
+                    details={"instance": reference},
+                ) from None
+            raise
         except InvocationStateConflict:
             # Losing common state authority does not establish an action
             # outcome. Leave its intent pending for explicit reconciliation.
@@ -2704,17 +2807,11 @@ def _retry_allowed(retry: Any, state: ExecutionState, expressions: ExpressionEva
 def _retry_delay(retry: Any, attempt: int) -> float | None:
     if not isinstance(retry, Mapping):
         return None
-    delay = _duration_seconds(retry.get("delay"))
-    if delay is None:
+    if "delay" not in retry and "jitter" not in retry:
         return None
-    delay_seconds: float = float(delay)
-    backoff = retry.get("backoff")
-    if isinstance(backoff, Mapping):
-        if "exponential" in backoff:
-            return delay_seconds * (2.0**attempt)
-        if "linear" in backoff:
-            return delay_seconds * (attempt + 1)
-    return delay_seconds
+    return RetryPolicy.from_value(retry, duration=_duration_seconds).delay_for(
+        attempt, random.uniform
+    )
 
 
 def _error_details(error: Exception) -> dict[str, Any]:
