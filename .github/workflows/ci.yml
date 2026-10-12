@@ -25,7 +25,9 @@ jobs:
   windows-expressions:
     name: Windows jq expression and admission tests
     runs-on: windows-latest
-    timeout-minutes: 10
+    # Includes independent process-stop workers and the growing recovery suite.
+    # Keep a bound while allowing both root and native suites to finish.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.1.0

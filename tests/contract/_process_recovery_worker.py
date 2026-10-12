@@ -52,9 +52,11 @@ async def run(directory: Path, mode: str) -> None:
     }[engine_name]
     engine = getattr(importlib.import_module(module), class_name)()
     await engine.initialize(services)
-    # Keep real database-clock expiry in the force-kill test without waiting a
-    # production lease interval at each independently selected crash boundary.
-    engine._execution_ownership_seconds = 2
+    # Keep real database-clock expiry without a production-length wait per
+    # boundary. Two seconds can expire during cold synchronous SDK/jq work on
+    # a busy Windows runner, before its heartbeat can run; that is not the
+    # intended forced-stop boundary. Expiry/takeover fencing has separate tests.
+    engine._execution_ownership_seconds = 5
     available = (
         engine.native.task_nodes_available
         if engine_name == "langgraph"
@@ -115,6 +117,11 @@ async def run(directory: Path, mode: str) -> None:
         handle = recovered_handle
 
     def ready(error: Any = None) -> None:
+        if boundary == "terminal":
+            saved = services.invocations.get(handle.invocation_id)
+            expected = "faulted" if outcome == "fault" else "completed"
+            if saved is None or saved.status != expected or handle.status != expected:
+                raise RuntimeError("terminal marker requires the committed expected outcome")
         write_json(
             directory / "ready.json",
             {
