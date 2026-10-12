@@ -155,7 +155,10 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   Windows descriptor success-path fixture timeout at `3fb1041` is corrected
   by test-only `b7d8674`; catalog checks pass 41 per principal/root and the
   complete local Windows root check passes 460/12. Fresh qualification remains
-  required. See
+  required. Final `3fb1041` has five successful runs/two Windows failures.
+  Native deadline follow-up `29eeb3b` explicitly asserts the original remaining
+  budget (20/0 seconds); native ADK catalog/deadline passes 49/24 and LangGraph
+  deadlines 8/24. All production bytes match the verified base. See
   [current work](PROJECT.md#s2-04-retry-timeout-and-exception-work--2026-10-12-in-progress).
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
 - [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.

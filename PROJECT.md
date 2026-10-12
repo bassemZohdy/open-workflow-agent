@@ -196,6 +196,26 @@ unchanged from the fully verified `a0ee9c0` implementation. Catalog checks pass
 41 per root/ADK/LangGraph environment; the complete local Windows root check
 passes 460/12. Exact configured qualification of this correction is still required.
 
+Final prior artifact `3fb1041` has five successful configured runs and two
+Windows failures. PostgreSQL actually passes 255 LangGraph, 221 ADK and 147
+optional Agent Framework cases (seven optional skips), plus 122 storage and
+10 native checkpoint checks. Its selected policy cases include five provider,
+eleven timing, eight deadline, five retry-schedule and three actual process-stop
+cases per principal, and atomic policy rollback. Both PostgreSQL images and
+both main push/PR image pairs and native benchmarks pass. All six nested
+security reports have zero known advisories. These passes do not waive Windows.
+
+Test-only `29eeb3b` also corrects the PR Windows deadline fixture allowance while
+strengthening its restored-budget assertion: a thirty-second original deadline
+minus ten elapsed seconds must actually pass twenty seconds to the timer; after
+thirty-one elapsed seconds it must pass zero and make no model call. Recorded
+anchor bytes and corrupt-record admission assertions remain unchanged. The
+native ADK catalog/deadline focus passes 49/24, and native LangGraph deadline
+focus passes 8/24 with catalog 41 passing. The earlier ADK deadline command
+without its native extra skipped all cases and is not qualification evidence.
+All production and pinned schema bytes still match full-local source `a0ee9c0`;
+only the two fixtures differ. Fresh exact-source configured acceptance is open.
+
 ### S2-03 checkpoint recovery — 2026-10-12 (verified)
 
 Fresh-runtime tests reproduce a common resume defect: a submitted JSON null was

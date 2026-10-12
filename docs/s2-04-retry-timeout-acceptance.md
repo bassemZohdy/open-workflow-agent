@@ -24,6 +24,16 @@ retained. Actual timeout controls and production source are unchanged. Root,
 ADK and LangGraph catalog suites each pass 41 tests; the entire local Windows
 root check passes 460/12. Fresh configured qualification remains required.
 
+The terminal `3fb1041` artifact has five successful runs and two Windows
+failures. PostgreSQL, all main/PG images, native benchmarks and six dependency
+reports pass. Follow-up `29eeb3b` gives native deadline recovery sufficient real
+execution allowance while explicitly asserting the restored timer is twenty
+seconds after ten elapsed seconds, or zero after thirty-one elapsed seconds.
+Original anchor bytes and expired no-call checks remain required. Actual native
+ADK catalog/deadline cases pass 49/24; LangGraph deadline cases pass 8/24 and
+catalog cases 41. All production/schema bytes match the full-local base. Fresh
+configured qualification of both fixture corrections remains required.
+
 | Requirement | Behavioral evidence | Current qualification |
 | --- | --- | --- |
 | Declared catch error variable is available before filtering and predicates | [Error context](../tests/contract/test_retry_error_context.py) checks default/custom aliases, declared errors, built-in status, when/exceptWhen and retry predicates. | Prior correction qualified at `b6aef8c`; current regression pending. |

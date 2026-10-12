@@ -66919,7 +66919,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "known_issues": [
-          "Pending; 3fb1041 push Windows job fails the one-second descriptor fixture. A test-only correction b7d8674 passes root and both principal catalog suites plus the complete local Windows root check; seven fresh configured gates must qualify the correction."
+          "Pending: all seven fresh current-source gates, including both Windows stages. Existing full local base suites remain valid for unchanged production; these test deltas have additional native evidence."
         ],
         "resolved_issues": [
           {
@@ -67468,6 +67468,67 @@
               "skipped": 12
             },
             "configured_acceptance": "Pending; 3fb1041 push Windows job fails the one-second descriptor fixture. A test-only correction b7d8674 passes root and both principal catalog suites plus the complete local Windows root check; seven fresh configured gates must qualify the correction."
+          },
+          "windows_fixture_followup": {
+            "source_commit": "29eeb3b783359905dd5768464c67265d55cb6bd2",
+            "base_full_local_implementation_commit": "a0ee9c0b26823c256cefe0f39b6ccd6e17e4994a",
+            "changed_frozen_paths": [
+              "tests/contract/test_catalog_bindings.py",
+              "tests/contract/test_deadline_recovery.py"
+            ],
+            "production_and_pinned_schema": "Byte-identical to the fully verified base; only two test fixtures differ.",
+            "prior_configured_acceptance": {
+              "artifact_commit": "3fb10416c6ee50f0e95cdec20752f680b38cfb6f",
+              "remote_runs": {
+                "38193131155": "success",
+                "38193131239": "success",
+                "38193131134": "success",
+                "38193131206": "success",
+                "38193131187": "success",
+                "38193131126": "failure",
+                "38193128782": "failure"
+              },
+              "result": "Five successful runs and two Windows failures; not all-seven success.",
+              "failures": "Push Windows root: one-second imported descriptor success-path allowance expires during SDK/storage work. PR Windows native: one-second remaining workflow deadline budget expires while recovering real native checkpoints."
+            },
+            "prior_actual_postgresql_selection": {
+              "adk": {
+                "retry_error_context": 5,
+                "retry_timing": 11,
+                "deadline_recovery": 8,
+                "retry_schedule_recovery": 5,
+                "timing_process_recovery": 3
+              },
+              "langgraph": {
+                "retry_error_context": 5,
+                "retry_timing": 11,
+                "deadline_recovery": 8,
+                "retry_schedule_recovery": 5,
+                "timing_process_recovery": 3
+              }
+            },
+            "prior_postgresql_policy_atomic_rollback": "Passed",
+            "prior_images_and_benchmarks": "Both main image pairs and both native benchmark steps pass on push and PR. Both PostgreSQL images pass start/restart/invoke acceptance.",
+            "prior_security": "All six nonempty nested reports inspected; each dependency has zero advisories.",
+            "corrections": "Descriptor data-flow fixture uses a thirty-second bounded timeout with resolved-descriptor assertions retained. Native deadline fixture declares thirty seconds and records ten elapsed seconds or thirty-one elapsed seconds; it explicitly asserts the actual restored timeout is twenty seconds or zero. Original immutable anchor bytes, no-call expiry, missing/corrupt admission and actual native restart assertions are retained. Production behavior is unchanged.",
+            "native_adk_current_fixture_regression": {
+              "passed": 49,
+              "skipped": 24,
+              "scope": "Both catalog and deadline fixtures in locked exact ADK with native+knowledge extras."
+            },
+            "native_langgraph_deadlines": {
+              "passed": 8,
+              "skipped": 24
+            },
+            "native_langgraph_catalog": {
+              "passed": 41
+            },
+            "local_windows_root": {
+              "passed": 460,
+              "skipped": 12
+            },
+            "quality": "Changed fixture lint/format and strict deadline-fixture typing pass.",
+            "configured_acceptance": "Pending: all seven fresh current-source gates, including both Windows stages. Existing full local base suites remain valid for unchanged production; these test deltas have additional native evidence."
           }
         }
       },
