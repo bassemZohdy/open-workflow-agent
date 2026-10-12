@@ -66919,7 +66919,7 @@
         "status": "In progress",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "known_issues": [
-          "Exact-source configured acceptance and final finite S2-04 requirement audit. Legacy migration, broader pending resolution/compensation and full proposed/JavaScript criteria retain later owners."
+          "Pending; 3fb1041 push Windows job fails the one-second descriptor fixture. A test-only correction b7d8674 passes root and both principal catalog suites plus the complete local Windows root check; seven fresh configured gates must qualify the correction."
         ],
         "resolved_issues": [
           {
@@ -67444,6 +67444,30 @@
             },
             "configured_acceptance": "Pending for current source: actual PostgreSQL selectors/storage/process stops, Windows, both native SDK environments, optional adapter, main/PostgreSQL images, benchmarks, docs and six nested dependency reports",
             "remaining": "Exact-source configured acceptance and final finite S2-04 requirement audit. Legacy migration, broader pending resolution/compensation and full proposed/JavaScript criteria retain later owners."
+          },
+          "descriptor_fixture_followup": {
+            "source_commit": "b7d867494dd2a0b59151165b7c0149a10299820d",
+            "base_implementation_commit": "a0ee9c0b26823c256cefe0f39b6ccd6e17e4994a",
+            "changed_paths": [
+              "tests/contract/test_catalog_bindings.py"
+            ],
+            "scope": "One descriptor/data-flow fixture receives a thirty-second bounded budget instead of one second; actual timeout control fixtures and all production source remain byte-identical.",
+            "focused": {
+              "root": {
+                "passed": 41
+              },
+              "adk": {
+                "passed": 41
+              },
+              "lg": {
+                "passed": 41
+              }
+            },
+            "windows_root": {
+              "passed": 460,
+              "skipped": 12
+            },
+            "configured_acceptance": "Pending; 3fb1041 push Windows job fails the one-second descriptor fixture. A test-only correction b7d8674 passes root and both principal catalog suites plus the complete local Windows root check; seven fresh configured gates must qualify the correction."
           }
         }
       },

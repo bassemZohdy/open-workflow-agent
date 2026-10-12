@@ -187,6 +187,15 @@ native benchmarks, docs and six nested dependency reports must qualify this
 source before the task is checked. Later migration/pending resolution and full
 proposed/JavaScript owners remain unchanged.
 
+A subsequent `3fb1041` push Windows job fails the imported descriptor/data-flow
+fixture: its one-second budget expires during real adapter/storage work. This is
+a separate success-path fixture, not an expiry assertion. Test-only correction
+`b7d8674` raises its bounded budget to thirty seconds and updates the expected
+resolved descriptor. Dedicated timeout controls and all production bytes remain
+unchanged from the fully verified `a0ee9c0` implementation. Catalog checks pass
+41 per root/ADK/LangGraph environment; the complete local Windows root check
+passes 460/12. Exact configured qualification of this correction is still required.
+
 ### S2-03 checkpoint recovery — 2026-10-12 (verified)
 
 Fresh-runtime tests reproduce a common resume defect: a submitted JSON null was

@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "reviewed_implementation_commit": "a0ee9c0b26823c256cefe0f39b6ccd6e17e4994a",
+  "reviewed_implementation_commit": "b7d867494dd2a0b59151165b7c0149a10299820d",
   "acceptance_record_commit": null,
   "purpose": "Exhaustive current implementation audit, not a full conformance certificate or feature completion claim",
   "review_method": "Each semantic construct and schema parent was compared with active admission/execution/native code and existing assertion scope. Missing/inert/mismatched behavior retains explicit owners. Source/API availability and copied material are not runtime proof.",
@@ -135,7 +135,7 @@
     },
     "dependency_gate_qualification": "Historical Security jobs used a defective top-level report parser. Independently recorded behavioral tests remain source-scoped; dependency safety requires the corrected gate and fresh reports.",
     "scope": "Known child outcomes bind the terminal common record, original input, parent identity and original prepared fingerprint/input request. A common identity index is admitted atomically with intents. Read-only pre-admission validation checks associated receipts and descendant child actions even when native task progress has not saved a receipt reference. Missing/changed child records, input, native references, descendant receipts and index metadata reject before parent mutation or dispatch. No native checkpoint or execution plan moves into core. Fresh exact-source configured/remote qualification and final S2-03 requirement audit remain open. Pending intents still require explicit resolution; event inbox/outbox, child scheduling/budgets, compensation, workflow-version migration and full proposed/JavaScript qualification retain later owners. Existing non-child digest formats are preserved; older unbound child outcomes fail closed without a migration guarantee.",
-    "remote_status": "fdd771e has three successes/four fixture failures; current a0ee9c0 passes full frozen local acceptance and requires fresh configured qualification.",
+    "remote_status": "Pending; 3fb1041 push Windows job fails the one-second descriptor fixture. A test-only correction b7d8674 passes root and both principal catalog suites plus the complete local Windows root check; seven fresh configured gates must qualify the correction.",
     "forced_process_crash_followup": {
       "commit": "68722d3aae5f8d9b5421abd5d3ab4f1ed2a61cb0",
       "runtime_source": "58516fb75fd0a8ccb96d49e2fc339de6eb2cfdf7",
@@ -2252,6 +2252,30 @@
       },
       "configured_acceptance": "Pending for current source: actual PostgreSQL selectors/storage/process stops, Windows, both native SDK environments, optional adapter, main/PostgreSQL images, benchmarks, docs and six nested dependency reports",
       "remaining": "Exact-source configured acceptance and final finite S2-04 requirement audit. Legacy migration, broader pending resolution/compensation and full proposed/JavaScript criteria retain later owners."
+    },
+    "s2_04_descriptor_fixture_followup": {
+      "source_commit": "b7d867494dd2a0b59151165b7c0149a10299820d",
+      "base_implementation_commit": "a0ee9c0b26823c256cefe0f39b6ccd6e17e4994a",
+      "changed_paths": [
+        "tests/contract/test_catalog_bindings.py"
+      ],
+      "scope": "One descriptor/data-flow fixture receives a thirty-second bounded budget instead of one second; actual timeout control fixtures and all production source remain byte-identical.",
+      "focused": {
+        "root": {
+          "passed": 41
+        },
+        "adk": {
+          "passed": 41
+        },
+        "lg": {
+          "passed": 41
+        }
+      },
+      "windows_root": {
+        "passed": 460,
+        "skipped": 12
+      },
+      "configured_acceptance": "Pending; 3fb1041 push Windows job fails the one-second descriptor fixture. A test-only correction b7d8674 passes root and both principal catalog suites plus the complete local Windows root check; seven fresh configured gates must qualify the correction."
     }
   },
   "evidence_groups": {
@@ -19400,7 +19424,7 @@
     "tests/contract/_process_recovery_worker.py": "84ea1dd2a6445c7a954afa3c8d091f227ea4bd899414cdb2696c5177f7ea8f16",
     "tests/contract/test_action_execution_authority.py": "17bee27b3c4d3f117299274b6228e1fa8a50976674b03f7a88dd0f7a8e71ddc8",
     "tests/contract/test_adk_native_event_consistency.py": "13b9526dbe3b0387c36e508d05d014c25149badfe3b455f2acf90a76d91be585",
-    "tests/contract/test_catalog_bindings.py": "9bda140c66d28c232f56568440dcde17b5d2b242f7a0f4d2f1e4cb73d63f0a29",
+    "tests/contract/test_catalog_bindings.py": "075fbac480813ff1e2c7aca9845ad2d314212eaf4a17b48bc220b7dde7735e01",
     "tests/contract/test_checkpoint_recovery.py": "ebb62d387023154a7f09b1db0fe7b177111c08d1b339591f0aa77fbcb255cfe6",
     "tests/contract/test_child_invocation_dependencies.py": "d85ab12597ef63799c1d636c1e0c157edaa11810a71908361a821d46ad2b33ac",
     "tests/contract/test_cloud_events.py": "db37015b35d525268aae32c261d91839ab9c5b4834450a74e0eacbb5664cdbcc",

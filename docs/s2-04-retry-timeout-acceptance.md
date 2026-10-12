@@ -17,6 +17,13 @@ pinned-schema wheel bytes pass. Prior artifact `fdd771e` has three successful
 runs and four fixture failures; it is not all-seven success. The external-intent
 count and imported in-flight timeout fixtures are corrected in current source.
 
+Test-only correction `b7d8674` follows a Windows descriptor/data-flow failure
+at `3fb1041`: a one-second success-path budget expires during SDK/storage work.
+The fixture now uses a thirty-second bound; resolved-descriptor assertions are
+retained. Actual timeout controls and production source are unchanged. Root,
+ADK and LangGraph catalog suites each pass 41 tests; the entire local Windows
+root check passes 460/12. Fresh configured qualification remains required.
+
 | Requirement | Behavioral evidence | Current qualification |
 | --- | --- | --- |
 | Declared catch error variable is available before filtering and predicates | [Error context](../tests/contract/test_retry_error_context.py) checks default/custom aliases, declared errors, built-in status, when/exceptWhen and retry predicates. | Prior correction qualified at `b6aef8c`; current regression pending. |
