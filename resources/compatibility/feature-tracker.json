@@ -66734,7 +66734,94 @@
               "skipped": 9
             },
             "quality_checks": "Formatting, lint, strict 66-package-source and fixture/CI typing, five wheel/sdist builds and current Python/pinned-schema wheel bytes pass on frozen runtime/test source. Seven actual collection guards include seventeen configured child-dependency cases per principal adapter. SQLite rollback injection proves atomic index/intent admission; a configured PostgreSQL counterpart is added to its real CI command.",
-            "remaining": "Fresh exact-source configured/remote qualification and final S2-03 requirement audit remain open. Pending intents still require explicit resolution; event inbox/outbox, child scheduling/budgets, compensation, workflow-version migration and full proposed/JavaScript qualification retain later owners. Existing non-child digest formats are preserved; older unbound child outcomes fail closed without a migration guarantee."
+            "remaining": "Fresh exact-source configured/remote qualification and final S2-03 requirement audit remain open. Pending intents still require explicit resolution; event inbox/outbox, child scheduling/budgets, compensation, workflow-version migration and full proposed/JavaScript qualification retain later owners. Existing non-child digest formats are preserved; older unbound child outcomes fail closed without a migration guarantee.",
+            "configured_acceptance_followup": {
+              "commit": "29c681d6f9759d70c93b7a20e99e2313a82102f7",
+              "runtime_commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+              "status": "Six runs successful; push CI Windows cancelled after two process-boundary failures",
+              "remote_runs": {
+                "38185163160": "success",
+                "38185163054": "success",
+                "38185162991": "success",
+                "38185163037": "success",
+                "38185163003": "success",
+                "38185162994": "success",
+                "38185159483": "cancelled"
+              },
+              "all_seven_successful": false,
+              "postgresql": {
+                "store_passed": 119,
+                "native_langgraph_passed": 10,
+                "native_langgraph_skipped": 8,
+                "shared_langgraph_passed": 223,
+                "shared_adk_passed": 189,
+                "shared_agent_framework_passed": 147,
+                "shared_agent_framework_skipped": 7,
+                "child_dependency_cases_passed_per_adapter": 17,
+                "standalone_index_intent_atomic_rollback": "Passed",
+                "both_runtime_images": "Success"
+              },
+              "both_main_ci_runtime_image_restarts": "Success",
+              "both_native_benchmarks_in_both_main_ci": "Success",
+              "pr_linux_root": {
+                "passed": 1668,
+                "skipped": 617,
+                "expected_assertion_failures": 3,
+                "coverage_percent": 91.69
+              },
+              "pr_native": {
+                "adk_passed": 822,
+                "adk_skipped": 494,
+                "langgraph_passed": 864,
+                "langgraph_skipped": 467,
+                "ctk_per_adapter": 96,
+                "expected_assertion_failures_per_adapter": 3
+              },
+              "pr_windows": {
+                "root_passed": 460,
+                "root_skipped": 12,
+                "native_passed": 458,
+                "native_skipped": 284
+              },
+              "push_windows": {
+                "result": "Cancelled",
+                "observed_passed": 389,
+                "observed_skipped": 216,
+                "observed_failed": 2,
+                "failure_scope": "terminal-null short lease ownership loss; terminal-fault readiness while common record remains running; job cancelled at ten-minute bound",
+                "remaining_cases": "Not qualified"
+              },
+              "remote_security_dependency_counts": {
+                "dependency-audit-adk": 109,
+                "dependency-audit-agent-framework": 74,
+                "dependency-audit-kubernetes-sandbox-controller": 16,
+                "dependency-audit-langgraph": 96,
+                "dependency-audit-root": 71,
+                "dependency-audit-sandbox-controller": 13
+              },
+              "remote_known_advisories": 0
+            }
+          },
+          "windows_process_boundary_followup": {
+            "commit": "d2d5934e9e38c666ef76172e3a9fc14db5c6e60c",
+            "runtime_commit": "e39a7c042bd16e92fe760675855504afbeb510c3",
+            "status": "Fixture correction locally verified; fresh configured acceptance pending",
+            "source_file_sha256": {
+              "tests/contract/_process_recovery_worker.py": "84ea1dd2a6445c7a954afa3c8d091f227ea4bd899414cdb2696c5177f7ea8f16",
+              ".github/workflows/ci.yml": "8117fec2f618ce8e699b7fd84c3058debe43069abaeedb09de33f35780efeef6"
+            },
+            "scope": "The force-stop worker verifies the expected committed terminal outcome before signalling readiness, retains actual expiry with a five-second test lease, and leaves production ownership unchanged. The expanded Windows root/native job is bounded at twenty minutes. Runtime/core/SDK implementation remains the already-tested e39a7c0 source.",
+            "local_process_focus": {
+              "adk": {
+                "passed": 8,
+                "skipped": 24
+              },
+              "langgraph": {
+                "passed": 8,
+                "skipped": 24
+              }
+            },
+            "remaining": "Fresh Windows/process fixture acceptance and final S2-03 audit are open. Cancelled push acceptance is preserved as incomplete, not all-seven success. Pending resolution and later features retain their owners."
           }
         }
       },

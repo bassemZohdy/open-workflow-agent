@@ -123,7 +123,13 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   77/74 per principal SDK; storage/selection checks pass 52/9. Full frozen
   core passes 1,664/621/three tracked gaps with 91.67% coverage;
   ADK 918/494, LangGraph 960/467, optional Agent Framework 1,208/703, each with three gaps.
-  Fresh configured acceptance and the final S2-03 audit remain open.
+  At `29c681d`, PR CI and five other configured runs pass, including all
+  seventeen PostgreSQL child-dependency cases per adapter and atomic rollback.
+  Push CI is cancelled at its Windows time limit after two process-stop failures;
+  it is not an all-seven-success artifact. The worker now requires a committed
+  terminal marker, uses a five-second test lease and retains production settings;
+  the Windows job is bounded at twenty minutes. Process-stop focus passes 8/24
+  per SDK. Fresh configured fixture acceptance and the final S2-03 audit remain open.
   See [current progress](PROJECT.md#s2-03-checkpoint-recovery--2026-10-11-in-progress).
 - [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.

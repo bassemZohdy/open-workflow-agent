@@ -627,8 +627,24 @@ build, Windows, benchmark, image and dependency acceptance. Full proposed/JS
 criteria, event inbox/outbox, child scheduling/budgets, general pending-outcome
 resolution, compensation and version migration retain their later owners.
 
-S2-03 stays open until fresh configured acceptance and that requirement audit
-pass. General pending-effect resolution remains later-stage work.
+The requirement audit is recorded in [S2-03 recovery acceptance](docs/s2-03-recovery-acceptance.md).
+At `29c681d`, PR CI and the five other configured runs succeed. PostgreSQL
+passes 119 store, 223 LangGraph, 189 ADK and 147 optional bridge checks (seven
+optional skips), including all seventeen child-dependency cases per adapter
+and the actual PostgreSQL index/intent rollback test. Both PostgreSQL images and
+both main CI runtime image restart jobs pass. Push CI is cancelled at its
+ten-minute Windows limit; its log records two process-stop failures before
+cancellation. A two-second test lease is lost before terminal-null readiness;
+terminal-fault signals readiness with a still-running record. This is not an
+all-seven-success artifact.
+
+The follow-up requires the terminal readiness marker to verify the expected
+committed common outcome, changes only the test lease from two to five seconds,
+and bounds the growing Windows suite at twenty minutes. Production ownership
+settings remain unchanged. Local actual process-stop fixtures pass 8/24 per
+principal SDK; current root/engine runtime source remains `e39a7c0`.
+Fresh configured fixture acceptance and the final audit remain open.
+General pending-effect resolution remains later-stage work.
 Legacy rows without an original-input record
 have no new migration guarantee. Later-stage retry/deadline,
 timer/event, child workflow, compensation and version migration owners remain
