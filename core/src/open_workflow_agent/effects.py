@@ -311,6 +311,12 @@ class EffectJournal:
                 receipt.child_invocation.verify(self._invocations, identity, receipt.request_digest)
             elif receipt.child_invocation is not None:
                 raise ValueError("child invocation binding belongs to a different operation")
+            if identity.operation == "policy:retry-schedule:v1":
+                from .timing import RetrySchedule
+
+                if receipt.status != "completed":
+                    raise ValueError("retry scheduling requires an atomic decision")
+                RetrySchedule.from_value(receipt.output, identity.occurrence[-1][1])
             return receipt
         except Exception:
             raise WorkflowExecutionError("workflow effect receipt could not be read") from None

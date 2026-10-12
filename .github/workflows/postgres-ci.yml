@@ -59,6 +59,9 @@ on:
       - "tests/contract/test_retry_error_context.py"
       - "tests/contract/test_retry_timing.py"
       - "tests/contract/test_deadline_recovery.py"
+      - "tests/contract/test_retry_schedule_recovery.py"
+      - "tests/contract/test_timing_process_recovery.py"
+      - "tests/contract/_timing_recovery_worker.py"
       - "tests/core/test_policy_decisions.py"
       - "tests/core/test_postgres_persistence.py"
       - "docker/Dockerfile.adk"
@@ -158,6 +161,8 @@ jobs:
             ../../tests/contract/test_retry_error_context.py \
             ../../tests/contract/test_retry_timing.py \
             ../../tests/contract/test_deadline_recovery.py \
+            ../../tests/contract/test_retry_schedule_recovery.py \
+            ../../tests/contract/test_timing_process_recovery.py \
             ../../tests/contract/test_process_crash_recovery.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
@@ -189,6 +194,8 @@ jobs:
             ../../tests/contract/test_retry_error_context.py \
             ../../tests/contract/test_retry_timing.py \
             ../../tests/contract/test_deadline_recovery.py \
+            ../../tests/contract/test_retry_schedule_recovery.py \
+            ../../tests/contract/test_timing_process_recovery.py \
             -k 'postgresql and adk' -vv --durations=20
       - name: Verify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL
         env:

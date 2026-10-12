@@ -62,7 +62,7 @@ from .protocols import PROTOCOL_DATA_FIELDS
 from .resources import SchemaResource, materialize_schema_resources
 from .resources import schema_registry as build_schema_registry
 from .retry import RetryPolicy
-from .timing import DeadlineAnchor, clock_started_at, root_clock_identity
+from .timing import DeadlineAnchor, RetrySchedule, clock_started_at, root_clock_identity
 from .workflow_profile import SCHEMA_SHA256, WORKFLOW_DSL
 
 DEFAULT_WORKFLOW: dict[str, Any] = {
@@ -86,6 +86,9 @@ class _DeadlineScope:
 
 _ACTIVE_TIMEOUTS: ContextVar[tuple[_DeadlineScope, ...]] = ContextVar(
     "owa_active_timeouts", default=()
+)
+_RECONCILE_EXPIRED_RETRY: ContextVar[bool] = ContextVar(
+    "owa_reconcile_expired_retry", default=False
 )
 
 SUPPORTED_TASKS = (
@@ -1170,6 +1173,8 @@ class WorkflowExecutor:
         create: Callable[[], Any],
     ) -> Any:
         journal = getattr(self.services, "effect_journal", None)
+        if _RECONCILE_EXPIRED_RETRY.get() and (journal is None or journal.get(identity) is None):
+            raise WorkflowExecutionError("retry budget expired before new policy work")
         if journal is None:
             return create()
         try:
@@ -1185,6 +1190,77 @@ class WorkflowExecutor:
             raise _EffectRecoveryRequired(exc.message, details=exc.details) from exc
         await self._notify_receipt(state, identity, receipt)
         return copy.deepcopy(receipt.output)
+
+    async def _retry_clock(
+        self,
+        state: ExecutionState,
+        execution_path: tuple[tuple[str, int], ...],
+        policy: RetryPolicy,
+    ) -> float:
+        clock_state = self._copy_state(state)
+        clock_state.execution_path = execution_path
+        raw = await self._record_policy(
+            clock_state,
+            self._effect_identity(clock_state, "policy:retry-clock:v1"),
+            {
+                "duration": policy.duration,
+                "attempt_duration": policy.attempt_duration,
+                "count": policy.max_retries,
+            },
+            lambda: {"profile": "owa/timing/v1", "started_at": self._absolute_clock()},
+        )
+        return clock_started_at(raw)
+
+    async def _run_retry_attempt(
+        self,
+        definition: Mapping[str, Any],
+        state: ExecutionState,
+        policy: RetryPolicy,
+        attempt: int,
+        started: float | None,
+    ) -> None:
+        timeout: float | None = None
+        admitted = False
+        if attempt:
+            identity = self._effect_identity(state, "policy:retry-attempt:v1")
+            journal = getattr(self.services, "effect_journal", None)
+            admitted = journal is not None and journal.get(identity) is not None
+            remaining = (
+                policy.duration - (self._absolute_clock() - started)
+                if started is not None and policy.duration is not None
+                else None
+            )
+            if not admitted and remaining is not None and remaining <= 0:
+                raise WorkflowExecutionError("retry budget expired before another attempt")
+            raw = await self._record_policy(
+                state,
+                identity,
+                {"attempt": attempt},
+                lambda: {"profile": "owa/timing/v1", "started_at": self._absolute_clock()},
+            )
+            attempt_started = clock_started_at(raw)
+            timeout = policy.attempt_duration
+            if timeout is not None:
+                timeout -= self._absolute_clock() - attempt_started
+            if remaining is not None:
+                timeout = min(timeout, remaining) if timeout is not None else remaining
+        reconcile = admitted and timeout is not None and timeout <= 0
+        token = _RECONCILE_EXPIRED_RETRY.set(_RECONCILE_EXPIRED_RETRY.get() or reconcile)
+        try:
+            await self._run_timed(
+                lambda: self._run_tasks(
+                    _task_body(definition["try"]), state, prefix=self._nested_prefix(state, "try")
+                ),
+                None if reconcile else timeout,
+                "retry attempt timed out",
+                {
+                    "instance": state.variables.get("_task_reference"),
+                    "retry_attempt": attempt,
+                    "timeout_seconds": timeout,
+                },
+            )
+        finally:
+            _RECONCILE_EXPIRED_RETRY.reset(token)
 
     async def _deadline_remaining(
         self,
@@ -1223,8 +1299,20 @@ class WorkflowExecutor:
     ) -> Any:
         if seconds is None:
             return await operation()
+        timeout_details = {
+            **details,
+            "type": "https://serverlessworkflow.io/spec/1.0.0/errors/timeout",
+            "status": 408,
+            "instance": details.get("instance", "/do"),
+        }
+
+        def timeout_error() -> WorkflowExecutionError:
+            error = WorkflowExecutionError(message, details=timeout_details)
+            error.status_code = 408
+            return error
+
         if seconds <= 0:
-            raise WorkflowExecutionError(message, details=details)
+            raise timeout_error()
         started = self._policy_clock()
         deadline = asyncio.timeout(seconds)
         scope = _DeadlineScope(deadline)
@@ -1236,7 +1324,7 @@ class WorkflowExecutor:
                     "workflow action exceeded a deadline with an unresolved execution intent",
                     details={"instance": scope.unresolved_reference},
                 )
-            return WorkflowExecutionError(message, details=details)
+            return timeout_error()
 
         try:
             try:
@@ -1632,7 +1720,7 @@ class WorkflowExecutor:
                     ),
                     remaining_timeout,
                     f"task {name} timed out",
-                    {"task": name, "timeout_seconds": timeout_seconds},
+                    {"task": name, "timeout_seconds": timeout_seconds, "instance": reference},
                 )
             except Exception as exc:
                 last_error = exc
@@ -1760,31 +1848,8 @@ class WorkflowExecutor:
                     (f"{task_reference}/@catch-attempt", attempt + 1),
                 )
                 try:
-                    remaining = (
-                        retry_policy.duration - (self._policy_clock() - retry_started)
-                        if retry_started is not None and retry_policy.duration is not None
-                        else None
-                    )
-                    attempt_timeout = retry_policy.attempt_duration if attempt else None
-                    if remaining is not None:
-                        attempt_timeout = (
-                            min(remaining, attempt_timeout)
-                            if attempt_timeout is not None
-                            else remaining
-                        )
-                    await self._run_timed(
-                        lambda: self._run_tasks(
-                            _task_body(definition["try"]),
-                            state,
-                            prefix=self._nested_prefix(state, "try"),
-                        ),
-                        attempt_timeout,
-                        "retry attempt timed out",
-                        {
-                            "instance": task_reference,
-                            "retry_attempt": attempt,
-                            "timeout_seconds": attempt_timeout,
-                        },
+                    await self._run_retry_attempt(
+                        definition, state, retry_policy, attempt, retry_started
                     )
                     return state.data
                 except Exception as exc:
@@ -1801,28 +1866,62 @@ class WorkflowExecutor:
                         state.variables[as_name] = catch_error
                     if not _catch_matches(catch, catch_error, state, self._expressions(state)):
                         raise
-                    if retry_policy.allows_retry(attempt) and _retry_allowed(
-                        catch_retry, state, self._expressions(state)
+                    schedule_identity = self._effect_identity(state, "policy:retry-schedule:v1")
+                    journal = getattr(self.services, "effect_journal", None)
+                    scheduled = journal is not None and journal.get(schedule_identity) is not None
+                    if retry_policy.allows_retry(attempt) and (
+                        scheduled or _retry_allowed(catch_retry, state, self._expressions(state))
                     ):
                         if retry_started is None:
-                            retry_started = self._policy_clock()
+                            retry_started = await self._retry_clock(
+                                state, execution_path, retry_policy
+                            )
                         remaining = (
-                            retry_policy.duration - (self._policy_clock() - retry_started)
+                            retry_policy.duration - (self._absolute_clock() - retry_started)
                             if retry_policy.duration is not None
                             else None
                         )
-                        retry_ready = remaining is None or remaining > 0
-                        delay = (
-                            retry_policy.delay_for(attempt, self._retry_random)
-                            if retry_ready
-                            else 0
-                        )
-                        retry_ready = retry_ready and (remaining is None or delay < remaining)
+                        retry_ready = scheduled or remaining is None or remaining > 0
+                        if retry_ready:
+
+                            def choose_schedule(
+                                retry_index: int = attempt, budget: float | None = remaining
+                            ) -> dict[str, Any]:
+                                delay = retry_policy.delay_for(retry_index, self._retry_random)
+                                scheduled_at = self._absolute_clock()
+                                return {
+                                    "profile": "owa/retry-schedule/v1",
+                                    "retry": retry_index + 1,
+                                    "delay": delay,
+                                    "due_at": scheduled_at + delay,
+                                    "scheduled_at": scheduled_at,
+                                    "allowed": budget is None or delay < budget,
+                                }
+
+                            raw_schedule = await self._record_policy(
+                                state,
+                                schedule_identity,
+                                {
+                                    "retry": attempt + 1,
+                                    "started_at": retry_started,
+                                    "delay": retry_policy.delay,
+                                    "backoff": retry_policy.backoff,
+                                    "jitter_from": retry_policy.jitter_from,
+                                    "jitter_to": retry_policy.jitter_to,
+                                },
+                                choose_schedule,
+                            )
+                            schedule = RetrySchedule.from_value(raw_schedule, attempt + 1)
+                            delay = max(0.0, schedule.due_at - self._absolute_clock())
+                            retry_ready = schedule.allowed and (
+                                scheduled or remaining is None or delay < remaining
+                            )
                         if retry_ready:
                             await self._token(state).sleep(delay)
                         if retry_ready and (
-                            retry_policy.duration is None
-                            or self._policy_clock() - retry_started < retry_policy.duration
+                            scheduled
+                            or retry_policy.duration is None
+                            or self._absolute_clock() - retry_started < retry_policy.duration
                         ):
                             failed_reference = str(
                                 error.get("details", {}).get("instance", task_reference)
@@ -1856,6 +1955,8 @@ class WorkflowExecutor:
                     self._apply_transition(catch.get("then"), state)
                     return state.data
         if "wait" in definition:
+            if _RECONCILE_EXPIRED_RETRY.get():
+                raise WorkflowExecutionError("retry budget expired before a pending wait")
             wait_value = self._expressions(state).evaluate(
                 definition["wait"], state.data, variables=state.variables
             )
@@ -1987,8 +2088,25 @@ class WorkflowExecutor:
     ) -> Any:
         journal = getattr(self.services, "effect_journal", None)
         if journal is None:
+            if _RECONCILE_EXPIRED_RETRY.get():
+                raise WorkflowExecutionError("retry budget expired before a new action")
             return await dispatch()
         identity = self._effect_identity(state, operation or "call:" + call)
+        if _RECONCILE_EXPIRED_RETRY.get():
+            known = journal.get(identity)
+            if known is None:
+                raise WorkflowExecutionError("retry budget expired before a new action")
+            if known.status == "pending":
+                raise _EffectRecoveryRequired(
+                    "workflow action has an unresolved execution intent",
+                    details={"instance": state.variables.get("_task_reference")},
+                )
+            if known.request_digest != effect_request_digest(call, payload):
+                raise _EffectRecoveryRequired(
+                    "workflow action request differs during expired retry recovery"
+                )
+            await self._notify_receipt(state, identity, known)
+            return self._effect_result(known)
         # Each dispatch attempt gets a fresh private owner. Recovery never adopts
         # an earlier pending intent: its external outcome may be ambiguous.
         owner = str(uuid4())
@@ -2911,7 +3029,21 @@ def _catch_error_value(
         value.update(details)
     if status_code is not None:
         value.setdefault("status", status_code)
-        value.setdefault("type", error.get("code", "workflow_execution_error"))
+        category = {
+            "configuration_error": "configuration",
+            "unsupported_workflow_feature": "configuration",
+            "workflow_schema_error": "validation",
+            "workflow_semantic_error": "validation",
+            "expression_error": "expression",
+            "model_error": "communication",
+            "tool_error": "communication",
+            "approval_authorization_error": "authorization",
+        }.get(str(error.get("code")), "runtime")
+        if value["status"] == 401:
+            category = "authentication"
+        elif value["status"] == 403:
+            category = "authorization"
+        value.setdefault("type", "https://serverlessworkflow.io/spec/1.0.0/errors/" + category)
         value.setdefault("title", error.get("code", "workflow_execution_error"))
         value.setdefault("detail", error.get("message", "workflow execution failed"))
     return value

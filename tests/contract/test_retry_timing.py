@@ -145,6 +145,7 @@ async def test_retry_clock_and_rng_determine_actual_attempts(
     engine = engine_type()
     await engine.initialize(services)
     engine.executor._policy_clock = lambda: now
+    engine.executor._absolute_clock = lambda: now
     engine.executor._retry_random = draw
     handle = services.invocations.create(
         engine=engine_name,

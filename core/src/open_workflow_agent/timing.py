@@ -56,3 +56,34 @@ def clock_started_at(value: Any) -> float:
     ):
         raise WorkflowExecutionError("workflow policy clock is inconsistent")
     return float(value["started_at"])
+
+
+@dataclass(frozen=True, slots=True)
+class RetrySchedule:
+    retry: int
+    delay: float
+    due_at: float
+    allowed: bool
+
+    @classmethod
+    def from_value(cls, value: Any, retry: int) -> RetrySchedule:
+        if (
+            not isinstance(value, dict)
+            or set(value) != {"profile", "retry", "delay", "due_at", "allowed", "scheduled_at"}
+            or value["profile"] != "owa/retry-schedule/v1"
+            or type(value["retry"]) is not int
+            or value["retry"] != retry
+            or type(value["allowed"]) is not bool
+            or any(
+                isinstance(value[key], bool)
+                or not isinstance(value[key], (int, float))
+                or not math.isfinite(value[key])
+                for key in ("delay", "due_at", "scheduled_at")
+            )
+            or value["delay"] < 0
+            or value["due_at"] <= 0
+            or value["scheduled_at"] <= 0
+            or value["due_at"] != value["scheduled_at"] + value["delay"]
+        ):
+            raise WorkflowExecutionError("workflow retry schedule is inconsistent")
+        return cls(retry, float(value["delay"]), float(value["due_at"]), value["allowed"])

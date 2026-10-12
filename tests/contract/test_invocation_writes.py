@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 
 import pytest
@@ -305,9 +306,13 @@ async def test_dispatch_state_conflict_leaves_an_uncertain_action_intent_without
         rows = [
             row
             for row in first.effect_journal.connection.execute(
-                "SELECT identity, status FROM workflow_effects"
+                "SELECT i.identity, e.status, i.payload FROM workflow_effect_invocations i "
+                "JOIN workflow_effects e ON e.identity = i.identity "
+                "WHERE i.invocation_id = ?",
+                (original.invocation_id,),
             ).fetchall()
             if row[0] not in prior_effects
+            and not json.loads(row[2])["operation"].startswith("policy:")
         ]
         assert len(rows) == 1 and rows[0][1] == "pending"
     finally:

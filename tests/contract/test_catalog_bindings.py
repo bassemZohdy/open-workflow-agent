@@ -373,14 +373,15 @@ async def test_imported_task_controls_share_inline_semantics(
     elif case in {"end", "exit"}:
         definition["then"] = case
     elif case == "timeout":
-        definition["timeout"] = {"after": {"milliseconds": 10}}
+        # Test an in-flight imported call after durable policy/native writes.
+        definition["timeout"] = {"after": {"seconds": 1}}
 
     async def handler(request):
         if request.url.host == "catalog.test":
             return httpx.Response(200, json=definition)
         effects.append(request)
         if case == "timeout":
-            await asyncio.sleep(1)
+            await asyncio.sleep(30)
         return httpx.Response(200, json={"echo": True})
 
     resolver = _resolver(services, handler)

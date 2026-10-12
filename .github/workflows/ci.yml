@@ -79,6 +79,9 @@ jobs:
           ../../tests/contract/test_retry_error_context.py
           ../../tests/contract/test_retry_timing.py
           ../../tests/contract/test_deadline_recovery.py
+          ../../tests/contract/test_retry_schedule_recovery.py
+          ../../tests/contract/test_scoped_exception_policies.py
+          ../../tests/contract/test_timing_process_recovery.py
 
   manifests:
     name: Validate deployment manifests
