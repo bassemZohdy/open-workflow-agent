@@ -636,11 +636,12 @@ async def test_parent_recovery_reconciles_completed_child_event_dependencies(
     running = asyncio.create_task(engine.invoke(plan, handle, {}))
     child_id: str | None = None
     try:
-        async with asyncio.timeout(30):
-            while handle.status != "waiting":
-                if running.done():
-                    raise AssertionError(await running)
-                await asyncio.sleep(0.01)
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=30)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
+        assert services.invocations.read_input(handle) == {}
         rows = services.effect_journal.connection.execute(
             "SELECT i.payload, e.payload FROM workflow_effect_invocations i "
             "JOIN workflow_effects e ON e.identity = i.identity WHERE i.invocation_id = ?",
@@ -654,9 +655,6 @@ async def test_parent_recovery_reconciles_completed_child_event_dependencies(
         assert len(child_receipts) == 1
         child_id = child_receipts[0]["child_invocation"]["invocation_id"]
         assert len(model.calls) == 1
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await asyncio.wait_for(running, timeout=10)
     finally:
         running.cancel()
         await asyncio.gather(running, return_exceptions=True)

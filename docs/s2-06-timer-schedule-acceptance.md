@@ -359,3 +359,81 @@ common step and remain unqualified until the fresh corrected-source run.
 Security at `3d2faf0` passes all six fresh nonempty nested reports with zero
 advisories and matching dependency pins; its raw evidence is retained beside
 `tmp/ci-3d2faf0-pg-terminal-evidence.json`.
+
+
+At `3dab25abb3c5017501685495c7eeaaa9346af75b`, the actual common-store step
+passes, including all original fixes and the corrected legacy widening oracle.
+The native LangGraph PostgreSQL recovery step records 342 passed and one
+failing controlled-clock schedule case (1,005 deselected). Its exact two-call
+assertion sees two additional `after` invocations left in the shared test
+database, dispatched by an automatically started timer poller. Schedule-only fixtures now mirror the already isolated trigger fixtures:
+they install the controlled executor clock before native initialization and
+stop the poller immediately afterwards; their explicit scheduler owns delivery. No other fixture's durable rows
+are removed and the exact model-call oracle remains unchanged. Actual ADK,
+optional Agent Framework PostgreSQL recovery and images are skipped by this
+failed step and remain unqualified.
+
+The same source's optional Agent Framework full run records 1,542 passed,
+1,077 skipped, two tracked gaps and one old null-checkpoint cancellation
+assertion failure. A cancelled earlier CI stage also records that exact
+checkpoint oracle failure; cancellation does not erase a completed failing
+stage. A bounded sweep changes eight direct durable-wait setup functions in
+seven fixture files to await actual suspension and released ownership. It
+retains all null/JSON input matrices, output ordering, immutable HTTP keys,
+child receipts, native input/scope corruption and no-repeat controls.
+Real action/effect/retry gaps, event-listener cancellations and actual
+forced-stop workers remain unchanged. Both actual native sweeps pass: ADK
+84 cases/112 unavailable-profile skips and LangGraph 88/108; the additional
+SDK/child-event slice passes eight/21 each. Optional Agent Framework's four
+swept contract files pass 109 cases/171 unavailable-profile skips. No
+production module changes occur in this fixture sweep. Exact hashes, fixture
+classification and terminal native results are saved in
+`tmp/s2-06-wait-oracle-sweep-evidence.json`.
+
+Both current root jobs subsequently pass; the inspected PR root full records
+2,078 passes/1,006 skips/two tracked gaps and 91.00% coverage, with its shared
+repeat 1,006/868/two. External sandbox contracts pass 55 cases and both
+external runtime image acceptance jobs pass. Fresh six-report Security
+acceptance also passes. These independent positive slices do not qualify the
+remaining database/optional/full principal/image gates or close S2-06.
+
+
+The controlled schedule/trigger focus then passes 44 cases with 44 unavailable
+PostgreSQL skips in root, actual ADK and actual LangGraph independently. All
+188 recorded inputs remain unchanged during each run. These are positive
+SQLite/native checks; fresh actual PostgreSQL remains required.
+
+Completed native stages at `3dab25a` expose the already swept child-event
+cancellation oracles plus a timing-worker ready/cleanup race. PR LangGraph
+records three failed/1,157 passed/750 skipped/two tracked gaps; push ADK records
+five/1,112/777/two. Counterparts cancel and main image jobs skip. Both Windows
+jobs pass their first stage 466/12 and actual native stage 727/567. The always-run
+artifact upload is not evidence of successful CTK/benchmark execution; the
+failed/cancelled runs have no such artifacts.
+
+The timing producer now awaits actual nonresident suspension and released
+ownership, records the original timer identity/deadline/due time, publishes
+readiness, then remains outside the workflow runner until the parent's actual
+OS kill. Retry-delay's intentionally resident injected sleep is unchanged.
+Recovery validates the original saved arming evidence and waits until that
+same absolute deadline before requesting expiry recovery. Its timeout remains
+four seconds; no lease-duration assumption or redrawn budget establishes
+expiry. Six actual timing cases pass across ADK/LangGraph, preserving original
+deadline equality, observation at/after it, remaining zero, zero model calls
+and absent cleanup markers; both retry cases retain two calls/one jitter draw.
+
+A proposed acknowledgment change in the historical legacy-scalar worker was
+incorrect: that test intentionally runs archived producer source, whose waiting
+runner remains resident. The retained intermediate focus times out on that
+producer. Its original scalar/status observation is restored; an explicit
+external stop barrier preserves its checkpoint until the OS kill without
+requiring current-runtime nonresident behavior from archived code. The corrected
+legacy case passes on each actual SDK, preserving old source/scalar evidence,
+distinct producer/recovery PIDs, absent cleanup marker, current-runtime
+`invalid_invocation_state` rejection, unchanged parent and zero calls.
+
+Detailed raw JSONs and per-run hashes are retained in
+`tmp/s2-06-final-worker-qualification-evidence.json`; failed intermediate
+attempts remain separate. No parent-test or production-runtime assertion is
+relaxed. All ten fixture/helper corrections are held for the next exact-source
+configured full, PostgreSQL and image acceptance. S2-06 remains unchecked.

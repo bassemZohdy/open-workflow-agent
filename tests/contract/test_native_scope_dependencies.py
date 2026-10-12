@@ -134,14 +134,12 @@ async def test_completed_native_scope_dependencies_reconcile_before_resume(
     running = asyncio.create_task(engine.invoke(plan, handle, {"items": [1, 2]}))
     before_calls = ["/once", "/once"] if scenario == "repeated" else ["/once"]
     try:
-        async with asyncio.timeout(20):
-            while handle.status != "waiting":
-                if running.done():
-                    pytest.fail(str(running.result()))
-                await asyncio.sleep(0.005)
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await running
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=20)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
+        assert first.invocations.read_input(handle) == {"items": [1, 2]}
         assert calls == before_calls
     finally:
         running.cancel()

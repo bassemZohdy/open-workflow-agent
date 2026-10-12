@@ -82,11 +82,17 @@ async def run(directory: Path, mode: str) -> None:
         target["timeout"] = {"after": {"seconds": 4}}
     plan = compile_workflow(workflow)
     handle: Any = None
+    deadline_evidence: dict[str, Any] = {}
 
     def ready() -> None:
         write_json(
             directory / "ready.json",
-            {"pid": os.getpid(), "invocation_id": handle.invocation_id, "boundary": boundary},
+            {
+                "pid": os.getpid(),
+                "invocation_id": handle.invocation_id,
+                "boundary": boundary,
+                **deadline_evidence,
+            },
         )
 
     def draw(lower: float, upper: float) -> float:
@@ -120,19 +126,58 @@ async def run(directory: Path, mode: str) -> None:
             )
             task = asyncio.create_task(engine.invoke(plan, handle, {"original": True}))
             if boundary != "retry-delay":
-                while True:
-                    saved = services.invocations.get(handle.invocation_id)
-                    if saved is not None and saved.status == "waiting":
-                        ready()
-                        break
-                    if task.done():
-                        raise AssertionError(await task)
-                    await asyncio.sleep(0.01)
-            await task
+                result = await asyncio.wait_for(task, timeout=30)
+                saved = services.invocations.get(handle.invocation_id)
+                if result.status != "waiting" or saved is None or saved.status != "waiting":
+                    raise AssertionError(result)
+                if (
+                    handle.invocation_id in engine._active
+                    or handle.invocation_id in engine._ownership_tasks
+                    or handle._execution_lease is not None
+                ):
+                    raise AssertionError("waiting execution ownership was not released")
+                registrations = services.timers.resumable_for_invocation(
+                    handle.invocation_id, plan.fingerprint
+                )
+                assert len(registrations) == 1
+                registration = registrations[0]
+                assert registration.deadline_at is not None
+                assert registration.duration == 300
+                deadline_evidence.update(
+                    timer_key=registration.timer_key,
+                    deadline_at=registration.deadline_at,
+                    due_at=registration.due_at,
+                )
+                ready()
+                # Stay outside the acknowledged runner until the parent kills
+                # this PID; normal cancellation still reaches the cleanup marker.
+                await asyncio.Event().wait()
+            else:
+                await task
         else:
             info = json.loads((directory / "ready.json").read_text())
             handle = services.invocations.get(info["invocation_id"])
             async with asyncio.timeout(20):
+                if boundary != "retry-delay":
+                    services.timers.verify_invocation(handle.invocation_id, plan.fingerprint)
+                    registration = services.timers.registration_for_key(info["timer_key"])
+                    assert registration.identity.invocation_id == handle.invocation_id
+                    assert registration.identity.workflow_fingerprint == plan.fingerprint
+                    assert registration.deadline_at == info["deadline_at"]
+                    assert registration.due_at == info["due_at"]
+                    assert registration.deadline_at is not None
+                    while engine.executor._absolute_clock() < registration.deadline_at:
+                        await asyncio.sleep(0.01)
+                    observed = engine.executor._absolute_clock()
+                    assert observed >= registration.deadline_at
+                    assert max(0, registration.deadline_at - observed) == 0
+                    assert services.timers.registration_for_key(info["timer_key"]) == registration
+                    deadline_evidence.update(
+                        deadline_at=registration.deadline_at, remaining=0, observed_at=observed
+                    )
+                    # The autonomous poller may already have committed the fault.
+                    handle = services.invocations.get(info["invocation_id"])
+                    assert handle.status not in {"completed", "cancelled"}
                 while True:
                     try:
                         result = await engine.resume(handle, {"continue": True}, plan)
@@ -140,7 +185,10 @@ async def run(directory: Path, mode: str) -> None:
                     except InvocationStateConflict:
                         await asyncio.sleep(0.05)
             counts = json.loads(counter.read_text())
-            write_json(directory / "result.json", {"result": result.as_dict(), "counts": counts})
+            write_json(
+                directory / "result.json",
+                {"result": result.as_dict(), "counts": counts, "deadline": deadline_evidence},
+            )
     finally:
         setattr(CancellationToken, method_name, original_sleep)
         await engine.shutdown()

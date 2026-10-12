@@ -83,12 +83,12 @@ async def test_invalid_recovery_state_is_rejected_before_execution_or_state_chan
             first.invocations.update(handle, status="waiting")
         else:
             running = asyncio.create_task(engine.invoke(plan, handle, original))
-            async with asyncio.timeout(10):
-                while handle.status != "waiting":
-                    await asyncio.sleep(0.005)
-            running.cancel()
-            with pytest.raises(asyncio.CancelledError):
-                await asyncio.wait_for(running, 10)
+            waiting = await asyncio.wait_for(asyncio.shield(running), timeout=10)
+            assert waiting.status == "waiting", waiting.error
+            assert handle.invocation_id not in engine._active
+            assert handle.invocation_id not in engine._ownership_tasks
+            assert handle._execution_lease is None
+            assert first.invocations.read_input(handle) == original
         assert first.model.calls == []
     finally:
         if running is not None:

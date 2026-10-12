@@ -71,14 +71,12 @@ async def test_adk_all_native_input_events_match_the_bound_input_before_resume(
     original = {"original": True}
     running = asyncio.create_task(engine.invoke(plan, handle, original))
     try:
-        async with asyncio.timeout(20):
-            while handle.status != "waiting":
-                if running.done():
-                    pytest.fail(str(running.result()))
-                await asyncio.sleep(0.005)
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await running
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=20)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
+        assert first.invocations.read_input(handle) == original
         assert model.calls == []
     finally:
         running.cancel()

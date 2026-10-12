@@ -116,8 +116,12 @@ files pass 18 each and recovery admission passes seven each. Optional Agent
 Framework fork/recovery focus passes 27/three. Both rebuilt packages contain
 all 64 matching core Python files. At `3d2faf0`, actual database wall-clock,
 timer-claim and fractional-schedule controls pass; one legacy DDL test needs
-consistent SQL precision for its before/after comparison. Native database,
-image and full configured acceptance remain required.
+consistent SQL precision for its before/after comparison. At `3dab25a`, the common-store step passes and native LangGraph database
+recovery passes 342 cases with one schedule-fixture contamination failure.
+A bounded fixture sweep preserves all receipts/inputs/corruption controls,
+isolates controlled schedule delivery, and validates six actual deadline/retry
+process stops plus two historical checkpoint stops across both SDKs.
+Native database, image and full corrected-source acceptance remain required.
 
 S2-06 remains unchecked pending actual PostgreSQL, exact-source configured
 full suites, image observations and qualified capability publication. The

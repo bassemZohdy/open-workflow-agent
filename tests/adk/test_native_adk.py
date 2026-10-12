@@ -127,14 +127,20 @@ async def test_native_adk_interrupted_resume_reuses_completed_action_receipt(tmp
         workflow_fingerprint=plan.fingerprint,
     )
     running = asyncio.create_task(engine.invoke(plan, handle, {}))
-    await asyncio.wait_for(reached_side_effect.wait(), timeout=5)
-    async with asyncio.timeout(5):
-        while handle.status != "waiting":
-            await asyncio.sleep(0.005)
-    running.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await running
-    services.close()
+    try:
+        await asyncio.wait_for(reached_side_effect.wait(), timeout=5)
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=5)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
+        assert services.invocations.read_input(handle) == {}
+        assert services.model.calls == []
+    finally:
+        running.cancel()
+        await asyncio.gather(running, return_exceptions=True)
+        await engine.shutdown()
+        services.close()
 
     restarted = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
     restarted.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
@@ -144,8 +150,12 @@ async def test_native_adk_interrupted_resume_reuses_completed_action_receipt(tmp
     persisted = restarted.invocations.get(handle.invocation_id)
     assert persisted is not None
     assert persisted.status == "waiting"
-    resumed = await resumed_engine.resume(persisted, {}, plan)
-    assert resumed.status == "completed"
-    assert resumed.output == {"done": True}
-    assert len(calls) == 1
-    restarted.close()
+    try:
+        resumed = await resumed_engine.resume(persisted, {}, plan)
+        assert resumed.status == "completed"
+        assert resumed.output == {"done": True}
+        assert len(calls) == 1 and len(set(calls)) == 1
+        assert restarted.model.calls == []
+    finally:
+        await resumed_engine.shutdown()
+        restarted.close()

@@ -12,7 +12,7 @@ from engine_cases import engine_cases
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.scheduling import WorkflowScheduler
 from open_workflow_agent.workflow import compile_workflow
-from test_durable_timers import _services, _workflow
+from test_durable_timers import _services, _use_clock, _workflow
 
 
 def _plan(schedule: dict[str, Any], name: str) -> Any:
@@ -41,8 +41,13 @@ async def _calls(model: FakeModel, count: int) -> None:
 @pytest.mark.parametrize("engine_name,engine_type", engine_cases())
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_every_retains_nominal_cadence_and_overlaps_running_invocations(
-    tmp_path: Path, engine_name: str, engine_type: Any, backend: str
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    engine_name: str,
+    engine_type: Any,
+    backend: str,
 ) -> None:
+    _use_clock(monkeypatch, lambda: 1000)
     release = asyncio.Event()
 
     async def response(prompt: Any) -> Any:
@@ -62,6 +67,7 @@ async def test_every_retains_nominal_cadence_and_overlaps_running_invocations(
     )
     try:
         await engine.initialize(services)
+        await engine._timer_dispatcher.stop()
         first = _claim(services, schedule.schedule_id, now, "first-owner")
         tasks.append(asyncio.create_task(scheduler._execute(first)))
         await _calls(model, 1)
@@ -108,8 +114,15 @@ async def test_every_retains_nominal_cadence_and_overlaps_running_invocations(
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("outcome", ["success", "fault", "cancel"])
 async def test_after_repeats_from_saved_successful_completion_and_stops_after_fault_or_cancel(
-    tmp_path: Path, engine_name: str, engine_type: Any, backend: str, outcome: str
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    engine_name: str,
+    engine_type: Any,
+    backend: str,
+    outcome: str,
 ) -> None:
+    _use_clock(monkeypatch, lambda: 1000)
+
     async def blocked(prompt: Any) -> Any:
         await asyncio.Event().wait()
         return prompt
@@ -127,6 +140,7 @@ async def test_after_repeats_from_saved_successful_completion_and_stops_after_fa
     schedule = services.schedules.create(plan, original, now=1000)
     try:
         await engine.initialize(services)
+        await engine._timer_dispatcher.stop()
         assert schedule.next_run_at == 1010
         selected = _claim(services, schedule.schedule_id, now, "first-owner")
         if outcome == "cancel":
@@ -196,6 +210,7 @@ async def test_after_repeats_from_saved_successful_completion_and_stops_after_fa
 )
 async def test_cron_persists_zone_and_replays_each_missed_nominal_slot(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     engine_name: str,
     engine_type: Any,
     backend: str,
@@ -203,6 +218,7 @@ async def test_cron_persists_zone_and_replays_each_missed_nominal_slot(
     base: str,
     expected: str,
 ) -> None:
+    _use_clock(monkeypatch, lambda: 1000)
     model = FakeModel(lambda prompt: prompt)
     services = _services(tmp_path, backend, model)
     engine = engine_type()
@@ -221,6 +237,7 @@ async def test_cron_persists_zone_and_replays_each_missed_nominal_slot(
     due: list[float] = []
     try:
         await engine.initialize(services)
+        await engine._timer_dispatcher.stop()
         reopened = services.schedules.get(schedule_id)
         assert reopened is not None and reopened.timezone == zone
         assert reopened.next_run_at == expected_due

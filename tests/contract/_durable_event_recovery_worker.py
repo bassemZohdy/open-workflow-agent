@@ -185,6 +185,9 @@ async def run(directory: Path, mode: str) -> None:
                         raise AssertionError(await task)
                     await asyncio.sleep(0.01)
                 ready()
+                # The archived producer keeps its resident runner; this barrier
+                # prevents normal worker cleanup before the parent's OS kill.
+                await asyncio.Event().wait()
             elif boundary in {"waiting", "partial-all"}:
                 assert store is not None
                 while True:

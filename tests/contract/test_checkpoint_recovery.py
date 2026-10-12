@@ -91,12 +91,12 @@ async def test_fresh_wait_resume_preserves_all_json_inputs(
     )
     running = asyncio.create_task(engine.invoke(plan, handle, workflow_input))
     try:
-        async with asyncio.timeout(10):
-            while handle.status != "waiting":
-                await asyncio.sleep(0.005)
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await asyncio.wait_for(running, timeout=10)
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=10)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
+        assert services.invocations.read_input(handle) == workflow_input
         assert services.model.calls == []
     finally:
         running.cancel()
@@ -181,13 +181,13 @@ async def test_successful_null_resume_does_not_repeat_completed_execution(
     )
     running = asyncio.create_task(engine.invoke(plan, handle, {}))
     try:
-        async with asyncio.timeout(10):
-            while handle.status != "waiting":
-                await asyncio.sleep(0.005)
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=10)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
+        assert first.invocations.read_input(handle) == {}
         assert calls == []
-        running.cancel()
-        with pytest.raises(asyncio.CancelledError):
-            await asyncio.wait_for(running, 10)
     finally:
         running.cancel()
         await asyncio.gather(running, return_exceptions=True)
