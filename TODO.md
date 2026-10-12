@@ -145,8 +145,13 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   timing cases per SDK. Original workflow/task deadline anchors at `17d4197`
   pass 49/61 focus and 124/167 broader recovery checks per SDK; eight actual
   deadline cases cover expiry/remaining time and missing/changed records.
-  Durable retry clock/count/schedule, stable jitter, full scoped exceptions and
-  changed-source full/configured/process-stop qualification remain open. See
+  `fdd771e` fails four fixture gates and is not all-seven success. Source
+  `a0ee9c0` completes saved retry decisions, standard/scoped errors and fixture
+  corrections. Actual process stops pass 3/9 per SDK; full frozen core passes
+  1,732/728/three gaps at 91.61%, ADK 985/579, LangGraph 1,027/552 and optional
+  Agent Framework 1,277/820, each with three gaps. Current source builds/types
+  pass. Fresh configured acceptance and the final
+  [finite audit](docs/s2-04-retry-timeout-acceptance.md) remain open. See
   [current work](PROJECT.md#s2-04-retry-timeout-and-exception-work--2026-10-12-in-progress).
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
 - [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.

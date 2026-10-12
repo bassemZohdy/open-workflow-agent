@@ -160,6 +160,33 @@ Durable retry clock/count/schedule and stable jitter choices, complete scoped
 exceptions, real process-stop timing boundaries and full S2-04 acceptance remain
 open. The task stays unchecked; later migration and proposed/JS owners remain.
 
+Deadline artifact `fdd771e` fails four configured runs: stale-owner fixture
+counts include the new completed clock row, and imported timeout dispatch does
+not begin before a ten-millisecond Windows budget. One-call and unchanged-parent
+checks still hold. Three runs succeed; this is not an all-seven-success artifact.
+Source `a0ee9c0` corrects those fixture assumptions and completes immutable retry
+clock/schedule/attempt choices, stable jitter replay and remaining-delay recovery.
+Expired admitted retries reconcile known outcomes without another external call;
+missing policy decisions or pending waits cannot start new work. Pending external
+intents remain unresolved. Schedule arithmetic is checked before admission.
+Standard OWS type/status/instance fields and inner/outer catch order pass new
+fixtures, including handler/predicate failures. Common API shape is unchanged.
+
+Focused recovery passes 46/52, fixture regression 75/34 and scoped-error/retry
+checks 15/15 per principal environment. Actual OS process-stop tests pass 3/9 per
+SDK: a killed worker bypasses cleanup, and a distinct process waits real test-lease
+expiry before checking original deadlines and the saved jitter choice. Full frozen
+local acceptance passes: core 1,732/728/three tracked gaps at 91.61%, ADK 985/579,
+LangGraph 1,027/552 and optional Agent Framework 1,277/820, each with three gaps.
+Six knowledge-extra checks separately pass. Strict 68-source/fixture typing,
+215-file scoped lint/formatting, five wheel/sdist builds and current Python/pinned
+schema wheel bytes pass against the frozen source manifest. The finite
+[S2-04 audit](docs/s2-04-retry-timeout-acceptance.md) remains pending configured
+acceptance: actual PostgreSQL/storage/process cases, Windows, image restarts,
+native benchmarks, docs and six nested dependency reports must qualify this
+source before the task is checked. Later migration/pending resolution and full
+proposed/JavaScript owners remain unchanged.
+
 ### S2-03 checkpoint recovery — 2026-10-12 (verified)
 
 Fresh-runtime tests reproduce a common resume defect: a submitted JSON null was
