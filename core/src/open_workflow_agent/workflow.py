@@ -50,6 +50,8 @@ from .errors import (
     WorkflowSchemaError,
     WorkflowSemanticError,
 )
+from .event_matching import candidate_matcher, event_projection
+from .events import EventEnvelope, EventProgress, EventRegistration
 from .expressions import ExpressionEvaluator as ExpressionEvaluator
 from .expressions import ExpressionMode, validate_expression_data
 from .external_catalog import ResolvedCatalogFunction, parse_catalog_function_reference
@@ -383,8 +385,6 @@ def validate_capabilities(
             _validate_emit_capability(definition["emit"], reference)
         if "listen" in definition:
             _validate_listen_capability(definition["listen"], reference)
-            if "foreach" in definition:
-                _unsupported("listen foreach iteration", f"{reference}/foreach")
         if "run" in definition:
             _validate_run_capability(definition["run"], reference)
     if _prefix == "/do":
@@ -465,6 +465,25 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
                     )
                 loop_scope = scope | {item, index}
                 check(loop.get("in"), body_scope, f"{reference}/for/in")
+            iterator = definition.get("foreach") if "listen" in definition else None
+            iterator_scope = scope
+            if isinstance(iterator, Mapping):
+                item = binding(str(iterator.get("item", "item")), f"{reference}/foreach/item")
+                index = binding(str(iterator.get("at", "index")), f"{reference}/foreach/at")
+                if item == index:
+                    raise WorkflowSemanticError(
+                        "subscription item and index bindings must differ",
+                        details={"reference": reference},
+                    )
+                iterator_scope = body_scope | {item, index}
+                data_slot(iterator, "output", "as", iterator_scope, f"{reference}/foreach")
+                data_slot(
+                    iterator,
+                    "export",
+                    "as",
+                    iterator_scope | {"output"},
+                    f"{reference}/foreach",
+                )
             check(definition.get("while"), body_scope | loop_scope, f"{reference}/while")
             for case_index, case in enumerate(definition.get("switch", [])):
                 if isinstance(case, Mapping):
@@ -506,6 +525,8 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
                 child_scope = loop_scope if suffix == "do" and isinstance(loop, Mapping) else scope
                 if suffix == "catch/do":
                     child_scope = catch_scope
+                if suffix == "foreach/do":
+                    child_scope = iterator_scope
                 tasks(
                     nested,
                     child_scope,
@@ -855,6 +876,14 @@ class WorkflowPlan:
                 ):
                     return True
         return False
+
+    @property
+    def uses_durable_events(self) -> bool:
+        return any(
+            "listen" in task.definition or "emit" in task.definition
+            for scope in self.scopes
+            for task in scope.tasks
+        )
 
     @property
     def fingerprint(self) -> str:
@@ -1813,7 +1842,7 @@ class WorkflowExecutor:
         if "emit" in definition:
             return await self._run_emit(definition["emit"], state)
         if "listen" in definition:
-            return await self._run_listen(definition["listen"], state)
+            return await self._run_listen(definition["listen"], state, definition.get("foreach"))
         if "run" in definition:
             return await self._run_subworkflow(definition["run"], state)
         if "switch" in definition:
@@ -2610,15 +2639,47 @@ class WorkflowExecutor:
                 raise WorkflowSemanticError(str(exc)) from exc
             return cast(dict[str, Any], envelope.as_dict())
 
-        # Retaining a publish acknowledgement prevents replay of a known
-        # publication. It does not establish durable delivery to listeners.
-        envelope = await self._run_effect(
-            "emit",
-            {"properties": evaluated, "default_source": default_source},
-            state,
-            dispatch,
-            operation="emit",
-        )
+        handle = state.metadata.get("_invocation_handle")
+        bus = self.services.event_bus
+        if (
+            isinstance(handle, ExecutionHandle)
+            and getattr(bus, "durable", False)
+            and hasattr(bus, "publish_workflow_event")
+        ):
+            identity = self._effect_identity(state, "emit")
+            scope = handle.owner_principal or "anonymous"
+            request_digest = effect_request_digest(
+                "emit",
+                {"properties": evaluated, "default_source": default_source, "scope": scope},
+            )
+            if _RECONCILE_EXPIRED_RETRY.get():
+                receipt = self.services.effect_journal.get(identity)
+                if receipt is None or receipt.status != "completed":
+                    raise WorkflowExecutionError("retry budget expired before event publication")
+                if receipt.request_digest != request_digest:
+                    raise _EffectRecoveryRequired("recorded event publication request changed")
+            else:
+                receipt = await bus.publish_workflow_event(
+                    identity,
+                    request_digest,
+                    evaluated,
+                    default_source=default_source,
+                    scope=scope,
+                    execution_lease=handle._execution_lease,
+                    operation_id=self._operation_id(state),
+                )
+            await self._notify_receipt(state, identity, receipt)
+            envelope = self._effect_result(receipt)
+        else:
+            # Injected process-local transports retain their known publication
+            # acknowledgement without claiming durable listener delivery.
+            envelope = await self._run_effect(
+                "emit",
+                {"properties": evaluated, "default_source": default_source},
+                state,
+                dispatch,
+                operation="emit",
+            )
         task_reference = str(state.variables.get("_task_reference", "unknown-task"))
         task_name = state.variables.get("_task_name", "emit")
         self._emit(
@@ -2632,21 +2693,183 @@ class WorkflowExecutor:
         )
         return state.data
 
-    async def _run_listen(self, definition: Any, state: ExecutionState) -> Any:
+    async def _run_listen(
+        self, definition: Any, state: ExecutionState, iterator: Any = None
+    ) -> Any:
         if self.services is None or not hasattr(self.services, "event_bus"):
             raise WorkflowExecutionError("event service unavailable for listen task")
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError("listen configuration must be an object")
         if not isinstance(definition.get("to"), Mapping):
             raise WorkflowSemanticError("listen.to must be an object")
-        strategy = self._expressions(state).evaluate(
-            definition["to"], state.data, variables=state.variables
-        )
-        if not isinstance(strategy, Mapping):
-            raise WorkflowSemanticError("listen.to must evaluate to an object")
+        strategy = self._prepare_listener_strategy(definition["to"], state)
         read = definition.get("read", "data")
         if read not in {"data", "envelope", "raw"}:
             raise WorkflowSemanticError(f"unsupported listen read mode: {read}")
+        bus = self.services.event_bus
+        handle = state.metadata.get("_invocation_handle")
+        if (
+            isinstance(handle, ExecutionHandle)
+            and getattr(bus, "durable", False)
+            and hasattr(bus, "register_workflow_listener")
+        ):
+            return await self._run_durable_listen(strategy, read, iterator, state, handle)
+        if set(strategy) != {"one"} or strategy["one"].get("correlate"):
+            raise UnsupportedWorkflowFeature(
+                "advanced event consumption requires the embedded durable event backend"
+            )
+        # Synchronous buses register before any waiting observation. Custom
+        # process-local transports retain their public receive contract.
+        pending = bus.receive(strategy)
+        await self._listener_waiting(state)
+        envelope = await self._await_with_cancellation(pending, state)
+        self._token(state).checkpoint()
+        self._listener_received(envelope, state)
+        return [await self._listener_item(envelope, read, iterator, 1, state)]
+
+    def _prepare_listener_strategy(
+        self, strategy: Mapping[str, Any], state: ExecutionState
+    ) -> dict[str, Any]:
+        prepared = copy.deepcopy(dict(strategy))
+        for mode in ("one", "all", "any"):
+            if mode not in prepared:
+                continue
+            filters = [prepared[mode]] if mode == "one" else prepared[mode]
+            for event_filter in filters:
+                for correlation in event_filter.get("correlate", {}).values():
+                    if "expect" in correlation:
+                        correlation["expect"] = self._expressions(state).evaluate(
+                            correlation["expect"], state.data, variables=state.variables
+                        )
+        until = prepared.get("until")
+        if isinstance(until, Mapping):
+            prepared["until"] = self._prepare_listener_strategy(until, state)
+        validate_expression_data(prepared)
+        return prepared
+
+    async def _run_durable_listen(
+        self,
+        strategy: Mapping[str, Any],
+        read: str,
+        iterator: Any,
+        state: ExecutionState,
+        handle: ExecutionHandle,
+    ) -> list[Any]:
+        bus = self.services.event_bus
+        journal: EffectJournal = self.services.effect_journal
+        identity = self._effect_identity(state, "listen")
+        if _RECONCILE_EXPIRED_RETRY.get():
+            known = journal.get(identity)
+            if known is None or known.status != "completed":
+                raise WorkflowExecutionError("retry budget expired before event consumption")
+        registration: EventRegistration = bus.register_workflow_listener(
+            identity,
+            strategy,
+            scope=handle.owner_principal or "anonymous",
+            execution_lease=handle._execution_lease,
+        )
+        registered = journal.get(registration.receipt_identity)
+        if registered is None or registered.status != "completed":
+            raise _EffectRecoveryRequired("durable event registration evidence is missing")
+        await self._notify_receipt(state, registration.receipt_identity, registered)
+        progress: EventProgress = bus.listener_state(registration)
+        if self._listener_complete_without_events(strategy) and not progress.completed:
+            progress = bus.complete_workflow_listener(
+                registration, execution_lease=handle._execution_lease
+            )
+        matcher = candidate_matcher(
+            strategy,
+            expressions=self._expressions(state),
+            variables=state.variables,
+            read=read,
+            filter_guard=getattr(bus, "event_filter_allowed", None),
+        )
+        results: list[Any] = []
+        processed = 0
+        decisions = 0
+        while True:
+            self._token(state).checkpoint()
+            # Include immutable routing decisions before native waiting/child
+            # progress so partial collection cannot change during recovery.
+            decision_count = progress.decision_ordinal
+            while decisions < decision_count:
+                decisions += 1
+                decision_identity = registration.decision_identity(decisions)
+                decision = journal.get(decision_identity)
+                if decision is None or decision.status != "completed":
+                    raise _EffectRecoveryRequired("durable event decision evidence is missing")
+                await self._notify_receipt(state, decision_identity, decision)
+            while processed < len(progress.events):
+                ordinal = processed + 1
+                event = progress.events[processed]
+                event_identity = registration.event_identity(ordinal)
+                selected = journal.get(event_identity)
+                if selected is None or selected.status != "completed":
+                    raise _EffectRecoveryRequired("durable event selection evidence is missing")
+                await self._notify_receipt(state, event_identity, selected)
+                self._listener_received(event, state)
+                results.append(await self._listener_item(event, read, iterator, ordinal, state))
+                processed += 1
+                if state.stop or state.flow.ended.is_set():
+                    return results
+            if progress.completed:
+                if progress.receipt is None:
+                    raise _EffectRecoveryRequired("durable event completion evidence is missing")
+                await self._notify_receipt(state, identity, progress.receipt)
+                # A terminating event is excluded from the output and therefore
+                # does not pass through _listener_received. Completion still
+                # resumes the invocation before its terminal transition.
+                self._set_invocation_status(state, "running")
+                return results
+            if progress.closed:
+                raise InvocationCancelled("event listener belongs to a terminated invocation")
+            await self._listener_waiting(state)
+            progress = await self._await_with_cancellation(
+                bus.receive_next(
+                    registration,
+                    execution_lease=handle._execution_lease,
+                    evaluate_candidate=matcher,
+                ),
+                state,
+            )
+
+    @staticmethod
+    def _listener_complete_without_events(strategy: Mapping[str, Any]) -> bool:
+        if "all" in strategy:
+            return not strategy["all"]
+        until = strategy.get("until")
+        return (
+            "any" in strategy
+            and isinstance(until, Mapping)
+            and WorkflowExecutor._listener_complete_without_events(until)
+        )
+
+    async def _listener_item(
+        self, event: EventEnvelope, read: str, iterator: Any, ordinal: int, state: ExecutionState
+    ) -> Any:
+        value = event_projection(event, read)
+        if iterator is None:
+            return value
+        if not isinstance(iterator, Mapping):
+            raise WorkflowSemanticError("listen foreach must be an object")
+        child = self._copy_state(state)
+        child.data = copy.deepcopy(value)
+        child.variables["input"] = copy.deepcopy(value)
+        child.variables[str(iterator.get("item", "item"))] = copy.deepcopy(value)
+        child.variables[str(iterator.get("at", "index"))] = ordinal - 1
+        reference = str(child.variables.get("_execution_reference", "/do"))
+        child.execution_path = (*child.execution_path, (f"{reference}/@event", ordinal))
+        body = iterator.get("do", [])
+        if body:
+            await self._run_tasks(body, child, prefix=self._nested_prefix(child, "foreach/do"))
+        output = self._apply_task_data(iterator, child.data, child)
+        state.context = copy.deepcopy(child.context)
+        state.variables["context"] = state.context
+        state.task_visits = child.task_visits
+        state.stop = child.stop
+        return output
+
+    async def _listener_waiting(self, state: ExecutionState) -> None:
         task_reference = str(state.variables.get("_task_reference", "unknown-task"))
         task_name = state.variables.get("_task_name", "listen")
         await self._notify_waiting(state)
@@ -2659,10 +2882,10 @@ class WorkflowExecutor:
         self._emit("TaskProgress", waiting_event)
         self._emit("TaskWaiting", waiting_event)
         self._emit("WorkflowWaiting", waiting_event)
-        envelope = await self._await_with_cancellation(
-            self.services.event_bus.receive(strategy), state
-        )
-        self._token(state).checkpoint()
+
+    def _listener_received(self, envelope: EventEnvelope, state: ExecutionState) -> None:
+        task_reference = str(state.variables.get("_task_reference", "unknown-task"))
+        task_name = state.variables.get("_task_name", "listen")
         state.variables["event"] = envelope.as_dict()
         self._set_invocation_status(state, "running")
         event_context = {
@@ -2691,11 +2914,6 @@ class WorkflowExecutor:
                 "event_name": envelope.type,
             },
         )
-        if read == "data":
-            return envelope.data
-        if read == "envelope":
-            return envelope.as_dict()
-        return envelope.raw()
 
     @staticmethod
     def _default_event_source(state: ExecutionState) -> str:
@@ -2778,7 +2996,7 @@ class WorkflowExecutor:
                 details={
                     "path": path,
                     "validator": str(first.validator),
-                    "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+                    "type": "https://serverlessworkflow.io/spec/1.0.0/errors/validation",
                     "status": 400,
                 },
             )
@@ -2862,20 +3080,39 @@ def _validate_listen_capability(definition: Any, reference: str) -> None:
     if not isinstance(definition, Mapping):
         raise WorkflowSemanticError(f"listen configuration must be an object at {reference}")
     strategy = definition.get("to")
-    if not isinstance(strategy, Mapping) or set(strategy) != {"one"}:
-        raise UnsupportedWorkflowFeature(
-            "listen currently supports only the one-event strategy",
-            details={"reference": reference, "supported": ["one"]},
-        )
-    selected = strategy.get("one")
-    if not isinstance(selected, Mapping) or not isinstance(selected.get("with"), Mapping):
-        raise WorkflowSemanticError(f"listen.one.with is required at {reference}")
-    if "correlate" in selected:
-        _unsupported("event correlation", f"{reference}/listen/to/one/correlate")
-    if "foreach" in definition:
-        raise UnsupportedWorkflowFeature(
-            "listen foreach iteration is not enabled", details={"reference": reference}
-        )
+
+    def validate_strategy(value: Any, location: str) -> None:
+        if not isinstance(value, Mapping):
+            raise WorkflowSemanticError(f"listen strategy must be an object at {location}")
+        modes = [mode for mode in ("one", "all", "any") if mode in value]
+        if len(modes) != 1:
+            raise WorkflowSemanticError(f"listen requires one consumption strategy at {location}")
+        mode = modes[0]
+        filters = [value[mode]] if mode == "one" else value[mode]
+        if not isinstance(filters, list):
+            raise WorkflowSemanticError(f"listen.{mode} must be an array at {location}")
+        for index, selected in enumerate(filters):
+            if (
+                not isinstance(selected, Mapping)
+                or not isinstance(selected.get("with"), Mapping)
+                or not selected["with"]
+            ):
+                raise WorkflowSemanticError(f"event filter.with is required at {location}/{index}")
+            correlations = selected.get("correlate", {})
+            if not isinstance(correlations, Mapping):
+                raise WorkflowSemanticError(f"event correlations must be an object at {location}")
+            for rule in correlations.values():
+                if not isinstance(rule, Mapping) or not isinstance(rule.get("from"), str):
+                    raise WorkflowSemanticError(f"correlation.from is required at {location}")
+        until = value.get("until")
+        if mode == "any" and isinstance(until, Mapping):
+            validate_strategy(until, f"{location}/until")
+        elif mode == "any" and until is not None and not isinstance(until, str):
+            raise WorkflowSemanticError(
+                f"listen.until must be an expression or strategy at {location}"
+            )
+
+    validate_strategy(strategy, f"{reference}/listen/to")
 
 
 def _validate_run_capability(definition: Any, reference: str) -> None:
@@ -3145,6 +3382,9 @@ def _task_scopes(definition: Mapping[str, Any]) -> Iterable[tuple[str, list[Any]
     catch = definition.get("catch")
     if isinstance(catch, Mapping) and isinstance(catch.get("do"), list):
         yield "catch/do", catch["do"]
+    iterator = definition.get("foreach") if "listen" in definition else None
+    if isinstance(iterator, Mapping) and isinstance(iterator.get("do"), list):
+        yield "foreach/do", iterator["do"]
     fork = definition.get("fork")
     if isinstance(fork, Mapping) and isinstance(fork.get("branches"), list):
         for index, branch in enumerate(fork["branches"]):

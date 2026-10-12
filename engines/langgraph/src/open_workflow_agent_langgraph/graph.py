@@ -193,6 +193,12 @@ class LangGraphScopeExecutor:
             for reference in self.task_references | source_references
             for suffix in ("@attempt", "@catch-attempt")
         }
+        self.event_references = {
+            f"{task.execution_reference or task.reference}/@event"
+            for scope in plan.scopes
+            for task in scope.tasks
+            if "listen" in task.definition and isinstance(task.definition.get("foreach"), dict)
+        }
         self._definition_json = _json_identity(plan.source)
         self._expected_input_json: str | None = None
 
@@ -356,10 +362,27 @@ class LangGraphScopeExecutor:
                 raise ValueError("native task transition is inconsistent")
             if set(value["task_visits"]) - self.task_references:
                 raise ValueError("native task occurrence belongs to another plan")
-            for task_reference, visit in value["execution_path"]:
+            for coordinate, (task_reference, visit) in enumerate(value["execution_path"]):
                 if task_reference in self.task_references:
                     if visit > value["task_visits"].get(task_reference, 0):
                         raise ValueError("native execution path is ahead of task visits")
+                elif task_reference in self.event_references:
+                    # An iterator ordinal must refer to an actual immutable
+                    # selection before adopting native child execution state.
+                    identity = EffectIdentity(
+                        self.invocation_id,
+                        self.plan.fingerprint,
+                        task_reference.removesuffix("/@event"),
+                        tuple(value["execution_path"][: coordinate + 1]),
+                        "listen:event:v1",
+                    )
+                    receipt = (
+                        self.effect_journal.get(identity)
+                        if self.effect_journal is not None
+                        else None
+                    )
+                    if receipt is None or receipt.status != "completed":
+                        raise ValueError("native event iterator selection is missing")
                 elif task_reference not in self.policy_references:
                     raise ValueError("native execution path belongs to another plan")
             variables = value["variables"]

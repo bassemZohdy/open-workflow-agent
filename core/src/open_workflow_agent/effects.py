@@ -409,27 +409,9 @@ class EffectJournal:
                     proposed = EffectReceipt(
                         request_digest, "policy", status="completed", output=output
                     )
-                    self.connection.execute(
-                        """INSERT INTO workflow_effect_invocations(
-                        identity, invocation_id, fingerprint, payload)
-                        VALUES (?, ?, ?, ?) ON CONFLICT(identity) DO NOTHING""",
-                        (
-                            identity.key,
-                            identity.invocation_id,
-                            identity.workflow_fingerprint,
-                            json.dumps(asdict(identity), allow_nan=False),
-                        ),
-                    )
-                    self.connection.execute(
-                        """INSERT INTO workflow_effects(identity, owner, status, payload)
-                        VALUES (?, ?, ?, ?) ON CONFLICT(identity) DO NOTHING""",
-                        (
-                            identity.key,
-                            proposed.owner,
-                            proposed.status,
-                            json.dumps(_receipt_payload(proposed), allow_nan=False),
-                        ),
-                    )
+                    from ._effect_storage import insert_completed_receipt
+
+                    insert_completed_receipt(self.connection, identity, proposed)
                 recorded = self.get(identity)
                 if (
                     recorded is None

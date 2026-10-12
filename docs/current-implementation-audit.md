@@ -8,6 +8,14 @@ its original construct, proposed tests, independent Python/JavaScript outcome,
 remaining scope and milestone owners. Source symbols and test functions are
 linked explicitly; no predecessor reference file serves as runtime proof.
 
+S2-05 working source now implements embedded durable event storage, ordered
+strategies, correlation and sequential listener iterators. The event-strategy
+group is partial while full frozen and configured acceptance remains pending;
+its admission anchors reflect the newly implemented behavior. Explicit JSON
+null event data now passes its desired-behavior probe. The two remaining strict
+expected failures retain their S3-03 owners. No full inventory/proposed or
+independent JavaScript qualification is promoted by this progress update.
+
 The reviewed implementation is
 `29eeb3b`, with production bytes and full-local suite provenance at
 `a0ee9c0`; only the two descriptor/deadline fixtures differ. Exact configured

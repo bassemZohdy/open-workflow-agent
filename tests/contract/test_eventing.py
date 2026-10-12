@@ -68,7 +68,7 @@ async def test_emit_and_listen_have_equivalent_common_results(tmp_path, engine_n
                             }
                         }
                     },
-                    {"finish": {"set": {"approved": "${ .approved }"}}},
+                    {"finish": {"set": {"approved": "${ .[0].approved }"}}},
                 ]
             )
         )
@@ -115,7 +115,20 @@ async def test_emit_and_listen_have_equivalent_common_results(tmp_path, engine_n
         emit_result = await engine.invoke(emit_plan, emit_handle, {"case": "case-1"})
         assert emit_result.status == "completed"
         assert emit_result.output == {"done": True}
-        assert services.event_bus.published[-1].as_dict()["data"] == {"case": "case-1"}
+        assert services.event_store is not None
+        accepted = services.event_store.connection.execute(
+            "SELECT identity FROM event_outbox WHERE invocation_id = ?",
+            (emit_handle.invocation_id,),
+        ).fetchall()
+        assert len(accepted) == 1
+        services.event_store.verify_invocation(emit_handle.invocation_id, emit_plan.fingerprint)
+        assert services.event_store.deliver_outbox() == 1
+        created = [
+            envelope
+            for _, envelope in services.event_store.arrivals()
+            if envelope.id == "created-1"
+        ]
+        assert len(created) == 1 and created[0].data == {"case": "case-1"}
         assert any(event.event_type == "EventEmitted" for event in services.events.events)
     finally:
         await engine.shutdown()

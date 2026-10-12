@@ -6,21 +6,24 @@ import hmac
 import json
 import time
 import uuid
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
+from .durable_events import DEFAULT_EVENT_SCOPE, DurableEventBus
+from .effects import EffectIdentity, EffectReceipt
 from .errors import (
     ApprovalAuthorizationError,
     ApprovalConflict,
     ApprovalNotFound,
     ApprovalValidationError,
 )
-from .events import EventBus, EventEnvelope
+from .events import EventBus, EventDecision, EventEnvelope, EventProgress, EventRegistration
+from .ownership import ExecutionLease
 from .security import BearerSecurityProfile, SecurityConfig, resolve_secret
-from .storage import StorageConnection, open_storage
+from .storage import StorageConnection, ensure_storage_namespace, open_storage
 
 APPROVAL_REQUEST_EVENT = "io.openworkflow.agent.approval.requested"
 APPROVAL_DECISION_EVENT = "io.openworkflow.agent.approval.decided"
@@ -40,6 +43,7 @@ class ApprovalRecord:
     operator_id: str | None = None
     decision_operation_key: str | None = None
     decided_at: float | None = None
+    event_scope: str = DEFAULT_EVENT_SCOPE
 
     @property
     def request_event(self) -> dict[str, Any]:
@@ -75,9 +79,15 @@ class ApprovalRecord:
 class ApprovalStore:
     """Durable common approval metadata; contains no engine-native state."""
 
-    def __init__(self, database: str | Path = ":memory:") -> None:
-        self.connection: StorageConnection = open_storage(database, "owa_approvals")
-        self.connection.execute(
+    def __init__(
+        self, database: str | Path = ":memory:", *, connection: StorageConnection | None = None
+    ) -> None:
+        self._owns_connection = connection is None
+        self.connection = connection or open_storage(database, "owa_approvals")
+        if connection is not None and connection.is_postgresql:
+            ensure_storage_namespace(str(database), "owa_approvals")
+        self._table = "owa_approvals.approvals" if self.connection.is_postgresql else "approvals"
+        self._execute(
             """CREATE TABLE IF NOT EXISTS approvals (
             approval_id TEXT PRIMARY KEY,
             subject TEXT NOT NULL,
@@ -91,8 +101,29 @@ class ApprovalStore:
             decided_at REAL)"""
         )
         self.connection.commit()
+        if self.connection.is_postgresql:
+            columns = self.connection.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'owa_approvals' AND table_name = 'approvals'"
+            ).fetchall()
+            names = {row[0] for row in columns}
+        else:
+            names = {
+                row[1] for row in self.connection.execute("PRAGMA table_info(approvals)").fetchall()
+            }
+        if "event_scope" not in names:
+            self._execute(
+                "ALTER TABLE approvals ADD COLUMN event_scope TEXT NOT NULL DEFAULT 'anonymous'"
+            )
+            self.connection.commit()
 
-    def create_request(self, event: EventEnvelope) -> ApprovalRecord:
+    def _execute(self, statement: str, parameters: tuple[Any, ...] = ()) -> Any:
+        # Namespace is a fixed internal identifier, never a caller value.
+        return self.connection.execute(statement.replace("approvals", self._table), parameters)
+
+    def create_request(
+        self, event: EventEnvelope, *, scope: str = DEFAULT_EVENT_SCOPE, commit: bool = True
+    ) -> ApprovalRecord:
         if event.type != APPROVAL_REQUEST_EVENT:
             raise ApprovalValidationError(
                 "approval request must use the reserved request event type"
@@ -102,10 +133,10 @@ class ApprovalStore:
                 "durable approval requests require subject to equal the stable approval id",
                 details={"approval_id": event.id, "subject": event.subject},
             )
-        existing = self.get(event.id)
+        existing = self.get(event.id, commit=commit)
         request_json = event.raw()
         if existing is not None:
-            if existing.request_event_json != request_json:
+            if existing.request_event_json != request_json or existing.event_scope != scope:
                 raise ApprovalConflict(
                     "approval id is already bound to a different request",
                     details={"approval_id": event.id},
@@ -120,11 +151,13 @@ class ApprovalStore:
             request_event_json=request_json,
             requested_at=requested_at,
             expires_at=expires_at,
+            event_scope=scope,
         )
-        self.connection.execute(
+        self._execute(
             "INSERT INTO approvals(approval_id, subject, status, request_event, requested_at, "
-            "expires_at, decision_event, operator_id, decision_operation_key, decided_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "expires_at, decision_event, operator_id, decision_operation_key, "
+            "decided_at, event_scope) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 record.approval_id,
                 record.subject,
@@ -136,17 +169,20 @@ class ApprovalStore:
                 None,
                 None,
                 None,
+                record.event_scope,
             ),
         )
-        self.connection.commit()
+        if commit:
+            self.connection.commit()
         return record
 
-    def get(self, approval_id: str) -> ApprovalRecord | None:
-        self._expire_due()
-        row = self.connection.execute(
+    def get(self, approval_id: str, *, commit: bool = True) -> ApprovalRecord | None:
+        self._expire_due(commit=commit)
+        lock = " FOR UPDATE" if self.connection.is_postgresql and not commit else ""
+        row = self._execute(
             "SELECT approval_id, subject, status, request_event, requested_at, expires_at, "
-            "decision_event, operator_id, decision_operation_key, decided_at "
-            "FROM approvals WHERE approval_id = ?",
+            "decision_event, operator_id, decision_operation_key, decided_at, event_scope "
+            "FROM approvals WHERE approval_id = ?" + lock,
             (approval_id,),
         ).fetchone()
         return self._decode(row) if row else None
@@ -158,16 +194,16 @@ class ApprovalStore:
         if limit < 1 or limit > 1000:
             raise ApprovalValidationError("approval list limit must be between 1 and 1000")
         if status is None:
-            rows = self.connection.execute(
+            rows = self._execute(
                 "SELECT approval_id, subject, status, request_event, requested_at, expires_at, "
-                "decision_event, operator_id, decision_operation_key, decided_at "
+                "decision_event, operator_id, decision_operation_key, decided_at, event_scope "
                 "FROM approvals ORDER BY requested_at DESC LIMIT ?",
                 (limit,),
             ).fetchall()
         else:
-            rows = self.connection.execute(
+            rows = self._execute(
                 "SELECT approval_id, subject, status, request_event, requested_at, expires_at, "
-                "decision_event, operator_id, decision_operation_key, decided_at "
+                "decision_event, operator_id, decision_operation_key, decided_at, event_scope "
                 "FROM approvals WHERE status = ? ORDER BY requested_at DESC LIMIT ?",
                 (status, limit),
             ).fetchall()
@@ -175,9 +211,7 @@ class ApprovalStore:
 
     def status_counts(self) -> dict[str, int]:
         self._expire_due()
-        rows = self.connection.execute(
-            "SELECT status, COUNT(*) FROM approvals GROUP BY status"
-        ).fetchall()
+        rows = self._execute("SELECT status, COUNT(*) FROM approvals GROUP BY status").fetchall()
         return {str(status): int(count) for status, count in rows}
 
     def decide(
@@ -188,6 +222,7 @@ class ApprovalStore:
         operator_id: str,
         value: Any = None,
         operation_key: str | None = None,
+        commit: bool = True,
     ) -> ApprovalRecord:
         if decision not in APPROVAL_DECISIONS:
             raise ApprovalValidationError(
@@ -196,7 +231,7 @@ class ApprovalStore:
             )
         if not operator_id.strip():
             raise ApprovalValidationError("operator identity is required")
-        record = self.get(approval_id)
+        record = self.get(approval_id, commit=commit)
         if record is None:
             raise ApprovalNotFound("approval not found", details={"approval_id": approval_id})
         if record.status == "expired":
@@ -215,7 +250,7 @@ class ApprovalStore:
                 details={"approval_id": approval_id, "status": record.status},
             )
         if operation_key:
-            existing = self.connection.execute(
+            existing = self._execute(
                 "SELECT approval_id FROM approvals WHERE decision_operation_key = ?",
                 (operation_key,),
             ).fetchone()
@@ -245,7 +280,7 @@ class ApprovalStore:
         record.decision_operation_key = operation_key
         record.decision_event_json = event.raw()
         record.decided_at = now
-        self.connection.execute(
+        self._execute(
             "UPDATE approvals SET status = ?, decision_event = ?, operator_id = ?, "
             "decision_operation_key = ?, decided_at = ? WHERE approval_id = ?",
             (
@@ -257,7 +292,8 @@ class ApprovalStore:
                 record.approval_id,
             ),
         )
-        self.connection.commit()
+        if commit:
+            self.connection.commit()
         return record
 
     def decision_for_strategy(self, strategy: Mapping[str, Any]) -> EventEnvelope | None:
@@ -273,7 +309,11 @@ class ApprovalStore:
                 "durable approval listeners require a stable subject equal to the approval id"
             )
         record = self.get(subject)
-        if record is None or record.status not in APPROVAL_DECISIONS:
+        if (
+            record is None
+            or record.status not in APPROVAL_DECISIONS
+            or record.event_scope != DEFAULT_EVENT_SCOPE
+        ):
             return None
         decision = record.decision_event
         if decision is None:
@@ -282,14 +322,39 @@ class ApprovalStore:
             return _envelope(decision)
         return None
 
-    def _expire_due(self) -> None:
+    def matches_committed_decision(self, selected: Mapping[str, Any], event: EventEnvelope) -> bool:
+        """Read-only verification inside the event store's owned transaction."""
+        properties = selected.get("with")
+        if not isinstance(properties, Mapping) or properties.get("type") != APPROVAL_DECISION_EVENT:
+            return True
+        if event.type != APPROVAL_DECISION_EVENT or not event.subject:
+            return False
+        declared_subject = properties.get("subject")
+        subject = (
+            declared_subject
+            if isinstance(declared_subject, str) and "${" not in declared_subject
+            else event.subject
+        )
+        row = self._execute(
+            "SELECT status, decision_event, subject FROM approvals WHERE approval_id = ?",
+            (subject,),
+        ).fetchone()
+        return bool(
+            row is not None
+            and row[0] in APPROVAL_DECISIONS
+            and row[1] == event.raw()
+            and row[2] == event.subject
+        )
+
+    def _expire_due(self, *, commit: bool = True) -> None:
         now = time.time()
-        self.connection.execute(
+        self._execute(
             "UPDATE approvals SET status = 'expired' WHERE status = 'pending' "
             "AND expires_at IS NOT NULL AND expires_at <= ?",
             (now,),
         )
-        self.connection.commit()
+        if commit:
+            self.connection.commit()
 
     @staticmethod
     def _decode(row: Any) -> ApprovalRecord:
@@ -304,29 +369,136 @@ class ApprovalStore:
             operator_id=row[7],
             decision_operation_key=row[8],
             decided_at=float(row[9]) if row[9] is not None else None,
+            event_scope=row[10],
         )
 
     def close(self) -> None:
-        self.connection.close()
+        if self._owns_connection:
+            self.connection.close()
 
 
 class ApprovalEventBus:
     """Decorate the normal bus with durable approval request/decision replay."""
 
-    durable = False
     approval_durable = True
 
     def __init__(self, delegate: EventBus, store: ApprovalStore) -> None:
         self.delegate = delegate
         self.store = store
+        self.durable = delegate.durable
+
+    def event_filter_allowed(self, selected: Mapping[str, Any], event: EventEnvelope) -> bool:
+        return self.store.matches_committed_decision(selected, event)
 
     async def publish(self, properties: Mapping[str, Any], *, default_source: str) -> EventEnvelope:
+        return await self.publish_scoped(
+            properties, default_source=default_source, scope=DEFAULT_EVENT_SCOPE
+        )
+
+    async def publish_scoped(
+        self, properties: Mapping[str, Any], *, default_source: str, scope: str
+    ) -> EventEnvelope:
         if properties.get("type") == APPROVAL_DECISION_EVENT:
             raise ValueError("approval decisions must be submitted through the approval API")
+        if isinstance(self.delegate, DurableEventBus):
+            return await self.delegate.publish_scoped(
+                properties,
+                default_source=default_source,
+                scope=scope,
+                participant=lambda _connection, event: self._request_participant(event, scope),
+            )
         envelope = await self.delegate.publish(properties, default_source=default_source)
         if envelope.type == APPROVAL_REQUEST_EVENT:
-            self.store.create_request(envelope)
+            self.store.create_request(envelope, scope=scope)
         return envelope
+
+    def _request_participant(self, event: EventEnvelope, scope: str) -> None:
+        if event.type == APPROVAL_REQUEST_EVENT:
+            self.store.create_request(event, scope=scope, commit=False)
+
+    async def publish_workflow_event(
+        self,
+        identity: EffectIdentity,
+        request_digest: str,
+        properties: Mapping[str, Any],
+        *,
+        default_source: str,
+        scope: str,
+        execution_lease: ExecutionLease | None,
+        operation_id: str | None = None,
+    ) -> EffectReceipt:
+        if properties.get("type") == APPROVAL_DECISION_EVENT:
+            raise ValueError("approval decisions must be submitted through the approval API")
+        delegate = self._durable_delegate()
+        return await delegate.publish_workflow_event(
+            identity,
+            request_digest,
+            properties,
+            default_source=default_source,
+            scope=scope,
+            execution_lease=execution_lease,
+            operation_id=operation_id,
+            participant=lambda _connection, event: self._request_participant(event, scope),
+        )
+
+    def _durable_delegate(self) -> DurableEventBus:
+        if not isinstance(self.delegate, DurableEventBus):
+            raise ApprovalValidationError("durable generic event delivery is unavailable")
+        return self.delegate
+
+    def register_workflow_listener(
+        self,
+        identity: EffectIdentity,
+        strategy: Mapping[str, Any],
+        *,
+        scope: str,
+        execution_lease: ExecutionLease | None,
+    ) -> EventRegistration:
+        return self._durable_delegate().register_workflow_listener(
+            identity, strategy, scope=scope, execution_lease=execution_lease
+        )
+
+    def listener_state(self, registration: EventRegistration) -> EventProgress:
+        return self._durable_delegate().listener_state(registration)
+
+    def complete_workflow_listener(
+        self, registration: EventRegistration, *, execution_lease: ExecutionLease | None
+    ) -> EventProgress:
+        return self._durable_delegate().complete_workflow_listener(
+            registration, execution_lease=execution_lease
+        )
+
+    async def receive_next(
+        self,
+        registration: EventRegistration,
+        *,
+        execution_lease: ExecutionLease | None,
+        evaluate_candidate: Callable[[EventEnvelope, EventProgress], EventDecision | None],
+    ) -> EventProgress:
+        return await self._durable_delegate().receive_next(
+            registration, execution_lease=execution_lease, evaluate_candidate=evaluate_candidate
+        )
+
+    async def receive_registered(
+        self,
+        registration: EventRegistration,
+        *,
+        execution_lease: ExecutionLease | None,
+        evaluate_candidate: Callable[[EventEnvelope, EventProgress], EventDecision | None],
+    ) -> EffectReceipt:
+        return await self._durable_delegate().receive_registered(
+            registration, execution_lease=execution_lease, evaluate_candidate=evaluate_candidate
+        )
+
+    def abandon_workflow_listener(
+        self, registration: EventRegistration, *, execution_lease: ExecutionLease | None
+    ) -> None:
+        self._durable_delegate().abandon_workflow_listener(
+            registration, execution_lease=execution_lease
+        )
+
+    def verify_invocation(self, invocation_id: str, fingerprint: str) -> None:
+        self._durable_delegate().verify_invocation(invocation_id, fingerprint)
 
     async def publish_decision(self, event: Mapping[str, Any]) -> EventEnvelope:
         return await self.delegate.publish(
@@ -351,11 +523,12 @@ class ApprovalService:
         operator_security_profile: str | None,
         security: SecurityConfig,
         event_bus: EventBus,
+        connection: StorageConnection | None = None,
     ) -> None:
         self.enabled = enabled
         self.operator_security_profile = operator_security_profile
         self.security = security
-        self.store = ApprovalStore(database)
+        self.store = ApprovalStore(database, connection=connection)
         self.event_bus: EventBus = ApprovalEventBus(event_bus, self.store) if enabled else event_bus
 
     def ensure_enabled(self) -> None:
@@ -395,6 +568,27 @@ class ApprovalService:
         operation_key: str | None,
     ) -> ApprovalRecord:
         self.ensure_enabled()
+        event_bus = self.event_bus
+        if isinstance(event_bus, ApprovalEventBus) and isinstance(
+            event_bus.delegate, DurableEventBus
+        ):
+            durable = event_bus.delegate
+            with durable.store.transaction():
+                record = self.store.decide(
+                    approval_id,
+                    decision=decision,
+                    operator_id=operator_id,
+                    value=value,
+                    operation_key=operation_key,
+                    commit=False,
+                )
+                assert record.decision_event is not None
+                durable.store.ingest_in_transaction(
+                    record.decision_event,
+                    default_source="urn:open-workflow-agent:approvals",
+                    scope=record.event_scope,
+                )
+            return record
         record = self.store.decide(
             approval_id,
             decision=decision,

@@ -86,8 +86,22 @@ benchmarks. Both PostgreSQL restart images pass. Six nonempty dependency
 reports contain zero nested advisories. Exact IDs and terminal suite counts
 are retained in the implementation audit. The earlier three/four and five/two
 success/failure artifacts remain historical evidence, not qualified releases.
-S2-04 is checked; 13 of 37 tasks are verified and S2-05 is next. Full proposed
+S2-04 is checked; 13 of 37 tasks are verified. Full proposed
 criteria, JavaScript and later dependency/capability gates remain open.
+
+### S2-05 embedded event work — 2026-10-12 (in progress)
+
+The working implementation adds an embedded durable inbox/outbox, immutable
+subscription and consumption decisions, ordered one/all/any/until results,
+correlation and sequential listener iterators. Focused checks pass on the
+principal native engines and optional Agent Framework; actual process-stop
+recovery passes on both principal engines. A prior-source probe fails eight
+desired-behavior assertions, demonstrating the original gap.
+
+Full suites now run against frozen source in four separate environments.
+Configured PostgreSQL, Windows, image restart, benchmark, distribution and
+security acceptance remain pending. S2-05 remains unchecked and its public
+durability qualification remains disabled. There are no deferred tasks.
 
 Seven desired error-context cases fail on actual native LangGraph at `d8f3f7a`:
 built-in status filters lose the common status code, while catch/retry predicates

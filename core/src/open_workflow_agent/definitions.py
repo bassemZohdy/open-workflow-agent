@@ -62,6 +62,9 @@ def resolve_reusable_components(workflow: Mapping[str, Any]) -> dict[str, Any]:
         for key in ("do", "try"):
             if key in value:
                 tasks(value[key], f"{reference}/{key}")
+        iterator = value.get("foreach") if "listen" in value else None
+        if isinstance(iterator, Mapping) and "do" in iterator:
+            tasks(iterator["do"], f"{reference}/foreach/do")
         fork = value.get("fork")
         if isinstance(fork, Mapping):
             for index, branch in enumerate(fork["branches"]):
@@ -83,6 +86,11 @@ def resolve_reusable_components(workflow: Mapping[str, Any]) -> dict[str, Any]:
                 found.add(call)
             for key in ("do", "try"):
                 for item in value.get(key, []):
+                    for definition in item.values():
+                        found.update(calls(definition))
+            iterator = value.get("foreach") if "listen" in value else None
+            if isinstance(iterator, Mapping):
+                for item in iterator.get("do", []):
                     for definition in item.values():
                         found.update(calls(definition))
             catch = value.get("catch", {})

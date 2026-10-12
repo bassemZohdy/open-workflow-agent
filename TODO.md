@@ -167,6 +167,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   and all six zero-advisory reports pass. Earlier failures remain historical.
   S2-05 is next; 13 of 37 backlog tasks are verified.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
+  In progress: common storage and matching, native consumption/iterator
+  recovery, scope and approval guards are implemented. Focused native and
+  process-stop checks pass. Frozen full suites and configured acceptance are
+  pending; public durability remains unqualified. See
+  [current progress](PROJECT.md#s2-05-embedded-event-work--2026-10-12-in-progress).
 - [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.
 - [ ] **S2-07** (L) — Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.
 - [ ] **S2-08** (L) — Complete cancellation, termination, compensation and idempotent external-action recovery.

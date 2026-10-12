@@ -5,10 +5,12 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Awaitable, Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Any, Protocol
 from uuid import uuid4
+
+from .effects import EffectIdentity, EffectReceipt
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +26,7 @@ class EventEnvelope:
     dataschema: str | None = None
     data: Any = None
     extensions: dict[str, Any] = field(default_factory=dict)
+    data_present: bool = False
 
     def as_dict(self) -> dict[str, Any]:
         value: dict[str, Any] = {
@@ -39,7 +42,7 @@ class EventEnvelope:
         ):
             if item is not None:
                 value[key] = item
-        if self.data is not None:
+        if self.data is not None or self.data_present:
             value["data"] = self.data
         value.update(self.extensions)
         return value
@@ -56,6 +59,62 @@ class EventBus(Protocol):
     ) -> EventEnvelope: ...
 
     def receive(self, strategy: Mapping[str, Any]) -> Awaitable[EventEnvelope]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class EventRegistration:
+    """Private durable listener identity; never a framework checkpoint."""
+
+    identity: EffectIdentity
+    request_digest: str
+    scope: str
+
+    @property
+    def receipt_identity(self) -> EffectIdentity:
+        return replace(self.identity, operation="listen:registration:v1")
+
+    def event_identity(self, ordinal: int) -> EffectIdentity:
+        if type(ordinal) is not int or ordinal < 1:
+            raise ValueError("event selection ordinal must be positive")
+        return replace(
+            self.identity,
+            operation="listen:event:v1",
+            occurrence=self.identity.occurrence
+            + ((self.identity.task_reference + "/@event", ordinal),),
+        )
+
+    def decision_identity(self, ordinal: int) -> EffectIdentity:
+        return replace(self.event_identity(ordinal), operation="listen:progress:v1")
+
+
+@dataclass(frozen=True, slots=True)
+class EventDecision:
+    """Synchronous matcher decision committed with the selected arrival."""
+
+    filter_indices: tuple[int, ...] = ()
+    correlations: Mapping[str, Any] = field(default_factory=dict)
+    terminal: bool = False
+    terminator: bool = False
+    progress: Mapping[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True, slots=True)
+class EventProgress:
+    """Persisted ordered event selections, separate from native iterator state."""
+
+    registration: EventRegistration
+    events: tuple[EventEnvelope, ...] = ()
+    correlations: Mapping[str, Any] = field(default_factory=dict)
+    matched_filters: tuple[int, ...] = ()
+    progress: Mapping[str, Any] = field(default_factory=dict)
+    cursor: int = 0
+    completed: bool = False
+    closed: bool = False
+    selected: EventEnvelope | None = None
+    event_receipt: EffectReceipt | None = None
+    receipt: EffectReceipt | None = None
+    decision_ordinal: int = 0
+    decision_receipt: EffectReceipt | None = None
 
 
 class InMemoryEventBus:
@@ -138,6 +197,7 @@ def _make_envelope(properties: Mapping[str, Any], *, default_source: str) -> Eve
         dataschema=_optional_string(properties.get("dataschema"), "dataschema"),
         data=properties.get("data"),
         extensions={key: value for key, value in properties.items() if key not in known},
+        data_present="data" in properties,
     )
 
 

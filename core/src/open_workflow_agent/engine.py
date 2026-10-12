@@ -14,6 +14,7 @@ from .errors import (
     InvocationStateConflict,
     InvocationStateError,
     OwaError,
+    UnsupportedWorkflowFeature,
     WorkflowExecutionError,
 )
 from .lifecycle import (
@@ -231,7 +232,32 @@ class WorkflowEngine:
         )
 
     async def compile(self, plan: WorkflowPlan) -> WorkflowPlan:
+        self._verify_event_requirements(plan)
         return plan
+
+    def _verify_event_requirements(self, plan: WorkflowPlan) -> None:
+        services = getattr(self, "services", None)
+        if services is None:
+            # Plans may be compiled before deployment services are bound;
+            # invocation admission repeats this check before any dispatch.
+            return
+        bus = services.event_bus
+        if getattr(bus, "durable", False) and hasattr(bus, "register_workflow_listener"):
+            return
+        for scope in plan.scopes:
+            for task in scope.tasks:
+                listener = task.definition.get("listen")
+                if not isinstance(listener, dict):
+                    continue
+                strategy = listener["to"]
+                selected = strategy.get("one")
+                if set(strategy) != {"one"} or (
+                    isinstance(selected, dict) and selected.get("correlate")
+                ):
+                    raise UnsupportedWorkflowFeature(
+                        "advanced event consumption requires the embedded durable event backend",
+                        details={"reference": task.reference},
+                    )
 
     def _verify_execution_engine(self, handle: ExecutionHandle) -> None:
         # Preserve stored common-reference identities across recovery.
@@ -341,6 +367,10 @@ class WorkflowEngine:
             self.services.invocations.refresh(handle)
         if active is not None:
             active.control.token.cancel("cancelled")
+        if self.services.event_store is not None:
+            self.services.event_store.close_invocation(
+                handle.invocation_id, handle.workflow_fingerprint
+            )
         if active is None:
             self.services.lifecycle_events.emit(
                 WorkflowEvent(
@@ -442,14 +472,30 @@ class WorkflowEngine:
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> Any:
         self.services.invocations.verify_fingerprint(invocation, workflow.fingerprint)
-        return self.services.invocations.bind_input(invocation, input_data)
+        self._verify_event_requirements(workflow)
+        original = self.services.invocations.bind_input(invocation, input_data)
+        if workflow.uses_durable_events and self.services.event_store is not None:
+            self.services.event_store.bind_invocation(
+                invocation.invocation_id,
+                workflow.fingerprint,
+                invocation.owner_principal or "anonymous",
+                execution_lease=invocation._execution_lease,
+            )
+        return original
 
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
+        self._verify_event_requirements(plan)
         self._verify_execution_engine(handle)
         self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
         original_input = self.services.invocations.read_input(handle)
         try:
             self.services.effect_journal.verify_invocation(handle.invocation_id, plan.fingerprint)
+            if self.services.event_store is not None:
+                self.services.event_store.verify_invocation(
+                    handle.invocation_id,
+                    plan.fingerprint,
+                    require_profile=plan.uses_durable_events,
+                )
             if plan.uses_timing:
                 clock = self.services.effect_journal.get(
                     root_clock_identity(handle.invocation_id, plan.fingerprint)

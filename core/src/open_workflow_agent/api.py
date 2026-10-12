@@ -23,7 +23,9 @@ from .a2a import (
     mount_a2a,
 )
 from .a2a_tasks import project_a2a_task
+from .approvals import ApprovalEventBus
 from .config import RuntimeConfig
+from .durable_events import DEFAULT_EVENT_SCOPE, DurableEventBus
 from .engine import InvocationResult, PortableWorkflowEngine, WorkflowEngine
 from .errors import (
     ApprovalNotFound,
@@ -32,6 +34,7 @@ from .errors import (
     OwaError,
     ScheduleNotFound,
 )
+from .event_capabilities import event_capabilities
 from .metrics import MetricsMiddleware
 from .sandbox import compile_sandbox_workflow, resolve_and_compile_sandbox_workflow
 from .scheduling import WorkflowScheduler
@@ -41,6 +44,11 @@ from .services import RuntimeServices
 from .streaming import StreamLimits, lifecycle_sse_stream, streaming_capabilities
 from .traffic_policy import TrafficPolicyMiddleware, traffic_policy_capabilities
 from .workflow import WorkflowPlan
+
+
+def _trusted_event_scope(request: Request) -> str:
+    principal = request.scope.get("owa.principal")
+    return principal if isinstance(principal, str) and principal else DEFAULT_EVENT_SCOPE
 
 
 class RequestSizeLimitMiddleware:
@@ -476,6 +484,7 @@ def create_app(
     @app.get("/v1/capabilities")
     async def capabilities() -> dict[str, Any]:
         value = runtime_engine.capabilities().as_dict()
+        value.setdefault("features", {})["events"] = event_capabilities(runtime_services.event_bus)
         value.setdefault("features", {})["approvals"] = runtime_services.approvals.capabilities()
         value.setdefault("features", {})["catalogs"] = (
             runtime_services.external_catalogs.capabilities()
@@ -489,12 +498,19 @@ def create_app(
         return value
 
     @app.post("/v1/events")
-    async def publish_event(request: PublishEventRequest) -> dict[str, Any]:
+    async def publish_event(request: PublishEventRequest, http_request: Request) -> dict[str, Any]:
         try:
-            envelope = await runtime_services.event_bus.publish(
-                request.event,
-                default_source="urn:open-workflow-agent:api",
-            )
+            bus = runtime_services.event_bus
+            if isinstance(bus, (DurableEventBus, ApprovalEventBus)):
+                envelope = await bus.publish_scoped(
+                    request.event,
+                    default_source="urn:open-workflow-agent:api",
+                    scope=_trusted_event_scope(http_request),
+                )
+            else:
+                envelope = await bus.publish(
+                    request.event, default_source="urn:open-workflow-agent:api"
+                )
         except ValueError as exc:
             raise EventValidationError(str(exc)) from exc
         return envelope.as_dict()
@@ -639,7 +655,7 @@ def create_app(
         return record.as_dict()
 
     @app.post("/v1/invoke")
-    async def invoke(request: InvokeRequest) -> Any:
+    async def invoke(request: InvokeRequest, http_request: Request) -> Any:
         plan = getattr(
             app.state,
             "plan",
@@ -652,6 +668,7 @@ def create_app(
             workflow_name=plan.name,
             workflow_version=plan.version,
             workflow_fingerprint=plan.fingerprint,
+            owner_principal=_trusted_event_scope(http_request),
         )
         result = await runtime_engine.invoke(plan, handle, request.input)
         if result.status == "faulted":

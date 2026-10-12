@@ -204,7 +204,7 @@ def test_admitted_listener_read_modes_are_preserved(mode):
     assert compile_workflow(workflow).tasks[0].definition["listen"]["read"] == mode
 
 
-def test_listener_iterator_at_its_official_task_location_is_rejected():
+def test_listener_iterator_at_its_official_task_location_preserves_child_scope():
     workflow = generate_default_workflow()
     workflow["do"] = [
         {
@@ -214,8 +214,11 @@ def test_listener_iterator_at_its_official_task_location_is_rejected():
             }
         }
     ]
-    with pytest.raises(UnsupportedWorkflowFeature, match="foreach"):
-        compile_workflow(workflow)
+    plan = compile_workflow(workflow)
+    assert plan.tasks[0].definition["foreach"] == workflow["do"][0]["awaitEvent"]["foreach"]
+    child = next(scope for scope in plan.scopes if scope.reference == "/do/0/awaitEvent/foreach/do")
+    assert child.tasks[0].reference == "/do/0/awaitEvent/foreach/do/0/consume"
+    assert child.tasks[0].definition == {"set": {"ok": True}}
 
 
 @pytest.mark.parametrize(

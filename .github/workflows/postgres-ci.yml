@@ -18,6 +18,11 @@ on:
       - "core/src/open_workflow_agent/effects.py"
       - "core/src/open_workflow_agent/config.py"
       - "core/src/open_workflow_agent/approvals.py"
+      - "core/src/open_workflow_agent/events.py"
+      - "core/src/open_workflow_agent/event_store.py"
+      - "core/src/open_workflow_agent/durable_events.py"
+      - "core/src/open_workflow_agent/event_matching.py"
+      - "core/src/open_workflow_agent/_effect_storage.py"
       - "core/src/open_workflow_agent/scheduling.py"
       - "engines/adk/src/open_workflow_agent_adk/__init__.py"
       - "engines/adk/src/open_workflow_agent_adk/native.py"
@@ -62,6 +67,12 @@ on:
       - "tests/contract/test_retry_schedule_recovery.py"
       - "tests/contract/test_timing_process_recovery.py"
       - "tests/contract/_timing_recovery_worker.py"
+      - "tests/contract/test_durable_events.py"
+      - "tests/contract/test_durable_event_process_recovery.py"
+      - "tests/contract/_durable_event_recovery_worker.py"
+      - "tests/core/test_event_store.py"
+      - "tests/core/test_durable_event_api.py"
+      - "tests/core/test_durable_event_approvals.py"
       - "tests/core/test_policy_decisions.py"
       - "tests/core/test_postgres_persistence.py"
       - "docker/Dockerfile.adk"
@@ -90,7 +101,10 @@ jobs:
   postgres-core:
     name: PostgreSQL common-store integration
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    # S2-05 adds 41 contract cases and five actual process stops per principal.
+    # The prior ADK recovery step already used about 4m42 of its 5m bound.
+    # Keep bounded acceptance with room for the expanded sequential workload.
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16
@@ -107,6 +121,8 @@ jobs:
           --health-retries 12
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
@@ -124,6 +140,9 @@ jobs:
             uv run --locked --extra knowledge --extra postgres pytest tests/core/test_postgres_persistence.py \
             tests/core/test_effect_journal.py \
             tests/core/test_policy_decisions.py \
+            tests/core/test_event_store.py \
+            tests/core/test_durable_event_api.py \
+            tests/core/test_durable_event_approvals.py \
             tests/core/test_execution_ownership.py tests/core/test_execution_ownership_fences.py \
             tests/core/test_action_progress_ownership.py -vv --durations=20
       - name: Verify native LangGraph task checkpoints and interrupted restart
@@ -143,7 +162,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 5m \
+          timeout --signal=TERM --kill-after=30s 9m \
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
@@ -163,6 +182,8 @@ jobs:
             ../../tests/contract/test_deadline_recovery.py \
             ../../tests/contract/test_retry_schedule_recovery.py \
             ../../tests/contract/test_timing_process_recovery.py \
+            ../../tests/contract/test_durable_events.py \
+            ../../tests/contract/test_durable_event_process_recovery.py \
             ../../tests/contract/test_process_crash_recovery.py \
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
@@ -174,7 +195,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 5m \
+          timeout --signal=TERM --kill-after=30s 9m \
             uv run --directory engines/adk --locked --exact --extra native --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
@@ -196,6 +217,8 @@ jobs:
             ../../tests/contract/test_deadline_recovery.py \
             ../../tests/contract/test_retry_schedule_recovery.py \
             ../../tests/contract/test_timing_process_recovery.py \
+            ../../tests/contract/test_durable_events.py \
+            ../../tests/contract/test_durable_event_process_recovery.py \
             -k 'postgresql and adk' -vv --durations=20
       - name: Verify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL
         env:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -220,7 +221,23 @@ async def test_upstream_ctk_portable_profile_scenarios(
         assert task_names[0] == expected
     for expected in scenario.get("last", []):
         assert task_names[-1] == expected
-    published = getattr(services.event_bus, "published", [])
+    published_types = {event.type for event in getattr(services.event_bus, "published", [])}
+    if scenario.get("event_types") and services.event_store is not None:
+        rows = services.event_store.connection.execute(
+            "SELECT envelope FROM event_outbox WHERE invocation_id = ?",
+            (handle.invocation_id,),
+        ).fetchall()
+        declared = [
+            task["emit"]["event"]["with"]
+            for entry in workflow["do"]
+            for task in entry.values()
+            if "emit" in task
+        ]
+        assert len(rows) == len(declared) == 1
+        envelopes = [json.loads(row[0]) for row in rows]
+        assert all(envelopes[0].get(key) == value for key, value in declared[0].items())
+        services.event_store.verify_invocation(handle.invocation_id, plan.fingerprint)
+        published_types.update(envelope["type"] for envelope in envelopes)
     for event_type in scenario.get("event_types", []):
-        assert any(event.type == event_type for event in published)
+        assert event_type in published_types
     services.close()

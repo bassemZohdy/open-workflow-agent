@@ -684,6 +684,20 @@ class ObservabilityConfig(StrictModel):
     log_format: str = "json"  # "json" or "text"
 
 
+class EventConfig(StrictModel):
+    """Deployment-owned bounds for embedded generic event delivery."""
+
+    backend: Literal["embedded", "memory"] = "embedded"
+    max_event_bytes: int = Field(default=1_048_576, ge=1, le=16_777_216)
+    max_retained_events: int = Field(default=10_000, ge=1, le=1_000_000)
+    max_retained_bytes: int = Field(default=67_108_864, ge=1, le=1_073_741_824)
+    max_subscriptions: int = Field(default=1000, ge=1, le=100_000)
+    max_outbox: int = Field(default=10_000, ge=1, le=1_000_000)
+    scan_batch: int = Field(default=128, ge=1, le=1000)
+    retention_seconds: float = Field(default=86_400, ge=1, le=31_536_000)
+    poll_interval_seconds: float = Field(default=0.05, ge=0.01, le=5)
+
+
 class RuntimeConfig(StrictModel):
     agent: AgentConfig = Field(default_factory=AgentConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
@@ -701,6 +715,7 @@ class RuntimeConfig(StrictModel):
     tools: list[ToolConfig] = Field(default_factory=list)
     server: ServerConfig = Field(default_factory=ServerConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
+    events: EventConfig = Field(default_factory=EventConfig)
 
     @model_validator(mode="after")
     def validate_a2a_security_profile(self) -> RuntimeConfig:

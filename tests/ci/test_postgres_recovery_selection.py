@@ -34,6 +34,10 @@ ROOT = Path(__file__).resolve().parents[2]
         ("ADK", "test_retry_schedule_recovery.py", 5),
         ("LangGraph", "test_timing_process_recovery.py", 3),
         ("ADK", "test_timing_process_recovery.py", 3),
+        ("LangGraph", "test_durable_events.py", 41),
+        ("ADK", "test_durable_events.py", 41),
+        ("LangGraph", "test_durable_event_process_recovery.py", 5),
+        ("ADK", "test_durable_event_process_recovery.py", 5),
     ],
 )
 def test_actual_postgresql_gate_selects_required_recovery_cases(

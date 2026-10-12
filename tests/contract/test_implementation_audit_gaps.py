@@ -137,11 +137,6 @@ async def test_http_raw_output_preserves_binary_as_base64():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="S2-05: event envelope must preserve explicit JSON null data",
-)
 async def test_event_envelope_preserves_explicit_null_data():
     bus = InMemoryEventBus()
     event = await bus.publish({"type": "audit.null", "data": None}, default_source="urn:audit")

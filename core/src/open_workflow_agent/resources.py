@@ -96,6 +96,9 @@ def schema_specs(workflow: Mapping[str, Any]) -> Iterator[tuple[str, Mapping[str
     ) -> Iterator[tuple[str, Mapping[str, Any]]]:
         for reference, definition in _walk_tasks(items, prefix=path, indexed=indexed):
             yield from data(definition, reference)
+            iterator = definition.get("foreach") if "listen" in definition else None
+            if isinstance(iterator, Mapping):
+                yield from data(iterator, f"{reference}/foreach")
             for suffix, children in _task_scopes(definition):
                 yield from tasks(
                     children, f"{reference}/{suffix}", not suffix.startswith("fork/branches/")

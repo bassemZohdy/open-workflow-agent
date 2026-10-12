@@ -30,6 +30,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
@@ -82,6 +84,9 @@ jobs:
           ../../tests/contract/test_retry_schedule_recovery.py
           ../../tests/contract/test_scoped_exception_policies.py
           ../../tests/contract/test_timing_process_recovery.py
+          ../../tests/contract/test_durable_events.py
+          ../../tests/contract/test_durable_event_process_recovery.py
+          ../../tests/contract/test_event_backend_admission.py
 
   manifests:
     name: Validate deployment manifests
@@ -262,6 +267,8 @@ jobs:
         working-directory: engines/${{ matrix.engine }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"

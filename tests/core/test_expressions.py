@@ -194,6 +194,12 @@ def test_safe_integer_boundaries_and_defensive_copies():
         "for",
         "emit",
         "listen",
+        "listen-correlation-from",
+        "listen-correlation-expect",
+        "listen-until",
+        "listen-foreach-do",
+        "listen-foreach-output",
+        "listen-foreach-export",
         "raise",
     ],
 )
@@ -215,6 +221,21 @@ def test_expression_syntax_is_validated_before_effects_in_all_slots(slot):
         task = {"emit": {"event": {"with": {"type": "test", "data": invalid}}}}
     elif slot == "listen":
         task = {"listen": {"to": {"one": {"with": {"type": invalid}}}}}
+    elif slot in {"listen-correlation-from", "listen-correlation-expect"}:
+        rule = {"from": invalid if slot.endswith("from") else "${ .data.order }"}
+        if slot.endswith("expect"):
+            rule["expect"] = invalid
+        task = {
+            "listen": {"to": {"one": {"with": {"type": "ready"}, "correlate": {"order": rule}}}}
+        }
+    elif slot == "listen-until":
+        task = {"listen": {"to": {"any": [], "until": invalid}}}
+    elif slot.startswith("listen-foreach-"):
+        task = {"listen": {"to": {"one": {"with": {"type": "ready"}}}}, "foreach": {}}
+        if slot.endswith("do"):
+            task["foreach"]["do"] = [{"bad": {"set": {"value": invalid}}}]
+        else:
+            task["foreach"]["output" if slot.endswith("output") else "export"] = {"as": invalid}
     elif slot == "raise":
         task = {"raise": {"error": {"type": "urn:test:error", "status": 400, "detail": invalid}}}
     else:

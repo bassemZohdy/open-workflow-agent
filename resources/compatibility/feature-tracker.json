@@ -44065,7 +44065,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A090",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -44094,7 +44094,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A091",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -44123,7 +44123,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A092",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -44152,7 +44152,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A093",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -44181,7 +44181,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A094",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -44210,7 +44210,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A095",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -53927,7 +53927,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS155",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -58246,7 +58246,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS287",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -58275,7 +58275,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS288",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -58304,7 +58304,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS289",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -58333,7 +58333,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS290",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -58420,7 +58420,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS293",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -58449,7 +58449,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS294",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -58478,7 +58478,7 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS295",
-          "python_outcome": "rejected",
+          "python_outcome": "partial",
           "full_feature_verified": false
         }
       },
@@ -67640,8 +67640,23 @@
         "module": "M06",
         "description": "Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.",
         "effort": "L",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "In progress",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "status": "Focused checks pass; frozen full and configured acceptance pending",
+          "finite_acceptance": "docs/s2-05-event-acceptance.md",
+          "scope": "Embedded durable event inbox/outbox, ordered consumption, correlation, duplicate/late policy, sequential foreach and process recovery. Default capability qualification remains disabled.",
+          "prior_source_negative_probe": {
+            "commit": "9e121d5db8d8f8a70ec409fa4961bbb166df472a",
+            "failed": 8,
+            "deselected": 84
+          },
+          "configured_cases_required_per_principal": {
+            "durable_contract": 41,
+            "actual_process_stop": 5
+          },
+          "remaining": "All E01-E14 qualification gates; no whole-goal completion or full-feature promotion"
+        }
       },
       {
         "id": "S2-06",

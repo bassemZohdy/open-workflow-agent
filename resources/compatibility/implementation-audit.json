@@ -4209,9 +4209,9 @@
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted; desired-behavior gap probe is a strict expected assertion failure, not a completed feature"
     },
     "event_strategies": {
-      "outcome": "rejected",
-      "observed": "Listen all/any/until/correlation/foreach fail admission; only one exact-filter strategy is enabled.",
-      "remaining_scope": "Implement correlation and strategies against durable event delivery, then qualify iterator/control/restart behavior.",
+      "outcome": "partial",
+      "observed": "S2-05 working source implements ordered one/all/any/until, correlation and sequential foreach with durable embedded registrations and receipts. Focused native checks pass; full frozen and configured acceptance remain pending.",
+      "remaining_scope": "Complete E01-E14 frozen full-suite, configured PostgreSQL, Windows, images, benchmarks, distribution and security validation before S2-05 closure or durable capability qualification. Full proposed and independent JavaScript criteria retain later owners.",
       "remediation_tasks": [
         "S2-05",
         "S4-04"
@@ -4225,14 +4225,14 @@
       "tests": [
         {
           "path": "tests/core/test_events.py",
-          "symbol": "test_listen_rejects_unimplemented_strategies"
+          "symbol": "test_listen_admits_the_supported_durable_consumption_strategies"
         },
         {
           "path": "tests/contract/test_definition_admission.py",
-          "symbol": "test_listener_iterator_at_its_official_task_location_is_rejected"
+          "symbol": "test_listener_iterator_at_its_official_task_location_preserves_child_scope"
         }
       ],
-      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
+      "test_scope": "Current admission and focused native evidence only; full S2-05 and proposed criteria unqualified"
     },
     "schedule": {
       "outcome": "partial",
@@ -7362,7 +7362,7 @@
       "construct": "listen.to.all",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of A090 (Listen all events) at listen.to.all: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -7383,7 +7383,7 @@
       "construct": "listen.to.any",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of A091 (Listen any event) at listen.to.any: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -7404,7 +7404,7 @@
       "construct": "listen.to.until expression",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of A092 (Listen until expression) at listen.to.until expression: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -7425,7 +7425,7 @@
       "construct": "listen.to.until strategy",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of A093 (Listen until event strategy) at listen.to.until strategy: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -7446,7 +7446,7 @@
       "construct": "correlate.*.from",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of A094 (Event correlation extraction) at correlate.*.from: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -7467,7 +7467,7 @@
       "construct": "correlate.*.expect",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of A095 (Correlation expectation) at correlate.*.expect: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -13016,7 +13016,7 @@
       "construct": "/$defs/listenTask/allOf/1/properties/foreach",
       "category": "Definition",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS155 (foreach) at /$defs/listenTask/allOf/1/properties/foreach: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15761,7 +15761,7 @@
       "construct": "/$defs/eventConsumptionStrategy/oneOf/0/properties/all",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS287 (all) at /$defs/eventConsumptionStrategy/oneOf/0/properties/all: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15782,7 +15782,7 @@
       "construct": "/$defs/eventConsumptionStrategy/oneOf/1/properties/any",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS288 (any) at /$defs/eventConsumptionStrategy/oneOf/1/properties/any: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15803,7 +15803,7 @@
       "construct": "/$defs/eventConsumptionStrategy/oneOf/1/properties/until",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS289 (until) at /$defs/eventConsumptionStrategy/oneOf/1/properties/until: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15824,7 +15824,7 @@
       "construct": "/$defs/eventConsumptionStrategy/oneOf/1/properties/until/oneOf/1/allOf/1/properties/until",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS290 (until) at /$defs/eventConsumptionStrategy/oneOf/1/properties/until/oneOf/1/allOf/1/properties/until: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15887,7 +15887,7 @@
       "construct": "/$defs/eventFilter/properties/correlate",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS293 (correlate) at /$defs/eventFilter/properties/correlate: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15908,7 +15908,7 @@
       "construct": "/$defs/eventFilter/properties/correlate/additionalProperties/properties/from",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS294 (from) at /$defs/eventFilter/properties/correlate/additionalProperties/properties/from: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15929,7 +15929,7 @@
       "construct": "/$defs/eventFilter/properties/correlate/additionalProperties/properties/expect",
       "category": "Events and time",
       "evidence_group": "event_strategies",
-      "python_outcome": "rejected",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
       "review": "Review of AS295 (expect) at /$defs/eventFilter/properties/correlate/additionalProperties/properties/expect: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -19519,8 +19519,8 @@
   "outcome_counts": {
     "qualified_subset": 181,
     "unimplemented": 62,
-    "partial": 158,
-    "rejected": 197,
+    "partial": 172,
+    "rejected": 183,
     "behavior_mismatch": 32,
     "inert": 19,
     "internal_only": 9
@@ -43324,5 +43324,33 @@
     "result": "S2-04 verified",
     "scope": "Retry predicates/count/backoff/jitter and persisted decisions, attempt/aggregate budgets, original task/workflow deadlines, uncertainty-preserving timeouts, structured errors and lexical catch handling",
     "last_verified_milestone": "S2-04 at 6f8e95d"
+  },
+  "s2_05_unqualified_progress": {
+    "prior_event_strategies": {
+      "outcome": "rejected",
+      "observed": "Listen all/any/until/correlation/foreach fail admission; only one exact-filter strategy is enabled.",
+      "remaining_scope": "Implement correlation and strategies against durable event delivery, then qualify iterator/control/restart behavior.",
+      "remediation_tasks": [
+        "S2-05",
+        "S4-04"
+      ],
+      "code": [
+        {
+          "path": "core/src/open_workflow_agent/workflow.py",
+          "symbol": "_validate_listen_capability"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/core/test_events.py",
+          "symbol": "test_listen_rejects_unimplemented_strategies"
+        },
+        {
+          "path": "tests/contract/test_definition_admission.py",
+          "symbol": "test_listener_iterator_at_its_official_task_location_is_rejected"
+        }
+      ],
+      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
+    }
   }
 }

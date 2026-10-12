@@ -8,7 +8,9 @@ from typing import Any
 from .approvals import ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .config import RuntimeConfig
+from .durable_events import DurableEventBus
 from .effects import EffectJournal
+from .event_store import EventStore, EventStoreLimits
 from .events import EventBus, InMemoryEventBus
 from .external_catalog import ExternalCatalogResolver
 from .forks import ForkDecisionStore
@@ -54,7 +56,6 @@ class RuntimeServices:
         self.metrics = Metrics()
         self.events = event_sink or InMemoryEventSink()
         self.lifecycle_events = LifecycleCloudEventSink(MetricsEventSink(self.events, self.metrics))
-        raw_event_bus = event_bus or InMemoryEventBus()
         self.workflow_catalog = WorkflowCatalog()
         self.external_catalogs = ExternalCatalogResolver(
             config.workflow.external_catalogs,
@@ -98,12 +99,30 @@ class RuntimeServices:
             knowledge_path = config.knowledge.database
             memory_path = config.memory.database
             invocation_path = config.persistence.database
+        self.invocations = InvocationStore(invocation_path)
+        self.execution_ownership = ExecutionOwnershipStore(invocation_path)
+        self.fork_decisions = ForkDecisionStore(invocation_path)
+        self.effect_journal = EffectJournal(invocation_path, invocations=self.invocations)
+        self.event_store: EventStore | None = None
+        if event_bus is not None:
+            raw_event_bus = event_bus
+        elif config.events.backend == "memory":
+            raw_event_bus = InMemoryEventBus()
+        else:
+            limits = EventStoreLimits(
+                **config.events.model_dump(exclude={"backend", "poll_interval_seconds"})
+            )
+            self.event_store = EventStore(self.effect_journal, limits=limits)
+            raw_event_bus = DurableEventBus(
+                self.event_store, poll_interval_seconds=config.events.poll_interval_seconds
+            )
         self.approvals = ApprovalService(
             invocation_path,
             enabled=config.approvals.enabled,
             operator_security_profile=config.approvals.operator_security_profile,
             security=config.security,
             event_bus=raw_event_bus,
+            connection=self.effect_journal.connection if self.event_store is not None else None,
         )
         self.event_bus = self.approvals.event_bus
         self.knowledge = KnowledgeService(
@@ -123,10 +142,6 @@ class RuntimeServices:
             else None
         )
         self.memory = MemoryService(str(memory_database) if memory_database else None)
-        self.invocations = InvocationStore(invocation_path)
-        self.execution_ownership = ExecutionOwnershipStore(invocation_path)
-        self.fork_decisions = ForkDecisionStore(invocation_path)
-        self.effect_journal = EffectJournal(invocation_path, invocations=self.invocations)
         self.schedules = ScheduleStore(invocation_path)
         self.catalog = FunctionCatalog.default(
             self.model, instruction=self.agent_instruction, services=self
@@ -234,5 +249,7 @@ class RuntimeServices:
         self.invocations.close()
         self.execution_ownership.close()
         self.fork_decisions.close()
-        self.effect_journal.close()
         self.approvals.close()
+        if self.event_store is not None:
+            self.event_store.close()
+        self.effect_journal.close()

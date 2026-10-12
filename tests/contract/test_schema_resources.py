@@ -364,7 +364,11 @@ async def test_schema_resource_admission_fails_closed(services, case):
         endpoint = {"uri": uri, "authentication": {"bearer": {"token": "secret"}}}
     source = _workflow({"resource": {"endpoint": endpoint}})
     if case == "unsupported-task":
-        source["do"] = [{"bad": {"listen": {"to": {"any": []}}}}]
+        # Event consumption is now implemented; deployment-disabled execution
+        # still has to fail before any external schema is fetched.
+        source["do"] = [
+            {"bad": {"run": {"script": {"language": "python", "code": "print('unused')"}}}}
+        ]
     with pytest.raises(
         (ToolError, UnsupportedWorkflowFeature, WorkflowSchemaError, WorkflowSemanticError)
     ):
