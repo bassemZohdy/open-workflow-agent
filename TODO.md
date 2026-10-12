@@ -134,7 +134,7 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   benchmarks. All ten scoped [recovery requirements](docs/s2-03-recovery-acceptance.md)
   are verified; later-stage features retain their owners.
   See [acceptance evidence](PROJECT.md#s2-03-checkpoint-recovery--2026-10-12-verified).
-- [ ] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
+- [x] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
   Error-variable/status binding and common provider error replay are corrected
   at `23b9d35`; native/portable/recovery focus passes 95/29 per SDK, and the
   final error fixture passes 19/15 per environment. All seven `b6aef8c` gates
@@ -159,7 +159,13 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   Native deadline follow-up `29eeb3b` explicitly asserts the original remaining
   budget (20/0 seconds); native ADK catalog/deadline passes 49/24 and LangGraph
   deadlines 8/24. All production bytes match the verified base. See
-  [current work](PROJECT.md#s2-04-retry-timeout-and-exception-work--2026-10-12-in-progress).
+  [verified acceptance](PROJECT.md#s2-04-retry-timeout-and-exception-work--2026-10-12-verified).
+  Final exact-source `6f8e95d` passes all seven configured runs and all thirteen
+  finite requirements. PostgreSQL passes 5 provider, 11 timing, 8 deadline,
+  5 retry-schedule and 3 actual process-stop cases per principal, plus atomic
+  policy rollback; both Windows stages, main/PG image restarts, native benchmarks
+  and all six zero-advisory reports pass. Earlier failures remain historical.
+  S2-05 is next; 13 of 37 backlog tasks are verified.
 - [ ] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
 - [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.
 - [ ] **S2-07** (L) — Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.
@@ -199,8 +205,8 @@ Earlier completed release/readiness work and deferred details are preserved in [
 
 ## Deferred tasks
 
-No active backlog tasks are currently deferred. S2-03 has verified recent
-progress; its current validation and remaining acceptance are recorded above.
+No active backlog tasks are currently deferred. S2-04 is verified; S2-05 is
+the next ready task. The scoped acceptance and prior failures are recorded above.
 Move a task's
 entry here when the blocked-task rule applies, keeping its checkbox unchecked
 and including the full deferral record described above.

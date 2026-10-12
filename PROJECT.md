@@ -73,7 +73,21 @@ The patched versions are confirmed by the
 [multidict advisory](https://github.com/aio-libs/multidict/security/advisories/GHSA-54p9-h82j-f925)
 and [pypdf release](https://github.com/py-pdf/pypdf/releases/tag/6.19.0).
 
-### S2-04 retry, timeout and exception work — 2026-10-12 (in progress)
+### S2-04 retry, timeout and exception work — 2026-10-12 (verified)
+
+Final qualification at `6f8e95d` verifies all thirteen scoped requirements
+against source `29eeb3b`, with production/schema bytes unchanged from the four
+full-local suites at `a0ee9c0`. All seven exact configured runs succeed. Actual
+PostgreSQL cases pass per principal: five provider receipts, eleven timing,
+eight deadline, five retry-schedule and three real process-stop cases, plus
+common atomic policy and intent rollback. Both Windows stages pass in push
+and PR CI; each run passes both main runtime restart images and both native
+benchmarks. Both PostgreSQL restart images pass. Six nonempty dependency
+reports contain zero nested advisories. Exact IDs and terminal suite counts
+are retained in the implementation audit. The earlier three/four and five/two
+success/failure artifacts remain historical evidence, not qualified releases.
+S2-04 is checked; 13 of 37 tasks are verified and S2-05 is next. Full proposed
+criteria, JavaScript and later dependency/capability gates remain open.
 
 Seven desired error-context cases fail on actual native LangGraph at `d8f3f7a`:
 built-in status filters lose the common status code, while catch/retry predicates
@@ -799,7 +813,7 @@ event/child and eighteen sandbox cases per adapter, all nine completed-scope
 cases and the actual PostgreSQL atomic rollback test. Six fresh nested dependency
 reports contain zero known advisories. The ten scoped recovery requirements in
 the linked audit are verified, so S2-03 is complete. The earlier cancellation
-and failures remain preserved; S2-04 is the next ready task.
+and failures remain preserved; S2-04 is now verified and S2-05 is the next ready task.
 General pending-effect resolution remains later-stage work.
 Legacy rows without an original-input record
 have no new migration guarantee. Later-stage retry/deadline,
