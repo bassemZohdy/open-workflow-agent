@@ -88,6 +88,37 @@ changes only those two expectations in the core fixture, preserving malformed
 definition rejection and the runtime source. Focused workflow/event/admission
 checks pass 78 tests; fresh affected full/core and configured checks are required.
 
+The complete local baseline passes ADK 1,105/688/two expected gaps and optional
+Agent Framework 1,402/946/two expected gaps. LangGraph records two failures,
+1,145 passes, 661 skips and two expected gaps: the optional memory/custom
+single-event iterator incorrectly requests a durable selection receipt. The
+narrow follow-up identifies that sole item by its existing listener task
+occurrence; durable event coordinates and their native receipt guards remain
+unchanged. A repeated-listener fixture checks two distinct child calls. These
+baseline results remain historical evidence; fresh affected native/full and
+configured qualification is required after the runtime correction.
+
+Follow-up `9044943` finishes four successful configured workflows and three
+failures. Both CI runs expose the same two native memory/custom iterator
+failures. PostgreSQL passes 195 common-store tests, ten native checkpoint
+tests, all 41 LangGraph durable cases and five actual event process stops per
+principal. ADK passes 40 durable cases but fails the filter-expression case:
+retained unrelated scalar payloads reach a dynamic predicate before type and
+subject exclude them. Direct matcher probes reproduce the failure on truly
+excluded scalar candidates. The correction applies all static restrictions before dynamic
+predicates and correlation; legitimate expression faults still propagate.
+Thirteen core matcher tests include four prior-source failures. The existing
+shared scenario now includes two unrelated scalar arrivals, without hiding
+retained history or changing the 41-case PostgreSQL count. Final source
+qualification remains pending.
+
+An intermediate strengthened fixture used `other-` plus the allowed subject
+UUID as its negative input. That substring still matches the documented
+unanchored regular expression, so its scalar payload fault was legitimate.
+The final negative uses a different UUID. Intermediate fixture failures do not
+provide independent runtime negative proof; the original PostgreSQL trace and
+four prior-source core matcher failures do.
+
 Semantic built-in error URIs follow release tag `v1.0.3`, immutable commit
 `9b5b1da29e9d4fff2358580241e11aab22704a16`, using
 `https://serverlessworkflow.io/spec/1.0.0/errors/`. The task/item schema-validation

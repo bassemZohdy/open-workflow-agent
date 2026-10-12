@@ -38,6 +38,10 @@ injected process-local bus, preserves the public single-envelope bus interface.
 Advanced `all`/`any`/correlation workflows require the embedded workflow event
 interface; engine admission rejects unsupported deployment requirements before
 dispatching earlier tasks. The memory backend does not provide event replay.
+Its single-event iterator children use the existing listener task occurrence;
+durable collections additionally bind each event ordinal to an immutable
+selection receipt. This preserves native validation without requiring a
+nonexistent durable receipt from a process-local bus.
 
 ## Workflow results and matching
 
@@ -61,6 +65,10 @@ value: a `with.data` predicate sees event data. String patterns are regular
 expressions; use anchors when requiring an exact string. JSON matching and
 correlation preserve null and distinguish booleans from numbers. Restricted jq
 and bounded JSON do not imply hard CPU preemption of a predicate.
+Static property restrictions are checked before dynamic predicates, regardless
+of JSON key order. An unrelated event with a different payload shape cannot
+fault the listener through a predicate it never needs to satisfy. Predicate or
+correlation errors on eligible events still use the common expression error.
 
 For example, a one-event workflow reads its first array element explicitly:
 

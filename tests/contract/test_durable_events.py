@@ -189,7 +189,8 @@ async def test_durable_event_semantics_preserve_order_correlation_and_projection
             ]
             expected = [{"order": chosen, "value": 1}]
     elif case == "filter-expression":
-        first["with"]["data"] = "${ .value > 2 }"
+        # Discriminator rejection precedes dynamic predicates even in canonical data-first order.
+        first["with"] = {"data": "${ .value > 2 }", "subject": subject, "type": "fixture.first"}
         events = [("fixture.first", {"value": 1}), ("fixture.first", {"value": 3})]
         expected = [{"value": 3}]
     elif case == "filter-regex":
@@ -268,6 +269,10 @@ async def test_durable_event_semantics_preserve_order_correlation_and_projection
         principal = subject if case == "any-empty" else None
         handle = _handle(services, engine_name, plan, principal)
         envelopes = []
+        if case == "filter-expression":
+            # Scalar payloads would fault .value if evaluated before exclusion.
+            await _publish(services, str(uuid4()), "fixture.first", 1, -2)
+            await _publish(services, subject, "fixture.unrelated", 1, -1)
         for event_ordinal, (kind, data) in enumerate(events):
             if principal is None:
                 envelopes.append(await _publish(services, subject, kind, data, event_ordinal))

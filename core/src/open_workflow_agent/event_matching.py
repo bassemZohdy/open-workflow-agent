@@ -83,14 +83,17 @@ def candidate_matcher(
         properties = selected.get("with", {})
         if not isinstance(properties, Mapping):
             raise EventValidationError("event filter properties are invalid")
+        predicates: list[tuple[str, str]] = []
+        # Persisted JSON canonicalizes key order. Reject static property
+        # restrictions before evaluating payload-dependent predicates, so an
+        # unrelated arrival cannot fault a listener with a different shape.
         for name, expected in properties.items():
             if name not in values:
                 return None
             candidate = values[name]
             if isinstance(expected, str):
                 if "${" in expected:
-                    if not expressions.condition(expected, candidate, variables=bindings):
-                        return None
+                    predicates.append((name, expected))
                 elif not isinstance(candidate, str) or not expressions.condition(
                     "${ test($eventPattern) }",
                     candidate,
@@ -98,6 +101,9 @@ def candidate_matcher(
                 ):
                     return None
             elif not json_equal(candidate, expected):
+                return None
+        for name, predicate in predicates:
+            if not expressions.condition(predicate, values[name], variables=bindings):
                 return None
         result: dict[str, Any] = {}
         correlations = selected.get("correlate", {})

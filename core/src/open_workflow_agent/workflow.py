@@ -2725,7 +2725,9 @@ class WorkflowExecutor:
         envelope = await self._await_with_cancellation(pending, state)
         self._token(state).checkpoint()
         self._listener_received(envelope, state)
-        return [await self._listener_item(envelope, read, iterator, 1, state)]
+        return [
+            await self._listener_item(envelope, read, iterator, 1, state, durable_selection=False)
+        ]
 
     def _prepare_listener_strategy(
         self, strategy: Mapping[str, Any], state: ExecutionState
@@ -2845,7 +2847,14 @@ class WorkflowExecutor:
         )
 
     async def _listener_item(
-        self, event: EventEnvelope, read: str, iterator: Any, ordinal: int, state: ExecutionState
+        self,
+        event: EventEnvelope,
+        read: str,
+        iterator: Any,
+        ordinal: int,
+        state: ExecutionState,
+        *,
+        durable_selection: bool = True,
     ) -> Any:
         value = event_projection(event, read)
         if iterator is None:
@@ -2858,7 +2867,11 @@ class WorkflowExecutor:
         child.variables[str(iterator.get("item", "item"))] = copy.deepcopy(value)
         child.variables[str(iterator.get("at", "index"))] = ordinal - 1
         reference = str(child.variables.get("_execution_reference", "/do"))
-        child.execution_path = (*child.execution_path, (f"{reference}/@event", ordinal))
+        if durable_selection:
+            child.execution_path = (*child.execution_path, (f"{reference}/@event", ordinal))
+        # A nondurable bus admits only one event. Its existing listener task
+        # occurrence identifies the sole child; it has no durable selection
+        # receipt to justify an additional event ordinal in native state.
         body = iterator.get("do", [])
         if body:
             await self._run_tasks(body, child, prefix=self._nested_prefix(child, "foreach/do"))
