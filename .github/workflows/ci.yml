@@ -76,6 +76,7 @@ jobs:
           ../../tests/contract/test_sandbox_effect_recovery.py
           ../../tests/contract/test_event_child_effect_recovery.py
           ../../tests/contract/test_child_invocation_dependencies.py
+          ../../tests/contract/test_retry_error_context.py
 
   manifests:
     name: Validate deployment manifests

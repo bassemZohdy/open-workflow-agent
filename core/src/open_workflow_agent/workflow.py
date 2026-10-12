@@ -34,9 +34,13 @@ from .effects import (
     effect_request_digest,
 )
 from .errors import (
+    AgentError,
     ExpressionError,
     InvocationCancelled,
     InvocationStateConflict,
+    KnowledgeError,
+    MemoryError,
+    ModelError,
     OwaError,
     ToolError,
     UnsupportedWorkflowFeature,
@@ -1415,17 +1419,7 @@ class WorkflowExecutor:
         except Exception as exc:
             if isinstance(exc, OwaError) and exc._operation_id is None:
                 exc._operation_id = self._operation_id(local)
-            if isinstance(
-                exc,
-                (
-                    WorkflowExecutionError,
-                    WorkflowSemanticError,
-                    UnsupportedWorkflowFeature,
-                    ExpressionError,
-                    ToolError,
-                    InvocationStateConflict,
-                ),
-            ):
+            if isinstance(exc, OwaError):
                 exc.details.setdefault("instance", reference)
             self._emit(
                 "TaskFaulted",
@@ -1436,17 +1430,7 @@ class WorkflowExecutor:
                     "error": _error_details(exc),
                 },
             )
-            if isinstance(
-                exc,
-                (
-                    WorkflowExecutionError,
-                    WorkflowSemanticError,
-                    UnsupportedWorkflowFeature,
-                    ExpressionError,
-                    ToolError,
-                    InvocationStateConflict,
-                ),
-            ):
+            if isinstance(exc, OwaError):
                 raise
             failure = WorkflowExecutionError(f"task {name} failed", details={"task": str(name)})
             failure._operation_id = self._operation_id(local)
@@ -1658,8 +1642,13 @@ class WorkflowExecutor:
                     ):
                         raise
                     error = _error_details(exc)
-                    state.variables["error"] = error
-                    if not _catch_matches(catch, error, state, self._expressions(state)):
+                    catch_error = _catch_error_value(
+                        error, status_code=exc.status_code if isinstance(exc, OwaError) else 500
+                    )
+                    as_name = catch.get("as", "error")
+                    if isinstance(as_name, str):
+                        state.variables[as_name] = catch_error
+                    if not _catch_matches(catch, catch_error, state, self._expressions(state)):
                         raise
                     if attempt + 1 < attempts and _retry_allowed(
                         catch_retry, state, self._expressions(state)
@@ -1689,9 +1678,6 @@ class WorkflowExecutor:
                             },
                         )
                         continue
-                    as_name = catch.get("as", "error")
-                    if isinstance(as_name, str):
-                        state.variables[as_name] = _catch_error_value(error)
                     await self._run_tasks(
                         _task_body(catch.get("do", [])),
                         state,
@@ -1866,17 +1852,7 @@ class WorkflowExecutor:
             # exception messages in the durable journal.
             error = (
                 exc
-                if isinstance(
-                    exc,
-                    (
-                        InvocationCancelled,
-                        WorkflowExecutionError,
-                        WorkflowSemanticError,
-                        UnsupportedWorkflowFeature,
-                        ExpressionError,
-                        ToolError,
-                    ),
-                )
+                if isinstance(exc, OwaError)
                 else WorkflowExecutionError(
                     f"task {state.variables.get('_task_name', 'unknown')} failed",
                     details={"task": state.variables.get("_task_name", "unknown")},
@@ -1981,6 +1957,10 @@ class WorkflowExecutor:
                 UnsupportedWorkflowFeature,
                 ExpressionError,
                 ToolError,
+                ModelError,
+                AgentError,
+                KnowledgeError,
+                MemoryError,
             )
             error_type = next(
                 (kind for kind in error_types if kind.code == receipt.error["code"]),
@@ -2688,11 +2668,11 @@ def _catch_matches(
             error["details"] if isinstance(error.get("details"), Mapping) else {}
         )
         values = {
-            "type": error_details.get("type", error.get("code")),
-            "status": error_details.get("status", error.get("status_code")),
-            "instance": error_details.get("instance"),
-            "title": error_details.get("title", error.get("code")),
-            "detail": error_details.get("detail", error.get("message")),
+            "type": error_details.get("type", error.get("type", error.get("code"))),
+            "status": error_details.get("status", error.get("status", error.get("status_code"))),
+            "instance": error_details.get("instance", error.get("instance")),
+            "title": error_details.get("title", error.get("title", error.get("code"))),
+            "detail": error_details.get("detail", error.get("detail", error.get("message"))),
         }
         if any(values.get(key) != value for key, value in filters.items()):
             return False
@@ -2743,13 +2723,20 @@ def _error_details(error: Exception) -> dict[str, Any]:
     return {"code": "workflow_execution_error", "message": str(error), "details": {}}
 
 
-def _catch_error_value(error: Mapping[str, Any]) -> dict[str, Any]:
+def _catch_error_value(
+    error: Mapping[str, Any], *, status_code: int | None = None
+) -> dict[str, Any]:
     """Expose OWS error fields to catch handlers without changing API errors."""
 
     value = dict(error)
     details = value.pop("details", None)
     if isinstance(details, Mapping):
         value.update(details)
+    if status_code is not None:
+        value.setdefault("status", status_code)
+        value.setdefault("type", error.get("code", "workflow_execution_error"))
+        value.setdefault("title", error.get("code", "workflow_execution_error"))
+        value.setdefault("detail", error.get("message", "workflow execution failed"))
     return value
 
 
