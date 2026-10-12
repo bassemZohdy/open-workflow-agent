@@ -104,7 +104,7 @@ tracked integration gaps. ADK passes 1,212/777 with those same gaps and one
 isolated benchmark failure: its 50 ms wait legitimately elapsed during native
 receipt persistence. A deterministic probe-clock correction preserves that
 duration and performance measurement. All 274 frozen inputs remained
-unchanged during each full run. The only subsequent source changes are the
+unchanged during each full run. Before the first push, the only changes after those full runs are the
 benchmark harness and a direct PostgreSQL two-connection timer-claim fixture.
 The first pushed source `4cdf552` fails actual PostgreSQL on a nullable query
 parameter and single-precision schedule timestamps; its root CI also exposes
@@ -114,8 +114,10 @@ existing stored values, plus acknowledged-suspension fork and shared-session fix
 shared scheduling/trigger focus passes 77 cases; actual ADK/LangGraph fork
 files pass 18 each and recovery admission passes seven each. Optional Agent
 Framework fork/recovery focus passes 27/three. Both rebuilt packages contain
-all 64 matching core Python files. Fresh database and full configured gates
-remain required.
+all 64 matching core Python files. At `3d2faf0`, actual database wall-clock,
+timer-claim and fractional-schedule controls pass; one legacy DDL test needs
+consistent SQL precision for its before/after comparison. Native database,
+image and full configured acceptance remain required.
 
 S2-06 remains unchecked pending actual PostgreSQL, exact-source configured
 full suites, image observations and qualified capability publication. The

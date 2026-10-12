@@ -128,13 +128,22 @@ def test_postgresql_legacy_float4_clocks_widen_without_repairing_evidence() -> N
             "('slot','legacy','slot:1',?,'claimed','old',1,?,NULL,?)",
             (epoch + 2.25, epoch + 30.375, '{"original":true}'),
         )
-        schedule_before = connection.execute("SELECT * FROM schedules").fetchone()
-        slot_before = connection.execute("SELECT * FROM schedule_slots").fetchone()
+        schedule_values = (
+            "SELECT schedule_id,payload,status,next_run_at::double precision,"
+            "lease_until::double precision,operation_key FROM schedules"
+        )
+        slot_values = (
+            "SELECT slot_key,schedule_id,occurrence_key,nominal_at::double precision,"
+            "state,owner,generation,lease_until::double precision,invocation_id,input_payload "
+            "FROM schedule_slots"
+        )
+        schedule_before = connection.execute(schedule_values).fetchone()
+        slot_before = connection.execute(slot_values).fetchone()
         assert schedule_before[3] != epoch  # The old float4 value already lost precision.
         initialize_schedule_tables(connection)
         initialize_schedule_tables(connection)  # Reopening the widened layout is idempotent.
-        assert connection.execute("SELECT * FROM schedules").fetchone() == schedule_before
-        assert connection.execute("SELECT * FROM schedule_slots").fetchone() == slot_before
+        assert connection.execute(schedule_values).fetchone() == schedule_before
+        assert connection.execute(slot_values).fetchone() == slot_before
         types = connection.execute(
             "SELECT udt_name FROM information_schema.columns "
             "WHERE table_schema=current_schema() AND "

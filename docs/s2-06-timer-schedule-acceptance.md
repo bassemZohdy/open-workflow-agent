@@ -340,3 +340,22 @@ are inspected recursively: all 64 core Python files match current source bytes
 and both dependency pins are present. These newer distributions supersede the
 initial pre-PostgreSQL-correction builds. Actual PostgreSQL, exact corrected
 full CI and runtime images remain required; no failing source is qualified.
+
+
+At corrected runtime source `3d2faf047aec0529926750d4897c345f20aef111`, actual
+PostgreSQL common-store execution passes 255 cases, with one intentional SQLite
+variant skip and one new fixture failure. The original wall-clock persistence,
+both scoped/unscoped timer due-key queries after claim/reclaim, and fractional
+epoch schedule reopen/binding cases pass. The failing legacy DDL fixture reads
+REAL through abbreviated float4 text before widening but float8 afterwards;
+Python sees 1791787000.0 before and the actual stored numeric value 1791787008.0
+after. The value-preserving ALTER is correct. Both comparison projections now
+cast clocks to SQL double precision, retaining every identity/payload/metadata
+comparison and the lost-precision-not-reconstructed assertion. Production
+modules and distributions are unchanged by this final test-only correction.
+Local corrected schedule-store focus passes 16 cases with 17 unavailable
+PostgreSQL skips. Native PostgreSQL and images were skipped by the failed
+common step and remain unqualified until the fresh corrected-source run.
+Security at `3d2faf0` passes all six fresh nonempty nested reports with zero
+advisories and matching dependency pins; its raw evidence is retained beside
+`tmp/ci-3d2faf0-pg-terminal-evidence.json`.
