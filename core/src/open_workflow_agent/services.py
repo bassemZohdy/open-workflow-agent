@@ -531,13 +531,9 @@ class RuntimeServices:
                         "protected approval policy is not enabled",
                         details={"reference": task.reference},
                     )
-                policy = ProtectedApprovalPolicy.from_value(data["approvalPolicy"])
+                declared_actors = ProtectedApprovalPolicy.declared_actors(data["approvalPolicy"])
                 allowed = self.approvals.protected_store.actor_ids
-                if not {
-                    policy.assignee,
-                    *policy.reassignment_targets,
-                    *policy.escalation_targets,
-                }.issubset(allowed):
+                if not declared_actors.issubset(allowed):
                     raise UnsupportedWorkflowFeature(
                         "protected approval actor is not deployment-bound",
                         details={"reference": task.reference},

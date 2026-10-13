@@ -525,7 +525,9 @@ async def test_actual_protected_approval_gate_has_zero_role_business_before_deci
     raw = {
         "question": "original-protected-question",
         "requestId": str(uuid4()),
-        "expiresAt": (datetime.now(UTC) + timedelta(seconds=300)).isoformat(),
+        "expiresAt": (datetime.now(UTC) + timedelta(seconds=300))
+        .isoformat()
+        .replace("+00:00", "Z"),
         "assignee": runtime.authority.principal.identity,
     }
     handle = services.invocations.create(

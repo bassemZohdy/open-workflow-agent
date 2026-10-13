@@ -47,6 +47,7 @@ def snapshot(services: RuntimeServices, native_path: str) -> tuple[Any, Any]:
             "recovery_invocation_definitions",
             "initial_invocation_deliveries",
             "execution_authorities",
+            "execution_authority_candidates",
         )
     )
     with closing(
@@ -160,13 +161,16 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
         if authenticated:
             assert services.execution_authorizations.authority_receipt(handle) is not None
 
+        initializer_reached = asyncio.Event()
+
         async def before_any_task(*args: Any, **kwargs: Any) -> None:
-            raise asyncio.CancelledError("capture the actual SDK initializer")
+            initializer_reached.set()
+            await asyncio.Event().wait()
 
         with monkeypatch.context() as capture:
             capture.setattr(engine.executor, "_run_task_item", before_any_task)
-            with pytest.raises(asyncio.CancelledError):
-                await engine.native.execute_plan(
+            execution = asyncio.create_task(
+                engine.native.execute_plan(
                     engine.executor,
                     plan,
                     original_input,
@@ -176,6 +180,27 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
                     },
                     invocation_id=handle.invocation_id,
                 )
+            )
+            reached = asyncio.create_task(initializer_reached.wait())
+            try:
+                completed, _ = await asyncio.wait(
+                    {execution, reached}, timeout=10, return_when=asyncio.FIRST_COMPLETED
+                )
+                if execution in completed:
+                    # Preserve a genuine earlier failure rather than treating it
+                    # as the intended host interruption boundary.
+                    await execution
+                    pytest.fail("native execution passed the parked initializer")
+                assert reached in completed and reached.result()
+                assert not execution.done()
+                execution.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await execution
+            finally:
+                for pending in (execution, reached):
+                    if not pending.done():
+                        pending.cancel()
+                await asyncio.gather(execution, reached, return_exceptions=True)
 
         # An initializer interrupted before any business task is still an
         # admitted, nonterminal delivery. An ordinary workflow fault would
@@ -184,6 +209,16 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
         assert current is not None and current.status == "running"
         delivery = services.initial_deliveries.get(handle)
         assert delivery is not None and delivery.status == "ready"
+        assert services.invocations.read_input(current) == original_input
+        assert business_calls == [] and services.model.calls == []
+        indexed = services.effect_journal.connection.execute(
+            "SELECT payload FROM workflow_effect_invocations WHERE invocation_id=?",
+            (handle.invocation_id,),
+        ).fetchall()
+        assert all(
+            EffectIdentity.from_value(json.loads(row[0])).operation != "call:http"
+            for row in indexed
+        )
 
         async def publish_initial(saver: Any) -> None:
             driver = LangGraphScopeExecutor(plan, saver, handle.invocation_id)
@@ -191,6 +226,10 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
             initial = await anext(
                 item async for item in saver.alist(config) if item.metadata["step"] == -1
             )
+            assert initial.metadata == {"source": "input", "step": -1, "parents": {}}
+            assert initial.checkpoint["v"] == 4
+            assert set(initial.checkpoint["channel_values"]) == {"__start__"}
+            assert len(initial.pending_writes) == 5
             checkpoint = copy.deepcopy(initial.checkpoint)
             checkpoint["id"] = empty_checkpoint()["id"]
             metadata = copy.deepcopy(initial.metadata)

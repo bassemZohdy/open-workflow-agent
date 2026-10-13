@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import json
 import os
 import subprocess
@@ -179,6 +180,29 @@ class InternalSandboxJobBackend:
             else None,
         )
 
+    async def _read_observation(
+        self,
+        launch: SandboxJobLaunch,
+        purpose: Literal["inspect", "control"],
+        generation: int | None = None,
+        reason: Literal["cancel", "deadline"] | None = None,
+    ) -> tuple[Path, bytes, dict[str, Any], SandboxJobObservation]:
+        # Windows observation reads can transiently report EACCES. At most three
+        # complete verified reads, with 60ms total wait;
+        # unreadable evidence never becomes a known outcome or a new submission.
+        for delay in (0.02, 0.04, None):
+            self._verify(launch, purpose, generation, reason)
+            directory, key, bootstrap = self._read(launch)
+            try:
+                frame = read_frame(directory / "observation.json", key)
+            except PermissionError as error:
+                if os.name != "nt" or error.errno != errno.EACCES or delay is None:
+                    raise
+                await asyncio.sleep(delay)
+                continue
+            return directory, key, bootstrap, self._observation(launch, frame, bootstrap)
+        raise SandboxPolicyError("sandbox supervisor observation is unavailable")
+
     async def submit(self, launch: SandboxJobLaunch) -> SandboxJobObservation:
         self._verify(launch, "submit")
         Path(self.config.workspace_root).mkdir(parents=True, exist_ok=True)
@@ -243,12 +267,8 @@ class InternalSandboxJobBackend:
     async def inspect(
         self, launch: SandboxJobLaunch, binding: SandboxJobBackendBinding | None
     ) -> SandboxJobObservation:
-        self._verify(launch, "inspect")
         try:
-            directory, key, bootstrap = self._read(launch)
-            value = self._observation(
-                launch, read_frame(directory / "observation.json", key), bootstrap
-            )
+            directory, key, bootstrap, value = await self._read_observation(launch, "inspect")
         except FileNotFoundError:
             return SandboxJobObservation("unknown")
         if binding is not None and value.binding != binding:
@@ -274,10 +294,8 @@ class InternalSandboxJobBackend:
         generation: int,
         reason: Literal["cancel", "deadline"],
     ) -> SandboxJobObservation:
-        self._verify(launch, "control", generation, reason)
-        directory, key, bootstrap = self._read(launch)
-        current = self._observation(
-            launch, read_frame(directory / "observation.json", key), bootstrap
+        directory, key, bootstrap, current = await self._read_observation(
+            launch, "control", generation, reason
         )
         if current.binding != binding:
             raise SandboxPolicyError("sandbox supervisor control instance changed")

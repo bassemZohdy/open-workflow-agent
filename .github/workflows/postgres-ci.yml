@@ -55,6 +55,7 @@ on:
       - "tests/core/test_recovery_cooperation.py"
       - "tests/core/test_grpc_completion_fence.py"
       - "tests/core/test_recovery_diagnostics.py"
+      - "tests/core/test_protected_approval_dynamic.py"
       - "tests/core/test_timer_archive_preflight.py"
       - "tests/core/test_schedule_archive_preflight.py"
       - "tests/contract/test_workflow_version_recovery.py"
@@ -302,6 +303,7 @@ jobs:
             tests/core/test_event_store.py \
             tests/core/test_durable_event_api.py \
             tests/core/test_durable_event_approvals.py \
+            tests/core/test_protected_approval_dynamic.py \
             tests/core/test_protected_approvals.py \
             tests/core/test_approval_dispatcher.py \
             tests/core/test_protected_approval_recovery.py \

@@ -157,6 +157,9 @@ def _common_snapshot(services: RuntimeServices, invocation_id: str) -> dict[str,
             "input": "SELECT * FROM invocation_inputs WHERE invocation_id=?",
             "binding": "SELECT * FROM recovery_invocation_definitions WHERE invocation_id=?",
             "ownership": "SELECT * FROM invocation_ownership WHERE invocation_id=?",
+            "authority": "SELECT * FROM execution_authorities WHERE invocation_id=?",
+            "authority_candidate": "SELECT * FROM execution_authority_candidates "
+            "WHERE candidate_key='invocation:' || ?",
             "effects": "SELECT i.identity,e.payload FROM workflow_effect_invocations i "
             "JOIN workflow_effects e ON e.identity=i.identity WHERE i.invocation_id=? "
             "ORDER BY i.identity",
@@ -495,13 +498,35 @@ async def test_profile_change_or_native_only_history_cannot_adopt_new_admission(
                 base_url="http://test",
                 headers={"Authorization": "Bearer " + TOKEN},
             ) as client:
-                started = await client.post("/v1/invoke", json={"input": {"original": True}})
-                assert started.status_code == 200 and started.json()["status"] == "waiting"
-                handle = services.invocations.get(started.json()["invocation_id"])
-                assert handle is not None
+                if damage == "native_only_missing_binding":
+                    # Isolate the native-only archive guard with the supported
+                    # trusted engine seam. Authenticated API invocations also
+                    # retain independent authority, whose earlier rejection is
+                    # covered by the authenticated archive cases above.
+                    plan = app.state.plan
+                    handle = services.invocations.create(
+                        engine=engine_name,
+                        session_id=None,
+                        user_id=None,
+                        owner_principal=None,
+                        workflow_name=plan.name,
+                        workflow_version=plan.version,
+                        workflow_fingerprint=plan.fingerprint,
+                    )
+                    started_result = await engine.invoke(plan, handle, {"original": True})
+                    assert started_result.status == "waiting"
+                    assert services.execution_authorizations.verify_invocation(handle) is None
+                else:
+                    started = await client.post("/v1/invoke", json={"input": {"original": True}})
+                    assert started.status_code == 200 and started.json()["status"] == "waiting"
+                    handle = services.invocations.get(started.json()["invocation_id"])
+                    assert handle is not None
         native_before = _native_snapshot(services, handle, backend)
         assert any(native_before.values())
         if damage == "native_only_missing_binding":
+            # Prove the actual original SDK history while its prerequisites
+            # remain intact; do not invoke a gated native reader after damage.
+            assert await engine._native_initial_history_exists(handle)
             connection = services.recovery_definitions.connection
             connection.execute(
                 "DELETE FROM recovery_invocation_definitions WHERE invocation_id=?",
@@ -553,7 +578,6 @@ async def test_profile_change_or_native_only_history_cannot_adopt_new_admission(
                     and report["reason"] == "runtime_profile_changed"
                 )
         else:
-            assert await engine._native_initial_history_exists(saved)
             with pytest.raises(InvocationStateError) as failure:
                 await engine.invoke(
                     compile_workflow(_definition("1.0.0")), saved, {"replacement": True}

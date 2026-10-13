@@ -15,7 +15,7 @@ from datetime import datetime
 from typing import Any
 
 from .errors import ApprovalValidationError, OwaError
-from .expressions import validate_expression_data
+from .expressions import _segments, validate_expression_data
 
 PROTECTED_APPROVAL_PROFILE = "owa/protected-approval/v1"
 MAX_APPROVAL_POLICY_BYTES = 65_536
@@ -75,6 +75,58 @@ class ProtectedApprovalPolicy:
     reassignment_targets: tuple[str, ...]
     escalation_targets: tuple[str, ...]
     schema_json: str | None = None
+
+    @classmethod
+    def declared_actors(cls, value: Any) -> frozenset[str]:
+        """Validate the compiled envelope and return only known literal actors.
+
+        OWS compilation owns expression syntax and variable scopes. Dynamic
+        values are validated again in full by the atomic request participant;
+        a source expression cannot grant an actor or create a request row.
+        """
+        bounded_json(value, MAX_APPROVAL_POLICY_BYTES)
+        prepared = copy.deepcopy(value)
+        if not isinstance(prepared, dict):
+            cls.from_value(prepared)
+            raise ApprovalValidationError("protected approval policy is invalid")
+
+        def expression(item: Any, *, whole: bool = False) -> bool:
+            if not isinstance(item, str) or "${" not in item:
+                return False
+            try:
+                segments = _segments(item)
+            except OwaError:
+                raise ApprovalValidationError("approval policy expression is invalid") from None
+            executable = [source for enabled, source in segments if enabled]
+            if not executable or any(not source.strip() for source in executable):
+                raise ApprovalValidationError("approval policy expression is invalid")
+            if whole and (
+                len(executable) != 1
+                or any(source.strip() for enabled, source in segments if not enabled)
+            ):
+                raise ApprovalValidationError("approval assignment targets are invalid")
+            return True
+
+        dynamic_assignee = expression(prepared.get("assignee"))
+        if dynamic_assignee:
+            # This private validation copy is never executed or retained.
+            prepared["assignee"] = "static-admission-placeholder"
+        for name in ("reassignmentTargets", "escalationTargets"):
+            items = prepared.get(name)
+            if expression(items, whole=True):
+                prepared[name] = []
+            elif isinstance(items, list):
+                if len(items) > 32:
+                    raise ApprovalValidationError("approval assignment targets are invalid")
+                prepared[name] = [item for item in items if not expression(item)]
+        policy = cls.from_value(prepared)
+        return frozenset(
+            {
+                *(() if dynamic_assignee else (policy.assignee,)),
+                *policy.reassignment_targets,
+                *policy.escalation_targets,
+            }
+        )
 
     @classmethod
     def from_value(cls, value: Any) -> ProtectedApprovalPolicy:

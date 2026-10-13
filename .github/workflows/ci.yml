@@ -126,6 +126,7 @@ jobs:
           ../../tests/core/test_background_job_runtime.py
           ../../tests/core/test_background_request_admission.py
           ../../tests/core/test_internal_sandbox_jobs.py
+          ../../tests/core/test_job_supervisor.py
           ../../tests/core/test_sandbox_job_mutation_fence.py
           ../../tests/core/test_container_operation_admission.py
           ../../tests/core/test_executable_sources.py

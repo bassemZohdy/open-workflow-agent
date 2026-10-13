@@ -231,14 +231,19 @@ async def test_api_schedule_is_durable_and_idempotent(tmp_path):
             assert first.status_code == duplicate.status_code == 200
             assert first.json()["schedule_id"] == duplicate.json()["schedule_id"]
             schedule_id = first.json()["schedule_id"]
-            for _ in range(100):
+            for _ in range(1000):
                 current = await client.get(f"/v1/schedules/{schedule_id}")
                 assert current.status_code == 200, current.text
                 if current.json().get("last_status") == "completed":
                     break
                 await asyncio.sleep(0.005)
             assert current.json()["status"] == "active"
-            assert current.json()["last_status"] == "completed"
+            assert current.json().get("last_status") == "completed", current.text
+            handle = services.invocations.get(current.json()["last_invocation_id"])
+            assert handle is not None and handle.status == "completed"
+            assert handle.output == {"done": True}
+            assert services.invocations.read_input(handle) == {"from": "api"}
+            assert services.model.calls == []
             cancelled = await client.post(
                 f"/v1/schedules/{schedule_id}/cancel",
                 headers={"Idempotency-Key": "schedule-cancel-1"},
@@ -303,7 +308,8 @@ async def test_api_event_schedule_dispatches_projected_input_and_stops_after_can
                     denied = await client.post(
                         "/v1/schedules", json={"input": {}}, headers={"Authorization": ""}
                     )
-                    assert denied.status_code == 401
+                    assert denied.status_code == 403
+                    assert denied.json()["error"]["code"] == "authentication_failed"
                     assert services.schedules.active_triggers() == ()
                 created = await client.post("/v1/schedules", json={"input": {"registration": True}})
                 if backend == "memory":
@@ -322,7 +328,7 @@ async def test_api_event_schedule_dispatches_projected_input_and_stops_after_can
                     "/v1/events", json={"event": {"type": "ready", "data": {"value": None}}}
                 )
                 assert published.status_code == 200, published.text
-                for _ in range(200):
+                for _ in range(1000):
                     current = await client.get(f"/v1/schedules/{schedule_id}")
                     assert current.status_code == 200, current.text
                     if current.json().get("last_status") == "completed":

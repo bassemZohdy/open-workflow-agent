@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import json
 import os
 import signal
 import sys
 import time
-from dataclasses import replace
+from dataclasses import asdict, replace
 from pathlib import Path
 
 import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig, SandboxConfig
 from open_workflow_agent.effects import EffectIdentity
-from open_workflow_agent.errors import OwaError, SandboxPolicyError
+from open_workflow_agent.errors import InvocationStateConflict, OwaError, SandboxPolicyError
 from open_workflow_agent.sandbox import compile_sandbox_workflow
 from open_workflow_agent.sandbox._job_ipc import (
     MAX_FRAME_BYTES,
@@ -30,12 +31,13 @@ from open_workflow_agent.sandbox.backends.internal import InternalSandboxBackend
 from open_workflow_agent.sandbox.contract import SandboxExecutionRequest
 from open_workflow_agent.sandbox.internal_jobs import (
     InternalSandboxJobBackend,
+    immutable,
     internal_job_profile,
     launch_value,
 )
 from open_workflow_agent.sandbox.job_backend import SandboxJobLaunch
 from open_workflow_agent.sandbox.job_dispatcher import SandboxJobDispatcher
-from open_workflow_agent.sandbox.jobs import SandboxJobStore, job_id
+from open_workflow_agent.sandbox.jobs import SandboxJobBackendBinding, SandboxJobStore, job_id
 from open_workflow_agent.sandbox.manager import SandboxManager
 from open_workflow_agent.services import RuntimeServices
 
@@ -547,3 +549,177 @@ def test_unsupported_platform_limits_reject_before_launch(tmp_path):
             validate_platform(InternalSandboxBackend(config))
     else:
         validate_platform(InternalSandboxBackend(config))
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows denied-open observation race")
+@pytest.mark.parametrize("mode", ["transient", "persistent", "control-takeover"])
+async def test_observation_denied_open_rechecks_proofs_with_bounded_wait(
+    supervisor, monkeypatch, mode
+):
+    """Exercise signed private frames without launching or changing a job."""
+    from open_workflow_agent.sandbox import internal_jobs
+
+    services, store, lease, backend, _, launch = supervisor("print('must not launch')")
+    persistent = mode == "persistent"
+    control_takeover = mode == "control-takeover"
+    Path(backend.config.workspace_root).mkdir(parents=True, exist_ok=True)
+    private_directory(backend.root)
+    directory = backend._directory(launch)
+    private_directory(directory)
+    key = create_key(directory / "auth.key")
+    instance_id = "supervisor_" + "a" * 32
+    write_frame(
+        directory / "bootstrap.json",
+        {
+            "launch": launch_value(launch),
+            "profile": asdict(backend.profile()),
+            "config": backend.config.model_dump(mode="json", exclude_unset=True),
+            "database": str(backend.database),
+            "instance_id": instance_id,
+        },
+        key,
+        exclusive=True,
+    )
+    target = directory / "observation.json"
+    write_frame(
+        target,
+        {
+            "immutable": immutable(launch),
+            "instance_id": instance_id,
+            "state": "running",
+            "outcome": None,
+            "reason": "exited",
+            "control_ack_generation": None,
+            "pid": os.getpid(),
+        },
+        key,
+        exclusive=True,
+    )
+    write_frame(
+        directory / "heartbeat.json", {"instance_id": instance_id, "time": time.time()}, key
+    )
+    control = (
+        store.request_control(lease, reason="cancel", principal="original-owner")
+        if control_takeover
+        else None
+    )
+
+    def database_snapshot():
+        snapshots = []
+        for connection in (store.connection, services.invocations.connection):
+            tables = connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
+            ).fetchall()
+            snapshots.append(
+                {
+                    name: sorted(
+                        repr(tuple(row))
+                        for row in connection.execute(
+                            'SELECT * FROM "' + name.replace('"', '""') + '"'
+                        ).fetchall()
+                    )
+                    for (name,) in tables
+                }
+            )
+        return snapshots
+
+    before_database = database_snapshot()
+    before_files = {item.name: item.read_bytes() for item in directory.iterdir()}
+    attempts, verifications, reads, delays, observations, takeovers = [], [], [], [], [], []
+    real_open, real_verify, real_read, real_sleep, real_observation = (
+        os.open,
+        backend._verify,
+        backend._read,
+        asyncio.sleep,
+        backend._observation,
+    )
+    denial = PermissionError(errno.EACCES, "controlled observation denied-open")
+
+    def denied_open(path, flags, *args, **kwargs):
+        if Path(path) == target:
+            attempts.append(path)
+            if persistent or len(attempts) == 1:
+                raise denial
+        return real_open(path, flags, *args, **kwargs)
+
+    def verified_read(value):
+        reads.append(value)
+        return real_read(value)
+
+    def verify(*args, **kwargs):
+        verifications.append(args)
+        return real_verify(*args, **kwargs)
+
+    def observe(*args, **kwargs):
+        observations.append(args)
+        return real_observation(*args, **kwargs)
+
+    async def bounded_sleep(delay):
+        delays.append(delay)
+        if control_takeover:
+            assert len(delays) == 1
+            store.release(lease)
+            replacement = store.claim(lease.job_id, seconds=90)
+            assert replacement.generation == lease.generation + 1
+            assert replacement.owner != lease.owner
+            takeovers.append((replacement, database_snapshot()))
+        await real_sleep(delay)
+
+    def forbidden_launch(*args, **kwargs):
+        pytest.fail("observation inspection must never launch or resubmit")
+
+    monkeypatch.setattr(os, "open", denied_open)
+    monkeypatch.setattr(backend, "_read", verified_read)
+    monkeypatch.setattr(backend, "_verify", verify)
+    monkeypatch.setattr(backend, "_observation", observe)
+    monkeypatch.setattr(internal_jobs.asyncio, "sleep", bounded_sleep)
+    monkeypatch.setattr(internal_jobs.subprocess, "Popen", forbidden_launch)
+    if control_takeover:
+        with pytest.raises(InvocationStateConflict, match="ownership is stale"):
+            await backend.cancel(
+                launch,
+                SandboxJobBackendBinding(
+                    lease.job_id, launch.request_digest, "embedded-sqlite-supervisor", instance_id
+                ),
+                generation=control["generation"],
+                reason="cancel",
+            )
+    elif persistent:
+        with pytest.raises(PermissionError) as raised:
+            await backend.inspect(launch, None)
+        assert raised.value is denial
+    else:
+        result = await backend.inspect(launch, None)
+        assert result.state == "running" and result.outcome is None
+        assert result.binding is not None
+        assert result.binding.job_id == lease.job_id
+        assert result.binding.request_digest == launch.request_digest
+        assert result.binding.instance_id == instance_id
+    expected_attempts = 1 if control_takeover else 3 if persistent else 2
+    assert len(attempts) == len(reads) == expected_attempts
+    assert len(verifications) == (2 if control_takeover else expected_attempts)
+    assert len(observations) == (0 if persistent or control_takeover else 1)
+    assert all(item == launch for item in reads)
+    expected_verification = (
+        (launch, "control", control["generation"], "cancel")
+        if control_takeover
+        else (launch, "inspect", None, None)
+    )
+    assert all(item == expected_verification for item in verifications)
+    assert delays == ([0.02, 0.04] if persistent else [0.02])
+    assert sum(delays) <= 0.06
+    if control_takeover:
+        assert database_snapshot() == takeovers[0][1]
+        for original, replaced in zip(before_database, takeovers[0][1], strict=True):
+            assert {
+                name: rows for name, rows in original.items() if name != "sandbox_job_ownership"
+            } == {name: rows for name, rows in replaced.items() if name != "sandbox_job_ownership"}
+        assert (
+            json.loads(store.get(lease.job_id).admission_json)["deadline_at"] == launch.deadline_at
+        )
+    else:
+        assert database_snapshot() == before_database
+    assert {item.name: item.read_bytes() for item in directory.iterdir()} == before_files
+    assert not (directory / "control.json").exists()
+    if control_takeover:
+        store.release(takeovers[0][0])
