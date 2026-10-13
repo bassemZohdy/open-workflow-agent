@@ -16,7 +16,7 @@ from collections.abc import AsyncIterator
 from time import monotonic
 from typing import Any
 
-from .a2a_tasks import _output_part, a2a_task_state, project_a2a_task
+from .a2a_tasks import _output_part, project_a2a_task
 from .observability import CloudEvent, LifecycleCloudEventSink
 from .streaming import StreamLimits
 
@@ -40,12 +40,11 @@ def _sse_frame(event_id: str, payload: dict[str, Any]) -> bytes:
     return f"id: {event_id}\ndata: {data}\n\n".encode()
 
 
-def _status_update(task_id: str, context_id: str, state: str, *, final: bool) -> dict[str, Any]:
+def _status_update(task_id: str, context_id: str, state: str) -> dict[str, Any]:
     return {
         "taskId": task_id,
         "contextId": context_id,
         "status": {"state": state},
-        "final": final,
     }
 
 
@@ -72,6 +71,7 @@ def a2a_sse_stream(
     task_id: str,
     *,
     limits: StreamLimits | None = None,
+    services: Any = None,
 ) -> AsyncIterator[bytes]:
     """Create a bounded SSE stream of A2A streamed responses for one task.
 
@@ -113,41 +113,40 @@ def a2a_sse_stream(
             handle = invocations.get(task_id)
             if handle is None:
                 return
-            last_state = a2a_task_state(handle.status)
-            initial = frame_bytes({"task": project_a2a_task(handle)}, f"{task_id}:snapshot")
+            projected = project_a2a_task(handle, services=services)
+            last_state = projected["status"]["state"]
+            initial = frame_bytes({"task": projected}, f"{task_id}:snapshot")
             if initial is not None:
                 yield initial
             if last_state in _TERMINAL_STATES:
                 return
 
             async for source in _event_sources(backlog, subscription, selected, started):
-                if source is None:
+                if source is not None:
+                    data = source.data if isinstance(source.data, dict) else {}
+                    if data.get("invocation_id") != task_id:
+                        continue
+                # The common record is authoritative, including updates made by
+                # another process and terminal outcomes racing local events.
+                current = invocations.get(task_id)
+                if current is None:
                     return
-                data = source.data if isinstance(source.data, dict) else {}
-                if data.get("invocation_id") != task_id:
+                state = project_a2a_task(current, services=services)["status"]["state"]
+                terminal = state in _TERMINAL_STATES
+                if state == last_state:
                     continue
-                transition = _TRANSITIONS.get(str(data.get("event_type")))
-                if transition is None:
-                    continue
-                state, terminal = transition
-                if state == last_state and not terminal:
-                    continue
-                if (
-                    terminal
-                    and state == "TASK_STATE_COMPLETED"
-                    and (current := invocations.get(task_id)) is not None
-                    and current.output is not None
-                ):
+                event_id = source.id if source is not None else f"{task_id}:snapshot:{state}"
+                if terminal and state == "TASK_STATE_COMPLETED":
                     artifact = frame_bytes(
                         {"artifactUpdate": _artifact_update(task_id, context_id(), current.output)},
-                        f"{source.id}:artifact",
+                        f"{event_id}:artifact",
                     )
                     if artifact is None:
                         return
                     yield artifact
                 encoded = frame_bytes(
-                    {"statusUpdate": _status_update(task_id, context_id(), state, final=terminal)},
-                    source.id,
+                    {"statusUpdate": _status_update(task_id, context_id(), state)},
+                    event_id,
                 )
                 if encoded is None:
                     return
@@ -180,10 +179,9 @@ async def _event_sources(
             yield None
             return
         try:
-            yield await subscription.receive(timeout=remaining)
+            yield await subscription.receive(timeout=min(remaining, 0.25))
         except TimeoutError:
             yield None
-            return
         except BufferError:
             yield None
             return

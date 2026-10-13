@@ -2136,3 +2136,22 @@ Explicit mapping, checkpoint transplant and arbitrary SDK upgrade remain
 unsupported. Authoring is complete; finite actual native, backend, process-stop,
 packaging and hosted validation is pending. S2-09 remains unchecked. See
 [the finite policy](docs/s2-09-version-recovery-acceptance.md).
+
+## S3-02 A2A implementation work -- 2026-10-13 pending verification
+
+The next isolated authoring batch addresses typed common A2A client/card
+semantics, native workflow/tool parity and protected asynchronous inbound
+delivery before acknowledgment. Task identity and lifecycle remain projections
+of common invocations; original-definition, ownership, receipt and deadline
+authority are retained. Actual official SDK peers, native SQLite/PostgreSQL
+process recovery, TLS/authentication and bounded cross-worker streaming require
+integrated acceptance. Authored grids cover 64 native workflow/tool, 16 official
+SDK inbound, 24 actual process-stop, 26 common queue and 22 inbound control nodes;
+no executed acceptance is claimed. Initial asynchronous delivery is durable
+before acknowledgment. Existing-task asynchronous/streaming input resume is
+explicitly unsupported pending its own durable consumption gate.
+S2-09/S3-01 publication remains a dependency gate and S3-02 stays unchecked.
+Push callbacks, gRPC, delegated consent/token exchange and independent JavaScript
+qualification remain their separate backlog work. See the
+[finite A2A gates](docs/s3-02-a2a-acceptance.md). No task is deferred by this
+parallel authoring or the running predecessor validation.

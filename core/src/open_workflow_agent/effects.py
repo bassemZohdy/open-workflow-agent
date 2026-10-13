@@ -448,6 +448,10 @@ class EffectJournal:
                 verify_definition_admission_receipt(
                     self.connection, self._invocations, identity, receipt
                 )
+            if identity.operation == "policy:a2a-agent-card:v1":
+                from .a2a_admission import verify_a2a_card_receipt
+
+                verify_a2a_card_receipt(self.connection, self._invocations, identity, receipt)
             if identity.operation == "run:workflow" and receipt.status != "pending":
                 if receipt.child_invocation is None:
                     raise ValueError("child invocation binding is absent")

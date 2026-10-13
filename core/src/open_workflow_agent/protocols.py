@@ -21,6 +21,7 @@ from .errors import ToolError
 from .security import ProfileAuthentication, SecurityConfig
 
 if TYPE_CHECKING:
+    from .a2a_client import A2ACardSelection
     from .sandbox import SandboxManager
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
@@ -44,6 +45,8 @@ A2A_METHODS = frozenset(
         "ListTasks",
         "CancelTask",
         "GetExtendedAgentCard",
+        "SendStreamingMessage",
+        "SubscribeToTask",
     }
 )
 OUTPUT_MODES = frozenset({"raw", "content", "response"})
@@ -317,7 +320,11 @@ class ProtocolServices:
         *,
         security: SecurityConfig | None = None,
         security_profile: str | None = None,
+        a2a_credential_endpoints: Mapping[str, tuple[str, ...]] | None = None,
     ) -> None:
+        self._a2a_credential_endpoints = {
+            name: tuple(endpoints) for name, endpoints in (a2a_credential_endpoints or {}).items()
+        }
         authentication: AuthenticationProvider | None = None
         client_cert: tuple[str, str] | None = None
         ca_bundle: str | None = None
@@ -357,6 +364,8 @@ class ProtocolServices:
         payload: Any,
         *,
         _authentication: AuthenticationProvider | None = None,
+        _a2a_selection: A2ACardSelection | None = None,
+        _a2a_bound_endpoint: str | None = None,
     ) -> Any:
         if protocol not in {"http", "mcp", "a2a", "openapi"}:
             raise ToolError(f"unsupported protocol: {protocol}")
@@ -396,43 +405,22 @@ class ProtocolServices:
                 sandbox=getattr(self, "sandbox", None),
             )
         if protocol == "a2a":
-            agent_card = payload.get("agentCard")
-            card_endpoint = agent_card.get("endpoint") if isinstance(agent_card, dict) else None
-            endpoint = _endpoint_value(
-                payload.get("endpoint") or payload.get("server") or card_endpoint
-            )
-            if not endpoint:
-                raise ToolError("a2a call requires server endpoint")
-            requested_version = payload.get("protocolVersion")
-            if requested_version is not None and str(requested_version) != A2A_PROTOCOL_VERSION:
-                raise ToolError(
-                    f"unsupported A2A protocol version: {requested_version}; "
-                    f"supported version is {A2A_PROTOCOL_VERSION}"
-                )
-            method = payload.get("method", "SendMessage")
-            if method not in A2A_METHODS:
-                raise ToolError(f"unsupported A2A method: {method}")
-            parameters = payload.get("parameters", payload.get("params"))
-            if parameters is None:
-                message = payload.get("message")
-                parameters = {"message": message} if method == "SendMessage" else {}
-            body = {
-                "jsonrpc": "2.0",
-                "id": payload.get("id", operation_id or str(uuid4())),
-                "method": method,
-                "params": parameters,
-            }
-            return await self.http.request(
-                "POST",
-                str(endpoint),
-                headers={
-                    **(payload.get("headers") or {}),
-                    "A2A-Version": A2A_PROTOCOL_VERSION,
-                },
-                json=body,
+            from .a2a_client import call_a2a
+
+            return await call_a2a(
+                self.http,
+                payload,
+                timeout=min(
+                    self.http.timeout,
+                    _duration_seconds(payload.get("timeout")) or self.http.timeout,
+                ),
                 operation_id=operation_id,
-                request_timeout=_duration_seconds(payload.get("timeout")),
-                _authentication=_authentication,
+                authentication=(
+                    _authentication or self._profile_authentication or self.http.authentication
+                ),
+                selection=_a2a_selection,
+                credential_endpoints=self._a2a_credential_endpoints,
+                bound_endpoint=_a2a_bound_endpoint,
             )
         if protocol == "openapi":
             document = payload.get("document")

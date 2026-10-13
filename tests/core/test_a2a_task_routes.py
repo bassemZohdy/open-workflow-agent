@@ -181,7 +181,7 @@ def test_http_json_get_and_cancel_task_use_official_paths(tmp_path) -> None:
     assert cancel_response.status_code == 200
     assert cancel_response.json()["status"]["state"] == "TASK_STATE_CANCELED"
     assert missing_response.status_code == 404
-    assert missing_response.json()["error"]["code"] == "task_not_found"
+    assert missing_response.json()["error"]["details"][0]["metadata"]["owaCode"] == "task_not_found"
 
 
 def test_capabilities_advertise_only_implemented_task_operations(tmp_path) -> None:

@@ -94,6 +94,13 @@ class ToolRegistry:
         if tool.endpoint and isinstance(payload, dict):
             payload = {**payload, "endpoint": tool.endpoint}
         if tool.authentication is not None:
+            if tool.type == "a2a" and tool.endpoint is not None:
+                return await self.protocols.call(
+                    tool.type,
+                    payload,
+                    _authentication=tool.authentication,
+                    _a2a_bound_endpoint=tool.endpoint,
+                )
             return await self.protocols.call(
                 tool.type, payload, _authentication=tool.authentication
             )

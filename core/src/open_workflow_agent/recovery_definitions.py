@@ -312,6 +312,10 @@ def recovery_profile(
             "tzdata",
             "mcp",
             "mcp-types",
+            "a2a-sdk",
+            "protobuf",
+            "googleapis-common-protos",
+            "json-rpc",
             "anyio",
         }
         if engine == "adk":
@@ -350,7 +354,13 @@ def recovery_profile(
                 else "langgraph-checkpoint-sqlite",
             },
             "agent-framework": {"agent-framework-core"},
-        }.get(engine, set()) | {"mcp", "mcp-types"}
+        }.get(engine, set()) | {
+            "mcp",
+            "mcp-types",
+            "a2a-sdk",
+            "protobuf",
+            "googleapis-common-protos",
+        }
         sdk_code = {
             name: _sdk_digest(name)
             for name in sorted(checkpoint_packages)

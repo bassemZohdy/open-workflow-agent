@@ -47,7 +47,7 @@ HEADERS = {"a2a-version": "1.0"}
 
 
 def _send(client: httpx.AsyncClient, skill_id: str | None) -> httpx.Response:
-    message = {"role": "ROLE_USER", "parts": [{"text": "run"}]}
+    message = {"messageId": "fixture-message", "role": "ROLE_USER", "parts": [{"text": "run"}]}
     if skill_id is not None:
         message["metadata"] = {"skillId": skill_id}
     return client.post(
@@ -129,6 +129,7 @@ async def test_without_declared_skills_the_main_workflow_stays_implicit(tmp_path
                     "method": "SendMessage",
                     "params": {
                         "message": {
+                            "messageId": "fixture-message",
                             "role": "ROLE_USER",
                             "parts": [{"text": "hello"}],
                         }

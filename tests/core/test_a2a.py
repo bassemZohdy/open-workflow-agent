@@ -83,12 +83,21 @@ async def test_agent_card_reports_bounded_v1_profile(tmp_path) -> None:
             ]
             assert card["capabilities"] == {"streaming": True, "pushNotifications": False}
             assert card["defaultInputModes"] == ["text/plain"]
-            assert card["defaultOutputModes"] == ["text/plain"]
+            assert card["defaultOutputModes"] == [
+                "text/plain",
+                "application/json",
+                "application/octet-stream",
+            ]
             assert (await client.get("/.well-known/agent.json")).status_code == 404
             assert (await client.get("/a2a/agent.json")).status_code == 404
             capabilities = (await client.get("/v1/capabilities")).json()
             assert capabilities["features"]["a2a"] == {
                 "enabled": True,
+                "effectiveEnabled": True,
+                "sdkAvailable": True,
+                "sdkVersion": "1.2.2",
+                "requiredSdkVersion": "1.2.2",
+                "conformanceClaim": False,
                 "specRelease": A2A_SPEC_RELEASE,
                 "protocolVersion": A2A_PROTOCOL_VERSION,
                 "transport": "jsonrpc",
@@ -143,7 +152,13 @@ async def test_a2a_v1_version_is_required_and_wrong_version_is_rejected(tmp_path
         "jsonrpc": "2.0",
         "id": 1,
         "method": "SendMessage",
-        "params": {"message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]}},
+        "params": {
+            "message": {
+                "messageId": "fixture-message",
+                "role": "ROLE_USER",
+                "parts": [{"text": "hello"}],
+            }
+        },
     }
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
@@ -181,6 +196,7 @@ async def test_jsonrpc_rejects_legacy_method_and_legacy_part_shape(tmp_path) -> 
                     "method": "SendMessage",
                     "params": {
                         "message": {
+                            "messageId": "fixture-message",
                             "role": "ROLE_USER",
                             "parts": [{"kind": "text", "text": "hello"}],
                         }
@@ -228,10 +244,19 @@ async def test_http_json_rejects_unsupported_version(tmp_path) -> None:
             response = await client.post(
                 "/a2a/message:send",
                 headers={"A2A-Version": "0.3"},
-                json={"message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]}},
+                json={
+                    "message": {
+                        "messageId": "fixture-message",
+                        "role": "ROLE_USER",
+                        "parts": [{"text": "hello"}],
+                    }
+                },
             )
             assert response.status_code == 400
-            assert response.json()["error"]["code"] == "version_not_supported"
+            assert (
+                response.json()["error"]["details"][0]["metadata"]["owaCode"]
+                == "version_not_supported"
+            )
 
 
 _BEARER_SECURITY = {
@@ -293,7 +318,13 @@ async def test_oversized_message_is_rejected(tmp_path) -> None:
                     "jsonrpc": "2.0",
                     "id": 3,
                     "method": "SendMessage",
-                    "params": {"message": {"role": "ROLE_USER", "parts": [{"text": "x" * 11}]}},
+                    "params": {
+                        "message": {
+                            "messageId": "fixture-message",
+                            "role": "ROLE_USER",
+                            "parts": [{"text": "x" * 11}],
+                        }
+                    },
                 },
             )
             assert response.status_code == 200

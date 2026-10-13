@@ -35,6 +35,11 @@ def test_protocol_baseline_manifest_matches_runtime_wire_versions() -> None:
     assert baselines["a2a"]["release"] == A2A_SPEC_RELEASE
     assert baselines["a2a"]["protocol_version"] == A2A_PROTOCOL_VERSION
     assert A2A_PROTOCOL_VERSION == INBOUND_A2A_PROTOCOL_VERSION
+    from open_workflow_agent._a2a_types import A2A_SDK_VERSION
+
+    assert baselines["a2a"]["sdk_package"] == "a2a-sdk"
+    assert baselines["a2a"]["sdk_version"] == A2A_SDK_VERSION == "1.2.2"
+    assert baselines["a2a"]["sdk_revision"] == "2f9e44af243df5c7c7a3da361c8d095324bcd5e3"
 
     assert baselines["mcp"]["release"] == MCP_PROTOCOL_VERSION
     assert baselines["mcp"]["protocol_version"] == MCP_PROTOCOL_VERSION
@@ -89,11 +94,17 @@ def test_protocol_method_sets_match_the_reviewed_bounded_profiles() -> None:
         }
     )
     assert A2A_METHODS == frozenset(
-        {"SendMessage", "GetTask", "ListTasks", "CancelTask", "GetExtendedAgentCard"}
+        {
+            "SendMessage",
+            "GetTask",
+            "ListTasks",
+            "CancelTask",
+            "GetExtendedAgentCard",
+            "SendStreamingMessage",
+            "SubscribeToTask",
+        }
     )
     assert "message/send" not in A2A_METHODS
-    assert "SendStreamingMessage" not in A2A_METHODS
-    assert "SubscribeToTask" not in A2A_METHODS
 
 
 def test_protocol_documentation_cannot_drift_from_the_pinned_manifest() -> None:

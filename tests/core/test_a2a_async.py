@@ -29,7 +29,11 @@ def _send(message: dict[str, object], **params: object) -> dict[str, object]:
 
 
 def _text_message(text: str = "hello", **extra: object) -> dict[str, object]:
-    message: dict[str, object] = {"role": "ROLE_USER", "parts": [{"text": text}]}
+    message: dict[str, object] = {
+        "messageId": "fixture-message",
+        "role": "ROLE_USER",
+        "parts": [{"text": text}],
+    }
     message.update(extra)
     return message
 
@@ -233,7 +237,7 @@ async def test_resuming_send_on_terminal_task_is_rejected(tmp_path) -> None:
             )
             assert response.status_code == 200
             error = response.json()["error"]
-            assert error["code"] == -32000
+            assert error["code"] == -32004
             assert error["message"] == "task is not accepting input"
 
 
@@ -350,15 +354,18 @@ async def test_http_json_return_immediately_and_resume_rejections(tmp_path) -> N
                 json={"message": _text_message(taskId="missing-task")},
             )
             assert missing.status_code == 404
-            assert missing.json()["error"]["code"] == "task_not_found"
+            assert missing.json()["error"]["details"][0]["metadata"]["owaCode"] == "task_not_found"
 
             terminal = await client.post(
                 "/a2a/message:send",
                 headers=HEADERS,
                 json={"message": _text_message(taskId=handle.invocation_id)},
             )
-            assert terminal.status_code == 409
-            assert terminal.json()["error"]["code"] == "task_not_accepting_input"
+            assert terminal.status_code == 400
+            assert (
+                terminal.json()["error"]["details"][0]["metadata"]["owaCode"]
+                == "task_not_accepting_input"
+            )
 
             started = await client.post(
                 "/a2a/message:send",

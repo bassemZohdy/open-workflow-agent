@@ -284,6 +284,7 @@ class A2AConfig(StrictModel):
     authorization: AuthorizationPolicy | None = None
     skills: tuple[A2ASkillConfig, ...] = Field(default_factory=tuple)
     max_message_chars: int = Field(default=100_000, gt=0)
+    max_pending_tasks: int = Field(default=1000, ge=1, le=100_000)
 
     @field_validator("path")
     @classmethod
@@ -629,6 +630,38 @@ class ProtocolConfig(StrictModel):
     """Deployment policy for workflow-initiated outbound protocol calls."""
 
     security_profile: str | None = None
+    a2a_credential_endpoints: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+
+    @field_validator("a2a_credential_endpoints")
+    @classmethod
+    def validate_a2a_credential_endpoints(
+        cls,
+        value: dict[str, tuple[str, ...]],
+    ) -> dict[str, tuple[str, ...]]:
+        if len(value) > 64:
+            raise ValueError("A2A credential bindings exceed the finite limit")
+        for profile, endpoints in value.items():
+            if not profile or len(profile) > 256 or not 1 <= len(endpoints) <= 64:
+                raise ValueError("A2A credential bindings require bounded named endpoints")
+            if len(set(endpoints)) != len(endpoints):
+                raise ValueError("A2A credential endpoints must be unique")
+            for endpoint in endpoints:
+                try:
+                    parsed = urlparse(endpoint)
+                    _ = parsed.port
+                except ValueError as error:
+                    raise ValueError("A2A credential endpoint is invalid") from error
+                if (
+                    len(endpoint) > 4096
+                    or parsed.scheme != "https"
+                    or not parsed.hostname
+                    or parsed.username is not None
+                    or parsed.password is not None
+                    or parsed.fragment
+                    or any(ord(character) < 33 for character in endpoint)
+                ):
+                    raise ValueError("A2A credential endpoints must be exact absolute HTTPS URLs")
+        return value
 
 
 class RateLimitConfig(StrictModel):
@@ -856,6 +889,10 @@ class RuntimeConfig(StrictModel):
         require_header_profile(
             "protocols.security_profile", self.protocols.security_profile, outbound=True
         )
+        for profile_name in self.protocols.a2a_credential_endpoints:
+            require_header_profile(
+                "protocols.a2a_credential_endpoints", profile_name, outbound=True
+            )
         for catalog_name, catalog in self.workflow.external_catalogs.items():
             require_header_profile(
                 f"external catalog '{catalog_name}' authentication",

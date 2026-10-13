@@ -10,8 +10,8 @@ Two bindings are selectable through deployment configuration:
 - ``jsonrpc``: JSON-RPC 2.0 over HTTP using A2A v1 PascalCase methods.
 - ``http_json``: A2A HTTP+JSON using the standard REST endpoint/media type.
 
-Streaming, resubscription, push notifications, and extended Agent Cards remain
-outside this bounded slice.
+Streaming and resubscription reuse common invocation state. Push notifications
+and extended Agent Cards remain outside this bounded slice.
 """
 
 from __future__ import annotations
@@ -28,6 +28,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from .a2a_streaming import a2a_sse_stream, a2a_stream_media_type
 from .a2a_tasks import project_a2a_task
 from .config import A2AConfig
+from .errors import ToolError
 from .persistence import ExecutionHandle
 from .security import (
     AuthorizationPolicy,
@@ -53,25 +54,35 @@ _TERMINAL_TASK_STATUSES = frozenset({"completed", "faulted", "cancelled"})
 def a2a_capabilities(config: A2AConfig) -> dict[str, Any]:
     """Return the sanitized ``features.a2a`` capability block."""
 
+    sdk_available = False
+    try:
+        from ._a2a_types import verify_sdk
+
+        verify_sdk()
+        sdk_available = True
+    except (ImportError, ToolError):
+        pass
+    enabled = config.enabled and sdk_available
     skills = [skill.id for skill in config.skills]
     return {
         "enabled": config.enabled,
-        "specRelease": A2A_SPEC_RELEASE if config.enabled else None,
-        "protocolVersion": A2A_PROTOCOL_VERSION if config.enabled else None,
+        "effectiveEnabled": enabled,
+        "sdkAvailable": sdk_available,
+        "sdkVersion": "1.2.2" if sdk_available else None,
+        "requiredSdkVersion": "1.2.2",
+        "conformanceClaim": False,
+        "specRelease": A2A_SPEC_RELEASE if enabled else None,
+        "protocolVersion": A2A_PROTOCOL_VERSION if enabled else None,
         "transport": config.transport,
-        "card": A2A_AGENT_CARD_PATH if config.enabled else None,
-        "streaming": config.enabled,
-        "streamingOperations": (
-            ["SendStreamingMessage", "SubscribeToTask"] if config.enabled else []
-        ),
+        "card": A2A_AGENT_CARD_PATH if enabled else None,
+        "streaming": enabled,
+        "streamingOperations": (["SendStreamingMessage", "SubscribeToTask"] if enabled else []),
         "pushNotifications": False,
-        "tasks": config.enabled,
-        "taskOperations": ["GetTask", "CancelTask"] if config.enabled else [],
-        "skills": skills if config.enabled else [],
-        "auth": "bearer" if config.enabled and config.security_profile else None,
-        "authorization": bool(
-            config.enabled and config.authorization and config.authorization.rules
-        ),
+        "tasks": enabled,
+        "taskOperations": ["GetTask", "CancelTask"] if enabled else [],
+        "skills": skills if enabled else [],
+        "auth": "bearer" if enabled and config.security_profile else None,
+        "authorization": bool(enabled and config.authorization and config.authorization.rules),
     }
 
 
@@ -84,6 +95,9 @@ def build_agent_card(
 ) -> dict[str, Any]:
     """Build the bounded A2A v1 Agent Card for the configured workflow(s)."""
 
+    from ._a2a_types import verify_sdk
+
+    verify_sdk()
     card: dict[str, Any] = {
         "name": config.agent_name,
         "description": config.agent_description,
@@ -97,7 +111,7 @@ def build_agent_card(
         "version": config.agent_version,
         "capabilities": {"streaming": True, "pushNotifications": False},
         "defaultInputModes": ["text/plain"],
-        "defaultOutputModes": ["text/plain"],
+        "defaultOutputModes": ["text/plain", "application/json", "application/octet-stream"],
         "skills": skills
         or [
             {
@@ -176,6 +190,9 @@ class JsonRpcError(Exception):
     APPLICATION_ERROR = -32000
     TASK_NOT_FOUND = -32001
     TASK_NOT_CANCELABLE = -32002
+    UNSUPPORTED_OPERATION = -32004
+    CONTENT_TYPE_NOT_SUPPORTED = -32005
+    PUSH_NOT_SUPPORTED = -32003
     VERSION_NOT_SUPPORTED = -32009
 
     def __init__(
@@ -193,6 +210,28 @@ class JsonRpcError(Exception):
         self.http_status = http_status
 
 
+_ERROR_REASONS = {
+    -32001: "TASK_NOT_FOUND",
+    -32002: "TASK_NOT_CANCELABLE",
+    -32003: "PUSH_NOTIFICATION_NOT_SUPPORTED",
+    -32004: "UNSUPPORTED_OPERATION",
+    -32005: "CONTENT_TYPE_NOT_SUPPORTED",
+    -32009: "VERSION_NOT_SUPPORTED",
+    -32602: "INVALID_PARAMS",
+    -32600: "INVALID_REQUEST",
+    -32601: "METHOD_NOT_FOUND",
+}
+
+
+def _error_info(reason: str, metadata: dict[str, str] | None = None) -> dict[str, Any]:
+    return {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": reason,
+        "domain": "open-workflow-agent",
+        "metadata": metadata or {},
+    }
+
+
 def _jsonrpc_response(request_id: Any, result: Any) -> JSONResponse:
     return JSONResponse(content={"jsonrpc": "2.0", "id": request_id, "result": result})
 
@@ -203,12 +242,58 @@ def _jsonrpc_error(request_id: Any, error: JsonRpcError) -> JSONResponse:
         "id": request_id,
         "error": {"code": error.code, "message": error.message},
     }
-    if error.details is not None:
-        content["error"]["data"] = error.details
+    metadata = (
+        {
+            key: str(value)
+            for key, value in error.details.items()
+            if isinstance(value, (str, int, bool))
+        }
+        if isinstance(error.details, dict)
+        else {}
+    )
+    content["error"]["data"] = [
+        _error_info(_ERROR_REASONS.get(error.code, "INTERNAL_ERROR"), metadata)
+    ]
     return JSONResponse(status_code=error.http_status, content=content)
 
 
 def _http_json_response(content: dict[str, Any], *, status_code: int = 200) -> JSONResponse:
+    if isinstance(content.get("error"), dict):
+        error = content["error"]
+        local_code = str(error.get("code", "internal_error"))
+        reason = {
+            "task_not_found": "TASK_NOT_FOUND",
+            "task_not_cancelable": "TASK_NOT_CANCELABLE",
+            "version_not_supported": "VERSION_NOT_SUPPORTED",
+            "push_notification_not_supported": "PUSH_NOTIFICATION_NOT_SUPPORTED",
+            "content_type_not_supported": "CONTENT_TYPE_NOT_SUPPORTED",
+            "unsupported_operation": "UNSUPPORTED_OPERATION",
+            "unsupported_async_resume": "UNSUPPORTED_OPERATION",
+            "unsupported_streaming_resume": "UNSUPPORTED_OPERATION",
+            "task_not_accepting_input": "UNSUPPORTED_OPERATION",
+            "invalid_request": "INVALID_PARAMS",
+            "message_too_large": "INVALID_PARAMS",
+            "unauthorized": "UNAUTHENTICATED",
+            "forbidden": "PERMISSION_DENIED",
+        }.get(local_code, "INTERNAL_ERROR")
+        status = {
+            "TASK_NOT_FOUND": 5,
+            "UNAUTHENTICATED": 16,
+            "PERMISSION_DENIED": 7,
+            "INVALID_PARAMS": 3,
+            "CONTENT_TYPE_NOT_SUPPORTED": 3,
+            "UNSUPPORTED_OPERATION": 9,
+            "TASK_NOT_CANCELABLE": 9,
+            "PUSH_NOTIFICATION_NOT_SUPPORTED": 9,
+            "VERSION_NOT_SUPPORTED": 9,
+        }.get(reason, 13)
+        content = {
+            "error": {
+                "code": status,
+                "message": str(error.get("message", "A2A request failed")),
+                "details": [_error_info(reason, {"owaCode": local_code})],
+            }
+        }
     return JSONResponse(
         status_code=status_code,
         content=content,
@@ -311,7 +396,12 @@ def _requested_skill_id(params: Any, message: Any) -> str | None:
 
 
 def _task_id(params: Any) -> str:
-    if not isinstance(params, dict) or not isinstance(params.get("id"), str) or not params["id"]:
+    if (
+        not isinstance(params, dict)
+        or not isinstance(params.get("id"), str)
+        or not params["id"]
+        or len(params["id"]) > 1024
+    ):
         raise JsonRpcError(JsonRpcError.INVALID_PARAMS, "task operation requires params.id")
     return str(params["id"])
 
@@ -328,6 +418,7 @@ class A2ASendOutcome:
     reply_text: str | None = None
     task: dict[str, Any] | None = None
     error_code: str | None = None
+    context_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -343,13 +434,15 @@ async def _cancel_task(app: FastAPI, task_id: str) -> dict[str, Any]:
     handle = app.state.services.invocations.get(task_id)
     if handle is None:
         raise JsonRpcError(JsonRpcError.TASK_NOT_FOUND, "task not found")
+    if handle.status == "cancelled":
+        return project_a2a_task(handle, services=app.state.services)
     if handle.status in _TERMINAL_TASK_STATUSES:
         raise JsonRpcError(JsonRpcError.TASK_NOT_CANCELABLE, "task cannot be canceled")
     result = await app.state.engine.cancel(handle, operation_id=f"a2a:cancel:{task_id}")
     refreshed = app.state.services.invocations.get(result.invocation_id)
     if refreshed is None:
         raise JsonRpcError(JsonRpcError.TASK_NOT_FOUND, "task not found")
-    return project_a2a_task(refreshed)
+    return project_a2a_task(refreshed, services=app.state.services)
 
 
 def mount_a2a(
@@ -375,6 +468,9 @@ def mount_a2a(
     if not config.enabled:
         return
 
+    from ._a2a_types import verify_sdk
+
+    verify_sdk()
     app.add_middleware(_A2APrincipalMiddleware, config=config, security=security)
     stream_limits = StreamLimits()
 
@@ -396,6 +492,7 @@ def mount_a2a(
                 services.invocations,
                 task_id,
                 limits=stream_limits,
+                services=services,
             ),
             media_type=a2a_stream_media_type(),
             headers={"Cache-Control": "no-store"},
@@ -484,7 +581,61 @@ def mount_a2a(
                 status=422,
                 rpc_code=JsonRpcError.INVALID_PARAMS,
             )
-        message = params["message"]
+        from ._a2a_types import validate_v1_request
+
+        try:
+            normalized = validate_v1_request(
+                "SendMessage", {key: value for key, value in params.items() if key != "skillId"}
+            )
+        except ToolError as error:
+            reason = error.details.get("reason")
+            if reason in {"unsupported_push", "unsupported_tenant"}:
+                return send_error(
+                    request_id,
+                    code="push_notification_not_supported"
+                    if reason == "unsupported_push"
+                    else "unsupported_operation",
+                    message="the requested feature is not supported by this profile",
+                    status=400,
+                    rpc_code=JsonRpcError.PUSH_NOT_SUPPORTED
+                    if reason == "unsupported_push"
+                    else JsonRpcError.UNSUPPORTED_OPERATION,
+                )
+            return send_error(
+                request_id,
+                code="invalid_request",
+                message="SendMessage parameters are invalid",
+                status=400,
+                rpc_code=JsonRpcError.INVALID_PARAMS,
+            )
+        message = normalized["message"]
+        if (
+            isinstance(params.get("configuration"), dict)
+            and "taskPushNotificationConfig" in params["configuration"]
+        ):
+            return send_error(
+                request_id,
+                code="push_notification_not_supported",
+                message="push notifications are not supported",
+                status=400,
+                rpc_code=JsonRpcError.PUSH_NOT_SUPPORTED,
+            )
+        if normalized.get("tenant") or message.get("extensions"):
+            return send_error(
+                request_id,
+                code="unsupported_operation",
+                message="tenant routing and extensions are not supported",
+                status=400,
+                rpc_code=JsonRpcError.UNSUPPORTED_OPERATION,
+            )
+        if any("text" not in part for part in message["parts"]):
+            return send_error(
+                request_id,
+                code="content_type_not_supported",
+                message="this profile accepts text message parts",
+                status=400,
+                rpc_code=JsonRpcError.CONTENT_TYPE_NOT_SUPPORTED,
+            )
         try:
             text = extract_message_text(message.get("parts"))
         except ValueError as exc:
@@ -503,7 +654,7 @@ def mount_a2a(
                 status=413,
                 rpc_code=JsonRpcError.INVALID_PARAMS,
             )
-        configuration = params.get("configuration")
+        configuration = normalized.get("configuration")
         return_immediately = bool(
             isinstance(configuration, Mapping) and configuration.get("returnImmediately") is True
         )
@@ -525,7 +676,7 @@ def mount_a2a(
         if isinstance(task_ref, str) and task_ref.strip():
             normalized_task_ref = task_ref.strip()
             try:
-                task_handle(principal, normalized_task_ref)
+                existing = task_handle(principal, normalized_task_ref)
             except JsonRpcError as error:
                 return send_error(
                     request_id,
@@ -533,6 +684,14 @@ def mount_a2a(
                     message=error.message,
                     status=404,
                     rpc_code=error.code,
+                )
+            if context_id is not None and context_id != existing.session_id:
+                return send_error(
+                    request_id,
+                    code="invalid_request",
+                    message="message context does not match the task",
+                    status=400,
+                    rpc_code=JsonRpcError.INVALID_PARAMS,
                 )
             target = await resolve_resume_target(normalized_task_ref)
             if target is None:
@@ -557,10 +716,19 @@ def mount_a2a(
                     request_id,
                     code="task_not_accepting_input",
                     message="task is not accepting input",
-                    status=409,
+                    status=400,
+                    rpc_code=JsonRpcError.UNSUPPORTED_OPERATION,
                 )
             if not send_permitted(principal, target.skill_id):
                 return forbidden(request_id)
+            if return_immediately:
+                return send_error(
+                    request_id,
+                    code="unsupported_async_resume",
+                    message="this profile requires a blocking send when resuming a task",
+                    status=400,
+                    rpc_code=JsonRpcError.UNSUPPORTED_OPERATION,
+                )
             outcome = await resume_task(text, normalized_task_ref, return_immediately)
         else:
             skill_id = _requested_skill_id(params, message)
@@ -595,7 +763,10 @@ def mount_a2a(
         if outcome.task is not None:
             body: dict[str, Any] = {"task": outcome.task}
         else:
-            body = {"message": _reply_message(message, outcome.reply_text or "")}
+            reply = _reply_message(message, outcome.reply_text or "")
+            if outcome.context_id is not None:
+                reply["contextId"] = outcome.context_id
+            body = {"message": reply}
         if config.transport == "jsonrpc":
             return _jsonrpc_response(request_id, body)
         return _http_json_response(body)
@@ -607,6 +778,32 @@ def mount_a2a(
         if isinstance(validated, JSONResponse):
             return validated
         message, text, _, context_id = validated
+        if task_ref := message.get("taskId"):
+            try:
+                existing = task_handle(principal, task_ref)
+            except JsonRpcError as error:
+                return send_error(
+                    request_id,
+                    code="task_not_found",
+                    message=error.message,
+                    status=404,
+                    rpc_code=error.code,
+                )
+            if context_id is not None and context_id != existing.session_id:
+                return send_error(
+                    request_id,
+                    code="invalid_request",
+                    message="message context does not match the task",
+                    status=400,
+                    rpc_code=JsonRpcError.INVALID_PARAMS,
+                )
+            return send_error(
+                request_id,
+                code="unsupported_streaming_resume",
+                message="this profile requires a blocking send when resuming a task",
+                status=400,
+                rpc_code=JsonRpcError.UNSUPPORTED_OPERATION,
+            )
         skill_id = _requested_skill_id(params, message)
         if config.skills and skill_id not in {skill.id for skill in config.skills}:
             return send_error(
@@ -656,13 +853,13 @@ def mount_a2a(
             )
         return task_stream(task_id)
 
-    def version_supported(request: Request) -> JSONResponse | None:
+    def version_supported(request: Request, request_id: Any = None) -> JSONResponse | None:
         requested = _requested_protocol_version(request)
         if requested == A2A_PROTOCOL_VERSION:
             return None
         if config.transport == "jsonrpc":
             return _jsonrpc_error(
-                None,
+                request_id,
                 JsonRpcError(
                     JsonRpcError.VERSION_NOT_SUPPORTED,
                     "A2A protocol version is not supported",
@@ -701,8 +898,6 @@ def mount_a2a(
             if unauthorized is not None:
                 return unauthorized
             assert principal is not None
-            if unsupported := version_supported(request):
-                return unsupported
             request_id: Any = None
             try:
                 try:
@@ -711,16 +906,38 @@ def mount_a2a(
                     raise JsonRpcError(JsonRpcError.PARSE_ERROR, "invalid JSON payload") from exc
                 if not isinstance(envelope, dict) or envelope.get("jsonrpc") != "2.0":
                     raise JsonRpcError(JsonRpcError.INVALID_REQUEST, "not a JSON-RPC 2.0 request")
-                request_id = envelope.get("id")
+                candidate_id = envelope.get("id")
+                if type(candidate_id) not in {str, int} or (
+                    isinstance(candidate_id, str) and (not candidate_id or len(candidate_id) > 256)
+                ):
+                    raise JsonRpcError(
+                        JsonRpcError.INVALID_REQUEST, "request requires a bounded JSON-RPC id"
+                    )
+                request_id = candidate_id
+                if unsupported := version_supported(request, request_id):
+                    return unsupported
                 method = envelope.get("method")
+                if not isinstance(method, str):
+                    raise JsonRpcError(JsonRpcError.INVALID_REQUEST, "request requires a method")
                 params = envelope.get("params")
+                if method in {"GetTask", "CancelTask", "SubscribeToTask"}:
+                    from ._a2a_types import validate_v1_request
+
+                    try:
+                        params = validate_v1_request(method, params)
+                    except ToolError:
+                        raise JsonRpcError(
+                            JsonRpcError.INVALID_PARAMS, "task parameters are invalid"
+                        ) from None
                 if method == "GetTask":
                     if not task_permitted(principal, "tasks.get"):
                         return forbidden(request_id)
                     task_id = _task_id(params)
                     return _jsonrpc_response(
                         request_id,
-                        project_a2a_task(task_handle(principal, task_id)),
+                        project_a2a_task(
+                            task_handle(principal, task_id), services=app.state.services
+                        ),
                     )
                 if method == "SubscribeToTask":
                     return handle_resubscribe(principal, params, request_id=request_id)
@@ -829,7 +1046,9 @@ def mount_a2a(
             if unsupported := version_supported(request):
                 return unsupported
             try:
-                return _http_json_response(project_a2a_task(task_handle(principal, task_id)))
+                return _http_json_response(
+                    project_a2a_task(task_handle(principal, task_id), services=app.state.services)
+                )
             except JsonRpcError as error:
                 return _http_json_response(
                     {"error": {"code": "task_not_found", "message": error.message}},

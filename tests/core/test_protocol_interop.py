@@ -6,6 +6,8 @@ respective specifications and accurately advertise their capabilities.
 
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 from open_workflow_agent.a2a import (
@@ -230,7 +232,21 @@ def test_a2a_outbound_request_includes_required_headers() -> None:
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
-        return httpx.Response(200, json={"result": {"ok": True}})
+        body = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": body["id"],
+                "result": {
+                    "message": {
+                        "messageId": "peer-response",
+                        "role": "ROLE_AGENT",
+                        "parts": [{"data": {"ok": True}}],
+                    }
+                },
+            },
+        )
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
 

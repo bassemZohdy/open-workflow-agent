@@ -14,7 +14,7 @@ from typing import Any, Literal
 from ._version import __version__
 from .child_suspension import ChildSuspension
 from .child_waits import ChildWaitRegistration
-from .effects import EffectIdentity
+from .effects import EffectIdentity, effect_request_digest
 from .errors import (
     InvocationCancelled,
     InvocationStateConflict,
@@ -23,6 +23,7 @@ from .errors import (
     UnsupportedWorkflowFeature,
     WorkflowExecutionError,
 )
+from .initial_delivery_dispatcher import InitialDeliveryDispatcher
 from .lifecycle import (
     INVOCATION_STATES,
     TERMINAL_INVOCATION_STATES,
@@ -141,6 +142,7 @@ class WorkflowEngine:
         self._execution_leases: dict[str, ExecutionLease] = {}
         self._ownership_tasks: dict[str, asyncio.Task[Any]] = {}
         self._timer_dispatcher: TimerDispatcher | None = None
+        self._initial_delivery_dispatcher: InitialDeliveryDispatcher | None = None
         self._timer_claims: dict[str, TimerClaim] = {}
         self._timer_wakes: dict[str, dict[str, TimerWake]] = {}
         self._child_wakes: dict[str, dict[str, dict[str, Any]]] = {}
@@ -228,6 +230,87 @@ class WorkflowEngine:
         self.services = services
         services.workflow_runner = self.run_child
         services._workflow_initial_child_preflight = self._verify_initial_nohistory
+        self._initial_delivery_dispatcher = InitialDeliveryDispatcher(services, self)
+
+    async def start_initial_deliveries(
+        self, authorize: Callable[[ExecutionHandle, str | None, WorkflowPlan], bool]
+    ) -> None:
+        if self._initial_delivery_dispatcher is None:
+            raise InvocationStateError("initial delivery requires an initialized engine")
+        await self._initial_delivery_dispatcher.start(authorize)
+
+    async def prepare_initial_delivery(
+        self,
+        plan: WorkflowPlan,
+        handle: ExecutionHandle,
+        input_data: Any,
+        *,
+        skill_id: str | None,
+    ) -> None:
+        """Admit original inputs and a ready decision before an asynchronous ACK."""
+        self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+        self._verify_execution_engine(handle)
+        self.services.invocations.refresh(handle)
+        await self._preflight_definition(handle, plan, initial=True)
+        async with self._own_execution(handle):
+            self.services.invocations.refresh(handle)
+            await self._preflight_definition(handle, plan, initial=True)
+            self._prepare_workflow_input(plan, handle, input_data)
+            if plan.uses_timing:
+                executor = getattr(self, "executor", None)
+                self.services.effect_journal.record_value(
+                    root_clock_identity(handle.invocation_id, plan.fingerprint),
+                    effect_request_digest("policy:clock:v1", {"profile": "owa/timing/v1"}),
+                    lambda: {
+                        "profile": "owa/timing/v1",
+                        "started_at": executor._absolute_clock()
+                        if executor is not None
+                        else time.time(),
+                    },
+                    execution_lease=handle._execution_lease,
+                )
+            self.services.initial_deliveries.admit(handle, skill_id=skill_id)
+
+    async def dispatch_initial_delivery(
+        self,
+        handle: ExecutionHandle,
+        authorize: Callable[[ExecutionHandle, WorkflowPlan], None],
+    ) -> InvocationResult:
+        """Trusted initial delivery distinct from public native-required resume."""
+        self._verify_execution_engine(handle)
+        self.services.invocations.refresh(handle)
+        binding = self.services.initial_deliveries.get(handle)
+        if binding is None:
+            raise InvocationStateError("initial delivery is not admitted")
+        if binding.status == "settled":
+            return self._stored_result(handle)
+        plan: WorkflowPlan | None = None
+        if handle.status in {"running", "waiting"}:
+            plan = self.services.resolve_original_definition(handle)
+            authorize(handle, plan)
+            await self._preflight_definition(handle, plan, initial=True)
+        async with self._own_execution(handle):
+            self.services.invocations.refresh(handle)
+            binding = self.services.initial_deliveries.get(handle)
+            if binding is None:
+                raise InvocationStateError("initial delivery evidence disappeared")
+            if binding.status == "settled" or handle.status != "running":
+                self.services.initial_deliveries.settle(handle)
+                return self._stored_result(handle)
+            plan = self.services.resolve_original_definition(handle)
+            authorize(handle, plan)
+            await self._preflight_definition(handle, plan, initial=True)
+            if self.services.timers.resumable_for_invocation(
+                handle.invocation_id, plan.fingerprint
+            ) or self.services.child_waits.for_invocation(handle.invocation_id, plan.fingerprint):
+                # Automatic wait delivery owns its retained deadline/dependencies.
+                self.services.initial_deliveries.settle(handle)
+                return self._stored_result(handle)
+            if await self._scheduled_native_state_exists(handle, plan):
+                await self._verify_resume_state(handle, plan)
+                return await self._resume_owned(handle, None, plan)
+            original = self.services.invocations.read_input(handle)
+            return await self._invoke_owned(plan, handle, original)
 
     async def run_child(
         self,
@@ -647,6 +730,7 @@ class WorkflowEngine:
         self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
     ) -> InvocationResult:
         if handle.status == "waiting":
+            self.services.initial_deliveries.settle(handle)
             self._restart_resume_inputs[handle.invocation_id] = resume_input
             self.services.invocations.update(handle, status="running")
         if handle.status != "running":
@@ -995,6 +1079,7 @@ class WorkflowEngine:
             if owned_handle.status in TERMINAL_INVOCATION_STATES:
                 self.services.invocations.refresh(handle)
                 return self._stored_result(handle)
+            self.services.initial_deliveries.settle(owned_handle)
             self.services.invocations.update(owned_handle, status="running")
             if owned_handle is not handle:
                 self.services.invocations.refresh(handle)
@@ -1138,6 +1223,7 @@ class WorkflowEngine:
         except InvocationStateConflict:
             self.services.invocations.refresh(handle, terminal_only=True)
             return self._stored_result(handle)
+        self.services.initial_deliveries.settle(handle)
         return InvocationResult(handle.invocation_id, handle.session_id, status, output, error)
 
     def capabilities(self) -> EngineCapabilities:
@@ -1150,6 +1236,8 @@ class WorkflowEngine:
             active.control.interrupt("host_drain")
         if self._timer_dispatcher is not None:
             await self._timer_dispatcher.stop()
+        if self._initial_delivery_dispatcher is not None:
+            await self._initial_delivery_dispatcher.stop()
         tasks = {
             active.task
             for active in self._active.values()

@@ -29,6 +29,7 @@ from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
 
 if TYPE_CHECKING:
+    from .a2a_client import A2ACardSelection
     from .external_recovery import HttpExternalActionRecovery
 
 from ._version import __version__
@@ -57,6 +58,7 @@ from .errors import (
     WorkflowExecutionError,
     WorkflowSchemaError,
     WorkflowSemanticError,
+    _A2AOutcomeUncertain,
     _McpOutcomeUncertain,
 )
 from .event_matching import candidate_matcher, event_projection
@@ -2227,7 +2229,17 @@ class WorkflowExecutor:
             if self.services is None:
                 raise WorkflowExecutionError(f"protocol service unavailable: {call}")
             return await self._run_effect(
-                call, payload, state, lambda: self.services.call_protocol(call, payload)
+                call,
+                payload,
+                state,
+                lambda: self.services.call_protocol(call, payload),
+                a2a_dispatch=(
+                    lambda selection: self.services.call_protocol(
+                        call, payload, _a2a_selection=selection
+                    )
+                )
+                if call == "a2a"
+                else None,
             )
         if self.services is None:
             raise WorkflowExecutionError("runtime services unavailable for catalog call")
@@ -2272,6 +2284,7 @@ class WorkflowExecutor:
         *,
         operation: str | None = None,
         child_dependency: Callable[[], ChildInvocationDependency] | None = None,
+        a2a_dispatch: Callable[[A2ACardSelection], Awaitable[Any]] | None = None,
     ) -> Any:
         journal = getattr(self.services, "effect_journal", None)
         if journal is None:
@@ -2279,7 +2292,7 @@ class WorkflowExecutor:
                 raise WorkflowExecutionError("retry budget expired before a new action")
             try:
                 return await dispatch()
-            except _McpOutcomeUncertain as uncertainty:
+            except (_McpOutcomeUncertain, _A2AOutcomeUncertain) as uncertainty:
                 raise _EffectRecoveryRequired(
                     uncertainty.message, details=uncertainty.details
                 ) from None
@@ -2289,6 +2302,46 @@ class WorkflowExecutor:
             if call in {"http", "mcp", "a2a", "openapi"} and isinstance(payload, Mapping)
             else None
         ) or self._operation_id(state)
+        if call == "a2a" and isinstance(payload, Mapping) and "agentCard" in payload:
+            from .a2a_admission import A2AAgentCardAdmission
+
+            if a2a_dispatch is None:
+                raise _EffectRecoveryRequired("A2A Agent Card admission context is unavailable")
+            if _RECONCILE_EXPIRED_RETRY.get() and journal.get(identity) is None:
+                raise WorkflowExecutionError("retry budget expired before a new action")
+            admission_store = getattr(self.services, "a2a_agent_card_admission", None)
+            if not isinstance(admission_store, A2AAgentCardAdmission):
+                raise _EffectRecoveryRequired("A2A Agent Card admission service is unavailable")
+            deadlines = [
+                scope.absolute_due
+                for scope in _ACTIVE_TIMEOUTS.get()
+                if scope.absolute_due is not None
+            ]
+            admission = await admission_store.prepare(
+                identity,
+                payload,
+                cast(ExecutionHandle, state.metadata["_invocation_handle"]),
+                execution_lease=self._execution_lease(state),
+                deadline_at=min(deadlines) if deadlines else None,
+                now=self._absolute_clock,
+                allow_fetch=not _RECONCILE_EXPIRED_RETRY.get(),
+            )
+            if admission is not None:
+                prepared_at = time.monotonic()
+                await self._notify_receipt(state, admission.identity, admission.receipt)
+                selected_dispatch = a2a_dispatch
+
+                async def dispatch_admitted_a2a() -> Any:
+                    selection = admission.selection
+                    remaining = admission.receipt.output["deadline_at"] - self._absolute_clock()
+                    if selection.remaining_timeout is not None:
+                        remaining = min(
+                            remaining,
+                            selection.remaining_timeout - (time.monotonic() - prepared_at),
+                        )
+                    return await selected_dispatch(replace(selection, remaining_timeout=remaining))
+
+                dispatch = dispatch_admitted_a2a
         if _RECONCILE_EXPIRED_RETRY.get():
             known = journal.get(identity)
             if known is None:
@@ -2395,7 +2448,7 @@ class WorkflowExecutor:
                     details={"instance": reference},
                 ) from None
             raise
-        except _McpOutcomeUncertain as uncertainty:
+        except (_McpOutcomeUncertain, _A2AOutcomeUncertain) as uncertainty:
             # No correlated known result means the business action may have
             # committed. Keep its pending intent and bypass catch/retry routing.
             raise _EffectRecoveryRequired(

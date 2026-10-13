@@ -102,6 +102,18 @@ Implemented v1 semantics also include:
 - JSON-RPC Task-not-cancelable `-32002`;
 - capability advertisement limited to implemented Task operations.
 
+S3-02 authors the reviewed official Python `a2a-sdk==1.2.2`, tag commit
+`2f9e44af243df5c7c7a3da361c8d095324bcd5e3` on 2026-10-13. Five independent
+locks pin its artifacts. Enabled inbound startup, route mounting and card
+building reject missing or different SDK versions; sanitized capabilities
+separate configured `enabled` from `effectiveEnabled` and SDK availability.
+A2A wire protocol remains `1.0` and no full conformance is claimed. This
+implementation profile remains unqualified until the
+[finite S3-02 gates](s3-02-a2a-acceptance.md) pass. Initial asynchronous Task
+acknowledgment follows durable admission; existing-task asynchronous or
+streaming input resume remains explicitly unsupported pending durable
+wait-revision consumption. Blocking protected resume is retained.
+
 ### Outbound A2A client method set
 
 The common outbound A2A client (`ProtocolServices.call(protocol="a2a")`) accepts exactly these official v1 JSON-RPC wire operations:
@@ -112,13 +124,15 @@ GetTask
 ListTasks
 CancelTask
 GetExtendedAgentCard
+SendStreamingMessage
+SubscribeToTask
 ```
 
 Any other wire method — including `SendStreamingMessage`, `SubscribeToTask`, and the push-notification config operations — is rejected before any network call. Open Workflow DSL call values such as `tasks/list` and `agent/getAuthenticatedExtendedCard` are translated at the `RuntimeServices.call_protocol()` boundary onto the wire methods above; DSL values whose translated wire operation is outside this set fail closed.
 
 Legacy v0.3 discovery paths/method names remain unsupported on the A2A wire endpoint.
 
-The inbound A2A boundary additionally implements streaming/resubscription (A2A-7): `SendStreamingMessage` (HTTP+JSON `message:stream`) starts a task and streams official `statusUpdate`/`artifactUpdate` frames until terminal state, and `SubscribeToTask` (HTTP+JSON `tasks/{id}:subscribe`) attaches to an existing task. Streams translate common lifecycle events, are bounded (events/bytes/duration, then the client re-subscribes), and never expose engine-native checkpoint or stream objects. The outbound client above remains pinned to the non-streaming operation set; outbound streaming follows when a concrete requirement exists.
+The inbound A2A boundary additionally implements streaming/resubscription (A2A-7): `SendStreamingMessage` (HTTP+JSON `message:stream`) starts a task and streams official `statusUpdate`/`artifactUpdate` frames until terminal state, and `SubscribeToTask` (HTTP+JSON `tasks/{id}:subscribe`) attaches to an existing task. Streams translate common lifecycle events, are bounded (events/bytes/duration, then the client re-subscribes), and never expose engine-native checkpoint or stream objects. The S3-02 authored outbound stream path validates bounded correlated v1 alternatives, task/context identity and terminal state without reconnect or replay. Its integrated qualification remains pending.
 
 Not yet advertised:
 

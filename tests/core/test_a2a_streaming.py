@@ -24,7 +24,11 @@ HEADERS = {"a2a-version": V1}
 
 
 def _message(text: str = "hello", **extra: object) -> dict[str, object]:
-    message: dict[str, object] = {"role": "ROLE_USER", "parts": [{"text": text}]}
+    message: dict[str, object] = {
+        "messageId": "fixture-message",
+        "role": "ROLE_USER",
+        "parts": [{"text": text}],
+    }
     message.update(extra)
     return message
 
@@ -148,7 +152,12 @@ async def test_streaming_message_emits_protocol_frames_until_terminal(tmp_path) 
     updates = _updates(frames)
     assert updates, frames
     assert [str(update["status"]["state"]) for update in updates][-1] == "TASK_STATE_COMPLETED"
-    terminal = [update for update in updates if update["final"] is True]
+    terminal = [
+        update
+        for update in updates
+        if update["status"]["state"]
+        in {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED"}
+    ]
     assert [str(update["status"]["state"]) for update in terminal] == ["TASK_STATE_COMPLETED"]
 
     task_frame = next(frame["task"] for frame in frames if "task" in frame)
@@ -183,7 +192,9 @@ async def test_streaming_message_completes_with_artifact_update(tmp_path) -> Non
     terminal_positions = [
         i
         for i, frame in enumerate(frames)
-        if "statusUpdate" in frame and frame["statusUpdate"]["final"]
+        if "statusUpdate" in frame
+        and frame["statusUpdate"]["status"]["state"]
+        in {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED"}
     ]
     assert artifact_positions and terminal_positions
     assert artifact_positions[0] < terminal_positions[-1]
@@ -294,7 +305,12 @@ async def test_streaming_message_waits_through_input_required(tmp_path) -> None:
     states = [str(update["status"]["state"]) for update in _updates(frames)]
     assert "TASK_STATE_INPUT_REQUIRED" in states
     assert states[-1] == "TASK_STATE_COMPLETED"
-    terminal = [update for update in _updates(frames) if update["final"] is True]
+    terminal = [
+        update
+        for update in _updates(frames)
+        if update["status"]["state"]
+        in {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED"}
+    ]
     assert [str(update["status"]["state"]) for update in terminal] == ["TASK_STATE_COMPLETED"]
 
 

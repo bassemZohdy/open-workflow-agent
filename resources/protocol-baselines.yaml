@@ -15,6 +15,10 @@ baselines:
   a2a:
     release: "1.0.1"
     protocol_version: "1.0"
+    sdk_package: "a2a-sdk"
+    sdk_version: "1.2.2"
+    sdk_revision: "2f9e44af243df5c7c7a3da361c8d095324bcd5e3"
+    sdk_review_date: "2026-10-13"
     implemented: true
     profile: "bounded inbound/outbound profile"
     conformance_claim: false

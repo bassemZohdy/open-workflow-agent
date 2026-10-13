@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from ._event_triggers import EventTriggerStore
+from .a2a_admission import A2AAgentCardAdmission
+from .a2a_client import A2ACardSelection
 from .approvals import ApprovalEventBus, ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .child_waits import ChildWaitStore
@@ -28,6 +30,7 @@ from .external_catalog import (
 )
 from .external_recovery import HttpExternalActionRecovery, TrustedHttpReceiver
 from .forks import ForkDecisionStore
+from .initial_delivery import InitialDeliveryStore
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
 from .memory import MemoryService
 from .metrics import Metrics, MetricsEventSink
@@ -102,7 +105,9 @@ class RuntimeServices:
             Callable[[ExecutionHandle], Awaitable[None]] | None
         ) = None
         self.protocols = ProtocolServices(
-            security=config.security, security_profile=config.protocols.security_profile
+            security=config.security,
+            security_profile=config.protocols.security_profile,
+            a2a_credential_endpoints=config.protocols.a2a_credential_endpoints,
         )
         self.tools = ToolRegistry.from_config(
             config.tools, self.protocols, security=config.security
@@ -155,6 +160,11 @@ class RuntimeServices:
             self.effect_journal, self.invocations, config.child_workflows
         )
         self.child_waits = ChildWaitStore(self.effect_journal, self.invocations)
+        self.initial_deliveries = InitialDeliveryStore(
+            self.effect_journal,
+            self.invocations,
+            max_pending=config.a2a.max_pending_tasks,
+        )
         self.timers = TimerStore(
             self.effect_journal, max_pending=config.execution_timing.max_pending_timers
         )
@@ -213,6 +223,7 @@ class RuntimeServices:
             profile_provider=self._recovery_profile,
             trust_verifier=self._verify_archived_definition_trust,
         )
+        self.a2a_agent_card_admission = A2AAgentCardAdmission(self)
 
     def _recovery_profile(self, engine: str) -> dict[str, Any]:
         value = copy.deepcopy(
@@ -399,8 +410,17 @@ class RuntimeServices:
         bindings.extend(self.tools.bindings())
         return tuple(bindings)
 
-    async def call_protocol(self, protocol: str, payload: Any) -> Any:
-        return await self.protocols.call(protocol, workflow_protocol_payload(protocol, payload))
+    async def call_protocol(
+        self, protocol: str, payload: Any, *, _a2a_selection: A2ACardSelection | None = None
+    ) -> Any:
+        prepared = workflow_protocol_payload(protocol, payload)
+        if _a2a_selection is None:
+            return await self.protocols.call(protocol, prepared)
+        return await self.protocols.call(
+            protocol,
+            prepared,
+            _a2a_selection=_a2a_selection,
+        )
 
     def close(self) -> None:
         self.knowledge.close()

@@ -219,6 +219,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   [finite acceptance gates](docs/s3-01-mcp-acceptance.md). No new transport,
   authentication or inventory profile is qualified before integrated validation.
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
+  Typed common SDK transport, protected inbound delivery and actual peer/native
+  evidence are being authored in an isolated batch. See the
+  [finite acceptance gates](docs/s3-02-a2a-acceptance.md). S2-09/S3-01 publication
+  and integrated SDK/backend/platform validation remain prerequisites; no new
+  A2A profile or proposed inventory criterion is complete.
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.

@@ -123,6 +123,9 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
         "test_workflow_version_process_recovery.py",
         "test_mcp_sdk_calls.py",
         "test_mcp_stdio_integration.py",
+        "test_a2a_workflow_calls.py",
+        "test_a2a_sdk_inbound.py",
+        "test_a2a_initial_delivery.py",
     }
     workflow = _workflow("postgres-ci.yml")
     for engine in ("adk", "langgraph"):
@@ -140,6 +143,8 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     assert "tests/core/test_recovery_diagnostics.py" in core
     assert "tests/core/test_timer_archive_preflight.py" in core
     assert "tests/core/test_schedule_archive_preflight.py" in core
+    assert "tests/core/test_initial_delivery.py" in core
+    assert "tests/core/test_a2a_card_admission.py" in core
     paths = set(workflow["on"]["pull_request"]["paths"])
     assert {f"tests/contract/{name}" for name in fixtures} <= paths
     windows = _workflow("ci.yml")["jobs"]["windows-native-lifecycle"]
@@ -147,6 +152,7 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     command = next(step["run"] for step in windows["steps"] if "pytest" in step.get("run", ""))
     assert "\n" not in command
     assert all(f"../../tests/contract/{name}" in command for name in fixtures)
+    assert "../../tests/core/test_native_sqlite_inspection.py" in command
 
     native = _workflow("ci.yml")["jobs"]["native-lifecycle"]
     assert "needs" not in native and native["strategy"]["fail-fast"] == "false"
@@ -157,6 +163,7 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     command = _runs(native)
     assert "--kill-after=30s 8m" in command and "--locked --extra knowledge" in command
     assert all(f"../../tests/contract/{name}" in command for name in fixtures)
+    assert "../../tests/core/test_native_sqlite_inspection.py" in command
     main = _runs(_workflow("ci.yml")["jobs"]["engines"])
     assert all(f"--ignore=../../tests/contract/{name}" in main for name in fixtures)
 
@@ -175,6 +182,11 @@ def test_windows_mcp_controls_include_real_transport_and_cleanup_boundaries():
         "test_mcp_deployment_admission.py",
         "test_mcp_capabilities.py",
         "test_mcp_stdio_integration.py",
+        "test_a2a_sdk_http.py",
+        "test_a2a_inbound_v1.py",
+        "test_a2a_card_admission.py",
+        "test_initial_delivery.py",
+        "test_native_sqlite_inspection.py",
     ):
         assert fixture in command
     assert "uv run --locked pytest -vv" in command

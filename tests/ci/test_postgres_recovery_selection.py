@@ -97,3 +97,87 @@ def test_actual_postgresql_gate_selects_required_recovery_cases(
     nodes = [line for line in collected.stdout.splitlines() if "::test_" in line]
     assert len(nodes) == expected, collected.stdout
     assert all("postgresql" in node for node in nodes)
+
+
+@pytest.mark.parametrize("engine", ["adk", "langgraph"])
+@pytest.mark.parametrize(
+    "fixture,expected",
+    [
+        ("test_a2a_workflow_calls.py", 16),
+        ("test_a2a_sdk_inbound.py", 4),
+        ("test_a2a_initial_delivery.py", 6),
+    ],
+)
+def test_actual_a2a_postgresql_lifecycle_gate_selects_all_principal_cases(
+    engine, fixture, expected
+):
+    workflow = yaml.safe_load(
+        (ROOT / ".github/workflows/postgres-ci.yml").read_text(encoding="utf-8")
+    )
+    job = workflow["jobs"][f"postgres-{engine}-lifecycle"]
+    command = next(step["run"] for step in job["steps"] if "pytest" in step.get("run", ""))
+    assert f"../../tests/contract/{fixture}" in command
+    arguments = shlex.split(command)
+    selector = arguments[arguments.index("-k") + 1]
+    collected = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            str(ROOT / "tests/contract" / fixture),
+            "--collect-only",
+            "-q",
+            "-k",
+            f"({selector}) and {engine}",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert collected.returncode == 0, collected.stdout + collected.stderr
+    nodes = [line for line in collected.stdout.splitlines() if "::test_" in line]
+    assert len(nodes) == expected, collected.stdout
+    assert all("postgresql" in node and engine in node.lower() for node in nodes)
+
+
+@pytest.mark.parametrize(
+    "fixture,expected",
+    [
+        ("test_initial_delivery.py", 13),
+        ("test_a2a_card_admission.py", 26),
+    ],
+)
+def test_actual_a2a_postgresql_common_gate_retains_all_backend_cases(fixture, expected):
+    workflow = yaml.safe_load(
+        (ROOT / ".github/workflows/postgres-ci.yml").read_text(encoding="utf-8")
+    )
+    job = workflow["jobs"]["postgres-core"]
+    command = next(
+        step["run"]
+        for step in job["steps"]
+        if step.get("name") == "Run isolated PostgreSQL store tests"
+    )
+    assert f"tests/core/{fixture}" in command
+    collected = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            str(ROOT / "tests/core" / fixture),
+            "--collect-only",
+            "-q",
+            "-k",
+            "postgresql",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert collected.returncode == 0, collected.stdout + collected.stderr
+    nodes = [line for line in collected.stdout.splitlines() if "::test_" in line]
+    assert len(nodes) == expected, collected.stdout
+    assert all("postgresql" in node for node in nodes)

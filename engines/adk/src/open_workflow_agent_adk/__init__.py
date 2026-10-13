@@ -1,10 +1,9 @@
 """ADK engine adapter."""
 
-import sqlite3
-from contextlib import closing
 from pathlib import Path
 from typing import Any
 
+from open_workflow_agent._native_sqlite_inspection import inspect_native_sqlite
 from open_workflow_agent.child_suspension import ChildSuspension
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
 from open_workflow_agent.errors import (
@@ -66,7 +65,10 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
             path = Path(self.services.engine_database_path("adk", create_namespace=False))
             if not path.is_file():
                 return False
-            with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
+            common_path = next(
+                Path(row[2]) for row in common.execute("PRAGMA database_list") if row[1] == "main"
+            )
+            with inspect_native_sqlite(path, common_database=common_path) as db:
                 tables = {
                     row[0]
                     for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -192,6 +194,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         if not self.native.available:
             return await super()._resume_owned(handle, resume_input, plan)
         if handle.status == "waiting":
+            self.services.initial_deliveries.settle(handle)
             self._restart_resume_inputs[handle.invocation_id] = resume_input
             self.services.invocations.update(handle, status="running")
         if handle.status != "running":

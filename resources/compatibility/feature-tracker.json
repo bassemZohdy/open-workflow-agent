@@ -75363,7 +75363,54 @@
         "description": "Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.",
         "effort": "L",
         "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "unqualified_progress": {
+          "status": "Unqualified authoring; no completed acceptance",
+          "baseline_source": "325458af130cccc8d9d899dc09614f6e55cc48f5",
+          "acceptance_record": "docs/s3-02-a2a-acceptance.md",
+          "scope": "Typed common SDK/card transport, protected durable initial delivery and blocking resume, native workflow/tool parity and bounded lifecycle/interoperability",
+          "required_gates": [
+            "A2A01",
+            "A2A02",
+            "A2A03",
+            "A2A04",
+            "A2A05",
+            "A2A06",
+            "A2A07",
+            "A2A08"
+          ],
+          "publication_dependencies": [
+            "S2-09",
+            "S3-01"
+          ],
+          "fixture_counts": {
+            "initial_delivery": 26,
+            "native_workflow_calls": 64,
+            "official_sdk_inbound": 16,
+            "process_stop_initial_delivery": 24,
+            "inbound_controls": 22,
+            "status": "Final authored inventory only; no executed or hosted qualification",
+            "outbound_sdk_http": 84,
+            "card_admission": 53,
+            "native_sqlite_inspection": 14,
+            "mandatory_common_per_platform": 160
+          },
+          "acceptance_evidence": [],
+          "independent_gates": [
+            "S3-03 gRPC",
+            "S3-06/S4-11 delegation and consent",
+            "S4-10 push callbacks",
+            "S4-03/S4-04 JavaScript and full proposed criteria"
+          ],
+          "full_feature_verified": false,
+          "full_proposed_criteria_executed": false,
+          "javascript_status": "Unimplemented; independent qualification pending",
+          "finite_exclusions": [
+            "Existing-task returnImmediately resume and streaming input resume until durable wait-revision consumption qualifies",
+            "Push notifications, delegated grants, gRPC and independent JavaScript/full interoperability remain separate gates"
+          ],
+          "runtime_qualified": false
+        }
       },
       {
         "id": "S3-03",

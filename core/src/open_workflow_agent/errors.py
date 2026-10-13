@@ -75,6 +75,10 @@ class _McpOutcomeUncertain(WorkflowExecutionError):
     """Private transport outcome that cannot establish a known tool receipt."""
 
 
+class _A2AOutcomeUncertain(WorkflowExecutionError):
+    """Private sent A2A request without a validated correlated outcome."""
+
+
 class SandboxError(WorkflowExecutionError):
     code = "sandbox_error"
 

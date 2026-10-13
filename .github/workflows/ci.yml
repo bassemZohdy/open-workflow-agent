@@ -186,6 +186,10 @@ jobs:
           ../../tests/contract/test_workflow_version_process_recovery.py
           ../../tests/contract/test_mcp_sdk_calls.py
           ../../tests/contract/test_mcp_stdio_integration.py
+          ../../tests/contract/test_a2a_workflow_calls.py
+          ../../tests/contract/test_a2a_sdk_inbound.py
+          ../../tests/contract/test_a2a_initial_delivery.py
+          ../../tests/core/test_native_sqlite_inspection.py
 
   windows-mcp:
     name: Windows common MCP transport and authentication controls
@@ -213,6 +217,11 @@ jobs:
           tests/core/test_mcp_stdio_frames.py
           tests/core/test_mcp_deployment_admission.py
           tests/core/test_mcp_capabilities.py
+          tests/core/test_a2a_sdk_http.py
+          tests/core/test_a2a_inbound_v1.py
+          tests/core/test_a2a_card_admission.py
+          tests/core/test_initial_delivery.py
+          tests/core/test_native_sqlite_inspection.py
           tests/contract/test_mcp_stdio_integration.py
 
   manifests:
@@ -419,7 +428,10 @@ jobs:
             --ignore=../../tests/contract/test_workflow_version_recovery.py \
             --ignore=../../tests/contract/test_workflow_version_process_recovery.py \
             --ignore=../../tests/contract/test_mcp_sdk_calls.py \
-            --ignore=../../tests/contract/test_mcp_stdio_integration.py
+            --ignore=../../tests/contract/test_mcp_stdio_integration.py \
+            --ignore=../../tests/contract/test_a2a_workflow_calls.py \
+            --ignore=../../tests/contract/test_a2a_sdk_inbound.py \
+            --ignore=../../tests/contract/test_a2a_initial_delivery.py
       - name: Portable Profile CTK subset
         shell: bash
         run: |
@@ -505,7 +517,11 @@ jobs:
             ../../tests/contract/test_workflow_version_recovery.py \
             ../../tests/contract/test_workflow_version_process_recovery.py \
             ../../tests/contract/test_mcp_sdk_calls.py \
-            ../../tests/contract/test_mcp_stdio_integration.py -vv --durations=20
+            ../../tests/contract/test_mcp_stdio_integration.py \
+            ../../tests/contract/test_a2a_workflow_calls.py \
+            ../../tests/contract/test_a2a_sdk_inbound.py \
+            ../../tests/contract/test_a2a_initial_delivery.py \
+            ../../tests/core/test_native_sqlite_inspection.py -vv --durations=20
 
   containers:
     # Principal lifecycle/process fixtures run in the independent job above.

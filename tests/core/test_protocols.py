@@ -176,7 +176,7 @@ async def test_protocol_baselines_reject_legacy_versions_and_streaming_aliases()
             "a2a",
             {
                 "server": "https://agent.test/a2a",
-                "method": "SendStreamingMessage",
+                "method": "CreateTaskPushNotificationConfig",
                 "message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]},
             },
         )
@@ -252,6 +252,22 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
                     },
                 },
             )
+        if request.url.path == "/a2a":
+            body = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {
+                        "message": {
+                            "messageId": "peer-response",
+                            "role": "ROLE_AGENT",
+                            "parts": [{"data": {"path": request.url.path}}],
+                        }
+                    },
+                },
+            )
         return httpx.Response(200, json={"path": request.url.path})
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
@@ -273,7 +289,13 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
             "method": "SendMessage",
             "message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]},
         },
-    ) == {"path": "/a2a"}
+    ) == {
+        "message": {
+            "messageId": "peer-response",
+            "role": "ROLE_AGENT",
+            "parts": [{"data": {"path": "/a2a"}}],
+        }
+    }
     assert await services.call(
         "openapi",
         {

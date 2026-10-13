@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any, Literal
@@ -44,7 +43,7 @@ from .recovery_diagnostics import recovery_diagnostics
 from .sandbox import compile_sandbox_workflow, resolve_and_compile_sandbox_workflow
 from .schedule_profile import parse_schedule
 from .scheduling import WorkflowScheduler
-from .security import static_principal
+from .security import BearerSecurityProfile, Principal, authorize, static_principal
 from .security_headers import SecurityHeadersMiddleware
 from .services import RuntimeServices
 from .streaming import StreamLimits, lifecycle_sse_stream, streaming_capabilities
@@ -292,6 +291,10 @@ def create_app(
     services: RuntimeServices | None = None,
 ) -> FastAPI:
     runtime_config = config or RuntimeConfig()
+    if runtime_config.a2a.enabled:
+        from ._a2a_types import verify_sdk
+
+        verify_sdk()
     runtime_services = services or RuntimeServices(runtime_config)
     runtime_engine = engine or PortableWorkflowEngine()
     scheduler = WorkflowScheduler(
@@ -350,6 +353,8 @@ def create_app(
                     runtime_config.knowledge.reload.interval_seconds
                 )
             await scheduler.start()
+            if runtime_config.a2a.enabled:
+                await runtime_engine.start_initial_deliveries(_a2a_delivery_authorized)
             app.state.ready = True
             yield
         finally:
@@ -762,11 +767,48 @@ def create_app(
             return compile_sandbox_workflow(sandbox=runtime_config.sandbox)
         return fallback
 
+    def _a2a_delivery_authorized(
+        handle: ExecutionHandle, skill_id: str | None, original: WorkflowPlan
+    ) -> bool:
+        # Current exposure/identity policy authorizes continuation separately
+        # from the archived executable version selected by the dispatcher.
+        if not runtime_config.a2a.enabled:
+            return False
+        current = _a2a_plan_for_skill(skill_id)
+        if current is None or (current.namespace, current.name) != (
+            original.namespace,
+            original.name,
+        ):
+            return False
+        if runtime_config.a2a.skills and skill_id not in {
+            skill.id for skill in runtime_config.a2a.skills
+        }:
+            return False
+        principal = Principal(identity="anonymous")
+        if runtime_config.a2a.security_profile:
+            profile = runtime_config.security.profile(runtime_config.a2a.security_profile)
+            if not isinstance(profile, BearerSecurityProfile):
+                return False
+            principal = static_principal(profile)
+        if handle.owner_principal != principal.identity:
+            return False
+        policy = runtime_config.a2a.authorization
+        return (
+            policy is None
+            or not policy.rules
+            or authorize(
+                principal,
+                policy,
+                action="message.send",
+                resource=f"skill:{skill_id}" if skill_id is not None else "skill:workflow",
+            )
+        )
+
     def _a2a_task_snapshot(invocation_id: str) -> dict[str, Any] | None:
         handle = runtime_services.invocations.get(invocation_id)
         if handle is None:
             return None
-        return project_a2a_task(handle)
+        return project_a2a_task(handle, services=runtime_services)
 
     def _a2a_outcome(
         invocation_id: str, result: InvocationResult, return_immediately: bool
@@ -775,16 +817,25 @@ def create_app(
             task = _a2a_task_snapshot(invocation_id)
             if task is not None:
                 return A2ASendOutcome(task=task)
-        if result.status == "faulted":
-            error = result.error or {}
-            return A2ASendOutcome(error_code=str(error.get("code", "workflow_execution_error")))
-        if result.status == "cancelled":
-            return A2ASendOutcome(error_code="invocation_cancelled")
-        if result.status == "waiting":
+        if result.status in {"waiting", "faulted", "cancelled"}:
             task = _a2a_task_snapshot(invocation_id)
             if task is not None:
                 return A2ASendOutcome(task=task)
-        return A2ASendOutcome(reply_text=extract_output_text(result.output))
+        text_container = (
+            isinstance(result.output, dict)
+            and len(result.output) == 1
+            and next(iter(result.output)) in {"text", "response", "message", "output"}
+            and isinstance(next(iter(result.output.values())), str)
+        )
+        if not isinstance(result.output, str) and not text_container:
+            task = _a2a_task_snapshot(invocation_id)
+            if task is not None:
+                return A2ASendOutcome(task=task)
+        handle = runtime_services.invocations.get(invocation_id)
+        return A2ASendOutcome(
+            reply_text=extract_output_text(result.output),
+            context_id=handle.session_id if handle is not None else None,
+        )
 
     async def _a2a_start_task(
         text: str,
@@ -805,23 +856,22 @@ def create_app(
             workflow_fingerprint=plan.fingerprint,
             owner_principal=owner_principal,
         )
-        invocation = runtime_engine.invoke(plan, handle, {"question": text})
         if return_immediately:
-            _a2a_spawn(invocation)
+            try:
+                await runtime_engine.prepare_initial_delivery(
+                    plan, handle, {"question": text}, skill_id=skill_id
+                )
+            except OwaError as error:
+                return A2ASendOutcome(error_code=error.code)
             task = _a2a_task_snapshot(handle.invocation_id)
             if task is not None:
                 return A2ASendOutcome(task=task)
             return A2ASendOutcome(error_code="task_not_found")
-        return _a2a_outcome(handle.invocation_id, await invocation, return_immediately)
-
-    def _a2a_spawn(invocation: Any) -> None:
-        background: set[asyncio.Task[Any]] | None = getattr(app.state, "a2a_background_tasks", None)
-        if background is None:
-            background = set()
-            app.state.a2a_background_tasks = background
-        task = asyncio.ensure_future(invocation)
-        background.add(task)
-        task.add_done_callback(background.discard)
+        return _a2a_outcome(
+            handle.invocation_id,
+            await runtime_engine.invoke(plan, handle, {"question": text}),
+            return_immediately,
+        )
 
     async def _a2a_resolve_resume_target(task_id: str) -> ResumeTarget | None:
         handle = runtime_services.invocations.get(task_id)
@@ -864,15 +914,10 @@ def create_app(
             plan = runtime_services.resolve_original_definition(handle)
         except OwaError:
             return A2ASendOutcome(error_code="task_not_resumeable")
-        resumption = runtime_engine.resume(handle, {"question": text}, plan)
         if return_immediately:
-            _a2a_spawn(resumption)
-            task = _a2a_task_snapshot(task_id)
-            if task is not None:
-                return A2ASendOutcome(task=task)
-            return A2ASendOutcome(error_code="task_not_found")
+            return A2ASendOutcome(error_code="unsupported_async_resume")
         try:
-            result = await resumption
+            result = await runtime_engine.resume(handle, {"question": text}, plan)
         except OwaError as exc:
             payload = exc.as_dict()
             code = payload.get("code") if isinstance(payload, dict) else None

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import httpx
@@ -52,6 +53,41 @@ async def test_portable_fixture_has_same_result_on_each_engine(
     if fixture_name == "protocol-calls":
 
         async def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/mcp":
+                body = json.loads(request.content)
+                assert body["jsonrpc"] == "2.0" and body["method"] == "tools/call"
+                assert body["params"]["name"] == "lookup"
+                assert body["params"]["arguments"] == {"value": "mcp"}
+                return httpx.Response(
+                    200,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": body["id"],
+                        "result": {
+                            "resultType": "complete",
+                            "content": [{"type": "text", "text": "lookup-result"}],
+                        },
+                    },
+                )
+            if request.url.path == "/a2a":
+                body = json.loads(request.content)
+                assert body["jsonrpc"] == "2.0" and body["method"] == "SendMessage"
+                assert body["params"]["message"]["role"] == "ROLE_USER"
+                assert body["params"]["message"]["parts"] == [{"text": "a2a"}]
+                return httpx.Response(
+                    200,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": body["id"],
+                        "result": {
+                            "message": {
+                                "messageId": "fixture-response",
+                                "role": "ROLE_AGENT",
+                                "parts": [{"text": "a2a"}],
+                            }
+                        },
+                    },
+                )
             return httpx.Response(200, json={"path": request.url.path})
 
         services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
