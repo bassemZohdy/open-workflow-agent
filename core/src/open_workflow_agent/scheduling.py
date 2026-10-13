@@ -117,14 +117,16 @@ class WorkflowScheduler:
             if definition_snapshots.get(handle.invocation_id) != handle._persisted_payload:
                 return False
             archive = self.services.recovery_definitions
-            if handle.status not in {"completed", "faulted", "cancelled"} and archive.has_binding(
-                handle
-            ):
-                try:
+            try:
+                if handle.status not in {
+                    "completed",
+                    "faulted",
+                    "cancelled",
+                } and archive.has_binding(handle):
                     archive.resolve(handle)
-                except Exception as error:
-                    self._errors["definition:" + handle.invocation_id] = error
-                    return False
+            except Exception as error:
+                self._errors["definition:" + handle.invocation_id] = error
+                return False
             return True
 
         triggers = self._trigger_store()

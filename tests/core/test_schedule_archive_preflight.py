@@ -112,3 +112,91 @@ async def test_damaged_archived_schedule_is_not_claimed_and_later_ready_work_run
     finally:
         await engine.shutdown()
         services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_archive_binding_removed_between_preflight_and_claim_keeps_delivery_alive(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, backend: str
+) -> None:
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+
+    async def explicit(_dispatcher: TimerDispatcher) -> None:
+        return None
+
+    monkeypatch.setattr(TimerDispatcher, "start", explicit)
+    services = RuntimeServices(
+        RuntimeConfig.model_validate({"persistence": {"datasource": datasource}}),
+        model=FakeModel(),
+        database_root=None if datasource else tmp_path,
+    )
+    engine = PortableWorkflowEngine()
+    await engine.initialize(services)
+    handles = []
+    records = []
+    scheduler = WorkflowScheduler(services, engine, clock=lambda: 1002.0, batch_size=1)
+    try:
+        for index in range(2):
+            plan = _plan()
+            admitted_at = 1001.0 + index * 0.1
+            record = services.schedules.create(plan, {"original": True}, now=admitted_at - 1)
+            claimed = services.schedules.claim_due(
+                now=admitted_at, schedule_id=record.schedule_id, lease_seconds=0.5
+            )
+            assert claimed is not None
+            handle = services.schedules.bind_invocation(claimed, engine="base", now=admitted_at)
+            lease = services.execution_ownership.acquire(handle, seconds=60)
+            try:
+                services.recovery_definitions.admit(
+                    plan, handle, {"original": True}, execution_lease=lease
+                )
+            finally:
+                services.execution_ownership.release(lease)
+            records.append(record)
+            handles.append(handle)
+        bad, good = handles
+        before = services.schedules.connection.execute(
+            "SELECT * FROM schedule_slots WHERE schedule_id=?", (records[0].schedule_id,)
+        ).fetchall()
+        parent_before = services.invocations.get(bad.invocation_id)._persisted_payload
+        original_preflight = scheduler._definition_preflight
+        raced = False
+
+        async def remove_after_preflight(now: float) -> dict[str, str | None] | None:
+            nonlocal raced
+            snapshots = await original_preflight(now)
+            if not raced:
+                assert snapshots is not None and bad.invocation_id in snapshots
+                services.recovery_definitions.connection.execute(
+                    "DELETE FROM recovery_invocation_definitions WHERE invocation_id=?",
+                    (bad.invocation_id,),
+                )
+                services.recovery_definitions.connection.commit()
+                raced = True
+            return snapshots
+
+        monkeypatch.setattr(scheduler, "_definition_preflight", remove_after_preflight)
+        assert await scheduler.tick(now=1002.0) == 1
+        if scheduler._workers:
+            await asyncio.wait_for(asyncio.gather(*tuple(scheduler._workers.values())), timeout=10)
+        assert raced and "definition:" + bad.invocation_id in scheduler._errors
+        assert (
+            services.schedules.connection.execute(
+                "SELECT * FROM schedule_slots WHERE schedule_id=?", (records[0].schedule_id,)
+            ).fetchall()
+            == before
+        )
+        assert services.invocations.get(bad.invocation_id)._persisted_payload == parent_before
+        completed = services.invocations.get(good.invocation_id)
+        assert completed is not None and completed.status == "completed"
+        assert completed.output == {"original": True}
+        # Another poll remains usable after the rejected occurrence; the earlier
+        # uncaught has_binding error would have terminated the poll loop.
+        assert await scheduler.tick(now=1002.0) == 0
+        assert not services.model.calls
+    finally:
+        await scheduler.stop()
+        await engine.shutdown()
+        services.close()
