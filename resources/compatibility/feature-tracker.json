@@ -41286,9 +41286,10 @@
           "S2-02",
           "S2-08",
           "S4-04",
-          "S4-03"
+          "S4-03",
+          "S2-09"
         ],
-        "repository_status": "S2-02 portable competitive decision/recovery foundation verified; advanced native/general effects/full criteria remain open",
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
         "evidence_of_completion": [
           {
             "task_id": "S2-01",
@@ -41336,6 +41337,21 @@
               "Security": 38153550667,
               "Docs": 38153550675
             }
+          },
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
           }
         ],
         "current_implementation_audit": {
@@ -41363,9 +41379,10 @@
           "S2-02",
           "S2-08",
           "S4-04",
-          "S4-03"
+          "S4-03",
+          "S2-09"
         ],
-        "repository_status": "S2-02 portable competitive decision/recovery foundation verified; advanced native/general effects/full criteria remain open",
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
         "evidence_of_completion": [
           {
             "task_id": "S2-01",
@@ -41413,6 +41430,21 @@
               "Security": 38153550667,
               "Docs": 38153550675
             }
+          },
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
           }
         ],
         "current_implementation_audit": {
@@ -41443,9 +41475,10 @@
           "S2-02",
           "S2-08",
           "S4-04",
-          "S4-03"
+          "S4-03",
+          "S2-09"
         ],
-        "repository_status": "S2-02 portable competitive decision/recovery foundation verified; advanced native/general effects/full criteria remain open",
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
         "evidence_of_completion": [
           {
             "task_id": "S1-04",
@@ -41510,6 +41543,21 @@
               "Security": 38153550667,
               "Docs": 38153550675
             }
+          },
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
           }
         ],
         "current_implementation_audit": {
@@ -43216,12 +43264,28 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A061",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -43310,12 +43374,28 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A064",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -43340,12 +43420,28 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A065",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -43760,12 +43856,28 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A079",
-          "python_outcome": "unimplemented",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -43790,12 +43902,28 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A080",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -43820,8 +43948,24 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A081",
@@ -43880,8 +44024,24 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A083",
@@ -43910,8 +44070,24 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A084",
@@ -43940,8 +44116,24 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A085",
@@ -53317,9 +53509,10 @@
           "S2-02",
           "S2-08",
           "S4-04",
-          "S4-03"
+          "S4-03",
+          "S2-09"
         ],
-        "repository_status": "S2-02 portable competitive decision/recovery foundation verified; advanced native/general effects/full criteria remain open",
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
         "evidence_of_completion": [
           {
             "task_id": "S2-02",
@@ -53342,6 +53535,21 @@
               "Security": 38153550667,
               "Docs": 38153550675
             }
+          },
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
           }
         ],
         "current_implementation_audit": {
@@ -64428,12 +64636,28 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-08 finite Python lifecycle profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-08",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "tests": [
+              "tests/core/test_invocation_cancellation_controls.py",
+              "tests/core/test_external_recovery.py",
+              "tests/contract/test_external_operation_keys.py",
+              "tests/contract/test_external_recovery_process.py",
+              "tests/contract/test_external_recovery_native_corruption.py",
+              "tests/contract/test_host_drain_child_controls.py",
+              "tests/contract/test_explicit_compensation.py"
+            ],
+            "validation": "Exact-source LC01-LC08: all six hosted workflows, 184 mandatory actual native LC nodes, four images, seven zero-advisory audits, two native benchmarks and canonical CTK/merge provenance pass",
+            "commit": "96ce610924da4554c84f3c5a687743a48b8e9977"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B076",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -72781,8 +73005,2338 @@
         "module": "M05",
         "description": "Complete cancellation, termination, compensation and idempotent external-action recovery.",
         "effort": "L",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "status": "Finite LC01-LC08 profile and exact-source acceptance verified",
+          "finite_acceptance": "docs/s2-08-lifecycle-acceptance.md",
+          "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+          "remaining": "Compatible version migration and broader recovery diagnostics remain S2-09; complete proposed criteria and independent JavaScript remain Stage 4. No automatic compensation stack, general saga coordinator, arbitrary receiver redrive or universal exactly-once guarantee is claimed. Optional Framework remains a bounded common profile without principal-native durability or production image qualification.",
+          "tests": [
+            "tests/core/test_invocation_cancellation_controls.py",
+            "tests/core/test_external_recovery.py",
+            "tests/contract/test_external_operation_keys.py",
+            "tests/contract/test_external_recovery_process.py",
+            "tests/contract/test_external_recovery_native_corruption.py",
+            "tests/contract/test_host_drain_child_controls.py",
+            "tests/contract/test_explicit_compensation.py"
+          ],
+          "final_qualification": {
+            "artifact_commit": "96ce610924da4554c84f3c5a687743a48b8e9977",
+            "record": "docs/s2-08-lifecycle-acceptance.md",
+            "scope": "Finite LC01-LC08 Python lifecycle profile: atomic authorized cancellation/revocation, host drain and lost-owner separation, verified child scope controls, logical operation keys, opt-in trusted HTTP outcome lookup without business replay, explicit inverse compensation and actual native process-stop/corruption acceptance.",
+            "remaining": "Compatible version migration and broader recovery diagnostics remain S2-09; complete proposed criteria and independent JavaScript remain Stage 4. No automatic compensation stack, general saga coordinator, arbitrary receiver redrive or universal exactly-once guarantee is claimed. Optional Framework remains a bounded common profile without principal-native durability or production image qualification.",
+            "finite_requirements": [
+              "LC01",
+              "LC02",
+              "LC03",
+              "LC04",
+              "LC05",
+              "LC06",
+              "LC07",
+              "LC08"
+            ],
+            "hosted_root": {
+              "passed": 2419,
+              "skipped": 1419,
+              "expected_assertion_failures": 2,
+              "coverage_percent": 90.52
+            },
+            "mandatory_actual_native_lifecycle": {
+              "per_principal_per_backend": 46,
+              "total": 184,
+              "principal_engines": [
+                "adk",
+                "langgraph"
+              ],
+              "backends": [
+                "sqlite",
+                "postgresql"
+              ],
+              "lifecycle_job_passed": 65,
+              "unrelated_passing_checks_per_job": 19,
+              "postgresql_declared_skips": 27,
+              "sqlite_foreign_backend_profile_skips": 119,
+              "inspection": "Actual verbose node IDs and canonical Git fixture hashes; no fallback node qualifies native acceptance"
+            },
+            "publication": {
+              "source": "96ce610924da4554c84f3c5a687743a48b8e9977",
+              "runs": {
+                "External": {
+                  "id": 38348182658,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182658",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "External sandbox contracts",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Format and lint external sandbox slice",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Type check common runtime",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run external sandbox contract tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Docker external sandbox adk acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Reclaim hosted-runner disk",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run restricted Docker controller acceptance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Capture Docker diagnostics",
+                          "conclusion": "skipped"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Kubernetes sandbox controller image",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build restricted controller image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify controller image defaults",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Docker external sandbox langgraph acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Reclaim hosted-runner disk",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run restricted Docker controller acceptance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Capture Docker diagnostics",
+                          "conclusion": "skipped"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "Docs": {
+                  "id": 38348182661,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182661",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "Markdown links",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Validate relative Markdown links",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "AF": {
+                  "id": 38348182669,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182669",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "native",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Check committed engine lock",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run native, shared contract, and CTK suites",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build adapter wheel",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "Security": {
+                  "id": 38348182676,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182676",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "Audit agent-framework dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit standalone-core dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit adk dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit sandbox-controller dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit kubernetes-sandbox-controller dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit langgraph dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit root dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "PR_CI": {
+                  "id": 38348182681,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182681",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "Mutation testing",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync mutation environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stage source-root layout for mutmut",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run focused mutation suite",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Report mutation results",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "adk native and contract tests",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Check engine lock",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Native and shared contract tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Portable Profile CTK subset",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Capture CTK provenance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload CTK results and provenance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Engine-specific benchmark probes",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload engine benchmark evidence",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Windows jq expression and admission tests",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked expression environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify native jq cleanup, data semantics and shared admission",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Docker adk acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build independent runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify image metadata",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Enforce image-size gate",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "External catalog resolver acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Internal sandbox execution acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "One-container embedded defaults without configuration or credentials",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container startup, health, capabilities, invocation, and knowledge",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container stop, restart, and resume acceptance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload container logs",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Validate deployment manifests",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install kubeconform",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Helm",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Lint Helm chart",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Validate deploy manifests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Validate rendered Helm release",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "langgraph native and contract tests",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Check engine lock",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Native and shared contract tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Portable Profile CTK subset",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Capture CTK provenance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload CTK results and provenance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Engine-specific benchmark probes",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload engine benchmark evidence",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "langgraph native lifecycle recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Native lifecycle contract tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Docker langgraph acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build independent runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify image metadata",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Enforce image-size gate",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "External catalog resolver acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Internal sandbox execution acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "One-container embedded defaults without configuration or credentials",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container startup, health, capabilities, invocation, and knowledge",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container stop, restart, and resume acceptance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload container logs",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Windows native ownership and effect recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked expression environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify Windows native ownership and effect recovery",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Windows native lifecycle and receiver recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked expression environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify Windows native lifecycle and receiver recovery",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "adk native lifecycle recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Native lifecycle contract tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Windows native timers events and scheduling",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked expression environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify Windows native timers events and scheduling",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Windows native task checkpoints and routing",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked expression environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify Windows native task checkpoints and routing",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Root quality gates",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked root environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Check root lock",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Validate embedded and optional PostgreSQL Compose profiles",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Format",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Lint",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Check shell acceptance scripts",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Type check",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build root and standalone core artifacts",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify release metadata and lock inputs",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Validate wheel contents",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "PG": {
+                  "id": 38348182693,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182693",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "PostgreSQL common-store integration",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run isolated PostgreSQL store tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL LangGraph lifecycle recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify native PostgreSQL lifecycle and trusted receiver recovery",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL optional Agent Framework native recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL ADK native recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify competitive fork and invocation recovery on native ADK with PostgreSQL",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL ADK lifecycle recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify native PostgreSQL lifecycle and trusted receiver recovery",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL LangGraph native recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify native LangGraph task checkpoints and interrupted restart",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify competitive fork and invocation recovery on native LangGraph with PostgreSQL",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL persistence adk acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build PostgreSQL-enabled runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Start, restart, and invoke against PostgreSQL",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload PostgreSQL container logs",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL persistence langgraph acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build PostgreSQL-enabled runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Start, restart, and invoke against PostgreSQL",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload PostgreSQL container logs",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "security": [
+                {
+                  "path": "tmp\\ci-96ce610-security-artifacts\\dependency-audit-adk\\audit.json",
+                  "dependencies": 111,
+                  "advisories": 0,
+                  "sha256": "c112844bd3236cf15fab6ce962b3f19398d9052421be9f39088b5e07c316c8e5"
+                },
+                {
+                  "path": "tmp\\ci-96ce610-security-artifacts\\dependency-audit-agent-framework\\audit.json",
+                  "dependencies": 76,
+                  "advisories": 0,
+                  "sha256": "69f5d179ec1d94f6a67e8c11783ff07532a813caf06c00d498d9d2d87a4b1b4c"
+                },
+                {
+                  "path": "tmp\\ci-96ce610-security-artifacts\\dependency-audit-kubernetes-sandbox-controller\\audit.json",
+                  "dependencies": 16,
+                  "advisories": 0,
+                  "sha256": "90710e5e2de8f09a1f43a635b8681ce335e7eb6ed64735f9d1cbe7f92d3d2891"
+                },
+                {
+                  "path": "tmp\\ci-96ce610-security-artifacts\\dependency-audit-langgraph\\audit.json",
+                  "dependencies": 98,
+                  "advisories": 0,
+                  "sha256": "8263e889f0688fecbb008338b05f91faeeeaaaaed2f0cd749598df82d2f011aa"
+                },
+                {
+                  "path": "tmp\\ci-96ce610-security-artifacts\\dependency-audit-root\\audit.json",
+                  "dependencies": 73,
+                  "advisories": 0,
+                  "sha256": "d6b09496e4ffafceec604758da2c9c0b1528e38526635c798f48a95bc27923b1"
+                },
+                {
+                  "path": "tmp\\ci-96ce610-security-artifacts\\dependency-audit-sandbox-controller\\audit.json",
+                  "dependencies": 13,
+                  "advisories": 0,
+                  "sha256": "4e3fd2d677e592a52f4d0057efce51d458417f1fc42f12137582433ce951b2c0"
+                },
+                {
+                  "path": "tmp\\ci-96ce610-security-artifacts\\dependency-audit-standalone-core\\audit.json",
+                  "dependencies": 72,
+                  "advisories": 0,
+                  "sha256": "0f46cb9b6c7a075ed73846363585211ae29b17d73f63b1d723521b47d7d40ac0"
+                }
+              ],
+              "benchmarks": [
+                {
+                  "path": "tmp\\ci-96ce610-pr-artifacts\\engine-benchmark-adk\\engine-benchmark-adk.json",
+                  "engine": "adk",
+                  "checkpoint_delta": 73728,
+                  "sha256": "8fc70a1d395c1a0f12415a6687340fe245ec649604a400ee9b368dcd73ae9109"
+                },
+                {
+                  "path": "tmp\\ci-96ce610-pr-artifacts\\engine-benchmark-langgraph\\engine-benchmark-langgraph.json",
+                  "engine": "langgraph",
+                  "checkpoint_delta": 204800,
+                  "sha256": "fcb3e4ee45606717b05da978824a68b25e41d3693b0c6fa8b7a14f9b9fdcb936"
+                }
+              ],
+              "ctk": [
+                {
+                  "engine": "adk",
+                  "repository_commit": "95fb2aeb61ada96143349e89c2a151b5aa843f68",
+                  "scenario_sha256": {
+                    "branch.feature": "7a56520784fb5790715a21d92566b973b157a88eafc6cd2184f4d2a4e7d1893c",
+                    "call.feature": "bfaca8d94300d402cb1f7487dfb0e983d543b33064b186a050be5cecd4f31aa2",
+                    "conditional.feature": "a18f403a4dbba48d9bc0c20fb7a54a50117ef51b8ae5b4939053a221120e35c6",
+                    "data-flow.feature": "c9921abc02005a07ccf7867926a22ee12a17ac9a9caf42795fb90d38587ff3fa",
+                    "do.feature": "1204efe4d63494ee50c7904847d225b3caba79e5fd9c45d808bcf2081d13cd33",
+                    "emit.feature": "4ada0664bef77bbea901d488db3671a5e9bb2c884e146f22c0e9008ee85c52d9",
+                    "flow.feature": "912290c6d937bb43e8c1e411369d65e573b4be9d0edbebb71ac901eac60bec42",
+                    "for-output.feature": "dc5375618c5e636b2fcd5971bf7cb324c30f6787db2b12b7d478b7de5392b6ee",
+                    "for.feature": "3d48577af0f109903fe01c2ceca0168ab7c3bef58219f6223c67355baa8ccef6",
+                    "fork.feature": "1a51284ee148f75081ee134943414982490d969294ca41fb45cf59ebfd6c5174",
+                    "input.feature": "90972071789f8a571c3dd4ffae07bf862136ccebfb086843d6540c7df0f8c9d9",
+                    "listen-reads.feature": "17d358be765d6edd62c79a44aa243a22c8dcc16f9c28e0cd2b0427790063148c",
+                    "listen.feature": "7e54cf3b0899b45dcf43ed5d2cd42c6b9ac7857a84ea67683f8f4429bd9ee07a",
+                    "nested.feature": "07add6b19f5a288ba363d4f1ad976514b94e77cf791700b87f1e0331c637989b",
+                    "policy.feature": "91128531653b51c07c8049863f639ed368f5e40e3b88420e64a2037f923d4cc5",
+                    "protocol.feature": "1c66e11b051ff1cb4d3caddb559b1e88522bc9ea114960065631e11142687f20",
+                    "raise.feature": "21dcd985f394c3537981d7b12f1cecfaffcc98e94461b9bc6e827edb987ae7de",
+                    "retry.feature": "1f915fc081794a81f091f69dc2c2dde4d0ff29f687b9e25b6f4059053c270710",
+                    "run.feature": "4118893fa611dfd39a8bf36a7cd958c069307eeabc1b1bf67b981ffb195b2f97",
+                    "sequence.feature": "baecba60e52b6fe2577becc7db5b24d32cfb8d582b0b6a6ce490f4db0c74b71d",
+                    "set.feature": "a4c2e77bee05d8244eab9b0ce1cc430e6d59295a7a9863667ced6ce67a2a5151",
+                    "switch.feature": "4cf127ce1210e5bc66140de94a88091edfd4d9d1fa300869c3e8e406d84e5634",
+                    "task-schemas.feature": "7bccdec46efdcfaac30600fe1a09a9b09b0bea9d24a2137c684aeb3ce397d56c",
+                    "transform.feature": "3d65eeb4aa1f527b9b9d5aac89a8ee9bcb5e17035a7e4d3d32fb2d943ba537d6",
+                    "try.feature": "ab591bd9bb5fb1410d6fca1c89eabf9df4fd81725ec8183d6c288237f8b7edb5",
+                    "wait.feature": "c47d25d4a942e1ccc7771dfb2337db47dc28c3b21eaca0285a5911a97dacfd45"
+                  },
+                  "artifact_sha256": "d61f04b66682a6e713315801aa1c253dc23d7402bf149f1ccd22edb826e48c09"
+                },
+                {
+                  "engine": "langgraph",
+                  "repository_commit": "95fb2aeb61ada96143349e89c2a151b5aa843f68",
+                  "scenario_sha256": {
+                    "branch.feature": "7a56520784fb5790715a21d92566b973b157a88eafc6cd2184f4d2a4e7d1893c",
+                    "call.feature": "bfaca8d94300d402cb1f7487dfb0e983d543b33064b186a050be5cecd4f31aa2",
+                    "conditional.feature": "a18f403a4dbba48d9bc0c20fb7a54a50117ef51b8ae5b4939053a221120e35c6",
+                    "data-flow.feature": "c9921abc02005a07ccf7867926a22ee12a17ac9a9caf42795fb90d38587ff3fa",
+                    "do.feature": "1204efe4d63494ee50c7904847d225b3caba79e5fd9c45d808bcf2081d13cd33",
+                    "emit.feature": "4ada0664bef77bbea901d488db3671a5e9bb2c884e146f22c0e9008ee85c52d9",
+                    "flow.feature": "912290c6d937bb43e8c1e411369d65e573b4be9d0edbebb71ac901eac60bec42",
+                    "for-output.feature": "dc5375618c5e636b2fcd5971bf7cb324c30f6787db2b12b7d478b7de5392b6ee",
+                    "for.feature": "3d48577af0f109903fe01c2ceca0168ab7c3bef58219f6223c67355baa8ccef6",
+                    "fork.feature": "1a51284ee148f75081ee134943414982490d969294ca41fb45cf59ebfd6c5174",
+                    "input.feature": "90972071789f8a571c3dd4ffae07bf862136ccebfb086843d6540c7df0f8c9d9",
+                    "listen-reads.feature": "17d358be765d6edd62c79a44aa243a22c8dcc16f9c28e0cd2b0427790063148c",
+                    "listen.feature": "7e54cf3b0899b45dcf43ed5d2cd42c6b9ac7857a84ea67683f8f4429bd9ee07a",
+                    "nested.feature": "07add6b19f5a288ba363d4f1ad976514b94e77cf791700b87f1e0331c637989b",
+                    "policy.feature": "91128531653b51c07c8049863f639ed368f5e40e3b88420e64a2037f923d4cc5",
+                    "protocol.feature": "1c66e11b051ff1cb4d3caddb559b1e88522bc9ea114960065631e11142687f20",
+                    "raise.feature": "21dcd985f394c3537981d7b12f1cecfaffcc98e94461b9bc6e827edb987ae7de",
+                    "retry.feature": "1f915fc081794a81f091f69dc2c2dde4d0ff29f687b9e25b6f4059053c270710",
+                    "run.feature": "4118893fa611dfd39a8bf36a7cd958c069307eeabc1b1bf67b981ffb195b2f97",
+                    "sequence.feature": "baecba60e52b6fe2577becc7db5b24d32cfb8d582b0b6a6ce490f4db0c74b71d",
+                    "set.feature": "a4c2e77bee05d8244eab9b0ce1cc430e6d59295a7a9863667ced6ce67a2a5151",
+                    "switch.feature": "4cf127ce1210e5bc66140de94a88091edfd4d9d1fa300869c3e8e406d84e5634",
+                    "task-schemas.feature": "7bccdec46efdcfaac30600fe1a09a9b09b0bea9d24a2137c684aeb3ce397d56c",
+                    "transform.feature": "3d65eeb4aa1f527b9b9d5aac89a8ee9bcb5e17035a7e4d3d32fb2d943ba537d6",
+                    "try.feature": "ab591bd9bb5fb1410d6fca1c89eabf9df4fd81725ec8183d6c288237f8b7edb5",
+                    "wait.feature": "c47d25d4a942e1ccc7771dfb2337db47dc28c3b21eaca0285a5911a97dacfd45"
+                  },
+                  "artifact_sha256": "d61f04b66682a6e713315801aa1c253dc23d7402bf149f1ccd22edb826e48c09"
+                }
+              ],
+              "actual_pr_merge": {
+                "source": "95fb2aeb61ada96143349e89c2a151b5aa843f68",
+                "parents": [
+                  "975cc5714fcaf6125f2aaf6757c2286eaa4e53a2",
+                  "96ce610924da4554c84f3c5a687743a48b8e9977"
+                ]
+              },
+              "actual_postgresql_nodes": {
+                "adk": {
+                  "test_durable_timers.py": 13,
+                  "test_durable_timer_forks.py": 2,
+                  "test_durable_timer_process_recovery.py": 5,
+                  "test_durable_scheduling.py": 8,
+                  "test_schedule_event_triggers.py": 14,
+                  "test_detached_children.py": 2,
+                  "test_recursive_children.py": 3,
+                  "test_synchronous_child_waits.py": 29,
+                  "test_child_lifecycle_acceptance.py": 4,
+                  "test_detached_child_process_recovery.py": 6
+                },
+                "langgraph": {
+                  "test_durable_timers.py": 13,
+                  "test_durable_timer_forks.py": 2,
+                  "test_durable_timer_process_recovery.py": 5,
+                  "test_durable_scheduling.py": 8,
+                  "test_schedule_event_triggers.py": 14,
+                  "test_detached_children.py": 2,
+                  "test_recursive_children.py": 3,
+                  "test_synchronous_child_waits.py": 29,
+                  "test_child_lifecycle_acceptance.py": 4,
+                  "test_detached_child_process_recovery.py": 6
+                }
+              },
+              "actual_native_lifecycle_nodes": {
+                "adk": {
+                  "sqlite": {
+                    "job": "adk native lifecycle recovery",
+                    "run": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182681",
+                    "passed": 46,
+                    "files": {
+                      "test_external_operation_keys.py": {
+                        "passed": 9,
+                        "nodes": [
+                          "tests/contract/test_external_operation_keys.py::test_explicit_business_key_remains_authoritative_across_distinct_visits[operationId-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_explicit_business_key_remains_authoritative_across_distinct_visits[operation_id-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[fork-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[jump-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[loop-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[reusable-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_recorded_legacy_key_and_request_are_preserved_after_native_reopen[completed-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_recorded_legacy_key_and_request_are_preserved_after_native_reopen[pending-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_retry_of_nested_loop_actions_reuses_each_business_key_and_commits_once[sqlite-adk-AdkWorkflowEngine]"
+                        ]
+                      },
+                      "test_external_recovery_process.py": {
+                        "passed": 12,
+                        "nodes": [
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-fault-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-null-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-value-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-fault-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-null-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-value-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-fault-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-null-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-value-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-fault-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-null-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-value-sqlite-adk-AdkWorkflowEngine]"
+                        ]
+                      },
+                      "test_external_recovery_native_corruption.py": {
+                        "passed": 11,
+                        "nodes": [
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-action-index-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-admission-index-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-changed-admission-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-missing-admission-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-action-index-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-admission-index-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-changed-admission-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-changed-proof-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-missing-admission-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-missing-proof-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-recovery-index-sqlite-adk-AdkWorkflowEngine]"
+                        ]
+                      },
+                      "test_host_drain_child_controls.py": {
+                        "passed": 10,
+                        "nodes": [
+                          "tests/contract/test_host_drain_child_controls.py::test_active_child_scope_control_preserves_committed_external_uncertainty[deadline-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_active_child_scope_control_preserves_committed_external_uncertainty[workflow_end-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[known-receipt-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[pending-action-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[translated-callback-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_lost_parent_owner_cannot_turn_interruption_into_child_cancellation[sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_native_nested_worker_shutdown_or_process_stop_preserves_child_recovery[drain-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_native_nested_worker_shutdown_or_process_stop_preserves_child_recovery[kill-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_other_worker_operator_cancel_remains_authoritative_for_active_nested_await[observed-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_other_worker_operator_cancel_remains_authoritative_for_active_nested_await[unobserved-sqlite-adk-AdkWorkflowEngine]"
+                        ]
+                      },
+                      "test_explicit_compensation.py": {
+                        "passed": 4,
+                        "nodes": [
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[fault-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[success-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[uncertain-sqlite-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[undeclared-sqlite-adk-AdkWorkflowEngine]"
+                        ]
+                      }
+                    }
+                  },
+                  "postgresql": {
+                    "job": "PostgreSQL ADK lifecycle recovery",
+                    "run": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182693",
+                    "passed": 46,
+                    "files": {
+                      "test_external_operation_keys.py": {
+                        "passed": 9,
+                        "nodes": [
+                          "tests/contract/test_external_operation_keys.py::test_explicit_business_key_remains_authoritative_across_distinct_visits[operationId-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_explicit_business_key_remains_authoritative_across_distinct_visits[operation_id-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[fork-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[jump-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[loop-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[reusable-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_recorded_legacy_key_and_request_are_preserved_after_native_reopen[completed-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_recorded_legacy_key_and_request_are_preserved_after_native_reopen[pending-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_retry_of_nested_loop_actions_reuses_each_business_key_and_commits_once[postgresql-adk-AdkWorkflowEngine]"
+                        ]
+                      },
+                      "test_external_recovery_process.py": {
+                        "passed": 12,
+                        "nodes": [
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-fault-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-null-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-value-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-fault-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-null-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-value-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-fault-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-null-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-value-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-fault-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-null-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-value-postgresql-adk-AdkWorkflowEngine]"
+                        ]
+                      },
+                      "test_external_recovery_native_corruption.py": {
+                        "passed": 11,
+                        "nodes": [
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-action-index-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-admission-index-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-changed-admission-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-missing-admission-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-action-index-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-admission-index-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-changed-admission-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-changed-proof-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-missing-admission-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-missing-proof-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-recovery-index-postgresql-adk-AdkWorkflowEngine]"
+                        ]
+                      },
+                      "test_host_drain_child_controls.py": {
+                        "passed": 10,
+                        "nodes": [
+                          "tests/contract/test_host_drain_child_controls.py::test_active_child_scope_control_preserves_committed_external_uncertainty[deadline-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_active_child_scope_control_preserves_committed_external_uncertainty[workflow_end-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[known-receipt-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[pending-action-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[translated-callback-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_lost_parent_owner_cannot_turn_interruption_into_child_cancellation[postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_native_nested_worker_shutdown_or_process_stop_preserves_child_recovery[drain-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_native_nested_worker_shutdown_or_process_stop_preserves_child_recovery[kill-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_other_worker_operator_cancel_remains_authoritative_for_active_nested_await[observed-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_other_worker_operator_cancel_remains_authoritative_for_active_nested_await[unobserved-postgresql-adk-AdkWorkflowEngine]"
+                        ]
+                      },
+                      "test_explicit_compensation.py": {
+                        "passed": 4,
+                        "nodes": [
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[fault-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[success-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[uncertain-postgresql-adk-AdkWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[undeclared-postgresql-adk-AdkWorkflowEngine]"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "langgraph": {
+                  "sqlite": {
+                    "job": "langgraph native lifecycle recovery",
+                    "run": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182681",
+                    "passed": 46,
+                    "files": {
+                      "test_external_operation_keys.py": {
+                        "passed": 9,
+                        "nodes": [
+                          "tests/contract/test_external_operation_keys.py::test_explicit_business_key_remains_authoritative_across_distinct_visits[operationId-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_explicit_business_key_remains_authoritative_across_distinct_visits[operation_id-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[fork-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[jump-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[loop-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[reusable-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_recorded_legacy_key_and_request_are_preserved_after_native_reopen[completed-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_recorded_legacy_key_and_request_are_preserved_after_native_reopen[pending-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_retry_of_nested_loop_actions_reuses_each_business_key_and_commits_once[sqlite-langgraph-LangGraphWorkflowEngine]"
+                        ]
+                      },
+                      "test_external_recovery_process.py": {
+                        "passed": 12,
+                        "nodes": [
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-fault-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-null-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-value-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-fault-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-null-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-value-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-fault-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-null-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-value-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-fault-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-null-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-value-sqlite-langgraph-LangGraphWorkflowEngine]"
+                        ]
+                      },
+                      "test_external_recovery_native_corruption.py": {
+                        "passed": 11,
+                        "nodes": [
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-action-index-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-admission-index-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-changed-admission-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-missing-admission-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-action-index-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-admission-index-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-changed-admission-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-changed-proof-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-missing-admission-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-missing-proof-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-recovery-index-sqlite-langgraph-LangGraphWorkflowEngine]"
+                        ]
+                      },
+                      "test_host_drain_child_controls.py": {
+                        "passed": 10,
+                        "nodes": [
+                          "tests/contract/test_host_drain_child_controls.py::test_active_child_scope_control_preserves_committed_external_uncertainty[deadline-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_active_child_scope_control_preserves_committed_external_uncertainty[workflow_end-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[known-receipt-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[pending-action-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[translated-callback-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_lost_parent_owner_cannot_turn_interruption_into_child_cancellation[sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_native_nested_worker_shutdown_or_process_stop_preserves_child_recovery[drain-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_native_nested_worker_shutdown_or_process_stop_preserves_child_recovery[kill-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_other_worker_operator_cancel_remains_authoritative_for_active_nested_await[observed-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_other_worker_operator_cancel_remains_authoritative_for_active_nested_await[unobserved-sqlite-langgraph-LangGraphWorkflowEngine]"
+                        ]
+                      },
+                      "test_explicit_compensation.py": {
+                        "passed": 4,
+                        "nodes": [
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[fault-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[success-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[uncertain-sqlite-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[undeclared-sqlite-langgraph-LangGraphWorkflowEngine]"
+                        ]
+                      }
+                    }
+                  },
+                  "postgresql": {
+                    "job": "PostgreSQL LangGraph lifecycle recovery",
+                    "run": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182693",
+                    "passed": 46,
+                    "files": {
+                      "test_external_operation_keys.py": {
+                        "passed": 9,
+                        "nodes": [
+                          "tests/contract/test_external_operation_keys.py::test_explicit_business_key_remains_authoritative_across_distinct_visits[operationId-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_explicit_business_key_remains_authoritative_across_distinct_visits[operation_id-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[fork-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[jump-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[loop-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_receiver_commits_distinct_logical_visits_with_distinct_default_keys[reusable-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_recorded_legacy_key_and_request_are_preserved_after_native_reopen[completed-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_recorded_legacy_key_and_request_are_preserved_after_native_reopen[pending-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_operation_keys.py::test_retry_of_nested_loop_actions_reuses_each_business_key_and_commits_once[postgresql-langgraph-LangGraphWorkflowEngine]"
+                        ]
+                      },
+                      "test_external_recovery_process.py": {
+                        "passed": 12,
+                        "nodes": [
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-fault-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-null-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[before-dispatch-value-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-fault-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-null-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[business-commit-value-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-fault-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-null-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[receipt-value-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-fault-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-null-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_process.py::test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_post_replay[terminal-value-postgresql-langgraph-LangGraphWorkflowEngine]"
+                        ]
+                      },
+                      "test_external_recovery_native_corruption.py": {
+                        "passed": 11,
+                        "nodes": [
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-action-index-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-admission-index-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-changed-admission-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[delivered-missing-admission-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-action-index-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-admission-index-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-changed-admission-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-changed-proof-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-missing-admission-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-missing-proof-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_external_recovery_native_corruption.py::test_actual_native_checkpoint_rejects_missing_or_changed_external_trust_before_wake[reconciled-recovery-index-postgresql-langgraph-LangGraphWorkflowEngine]"
+                        ]
+                      },
+                      "test_host_drain_child_controls.py": {
+                        "passed": 10,
+                        "nodes": [
+                          "tests/contract/test_host_drain_child_controls.py::test_active_child_scope_control_preserves_committed_external_uncertainty[deadline-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_active_child_scope_control_preserves_committed_external_uncertainty[workflow_end-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[known-receipt-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[pending-action-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_host_shutdown_does_not_forge_child_business_cancellation[translated-callback-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_lost_parent_owner_cannot_turn_interruption_into_child_cancellation[postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_native_nested_worker_shutdown_or_process_stop_preserves_child_recovery[drain-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_native_nested_worker_shutdown_or_process_stop_preserves_child_recovery[kill-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_other_worker_operator_cancel_remains_authoritative_for_active_nested_await[observed-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_host_drain_child_controls.py::test_other_worker_operator_cancel_remains_authoritative_for_active_nested_await[unobserved-postgresql-langgraph-LangGraphWorkflowEngine]"
+                        ]
+                      },
+                      "test_explicit_compensation.py": {
+                        "passed": 4,
+                        "nodes": [
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[fault-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[success-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[uncertain-postgresql-langgraph-LangGraphWorkflowEngine]",
+                          "tests/contract/test_explicit_compensation.py::test_explicit_inverse_retains_original_commit_and_its_own_durable_outcome[undeclared-postgresql-langgraph-LangGraphWorkflowEngine]"
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "lifecycle_source_sha256": {
+                "test_external_operation_keys.py": "3b3b817f0f81916489850041ad6afcec1a6e4655b309944fb884665efc79f159",
+                "test_external_recovery_process.py": "b4d0f6fadb1f2fb129e301857e39282e7b3291e41fd25dd59c76f86a53f321e1",
+                "test_external_recovery_native_corruption.py": "981855dadf4d1bc27c8d62c8b8b367a3002880e2ee8b01fdc3970e1bfb7c108c",
+                "test_host_drain_child_controls.py": "30db1d4ef36a4d6f5b7a2c4ad3077a66f07ad7466f7d4f4e10626fe074dc17c6",
+                "test_explicit_compensation.py": "ccb9d3a711ab4099a64df0cfb184287b1384d21166f073c7f63ea53884c55856"
+              },
+              "log_sha256": {
+                "pr": "331e3dd516086e384d5e7f40479f95899bfc5fca8baaf2ea492cba16d68adcfd",
+                "af": "d721b4d7a22da34321352d52ad92b3e6198ed3d9052a084d29ac04bcbd5e34f6",
+                "pg": "f592717221a195e0700880ceb6583713f2acc31994c640f30e866b727716b727",
+                "external": "d48dbb59906fe95d75851b78cf3f4c3bd615e3416eb738e59c522584bda2d89c"
+              },
+              "summaries": {
+                "pr": [
+                  "===== 1204 passed, 879 skipped, 2 xfailed, 3 warnings in 370.73s (0:06:10) =====",
+                  "======================== 96 passed, 1 warning in 9.15s =========================",
+                  "466 passed, 12 skipped in 202.30s (0:03:22)",
+                  "===== 1243 passed, 852 skipped, 2 xfailed, 1 warning in 412.84s (0:06:52) ======",
+                  "============================= 96 passed in 11.71s ==============================",
+                  "=========== 65 passed, 119 skipped, 18 warnings in 137.55s (0:02:17) ===========",
+                  "211 passed, 277 skipped in 262.47s (0:04:22)",
+                  "========== 65 passed, 119 skipped, 18 warnings in 236.75s (0:03:56) ===========",
+                  "=========== 65 passed, 119 skipped, 19 warnings in 154.76s (0:02:34) ===========",
+                  "337 passed, 379 skipped in 817.99s (0:13:37)",
+                  "247 passed, 7 skipped in 220.00s (0:03:39)",
+                  "==== 2419 passed, 1419 skipped, 2 xfailed, 46 warnings in 360.27s (0:06:00) ===="
+                ],
+                "af": [
+                  "==== 1698 passed, 1396 skipped, 2 xfailed, 2 warnings in 339.59s (0:05:39) ====="
+                ],
+                "pg": [
+                  "============ 547 passed, 1 skipped, 88 warnings in 85.71s (0:01:25) ============",
+                  "==== 65 passed, 27 skipped, 92 deselected, 18 warnings in 150.90s (0:02:30) ====",
+                  "========= 183 passed, 7 skipped, 1042 deselected in 103.30s (0:01:43) ==========",
+                  "========= 353 passed, 1103 deselected, 1 warning in 524.04s (0:08:44) ==========",
+                  "==== 65 passed, 27 skipped, 92 deselected, 19 warnings in 208.10s (0:03:28) ====",
+                  "======================== 10 passed, 8 skipped in 6.62s =========================",
+                  "=============== 387 passed, 1137 deselected in 470.03s (0:07:50) ==============="
+                ],
+                "external": [
+                  "======================== 55 passed, 2 warnings in 1.12s ========================"
+                ]
+              },
+              "runtime_qualified": true,
+              "all_four_image_capabilities_verified": true,
+              "image_capabilities": [
+                "Docker adk acceptance",
+                "Docker langgraph acceptance",
+                "PostgreSQL persistence adk acceptance",
+                "PostgreSQL persistence langgraph acceptance"
+              ]
+            },
+            "full_conformance": false
+          }
+        }
       },
       {
         "id": "S2-09",

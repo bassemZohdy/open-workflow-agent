@@ -1,8 +1,57 @@
 # S2-08 lifecycle and external-action acceptance
 
-Status: implementation in progress; S2-08 remains unchecked. No new lifecycle
-or receiver-recovery capability is qualified by this record until the complete
-batch passes its required native, storage, process-stop and hosted gates.
+Status: finite LC01-LC08 Python profile verified at
+`96ce610924da4554c84f3c5a687743a48b8e9977`. S2-08 is complete after the
+required exact-source native, storage, process-stop, platform and hosted gates.
+Only the bounded lifecycle and opt-in trusted HTTP recovery contracts below are
+qualified; full proposed criteria, independent JavaScript and general external
+exactly-once or automatic rollback guarantees remain unclaimed.
+
+## Final hosted qualification — 2026-10-13
+
+All six configured workflows pass for exact feature source `96ce610`:
+[CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182681),
+[PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182693),
+[Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182669),
+[external sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182658),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182676)
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38348182661).
+
+| Hosted profile | Passed | Declared skips | Existing expected failures |
+| --- | ---: | ---: | ---: |
+| Root | 2,419 | 1,419 | 2 |
+| Main actual ADK suite | 1,204 | 879 | 2 |
+| Main actual LangGraph suite | 1,243 | 852 | 2 |
+| Optional Framework | 1,698 | 1,396 | 2 |
+| PostgreSQL common store | 547 | 1 | 0 |
+| Each PostgreSQL principal lifecycle job | 65 | 27 | 0 |
+
+Root coverage is 90.52%, above the unchanged 90% requirement. Each principal
+also passes all 96 selected CTK checks. Each lifecycle job contains 46 actual
+native lifecycle nodes plus 19 other passing checks: the 65 total is not
+misreported as 65 native lifecycle cases. The independent exact-source inspection
+verifies all 184 mandatory new nodes, 46 on each principal/backend combination,
+from verbose node identifiers and canonical Git source hashes. SQLite lifecycle
+jobs also contain 119 declared foreign-backend/profile skips; those skips do not
+qualify unavailable backends. The previously qualified 44 child and 42 scheduling
+PostgreSQL cases remain green per principal. PostgreSQL's original principal
+profiles pass 353 ADK and 387 LangGraph checks; optional Framework passes 183
+(seven skips), and ten native saver checks pass (eight skips).
+
+All five Windows profiles pass, including native lifecycle/receiver recovery.
+Both main and both PostgreSQL runtime images pass their capability checks. All
+seven complete dependency reports contain zero advisories. Both benchmarks prove
+actual native checkpoint growth and one immutable interruption/resume action.
+Each SDK's CTK artifact matches all 26 scenario hashes from the exact Git blobs;
+the tested PR merge `95fb2aeb61ada96143349e89c2a151b5aa843f68` has this feature
+head as a parent. Local CRLF bytes are not substituted for canonical sources.
+Logs, artifact digests, mandatory native node lists and the read-only inspection
+are retained under `tmp/ci-96ce610-*`; both tracking records preserve the complete
+qualification record. Earlier nonzero/interrupted local batches remain historical,
+as described below. S2-09 retains migration and broader recovery diagnostics;
+Stage 4 retains independent JavaScript and complete proposed criteria.
+
+## Earlier integrated history
 
 The first integrated source `dc0af64` passed formatting, lint, strict typing
 (86 runtime and three CI modules) and all five builds. Its four full test runs
@@ -113,6 +162,6 @@ private native checkpoint boundaries remain unchanged.
 | LC07 | Changed or missing intent/input/key/trust/principal/profile/native/index evidence rejects; ordinary records contain references rather than secrets. |
 | LC08 | Identical actual ADK/LangGraph fixtures, SQLite/PostgreSQL, bounded optional Framework profile, root quality/coverage/build/schema and hosted Windows/image/security gates pass. |
 
-The combined batch will record exact source hashes, commands, counts, skips,
-expected failures and artifact links here. A passing subset does not close the
-task or establish unsupported protocol, backend or JavaScript capabilities.
+All LC01-LC08 requirements are verified for the finite profile at `96ce610` by
+the exact-source hosted evidence above. The selected fixtures do not establish
+unsupported protocol, backend, automatic compensation or JavaScript capabilities.

@@ -70,12 +70,20 @@ uncertain external action intents. Repeated logical HTTP operations receive
 distinct keys while retries retain the original admitted key. Optional trusted
 receiver lookup uses the same bounded authenticated HTTPS client and never
 repeats the business request during recovery. Compensation remains an explicit
-workflow operation. All capabilities remain unqualified until the finite
-[lifecycle acceptance record](docs/s2-08-lifecycle-acceptance.md) passes.
-The first frozen batch run was stopped after early reusable-task regressions;
-its unchanged-source logs and nonzero results are retained. Serialization
-corrections and missing negative/control proofs have actionable next steps.
-S2-08 is unchecked and no task is deferred.
+workflow operation. The finite LC01-LC08 profile is verified at exact source
+`96ce610`: all six hosted workflows, all four runtime images, seven zero-advisory
+audits, both native benchmarks and canonical CTK provenance pass. Both principal
+SDKs pass all 46 new lifecycle cases on SQLite and actual PostgreSQL, including
+real producer termination, native corruption, active child controls and stale
+ownership. Root passes 2,419 cases with 90.52% coverage; main native suites pass
+1,204 ADK and 1,243 LangGraph cases plus 96 CTK checks each. Optional Framework
+passes 1,698 cases without a production image or principal durability claim.
+The first stopped batch and later failed fixture observations remain historical;
+their original results are preserved in the
+[lifecycle acceptance record](docs/s2-08-lifecycle-acceptance.md).
+Seventeen of 37 tasks are verified. S2-09 is next and no task is deferred.
+No automatic rollback, general exactly-once action guarantee, full proposed
+criteria or independent JavaScript qualification follows from this finite profile.
 
 ## Current Phase — 2026-09-24
 

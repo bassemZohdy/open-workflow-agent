@@ -193,12 +193,18 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   [verified acceptance](docs/s2-07-child-workflow-acceptance.md).
   General lifecycle/uncertain external actions and compatible migration retain
   S2-08/S2-09 ownership; full proposed/JavaScript gates remain Stage 4.
-- [ ] **S2-08** (L) — Complete cancellation, termination, compensation and idempotent external-action recovery.
-  The implementation batch is undergoing verification; see the finite
-  [lifecycle acceptance record](docs/s2-08-lifecycle-acceptance.md). Early
-  regression evidence remains retained. Completion requires actual native,
-  PostgreSQL, process-stop, Windows, build, quality and security qualification;
-  no new capability or automatic remote rollback is advertised by this entry.
+- [x] **S2-08** (L) — Complete cancellation, termination, compensation and idempotent external-action recovery.
+  Verified finite LC01-LC08 Python profile at `96ce610`: atomic authorized
+  cancellation and lease revocation, host drain/ownership-loss separation,
+  explicit child-scope controls, distinct logical operation keys with retained
+  retry/legacy identities, opt-in trusted HTTP outcome lookup without business
+  replay, and explicit compensation with visible failure/uncertainty. Both
+  principal SDKs pass all 46 new cases on SQLite and actual PostgreSQL;
+  process-stop, corruption, Windows, four images, seven audits, CTK provenance
+  and two native benchmarks pass. Earlier failures remain historical. See the
+  [verified lifecycle acceptance](docs/s2-08-lifecycle-acceptance.md).
+  No automatic remote rollback or general exactly-once guarantee is claimed;
+  migration, full proposed criteria and JavaScript retain S2-09/Stage 4 ownership.
 - [ ] **S2-09** (L) — Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.
 
 ## Stage 3 — Agents, tools and integrations
@@ -239,7 +245,7 @@ Earlier completed release/readiness work and deferred details are preserved in [
 
 ## Deferred tasks
 
-No active backlog tasks are currently deferred. S2-07 is verified; S2-08 is
+No active backlog tasks are currently deferred. S2-08 is verified; S2-09 is
 the next ready task. Scoped acceptance and prior failures are recorded above.
 Move a task's
 entry here when the blocked-task rule applies, keeping its checkbox unchecked
