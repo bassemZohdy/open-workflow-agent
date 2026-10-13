@@ -40,6 +40,13 @@ for line in sys.stdin.buffer:
         sys.stdout.buffer.write(b"x" * 8192 + b"\n"); sys.stdout.buffer.flush()
     elif mode == "exit":
         sys.exit(0)
+    elif mode == "response_exit":
+        print(json.dumps({"known": None}), flush=True)
+        sys.exit(0)
+    elif mode == "response_stderr_exit":
+        print(json.dumps({"known": None}), flush=True)
+        sys.stderr.buffer.write(b"x" * 4096); sys.stderr.buffer.flush()
+        sys.exit(0)
     elif mode == "frames":
         for index in range(10000):
             print(json.dumps({"index": index}), flush=True)
@@ -92,6 +99,34 @@ def request(config, mode="probe", *, timeout=3):
     return SandboxStdioRequest(
         mode, server.command, tuple(server.arguments), timeout_seconds=timeout
     )
+
+
+@pytest.mark.asyncio
+async def test_complete_response_remains_available_after_process_exit(tmp_path):
+    config, backend, manager = configured(tmp_path)
+    async with manager.open_stdio(request(config, "response_exit")) as session:
+        await session.send_frame(b'{"mode":"response_exit"}')
+        # Wait for actual process/pipe EOF, so this tests the queued-frame race
+        # independently of whether the parent happened to receive first.
+        await asyncio.wait_for(session.process.wait(), timeout=3)
+        await asyncio.wait_for(asyncio.shield(session.failure), timeout=3)
+        assert json.loads(await session.receive_frame()) == {"known": None}
+        with pytest.raises(SandboxProcessError):
+            await session.receive_frame()
+    assert not backend._stdio_sessions
+    assert list(Path(config.workspace_root).iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_complete_frame_eof_cannot_hide_stderr_output_violation(tmp_path):
+    config, backend, manager = configured(tmp_path, output=512)
+    async with manager.open_stdio(request(config, "response_stderr_exit")) as session:
+        await session.send_frame(b'{"mode":"response_stderr_exit"}')
+        await asyncio.wait_for(session.process.wait(), timeout=3)
+        await asyncio.wait_for(asyncio.gather(*session.tasks[:2]), timeout=3)
+        with pytest.raises(SandboxOutputLimitError):
+            await session.receive_frame()
+    assert not backend._stdio_sessions
 
 
 def alive(pid):

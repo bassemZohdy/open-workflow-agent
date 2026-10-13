@@ -186,7 +186,12 @@ class _CommonHttpDispatcher:
         self.operation_id, self.request_id, self.timeout = operation_id, request_id, timeout
         self.authentication = authentication
         self._dispatched = False
+        self._attempted = False
+        self._correlated_error = False
         self._closed = anyio.Event()
+
+    def _mark_dispatched(self) -> None:
+        self._dispatched = True
 
     async def run(
         self,
@@ -215,18 +220,19 @@ class _CommonHttpDispatcher:
     ) -> dict[str, Any]:
         from .protocols import _merge_authoritative_headers
 
-        if self._dispatched or method not in MCP_CALL_METHODS:
+        if self._attempted or method not in MCP_CALL_METHODS:
             raise _failure("unexpected_dispatch")
         methods.validate_client_request(method, MCP_VERSION, params)
         options = opts or {}
         headers = _merge_authoritative_headers(self.headers, options.get("headers", {}))
         headers = _merge_authoritative_headers(
-            headers, {"Accept": "application/json", "Content-Type": "application/json"}
+            headers,
+            {"Accept": "application/json, text/event-stream", "Content-Type": "application/json"},
         )
         body = {"jsonrpc": "2.0", "id": self.request_id, "method": method, "params": params}
         if len(json.dumps(body, allow_nan=False).encode("utf-8")) > 1_048_576:
             raise _failure("request_limit")
-        self._dispatched = True
+        self._attempted = True
         try:
             response = await self.http.request(
                 "POST",
@@ -238,9 +244,12 @@ class _CommonHttpDispatcher:
                 follow_redirects=False,
                 _return_response=True,
                 _authentication=self.authentication,
+                _on_dispatch=self._mark_dispatched,
             )
         except ToolError:
-            raise _uncertain("transport_failure") from None
+            if self._dispatched:
+                raise _uncertain("transport_failure") from None
+            raise
         try:
             raw = _response_json(
                 response.content,
@@ -259,6 +268,7 @@ class _CommonHttpDispatcher:
             raise _uncertain("invalid_response")
         if "error" in raw:
             error = types.ErrorData.model_validate(raw["error"], by_name=False)
+            self._correlated_error = True
             raise MCPError(error.code, "MCP server returned an error")
         result = raw["result"]
         if not isinstance(result, dict):
@@ -354,6 +364,17 @@ async def call_mcp(
         cache_scope="public",
     )
     dispatched = False
+    correlated_error = False
+    dispatcher: _CommonHttpDispatcher | None = None
+
+    def observe_dispatch() -> None:
+        nonlocal dispatched
+        dispatched = True
+
+    def observe_correlated_error() -> None:
+        nonlocal correlated_error
+        correlated_error = True
+
     try:
         async with asyncio.timeout(timeout):
             if "stdio" in transport:
@@ -366,6 +387,8 @@ async def call_mcp(
                     transport,
                     timeout_seconds=timeout,
                     execution_id=operation_id,
+                    on_dispatch=observe_dispatch,
+                    on_correlated_error=observe_correlated_error,
                 ) as (read_stream, write_stream):
                     session = ClientSession(
                         read_stream,
@@ -373,7 +396,6 @@ async def call_mcp(
                         read_timeout_seconds=timeout,
                         client_info=info,
                     )
-                    dispatched = True
                     return await _session_call(session, adopted, payload, method)
             from .protocols import _endpoint_value
 
@@ -405,13 +427,16 @@ async def call_mcp(
             session = ClientSession(
                 dispatcher=dispatcher, read_timeout_seconds=timeout, client_info=info
             )
-            dispatched = True
             return await _session_call(session, adopted, payload, method)
     except MCPError:
-        raise _failure("protocol_error") from None
+        if correlated_error or (dispatcher is not None and dispatcher._correlated_error):
+            raise _failure("protocol_error") from None
+        if dispatched or (dispatcher is not None and dispatcher._dispatched):
+            raise _uncertain("transport_failure") from None
+        raise _failure("transport_failure") from None
     except ValidationError:
         raise _uncertain("invalid_protocol_outcome") from None
     except TimeoutError:
-        if dispatched:
+        if dispatched or (dispatcher is not None and dispatcher._dispatched):
             raise _uncertain("timeout") from None
         raise _failure("timeout") from None

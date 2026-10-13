@@ -21,6 +21,9 @@ from open_workflow_agent.sandbox import (
 from open_workflow_agent.services import RuntimeServices
 
 SERVER = Path(__file__).with_name("_mcp_stdio_sdk_server.py")
+# Windows' async Winsock provider needs this nonsecret OS binding. It is an
+# explicit deployment declaration, rather than ambient environment inheritance.
+SERVER_ENVIRONMENT = {"SYSTEMROOT": os.environ["SYSTEMROOT"]} if os.name == "nt" else {}
 
 
 @pytest.mark.asyncio
@@ -52,6 +55,7 @@ async def test_actual_sdk_stdio_methods_use_only_common_process_transport(
                         "id": "official-fixture",
                         "command": sys.executable,
                         "arguments": ["-u", str(SERVER)],
+                        "environment": SERVER_ENVIRONMENT,
                     }
                 ],
             },
@@ -113,7 +117,7 @@ async def test_actual_native_stdio_known_outcome_replays_without_another_server_
                             "id": "official-fixture",
                             "command": sys.executable,
                             "arguments": ["-u", str(SERVER)],
-                            "environment": {"LEDGER": str(ledger)},
+                            "environment": {**SERVER_ENVIRONMENT, "LEDGER": str(ledger)},
                         }
                     ],
                 },

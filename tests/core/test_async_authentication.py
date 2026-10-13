@@ -113,6 +113,7 @@ async def test_malformed_or_unbound_token_never_reaches_resource(monkeypatch, re
         b"\xff",
         b'"' + b"x" * 65_536 + b'"',
     ],
+    ids=["duplicate-key", "nan", "infinity", "invalid-utf8", "oversized-body"],
 )
 @pytest.mark.asyncio
 async def test_token_body_has_strict_json_utf8_and_size_bounds(monkeypatch, body):

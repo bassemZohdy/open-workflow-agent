@@ -30,17 +30,37 @@ METHOD_PARAMS = {
 
 
 @asynccontextmanager
-async def sdk_http_fixture(*, network: bool = False):
+async def sdk_http_fixture(
+    *,
+    network: bool = False,
+    pagination: bool = False,
+    input_required: bool = False,
+    tool_handler=None,
+    sse: bool = False,
+):
     calls: list[dict[str, Any]] = []
+
+    def page(params):
+        if not pagination:
+            return {}
+        if params.cursor is None:
+            return {"next_cursor": "opaque-page-2"}
+        assert params.cursor == "opaque-page-2"
+        return {}
 
     async def list_tools(context, params):
         return types.ListToolsResult(
             tools=[types.Tool(name="lookup", input_schema={"type": "object"})],
+            **page(params),
             ttl_ms=0,
             cache_scope="public",
         )
 
     async def call_tool(context, params):
+        if tool_handler is not None:
+            return await tool_handler(context, params)
+        if input_required:
+            return types.InputRequiredResult(request_state="opaque-server-continuation")
         return types.CallToolResult(
             content=[types.TextContent(text="7")],
             structured_content={"value": 7},
@@ -49,6 +69,7 @@ async def sdk_http_fixture(*, network: bool = False):
     async def list_prompts(context, params):
         return types.ListPromptsResult(
             prompts=[types.Prompt(name="greet")],
+            **page(params),
             ttl_ms=0,
             cache_scope="public",
         )
@@ -61,6 +82,7 @@ async def sdk_http_fixture(*, network: bool = False):
     async def list_resources(context, params):
         return types.ListResourcesResult(
             resources=[types.Resource(uri="https://fixture.test/resource", name="resource")],
+            **page(params),
             ttl_ms=0,
             cache_scope="public",
         )
@@ -79,6 +101,7 @@ async def sdk_http_fixture(*, network: bool = False):
             resource_templates=[
                 types.ResourceTemplate(uri_template="https://fixture.test/{name}", name="named")
             ],
+            **page(params),
             ttl_ms=0,
             cache_scope="public",
         )
@@ -94,7 +117,7 @@ async def sdk_http_fixture(*, network: bool = False):
         on_read_resource=read_resource,
         on_list_resource_templates=list_templates,
     )
-    manager = StreamableHTTPSessionManager(server, json_response=True, stateless=True)
+    manager = StreamableHTTPSessionManager(server, json_response=not sse, stateless=True)
     app = StreamableHTTPASGIApp(manager)
 
     async def capture(scope, receive, send):

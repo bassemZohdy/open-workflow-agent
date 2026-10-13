@@ -7,7 +7,7 @@ import math
 import os
 import signal
 import tempfile
-from collections.abc import AsyncIterator, Awaitable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -28,6 +28,10 @@ if TYPE_CHECKING:
     from .backends.internal import InternalSandboxBackend
 
 
+class _StdioEOF(SandboxProcessError):
+    """Clean byte-stream EOF permits draining already validated complete frames."""
+
+
 class _StdioSession:
     def __init__(
         self,
@@ -43,6 +47,7 @@ class _StdioSession:
             backend.config.mcp_stdio.max_pending_frames
         )
         self.failure: asyncio.Future[BaseException] = asyncio.get_running_loop().create_future()
+        self.fatal_error: BaseException | None = None
         self.input_bytes, self.output_bytes = 0, 0
         self.closed = False
         self.send_lock, self.close_lock = asyncio.Lock(), asyncio.Lock()
@@ -65,17 +70,25 @@ class _StdioSession:
         except asyncio.CancelledError:
             raise
         except TimeoutError:
-            if not self.failure.done():
-                self.failure.set_result(SandboxTimeoutError("MCP stdio operation deadline expired"))
+            self._fail(SandboxTimeoutError("MCP stdio operation deadline expired"))
         except BaseException as error:
-            if not self.failure.done():
-                self.failure.set_result(error)
+            self._fail(error)
+
+    def _fail(self, error: BaseException) -> None:
+        # EOF is drainable, but cannot mask a concurrently detected resource,
+        # encoding or deadline violation from another owned stream/monitor.
+        if not isinstance(error, _StdioEOF) and self.fatal_error is None:
+            self.fatal_error = error
+        if not self.failure.done():
+            self.failure.set_result(error)
+
+    def _failure(self) -> BaseException:
+        return self.fatal_error or self.failure.result()
 
     async def _watch_deadline(self) -> None:
         await asyncio.sleep(self._remaining())
         if not self.closed:
-            if not self.failure.done():
-                self.failure.set_result(SandboxTimeoutError("MCP stdio operation deadline expired"))
+            self._fail(SandboxTimeoutError("MCP stdio operation deadline expired"))
             await self.aclose()
 
     def _output(self, size: int) -> None:
@@ -96,7 +109,9 @@ class _StdioSession:
             except TimeoutError:
                 raise SandboxTimeoutError("MCP stdio operation deadline expired") from None
             if not chunk:
-                raise SandboxProcessError("MCP stdio stream ended without a complete response")
+                if buffered:
+                    raise SandboxProcessError("MCP stdio stream ended with an incomplete frame")
+                raise _StdioEOF("MCP stdio stream ended without a complete response")
             self._output(len(chunk))
             buffered.extend(chunk)
             while (newline := buffered.find(b"\n")) != -1:
@@ -120,11 +135,13 @@ class _StdioSession:
             # Diagnostic stderr is never retained or exposed as protocol output.
             self._output(len(value))
 
-    async def send_frame(self, value: bytes) -> None:
+    async def send_frame(
+        self, value: bytes, *, on_dispatch: Callable[[], None] | None = None
+    ) -> None:
         if self.closed:
             raise SandboxProcessError("MCP stdio stream is closed")
         if self.failure.done():
-            raise self.failure.result()
+            raise self._failure()
         if (
             len(value) > self.backend.config.mcp_stdio.max_frame_bytes
             or b"\n" in value
@@ -141,26 +158,35 @@ class _StdioSession:
                 if self.input_bytes > self.backend.config.max_input_bytes:
                     raise SandboxPolicyError("MCP stdio input limit exceeded")
                 assert self.process.stdin is not None
+                if on_dispatch is not None:
+                    on_dispatch()
                 self.process.stdin.write(value + b"\n")
                 await self.process.stdin.drain()
         except TimeoutError:
             raise SandboxTimeoutError("MCP stdio operation deadline expired") from None
         except (BrokenPipeError, ConnectionResetError):
             if self.failure.done():
-                raise self.failure.result() from None
+                raise self._failure() from None
             raise SandboxProcessError("MCP stdio stream closed during dispatch") from None
 
     async def receive_frame(self) -> bytes:
-        if self.failure.done():
-            raise self.failure.result()
         if self.closed:
             raise SandboxProcessError("MCP stdio stream is closed")
+        self._remaining()
+        if self.failure.done():
+            error = self._failure()
+            if isinstance(error, _StdioEOF) and not self.frames.empty():
+                return self.frames.get_nowait()
+            raise error
         receive = asyncio.create_task(self.frames.get())
         try:
             async with asyncio.timeout(self._remaining()):
                 await asyncio.wait((receive, self.failure), return_when=asyncio.FIRST_COMPLETED)
                 if self.failure.done():
-                    raise self.failure.result()
+                    error = self._failure()
+                    if isinstance(error, _StdioEOF) and receive.done():
+                        return receive.result()
+                    raise error
                 return receive.result()
         except TimeoutError:
             raise SandboxTimeoutError("MCP stdio operation deadline expired") from None
@@ -207,6 +233,18 @@ class _StdioSession:
             await asyncio.gather(
                 *(task for task in self.tasks if task is not current), return_exceptions=True
             )
+            if self.process.stdin is not None:
+                try:
+                    await asyncio.wait_for(self.process.stdin.wait_closed(), timeout=2)
+                except (BrokenPipeError, ConnectionResetError, TimeoutError):
+                    pass
+            # asyncio.Process has no public close method. Its owned subprocess
+            # transport closes the pipe handles after reader cancellation too;
+            # waiting for the process alone does not guarantee this on Windows.
+            transport = getattr(self.process, "_transport", None)
+            if transport is not None:
+                transport.close()
+            await asyncio.sleep(0)
 
 
 @asynccontextmanager

@@ -75,6 +75,7 @@ def test_stdio_rejects_unapproved_declarations_before_plan_admission(mutation):
     if mutation == "disabled":
         sandbox.mcp_stdio.enabled = False
     elif mutation == "external":
+        sandbox.docker.allowed_images = ["registry.example/worker@sha256:" + "a" * 64]
         sandbox.backend = "docker"
     elif mutation == "command":
         stdio["command"] = "${ .command }"

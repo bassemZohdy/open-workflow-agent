@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from typing import Any, cast
 from uuid import uuid4
@@ -48,6 +48,8 @@ async def sandbox_stdio_transport(
     *,
     timeout_seconds: float,
     execution_id: str | None = None,
+    on_dispatch: Callable[[], None] | None = None,
+    on_correlated_error: Callable[[], None] | None = None,
 ) -> AsyncIterator[tuple[MemoryObjectReceiveStream[Any], MemoryObjectSendStream[Any]]]:
     try:
         from mcp.shared.message import SessionMessage
@@ -84,11 +86,13 @@ async def sandbox_stdio_transport(
                         or "method" in frame
                     ):
                         raise ToolError("MCP stdio response correlation is invalid")
-                    pending.remove((type(identifier), cast(str | int, identifier)))
                     try:
                         message = jsonrpc_message_adapter.validate_python(frame, by_name=False)
                     except Exception:
                         raise ToolError("MCP stdio response message is invalid") from None
+                    pending.remove((type(identifier), cast(str | int, identifier)))
+                    if "error" in frame and on_correlated_error is not None:
+                        on_correlated_error()
                     await incoming_send.send(SessionMessage(message))
             except asyncio.CancelledError:
                 raise
@@ -107,10 +111,14 @@ async def sandbox_stdio_transport(
                     _strict_frame(encoded)
                     if "id" in data:
                         identifier = data["id"]
-                        if type(identifier) not in (str, int) or len(pending) >= size:
+                        if (
+                            type(identifier) not in (str, int)
+                            or (type(identifier), identifier) in pending
+                            or len(pending) >= size
+                        ):
                             raise ToolError("MCP stdio request correlation is invalid")
                         pending.add((type(identifier), identifier))
-                    await session.send_frame(encoded)
+                    await session.send_frame(encoded, on_dispatch=on_dispatch)
             except asyncio.CancelledError:
                 raise
             except Exception:

@@ -8,6 +8,7 @@ public surface re-exported from `open_workflow_agent.sandbox`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
@@ -66,7 +67,9 @@ class SandboxStdioRequest:
 
 
 class SandboxStdioSession(Protocol):
-    async def send_frame(self, value: bytes) -> None: ...
+    async def send_frame(
+        self, value: bytes, *, on_dispatch: Callable[[], None] | None = None
+    ) -> None: ...
 
     async def receive_frame(self) -> bytes: ...
 

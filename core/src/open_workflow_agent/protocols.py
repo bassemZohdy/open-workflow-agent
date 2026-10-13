@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import ipaddress
+import math
 import os
 import re
 import socket
@@ -130,6 +131,45 @@ class HttpClient:
         allow_not_modified: bool = False,
         _return_response: bool = False,
         _authentication: AuthenticationProvider | None = None,
+        _on_dispatch: Callable[[], None] | None = None,
+        **kwargs: Any,
+    ) -> Any:
+        budget = self.timeout
+        if request_timeout is not None:
+            budget = min(budget, request_timeout)
+        if not math.isfinite(budget) or budget <= 0:
+            raise ToolError("HTTP request deadline must be finite and positive")
+        try:
+            async with asyncio.timeout(budget):
+                return await self._request_bounded(
+                    method,
+                    endpoint,
+                    operation_id=operation_id,
+                    follow_redirects=follow_redirects,
+                    output=output,
+                    request_timeout=budget,
+                    allow_not_modified=allow_not_modified,
+                    _return_response=_return_response,
+                    _authentication=_authentication,
+                    _on_dispatch=_on_dispatch,
+                    **kwargs,
+                )
+        except TimeoutError:
+            raise ToolError("HTTP request deadline exceeded") from None
+
+    async def _request_bounded(
+        self,
+        method: str,
+        endpoint: str,
+        *,
+        operation_id: str | None = None,
+        follow_redirects: bool | None = None,
+        output: str = "content",
+        request_timeout: float | None = None,
+        allow_not_modified: bool = False,
+        _return_response: bool = False,
+        _authentication: AuthenticationProvider | None = None,
+        _on_dispatch: Callable[[], None] | None = None,
         **kwargs: Any,
     ) -> Any:
         self._check_endpoint(endpoint)
@@ -144,7 +184,8 @@ class HttpClient:
         if request_timeout is not None:
             timeout = min(timeout, max(0.001, request_timeout))
         started = time.monotonic()
-        client_cert, verify_tls = self.client_cert, self.verify_tls
+        client_cert = self.client_cert
+        verify_tls: bool | str | ssl.SSLContext = self.verify_tls
         sensitive_headers: frozenset[str] = frozenset()
         if authentication:
             # Deployment-owned authentication and operation identity cannot be
@@ -173,11 +214,15 @@ class HttpClient:
         if headers:
             kwargs["headers"] = headers
         try:
-            timeout -= time.monotonic() - started
-            if timeout <= 0:
-                raise ToolError("HTTP authentication exhausted the request deadline")
             request_transport = self.transport
             trust_env = self.destination_resolver is None
+            if client_cert is not None:
+                # HTTPX's filename-CA branch returns before loading cert. Bind
+                # both trust and identity in one context for every transport.
+                context = httpx.create_ssl_context(verify=verify_tls, trust_env=trust_env)
+                context.load_cert_chain(*client_cert)
+                verify_tls = context
+                client_cert = None
             if self.destination_resolver is not None and self.transport is None:
                 addresses = await self.destination_resolver(endpoint)
                 request_transport = _pinned_transport(
@@ -189,6 +234,9 @@ class HttpClient:
                 # Ambient proxy and certificate environment variables must not
                 # change the destination selected by the deployment policy.
                 trust_env = False
+            timeout -= time.monotonic() - started
+            if timeout <= 0:
+                raise ToolError("HTTP request deadline exceeded")
             async with httpx.AsyncClient(
                 timeout=timeout,
                 verify=verify_tls,
@@ -197,6 +245,8 @@ class HttpClient:
                 transport=request_transport,
                 cert=client_cert,
             ) as client:
+                if _on_dispatch is not None:
+                    _on_dispatch()
                 async with client.stream(method, endpoint, **kwargs) as streamed:
                     chunks: list[bytes] = []
                     total = 0
@@ -467,7 +517,7 @@ class _PinnedNetworkBackend:
 
 def _pinned_transport(
     *,
-    verify_tls: bool | str,
+    verify_tls: bool | str | ssl.SSLContext,
     endpoint: str,
     addresses: tuple[str, ...],
     client_cert: tuple[str, str] | None = None,

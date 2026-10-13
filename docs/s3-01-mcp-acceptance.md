@@ -37,6 +37,11 @@ The internal process boundary is controlled execution, not hard isolation.
 External sandbox duplex support is rejected before launch until independently
 qualified. Capability claims describe only enforced platform controls.
 
+Windows async SDK servers require an explicitly approved nonsecret `SYSTEMROOT`
+environment binding to start the platform event loop. The restricted launcher
+does not silently inherit the runtime environment. Windows file-size resource
+limits remain unsupported; selecting that requirement rejects before launch.
+
 Remote cancellation does not undo a tool action. Known receipts replay without
 receiver dispatch; an interrupted ambiguous write remains pending uncertainty.
 There is no automatic write retry, remote rollback or general exactly-once
@@ -70,3 +75,17 @@ Read-only preparation identified actionable modern metadata/result projection,
 OAuth transport, per-tool TLS and duplex sandbox gaps. Implementation is being
 authored in parallel while the separate S2-09 frozen batch is validated. There
 is no established blocker; missing interfaces are implementation work.
+
+The first frozen local snapshot `f1e6abf` contains 416 fixed validation inputs.
+Common focus reaches 222 passes with eight failures and two errors; both native
+focus profiles reach their ten-failure limit on fixture setup. Five independent
+wheel/sdist builds and provenance checks pass. Source hashes remain unchanged.
+Original logs and supervisor records are retained in `tmp/s3-01-first-batch`.
+These are partial failed attempts, not qualified interoperability.
+
+Corrections target the complete HTTP/authentication deadline, distinction
+between known pre-dispatch rejection and uncertain remote completion, bounded
+Windows fixture IDs, actual TLS certificate wiring, valid negative backend
+configuration, the native deployment-binding callback and stdio result/EOF
+handling. Existing byte/time/security assertions remain. Author the complete
+correction set before the next integrated behavioral batch.

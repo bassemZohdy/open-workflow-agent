@@ -178,7 +178,7 @@ async def test_every_method_rejects_errors_limits_and_uncorrelated_results(metho
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "change", ["version", "reserved_meta", "method", "bad_parameters", "boolean_id"]
+    "change", ["version", "reserved_meta", "method", "tasks", "bad_parameters", "boolean_id"]
 )
 async def test_rejected_admission_never_dispatches_or_resolves_credentials(change):
     calls = []
@@ -189,6 +189,8 @@ async def test_rejected_admission_never_dispatches_or_resolves_credentials(chang
         value["parameters"]["_meta"] = {"io.modelcontextprotocol/protocolVersion": "forged"}
     elif change == "method":
         value["method"] = "server/discover"
+    elif change == "tasks":
+        value["method"] = "tasks/get"
     elif change == "bad_parameters":
         value["parameters"] = {"name": 123}
     else:
@@ -275,3 +277,204 @@ async def test_selected_sse_response_is_finite_correlated_and_never_replayed(mod
         with pytest.raises(_McpOutcomeUncertain):
             await services.call("mcp", payload("tools/call"))
     assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_authentication_failure_is_known_before_mcp_business_dispatch():
+    calls = []
+
+    class RejectedAuthentication:
+        def headers(self, endpoint):
+            raise AssertionError("asynchronous preparation required")
+
+        async def prepare(self, endpoint, *, remaining_timeout):
+            raise ToolError("protocol authentication failed", details={"stage": "authentication"})
+
+    services = ProtocolServices(
+        HttpClient(
+            authentication=RejectedAuthentication(),
+            transport=httpx.MockTransport(lambda request: calls.append(request)),
+        )
+    )
+    with pytest.raises(ToolError) as error:
+        await services.call("mcp", payload("tools/call"))
+    assert not isinstance(error.value, _McpOutcomeUncertain)
+    assert error.value.details == {"stage": "authentication"} and calls == []
+
+
+@pytest.mark.asyncio
+async def test_original_http_deadline_bounds_dns_before_dispatch_callback():
+    resolving = asyncio.Event()
+    cancelled = asyncio.Event()
+    dispatched = []
+
+    async def resolver(endpoint):
+        resolving.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            cancelled.set()
+
+    client = HttpClient(timeout=0.03, destination_resolver=resolver)
+    with pytest.raises(ToolError, match="deadline"):
+        await client.request(
+            "POST", "https://fixture.test", _on_dispatch=lambda: dispatched.append(True)
+        )
+    assert resolving.is_set() and cancelled.is_set() and dispatched == []
+
+
+@pytest.mark.asyncio
+async def test_http_body_consumption_is_bounded_after_actual_send_and_closed():
+    dispatched = []
+    calls = []
+    closed = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    class StalledBody(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b"first"
+            try:
+                await asyncio.Event().wait()
+            finally:
+                cancelled.set()
+
+        async def aclose(self):
+            closed.set()
+
+    async def receiver(request):
+        calls.append(request)
+        assert dispatched == [True]
+        return httpx.Response(200, stream=StalledBody())
+
+    client = HttpClient(timeout=0.03, transport=httpx.MockTransport(receiver))
+    with pytest.raises(ToolError, match="deadline"):
+        await client.request(
+            "POST", "https://fixture.test", _on_dispatch=lambda: dispatched.append(True)
+        )
+    assert len(calls) == 1 and cancelled.is_set() and closed.is_set()
+
+
+@pytest.mark.asyncio
+async def test_sdk_dispatch_attempt_cannot_repeat_after_known_preflight_failure():
+    calls = []
+    dispatcher = mcp_client._CommonHttpDispatcher(
+        HttpClient(
+            allowed_hosts={"approved.test"},
+            transport=httpx.MockTransport(lambda request: calls.append(request)),
+        ),
+        "https://fixture.test/mcp",
+        {},
+        operation_id="business-key",
+        request_id="business-key",
+        timeout=1,
+        authentication=None,
+    )
+    with pytest.raises(ToolError, match="host is not allowed"):
+        await dispatcher.send_raw_request("tools/list", {})
+    assert not dispatcher._dispatched and calls == []
+    with pytest.raises(ToolError) as error:
+        await dispatcher.send_raw_request("tools/list", {})
+    assert error.value.details["reason"] == "unexpected_dispatch" and calls == []
+
+
+@pytest.mark.asyncio
+async def test_mcp_resource_timeout_after_send_preserves_unknown_outcome_and_closes_stream():
+    calls = []
+    closed = asyncio.Event()
+
+    class StalledResponse(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            await asyncio.Event().wait()
+            yield b""
+
+        async def aclose(self):
+            closed.set()
+
+    async def receiver(request):
+        calls.append(request)
+        return httpx.Response(
+            200, headers={"Content-Type": "application/json"}, stream=StalledResponse()
+        )
+
+    services = ProtocolServices(HttpClient(timeout=0.03, transport=httpx.MockTransport(receiver)))
+    with pytest.raises(_McpOutcomeUncertain):
+        await services.call("mcp", payload("tools/call"))
+    assert len(calls) == 1 and closed.is_set()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("network", [False, True], ids=["asgi-wire", "actual-tcp-sdk"])
+@pytest.mark.parametrize(
+    "method", ["tools/list", "prompts/list", "resources/list", "resources/templates/list"]
+)
+async def test_actual_sdk_pagination_preserves_explicit_cursor_without_hidden_page_fetches(
+    method, network
+):
+    async with sdk_http_fixture(network=network, pagination=True) as (transport, calls, endpoint):
+        services = ProtocolServices(
+            HttpClient(
+                transport=transport,
+                allowed_hosts={"127.0.0.1"} if network else {"fixture.test"},
+            )
+        )
+        request = payload(method)
+        request["transport"]["http"]["endpoint"] = endpoint
+        first = await services.call("mcp", request)
+        assert first["nextCursor"] == "opaque-page-2" and len(calls) == 1
+        assert "cursor" not in calls[0]["body"]["params"]
+        request["parameters"]["cursor"] = first["nextCursor"]
+        request["operation_id"] = "explicit-second-page"
+        second = await services.call("mcp", request)
+        assert "nextCursor" not in second and len(calls) == 2
+        assert calls[1]["body"]["params"]["cursor"] == "opaque-page-2"
+        assert [call["body"]["id"] for call in calls] == ["business-key", "explicit-second-page"]
+        assert all(call["body"]["method"] == method for call in calls)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("network", [False, True], ids=["asgi-wire", "actual-tcp-sdk"])
+async def test_actual_sdk_input_required_is_uncertain_without_fabricated_response_or_replay(
+    network,
+):
+    async with sdk_http_fixture(network=network, input_required=True) as (
+        transport,
+        calls,
+        endpoint,
+    ):
+        services = ProtocolServices(
+            HttpClient(
+                transport=transport,
+                allowed_hosts={"127.0.0.1"} if network else {"fixture.test"},
+            )
+        )
+        request = payload("tools/call")
+        request["transport"]["http"]["endpoint"] = endpoint
+        with pytest.raises(_McpOutcomeUncertain) as error:
+            await services.call("mcp", request)
+        assert error.value.details["reason"] == "unsupported_interaction"
+        assert len(calls) == 1 and calls[0]["body"]["method"] == "tools/call"
+        assert "inputResponses" not in calls[0]["body"]["params"]
+        assert "requestState" not in calls[0]["body"]["params"]
+        assert "opaque-server-continuation" not in str(error.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("network", [False, True], ids=["asgi-wire", "actual-tcp-sdk"])
+async def test_actual_sdk_selected_sse_result_is_bounded_and_has_one_business_request(network):
+    async with sdk_http_fixture(network=network, sse=True) as (transport, calls, endpoint):
+        services = ProtocolServices(
+            HttpClient(
+                transport=transport,
+                timeout=3,
+                max_response_bytes=4096,
+                allowed_hosts={"127.0.0.1"} if network else {"fixture.test"},
+            )
+        )
+        request = payload("tools/call")
+        request["transport"]["http"]["endpoint"] = endpoint
+        result = await services.call("mcp", request)
+        assert result["structuredContent"] == {"value": 7}
+        assert result["resultType"] == "complete" and "jsonrpc" not in result
+        assert len(calls) == 1 and calls[0]["body"]["id"] == "business-key"
+        assert calls[0]["headers"][b"accept"] == b"application/json, text/event-stream"
+        assert calls[0]["body"]["method"] == "tools/call"
