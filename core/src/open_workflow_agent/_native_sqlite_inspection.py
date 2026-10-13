@@ -47,6 +47,7 @@ def _signature(value: os.stat_result) -> _Signature:
 def _read(path: Path, maximum: int) -> tuple[bytes, _Signature]:
     if path.is_symlink():
         raise ValueError("untrusted snapshot link")
+    named_before = _signature(path.stat())
     with path.open("rb") as stream:
         initial = os.fstat(stream.fileno())
         if not stat.S_ISREG(initial.st_mode) or initial.st_size > maximum:
@@ -56,9 +57,16 @@ def _read(path: Path, maximum: int) -> tuple[bytes, _Signature]:
             initial
         ):
             raise _Changed
-    if _signature(path.stat()) != _signature(initial):
+    named_after = _signature(path.stat())
+    opened = _signature(initial)
+    if named_after != named_before or opened[:4] != named_before[:4]:
         raise _Changed
-    return raw, _signature(initial)
+    # Windows stat reports creation time where fstat reports change time.
+    # Each API retains its own complete before/after comparison; cross-API
+    # device/inode/size/mtime still identify the same opened pathname.
+    if os.name != "nt" and opened.changed != named_before.changed:
+        raise _Changed
+    return raw, named_before
 
 
 def _key(path: Path) -> str:
