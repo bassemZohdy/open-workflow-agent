@@ -178,3 +178,12 @@ and the selected LangGraph partial-native stop boundary. Their correction retain
 the same required identities, outcomes, native-history and no-repeat-dispatch
 assertions. Fixture counts remain unchanged. S3-02 and its criteria remain unchecked;
 the complete corrected batch and final qualification are pending.
+
+The fourth frozen correction at `0c5eec0` passed 55 common wire controls
+(13 backend skips), all 10 actual SDK/socket/process-stop cases per principal
+(30 foreign/backend skips each), and all five independent builds. The 13 new
+LangGraph initializer corruption/control cases failed at fixture creation because
+a required `user_id` was omitted, before archive or SDK setup; that fixture field
+is corrected without changing runtime code or assertions. Exact failed and passing
+history is retained in `tmp/s3-02-fourth-batch`. Final full suites, actual PostgreSQL,
+platform, image, security, CTK and exact-source hosted acceptance remain required.

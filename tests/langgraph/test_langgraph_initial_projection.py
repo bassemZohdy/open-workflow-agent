@@ -111,6 +111,7 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
     handle = services.invocations.create(
         engine="langgraph",
         session_id="initial-session",
+        user_id="initial-user",
         owner_principal="initial-owner",
         workflow_name=plan.name,
         workflow_version=plan.version,
