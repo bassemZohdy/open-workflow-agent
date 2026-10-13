@@ -114,3 +114,23 @@ diagnostic over the exact failed database records original hashes and timestamps
 unchanged; this is a reproduction, not completed behavioral qualification.
 Thirteen dedicated controls and the original actual-process case require the
 next corrected batch, followed by full independent and exact hosted gates.
+
+The first inspection correction `e2fcb3b` passes five builds but exposes a
+Windows metadata API mismatch in its fixture batch: path stat reports creation
+time while descriptor stat reports change time. `f732247` compares each API
+against itself and retains supported cross-API identity/size/mtime checks. All
+13 inspection controls pass, as does the original ADK `partial-all` actual
+hard-stop case. The frozen broader correction retains 418 inputs unchanged:
+root 169 passed/65 skipped/four failed, ADK 174/154/four, LangGraph 174/154/four,
+optional Framework 194/212/six. Only an overly specific newly added pending-child
+error assertion fails; the runtime correctly preserves the parent's unresolved
+intent without another receiver call. Its correction also checks the retained
+pending receipt. Logs, bounds, hashes and five fresh passing builds remain in
+`tmp/s3-01-fourth-batch` and `tmp/s3-01-fifth-batch` respectively.
+
+The final authored helper rejects forged master/member paths lexically before
+filesystem access, including UNC references. Its additional control brings the
+inspection grid to 14; this hardening awaits the combined final validation.
+S2-09, S3-01 and the separately authored S3-02 will share one final frozen source,
+full validation and hosted publication checkpoint. No task is complete from
+these partial or failed attempts.
