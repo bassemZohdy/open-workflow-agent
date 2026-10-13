@@ -78,15 +78,14 @@ Feature: Protocol Call Tasks
       - askAgent:
           call: a2a
           with:
-            method: message/send
+            method: SendMessage
             server: https://service.test/a2a
             parameters:
               message:
                 messageId: ctk-a2a-message
                 role: ROLE_USER
                 parts:
-                  - kind: text
-                    text: hello from CTK
+                  - text: hello from CTK
           timeout:
             after:
               seconds: 5
