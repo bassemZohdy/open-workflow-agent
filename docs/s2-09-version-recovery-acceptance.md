@@ -195,3 +195,14 @@ within the unchanged live-producer100-second bound. Malformed JSON still fails.
 Original source hashes/logs remain in `tmp/s2-09-fourth-batch`. Synthetic late
 finalization and memory corrections follow in the same supervised bundle; no
 partial failed bundle is qualified as complete.
+
+Corrected bundle 5ef4170 is green with396unchanged fixed inputs. Root passes
+85 checks with31 unavailable PostgreSQL skips. Both actual principal SDKs pass
+all17 selected version/process-stop cases (including nested archived child
+continuation under a v2-only catalog) without skips. Each passes both synthetic
+late-finalization cancellation cases. LangGraph also passes the five memory
+presence/fork regression cases. Supervisors complete in33seconds root,191ADK
+and149LangGraph, below their unchanged900-second bound. Allfivefreshwheel/
+sdist builds and source-lock/metadata provenance checks pass. Full broad suites
+and exact-source hosted backend/platform/image/security gates still remain;
+S2-09 is not complete and no pending source is published as qualified.
