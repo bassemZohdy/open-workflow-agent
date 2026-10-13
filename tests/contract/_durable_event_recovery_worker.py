@@ -7,16 +7,28 @@ import importlib
 import json
 import os
 import sys
+import traceback
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from _process_recovery_worker import write_json
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import InvocationStateConflict, InvocationStateError
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
+
+
+def write_json(path: Path, value: Any) -> None:
+    # This worker also imports a genuine repository-owned predecessor Core.
+    # Keep evidence writing independent of helpers importing current-only
+    # services (notably TimerDispatcher, which the scalar producer predates).
+    temporary = path.with_suffix(".tmp")
+    with temporary.open("w", encoding="utf-8") as stream:
+        json.dump(value, stream, ensure_ascii=False, allow_nan=False)
+        stream.flush()
+        os.fsync(stream.fileno())
+    temporary.replace(path)
 
 
 async def run(directory: Path, mode: str) -> None:
@@ -278,6 +290,14 @@ if __name__ == "__main__":
         asyncio.run(run(directory, mode))
     except BaseException as exc:
         write_json(
-            directory / (mode + "-failure.json"), {"type": type(exc).__name__, "message": str(exc)}
+            directory / (mode + "-failure.json"),
+            {
+                "type": type(exc).__name__,
+                "code": getattr(exc, "code", None),
+                "frames": [
+                    {"file": Path(item.filename).name, "line": item.lineno, "function": item.name}
+                    for item in traceback.extract_tb(exc.__traceback__)[-8:]
+                ],
+            },
         )
         raise

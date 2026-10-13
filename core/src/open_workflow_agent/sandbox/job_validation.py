@@ -283,7 +283,8 @@ def verify_backend_launch(
         ):
             raise ValueError("changed submit intent")
         control_row = connection.execute(
-            "SELECT CASE WHEN length(control_json)<=1048576 THEN control_json ELSE 'invalid' END "
+            "SELECT CASE WHEN control_json IS NULL OR length(control_json)<=1048576 "
+            "THEN control_json ELSE 'invalid' END "
             "FROM sandbox_job_delivery WHERE job_id=?",
             (lease.job_id,),
         ).fetchone()

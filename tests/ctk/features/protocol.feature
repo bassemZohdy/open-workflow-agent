@@ -94,7 +94,13 @@ Feature: Protocol Call Tasks
     When the workflow is executed
     Then the workflow should complete with output:
     """yaml
-    path: /a2a
+    task:
+      id: ctk-task
+      contextId: ctk-context
+      status:
+        state: TASK_STATE_COMPLETED
+      metadata:
+        path: /a2a
     """
 
   Scenario: OpenAPI Call Uses The Mock Protocol Boundary

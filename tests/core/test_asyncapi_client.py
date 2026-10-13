@@ -51,7 +51,7 @@ def source(version="3.1.0", mode="publish", protocol="kafka"):
     result = {
         "asyncapi": version,
         "info": {"title": "Finite", "version": "1.0.0"},
-        "servers": {"z-first": server, "a-second": {**server}},
+        "servers": {"z-first": server, "a-second": copy.deepcopy(server)},
         "components": {"messages": {"event": message}},
     }
     bindings = (
@@ -284,6 +284,18 @@ def test_saved_selection_cannot_change_original_definition_or_derived_binding(co
         b"\xff",
         b"[]",
         b"x" * (MAX_DOCUMENT_BYTES + 1),
+    ],
+    ids=[
+        "duplicate-json",
+        "duplicate-yaml",
+        "yaml-alias",
+        "yaml-tag",
+        "json-nan",
+        "nonstring-key",
+        "yaml-nan",
+        "invalid-utf8",
+        "non-object",
+        "oversize",
     ],
 )
 def test_raw_description_rejects_duplicates_aliases_tags_nonjson_values_and_bounds(raw):

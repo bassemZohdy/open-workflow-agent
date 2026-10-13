@@ -13,9 +13,10 @@ IMAGE = "registry.example/worker@sha256:" + "a" * 64
 
 
 def configuration(backend):
-    return SandboxConfig.model_validate(
-        {"enabled": True, "backend": backend, backend: {"allowed_images": [IMAGE]}}
-    )
+    policy = {"allowed_images": [IMAGE]}
+    if backend == "kubernetes":
+        policy["network_policy_enforced"] = True
+    return SandboxConfig.model_validate({"enabled": True, "backend": backend, backend: policy})
 
 
 def workflow(container, reusable):

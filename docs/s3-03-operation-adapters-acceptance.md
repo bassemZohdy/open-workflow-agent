@@ -1,8 +1,8 @@
 # S3-03 operation adapters: finite acceptance plan
 
-Status: authored, unqualified. S3-03 remains unchecked. No behavioral test,
-native/backend, process-stop, build, hosted CI or inventory-completion claim is
-made by this record. Authored finite gRPC and embedded background executable
+Status: authored, unqualified. S3-03 remains unchecked. The first frozen
+behavioral batch failed as recorded below; no native/backend qualification,
+hosted CI or inventory-completion claim is made. Authored finite gRPC and embedded background executable
 profiles still require their independent S3-03 gates. AsyncAPI network activation
 and broader function/sandbox responsibilities remain pending.
 
@@ -367,3 +367,54 @@ No source review, inventory count, parser or fake backend proves those gates.
 
 [Pinned OWS1.0.3 OpenAPI call contract](https://github.com/open-workflow-specification/specification/blob/v1.0.3/dsl-reference.md#openapi-call)
 is the public argument authority.
+
+## First frozen batch and grouped corrections
+
+Source `f2220334c90e0d853fb348817fea5cbb3f08b218` retained 979 unchanged tracked
+inputs throughout its four local profiles. Root ended with 44 failures, 716
+passes, 140 skips and two setup/teardown errors; ADK and LangGraph each ended
+with 20 failures, 115 passes and 246 skips; optional Agent Framework ended with
+59 passes and 358 skips. Five independent fresh builds passed. These results
+do not qualify any unfinished profile. Original logs, commands, source manifest
+and exit records are retained under `tmp/operation-batch-f222033-*` locally.
+
+The coherent correction set preserves those failures. AsyncAPI positive fixtures
+now avoid accidental YAML anchors, and oversize cases keep their actual sizes
+with bounded parameter identifiers. Pure job fixtures use an available executable;
+Kubernetes admission fixtures declare the network-policy prerequisite they are
+testing. A genuine SQL NULL control remains NULL instead of being classified as
+malformed; cancellation, malformed and oversize controls retain independent
+read-only rejection witnesses. Corruptible shared PostgreSQL definition fixtures
+have unique public source identities rather than damaging another fixture's
+archive. Native checkpoint snapshots retain bytes through a typed SHA/length
+representation and preserve before/after equality checks.
+
+OpenAPI fixtures use valid public function arguments and an actual JSON null
+response. Unknown dispatched outcomes retain structured pending assertions.
+Shutdown after failed initialization is safe and has dedicated coverage. The
+repository-owned CTK A2A listener now emits a correlated pinned typed Task wire
+response; its expected public result follows that response. Upstream CTK material
+and provenance remain unchanged, and fresh current-source CTK evidence is still
+required. The corrected batch must finish before any passing claim replaces this
+failed history.
+
+The exact-source `67aa724` hosted checkpoint also failed: root had three failing
+cases (one secret-safety A2A request missing its required message ID and two CTK
+wire fixtures), both shared principal suites each had one legacy-scalar event
+worker startup failure, PostgreSQL ADK had that same failure, PostgreSQL LangGraph
+had that failure plus 16 manual invocation-state cases, optional Framework had
+three CTK failures, and Windows timing had the legacy worker failure. Both standard
+images, PostgreSQL common store, both PostgreSQL lifecycle suites, optional
+Framework PostgreSQL recovery, other Windows profiles, audits, docs and external
+controller checks passed; the aggregate checkpoint remains failed.
+
+The legacy producer accidentally imported a current test helper that imports
+TimerDispatcher, absent from its intentionally archived runtime. A local standard
+library atomic writer removes that dependency; mode-specific sanitized diagnostics
+retain original deadlines and checkpoints. Manual invocation-state tests opt into
+the existing explicit delivery fixture so automatic dispatch cannot consume earlier
+shared-database timers with a different test's model. Premature terminal execution
+now reports bounded safe categories within the original ten-second fixture gate.
+The secret-safety positive request supplies the pinned required message ID and
+asserts a successful response before its original no-secret checks. All changes
+require the next frozen behavioral and hosted batch.

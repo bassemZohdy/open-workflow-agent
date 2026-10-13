@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import uuid
 from dataclasses import asdict, replace
 
 import pytest
@@ -60,7 +61,12 @@ def jobs(tmp_path, request):
     # Runtime await:false/supervisor activation is an independent later gate.
     plan = compile_sandbox_workflow(
         {
-            "document": {"dsl": "1.0.3", "namespace": "jobs", "name": "store", "version": "1.0.0"},
+            "document": {
+                "dsl": "1.0.3",
+                "namespace": "jobs",
+                "name": "store-" + uuid.uuid4().hex,
+                "version": "1.0.0",
+            },
             "do": [{"job": {"run": {"await": True, "shell": {"command": "approved-command"}}}}],
         },
         sandbox=config.sandbox,

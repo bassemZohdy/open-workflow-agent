@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import importlib
 import json
 import os
@@ -18,7 +19,7 @@ from open_workflow_agent.errors import OwaError
 from open_workflow_agent.sandbox import compile_sandbox_workflow
 from open_workflow_agent.sandbox._job_ipc import read_frame, read_key
 from open_workflow_agent.services import RuntimeServices
-from test_native_checkpoint_fencing import _snapshot as native_snapshot
+from test_native_checkpoint_fencing import _snapshot as raw_native_snapshot
 
 SCRIPT = """import json,os,sqlite3,sys,time
 from pathlib import Path
@@ -32,6 +33,22 @@ connection.execute('INSERT INTO commits(value) VALUES (?)', (sys.stdin.read(),))
 connection.commit()
 print('real independent job completed')
 """
+
+
+def native_snapshot(services, handle, backend):
+    # Actual SQLite checkpoint cells include msgpack bytes. Preserve their exact
+    # identity without serializing a native checkpoint as an execution input.
+    # Normalize SQL row tuples only for the test's persisted equality witness.
+    def cell(value):
+        if isinstance(value, bytes):
+            return {"bytes_sha256": hashlib.sha256(value).hexdigest(), "length": len(value)}
+        assert value is None or type(value) in {str, int, float}
+        return value
+
+    return {
+        table: [[cell(value) for value in row] for row in rows]
+        for table, rows in raw_native_snapshot(services, handle, backend).items()
+    }
 
 
 def configuration(directory):

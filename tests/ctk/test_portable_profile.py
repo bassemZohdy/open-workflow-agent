@@ -182,6 +182,25 @@ async def test_upstream_ctk_portable_profile_scenarios(
                     },
                 },
             )
+        if request.url.path == "/a2a":
+            body = json.loads(request.content)
+            assert body["method"] == "SendMessage" and body["jsonrpc"] == "2.0"
+            assert request.headers["A2A-Version"] == "1.0"
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {
+                        "task": {
+                            "id": "ctk-task",
+                            "contextId": "ctk-context",
+                            "status": {"state": "TASK_STATE_COMPLETED"},
+                            "metadata": {"path": "/a2a"},
+                        }
+                    },
+                },
+            )
         if request.url.path == "/error":
             return httpx.Response(503, json={"error": "controlled protocol failure"})
         if request.url.path == "/v2/pet/1":

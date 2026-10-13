@@ -11,7 +11,8 @@ import pytest
 from open_workflow_agent.errors import OwaError
 from open_workflow_agent.sandbox._job_runner import run_job
 from open_workflow_agent.sandbox.backends.internal import InternalSandboxBackend
-from open_workflow_agent.sandbox.job_validation import backend_mutation_fence
+from open_workflow_agent.sandbox.job_validation import backend_mutation_fence, verify_backend_launch
+from open_workflow_agent.storage import StorageConnection
 from test_internal_sandbox_jobs import supervisor as supervisor
 
 
@@ -40,6 +41,47 @@ async def wait_file(path):
     async with asyncio.timeout(5):
         while not path.exists():
             await asyncio.sleep(0.01)
+
+
+@pytest.mark.parametrize("control", ["absent", "authorized", "malformed", "oversize"])
+def test_readonly_submit_preserves_null_and_rejects_every_retained_control(
+    supervisor, monkeypatch, control
+):
+    services, store, lease, _, _, launch = supervisor("print('finite')")
+    connection = services.effect_journal.connection
+    if control == "authorized":
+        store.request_control(lease, reason="cancel", principal="original-owner")
+    elif control != "absent":
+        connection.execute(
+            "UPDATE sandbox_job_delivery SET control_json=? WHERE job_id=?",
+            ("not-json" if control == "malformed" else "x" * 1_048_577, lease.job_id),
+        )
+        connection.commit()
+    else:
+        assert (
+            connection.execute(
+                "SELECT control_json FROM sandbox_job_delivery WHERE job_id=?", (lease.job_id,)
+            ).fetchone()[0]
+            is None
+        )
+    before = snapshot(services)
+    statements = []
+    original = StorageConnection.execute
+
+    def select_only(selected, statement, parameters=()):
+        if selected is connection:
+            statements.append(statement)
+            assert statement.lstrip().startswith("SELECT ")
+        return original(selected, statement, parameters)
+
+    with monkeypatch.context() as guard:
+        guard.setattr(StorageConnection, "execute", select_only)
+        if control == "absent":
+            verify_backend_launch(connection, launch, expected_profile=launch.profile)
+        else:
+            with pytest.raises(OwaError):
+                verify_backend_launch(connection, launch, expected_profile=launch.profile)
+    assert statements and snapshot(services) == before
 
 
 def test_mutation_fence_blocks_takeover_without_writing_proofs(supervisor):

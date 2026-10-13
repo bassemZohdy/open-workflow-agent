@@ -118,13 +118,12 @@ def test_durable_events_survive_actual_native_process_stop(
     legacy = boundary == "legacy-scalar"
     source = _legacy_source(tmp_path) if legacy else ROOT
     first = _start(tmp_path, "legacy-start" if legacy else "start", source)
+    failure = tmp_path / (("legacy-start" if legacy else "start") + "-failure.json")
     try:
         deadline = time.monotonic() + 60
         while not (tmp_path / "ready.json").exists():
             assert first.poll() is None, (
-                (tmp_path / "start-failure.json").read_text()
-                if (tmp_path / "start-failure.json").exists()
-                else "worker exited"
+                failure.read_text(encoding="utf-8") if failure.exists() else "worker exited"
             )
             assert time.monotonic() < deadline
             time.sleep(0.02)

@@ -1248,7 +1248,9 @@ class WorkflowEngine:
         # nested awaits. This private signal never persists a cancelled outcome.
         for active in self._active.values():
             active.control.interrupt("host_drain")
-        await self.services.stop_background_jobs()
+        services = getattr(self, "services", None)
+        if services is not None:
+            await services.stop_background_jobs()
         if self._timer_dispatcher is not None:
             await self._timer_dispatcher.stop()
         if self._initial_delivery_dispatcher is not None:
@@ -1261,7 +1263,7 @@ class WorkflowEngine:
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
-        sandbox = getattr(self.services, "sandbox", None)
+        sandbox = getattr(services, "sandbox", None)
         if sandbox is not None:
             await sandbox.shutdown()
 

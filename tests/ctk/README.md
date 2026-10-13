@@ -25,6 +25,13 @@ use one shared MockTransport per engine so HTTP, MCP, A2A, and OpenAPI calls
 exercise the same common boundary without external network access. Retry
 scenarios use the deterministic fake model and do not call a provider.
 
+The repository-owned A2A protocol scenario now receives the pinned1.0 wire
+SDK's correlated typed Task result, and compares its complete public response.
+The former arbitrary `path` JSON result was not a valid A2A SendMessage response.
+This updates the local protocol fixture and expected result; the selected
+upstream scenario files and their provenance remain unchanged. Each fresh CTK
+artifact records the current hashes of all26 selected/adapted feature files.
+
 This is an applicable Portable Profile subset, not a claim of full Open
 Workflow conformance. The event, built-in catalog-call, protocol, and flow
 scenarios exercise the same common services as production. Broader upstream
