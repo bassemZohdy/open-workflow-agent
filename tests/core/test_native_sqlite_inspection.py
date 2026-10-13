@@ -225,6 +225,58 @@ def test_missing_superjournal_uses_committed_native_bytes_without_original_clean
     assert _fingerprints(root) == before
 
 
+def test_untrusted_unc_and_unknown_journal_names_reject_before_filesystem_lookup(
+    hot_rollback, tmp_path, monkeypatch
+):
+    root = _copy_fixture(hot_rollback, tmp_path / "evidence")
+    native, common = root / "native.sqlite3", root / "runtime.sqlite3"
+    journal = Path(str(native) + "-journal")
+    original = journal.read_bytes()
+    length = struct.unpack(">I", original[-16:-12])[0]
+    master = next(root.glob("*mj*"))
+    unc = "//untrusted-owa-server/share/native.sqlite3-mj000000900"
+    unknown = str(root / "untrusted.sqlite3-mj000000900")
+    forbidden_keys = {inspection._key(Path(name)) for name in (unc, unknown)}
+    original_stat, original_link = Path.stat, Path.is_symlink
+    attempted = []
+
+    def guarded_stat(path, *args, **kwargs):
+        assert inspection._key(path) not in forbidden_keys, "untrusted path was stat'ed"
+        attempted.append(("stat", path))
+        return original_stat(path, *args, **kwargs)
+
+    def guarded_link(path):
+        assert inspection._key(path) not in forbidden_keys, "untrusted link was inspected"
+        attempted.append(("is_symlink", path))
+        return original_link(path)
+
+    def forbidden_resolve(*args, **kwargs):
+        pytest.fail("untrusted journal names must be compared without Path.resolve")
+
+    for name in (unc, unknown, None):
+        if name is None:
+            journal.write_bytes(original)
+            master.write_bytes(str(journal).encode() + b"\0" + unc.encode() + b"\0")
+        else:
+            encoded = name.encode()
+            checksum = sum(value if value < 128 else value - 256 for value in encoded) & 0xFFFFFFFF
+            journal.write_bytes(
+                original[: -16 - length]
+                + encoded
+                + struct.pack(">II", len(encoded), checksum)
+                + inspection._MAGIC
+            )
+        before = _fingerprints(root)
+        with monkeypatch.context() as guarded:
+            guarded.setattr(Path, "stat", guarded_stat)
+            guarded.setattr(Path, "is_symlink", guarded_link)
+            guarded.setattr(Path, "resolve", forbidden_resolve)
+            with pytest.raises(ValueError, match="untrusted super-journal"):
+                inspection._snapshot(native, common)
+        assert _fingerprints(root) == before
+    assert attempted and all(inspection._key(path) not in forbidden_keys for _, path in attempted)
+
+
 def test_changing_snapshot_exhausts_only_bounded_consistency_retries(
     hot_rollback, tmp_path, monkeypatch
 ):

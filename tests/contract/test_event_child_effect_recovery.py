@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from collections.abc import Mapping
 from pathlib import Path
@@ -247,11 +248,17 @@ async def test_event_or_child_receipt_prevents_another_recovery_dispatch(
         if request_change == "input" or outcome == "pending":
             assert result.status == "faulted" and result.error is not None
             failure = result.error
-            if outcome == "pending" and kind == "workflow" and request_change != "input":
-                assert failure["message"] == "nested workflow faulted"
-                assert failure["details"]["invocation_id"] == child_id
-                failure = failure["details"]["error"]
             assert ("differs" if request_change == "input" else "unresolved") in failure["message"]
+            if outcome == "pending" and kind == "workflow":
+                rows = restarted.effect_journal.connection.execute(
+                    "SELECT i.payload,e.status FROM workflow_effect_invocations i "
+                    "JOIN workflow_effects e ON e.identity=i.identity WHERE i.invocation_id=?",
+                    (handle.invocation_id,),
+                ).fetchall()
+                pending = [
+                    row[1] for row in rows if json.loads(row[0])["operation"] == "run:workflow"
+                ]
+                assert pending == ["pending"]
         elif outcome == "fault":
             assert expected_error is not None
             assert result.status == "faulted" and result.error == {

@@ -70,7 +70,9 @@ def _read(path: Path, maximum: int) -> tuple[bytes, _Signature]:
 
 
 def _key(path: Path) -> str:
-    return os.path.normcase(str(path.resolve()))
+    # Journal metadata is untrusted. Compare lexical absolute names without
+    # resolving links or consulting a remote UNC filesystem.
+    return os.path.normcase(os.path.abspath(str(path)))
 
 
 def _journal_prefix(raw: bytes) -> tuple[bytes, str | None]:
@@ -138,7 +140,7 @@ def _master(
     common: Path,
 ) -> tuple[Path, bytes | None, _Signature | None]:
     master = Path(name)
-    if not master.is_absolute() or master.is_symlink():
+    if not master.is_absolute() or ".." in master.parts:
         raise ValueError("untrusted super-journal path")
     allowed = (native, common)
     if not any(
@@ -149,6 +151,8 @@ def _master(
         for database in allowed
     ):
         raise ValueError("untrusted super-journal name")
+    if master.is_symlink():
+        raise ValueError("untrusted super-journal path")
     if not master.exists():
         return master, None, None
     content, signature = _read(master, MAX_MASTER_BYTES)
