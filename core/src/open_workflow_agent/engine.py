@@ -10,6 +10,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from ._version import __version__
+from .child_suspension import ChildSuspension
+from .child_waits import ChildWaitRegistration
+from .effects import EffectIdentity
 from .errors import (
     InvocationCancelled,
     InvocationStateConflict,
@@ -134,6 +137,7 @@ class WorkflowEngine:
         self._timer_dispatcher: TimerDispatcher | None = None
         self._timer_claims: dict[str, TimerClaim] = {}
         self._timer_wakes: dict[str, dict[str, TimerWake]] = {}
+        self._child_wakes: dict[str, dict[str, dict[str, Any]]] = {}
         self._ownership_released: dict[str, asyncio.Event] = {}
 
     async def _wait_for_ownership_renewal(self) -> None:
@@ -216,7 +220,10 @@ class WorkflowEngine:
         if observer is not None:
             observer(child)
         try:
-            result = await self.invoke(workflow, child, input_data)
+            if child.status in TERMINAL_INVOCATION_STATES:
+                result = self._stored_result(child)
+            else:
+                result = await self.invoke(workflow, child, input_data)
         except asyncio.CancelledError:
             await self.cancel(
                 child,
@@ -225,6 +232,16 @@ class WorkflowEngine:
             raise
         if result.status == "completed":
             return result.output
+        if result.status == "waiting":
+            identity = parent_context.get("_child_effect_identity")
+            if not isinstance(identity, EffectIdentity):
+                raise WorkflowExecutionError("child wait requires its parent action identity")
+            raise ChildSuspension(
+                identity,
+                child.invocation_id,
+                parent_context["_child_request_digest"],
+                deadline_at=parent_context.get("_child_deadline_at"),
+            )
         if result.status == "cancelled":
             raise InvocationCancelled(
                 "nested workflow was cancelled",
@@ -285,6 +302,13 @@ class WorkflowEngine:
                 self.services.invocations.refresh(invocation)
                 if invocation.status in TERMINAL_INVOCATION_STATES:
                     return self._stored_result(invocation)
+                if self.services.child_waits.for_invocation(
+                    invocation.invocation_id, workflow.fingerprint
+                ):
+                    await self._verify_resume_state(invocation, workflow)
+                    if not await self._prepare_child_wakes(invocation, workflow):
+                        return self._stored_result(invocation)
+                    return await self._resume_owned(invocation, None, workflow)
                 return await self._invoke_owned(workflow, invocation, input_data)
         except InvocationStateConflict as error:
             try:
@@ -314,6 +338,7 @@ class WorkflowEngine:
             triggers.verify_invocation(handle.invocation_id)
         self.services.invocations.refresh(handle)
         if handle.status in TERMINAL_INVOCATION_STATES:
+            await self._cancel_synchronous_children(handle)
             return self._stored_result(handle)
         active = self._active.get(handle.invocation_id)
         if active is not None:
@@ -324,6 +349,8 @@ class WorkflowEngine:
                 return self._stored_result(handle)
             if await self._scheduled_native_state_exists(handle, plan):
                 await self._verify_resume_state(handle, plan)
+                if not await self._prepare_child_wakes(handle, plan):
+                    return self._stored_result(handle)
                 self._prepare_timer_wake(handle, plan, None)
                 return await self._resume_owned(handle, None, plan)
             return await self._invoke_owned(plan, handle, input_data)
@@ -341,7 +368,7 @@ class WorkflowEngine:
             self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
             if self.services.timers.resumable_for_invocation(
                 handle.invocation_id, plan.fingerprint
-            ):
+            ) or self.services.child_waits.for_invocation(handle.invocation_id, plan.fingerprint):
                 return self._stored_result(handle)
             if await self._scheduled_native_state_exists(handle, plan):
                 await self._verify_resume_state(handle, plan)
@@ -350,6 +377,56 @@ class WorkflowEngine:
             return await self._invoke_owned(
                 plan, handle, self.services.invocations.read_input(handle)
             )
+
+    async def dispatch_child_wait(
+        self,
+        registration: ChildWaitRegistration,
+        load_plan: Callable[[], Awaitable[WorkflowPlan]],
+    ) -> InvocationResult:
+        handle = self.services.invocations.get(registration.identity.invocation_id)
+        if handle is None:
+            raise InvocationStateError("child wait parent is unavailable")
+        self._verify_execution_engine(handle)
+        async with self._own_execution(handle):
+            self.services.invocations.refresh(handle)
+            if handle.status in TERMINAL_INVOCATION_STATES:
+                await self._cancel_synchronous_children(handle)
+                return self._stored_result(handle)
+            plan = await load_plan()
+            self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+            if await self._scheduled_native_state_exists(handle, plan):
+                await self._verify_resume_state(handle, plan)
+                if not await self._prepare_child_wakes(handle, plan):
+                    return self._stored_result(handle)
+                return await self._resume_owned(handle, None, plan)
+            # A process can stop after common admission but before native waiting
+            # persistence. Reentry still resolves the recorded internal child.
+            if not await self._prepare_child_wakes(handle, plan):
+                return self._stored_result(handle)
+            await self._verify_resume_state(handle, plan)
+            return await self._resume_owned(handle, None, plan)
+
+    async def _prepare_child_wakes(self, handle: ExecutionHandle, plan: WorkflowPlan) -> bool:
+        registrations = self.services.child_waits.for_invocation(
+            handle.invocation_id, plan.fingerprint
+        )
+        executor = getattr(self, "executor", None)
+        now = executor._absolute_clock() if executor is not None else time.time()
+        ready = not registrations
+        for registration in registrations:
+            wake = self.services.child_waits.wake(registration, handle, now=now)
+            if wake is not None:
+                ready = True
+                if wake["reason"] == "deadline":
+                    child = self.services.invocations.get(registration.suspension.child_id)
+                    if child is not None:
+                        await self.cancel(
+                            child, operation_id=f"{handle.invocation_id}:child-deadline"
+                        )
+        self._child_wakes[handle.invocation_id] = self.services.child_waits.known_wakes(
+            handle.invocation_id, plan.fingerprint
+        )
+        return ready
 
     async def _dispatch_timer(
         self, claim: TimerClaim, load_plan: Callable[[], Awaitable[WorkflowPlan]]
@@ -376,6 +453,7 @@ class WorkflowEngine:
             plan = await load_plan()
             self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
             await self._verify_resume_state(handle, plan)
+            await self._prepare_child_wakes(handle, plan)
             self._prepare_timer_wake(handle, plan, None)
             return await self._resume_owned(handle, None, plan)
 
@@ -399,6 +477,11 @@ class WorkflowEngine:
                 if handle.status in TERMINAL_INVOCATION_STATES:
                     return self._stored_result(handle)
                 await self._verify_resume_state(handle, plan)
+                if not await self._prepare_child_wakes(handle, plan):
+                    if not self.services.timers.resumable_for_invocation(
+                        handle.invocation_id, plan.fingerprint
+                    ):
+                        return self._stored_result(handle)
                 self._prepare_timer_wake(handle, plan, resume_input)
                 return await self._resume_owned(handle, resume_input, plan)
         except InvocationStateConflict as error:
@@ -453,6 +536,7 @@ class WorkflowEngine:
     ) -> InvocationResult:
         self.services.invocations.refresh(handle)
         if handle.status in TERMINAL_INVOCATION_STATES:
+            await self._cancel_synchronous_children(handle)
             return self._stored_result(handle)
         active = self._active.get(handle.invocation_id)
         error = InvocationCancelled(
@@ -494,6 +578,7 @@ class WorkflowEngine:
                 handle.invocation_id, handle.workflow_fingerprint
             )
         self.services.timers.close_invocation(handle.invocation_id, handle.workflow_fingerprint)
+        await self._cancel_synchronous_children(handle)
         if active is None:
             self.services.lifecycle_events.emit(
                 WorkflowEvent(
@@ -510,6 +595,63 @@ class WorkflowEngine:
                 )
             )
         return self._stored_result(handle)
+
+    async def _cancel_synchronous_children(self, handle: ExecutionHandle) -> None:
+        rows = self.services.children.connection.execute(
+            "SELECT binding.binding_key,binding.root_id,binding.parent_id,binding.child_id,"
+            "binding.depth,binding.request_digest,binding.source_json,binding.digest,"
+            "binding.parent_task_reference FROM child_workflow_bindings AS binding "
+            "LEFT JOIN detached_child_jobs AS jobs ON jobs.binding_key=binding.binding_key "
+            "WHERE binding.parent_id=? AND jobs.job_key IS NULL",
+            (handle.invocation_id,),
+        ).fetchall()
+        errors: list[OwaError] = []
+        for row in rows:
+            try:
+                binding = self.services.children._binding(row)
+                child = self.services.children.verify_control(binding, handle)
+                if (
+                    child is None
+                    or child.parent_invocation_id != handle.invocation_id
+                    or child.owner_principal != handle.owner_principal
+                    or child.user_id != handle.user_id
+                    or child.engine != handle.engine
+                    or child.parent_task_reference != binding.parent_task_reference
+                ):
+                    raise WorkflowExecutionError("child cancellation identity is inconsistent")
+                if child.status not in TERMINAL_INVOCATION_STATES:
+                    await self.cancel(
+                        child, operation_id=f"{handle.invocation_id}:child-cancellation"
+                    )
+            except OwaError as error:
+                errors.append(error)
+        if errors:
+            raise errors[0]
+
+    async def _cancel_child_scopes(
+        self,
+        handle: ExecutionHandle,
+        prefixes: tuple[str, ...],
+        occurrence: tuple[tuple[str, int], ...],
+    ) -> None:
+        for registration in self.services.child_waits.for_invocation(
+            handle.invocation_id, handle.workflow_fingerprint
+        ):
+            identity = registration.identity
+            if (
+                not identity.task_reference.startswith(prefixes)
+                or identity.occurrence[: len(occurrence)] != occurrence
+            ):
+                continue
+            child = self.services.invocations.get(registration.suspension.child_id)
+            if child is None:
+                raise WorkflowExecutionError("fork child is absent")
+            await self.cancel(child, operation_id=f"{handle.invocation_id}:fork-loser")
+            executor = getattr(self, "executor", None)
+            self.services.child_waits.wake(
+                registration, handle, now=executor._absolute_clock() if executor else time.time()
+            )
+            self.services.child_waits.consume(registration, handle)
 
     def _begin_active(self, handle: ExecutionHandle) -> ActiveInvocation:
         existing = self._active.get(handle.invocation_id)
@@ -529,12 +671,14 @@ class WorkflowEngine:
     def _finish_active(self, handle: ExecutionHandle, result: InvocationResult) -> None:
         active = self._active.pop(handle.invocation_id, None)
         self._timer_wakes.pop(handle.invocation_id, None)
+        self._child_wakes.pop(handle.invocation_id, None)
         if active is not None and not active.result.done():
             active.result.set_result(result)
 
     def _abandon_active(self, handle: ExecutionHandle) -> None:
         active = self._active.pop(handle.invocation_id, None)
         self._timer_wakes.pop(handle.invocation_id, None)
+        self._child_wakes.pop(handle.invocation_id, None)
         if active is not None and not active.result.done():
             active.result.set_exception(
                 InvocationStateConflict(
@@ -554,7 +698,9 @@ class WorkflowEngine:
         active = self._active.get(handle.invocation_id)
         if active is None:
             return None
-        if self.services.timers.resumable_for_invocation(
+        if self.services.child_waits.for_invocation(
+            handle.invocation_id, handle.workflow_fingerprint
+        ) or self.services.timers.resumable_for_invocation(
             handle.invocation_id, handle.workflow_fingerprint
         ):
             await asyncio.shield(active.result)
@@ -602,6 +748,8 @@ class WorkflowEngine:
             "_lifecycle": active.control,
             "_timer_wakes": {key: wake.as_value() for key, wake in wakes.items()},
             "_timer_wake": next(iter(wakes.values())).as_value() if wakes else None,
+            "_child_wakes": self._child_wakes.get(invocation.invocation_id, {}),
+            "_cancel_child_scopes": self._cancel_child_scopes,
         }
 
     def _prepare_workflow_input(
@@ -628,6 +776,30 @@ class WorkflowEngine:
         try:
             self.services.effect_journal.verify_invocation(handle.invocation_id, plan.fingerprint)
             self.services.timers.verify_invocation(handle.invocation_id, plan.fingerprint)
+            self.services.child_waits.verify_invocation(handle.invocation_id, plan.fingerprint)
+            pending = [(handle.invocation_id, plan.fingerprint)]
+            visited: set[str] = set()
+            while pending:
+                parent_id, fingerprint = pending.pop()
+                if parent_id in visited:
+                    continue
+                visited.add(parent_id)
+                for registration in self.services.child_waits.for_invocation(
+                    parent_id, fingerprint
+                ):
+                    child = self.services.invocations.get(registration.suspension.child_id)
+                    if child is None:
+                        raise WorkflowExecutionError("awaited child invocation is absent")
+                    self.services.effect_journal.verify_invocation(
+                        child.invocation_id, child.workflow_fingerprint
+                    )
+                    self.services.timers.verify_invocation(
+                        child.invocation_id, child.workflow_fingerprint
+                    )
+                    self.services.child_waits.verify_invocation(
+                        child.invocation_id, child.workflow_fingerprint
+                    )
+                    pending.append((child.invocation_id, child.workflow_fingerprint))
             if self.services.event_store is not None:
                 self.services.event_store.verify_invocation(
                     handle.invocation_id,
@@ -742,7 +914,7 @@ class PortableWorkflowEngine(WorkflowEngine):
             else:
                 result = self._record_result(invocation, status="completed", output=output)
             return result
-        except TimerSuspension:
+        except (TimerSuspension, ChildSuspension):
             result = self._stored_result(invocation)
             return result
         except InvocationCancelled as exc:

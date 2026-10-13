@@ -6,11 +6,13 @@ import copy
 import hashlib
 import json
 import re
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from typing import Any, TypedDict, cast
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
+from open_workflow_agent.child_rescan import child_rescan_wake, verify_child_rescan_wake
+from open_workflow_agent.child_suspension import ChildSuspension
 from open_workflow_agent.effects import (
     EffectIdentity,
     EffectJournal,
@@ -175,6 +177,8 @@ class LangGraphScopeExecutor:
         effect_journal: EffectJournal | None = None,
         timer_wake: dict[str, Any] | None = None,
         timer_wakes: dict[str, dict[str, Any]] | None = None,
+        child_wakes: dict[str, dict[str, Any]] | None = None,
+        child_waits: Any = None,
     ) -> None:
         self.plan = plan
         self.saver = saver
@@ -182,6 +186,21 @@ class LangGraphScopeExecutor:
         self.resume = resume
         self.timer_wake = timer_wake
         self.timer_wakes = timer_wakes
+        self.child_wakes = child_wakes
+        self.child_waits = child_waits
+        if child_wakes is not None:
+            validate_expression_data(child_wakes)
+            if not isinstance(child_wakes, dict) or any(
+                not isinstance(key, str)
+                or not isinstance(value, dict)
+                or set(value)
+                != {"child_key", "child_id", "request_digest", "deadline_at", "reason"}
+                or value["child_key"] != key
+                or not isinstance(value["reason"], str)
+                or value["reason"] not in {"child_terminal", "deadline"}
+                for key, value in child_wakes.items()
+            ):
+                raise InvocationStateError("native child wake map is inconsistent")
         if timer_wakes is not None:
             validate_expression_data(timer_wakes)
             if not isinstance(timer_wakes, dict) or any(
@@ -333,6 +352,180 @@ class LangGraphScopeExecutor:
         ):
             raise InvocationStateError("native timer wake does not match pending interruption")
         return dict(wake)
+
+    def _child_interrupt(self, value: Any) -> ChildSuspension:
+        """Admit immutable common child evidence before adopting native dependencies."""
+        if not isinstance(value, dict) or set(value) != {"child", "receipts"}:
+            raise InvocationStateError("native child interruption is inconsistent")
+        try:
+            suspension = ChildSuspension.from_value(value["child"])
+            identity = suspension.identity
+            if (
+                identity.invocation_id != self.invocation_id
+                or identity.workflow_fingerprint != self.plan.fingerprint
+                or identity.task_reference not in self.task_references
+                or not isinstance(value["receipts"], list)
+                or self.effect_journal is None
+                or self.child_waits is None
+            ):
+                raise ValueError("child identity is inconsistent")
+            registration = self.child_waits.registration(identity)
+            admission = replace(identity, operation="policy:child-await:v1")
+            if (
+                registration is None
+                or registration.identity != identity
+                or registration.suspension.as_value() != suspension.as_value()
+                or registration.receipt.status != "completed"
+                or self.effect_journal.get(admission) != registration.receipt
+            ):
+                raise ValueError("child registration is inconsistent")
+            dependencies: dict[str, ReceiptDependency] = {}
+            for item in value["receipts"]:
+                dependency = ReceiptDependency.from_value(item)
+                reference = dependency.identity
+                if (
+                    reference.invocation_id != self.invocation_id
+                    or reference.workflow_fingerprint != self.plan.fingerprint
+                    or (
+                        reference.task_reference not in self.task_references
+                        and reference
+                        != root_clock_identity(self.invocation_id, self.plan.fingerprint)
+                    )
+                    or reference.key in dependencies
+                ):
+                    raise ValueError("child receipt identity is inconsistent")
+                dependency.verify(self.effect_journal)
+                previous = self.receipts.get(reference.key)
+                if previous is not None and previous != dependency:
+                    raise ValueError("child receipt dependency changed")
+                dependencies[reference.key] = dependency
+            if dependencies.get(admission.key) != ReceiptDependency.capture(
+                admission, registration.receipt
+            ):
+                raise ValueError("child admission receipt is absent")
+        except Exception:
+            raise InvocationStateError(
+                "native child interruption evidence is inconsistent"
+            ) from None
+        self.receipts.update(dependencies)
+        return suspension
+
+    def _native_interrupt(self, value: Any) -> TimerSuspension | ChildSuspension:
+        if isinstance(value, dict) and "child" in value:
+            return self._child_interrupt(value)
+        return self._timer_interrupt(value)
+
+    def _validate_native_wake(
+        self,
+        suspension: TimerSuspension | ChildSuspension,
+        *,
+        fork_reference: str | None = None,
+    ) -> dict[str, Any]:
+        if isinstance(suspension, TimerSuspension):
+            return self._validate_wake(suspension)
+        wake = (self.child_wakes or {}).get(suspension.identity.key)
+        if wake is None:
+            rescan = (
+                child_rescan_wake(
+                    suspension,
+                    child_waits=self.child_waits,
+                    journal=self.effect_journal,
+                    dependencies=self.receipts,
+                    ready_wakes=self.child_wakes,
+                    invocation_id=self.invocation_id,
+                    workflow_fingerprint=self.plan.fingerprint,
+                    fork_reference=fork_reference,
+                )
+                if fork_reference is not None and self.effect_journal is not None
+                else None
+            )
+            if rescan is None:
+                raise suspension
+            return rescan
+        if (
+            set(wake) != {"child_key", "child_id", "request_digest", "deadline_at", "reason"}
+            or wake["child_key"] != suspension.identity.key
+            or wake["child_id"] != suspension.child_id
+            or wake["request_digest"] != suspension.request_digest
+            or type(wake["deadline_at"]) not in {int, float, type(None)}
+            or wake["deadline_at"] != suspension.deadline_at
+            or wake["reason"] not in {"child_terminal", "deadline"}
+            or (wake["reason"] == "deadline" and suspension.deadline_at is None)
+        ):
+            raise InvocationStateError("native child wake does not match pending interruption")
+        try:
+            known = self.child_waits.known_wakes(self.invocation_id, self.plan.fingerprint)
+            if _json_identity(known.get(suspension.identity.key)) != _json_identity(wake):
+                raise ValueError("child wake is not recorded")
+        except Exception:
+            raise InvocationStateError(
+                "native child wake has no verified common decision"
+            ) from None
+        return dict(wake)
+
+    def _verify_child_rescan(self, value: Any) -> dict[str, Any]:
+        try:
+            if self.effect_journal is None:
+                raise ValueError("native child rescan journal is absent")
+            suspension = self._child_interrupt(
+                {
+                    "child": value["pending"],
+                    "receipts": json.loads(
+                        json.dumps(
+                            [asdict(item) for item in self.receipts.values()], allow_nan=False
+                        )
+                    ),
+                }
+            )
+            return verify_child_rescan_wake(
+                value,
+                suspension,
+                child_waits=self.child_waits,
+                journal=self.effect_journal,
+                dependencies=self.receipts,
+                invocation_id=self.invocation_id,
+                workflow_fingerprint=self.plan.fingerprint,
+            )
+        except Exception:
+            raise InvocationStateError(
+                "native child rescan has no verified sibling decision"
+            ) from None
+
+    def _known_native_resume(self, value: Any) -> dict[str, Any]:
+        if isinstance(value, dict) and value.get("profile") == "owa/child-rescan/v1":
+            return self._verify_child_rescan(value)
+        if not isinstance(value, dict) or "child_key" not in value:
+            return self._known_resume(value)
+        dependency = next(
+            (
+                item
+                for item in self.receipts.values()
+                if item.identity.operation == "policy:child-await:v1"
+                and replace(item.identity, operation="run:workflow").key == value["child_key"]
+            ),
+            None,
+        )
+        if dependency is None or self.child_waits is None:
+            raise InvocationStateError("native child resume admission reference is absent")
+        identity = replace(dependency.identity, operation="run:workflow")
+        registration = self.child_waits.registration(identity)
+        if registration is None:
+            raise InvocationStateError("native child resume registration is absent")
+        self._child_interrupt(
+            {
+                "child": registration.suspension.as_value(),
+                "receipts": json.loads(json.dumps([asdict(dependency)], allow_nan=False)),
+            }
+        )
+        try:
+            expected = self._validate_native_wake(registration.suspension)
+        except ChildSuspension:
+            raise InvocationStateError(
+                "native child resume history has no authorized wake"
+            ) from None
+        if _json_identity(value) != _json_identity(expected):
+            raise InvocationStateError("native child resume history changed")
+        return expected
 
     def _known_resume(self, value: Any) -> dict[str, Any]:
         if (
@@ -529,7 +722,7 @@ class LangGraphScopeExecutor:
             for _task_id, channel, value in checkpoint.pending_writes or ():
                 if channel == "__interrupt__":
                     for pending_interrupt in value:
-                        self._timer_interrupt(pending_interrupt.value)
+                        self._native_interrupt(pending_interrupt.value)
             observed[(reference, occurrence)] = (
                 self._state_digest(channels),
                 channels["next_node"],
@@ -603,16 +796,28 @@ class LangGraphScopeExecutor:
                     # acknowledged prefix before common replay can suspend for a
                     # different timer in this same native node.
                     for previous in previous_resumes:
-                        expected = self._known_resume(previous)
-                        if _json_identity(interrupt({"timer_key": expected["timer_key"]})) != (
-                            _json_identity(expected)
-                        ):
-                            raise InvocationStateError("native timer resume history changed")
-                    suspension = self._timer_interrupt(payload)
+                        expected = self._known_native_resume(previous)
+                        marker = (
+                            {"profile": "owa/child-rescan/v1"}
+                            if expected.get("profile") == "owa/child-rescan/v1"
+                            else (
+                                {"child_key": expected["child_key"]}
+                                if "child_key" in expected
+                                else {"timer_key": expected["timer_key"]}
+                            )
+                        )
+                        if _json_identity(interrupt(marker)) != (_json_identity(expected)):
+                            raise InvocationStateError("native interruption resume history changed")
+                    suspension = self._native_interrupt(payload)
                     if _json_identity(interrupt(payload)) != _json_identity(
-                        self._validate_wake(suspension)
+                        self._validate_native_wake(
+                            suspension,
+                            fork_reference=task.execution_reference or task.reference,
+                        )
                     ):
-                        raise InvocationStateError("native timer resume does not match its wake")
+                        raise InvocationStateError(
+                            "native interruption resume does not match its wake"
+                        )
                 try:
                     await executor._run_task_item(
                         task.name,
@@ -621,9 +826,10 @@ class LangGraphScopeExecutor:
                         task.reference,
                         execution_reference=task.execution_reference,
                     )
-                except TimerSuspension as suspension:
+                except (TimerSuspension, ChildSuspension) as suspension:
+                    kind = "child" if isinstance(suspension, ChildSuspension) else "timer"
                     payload = {
-                        "timer": suspension.as_value(),
+                        kind: suspension.as_value(),
                         "receipts": json.loads(
                             json.dumps(
                                 [asdict(self.receipts[key]) for key in sorted(self.receipts)],
@@ -631,12 +837,12 @@ class LangGraphScopeExecutor:
                             )
                         ),
                     }
-                    self._timer_interrupt(payload)
+                    self._native_interrupt(payload)
                     interrupt(payload)
                     # A validated wake must make the common timer consumable.
                     # Never treat an unconsumed suspension as a task result.
                     raise InvocationStateError(
-                        "native timer wake did not complete its wait"
+                        "native interruption wake did not complete its wait"
                     ) from None
                 halted = state.stop or state.scope_exit or state.flow.ended.is_set()
                 target = END if halted else following
@@ -701,9 +907,8 @@ class LangGraphScopeExecutor:
                 native_input = None
                 if saved.interrupts:
                     if len(saved.interrupts) != 1:
-                        raise InvocationStateError("native scope has ambiguous timer interruptions")
-                    suspension = self._timer_interrupt(saved.interrupts[0].value)
-                    native_input = Command(resume=self._validate_wake(suspension))
+                        raise InvocationStateError("native scope has ambiguous interruptions")
+                    suspension = self._native_interrupt(saved.interrupts[0].value)
                     pending_tasks = [task for task in saved.tasks if task.interrupts]
                     if len(pending_tasks) != 1:
                         raise InvocationStateError("native pending timer task is ambiguous")
@@ -712,6 +917,16 @@ class LangGraphScopeExecutor:
                         raise InvocationStateError(
                             "native pending timer task belongs to another scope"
                         )
+                    pending_plan = next(
+                        task for task in scope.tasks if _node_name(task) == pending_task.name
+                    )
+                    native_input = Command(
+                        resume=self._validate_native_wake(
+                            suspension,
+                            fork_reference=pending_plan.execution_reference
+                            or pending_plan.reference,
+                        )
+                    )
                     checkpoint = await self.saver.aget_tuple(config)
                     if checkpoint is None:
                         raise InvocationStateError("native pending timer checkpoint is absent")
@@ -720,7 +935,7 @@ class LangGraphScopeExecutor:
                         if task_id == pending_task.id and channel == "__resume__":
                             previous_resumes = value if isinstance(value, list) else [value]
                     for previous in previous_resumes:
-                        self._known_resume(previous)
+                        self._known_native_resume(previous)
                     self._resume_interrupts[(prefix, occurrence, pending_task.name)] = (
                         saved.interrupts[0].value,
                         previous_resumes,
@@ -744,8 +959,8 @@ class LangGraphScopeExecutor:
         saved = await graph.aget_state(config)
         if saved.interrupts:
             if len(saved.interrupts) != 1:
-                raise InvocationStateError("native scope has ambiguous timer interruptions")
-            raise self._timer_interrupt(saved.interrupts[0].value)
+                raise InvocationStateError("native scope has ambiguous interruptions")
+            raise self._native_interrupt(saved.interrupts[0].value)
         self._read(cast(_GraphState, result), state, prefix)
         self._record_completed_scope(cast(_GraphState, result), prefix, occurrence)
         state.scope_exit = False

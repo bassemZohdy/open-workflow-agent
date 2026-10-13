@@ -243,6 +243,8 @@ class LangGraphFunctionalAdapter:
                 effect_journal=getattr(executor.services, "effect_journal", None),
                 timer_wake=metadata.get("_timer_wake"),
                 timer_wakes=metadata.get("_timer_wakes"),
+                child_wakes=metadata.get("_child_wakes"),
+                child_waits=getattr(executor.services, "child_waits", None),
             )
             raw_input = await scopes.original_input(input_data) if resume else input_data
             try:
@@ -266,12 +268,18 @@ class LangGraphFunctionalAdapter:
         workflow_input: Any,
         *,
         effect_journal: Any = None,
+        child_waits: Any = None,
     ) -> None:
         from .graph import LangGraphScopeExecutor
 
         async def validate(saver: Any) -> None:
             scopes = LangGraphScopeExecutor(
-                plan, saver, invocation_id, resume=True, effect_journal=effect_journal
+                plan,
+                saver,
+                invocation_id,
+                resume=True,
+                effect_journal=effect_journal,
+                child_waits=child_waits,
             )
             await scopes.original_input(workflow_input)
 
@@ -284,14 +292,23 @@ class LangGraphFunctionalAdapter:
             raise InvocationStateError("native execution state could not be recovered") from None
 
     async def scheduled_state_exists(
-        self, plan: WorkflowPlan, invocation_id: str, workflow_input: Any, effect_journal: Any
+        self,
+        plan: WorkflowPlan,
+        invocation_id: str,
+        workflow_input: Any,
+        effect_journal: Any,
+        child_waits: Any = None,
     ) -> bool:
         """Read the SDK's authoritative root checkpoint without starting a run."""
         from .graph import LangGraphScopeExecutor
 
         async def inspect(saver: Any) -> bool:
             scopes = LangGraphScopeExecutor(
-                plan, saver, invocation_id, effect_journal=effect_journal
+                plan,
+                saver,
+                invocation_id,
+                effect_journal=effect_journal,
+                child_waits=child_waits,
             )
             checkpoint = await saver.aget_tuple(scopes.checkpoint_config("/do", 1))
             if checkpoint is None:

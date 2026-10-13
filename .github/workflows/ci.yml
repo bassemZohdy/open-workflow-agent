@@ -139,6 +139,9 @@ jobs:
           uv run --directory engines/langgraph --locked --extra sqlite
           --with pytest --with pytest-asyncio pytest -q
           ../../tests/contract/test_detached_children.py
+          ../../tests/contract/test_synchronous_child_waits.py
+            ../../tests/contract/test_child_lifecycle_acceptance.py
+          ../../tests/contract/test_detached_child_process_recovery.py
           ../../tests/contract/test_retry_error_context.py
           ../../tests/contract/test_retry_timing.py
           ../../tests/contract/test_deadline_recovery.py
@@ -267,6 +270,7 @@ jobs:
           print(f"release version: {expected}")
           PY
           uv lock --check
+          uv lock --directory core --check
           uv lock --directory engines/adk --check
           uv lock --directory engines/langgraph --check
       - name: Validate wheel contents

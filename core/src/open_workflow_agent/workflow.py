@@ -27,6 +27,7 @@ from referencing.jsonschema import DRAFT202012
 
 from ._version import __version__
 from .catalog import CatalogContext, FunctionCatalog
+from .child_suspension import ChildSuspension
 from .definitions import definition_at_pointer, resolve_reusable_components
 from .effects import (
     ChildInvocationDependency,
@@ -2484,7 +2485,7 @@ class WorkflowExecutor:
                     prefix=self._nested_prefix(child, f"fork/branches/{index}"),
                     indexed=False,
                 )
-            except TimerSuspension as suspension:
+            except (TimerSuspension, ChildSuspension) as suspension:
                 # A paused branch has released its execution. Drain runnable
                 # siblings before handing suspension back to the native scope.
                 return suspension
@@ -2513,15 +2514,31 @@ class WorkflowExecutor:
                         terminal_result, BaseException
                     ):
                         raise terminal_result
+                cancel_children = state.metadata.get("_cancel_child_scopes")
+                handle = state.metadata.get("_invocation_handle")
+                if cancel_children is not None and isinstance(handle, ExecutionHandle):
+                    await cancel_children(
+                        handle,
+                        tuple(
+                            self._nested_prefix(state, f"fork/branches/{index}") + "/"
+                            for index, branch in enumerate(branch_tasks)
+                            if branch not in state.flow.owners
+                        ),
+                        state.execution_path,
+                    )
                 state.stop = True
                 state.context = copy.deepcopy(state.flow.context)
                 state.variables["context"] = state.context
                 return copy.deepcopy(state.flow.output)
             results = joined.result()
-            suspensions = [result for result in results if isinstance(result, TimerSuspension)]
+            suspensions = [
+                result
+                for result in results
+                if isinstance(result, (TimerSuspension, ChildSuspension))
+            ]
             if suspensions:
                 self._set_invocation_status(state, "waiting")
-                raise min(suspensions, key=lambda value: (value.due_at, value.timer_key))
+                raise min(suspensions, key=self._suspension_order)
         finally:
             for pending in (*branch_tasks, ending):
                 if not pending.done():
@@ -2551,7 +2568,7 @@ class WorkflowExecutor:
 
         completion: asyncio.Future[ForkDecision] = asyncio.get_running_loop().create_future()
         branch_tasks: list[asyncio.Task[Any]] = []
-        suspensions: dict[int, TimerSuspension] = {}
+        suspensions: dict[int, TimerSuspension | ChildSuspension] = {}
 
         def cancel_siblings(owner: asyncio.Task[Any]) -> None:
             for pending in branch_tasks:
@@ -2572,7 +2589,7 @@ class WorkflowExecutor:
                     prefix=self._nested_prefix(child, f"fork/branches/{index}"),
                     indexed=False,
                 )
-            except TimerSuspension as suspension:
+            except (TimerSuspension, ChildSuspension) as suspension:
                 suspensions[index] = suspension
                 return
             except (_EffectRecoveryRequired, InvocationStateConflict) as exc:
@@ -2640,9 +2657,7 @@ class WorkflowExecutor:
                         raise branch_result
                 if suspensions:
                     self._set_invocation_status(state, "waiting")
-                    raise min(
-                        suspensions.values(), key=lambda value: (value.due_at, value.timer_key)
-                    )
+                    raise min(suspensions.values(), key=self._suspension_order)
                 raise WorkflowExecutionError("competitive fork has no completed branch outcome")
         finally:
             for pending in (*branch_tasks, ending):
@@ -2655,6 +2670,17 @@ class WorkflowExecutor:
             if completion.done() and not completion.cancelled():
                 completion.exception()
             if recorded is not None:
+                cancel_children = state.metadata.get("_cancel_child_scopes")
+                handle = state.metadata.get("_invocation_handle")
+                if cancel_children is not None and isinstance(handle, ExecutionHandle):
+                    await cancel_children(
+                        handle,
+                        tuple(
+                            self._nested_prefix(state, f"fork/branches/{index}") + "/"
+                            for index in recorded.cancellation_intents
+                        ),
+                        state.execution_path,
+                    )
                 store.mark_drained(identity, execution_lease=self._execution_lease(state))
         self._token(state).checkpoint()
         handle = state.metadata.get("_invocation_handle")
@@ -2687,6 +2713,45 @@ class WorkflowExecutor:
             state.context = copy.deepcopy(decision.context)
             state.variables["context"] = state.context
         return copy.deepcopy(decision.output)
+
+    @staticmethod
+    def _suspension_order(value: TimerSuspension | ChildSuspension) -> tuple[float, str]:
+        if isinstance(value, TimerSuspension):
+            return value.due_at, value.timer_key
+        return value.deadline_at or math.inf, value.identity.key
+
+    async def _suspend_child(
+        self,
+        state: ExecutionState,
+        child: ExecutionHandle,
+        identity: EffectIdentity,
+        deadline_at: float | None,
+    ) -> NoReturn:
+        parent = cast(ExecutionHandle, state.metadata["_invocation_handle"])
+        registration = self.services.child_waits.arm(
+            identity,
+            parent,
+            child,
+            workflow_source=state.metadata["_workflow_source"],
+            deadline_at=deadline_at,
+        )
+        await self._notify_receipt(
+            state, replace(identity, operation="policy:child-await:v1"), registration.receipt
+        )
+        await self._notify_waiting(state)
+        self._set_invocation_status(state, "waiting")
+        event = {
+            **self._task_event(
+                str(state.variables["_task_reference"]),
+                str(state.variables.get("_task_name", "child")),
+                state,
+            ),
+            "status": "waiting",
+            "progress": {"phase": "waiting", "child_invocation_id": child.invocation_id},
+        }
+        self._emit("TaskWaiting", event)
+        self._emit("WorkflowWaiting", event)
+        raise registration.suspension
 
     async def _run_subworkflow(self, definition: Any, state: ExecutionState) -> Any:
         if self.services is None or not hasattr(self.services, "workflow_catalog"):
@@ -2754,6 +2819,9 @@ class WorkflowExecutor:
 
         known = self.services.effect_journal.get(identity)
         if known is not None and known.status != "pending":
+            parent = state.metadata.get("_invocation_handle")
+            if binding is not None and isinstance(parent, ExecutionHandle):
+                self.services.children.verify_control(binding, parent)
             if known.request_digest != effect_request_digest(
                 "run:workflow", {"workflow_fingerprint": plan.fingerprint, "input": child_input}
             ):
@@ -2786,20 +2854,130 @@ class WorkflowExecutor:
                 **state.metadata,
                 "_child_invocation_handle": parent_child,
                 "_child_invocation_observer": observe_child,
+                "_child_effect_identity": identity,
+                "_child_request_digest": request_digest,
             }
+            deadlines = [
+                scope.absolute_due
+                for scope in _ACTIVE_TIMEOUTS.get()
+                if scope.absolute_due is not None
+            ]
+            deadline_at = min(deadlines) if deadlines else None
+            child_context["_child_deadline_at"] = deadline_at
+            registration = self.services.child_waits.registration(identity)
+            if known is not None and known.status == "pending":
+                self.services.invocations.refresh(parent_child)
+                if parent_child.status in {"completed", "faulted", "cancelled"}:
+                    # A terminal common child can acknowledge cancellation while
+                    # its dispatched external action remains uncertain. Recover
+                    # internal child delivery only after proving that no such
+                    # unresolved leaf intent survives in the recorded child tree.
+                    unresolved_children = [parent_child]
+                    visited_children: set[str] = set()
+                    while unresolved_children:
+                        recorded_child = unresolved_children.pop()
+                        if recorded_child.invocation_id in visited_children:
+                            continue
+                        visited_children.add(recorded_child.invocation_id)
+                        child_indexes = self.services.effect_journal.connection.execute(
+                            "SELECT payload FROM workflow_effect_invocations WHERE invocation_id=?",
+                            (recorded_child.invocation_id,),
+                        ).fetchall()
+                        for (encoded,) in child_indexes:
+                            child_effect = EffectIdentity.from_value(json.loads(encoded))
+                            if (
+                                child_effect.invocation_id != recorded_child.invocation_id
+                                or child_effect.workflow_fingerprint
+                                != recorded_child.workflow_fingerprint
+                            ):
+                                raise _EffectRecoveryRequired(
+                                    "child workflow action has an unresolved execution intent"
+                                )
+                            child_receipt = self.services.effect_journal.get(child_effect)
+                            if child_receipt is None:
+                                raise _EffectRecoveryRequired(
+                                    "child workflow action has an unresolved execution intent"
+                                )
+                            if child_effect.operation != "run:workflow":
+                                if child_receipt.status == "pending":
+                                    raise _EffectRecoveryRequired(
+                                        "child workflow action has an unresolved execution intent"
+                                    )
+                                continue
+                            nested_binding = self.services.children.get(child_effect)
+                            if nested_binding is None:
+                                raise _EffectRecoveryRequired(
+                                    "child workflow action has an unresolved execution intent"
+                                )
+                            unresolved_children.append(
+                                self.services.children.verify_control(
+                                    nested_binding, recorded_child
+                                )
+                            )
+                if parent_child.status not in {"completed", "faulted", "cancelled"}:
+                    if registration is None:
+                        raise _EffectRecoveryRequired(
+                            "workflow action has an unresolved execution intent"
+                        )
+                    wake = self.services.child_waits.wake(
+                        registration, parent_handle, now=self._absolute_clock()
+                    )
+                    if wake is None:
+                        await self._suspend_child(
+                            state, parent_child, identity, registration.suspension.deadline_at
+                        )
+                    if wake["reason"] == "deadline":
+                        error = WorkflowExecutionError(
+                            "nested workflow exceeded its original deadline",
+                            details={
+                                "status": 408,
+                                "instance": task_reference,
+                                "type": "https://serverlessworkflow.io/spec/1.0.0/errors/timeout",
+                            },
+                        )
+                        error.status_code = 408
+                        raise error
+                error_value: OwaError | None = None
+                if registration is not None:
+                    wake_identity = replace(identity, operation="policy:child-wake:v1")
+                    wake_receipt = self.services.effect_journal.get(wake_identity)
+                    if wake_receipt is None:
+                        raise _EffectRecoveryRequired("child continuation has no recorded wake")
+                    await self._notify_receipt(state, wake_identity, wake_receipt)
+                result = None
+                try:
+                    result = await runner(plan, child_input, child_context, task_reference)
+                except OwaError as error:
+                    error_value = error
+                receipt = self.services.effect_journal.finish_child(
+                    identity,
+                    request_digest,
+                    parent_child.invocation_id,
+                    execution_lease=parent_handle._execution_lease,
+                    output=result,
+                    error=error_value.as_dict() if error_value else None,
+                    error_status_code=error_value.status_code if error_value else None,
+                )
+                if registration is not None:
+                    self.services.child_waits.consume(registration, parent_handle)
+                await self._notify_receipt(state, identity, receipt)
+                return self._effect_result(receipt)
         else:
             child_context = {**state.metadata, "_child_invocation_observer": observe_child}
         # The resolved definition, not just its catalog label, determines the
         # child action request. Native progress may lag a known child outcome.
         operation = "run:workflow"
-        return await self._run_effect(
-            operation,
-            {"workflow_fingerprint": plan.fingerprint, "input": child_input},
-            state,
-            lambda: runner(plan, child_input, child_context, task_reference),
-            operation=operation,
-            child_dependency=capture_child,
-        )
+        try:
+            return await self._run_effect(
+                operation,
+                {"workflow_fingerprint": plan.fingerprint, "input": child_input},
+                state,
+                lambda: runner(plan, child_input, child_context, task_reference),
+                operation=operation,
+                child_dependency=capture_child,
+            )
+        except ChildSuspension as suspension:
+            await self._suspend_child(state, parent_child, identity, suspension.deadline_at)
 
     async def _run_emit(self, definition: Any, state: ExecutionState) -> Any:
         if self.services is None or not hasattr(self.services, "event_bus"):

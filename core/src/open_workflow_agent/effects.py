@@ -89,6 +89,8 @@ class ChildInvocationDependency:
 
     invocation_id: str
     record_digest: str
+    binding_digest: str | None = None
+    budget_digest: str | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -96,12 +98,27 @@ class ChildInvocationDependency:
             or not self.invocation_id
             or not isinstance(self.record_digest, str)
             or not re.fullmatch(r"[a-f0-9]{64}", self.record_digest)
+            or (self.binding_digest is None) != (self.budget_digest is None)
+            or any(
+                marker is not None
+                and (not isinstance(marker, str) or re.fullmatch(r"[a-f0-9]{64}", marker) is None)
+                for marker in (self.binding_digest, self.budget_digest)
+            )
         ):
             raise ValueError("child invocation dependency is invalid")
 
     @classmethod
     def from_value(cls, value: Any) -> ChildInvocationDependency:
-        if not isinstance(value, dict) or set(value) != {"invocation_id", "record_digest"}:
+        legacy = {"invocation_id", "record_digest"}
+        marked = legacy | {"binding_digest", "budget_digest"}
+        if (
+            not isinstance(value, dict)
+            or set(value) not in (legacy, marked)
+            or (
+                set(value) == marked
+                and (value["binding_digest"] is None or value["budget_digest"] is None)
+            )
+        ):
             raise ValueError("child invocation dependency fields are invalid")
         return cls(**value)
 
@@ -118,10 +135,81 @@ class ChildInvocationDependency:
 
     @classmethod
     def capture(cls, store: InvocationStore, invocation_id: str) -> ChildInvocationDependency:
+        value = cls._value(store, invocation_id)
+        provenance = cls._provenance(store, invocation_id)
         return cls(
             invocation_id,
-            effect_request_digest("owa/child-invocation/v1", cls._value(store, invocation_id)),
+            effect_request_digest("owa/child-invocation/v1", value),
+            binding_digest=provenance[1] if provenance is not None else None,
+            budget_digest=provenance[2] if provenance is not None else None,
         )
+
+    @staticmethod
+    def _provenance(store: InvocationStore, invocation_id: str) -> tuple[str, str, str] | None:
+        """Read existing reservation proof without opening or preparing a store."""
+        from .children import ChildWorkflowStore
+
+        connection = store.connection
+        try:
+            if connection.is_postgresql:
+                exists = (
+                    connection.execute("SELECT to_regclass('child_workflow_bindings')").fetchone()[
+                        0
+                    ]
+                    is not None
+                )
+            else:
+                exists = (
+                    connection.execute(
+                        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                        ("child_workflow_bindings",),
+                    ).fetchone()
+                    is not None
+                )
+            if not exists:
+                return None
+            row = connection.execute(
+                "SELECT binding_key,root_id,parent_id,child_id,depth,request_digest,source_json,"
+                "digest,parent_task_reference FROM child_workflow_bindings WHERE child_id=?",
+                (invocation_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            # This pure reader has no policy, journal or constructor side effects.
+            reader = ChildWorkflowStore.__new__(ChildWorkflowStore)
+            reader.connection, reader.invocations = connection, store
+            binding = reader._binding(row)
+            parent = store.get(binding.parent_id)
+            if parent is None:
+                raise ValueError("child provenance parent is absent")
+            child = reader.verify_control(binding, parent)
+            if child.invocation_id != invocation_id:
+                raise ValueError("child provenance refers to another invocation")
+            policy = connection.execute(
+                "SELECT policy_digest FROM child_workflow_budgets WHERE root_id=?",
+                (binding.root_id,),
+            ).fetchone()
+            if policy is None:
+                raise ValueError("child provenance root policy is absent")
+            return (
+                binding.key,
+                effect_request_digest(
+                    "owa/child-binding-dependency/v1",
+                    {
+                        "binding_key": binding.key,
+                        "binding_digest": row[7],
+                    },
+                ),
+                effect_request_digest(
+                    "owa/child-budget-dependency/v1",
+                    {
+                        "root_id": binding.root_id,
+                        "policy_digest": policy[0],
+                    },
+                ),
+            )
+        except Exception:
+            raise WorkflowExecutionError("child invocation provenance is inconsistent") from None
 
     def verify(
         self, store: InvocationStore | None, identity: EffectIdentity, request_digest: str
@@ -142,6 +230,14 @@ class ChildInvocationDependency:
             != request_digest
         ):
             raise WorkflowExecutionError("child invocation dependency is inconsistent")
+        if self.binding_digest is not None:
+            provenance = self._provenance(store, self.invocation_id)
+            if provenance != (
+                replace(identity, operation="run:workflow").key,
+                self.binding_digest,
+                self.budget_digest,
+            ):
+                raise WorkflowExecutionError("child invocation provenance is inconsistent")
 
 
 @dataclass(frozen=True, slots=True)
@@ -198,6 +294,11 @@ def _receipt_payload(receipt: EffectReceipt) -> dict[str, Any]:
     # logical format. A child binding is present only on a new child outcome.
     if receipt.child_invocation is None:
         value.pop("child_invocation")
+    elif receipt.child_invocation.binding_digest is None:
+        # Pre-marker child receipts retain byte-for-byte logical payloads and
+        # native receipt digests; absence is not rewritten as explicit nulls.
+        value["child_invocation"].pop("binding_digest")
+        value["child_invocation"].pop("budget_digest")
     return value
 
 
@@ -309,11 +410,18 @@ class EffectJournal:
                 from .children import verify_detached_child_receipt
 
                 verify_detached_child_receipt(self.connection, self._invocations, identity, receipt)
+            if identity.operation in {"policy:child-await:v1", "policy:child-wake:v1"}:
+                from .child_waits import verify_child_wait_receipt
+
+                verify_child_wait_receipt(self.connection, self._invocations, identity, receipt)
             if identity.operation == "run:workflow" and receipt.status != "pending":
                 if receipt.child_invocation is None:
                     raise ValueError("child invocation binding is absent")
                 receipt.child_invocation.verify(self._invocations, identity, receipt.request_digest)
-            elif receipt.child_invocation is not None:
+            elif (
+                receipt.child_invocation is not None
+                and identity.operation != "policy:child-wake:v1"
+            ):
                 raise ValueError("child invocation binding belongs to a different operation")
             if identity.operation == "policy:retry-schedule:v1":
                 from .timing import RetrySchedule
@@ -439,12 +547,14 @@ class EffectJournal:
         policy. No execution plan or native checkpoint is stored here.
         """
         try:
-            pending = [(invocation_id, fingerprint)]
+            pending: list[tuple[str, str, tuple[str, ...]]] = [(invocation_id, fingerprint, ())]
             visited: set[str] = set()
             while pending:
-                current_id, current_fingerprint = pending.pop()
+                current_id, current_fingerprint, ancestors = pending.pop()
+                if current_id in ancestors:
+                    raise ValueError("child invocation dependency cycle")
                 if current_id in visited:
-                    raise ValueError("child invocation dependency cycle or duplicate")
+                    continue
                 visited.add(current_id)
                 rows = self.connection.execute(
                     """SELECT identity, fingerprint, payload
@@ -469,7 +579,13 @@ class EffectJournal:
                         child = self._invocations.get(receipt.child_invocation.invocation_id)
                         if child is None:
                             raise ValueError("child invocation is absent")
-                        pending.append((child.invocation_id, child.workflow_fingerprint))
+                        pending.append(
+                            (
+                                child.invocation_id,
+                                child.workflow_fingerprint,
+                                (*ancestors, current_id),
+                            )
+                        )
         except Exception:
             raise WorkflowExecutionError(
                 "workflow action invocation dependencies could not be reconciled"
@@ -518,6 +634,65 @@ class EffectJournal:
         completed = self.get(identity)
         if completed is None or completed.owner != owner or completed.status == "pending":
             raise WorkflowExecutionError("workflow effect outcome was not recorded")
+        return completed
+
+    def finish_child(
+        self,
+        identity: EffectIdentity,
+        request_digest: str,
+        child_id: str,
+        *,
+        execution_lease: ExecutionLease | None,
+        output: Any = None,
+        error: dict[str, Any] | None = None,
+        error_status_code: int | None = None,
+    ) -> EffectReceipt:
+        """Reconcile an admitted internal child outcome under current parent authority."""
+        if (
+            identity.operation != "run:workflow"
+            or execution_lease is None
+            or self._invocations is None
+        ):
+            raise InvocationStateConflict("child reconciliation requires parent authority")
+        with owned_write_transaction(
+            self.connection,
+            execution_lease,
+            invocation_id=identity.invocation_id,
+            workflow_fingerprint=identity.workflow_fingerprint,
+        ):
+            recorded = self.get(identity)
+            if recorded is None or recorded.request_digest != request_digest:
+                raise WorkflowExecutionError("recorded child workflow request differs")
+            if recorded.status != "pending":
+                return recorded
+            dependency = ChildInvocationDependency.capture(self._invocations, child_id)
+            dependency.verify(self._invocations, identity, request_digest)
+            binding = self.connection.execute(
+                "SELECT child_id FROM child_workflow_bindings WHERE binding_key=?", (identity.key,)
+            ).fetchone()
+            if binding is None or binding[0] != child_id:
+                raise WorkflowExecutionError("child reconciliation binding differs")
+            proposed = replace(
+                recorded,
+                status="faulted" if error else "completed",
+                output=output,
+                error=error,
+                error_status_code=error_status_code,
+                child_invocation=dependency,
+            )
+            self.connection.execute(
+                "UPDATE workflow_effects SET status=?,payload=? "
+                "WHERE identity=? AND owner=? AND status='pending'",
+                (
+                    proposed.status,
+                    json.dumps(_receipt_payload(proposed), ensure_ascii=False, allow_nan=False),
+                    identity.key,
+                    recorded.owner,
+                ),
+            )
+        completed = self.get(identity)
+        if completed is None or completed.status == "pending":
+            raise WorkflowExecutionError("child outcome reconciliation was not recorded")
         return completed
 
     def close(self) -> None:

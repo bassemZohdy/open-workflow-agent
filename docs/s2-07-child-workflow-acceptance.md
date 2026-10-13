@@ -1,8 +1,63 @@
 # S2-07 child-workflow acceptance
 
-Status: implementation in progress under the user-requested batch delivery.
-S2-06 acceptance and these requirements remain open until final validation.
-No feature or task is complete from this record.
+Status: implementation and local batch validation complete; exact-source GitHub
+qualification remains open. S2-07 is unchecked until the required hosted checks
+pass, including actual PostgreSQL and runtime images.
+The current integrated batch adds parent-owned immutable await/wake decisions,
+private ADK/LangGraph suspension and verified fork reentry, original deadline
+delivery, synchronous cancellation cascades and bounded crash reconciliation.
+The common store holds identities and policy receipts; native checkpoints
+remain private. New shared fixtures cover actual process-stop boundaries,
+terminal/null/fault results, nested and mutual recursion, corruption, deadlines
+and fork cancellation. These changes are unqualified until the batch passes.
+S2-06's finite profile is verified separately. Complete CH01-CH10 acceptance
+and S2-07 remain open; this partial record does not complete the child task.
+
+## Integrated local validation — 2026-10-13
+
+The frozen behavioral batch passes all four independent environments:
+
+| Profile | Passed | Declared skips | Existing expected failures |
+| --- | ---: | ---: | ---: |
+| Root | 2,320 | 1,224 | 2 |
+| Actual ADK, shared contracts and CTK | 1,300 | 879 | 2 |
+| Actual LangGraph, shared contracts and CTK | 1,339 | 852 | 2 |
+| Optional native Framework, shared contracts and CTK | 1,639 | 1,229 | 2 |
+
+Root coverage is 90.79%, above the unchanged 90% requirement. All 362 frozen
+inputs remain unchanged throughout each full run; no run times out. Formatting,
+lint, strict typing, documentation links and all five package builds pass.
+The principal CTK subsets each pass all 96 checks. Backend/foreign-native skips
+remain explicit and establish no unavailable native/database capability.
+
+Additional finite proofs cover waiting-child END and private context/export
+isolation, resolved-latest version pinning after reopen, two real runtime
+dispatchers, actual lease takeover and stale native/common writer rejection.
+Six synchronous and six detached process-stop boundaries run per principal,
+including task/workflow deadlines after producer termination. The original
+deadline, identities and saved quotas survive; expired parents fault with 408,
+cancel synchronous children and perform zero actions. Detached children keep
+their independent lifetime. Known external outcomes are retained once;
+unresolved external leaf intents remain uncertain and are never adopted by
+internal child reconciliation.
+
+An additional packaging check found the standalone core lock missing already
+declared timer dependencies and prior security fixes. Its targeted correction
+adds croniter, updates tzdata/pypdf and patches urllib3/multidict without changing
+declared package versions. The corrected complete optional profile audits 74
+dependencies with zero advisories. A fresh standalone core environment passes
+151 child/schedule checks, with 72 unavailable PostgreSQL skips. All 32 workflow
+and audit guards pass with seven required audit environments and a dedicated
+core lock check. The original stale-lock and vulnerable-audit failures are
+retained in `tmp/s2-07-core-*`; they are not relabelled as passes.
+
+Raw full-run logs, immutable input hashes and bounded supervisor results are
+retained under `tmp/s2-07-full-*`. The full-runtime snapshot and subsequent
+standalone-lock/CI correction have separate evidence. Hosted qualification
+must verify the final published source, four images, Windows, all seven audits,
+CTK provenance, benchmarks and the real PostgreSQL child cases before closure.
+General active-worker drain, compensation and ambiguous external-action
+reconciliation remain S2-08; compatible version migration remains S2-09.
 
 Working changes now include an atomic child identity/input reservation and saved
 root depth/total-child quotas. Siblings consume the same root budget, and policy
@@ -14,11 +69,12 @@ Detached execution has an atomic durable job/parent-return decision. The
 parent returns transformed task input; the child retains an independent
 lifetime and separate common identity. A bounded dispatcher uses the existing
 engine ownership and native admission paths, and leaves armed child timers to
-their exact original timer delivery. This source is unqualified until final
-behavioral/process/database checks; formatting and type checks are preparation
-evidence only. Quota/corruption and detached lifecycle/reopen fixtures are
-staged for that final run. Synchronous nonresident child waits, durable
-cancellation and complete process/corruption coverage remain open.
+their exact original timer delivery. The finite quota/corruption, recursion
+and detached lifecycle/reopen fixtures pass the `3f568e5` checkpoint, including
+actual PostgreSQL. Synchronous nonresident child waits, durable cancellation
+and process/corruption fixtures are implemented locally. Focused native checks
+pass their first batch; full, competing-worker, context/version and exact-source
+qualification is still required.
 
 Authority: Project Definition.md, TODO S2-07, inventory A034-A036 and T09-T11.
 Next-batch focused evidence: n=3 creates four distinct invocation/session
@@ -28,7 +84,11 @@ Each principal SDK passes all three recursion cases. Queue corruption tests
 preserve damaged identity evidence, reject its dispatch and allow a later valid
 child to complete once. Each principal SDK passes 21 focused queue/budget/
 detached cases; root passes 26 with 16 unavailable PostgreSQL cases skipped.
-Fresh actual PostgreSQL and full checkpoint acceptance remain required.
+The full checkpoint at `3f568e5` passes all six configured workflows. Actual
+PostgreSQL passes two detached and three recursion/quota cases per principal;
+the new common budget fixtures also execute on the real database. These
+qualify only their finite child subset. CH05 and complete CH01-CH10 acceptance
+remain open.
 
 The unchanged schema admits run.workflow and run.await. The pinned
 [OWS reference](https://github.com/open-workflow-specification/specification/blob/9b5b1da29e9d4fff2358580241e11aab22704a16/dsl-reference.md#run)
@@ -49,10 +109,10 @@ must preserve separate identities; engine checkpoints stay private.
 | CH09 | Missing/changed bindings, input, identity, parent, budgets, native checkpoint or terminal dependency fail closed before model/action dispatch and before mutation of known state. |
 | CH10 | Relevant shared, real ADK/LangGraph and process-stop tests, optional AF bounded behavior, quality/build/schema, configured PostgreSQL/Windows/images/security and exact capability limits pass before task closure. |
 
-Current reviewed source e56e5b8 has separate synchronous common child identity,
+Historical reviewed source e56e5b8 has separate synchronous common child identity,
 terminal child dependency receipts, immutable local catalog versions and known
 outcome corruption guards. It explicitly rejects background run at admission.
-Finite self-recursion already works, but no recursive depth/total-child policy exists. Synchronous run waits on the child
+At that source finite self-recursion works, but no recursive depth/total-child policy exists. Synchronous run waits on the child
 invocation and treats nonterminal status as a fault, so nonresident child wait
 needs dedicated integration. This is an actionable gap, not a deferred blocker.
 

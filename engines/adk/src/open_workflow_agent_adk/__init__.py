@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from open_workflow_agent.child_suspension import ChildSuspension
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
 from open_workflow_agent.errors import (
     InvocationCancelled,
@@ -83,7 +84,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
             else:
                 result = self._record_result(invocation, status="completed", output=output)
             return result
-        except TimerSuspension:
+        except (TimerSuspension, ChildSuspension):
             if invocation.status == "running":
                 self.services.invocations.update(invocation, status="waiting")
             result = self._stored_result(invocation)
@@ -168,7 +169,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 else self._record_result(handle, status="completed", output=output)
             )
             return result
-        except TimerSuspension:
+        except (TimerSuspension, ChildSuspension):
             if handle.status == "running":
                 self.services.invocations.update(handle, status="waiting")
             result = self._stored_result(handle)
@@ -233,6 +234,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
             journal=self.services.effect_journal,
             metadata=metadata,
             require_waiting=require_waiting,
+            child_waits=self.services.child_waits,
         )
 
     async def _scheduled_native_state_exists(

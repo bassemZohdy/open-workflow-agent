@@ -1,7 +1,8 @@
 # S2-06 timer and schedule acceptance
 
-Status: implementation and finite acceptance are in progress. This record does
-not qualify a capability or mark a backlog task complete. `Project Definition.md`
+Status: finite Python acceptance is verified at `3f568e5` on 2026-10-13. The
+historical attempts below are retained; the final record at the end supersedes
+their pending status. Full inventory/JavaScript acceptance remains open. `Project Definition.md`
 and TODO S2-06 own the scope: durable timers, missing schedule and event-trigger
 semantics, and releasing sleeping workflow executions.
 
@@ -499,3 +500,56 @@ with all 275 inputs unchanged. Explicit timer dispatch, its forced-stop
 fixtures and automatic CTK waits do not use that opt-in fixture. Automatic
 Wait CTK focus still passes two cases in each native environment (94 deselected).
 Fresh actual PostgreSQL and all corrected-source gates remain required.
+
+## Final finite acceptance — 2026-10-13
+
+Verified implementation source: `3f568e591309e1a6321ed44452d6e710cd6d326b`.
+All six configured runs completed successfully at that source:
+
+| Workflow | Exact-source run |
+| --- | --- |
+| CI | [38331835060](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38331835060) |
+| PostgreSQL CI | [38331835019](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38331835019) |
+| Agent Framework CI | [38331835094](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38331835094) |
+| External Sandbox CI | [38331835066](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38331835066) |
+| Security | [38331834988](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38331834988) |
+| Docs | [38331835038](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38331835038) |
+
+Root: 2,132 passed, 1,028 unavailable-profile/backend skips, two retained
+protocol gaps; coverage 90.90%. Native ADK: 1,127 passed; LangGraph: 1,170;
+optional Framework: 1,558. Each principal CTK subset passes 96 scenarios and
+all 26 committed scenario hashes match the retained provenance. The actual
+PR merge source `733c35b0d527d6b2db087629c05a905fadaab013` has verified parents
+main `975cc5714fcaf6125f2aaf6757c2286eaa4e53a2` and the implementation source.
+
+Windows admission/routing/effect/timing selections pass 466/247/211/273 cases.
+Actual PostgreSQL passes 290 common-store cases (one intentional skip), 348
+native LangGraph, 314 ADK and 152 optional Framework (seven declared skips).
+Both principal profiles pass all 13 timer, two fork, five OS process-stop,
+eight scheduling and 14 event-trigger cases: 42 each. Both main runtime images
+and both database-backed images pass exact cron/on/fenced-worker capability
+assertions, startup, invocation and restart acceptance. Six nonempty dependency
+audit reports contain zero advisories. Both native benchmark artifacts use
+10 iterations/four concurrent invocations, show checkpoint growth and retain
+one side effect/one immutable operation after completed recovery.
+
+The earlier `2c6d5e6` PostgreSQL ADK command reached 89% before its nine-minute
+limit with no preceding assertion failure; exit124 is retained as a failure.
+Its main CI run was superseded/cancelled and is not counted as a pass. The
+correction preserves every original selector, gives each database profile a
+fresh independent bounded job, and gates both database images on all four
+profiles. Four separate Windows selections preserve their twenty-minute bounds.
+Release workflow source and exact-main-source gates are unchanged.
+
+The eight finite TMR01-TMR03/SCH01-SCH05 requirements and C01-C16 profile are
+verified. S2-06 is complete for that scope. Default deployment remains one
+container; native checkpoint state remains private. S2-07 child waiting/lifetime,
+S2-08 compensation, S2-09 migration, S4-10 external event transports, full
+proposed criteria and independent JavaScript acceptance remain open.
+
+Structured source/run/artifact and capability evidence is retained in the
+implementation audit and feature tracker; raw logs/artifacts are under
+`tmp/ci-3f568e5-*`. The local inspection verifies all four image assertions,
+all 84 actual PostgreSQL finite nodes, six audit reports and two native
+benchmark artifacts. No unavailable backend or fallback SDK result establishes
+native/database qualification.

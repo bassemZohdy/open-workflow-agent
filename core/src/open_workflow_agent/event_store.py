@@ -1179,11 +1179,19 @@ class EventStore:
         self._verify_invocation(invocation_id, fingerprint, require_profile, set())
 
     def _verify_invocation(
-        self, invocation_id: str, fingerprint: str, require_profile: bool, visited: set[str]
+        self,
+        invocation_id: str,
+        fingerprint: str,
+        require_profile: bool,
+        visited: set[str],
+        ancestors: frozenset[str] | None = None,
     ) -> None:
         try:
-            if invocation_id in visited:
+            lineage = ancestors or frozenset()
+            if invocation_id in lineage:
                 raise ValueError("durable event child dependency cycle")
+            if invocation_id in visited:
+                return
             visited.add(invocation_id)
             with self._lock:
                 if require_profile:
@@ -1261,7 +1269,11 @@ class EventStore:
                             )
                         )
                         self._verify_invocation(
-                            child.invocation_id, child.workflow_fingerprint, needs_profile, visited
+                            child.invocation_id,
+                            child.workflow_fingerprint,
+                            needs_profile,
+                            visited,
+                            lineage | {invocation_id},
                         )
                     if receipt.owner != "event":
                         continue

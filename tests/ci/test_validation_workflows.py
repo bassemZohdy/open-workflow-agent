@@ -27,7 +27,17 @@ def test_feature_push_does_not_duplicate_pr_validation_or_remove_main_acceptance
         assert "workflow_dispatch" in events
     security = _workflow("security.yml")
     assert security["on"]["schedule"] == [{"cron": "0 6 * * 1"}]
-    assert len(security["jobs"]["dependencies"]["strategy"]["matrix"]["include"]) == 6
+    profiles = security["jobs"]["dependencies"]["strategy"]["matrix"]["include"]
+    assert len(profiles) == 7
+    assert {profile["project"] for profile in profiles} == {
+        ".",
+        "core",
+        "engines/adk",
+        "engines/langgraph",
+        "engines/agent-framework",
+        "sandbox-controller",
+        "kubernetes-sandbox-controller",
+    }
     for name in ("postgres-ci.yml", "external-sandbox-ci.yml"):
         events = _workflow(name)["on"]
         assert events["push"]["branches"] == ["main"]

@@ -3,7 +3,8 @@
 The workflow files define the required checks. During the current backlog
 batch, changes stay local until ready for one comprehensive validation pass.
 Task checkboxes stay open until their required evidence passes. This cleanup
-is staged in the feature branch; final workflow execution remains pending.
+is verified at `3f568e5`: all six configured workflows pass, including actual
+PostgreSQL, four Windows selections and both main/database image pairs.
 
 ## Triggers and duplicate work
 
@@ -24,6 +25,12 @@ trigger. Weekly and manual dependency audits remain enabled.
 
 The optional Agent Framework workflow also watches common core and shared
 fixtures. A core-only change must not silently bypass that adapter's checks.
+
+Standalone core has its own required lock check and complete optional-dependency
+audit. The child batch found its older lock missing already-declared timer
+dependencies and security updates. The targeted correction preserves its
+declared package versions, adds croniter, updates tzdata/pypdf and patches the
+two vulnerable transitive dependencies. Seven environments are now audited.
 
 ## Execution and coverage
 

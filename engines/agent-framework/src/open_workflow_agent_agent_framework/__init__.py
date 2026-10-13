@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from open_workflow_agent.child_suspension import ChildSuspension
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
 from open_workflow_agent.errors import InvocationCancelled
 from open_workflow_agent.persistence import ExecutionHandle
@@ -51,7 +52,9 @@ class AgentFrameworkWorkflowEngine(PortableWorkflowEngine):
             else:
                 result = self._record_result(invocation, status="completed", output=output)
             return result
-        except TimerSuspension:
+        except (TimerSuspension, ChildSuspension):
+            if invocation.status == "running":
+                self.services.invocations.update(invocation, status="waiting")
             result = self._stored_result(invocation)
             return result
         except InvocationCancelled as exc:

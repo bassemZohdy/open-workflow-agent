@@ -20,13 +20,13 @@ limit, with no preceding assertion failure. Database profiles are now split
 into independent bounded jobs, preserving every selector and requiring all
 profiles before both database images. Windows routing, effect/ownership and
 timer/event recovery are similarly separated while retaining their selections
-and twenty-minute limits. Fresh acceptance is required for the correction.
-CI cleanup is also staged: feature pushes no longer duplicate PR CI/audits,
+and twenty-minute limits. All six workflows pass for the correction at `3f568e5`.
+CI cleanup is verified for this subset: feature pushes no longer duplicate PR CI/audits,
 root contracts run once within the full suite, independent native/image checks
 run in parallel, and optional Framework/Docs checks have stale-PR cancellation.
 Common changes now trigger optional Framework acceptance. Existing exact-source
-release, security and backend gates remain in place. These changes await the
-same final integrated validation; historical run evidence remains unchanged.
+release, security and backend gates remain in place. Checkpoint validation is
+green at `3f568e5`; historical run evidence remains unchanged.
 Small checks may resolve specific implementation issues, but task completion
 requires the final relevant behavioral, native, database, platform, build,
 security and image evidence. No unchecked task is promoted by this batching.
@@ -36,16 +36,30 @@ Framework, external sandbox, Security and Docs. PostgreSQL passed 256 core,
 343 LangGraph, 309 ADK and 147 optional AF cases, including all 42 new timer/
 scheduling cases per principal and both database-backed images. Its cancelled
 push Windows job was rerun independently and passed. The scoped capability/API/image
-assertion changes are now applied in the working tree; final batch acceptance
-is pending. S2-07 implementation has started with atomic child identity/input
+assertion changes pass final batch acceptance at `3f568e5`. S2-07 has atomic child identity/input
 reservation and persisted root depth/total-child quotas. Durable detached job
-decisions and bounded engine-owned delivery are wired locally. Nonresident
+decisions and bounded engine-owned delivery qualified for their partial profile. Nonresident
 parent/child waits, cancellation, queue corruption and crash qualification remain
-open. Fourteen of 37 tasks remain verified; no task is deferred.
+open. Fifteen of 37 tasks are verified; no task is deferred.
 Further S2-07 changes now reject individual damaged queue identities while
 allowing later valid children to run. Finite n=3 recursion and depth/count
-rejection pass locally on actual ADK and LangGraph. These are partial proofs;
-nonresident child waits, cancellation and full crash acceptance remain open.
+rejection pass on actual ADK and LangGraph, including PostgreSQL. These are partial proofs;
+nonresident child waits, cancellation and full crash acceptance remain open
+at that published checkpoint.
+
+The current S2-07 batch implements parent-owned immutable wait/wake receipts,
+private ADK/LangGraph child suspension and verified fork reentry, preserved
+absolute deadlines, synchronous cancellation cascades and bounded recovery
+after process stop. Common stores retain identities and policy evidence;
+engine-native checkpoints remain private. Full root, actual principal native,
+optional Framework and CTK suites pass the frozen batch, including terminal
+provenance, context/version isolation, competing workers and original deadlines
+after actual process stop. Root coverage is 90.79%. Standalone core passes its
+corrected lock, finite child/schedule checks and complete dependency audit;
+the CI now requires seven audit environments. S2-07 remains unchecked until
+hosted exact-source PostgreSQL/Windows/image/security qualification passes;
+no task is deferred.
+See the [child acceptance record](docs/s2-07-child-workflow-acceptance.md).
 
 ## Current Phase — 2026-09-24
 
@@ -129,7 +143,7 @@ success/failure artifacts remain historical evidence, not qualified releases.
 S2-04 is checked; 13 of 37 tasks are verified. Full proposed
 criteria, JavaScript and later dependency/capability gates remain open.
 
-### S2-06 durable timer and schedule work — 2026-10-12 (in progress)
+### S2-06 durable timer and schedule work — 2026-10-13 (verified)
 
 Common durable timer decisions, adapter-owned nonresident suspension, fenced
 nominal schedule slots, atomic invocation/input binding and event-created
@@ -174,11 +188,26 @@ followed by the unchanged ADK step limit. Isolated retry/event module focuses
 pass 92 cases per actual SDK, and automatic Wait CTK still passes. Fresh exact
 PostgreSQL acceptance remains required before S2-06 closure.
 
-S2-06 remains unchecked pending actual PostgreSQL, exact-source configured
-full suites, image observations and qualified capability publication. The
-[finite acceptance record](docs/s2-06-timer-schedule-acceptance.md) retains
-both the failed benchmark and scoped corrective evidence. Fourteen of 37
-active tasks are verified; no task is deferred.
+Final acceptance at `3f568e591309e1a6321ed44452d6e710cd6d326b` passes all six
+configured workflows: CI, PostgreSQL, optional Agent Framework, External
+Sandbox, Security and Docs. Root passes 2,132 cases at 90.90% coverage; native
+ADK passes 1,127 and LangGraph 1,170. Each CTK subset passes 96 scenarios with
+all 26 committed scenario hashes verified. Four Windows selections pass
+466/247/211/273 cases. Actual PostgreSQL passes 290 common-store, 348 native
+LangGraph, 314 ADK and 152 optional Framework cases, including all 42 finite
+timer/schedule cases per principal and both database-backed images. Both main
+runtime images also pass the exact scheduling capability assertions. Six
+nonempty dependency reports contain zero advisories; both native benchmarks
+retain exactly one side effect after resume. Two existing protocol integration
+gaps remain expected failures under S3-03; unavailable-profile skips do not
+count as native/database acceptance.
+
+S2-06 is checked for its finite Python profile. The
+[acceptance record](docs/s2-06-timer-schedule-acceptance.md) preserves the earlier
+failures, timeout and cancelled superseded run. Default deployment remains one
+container; broader scale-out, child lifecycle S2-07, external transports and
+full proposed/JavaScript qualification retain their separate gates. Fifteen of
+37 active tasks are verified; no task is deferred.
 
 ### S2-05 embedded event work — 2026-10-12 (verified)
 

@@ -10,6 +10,7 @@ from typing import Any
 from ._event_triggers import EventTriggerStore
 from .approvals import ApprovalEventBus, ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
+from .child_waits import ChildWaitStore
 from .children import ChildWorkflowStore
 from .config import RuntimeConfig
 from .durable_events import DurableEventBus
@@ -111,6 +112,7 @@ class RuntimeServices:
         self.children = ChildWorkflowStore(
             self.effect_journal, self.invocations, config.child_workflows
         )
+        self.child_waits = ChildWaitStore(self.effect_journal, self.invocations)
         self.timers = TimerStore(
             self.effect_journal, max_pending=config.execution_timing.max_pending_timers
         )

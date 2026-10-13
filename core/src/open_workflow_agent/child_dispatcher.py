@@ -64,7 +64,7 @@ class ChildDispatcher:
                     raise WorkflowExecutionError("detached child invocation is absent")
                 if self.services.timers.resumable_for_invocation(
                     child_id, child.workflow_fingerprint
-                ):
+                ) or self.services.child_waits.for_invocation(child_id, child.workflow_fingerprint):
                     continue
                 self._workers[child_id] = asyncio.create_task(self._dispatch(identity, child_id))
             except Exception as error:

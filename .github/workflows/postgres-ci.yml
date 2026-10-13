@@ -16,6 +16,11 @@ on:
       - "core/src/open_workflow_agent/services.py"
       - "core/src/open_workflow_agent/children.py"
       - "core/src/open_workflow_agent/child_dispatcher.py"
+      - "core/src/open_workflow_agent/child_waits.py"
+      - "core/src/open_workflow_agent/child_wait_dispatcher.py"
+      - "core/src/open_workflow_agent/child_suspension.py"
+      - "core/src/open_workflow_agent/child_rescan.py"
+      - "core/src/open_workflow_agent/engine.py"
       - "core/src/open_workflow_agent/forks.py"
       - "core/src/open_workflow_agent/effects.py"
       - "core/src/open_workflow_agent/config.py"
@@ -71,6 +76,11 @@ on:
       - "tests/contract/test_child_invocation_dependencies.py"
       - "tests/contract/test_detached_children.py"
       - "tests/contract/test_recursive_children.py"
+      - "tests/contract/test_synchronous_child_waits.py"
+      - "tests/contract/test_child_lifecycle_acceptance.py"
+      - "tests/contract/_child_wait_recovery_worker.py"
+      - "tests/contract/test_detached_child_process_recovery.py"
+      - "tests/contract/_detached_child_recovery_worker.py"
       - "tests/contract/test_retry_error_context.py"
       - "tests/contract/test_retry_timing.py"
       - "tests/contract/test_deadline_recovery.py"
@@ -89,6 +99,11 @@ on:
       - "tests/core/test_timer_store.py"
       - "tests/core/test_child_workflow_budgets.py"
       - "tests/core/test_child_delivery_guards.py"
+      - "tests/core/test_child_wait_store.py"
+      - "tests/core/test_child_control_validation.py"
+      - "tests/core/test_child_rescan.py"
+      - "tests/core/test_child_event_dependencies.py"
+      - "tests/core/test_child_terminal_provenance.py"
       - "tests/core/test_timer_dispatcher_ownership.py"
       - "tests/core/test_schedule_store.py"
       - "tests/core/test_event_triggers.py"
@@ -166,6 +181,11 @@ jobs:
             tests/core/test_timer_store.py \
             tests/core/test_child_workflow_budgets.py \
             tests/core/test_child_delivery_guards.py \
+            tests/core/test_child_wait_store.py \
+            tests/core/test_child_control_validation.py \
+            tests/core/test_child_rescan.py \
+            tests/core/test_child_event_dependencies.py \
+            tests/core/test_child_terminal_provenance.py \
             tests/core/test_timer_dispatcher_ownership.py \
             tests/core/test_schedule_store.py \
             tests/core/test_event_triggers.py \
@@ -234,6 +254,9 @@ jobs:
             ../../tests/contract/test_child_invocation_dependencies.py \
             ../../tests/contract/test_detached_children.py \
             ../../tests/contract/test_recursive_children.py \
+            ../../tests/contract/test_synchronous_child_waits.py \
+            ../../tests/contract/test_child_lifecycle_acceptance.py \
+            ../../tests/contract/test_detached_child_process_recovery.py \
             ../../tests/contract/test_retry_error_context.py \
             ../../tests/contract/test_retry_timing.py \
             ../../tests/contract/test_deadline_recovery.py \
@@ -305,6 +328,9 @@ jobs:
             ../../tests/contract/test_child_invocation_dependencies.py \
             ../../tests/contract/test_detached_children.py \
             ../../tests/contract/test_recursive_children.py \
+            ../../tests/contract/test_synchronous_child_waits.py \
+            ../../tests/contract/test_child_lifecycle_acceptance.py \
+            ../../tests/contract/test_detached_child_process_recovery.py \
             ../../tests/contract/test_retry_error_context.py \
             ../../tests/contract/test_retry_timing.py \
             ../../tests/contract/test_deadline_recovery.py \
@@ -369,6 +395,9 @@ jobs:
             ../../tests/contract/test_child_invocation_dependencies.py \
             ../../tests/contract/test_detached_children.py \
             ../../tests/contract/test_recursive_children.py \
+            ../../tests/contract/test_synchronous_child_waits.py \
+            ../../tests/contract/test_child_lifecycle_acceptance.py \
+            ../../tests/contract/test_detached_child_process_recovery.py \
             -k 'postgresql and agent-framework' -vv --durations=20
 
   postgres-runtime:

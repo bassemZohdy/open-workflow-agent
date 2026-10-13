@@ -266,6 +266,109 @@ class ChildWorkflowStore:
                 self.connection.raw.rollback()
             raise
 
+    def verify_control(self, binding: ChildBinding, parent: ExecutionHandle) -> ExecutionHandle:
+        """Validate a reserved child for control without loading its catalog.
+
+        Cancellation can follow reservation before either a run intent or an
+        await admission exists. Its authority comes from the saved binding,
+        pinned root policy and original common identity/input, not an optional
+        later effect index or a newly resolved definition.
+        """
+        row = self.connection.execute(
+            "SELECT binding_key,root_id,parent_id,child_id,depth,request_digest,source_json,digest,"
+            "parent_task_reference FROM child_workflow_bindings WHERE binding_key=?",
+            (binding.key,),
+        ).fetchone()
+        saved = self._binding(row)
+        if saved != binding:
+            raise WorkflowExecutionError("child control binding changed")
+        budget = self.connection.execute(
+            "SELECT fingerprint,max_depth,max_children,used,policy_digest,"
+            "(SELECT COUNT(*) FROM child_workflow_bindings WHERE root_id=?) "
+            "FROM child_workflow_budgets WHERE root_id=?",
+            (saved.root_id, saved.root_id),
+        ).fetchone()
+        root = self.invocations.get(saved.root_id)
+        current_parent = self.invocations.get(parent.invocation_id)
+        child = self.invocations.get(saved.child_id)
+        if (
+            budget is None
+            or root is None
+            or root.workflow_fingerprint != budget[0]
+            or any(type(value) is not int for value in (*budget[1:4], budget[5]))
+            or not 1 <= budget[1] <= 64
+            or not 1 <= budget[2] <= 100_000
+            or not 1 <= budget[3] <= budget[2]
+            or budget[3] != budget[5]
+            or budget[4] != self._digest((saved.root_id, *budget[:3]))
+            or not 1 <= saved.depth <= budget[1]
+            or current_parent is None
+            or saved.parent_id != parent.invocation_id
+            or any(
+                getattr(current_parent, name) != getattr(parent, name)
+                for name in (
+                    "engine",
+                    "workflow_fingerprint",
+                    "owner_principal",
+                    "user_id",
+                    "parent_invocation_id",
+                    "parent_task_reference",
+                )
+            )
+            or child is None
+            or child.parent_invocation_id != current_parent.invocation_id
+            or child.parent_task_reference != saved.parent_task_reference
+            or child.engine != current_parent.engine
+            or child.owner_principal != current_parent.owner_principal
+            or child.user_id != current_parent.user_id
+            or child.session_id == current_parent.session_id
+            or effect_request_digest(
+                "run:workflow",
+                {
+                    "workflow_fingerprint": child.workflow_fingerprint,
+                    "input": self.invocations.read_input(child),
+                },
+            )
+            != saved.request_digest
+        ):
+            raise WorkflowExecutionError("child control identity, input or budget is inconsistent")
+        try:
+            document = json.loads(saved.workflow_source_json)["document"]
+            if (
+                not isinstance(document, dict)
+                or document.get("name") != child.workflow_name
+                or document.get("version") != child.workflow_version
+            ):
+                raise ValueError("child source differs from common identity")
+        except (TypeError, ValueError, KeyError):
+            raise WorkflowExecutionError("child control source is inconsistent") from None
+        # Prove this reservation reaches the same root at its recorded depth,
+        # without trusting merely plausible depth numbers from a sibling tree.
+        ancestor = current_parent
+        remaining = saved.depth - 1
+        while remaining:
+            ancestor_row = self.connection.execute(
+                "SELECT binding_key,root_id,parent_id,child_id,depth,request_digest,source_json,"
+                "digest,parent_task_reference FROM child_workflow_bindings WHERE child_id=?",
+                (ancestor.invocation_id,),
+            ).fetchone()
+            ancestor_binding = self._binding(ancestor_row)
+            if (
+                ancestor_binding.root_id != saved.root_id
+                or ancestor_binding.depth != remaining
+                or ancestor_binding.parent_id != ancestor.parent_invocation_id
+                or ancestor_binding.parent_task_reference != ancestor.parent_task_reference
+            ):
+                raise WorkflowExecutionError("child control ancestry is inconsistent")
+            next_parent = self.invocations.get(ancestor_binding.parent_id)
+            if next_parent is None:
+                raise WorkflowExecutionError("child control ancestor is absent")
+            ancestor = next_parent
+            remaining -= 1
+        if ancestor.invocation_id != saved.root_id or ancestor.parent_invocation_id is not None:
+            raise WorkflowExecutionError("child control root ancestry is inconsistent")
+        return child
+
     def verify(
         self,
         binding: ChildBinding,

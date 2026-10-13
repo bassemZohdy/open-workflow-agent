@@ -173,22 +173,24 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   `143d38a` and publication `58de90e`. All fourteen finite requirements pass;
   embedded capability reports are verified. See
   [acceptance evidence](PROJECT.md#s2-05-embedded-event-work--2026-10-12-verified).
-- [ ] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.
-  Implemented: common timer decisions, native nonresident suspension, fenced
-  schedule slots, calendars and atomic event-created invocations. Frozen root,
-  LangGraph and optional Agent Framework full suites pass; ADK has one isolated
-  benchmark harness failure with a proven correction. Actual PostgreSQL,
-  exact-source configured validation and capability publication remain open
-  in the [finite record](docs/s2-06-timer-schedule-acceptance.md).
-  Latest runtime `e56e5b8` passes all actual PostgreSQL recovery and both database
-  images plus six configured runs. Publication changes are applied locally;
-  completion awaits the user-requested final batch validation.
+- [x] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.
+  Verified at `3f568e5`: common timer decisions, native nonresident suspension,
+  fenced schedule slots, bounded calendars and atomic embedded event-created
+  invocations. All six configured workflows, actual PostgreSQL, four runtime
+  image capability observations, Windows, native CTK/benchmarks and audits pass.
+  See the [finite acceptance record](docs/s2-06-timer-schedule-acceptance.md).
+  Child lifecycle, external transports, full proposed/JavaScript and broader
+  deployment scaling remain separately gated.
 - [ ] **S2-07** (L) — Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.
   In progress: atomic child identity/input reservations and persisted root
   depth/total-child quotas. Existing finite recursion and child outcome guards
   are preserved. Durable detached job/return decisions and bounded delivery are
-  wired locally. Nonresident child waits, cancellation, crash/corruption tests
-  and final behavioral validation remain open.
+  wired locally. Parent-owned nonresident waits, private native suspension and
+  fork reentry, original deadlines and synchronous cancellation are implemented
+  locally. Full root, actual ADK/LangGraph, optional Framework and CTK runs pass.
+  Terminal provenance, context/version isolation, competing workers and actual
+  process-stop deadlines are verified locally. Hosted exact-source PostgreSQL,
+  Windows, images and security qualification remain required before closure.
   Finite recursion and quota rejection pass on both principal SDKs. Damaged
   queued identities fail closed without starving valid work. These changes
   require the corrected full/platform/PostgreSQL checkpoint before qualification.
@@ -215,10 +217,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 - [ ] **S4-05** (M) — Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.
 - [ ] **S4-06** (M) — Run matched latency/CPU/memory/concurrency/persistence/recovery benchmarks; publish measured results.
 - [ ] **S4-07** (M) — Keep CI, builds, releases, capability reports and rollback tied to verified versions and acceptance gates.
-  User-requested cleanup is staged: PR/main trigger separation, independent
+  User-requested cleanup is verified at `3f568e5`: PR/main trigger separation, independent
   Windows/native/image checks, one root contract execution, optional Framework
   coverage for common changes, and stale-PR cancellation. Required release
-  gates are preserved; final batch acceptance and remaining S4-07 scope stay open.
+  gates are preserved and all six configured workflows pass. Remaining S4-07
+  release/rollback and broader capability/version acceptance stay open.
 - [ ] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.
 - [ ] **S4-09** (L) — Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; require its own native acceptance.
 - [ ] **S4-10** (L) — Preserve EVENT-1 through EVENT-5; add optional external brokers, AsyncAPI and A2A push only with delivery/security contracts.

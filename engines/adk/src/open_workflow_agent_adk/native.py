@@ -8,12 +8,14 @@ import os
 import sqlite3
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import aclosing, asynccontextmanager, closing
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from importlib import import_module
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunsplit
 
+from open_workflow_agent.child_rescan import child_rescan_wake, verify_child_rescan_wake
+from open_workflow_agent.child_suspension import ChildSuspension
 from open_workflow_agent.effects import (
     EffectIdentity,
     EffectJournal,
@@ -79,27 +81,88 @@ def _timer_wake_matches(suspension: TimerSuspension, wake: Any) -> bool:
     )
 
 
+def _child_wake_matches(suspension: ChildSuspension, wake: Any) -> bool:
+    return bool(
+        isinstance(wake, dict)
+        and set(wake) == {"child_key", "child_id", "request_digest", "deadline_at", "reason"}
+        and wake["child_key"] == suspension.identity.key
+        and wake["child_id"] == suspension.child_id
+        and wake["request_digest"] == suspension.request_digest
+        and wake["deadline_at"] == suspension.deadline_at
+        and (wake["deadline_at"] is None or type(wake["deadline_at"]) in {int, float})
+        and isinstance(wake["reason"], str)
+        and wake["reason"] in {"child_terminal", "deadline"}
+    )
+
+
+def _child_admission(
+    context: AdkRecoveryContext, suspension: ChildSuspension
+) -> tuple[EffectIdentity, EffectReceipt]:
+    identity = suspension.identity
+    if (
+        context.child_waits is None
+        or identity.invocation_id != context.invocation_id
+        or identity.workflow_fingerprint != context.workflow_fingerprint
+        or identity.task_reference not in context.task_references
+    ):
+        raise InvocationStateError("native child admission identity is inconsistent")
+    registration = context.child_waits.registration(identity)
+    policy_identity = replace(identity, operation="policy:child-await:v1")
+    receipt = context.journal.get(policy_identity)
+    if (
+        registration is None
+        or registration.identity != identity
+        or registration.suspension.as_value() != suspension.as_value()
+        or receipt is None
+        or receipt.status != "completed"
+        or receipt != registration.receipt
+    ):
+        raise InvocationStateError("native child admission evidence is inconsistent")
+    return policy_identity, receipt
+
+
 def _timer_requests(
     session: Any, invocation_id: str, context: AdkRecoveryContext | None = None
-) -> dict[str, TimerSuspension]:
+) -> dict[str, TimerSuspension | ChildSuspension]:
     """Validate native request/response history before re-entering the runner."""
-    pending: dict[str, TimerSuspension] = {}
+    pending: dict[str, TimerSuspension | ChildSuspension] = {}
+    checkpointed_receipts: dict[str, ReceiptDependency] = {}
     for event in session.events:
         if event.invocation_id != invocation_id:
             continue
+        if event.author == _RECEIPT_AUTHOR and isinstance(event.custom_metadata, dict):
+            dependencies = [
+                ReceiptDependency.from_value(value)
+                for value in event.custom_metadata.get("receipts", ())
+            ]
+            checkpointed_receipts = {value.identity.key: value for value in dependencies}
         for part in event.content.parts if event.content and event.content.parts else ():
             call = part.function_call
             if call is not None and call.name == "adk_request_input":
-                suspension = TimerSuspension.from_value((call.args or {}).get("payload"))
+                payload = (call.args or {}).get("payload")
+                suspension: TimerSuspension | ChildSuspension
+                if (
+                    isinstance(payload, dict)
+                    and payload.get("profile") == "owa/child-suspension/v1"
+                ):
+                    suspension = ChildSuspension.from_value(payload)
+                    prefix, key = "owa-child:", suspension.identity.key
+                else:
+                    suspension = TimerSuspension.from_value(payload)
+                    prefix, key = "owa-timer:", suspension.timer_key
                 identity = suspension.identity
                 if (
-                    call.id != "owa-timer:" + suspension.timer_key
+                    call.id != prefix + key
                     or identity.invocation_id
                     != (context.invocation_id if context is not None else invocation_id)
                     or call.id in pending
                 ):
                     raise InvocationStateError("native timer request identity is inconsistent")
-                if context is not None:
+                if isinstance(suspension, ChildSuspension):
+                    if context is None:
+                        raise InvocationStateError("native child recovery context is absent")
+                    _child_admission(context, suspension)
+                elif context is not None:
                     armed = context.journal.get(identity)
                     if (
                         identity.workflow_fingerprint != context.workflow_fingerprint
@@ -114,12 +177,44 @@ def _timer_requests(
             response = part.function_response
             if response is not None:
                 requested = pending.get(response.id or "")
-                if (
-                    response.name != "adk_request_input"
-                    or requested is None
-                    or not _timer_wake_matches(requested, response.response)
-                ):
+                rescan = (
+                    isinstance(response.response, dict)
+                    and response.response.get("profile") == "owa/child-rescan/v1"
+                )
+                if rescan:
+                    if (
+                        response.name != "adk_request_input"
+                        or not isinstance(requested, ChildSuspension)
+                        or context is None
+                        or context.child_waits is None
+                    ):
+                        raise InvocationStateError("native child rescan response is inconsistent")
+                    verify_child_rescan_wake(
+                        response.response,
+                        requested,
+                        child_waits=context.child_waits,
+                        journal=context.journal,
+                        dependencies=checkpointed_receipts,
+                        invocation_id=context.invocation_id,
+                        workflow_fingerprint=context.workflow_fingerprint,
+                    )
+                    del pending[response.id]
+                    continue
+                matches = (
+                    _child_wake_matches(requested, response.response)
+                    if isinstance(requested, ChildSuspension)
+                    else requested is not None and _timer_wake_matches(requested, response.response)
+                )
+                if response.name != "adk_request_input" or requested is None or not matches:
                     raise InvocationStateError("native timer response is inconsistent")
+                if isinstance(requested, ChildSuspension):
+                    if context is None or context.child_waits is None:
+                        raise InvocationStateError("native child recovery context is absent")
+                    known = context.child_waits.known_wakes(
+                        context.invocation_id, context.workflow_fingerprint
+                    )
+                    if known.get(requested.identity.key) != response.response:
+                        raise InvocationStateError("native child response evidence is inconsistent")
                 del pending[response.id]
     return pending
 
@@ -135,6 +230,7 @@ class AdkRecoveryContext:
     metadata: dict[str, Any]
     require_waiting: bool = False
     uses_timing: bool = False
+    child_waits: Any = None
 
 
 class _ReceiptEvents:
@@ -209,6 +305,13 @@ class _ReceiptEvents:
             raise ValueError("native waiting event is absent")
         for dependency in self.dependencies.values():
             dependency.verify(self.context.journal)
+        for suspension in _timer_requests(session, invocation_id, self.context).values():
+            if isinstance(suspension, ChildSuspension):
+                identity, receipt = _child_admission(self.context, suspension)
+                if self.dependencies.get(identity.key) != ReceiptDependency.capture(
+                    identity, receipt
+                ):
+                    raise ValueError("native child admission dependency is absent")
 
     async def publish(
         self,
@@ -513,6 +616,7 @@ class NativeAdkRunner:
         sessions = self._session_service(database_path)
         receipt_events = _ReceiptEvents(_recovery_context) if _recovery_context else None
         pending_timers: dict[str, TimerSuspension] = {}
+        pending_children: dict[str, ChildSuspension] = {}
         postgresql = bool(database_path and is_postgresql_datasource(database_path))
         if not postgresql:
             sessions._execution_fence = _execution_fence
@@ -535,7 +639,17 @@ class NativeAdkRunner:
                 )
                 if receipt_events is not None:
                     receipt_events.restore(existing, invocation_id or "")
-                pending_timers = _timer_requests(existing, invocation_id or "", _recovery_context)
+                pending_requests = _timer_requests(existing, invocation_id or "", _recovery_context)
+                pending_timers = {
+                    key: value
+                    for key, value in pending_requests.items()
+                    if isinstance(value, TimerSuspension)
+                }
+                pending_children = {
+                    key: value
+                    for key, value in pending_requests.items()
+                    if isinstance(value, ChildSuspension)
+                }
             if existing is None:
                 await sessions.create_session(
                     app_name=app_name,
@@ -548,7 +662,7 @@ class NativeAdkRunner:
             raise
 
         result_value: Any = None
-        suspended: TimerSuspension | None = None
+        suspended: TimerSuspension | ChildSuspension | None = None
         wake = _recovery_context.metadata.get("_timer_wake") if _recovery_context else None
         wakes = _recovery_context.metadata.get("_timer_wakes") if _recovery_context else None
         wake_id: str | None = None
@@ -598,6 +712,70 @@ class NativeAdkRunner:
                 raise InvocationStateError("native timer wake does not match pending request")
             wake_id = matches[0]
 
+        child_wakes = _recovery_context.metadata.get("_child_wakes") if _recovery_context else None
+        if child_wakes is not None:
+            try:
+                validate_expression_data(child_wakes)
+                if not isinstance(child_wakes, dict) or _recovery_context is None:
+                    raise ValueError("invalid child wake map")
+                if _recovery_context.child_waits is None:
+                    raise ValueError("missing child admission store")
+                known_child_wakes = _recovery_context.child_waits.known_wakes(
+                    _recovery_context.invocation_id, _recovery_context.workflow_fingerprint
+                )
+                if any(
+                    not isinstance(key, str)
+                    or key not in known_child_wakes
+                    or known_child_wakes[key] != value
+                    for key, value in child_wakes.items()
+                ):
+                    raise ValueError("child wake map does not match evidence")
+            except Exception:
+                await self._close_sessions(sessions)
+                raise InvocationStateError("native child wake map is inconsistent") from None
+        if pending_children:
+            child_matches = []
+            for key, child in pending_children.items():
+                selected_child_wake = (child_wakes or {}).get(child.identity.key)
+                if selected_child_wake is None:
+                    continue
+                if not _child_wake_matches(child, selected_child_wake):
+                    await self._close_sessions(sessions)
+                    raise InvocationStateError("native child wake does not match pending request")
+                child_matches.append(key)
+            if not child_matches and wake_id is None:
+                try:
+                    if (
+                        len(pending_children) != 1
+                        or _recovery_context is None
+                        or receipt_events is None
+                        or _recovery_context.child_waits is None
+                    ):
+                        raise next(iter(pending_children.values()))
+                    request_id, interrupted = next(iter(pending_children.items()))
+                    rescan_wake = child_rescan_wake(
+                        interrupted,
+                        child_waits=_recovery_context.child_waits,
+                        journal=_recovery_context.journal,
+                        dependencies=receipt_events.dependencies,
+                        ready_wakes=child_wakes,
+                        invocation_id=_recovery_context.invocation_id,
+                        workflow_fingerprint=_recovery_context.workflow_fingerprint,
+                    )
+                    if rescan_wake is None:
+                        raise interrupted
+                    wake_id, wake = request_id, rescan_wake
+                except BaseException:
+                    await self._close_sessions(sessions)
+                    raise
+            if child_matches:
+                if len(child_matches) != 1 or wake_id is not None:
+                    await self._close_sessions(sessions)
+                    raise InvocationStateError("native wait wake is ambiguous")
+                wake_id = child_matches[0]
+                assert isinstance(child_wakes, dict)
+                wake = child_wakes[pending_children[wake_id].identity.key]
+
         async def root_node(ctx: Context) -> Any:
             # A session can contain several invocations. Session-wide state is
             # not an input binding for this native invocation.
@@ -627,31 +805,46 @@ class NativeAdkRunner:
                 try:
                     result_value = await runner(node_input)
                     return result_value
-                except TimerSuspension as suspension:
+                except (TimerSuspension, ChildSuspension) as suspension:
                     if _recovery_context is None or receipt_events is None:
                         raise InvocationStateError(
                             "native timer recovery context is absent"
                         ) from None
-                    identity = suspension.identity
-                    armed = _recovery_context.journal.get(identity)
-                    dependency = receipt_events.dependencies.get(identity.key)
-                    if (
-                        identity.invocation_id != _recovery_context.invocation_id
-                        or identity.workflow_fingerprint != _recovery_context.workflow_fingerprint
-                        or identity.task_reference not in _recovery_context.task_references
-                        or armed is None
-                        or armed.status != "completed"
-                        or not isinstance(armed.output, dict)
-                        or armed.output.get("due_at") != suspension.due_at
-                        or dependency is None
-                        or dependency != ReceiptDependency.capture(identity, armed)
-                    ):
-                        raise InvocationStateError(
-                            "native timer arming evidence is inconsistent"
-                        ) from None
+                    if isinstance(suspension, ChildSuspension):
+                        identity, child_admission_receipt = _child_admission(
+                            _recovery_context, suspension
+                        )
+                        dependency = receipt_events.dependencies.get(identity.key)
+                        if dependency != ReceiptDependency.capture(
+                            identity, child_admission_receipt
+                        ):
+                            raise InvocationStateError(
+                                "native child admission receipt was not checkpointed"
+                            ) from None
+                        interrupt_id = "owa-child:" + suspension.identity.key
+                    else:
+                        identity = suspension.identity
+                        armed = _recovery_context.journal.get(identity)
+                        dependency = receipt_events.dependencies.get(identity.key)
+                        if (
+                            identity.invocation_id != _recovery_context.invocation_id
+                            or identity.workflow_fingerprint
+                            != _recovery_context.workflow_fingerprint
+                            or identity.task_reference not in _recovery_context.task_references
+                            or armed is None
+                            or armed.status != "completed"
+                            or not isinstance(armed.output, dict)
+                            or armed.output.get("due_at") != suspension.due_at
+                            or dependency is None
+                            or dependency != ReceiptDependency.capture(identity, armed)
+                        ):
+                            raise InvocationStateError(
+                                "native timer arming evidence is inconsistent"
+                            ) from None
+                        interrupt_id = "owa-timer:" + suspension.timer_key
                     suspended = suspension
                     return RequestInput(
-                        interrupt_id="owa-timer:" + suspension.timer_key,
+                        interrupt_id=interrupt_id,
                         payload=suspension.as_value(),
                     )
 

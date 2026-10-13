@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from open_workflow_agent.child_suspension import ChildSuspension
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
 from open_workflow_agent.errors import (
     InvocationCancelled,
@@ -82,7 +83,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             else:
                 result = self._record_result(invocation, status="completed", output=output)
             return result
-        except TimerSuspension:
+        except (TimerSuspension, ChildSuspension):
             if invocation.status == "running":
                 self.services.invocations.update(invocation, status="waiting")
             result = self._stored_result(invocation)
@@ -144,7 +145,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 else self._record_result(handle, status="completed", output=output)
             )
             return result
-        except TimerSuspension:
+        except (TimerSuspension, ChildSuspension):
             if handle.status == "running":
                 self.services.invocations.update(handle, status="waiting")
             result = self._stored_result(handle)
@@ -182,6 +183,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 handle.invocation_id,
                 workflow_input,
                 effect_journal=self.services.effect_journal,
+                child_waits=self.services.child_waits,
             )
         return workflow_input
 
@@ -197,6 +199,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             handle.invocation_id,
             self.services.invocations.read_input(handle),
             self.services.effect_journal,
+            self.services.child_waits,
         )
 
 

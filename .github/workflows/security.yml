@@ -44,6 +44,9 @@ jobs:
           - project: .
             id: root
             extras: --extra model --extra knowledge --extra postgres
+          - project: core
+            id: standalone-core
+            extras: --extra model --extra knowledge --extra postgres
           - project: engines/adk
             id: adk
             extras: --extra native --extra postgres --extra knowledge --extra model
