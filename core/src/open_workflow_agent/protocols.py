@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import ipaddress
 import math
 import os
@@ -22,6 +23,8 @@ from .security import ProfileAuthentication, SecurityConfig
 
 if TYPE_CHECKING:
     from .a2a_client import A2ACardSelection
+    from .grpc_client import GrpcRegistry
+    from .openapi_client import OpenApiOperationSelection
     from .sandbox import SandboxManager
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
@@ -135,6 +138,7 @@ class HttpClient:
         _return_response: bool = False,
         _authentication: AuthenticationProvider | None = None,
         _on_dispatch: Callable[[], None] | None = None,
+        _allow_redirect_status: bool = False,
         **kwargs: Any,
     ) -> Any:
         budget = self.timeout
@@ -155,6 +159,7 @@ class HttpClient:
                     _return_response=_return_response,
                     _authentication=_authentication,
                     _on_dispatch=_on_dispatch,
+                    _allow_redirect_status=_allow_redirect_status,
                     **kwargs,
                 )
         except TimeoutError:
@@ -173,6 +178,7 @@ class HttpClient:
         _return_response: bool = False,
         _authentication: AuthenticationProvider | None = None,
         _on_dispatch: Callable[[], None] | None = None,
+        _allow_redirect_status: bool = False,
         **kwargs: Any,
     ) -> Any:
         self._check_endpoint(endpoint)
@@ -201,9 +207,13 @@ class HttpClient:
                     binding = await prepare(endpoint, remaining_timeout=timeout)
                 auth_headers = binding.headers
                 client_cert = binding.client_cert
-                # A selected profile replaces global TLS identity; ordinary
-                # public trust remains enabled when it supplies no custom CA.
-                verify_tls = binding.ca_bundle or True
+                # An explicit different profile replaces global TLS trust.
+                # Preparing the client's own authentication must preserve its
+                # deployment-selected CA, including query-only recovery clients.
+                inherited = _authentication is None or _authentication is self.authentication
+                verify_tls = binding.ca_bundle or (
+                    self.verify_tls if inherited and self.verify_tls is not False else True
+                )
             headers = _merge_authoritative_headers(headers, auth_headers)
             sensitive_headers = frozenset(name.lower() for name in auth_headers)
         if operation_id:
@@ -265,10 +275,10 @@ class HttpClient:
                         request=streamed.request,
                         extensions=streamed.extensions,
                     )
-                if response.is_error or (
-                    response.is_redirect
-                    and not redirects_enabled
-                    and not (allow_not_modified and response.status_code == 304)
+                maximum_status = 400 if redirects_enabled or _allow_redirect_status else 300
+                if not (
+                    200 <= response.status_code < maximum_status
+                    or (allow_not_modified and response.status_code == 304)
                 ):
                     raise ToolError(
                         "HTTP request failed with an error status",
@@ -321,9 +331,20 @@ class ProtocolServices:
         security: SecurityConfig | None = None,
         security_profile: str | None = None,
         a2a_credential_endpoints: Mapping[str, tuple[str, ...]] | None = None,
+        openapi_credential_endpoints: Mapping[str, tuple[str, ...]] | None = None,
+        grpc_registry: GrpcRegistry | None = None,
+        grpc_credential_endpoints: Mapping[str, tuple[str, ...]] | None = None,
     ) -> None:
         self._a2a_credential_endpoints = {
             name: tuple(endpoints) for name, endpoints in (a2a_credential_endpoints or {}).items()
+        }
+        self._openapi_credential_endpoints = {
+            name: tuple(endpoints)
+            for name, endpoints in (openapi_credential_endpoints or {}).items()
+        }
+        self.grpc_registry = grpc_registry
+        self._grpc_credential_endpoints = {
+            name: tuple(endpoints) for name, endpoints in (grpc_credential_endpoints or {}).items()
         }
         authentication: AuthenticationProvider | None = None
         client_cert: tuple[str, str] | None = None
@@ -366,16 +387,39 @@ class ProtocolServices:
         _authentication: AuthenticationProvider | None = None,
         _a2a_selection: A2ACardSelection | None = None,
         _a2a_bound_endpoint: str | None = None,
+        _openapi_selection: OpenApiOperationSelection | None = None,
     ) -> Any:
-        if protocol not in {"http", "mcp", "a2a", "openapi"}:
+        if protocol not in {"http", "mcp", "a2a", "openapi", "grpc"}:
             raise ToolError(f"unsupported protocol: {protocol}")
         if not isinstance(payload, dict):
             raise ToolError(f"{protocol} payload must be an object")
-        operation_id = _operation_id(payload)
+        operation_id = _operation_id(payload, allow_operation_alias=protocol != "openapi")
+        if protocol == "grpc":
+            from .grpc_client import call_grpc
+
+            if self.grpc_registry is None:
+                raise ToolError("gRPC deployment registry is not enabled")
+            authentication = _authentication or self._profile_authentication
+            profile = getattr(authentication, "profile_name", None)
+            return await call_grpc(
+                self.http,
+                {key: value for key, value in payload.items() if key != "operation_id"},
+                registry=self.grpc_registry,
+                authentication=authentication,
+                credential_endpoints=frozenset(
+                    self._grpc_credential_endpoints.get(profile, ())
+                    if isinstance(profile, str)
+                    else ()
+                ),
+                operation_key=operation_id,
+            )
         if protocol == "http":
             endpoint = _endpoint_value(payload.get("endpoint") or payload.get("url"))
             if not endpoint:
                 raise ToolError("http call requires endpoint")
+            redirect = payload.get("redirect", False)
+            if not isinstance(redirect, bool):
+                raise ToolError("http redirect must be a boolean")
             return await self.http.request(
                 str(payload.get("method", "GET")),
                 str(endpoint),
@@ -383,7 +427,10 @@ class ProtocolServices:
                 params=payload.get("query"),
                 json=payload.get("body"),
                 operation_id=operation_id,
-                follow_redirects=payload.get("redirect"),
+                # OWS redirect selects accepted response statuses. It grants
+                # no authority to visit a Location endpoint or forward secrets.
+                follow_redirects=False,
+                _allow_redirect_status=redirect,
                 output=str(payload.get("output", "content")),
                 request_timeout=_duration_seconds(payload.get("timeout")),
                 _authentication=_authentication,
@@ -423,31 +470,36 @@ class ProtocolServices:
                 bound_endpoint=_a2a_bound_endpoint,
             )
         if protocol == "openapi":
-            document = payload.get("document")
-            endpoint = _endpoint_value(document) or _endpoint_value(payload.get("endpoint"))
-            if not endpoint:
-                raise ToolError("openapi call requires document endpoint")
-            operation_id_value = payload.get("operationId") or (
-                document.get("operationId") if isinstance(document, dict) else None
+            from .openapi_client import call_openapi, fetch_validate_description, select_operation
+
+            authentication = (
+                _authentication or self._profile_authentication or self.http.authentication
             )
-            if not operation_id_value:
-                raise ToolError("openapi call requires operationId")
-            parameters = payload.get("parameters")
-            if parameters is None and isinstance(document, dict):
-                parameters = document.get("parameters")
-            if parameters is None:
-                parameters = payload.get("body")
-            return await self.http.request(
-                str(payload.get("method", "POST")),
-                str(endpoint),
-                headers=payload.get("headers"),
-                params=payload.get("query"),
-                json=parameters,
-                operation_id=operation_id or str(operation_id_value),
-                follow_redirects=payload.get("redirect"),
-                output=str(payload.get("output", "content")),
-                request_timeout=_duration_seconds(payload.get("timeout")),
-                _authentication=_authentication,
+            started = time.monotonic()
+            timeout = self.http.timeout
+            selection = _openapi_selection
+            if selection is None:
+                document = payload.get("document") or (
+                    {"endpoint": payload["endpoint"]} if "endpoint" in payload else None
+                )
+                if document is None:
+                    raise ToolError("openapi call requires document endpoint")
+                if not isinstance(payload.get("operationId"), str):
+                    raise ToolError("openapi call requires operationId")
+                description = await fetch_validate_description(self.http, document, timeout=timeout)
+                selection = select_operation(
+                    description,
+                    payload["operationId"],
+                    credential_profile=getattr(authentication, "profile_name", None),
+                )
+            return await call_openapi(
+                self.http,
+                payload,
+                selection=selection,
+                timeout=timeout - (time.monotonic() - started),
+                operation_id=operation_id,
+                authentication=authentication,
+                credential_endpoints=self._openapi_credential_endpoints,
             )
         endpoint = payload.get("endpoint")
         if not endpoint:
@@ -607,8 +659,11 @@ def _merge_authoritative_headers(
     return merged
 
 
-def _operation_id(payload: dict[str, Any]) -> str:
-    value = payload.get("operation_id") or payload.get("operationId") or payload.get("id")
+def _operation_id(payload: dict[str, Any], *, allow_operation_alias: bool = True) -> str:
+    value = payload.get("operation_id")
+    if allow_operation_alias:
+        value = value or payload.get("operationId")
+    value = value or payload.get("id")
     return str(value) if value else str(uuid4())
 
 
@@ -630,7 +685,7 @@ def _format_response(
     _sensitive_headers: frozenset[str] = frozenset(),
 ) -> Any:
     if output == "raw":
-        return response.text
+        return base64.b64encode(response.content).decode("ascii")
     try:
         body: Any = response.json()
     except ValueError:

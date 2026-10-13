@@ -29,6 +29,7 @@ from open_workflow_agent.protocols import (
     HttpClient,
     ProtocolServices,
 )
+from openapi_fixtures import operation_document
 
 # --- CloudEvents 1.0 Conformance Tests ---
 
@@ -326,6 +327,14 @@ def test_openapi_outbound_request_uses_operation_id() -> None:
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
+        if request.url.path == "/openapi":
+            assert request.method == "GET"
+            return httpx.Response(
+                200,
+                json=operation_document(
+                    "https://api.test", path="/lookup", parameters=(("query", "query", "string"),)
+                ),
+            )
         return httpx.Response(200, json={"ok": True})
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
@@ -343,8 +352,11 @@ def test_openapi_outbound_request_uses_operation_id() -> None:
         )
     )
 
-    # Should have made a request
-    assert len(seen) == 1
+    assert [(request.method, request.url.path) for request in seen] == [
+        ("GET", "/openapi"),
+        ("GET", "/lookup"),
+    ]
+    assert seen[1].url.params["query"] == "hello"
 
 
 # --- Cross-Protocol Consistency Tests ---

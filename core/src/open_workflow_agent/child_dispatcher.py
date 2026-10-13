@@ -102,6 +102,7 @@ class ChildDispatcher:
                         trusted_catalogs=self.services.config.workflow.external_catalogs,
                         resolver=self.services.external_catalogs,
                         catalog=self.services.catalog,
+                        grpc_enabled=self.services.grpc_enabled,
                     )
                 self.services.children.verify(
                     binding, parent, plan, self.services.invocations.read_input(child)

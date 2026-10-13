@@ -31,6 +31,7 @@ from referencing.jsonschema import DRAFT202012
 if TYPE_CHECKING:
     from .a2a_client import A2ACardSelection
     from .external_recovery import HttpExternalActionRecovery
+    from .openapi_client import OpenApiOperationSelection
 
 from ._version import __version__
 from .catalog import CatalogContext, FunctionCatalog
@@ -67,8 +68,10 @@ from .expressions import ExpressionEvaluator as ExpressionEvaluator
 from .expressions import ExpressionMode, validate_expression_data
 from .external_catalog import ResolvedCatalogFunction, parse_catalog_function_reference
 from .forks import ForkDecision, ForkIdentity
+from .grpc_client import _GrpcOutcomeUncertain
 from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
+from .openapi_client import _OpenApiOutcomeUncertain
 from .ownership import ExecutionLease
 from .persistence import ExecutionHandle
 from .protocols import MCP_PROTOCOL_VERSION, PROTOCOL_DATA_FIELDS
@@ -375,6 +378,7 @@ def validate_capabilities(
     _resource_preflight: bool = False,
     _schema_registry: Registry[Any] | None = None,
     _mcp_stdio: bool = False,
+    grpc_enabled: bool = False,
 ) -> None:
     _validate_definition_profile(workflow, _resource_preflight, _schema_registry)
     _validate_catalog_capability(workflow, trusted_catalogs=trusted_catalogs)
@@ -423,13 +427,14 @@ def validate_capabilities(
             call = definition["call"]
             if not isinstance(call, str) or (
                 call not in SUPPORTED_CALLS
+                and not (call == "grpc" and grpc_enabled)
                 and call not in functions
                 and not _is_trusted_catalog_call(call, catalogs, trusted_catalogs)
             ):
                 raise UnsupportedWorkflowFeature(
                     f"call '{call}' is not enabled", details={"reference": reference}
                 )
-            if call in SUPPORTED_PROTOCOL_CALLS:
+            if call in SUPPORTED_PROTOCOL_CALLS or call == "grpc":
                 _validate_protocol_authentication(definition.get("with"), f"{reference}/with")
             if call == "mcp":
                 with_value = definition.get("with")
@@ -464,6 +469,7 @@ def validate_capabilities(
                 _resource_preflight=_resource_preflight,
                 _schema_registry=_schema_registry,
                 _mcp_stdio=_mcp_stdio,
+                grpc_enabled=grpc_enabled,
             )
         if "emit" in definition:
             _validate_emit_capability(definition["emit"], reference)
@@ -481,6 +487,7 @@ def validate_capabilities(
                 _resource_preflight=_resource_preflight,
                 _schema_registry=_schema_registry,
                 _mcp_stdio=_mcp_stdio,
+                grpc_enabled=grpc_enabled,
             )
         validate_expression_profile(workflow)
 
@@ -830,10 +837,15 @@ def compile_workflow(
     source: str | Path | Mapping[str, Any] | None = None,
     *,
     trusted_catalogs: Mapping[str, Any] | None = None,
+    grpc_enabled: bool = False,
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
-    validate_capabilities(resolve_reusable_components(workflow), trusted_catalogs=trusted_catalogs)
+    validate_capabilities(
+        resolve_reusable_components(workflow),
+        trusted_catalogs=trusted_catalogs,
+        grpc_enabled=grpc_enabled,
+    )
     return normalize_workflow(workflow)
 
 
@@ -843,6 +855,7 @@ async def resolve_and_compile_workflow(
     trusted_catalogs: Mapping[str, Any] | None = None,
     resolver: Any,
     catalog: FunctionCatalog,
+    grpc_enabled: bool = False,
 ) -> WorkflowPlan:
     """Resolve deployment-trusted catalogs before building the internal plan."""
 
@@ -853,6 +866,7 @@ async def resolve_and_compile_workflow(
         resolve_reusable_components(workflow),
         trusted_catalogs=trusted_catalogs,
         _resource_preflight=enabled,
+        grpc_enabled=grpc_enabled,
     )
     imports, resources = await resolve_workflow_dependencies(workflow, resolver, catalog)
     effective = (
@@ -864,6 +878,7 @@ async def resolve_and_compile_workflow(
         effective,
         trusted_catalogs=trusted_catalogs,
         _schema_registry=build_schema_registry(resources),
+        grpc_enabled=grpc_enabled,
     )
     return normalize_workflow(workflow, imports=imports, resources=resources)
 
@@ -1973,7 +1988,7 @@ class WorkflowExecutor:
                     if key in child.variables:
                         state.variables[key] = copy.deepcopy(child.variables[key])
                 return child.data
-            if str(definition["call"]) in {"http", "mcp", "a2a", "openapi"} and isinstance(
+            if str(definition["call"]) in {"http", "mcp", "a2a", "openapi", "grpc"} and isinstance(
                 payload, Mapping
             ):
                 payload = _resolve_protocol_endpoints(payload, state.data, state.variables)
@@ -2224,8 +2239,20 @@ class WorkflowExecutor:
                     mode=self._expressions(state).mode,
                     registry=state.metadata.get("_schema_registry"),
                 ),
+                openapi_dispatch=(
+                    lambda selection: resolver.invoke_prepared(
+                        imported,
+                        call,
+                        payload,
+                        mode=self._expressions(state).mode,
+                        registry=state.metadata.get("_schema_registry"),
+                        _openapi_selection=selection,
+                    )
+                )
+                if call == "openapi"
+                else None,
             )
-        if call in {"http", "mcp", "a2a", "openapi"}:
+        if call in {"http", "mcp", "a2a", "openapi", "grpc"}:
             if self.services is None:
                 raise WorkflowExecutionError(f"protocol service unavailable: {call}")
             return await self._run_effect(
@@ -2239,6 +2266,13 @@ class WorkflowExecutor:
                     )
                 )
                 if call == "a2a"
+                else None,
+                openapi_dispatch=(
+                    lambda selection: self.services.call_protocol(
+                        call, payload, _openapi_selection=selection
+                    )
+                )
+                if call == "openapi"
                 else None,
             )
         if self.services is None:
@@ -2264,6 +2298,11 @@ class WorkflowExecutor:
                 mode=self._expressions(state).mode,
                 metadata=state.metadata,
                 parent_state=state,
+                **(
+                    {"_runtime_services": self.services}
+                    if binding.execution_definition.get("call") in {"grpc", "openapi"}
+                    else {}
+                ),
             )
         context = CatalogContext(
             model=self.services.model,
@@ -2285,6 +2324,7 @@ class WorkflowExecutor:
         operation: str | None = None,
         child_dependency: Callable[[], ChildInvocationDependency] | None = None,
         a2a_dispatch: Callable[[A2ACardSelection], Awaitable[Any]] | None = None,
+        openapi_dispatch: Callable[[OpenApiOperationSelection], Awaitable[Any]] | None = None,
     ) -> Any:
         journal = getattr(self.services, "effect_journal", None)
         if journal is None:
@@ -2292,16 +2332,63 @@ class WorkflowExecutor:
                 raise WorkflowExecutionError("retry budget expired before a new action")
             try:
                 return await dispatch()
-            except (_McpOutcomeUncertain, _A2AOutcomeUncertain) as uncertainty:
+            except (
+                _McpOutcomeUncertain,
+                _A2AOutcomeUncertain,
+                _OpenApiOutcomeUncertain,
+                _GrpcOutcomeUncertain,
+            ) as uncertainty:
                 raise _EffectRecoveryRequired(
                     uncertainty.message, details=uncertainty.details
                 ) from None
         identity = self._effect_identity(state, operation or "call:" + call)
         operation_id = (
             payload.get("operation_id")
-            if call in {"http", "mcp", "a2a", "openapi"} and isinstance(payload, Mapping)
+            if call in {"http", "mcp", "a2a", "openapi", "grpc"} and isinstance(payload, Mapping)
             else None
         ) or self._operation_id(state)
+        if call == "openapi" and isinstance(payload, Mapping):
+            from .openapi_admission import OpenApiOperationAdmission
+
+            if openapi_dispatch is None:
+                raise _EffectRecoveryRequired("OpenAPI operation admission context is unavailable")
+            admission_store = getattr(self.services, "openapi_operation_admission", None)
+            if not isinstance(admission_store, OpenApiOperationAdmission):
+                raise _EffectRecoveryRequired("OpenAPI operation admission service is unavailable")
+            deadlines = [
+                scope.absolute_due
+                for scope in _ACTIVE_TIMEOUTS.get()
+                if scope.absolute_due is not None
+            ]
+            openapi_admission = await admission_store.prepare(
+                identity,
+                payload,
+                cast(ExecutionHandle, state.metadata["_invocation_handle"]),
+                execution_lease=self._execution_lease(state),
+                deadline_at=min(deadlines) if deadlines else None,
+                now=self._absolute_clock,
+                allow_fetch=not _RECONCILE_EXPIRED_RETRY.get(),
+            )
+            if openapi_admission is None:
+                raise _EffectRecoveryRequired("OpenAPI operation has no admitted description")
+            admitted_openapi = openapi_admission
+            prepared_at = time.monotonic()
+            await self._notify_receipt(state, admitted_openapi.identity, admitted_openapi.receipt)
+            selected_openapi_dispatch = openapi_dispatch
+
+            async def dispatch_admitted_openapi() -> Any:
+                selection = admitted_openapi.selection
+                remaining = admitted_openapi.receipt.output["deadline_at"] - self._absolute_clock()
+                if selection.remaining_timeout is not None:
+                    remaining = min(
+                        remaining,
+                        selection.remaining_timeout - (time.monotonic() - prepared_at),
+                    )
+                return await selected_openapi_dispatch(
+                    replace(selection, remaining_timeout=remaining)
+                )
+
+            dispatch = dispatch_admitted_openapi
         if call == "a2a" and isinstance(payload, Mapping) and "agentCard" in payload:
             from .a2a_admission import A2AAgentCardAdmission
 
@@ -2448,7 +2535,12 @@ class WorkflowExecutor:
                     details={"instance": reference},
                 ) from None
             raise
-        except (_McpOutcomeUncertain, _A2AOutcomeUncertain) as uncertainty:
+        except (
+            _McpOutcomeUncertain,
+            _A2AOutcomeUncertain,
+            _OpenApiOutcomeUncertain,
+            _GrpcOutcomeUncertain,
+        ) as uncertainty:
             # No correlated known result means the business action may have
             # committed. Keep its pending intent and bypass catch/retry routing.
             raise _EffectRecoveryRequired(
@@ -3799,7 +3891,11 @@ class WorkflowExecutor:
     def _protocol_operation_id(
         self, call: str, payload: Mapping[str, Any], state: ExecutionState
     ) -> Any:
-        explicit = payload.get("operation_id") or payload.get("operationId")
+        # OpenAPI operationId selects a description operation. It cannot also
+        # identify the external action across invocations or loop occurrences.
+        explicit = payload.get("operation_id")
+        if call != "openapi":
+            explicit = explicit or payload.get("operationId")
         if explicit:
             return explicit
         journal = getattr(self.services, "effect_journal", None)

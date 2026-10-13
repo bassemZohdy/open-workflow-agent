@@ -247,7 +247,7 @@ def _sdk_file_digest(entries: tuple[tuple[str, str, int, int], ...]) -> str:
 
 
 def _sdk_digest(name: str) -> str:
-    """Bounded installed checkpoint code, not model caches or transitive binaries."""
+    """Bounded checkpoint/protocol code, including declared gRPC codec binaries."""
     installed = importlib.metadata.distribution(name)
     if installed.files is None:
         raise _unavailable("runtime_profile_unavailable")
@@ -255,14 +255,21 @@ def _sdk_digest(name: str) -> str:
     size = 0
     for item in sorted(installed.files, key=str):
         relative = str(item).replace("\\", "/")
-        if not relative.endswith((".py", ".pyi")) or "__pycache__" in relative:
+        suffixes = (
+            (".py", ".pyi", ".so", ".pyd", ".dll", ".dylib")
+            if name in {"grpcio", "protobuf"}
+            else (".py", ".pyi")
+        )
+        if not relative.endswith(suffixes) or "__pycache__" in relative:
             continue
         path = Path(str(installed.locate_file(item)))
         if not path.is_file():
             raise _unavailable("runtime_profile_unavailable")
         stat = path.stat()
         size += stat.st_size
-        if len(entries) >= 4096 or size > 32_000_000:
+        if len(entries) >= 4096 or size > (
+            128_000_000 if name in {"grpcio", "protobuf"} else 32_000_000
+        ):
             raise _unavailable("runtime_profile_unavailable")
         entries.append((relative, str(path), stat.st_mtime_ns, stat.st_size))
     if not entries:
@@ -313,6 +320,7 @@ def recovery_profile(
             "mcp",
             "mcp-types",
             "a2a-sdk",
+            "grpcio",
             "protobuf",
             "googleapis-common-protos",
             "json-rpc",
@@ -358,6 +366,7 @@ def recovery_profile(
             "mcp",
             "mcp-types",
             "a2a-sdk",
+            "grpcio",
             "protobuf",
             "googleapis-common-protos",
         }
@@ -370,12 +379,23 @@ def recovery_profile(
         continuation_supported = True
         if config is not None:
             continuation_supported = not config.model.options and not any(
-                tool.options for tool in config.tools
+                tool.options
+                and not (
+                    tool.type == "openapi"
+                    and tool.openapi_binding is not None
+                    and not (set(tool.options) - {"operationId", "output", "redirect"})
+                )
+                for tool in config.tools
             )
+            protocol_policy = config.protocols.model_dump(mode="json", exclude={"grpc_bindings"})
+            protocol_policy["grpc_bindings"] = [
+                binding.recovery_snapshot(name)
+                for name, binding in sorted(config.protocols.grpc_bindings.items())
+            ]
             policy = {
                 "agent": config.agent.model_dump(mode="json"),
                 "security": config.security.model_dump(mode="json"),
-                "protocols": config.protocols.model_dump(mode="json"),
+                "protocols": protocol_policy,
                 "catalogs": {
                     key: value.model_dump(mode="json")
                     for key, value in config.workflow.external_catalogs.items()
@@ -400,6 +420,17 @@ def recovery_profile(
                         "name": tool.name,
                         "endpoint": tool.endpoint,
                         "security_profile": tool.security_profile,
+                        "openapi_binding": {
+                            "id": tool.openapi_binding.id,
+                            "version": tool.openapi_binding.version,
+                            "document_uri": tool.openapi_binding.document_uri,
+                            "digest": tool.openapi_binding.digest,
+                            "operationId": tool.options.get("operationId"),
+                            "output": tool.options.get("output", "content"),
+                            "redirect": tool.options.get("redirect", False),
+                        }
+                        if tool.openapi_binding is not None
+                        else None,
                     }
                     for tool in config.tools
                 ],

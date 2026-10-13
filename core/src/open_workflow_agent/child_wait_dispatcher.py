@@ -114,6 +114,7 @@ class ChildWaitDispatcher:
                         trusted_catalogs=self.services.config.workflow.external_catalogs,
                         resolver=self.services.external_catalogs,
                         catalog=self.services.catalog,
+                        grpc_enabled=self.services.grpc_enabled,
                     )
 
             await self.engine.dispatch_child_wait(registration, load_plan)

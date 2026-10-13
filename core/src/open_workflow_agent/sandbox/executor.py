@@ -5,13 +5,15 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Mapping
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from typing import Any, cast
 
-from ..errors import SandboxPolicyError, WorkflowSemanticError
+from ..errors import SandboxPolicyError, WorkflowExecutionError, WorkflowSemanticError
 from ..expressions import expression_string
-from ..workflow import ExecutionState, WorkflowExecutor
+from ..persistence import ExecutionHandle
+from ..workflow import _ACTIVE_TIMEOUTS, _RECONCILE_EXPIRED_RETRY, ExecutionState, WorkflowExecutor
 from .contract import SandboxExecutionRequest, SandboxExecutionResult, SandboxSecretReference
+from .jobs import SandboxJobStore, job_id, policy_identity
 
 
 class SandboxWorkflowExecutor(WorkflowExecutor):
@@ -20,15 +22,36 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
     async def _run_subworkflow(self, definition: Any, state: ExecutionState) -> Any:
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError("run configuration must be an object")
+        executable = bool({"script", "shell", "container"}.intersection(definition))
+        mode = definition.get("return", "stdout")
+        if executable and (
+            not isinstance(mode, str) or mode not in {"stdout", "stderr", "code", "all", "none"}
+        ):
+            raise WorkflowSemanticError("invalid executable run return mode")
+        background = executable and definition.get("await", True) is False
         if "script" in definition:
-            return await self._run_script(definition["script"], state)
-        if "shell" in definition:
-            return await self._run_shell(definition["shell"], state)
-        if "container" in definition:
-            return await self._run_container(definition["container"], state)
-        return await super()._run_subworkflow(definition, state)
+            result = await self._run_script(definition["script"], state, background=background)
+        elif "shell" in definition:
+            result = await self._run_shell(definition["shell"], state, background=background)
+        elif "container" in definition:
+            result = await self._run_container(
+                definition["container"], state, background=background
+            )
+        else:
+            return await super()._run_subworkflow(definition, state)
+        if background:
+            return result
+        # Keep the complete bounded result in the common receipt. Projection
+        # happens only after that known outcome has been retained or verified.
+        if mode == "all":
+            return result
+        if mode == "none":
+            return None
+        return result[mode]
 
-    async def _run_script(self, definition: Any, state: ExecutionState) -> Any:
+    async def _run_script(
+        self, definition: Any, state: ExecutionState, *, background: bool = False
+    ) -> Any:
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError("run.script must be an object")
         request = SandboxExecutionRequest(
@@ -42,9 +65,15 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             invocation_id=cast(str | None, state.metadata.get("invocation_id")),
             task_reference=cast(str | None, state.variables.get("_task_reference")),
         )
-        return await self._execute_sandbox(request, state)
+        return await (
+            self._execute_background(request, state)
+            if background
+            else self._execute_sandbox(request, state)
+        )
 
-    async def _run_shell(self, definition: Any, state: ExecutionState) -> Any:
+    async def _run_shell(
+        self, definition: Any, state: ExecutionState, *, background: bool = False
+    ) -> Any:
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError("run.shell must be an object")
         request = SandboxExecutionRequest(
@@ -57,9 +86,15 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             invocation_id=cast(str | None, state.metadata.get("invocation_id")),
             task_reference=cast(str | None, state.variables.get("_task_reference")),
         )
-        return await self._execute_sandbox(request, state)
+        return await (
+            self._execute_background(request, state)
+            if background
+            else self._execute_sandbox(request, state)
+        )
 
-    async def _run_container(self, definition: Any, state: ExecutionState) -> Any:
+    async def _run_container(
+        self, definition: Any, state: ExecutionState, *, background: bool = False
+    ) -> Any:
         if not isinstance(definition, Mapping):
             raise WorkflowSemanticError("run.container must be an object")
         request = SandboxExecutionRequest(
@@ -73,7 +108,52 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             invocation_id=cast(str | None, state.metadata.get("invocation_id")),
             task_reference=cast(str | None, state.variables.get("_task_reference")),
         )
-        return await self._execute_sandbox(request, state)
+        return await (
+            self._execute_background(request, state)
+            if background
+            else self._execute_sandbox(request, state)
+        )
+
+    async def _execute_background(
+        self, request: SandboxExecutionRequest, state: ExecutionState
+    ) -> Any:
+        store = getattr(self.services, "sandbox_jobs", None)
+        handle = state.metadata.get("_invocation_handle")
+        lease = self._execution_lease(state)
+        if (
+            not isinstance(store, SandboxJobStore)
+            or not isinstance(handle, ExecutionHandle)
+            or lease is None
+        ):
+            raise SandboxPolicyError("background execution admission is unavailable")
+        identity = self._effect_identity(state, "run:" + request.kind)
+        request = replace(request, execution_id=job_id(identity))
+        prior = store.get(request.execution_id)
+        if prior is None and _RECONCILE_EXPIRED_RETRY.get():
+            raise WorkflowExecutionError("retry budget expired before a new sandbox job")
+        if prior is not None:
+            deadline = json.loads(prior.admission_json)["deadline_at"]
+        else:
+            deadlines = [
+                scope.absolute_due
+                for scope in _ACTIVE_TIMEOUTS.get()
+                if scope.absolute_due is not None
+            ]
+            deadline = min(
+                [self._absolute_clock() + store.profile_provider().timeout_seconds, *deadlines]
+            )
+        job, receipt = store.admit_action(
+            identity,
+            handle,
+            request,
+            state.data,
+            deadline_at=deadline,
+            execution_lease=lease,
+        )
+        await self._notify_receipt(state, policy_identity(identity), job.receipt)
+        await self._notify_receipt(state, identity, receipt)
+        # This is acceptance of an independent job, not a process exit.
+        return receipt.output
 
     async def _execute_sandbox(
         self, request: SandboxExecutionRequest, state: ExecutionState

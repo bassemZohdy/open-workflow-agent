@@ -19,7 +19,7 @@ from .children import ChildWorkflowStore
 from .config import ExternalCatalogConfig, RuntimeConfig
 from .durable_events import DurableEventBus
 from .effects import EffectJournal
-from .errors import ConfigurationError
+from .errors import ConfigurationError, UnsupportedWorkflowFeature
 from .event_store import EventStore, EventStoreLimits
 from .events import EventBus, InMemoryEventBus
 from .external_catalog import (
@@ -30,11 +30,15 @@ from .external_catalog import (
 )
 from .external_recovery import HttpExternalActionRecovery, TrustedHttpReceiver
 from .forks import ForkDecisionStore
+from .grpc_client import GrpcRegistry
+from .grpc_client import verify_sdk as verify_grpc_sdk
 from .initial_delivery import InitialDeliveryStore
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
 from .memory import MemoryService
 from .metrics import Metrics, MetricsEventSink
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
+from .openapi_admission import OpenApiOperationAdmission
+from .openapi_client import OpenApiOperationSelection
 from .ownership import ExecutionOwnershipStore
 from .persistence import ExecutionHandle, InvocationStore
 from .protocols import ProtocolServices, workflow_protocol_payload
@@ -48,6 +52,8 @@ from .sandbox import (
 )
 from .sandbox.backends.docker import DockerSandboxBackend
 from .sandbox.backends.kubernetes import KubernetesSandboxBackend
+from .sandbox.job_dispatcher import SandboxJobDispatcher
+from .sandbox.jobs import SandboxJobStore
 from .scheduling import ScheduleStore
 from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
 from .timers import TimerStore
@@ -78,6 +84,30 @@ class RuntimeServices:
         # It cannot replace installed artifact, SDK, backend or trust evidence.
         self._recovery_profile_provider = recovery_profile_provider
         self.config = config
+        if config.sandbox.background.enabled:
+            candidate = (
+                Path(database_root) / "runtime.sqlite3"
+                if database_root
+                else (
+                    resolve_datasource(config.persistence.datasource) or config.persistence.database
+                )
+            )
+            if (
+                not config.sandbox.enabled
+                or config.sandbox.backend != "internal"
+                or str(candidate) == ":memory:"
+                or str(candidate).startswith(("postgresql:", "postgres:"))
+            ):
+                raise ConfigurationError(
+                    "background execution requires enabled internal sandbox "
+                    "and persistent embedded SQLite"
+                )
+        self.grpc_registry = GrpcRegistry(
+            binding.to_binding(name) for name, binding in config.protocols.grpc_bindings.items()
+        )
+        self.grpc_enabled = bool(config.protocols.grpc_bindings)
+        if self.grpc_enabled:
+            verify_grpc_sdk()
         self.model = model or (
             FakeModel()
             if config.model.provider == "fake"
@@ -99,6 +129,8 @@ class RuntimeServices:
             event_sink=self.events,
             security=config.security,
             resource_policies=config.workflow.external_resources,
+            grpc_registry=self.grpc_registry if self.grpc_enabled else None,
+            grpc_credential_endpoints=config.protocols.grpc_credential_endpoints,
         )
         self.workflow_runner: Any = None
         self._workflow_initial_child_preflight: (
@@ -108,6 +140,9 @@ class RuntimeServices:
             security=config.security,
             security_profile=config.protocols.security_profile,
             a2a_credential_endpoints=config.protocols.a2a_credential_endpoints,
+            openapi_credential_endpoints=config.protocols.openapi_credential_endpoints,
+            grpc_registry=self.grpc_registry if self.grpc_enabled else None,
+            grpc_credential_endpoints=config.protocols.grpc_credential_endpoints,
         )
         self.tools = ToolRegistry.from_config(
             config.tools, self.protocols, security=config.security
@@ -224,6 +259,60 @@ class RuntimeServices:
             trust_verifier=self._verify_archived_definition_trust,
         )
         self.a2a_agent_card_admission = A2AAgentCardAdmission(self)
+        self.openapi_operation_admission = OpenApiOperationAdmission(self)
+        self.sandbox_jobs: SandboxJobStore | None = None
+        self._background_dispatcher: SandboxJobDispatcher | None = None
+        if config.sandbox.background.enabled:
+            from .sandbox.internal_jobs import InternalSandboxJobBackend, internal_job_profile
+
+            if self.effect_journal.connection.kind != "sqlite":
+                raise ConfigurationError("background execution requires embedded SQLite")
+            self.sandbox_jobs = SandboxJobStore(
+                self,
+                profile_provider=lambda: internal_job_profile(self.config.sandbox),
+                max_pending=config.sandbox.background.max_pending,
+            )
+            job_backend = InternalSandboxJobBackend(config.sandbox, self.sandbox_jobs)
+            self.sandbox = SandboxManager(sandbox_backend, job_backend=job_backend)
+            self.protocols.sandbox = self.sandbox
+            self.effect_journal._sandbox_job_verifier = self.sandbox_jobs.verify_receipt
+            bounds = config.sandbox.background
+            self._background_dispatcher = SandboxJobDispatcher(
+                self.sandbox_jobs,
+                self.sandbox,
+                lease_seconds=bounds.lease_seconds,
+                io_timeout=bounds.io_timeout,
+                poll_seconds=bounds.poll_seconds,
+                scan_limit=bounds.scan_limit,
+            )
+
+    def verify_background_jobs(self, handle: ExecutionHandle) -> None:
+        store = self.sandbox_jobs
+        if store is None:
+            return
+        # Index verification detects retained policies even if a job row was
+        # removed; enumeration detects a removed action index independently.
+        self.effect_journal.verify_invocation(handle.invocation_id, handle.workflow_fingerprint)
+        rows = self.effect_journal.connection.execute(
+            "SELECT job_id FROM sandbox_jobs WHERE invocation_id=? ORDER BY job_id LIMIT 10001",
+            (handle.invocation_id,),
+        ).fetchall()
+        if len(rows) > 10000:
+            raise ConfigurationError("background invocation proof capacity is exceeded")
+        for row in rows:
+            job = store.get(row[0])
+            if job is None:
+                raise ConfigurationError("background invocation admission is absent")
+            store._authority(job)
+
+    async def start_background_jobs(self) -> None:
+        if self._background_dispatcher is not None:
+            await self._background_dispatcher.start()
+
+    async def stop_background_jobs(self) -> None:
+        # Only release the observer. Independent supervisor lifetimes persist.
+        if self._background_dispatcher is not None:
+            await self._background_dispatcher.stop()
 
     def _recovery_profile(self, engine: str) -> dict[str, Any]:
         value = copy.deepcopy(
@@ -243,6 +332,7 @@ class RuntimeServices:
             name: ExternalCatalogConfig.model_validate(declaration).model_dump(mode="json")
             for name, declaration in self.external_catalogs.schemas.policies.items()
         }
+        self._verify_grpc_registry()
         recovery = self.external_action_recovery
         value["trusted_http_receivers"] = (
             [
@@ -279,12 +369,14 @@ class RuntimeServices:
         return self.recovery_definitions.resolve(handle)
 
     def _verify_archived_definition_trust(self, plan: WorkflowPlan) -> None:
+        self.verify_grpc_plan(plan)
         self.external_catalogs.schemas.verify(plan.resources)
         validate_sandbox_capabilities(
             materialize_schema_resources(plan.source),
             sandbox=self.config.sandbox,
             trusted_catalogs=self.external_catalogs.policies,
             _schema_registry=schema_registry(plan.resources),
+            grpc_enabled=self.grpc_enabled,
         )
         for binding in plan.imports:
             reference = parse_catalog_function_reference(binding.reference)
@@ -300,6 +392,54 @@ class RuntimeServices:
             self.external_catalogs._verify_pin(
                 binding.digest, policy, binding.reference, binding.resource_uri
             )
+
+    def _verify_grpc_registry(self) -> None:
+        if not self.grpc_enabled and not self.config.protocols.grpc_bindings:
+            # A default-disabled deployment retains its existing custom common
+            # service seams and does not activate a protocol SDK or registry.
+            return
+        expected = [
+            binding.recovery_snapshot(name)
+            for name, binding in sorted(self.config.protocols.grpc_bindings.items())
+        ]
+        if (
+            self.grpc_enabled != bool(expected)
+            or self.grpc_registry.snapshot() != expected
+            or self.protocols.grpc_registry is not (self.grpc_registry if expected else None)
+            or self.external_catalogs.grpc_registry
+            is not (self.grpc_registry if expected else None)
+            or self.protocols._grpc_credential_endpoints
+            != self.config.protocols.grpc_credential_endpoints
+            or self.external_catalogs.grpc_credential_endpoints
+            != self.config.protocols.grpc_credential_endpoints
+        ):
+            raise ConfigurationError("gRPC deployment registry composition changed")
+
+    def verify_grpc_plan(self, plan: WorkflowPlan) -> None:
+        self._verify_grpc_registry()
+        definitions = [task.definition for scope in plan.scopes for task in scope.tasks]
+        definitions.extend(binding.execution_definition for binding in plan.imports)
+        for definition in tuple(definitions):
+            if not self.grpc_enabled:
+                break
+            call = definition.get("call")
+            if not isinstance(call, str):
+                continue
+            registered = self.external_catalogs.registered_binding(call)
+            if registered is not None and registered.execution_definition.get("call") == "grpc":
+                definitions.append(registered.execution_definition)
+        for definition in definitions:
+            if definition.get("call") != "grpc":
+                continue
+            if not self.grpc_enabled:
+                raise UnsupportedWorkflowFeature("gRPC deployment registry is not enabled")
+            verify_grpc_sdk()
+            value = definition.get("with")
+            if not isinstance(value, dict):
+                raise UnsupportedWorkflowFeature("gRPC route must be deployment-bound")
+            # Arguments may contain expressions. Route selection is fixed by
+            # the deployment before ownership or any provider/business call.
+            self.grpc_registry.prepare({**value, "arguments": {}}, _route_only=True)
 
     def event_triggers(
         self, engine: str, *, clock: Callable[[], float] | None = None
@@ -411,15 +551,21 @@ class RuntimeServices:
         return tuple(bindings)
 
     async def call_protocol(
-        self, protocol: str, payload: Any, *, _a2a_selection: A2ACardSelection | None = None
+        self,
+        protocol: str,
+        payload: Any,
+        *,
+        _a2a_selection: A2ACardSelection | None = None,
+        _openapi_selection: OpenApiOperationSelection | None = None,
     ) -> Any:
         prepared = workflow_protocol_payload(protocol, payload)
-        if _a2a_selection is None:
+        if _a2a_selection is None and _openapi_selection is None:
             return await self.protocols.call(protocol, prepared)
         return await self.protocols.call(
             protocol,
             prepared,
             _a2a_selection=_a2a_selection,
+            _openapi_selection=_openapi_selection,
         )
 
     def close(self) -> None:

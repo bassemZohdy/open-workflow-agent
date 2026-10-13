@@ -382,6 +382,7 @@ class EffectJournal:
         self, database: str | Path = ":memory:", *, invocations: InvocationStore | None = None
     ) -> None:
         self._invocations = invocations
+        self._sandbox_job_verifier: Callable[[EffectIdentity, EffectReceipt], None] | None = None
         self.connection: StorageConnection = open_storage(database, "owa_runtime")
         self.connection.execute(
             """CREATE TABLE IF NOT EXISTS workflow_effects (
@@ -452,6 +453,23 @@ class EffectJournal:
                 from .a2a_admission import verify_a2a_card_receipt
 
                 verify_a2a_card_receipt(self.connection, self._invocations, identity, receipt)
+            if identity.operation == "policy:openapi-operation:v1":
+                from .openapi_admission import verify_openapi_operation_receipt
+
+                verify_openapi_operation_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            if identity.operation.startswith("policy:sandbox-job-") or identity.operation in {
+                "run:script",
+                "run:shell",
+                "run:container",
+            }:
+                if self._sandbox_job_verifier is not None:
+                    self._sandbox_job_verifier(identity, receipt)
+                elif identity.operation.startswith(
+                    "policy:sandbox-job-"
+                ) or receipt.owner.startswith("sandbox-job:"):
+                    raise ValueError("sandbox job deployment is unavailable")
             if identity.operation == "run:workflow" and receipt.status != "pending":
                 if receipt.child_invocation is None:
                     raise ValueError("child invocation binding is absent")

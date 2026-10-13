@@ -35,6 +35,7 @@ from .errors import (
     ScheduleValidationError,
 )
 from .event_capabilities import event_capabilities
+from .grpc_capabilities import grpc_capabilities
 from .lifecycle import TERMINAL_INVOCATION_STATES
 from .mcp_capabilities import mcp_capabilities
 from .metrics import MetricsMiddleware
@@ -319,7 +320,9 @@ def create_app(
                 trusted_catalogs=runtime_config.workflow.external_catalogs,
                 resolver=runtime_services.external_catalogs,
                 catalog=runtime_services.catalog,
+                grpc_enabled=runtime_services.grpc_enabled,
             )
+            runtime_services.verify_grpc_plan(app.state.plan)
             runtime_services.workflow_catalog.register(app.state.plan)
             for child_workflow in runtime_config.workflow.catalog:
                 child_plan = await resolve_and_compile_sandbox_workflow(
@@ -328,7 +331,9 @@ def create_app(
                     trusted_catalogs=runtime_config.workflow.external_catalogs,
                     resolver=runtime_services.external_catalogs,
                     catalog=runtime_services.catalog,
+                    grpc_enabled=runtime_services.grpc_enabled,
                 )
+                runtime_services.verify_grpc_plan(child_plan)
                 runtime_services.workflow_catalog.register(child_plan)
             if runtime_config.a2a.enabled:
                 skill_plans: dict[str, WorkflowPlan] = {}
@@ -509,6 +514,10 @@ def create_app(
         )
         value.setdefault("features", {})["sandbox"] = runtime_services.sandbox.capabilities()
         value.setdefault("features", {})["mcp"] = mcp_capabilities(runtime_services.sandbox)
+        grpc = grpc_capabilities(enabled=runtime_services.grpc_enabled)
+        value.setdefault("features", {})["grpc"] = grpc
+        if grpc["enabled"] and "grpc" not in value["protocols"]:
+            value["protocols"].append("grpc")
         value.setdefault("features", {})["lifecycleStreaming"] = streaming_capabilities()
         value.setdefault("features", {})["a2a"] = a2a_capabilities(runtime_config.a2a)
         value.setdefault("features", {})["trafficPolicy"] = traffic_policy_capabilities(
@@ -645,7 +654,9 @@ def create_app(
         plan = getattr(
             app.state,
             "plan",
-            compile_sandbox_workflow(sandbox=runtime_config.sandbox),
+            compile_sandbox_workflow(
+                sandbox=runtime_config.sandbox, grpc_enabled=runtime_services.grpc_enabled
+            ),
         )
         if (
             parse_schedule(plan.source.get("schedule")).kind == "on"
@@ -687,7 +698,9 @@ def create_app(
         plan = getattr(
             app.state,
             "plan",
-            compile_sandbox_workflow(sandbox=runtime_config.sandbox),
+            compile_sandbox_workflow(
+                sandbox=runtime_config.sandbox, grpc_enabled=runtime_services.grpc_enabled
+            ),
         )
         handle = runtime_services.invocations.create(
             engine=runtime_engine.engine_name,
@@ -764,7 +777,9 @@ def create_app(
             return skill_plans.get(skill_id)
         fallback: WorkflowPlan | None = getattr(app.state, "plan", None)
         if fallback is None:
-            return compile_sandbox_workflow(sandbox=runtime_config.sandbox)
+            return compile_sandbox_workflow(
+                sandbox=runtime_config.sandbox, grpc_enabled=runtime_services.grpc_enabled
+            )
         return fallback
 
     def _a2a_delivery_authorized(

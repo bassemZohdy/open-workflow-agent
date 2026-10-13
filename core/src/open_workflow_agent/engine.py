@@ -231,6 +231,7 @@ class WorkflowEngine:
         services.workflow_runner = self.run_child
         services._workflow_initial_child_preflight = self._verify_initial_nohistory
         self._initial_delivery_dispatcher = InitialDeliveryDispatcher(services, self)
+        await services.start_background_jobs()
 
     async def start_initial_deliveries(
         self, authorize: Callable[[ExecutionHandle, str | None, WorkflowPlan], bool]
@@ -378,6 +379,7 @@ class WorkflowEngine:
             # Plans may be compiled before deployment services are bound;
             # invocation admission repeats this check before any dispatch.
             return
+        services.verify_grpc_plan(plan)
         bus = services.event_bus
         if getattr(bus, "durable", False) and hasattr(bus, "register_workflow_listener"):
             return
@@ -418,6 +420,7 @@ class WorkflowEngine:
     async def _preflight_definition(
         self, handle: ExecutionHandle, plan: WorkflowPlan, *, initial: bool = False
     ) -> None:
+        self.services.verify_grpc_plan(plan)
         archive = self.services.recovery_definitions
         if archive.has_binding(handle) or not initial:
             lease = self._execution_leases.get(handle.invocation_id)
@@ -426,8 +429,10 @@ class WorkflowEngine:
                 original = archive.verify_admission(handle)
                 self.services.invocations.verify_fingerprint(handle, original.fingerprint)
                 self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+                self.services.verify_background_jobs(handle)
                 return
             archive.verify(handle, plan)
+            self.services.verify_background_jobs(handle)
             return
         await self._verify_initial_nohistory(handle)
 
@@ -1243,6 +1248,7 @@ class WorkflowEngine:
         # nested awaits. This private signal never persists a cancelled outcome.
         for active in self._active.values():
             active.control.interrupt("host_drain")
+        await self.services.stop_background_jobs()
         if self._timer_dispatcher is not None:
             await self._timer_dispatcher.stop()
         if self._initial_delivery_dispatcher is not None:

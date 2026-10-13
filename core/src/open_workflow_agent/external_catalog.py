@@ -34,6 +34,8 @@ from .security import ProfileAuthentication, SecurityConfig
 from .versions import version_precedence
 
 if TYPE_CHECKING:
+    from .grpc_client import GrpcRegistry
+    from .openapi_client import OpenApiOperationSelection
     from .workflow import ExecutionState
 
 CATALOG_FUNCTION_REFERENCE = re.compile(
@@ -109,11 +111,15 @@ class ExternalCatalogResolver:
         event_sink: EventSink | None = None,
         security: SecurityConfig | None = None,
         resource_policies: Mapping[str, ExternalCatalogConfig] | None = None,
+        grpc_registry: GrpcRegistry | None = None,
+        grpc_credential_endpoints: Mapping[str, tuple[str, ...]] | None = None,
     ) -> None:
         self.policies = dict(policies or {})
         self.http = http
         self.event_sink = event_sink
         self.security = security
+        self.grpc_registry = grpc_registry
+        self.grpc_credential_endpoints = dict(grpc_credential_endpoints or {})
         self.schemas = SchemaResourceResolver(
             resource_policies or {},
             self._schema_client,
@@ -197,6 +203,7 @@ class ExternalCatalogResolver:
                 evaluation=evaluation,
                 components=components,
                 _resource_preflight=_resource_preflight,
+                grpc_enabled=self.grpc_registry is not None,
             )
             binding = ResolvedCatalogFunction(
                 reference.value,
@@ -233,6 +240,11 @@ class ExternalCatalogResolver:
                     variables={"context": context.metadata},
                     metadata=context.metadata,
                     mode=mode,
+                    **(
+                        {"_runtime_services": context.services}
+                        if captured.execution_definition.get("call") in {"grpc", "openapi"}
+                        else {}
+                    ),
                 )
 
             catalog.register(reference.value, invoke)
@@ -254,6 +266,7 @@ class ExternalCatalogResolver:
         mode: ExpressionMode = "strict",
         metadata: Mapping[str, Any] | None = None,
         parent_state: ExecutionState | None = None,
+        _runtime_services: Any = None,
     ) -> Any:
         """Compatibility invocation through the same portable task pipeline."""
         from .workflow import ExecutionState, WorkflowExecutor
@@ -266,7 +279,12 @@ class ExternalCatalogResolver:
             task_metadata["_catalog_operation_id"] = operation_id
         task_metadata["_catalog_tasks"] = {execution_reference: binding}
         task_metadata["_external_catalog_resolver"] = self
-        executor = WorkflowExecutor(FunctionCatalog())
+        executor = WorkflowExecutor(
+            FunctionCatalog(),
+            services=_runtime_services
+            if binding.execution_definition.get("call") in {"grpc", "openapi"}
+            else None,
+        )
         if parent_state is not None:
             state = executor._copy_state(parent_state)
             state.data = payload
@@ -303,6 +321,7 @@ class ExternalCatalogResolver:
         *,
         mode: ExpressionMode = "strict",
         registry: Any = None,
+        _openapi_selection: OpenApiOperationSelection | None = None,
     ) -> Any:
         """Dispatch an evaluated protocol payload under current deployment trust."""
         reference = parse_catalog_function_reference(binding.reference)
@@ -324,6 +343,7 @@ class ExternalCatalogResolver:
             reference,
             evaluation={"mode": mode},
             _schema_registry=registry,
+            grpc_enabled=self.grpc_registry is not None,
         )
         if call != expected_call:
             raise UnsupportedWorkflowFeature("captured catalog protocol does not match dispatch")
@@ -338,9 +358,15 @@ class ExternalCatalogResolver:
         client = self._client(policy, auth_host=urlparse(binding.resource_uri).hostname)
         if client.transport is not None:
             await _validate_invocation_destinations(invocation_payload, policy, client)
-        return await ProtocolServices(client).call(
-            call, workflow_protocol_payload(call, invocation_payload)
+        protocols = ProtocolServices(
+            client,
+            grpc_registry=self.grpc_registry,
+            grpc_credential_endpoints=self.grpc_credential_endpoints,
         )
+        prepared = workflow_protocol_payload(call, invocation_payload)
+        if _openapi_selection is not None:
+            return await protocols.call(call, prepared, _openapi_selection=_openapi_selection)
+        return await protocols.call(call, prepared)
 
     def capabilities(self) -> dict[str, Any]:
         configured = sorted(self.policies)
@@ -659,6 +685,7 @@ def _validate_function_definition(
     components: Mapping[str, Any] | None = None,
     _resource_preflight: bool = False,
     _schema_registry: Any = None,
+    grpc_enabled: bool = False,
 ) -> tuple[str, Any]:
     arguments = definition.get("with")
     if isinstance(arguments, Mapping) and "$ref" in arguments:
@@ -672,7 +699,7 @@ def _validate_function_definition(
             details={"function": reference.value},
         )
     call = definition.get("call")
-    if call not in SUPPORTED_FUNCTION_PROTOCOLS:
+    if call not in SUPPORTED_FUNCTION_PROTOCOLS and not (call == "grpc" and grpc_enabled):
         raise UnsupportedWorkflowFeature(
             "external catalog function must use a supported protocol call",
             details={"function": reference.value},
@@ -701,7 +728,10 @@ def _validate_function_definition(
             }
         ]
         validate_capabilities(
-            workflow, _resource_preflight=_resource_preflight, _schema_registry=_schema_registry
+            workflow,
+            _resource_preflight=_resource_preflight,
+            _schema_registry=_schema_registry,
+            grpc_enabled=grpc_enabled,
         )
     except WorkflowSchemaError:
         raise WorkflowSchemaError(

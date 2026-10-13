@@ -146,6 +146,7 @@ class TimerDispatcher:
                         trusted_catalogs=self.services.config.workflow.external_catalogs,
                         resolver=self.services.external_catalogs,
                         catalog=self.services.catalog,
+                        grpc_enabled=self.services.grpc_enabled,
                     )
 
             self.engine._timer_claims[invocation_id] = claim

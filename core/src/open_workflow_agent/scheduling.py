@@ -277,6 +277,7 @@ class WorkflowScheduler:
                 trusted_catalogs=self.services.config.workflow.external_catalogs,
                 resolver=self.services.external_catalogs,
                 catalog=self.services.catalog,
+                grpc_enabled=self.services.grpc_enabled,
             )
         if plan.fingerprint != record.workflow_fingerprint:
             raise ScheduleValidationError("scheduled workflow definition changed")

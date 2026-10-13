@@ -14,6 +14,7 @@ Open Workflow Agent targets reviewed stable releases of external protocols, with
 | OpenAPI Specification | `3.2.0` | Bounded operation adapter only; no full parser/conformance claim |
 | CloudEvents | `1.0.2` | Bounded lifecycle snapshot/SSE profile using `specversion: 1.0` |
 | AsyncAPI Specification | `3.1.0` | Future binding baseline; not implemented |
+| gRPC Python SDK | `1.84.0` | Authored deployment-bound unary adapter with Protobuf `7.36.1`; qualification pending |
 
 ## CI Drift Guard
 
@@ -202,6 +203,16 @@ https://www.asyncapi.com/docs/reference/specification/v3.1.0
 ```
 
 ## Upgrade Policy
+
+The selected gRPC adapter pins the reviewed [gRPC1.84.0 release](https://github.com/grpc/grpc/releases/tag/v1.84.0),
+commit `3252a89f10d8e92997862167ca7d095ecda85973`, and Python Protobuf `7.36.1`
+from the independent locked dependency profiles. SDK release numbering is not a
+new public workflow DSL or a wire-version negotiation. The authored profile uses
+deployment-bound closed compiled descriptors and unary calls, with no runtime
+compilation/reflection or streaming activation. Default capability remains
+disabled unless a deployment supplies the complete reviewed binding. Authoring
+and these pins do not prove behavioral/native/backend/platform qualification;
+the finite acceptance record and independent gates remain required.
 
 A new upstream stable release triggers review, not an automatic runtime change:
 

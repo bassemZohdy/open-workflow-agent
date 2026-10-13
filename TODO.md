@@ -225,6 +225,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   and integrated SDK/backend/platform validation remain prerequisites; no new
   A2A profile or proposed inventory criterion is complete.
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
+  Selected HTTP/OpenAPI/gRPC, awaited process outputs, pure AsyncAPI descriptions
+  and independent executable-job changes are being authored in parallel. See
+  [the finite acceptance plan](docs/s3-03-operation-adapters-acceptance.md).
+  Behavioral/native/backend/platform, physical lifetime, packaging and hosted
+  qualification remain outstanding; no new profile or inventory row is complete.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and applicable delegated authorization.

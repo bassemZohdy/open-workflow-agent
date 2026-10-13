@@ -2,19 +2,33 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import os
 import re
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
 from ._version import __version__
-from .errors import ConfigurationError
+from .errors import ConfigurationError, ToolError
 from .security import AuthorizationPolicy, SecurityConfig
+
+if TYPE_CHECKING:
+    from .grpc_client import GrpcBinding
+
 
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _IMAGE_DIGEST = re.compile(r"^.+@sha256:[0-9a-fA-F]{64}$")
@@ -496,6 +510,25 @@ class McpStdioConfig(StrictModel):
         return self
 
 
+class SandboxBackgroundConfig(StrictModel):
+    """Explicit deployment opt-in for independently supervised internal jobs."""
+
+    model_config = ConfigDict(extra="forbid", validate_assignment=True, allow_inf_nan=False)
+
+    enabled: bool = False
+    max_pending: int = Field(default=1000, ge=1, le=10_000)
+    lease_seconds: float = Field(default=30, gt=0, le=3600)
+    io_timeout: float = Field(default=10, gt=0, le=1800)
+    poll_seconds: float = Field(default=0.25, gt=0, le=60)
+    scan_limit: int = Field(default=100, ge=1, le=1000)
+
+    @model_validator(mode="after")
+    def validate_delivery_bounds(self) -> SandboxBackgroundConfig:
+        if self.io_timeout > self.lease_seconds / 2:
+            raise ValueError("background io_timeout must not exceed half the job lease")
+        return self
+
+
 class SandboxConfig(StrictModel):
     """Deployment policy for the selected framework-neutral sandbox backend."""
 
@@ -518,6 +551,7 @@ class SandboxConfig(StrictModel):
     docker: DockerSandboxConfig = Field(default_factory=DockerSandboxConfig)
     kubernetes: KubernetesSandboxConfig = Field(default_factory=KubernetesSandboxConfig)
     mcp_stdio: McpStdioConfig = Field(default_factory=McpStdioConfig)
+    background: SandboxBackgroundConfig = Field(default_factory=SandboxBackgroundConfig)
 
     @field_validator("script_runtimes")
     @classmethod
@@ -618,12 +652,108 @@ class SandboxConfig(StrictModel):
         return self
 
 
+class OpenApiToolBindingConfig(StrictModel):
+    """Deployment-owned immutable description for a configured agent tool."""
+
+    id: str = Field(min_length=1, max_length=256)
+    version: str = Field(min_length=1, max_length=256)
+    document_uri: str = Field(min_length=1, max_length=4096)
+    document: dict[str, Any]
+    digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    @model_validator(mode="after")
+    def verify_description(self) -> OpenApiToolBindingConfig:
+        from .openapi_client import OpenApiDescription
+
+        captured = OpenApiDescription.capture(self.document_uri, self.document)
+        if captured.digest != self.digest:
+            raise ValueError("OpenAPI tool description digest differs from its deployment binding")
+        return self
+
+
 class ToolConfig(StrictModel):
     type: Literal["mcp", "openapi", "a2a"]
     name: str | None = None
     endpoint: str | None = None
     security_profile: str | None = None
     options: dict[str, Any] = Field(default_factory=dict)
+    openapi_binding: OpenApiToolBindingConfig | None = None
+
+    @model_validator(mode="after")
+    def validate_openapi_binding(self) -> ToolConfig:
+        if self.openapi_binding is not None and self.type != "openapi":
+            raise ValueError("OpenAPI operation bindings apply only to OpenAPI tools")
+        return self
+
+
+class GrpcBindingConfig(StrictModel):
+    """Immutable, deployment-owned original proto and compiled descriptor pair."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    proto_uri: str = Field(min_length=1, max_length=2048)
+    proto_filename: str = Field(min_length=1, max_length=1024)
+    proto_source: str = Field(min_length=1, max_length=1_048_576)
+    proto_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    descriptor_set_base64: str = Field(min_length=1, max_length=1_398_104)
+    descriptor_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    endpoint: str = Field(min_length=1, max_length=2048)
+    service: str = Field(min_length=1, max_length=256)
+    method: str = Field(min_length=1, max_length=128)
+    allow_insecure_loopback: bool = Field(default=False, strict=True)
+    application_status_profile: bool = Field(default=False, strict=True)
+    max_request_bytes: int = Field(default=4_000_000, gt=0, le=4_000_000, strict=True)
+    max_response_bytes: int = Field(default=4_000_000, gt=0, le=4_000_000, strict=True)
+
+    def to_binding(self, profile_id: str) -> GrpcBinding:
+        from .grpc_client import GrpcBinding
+
+        source = self.proto_source.encode("utf-8")
+        descriptor = base64.b64decode(self.descriptor_set_base64, validate=True)
+        if not 0 < len(source) <= 1_048_576 or not 0 < len(descriptor) <= 1_048_576:
+            raise ValueError("gRPC source and descriptor must fit the finite byte limits")
+        return GrpcBinding(
+            id=profile_id,
+            proto_uri=self.proto_uri,
+            proto_filename=self.proto_filename,
+            proto_source=source,
+            proto_sha256=self.proto_sha256,
+            descriptor_set=descriptor,
+            descriptor_sha256=self.descriptor_sha256,
+            endpoint=self.endpoint,
+            service=self.service,
+            method=self.method,
+            allow_insecure_loopback=self.allow_insecure_loopback,
+            application_status_profile=self.application_status_profile,
+            max_request_bytes=self.max_request_bytes,
+            max_response_bytes=self.max_response_bytes,
+        )
+
+    def recovery_snapshot(self, profile_id: str) -> dict[str, Any]:
+        """Compact fresh byte pins; readonly recovery imports no protocol SDK."""
+        source = self.proto_source.encode("utf-8")
+        descriptor = base64.b64decode(self.descriptor_set_base64, validate=True)
+        if (
+            not 0 < len(source) <= 1_048_576
+            or not 0 < len(descriptor) <= 1_048_576
+            or hashlib.sha256(source).hexdigest() != self.proto_sha256
+            or hashlib.sha256(descriptor).hexdigest() != self.descriptor_sha256
+        ):
+            raise ValueError("gRPC source and descriptor integrity is inconsistent")
+        return {
+            "profile": "owa/grpc-binding/v1",
+            "id": profile_id,
+            **self.model_dump(mode="json", exclude={"proto_source", "descriptor_set_base64"}),
+        }
+
+    @model_validator(mode="after")
+    def verify_descriptor(self) -> GrpcBindingConfig:
+        from .grpc_client import GrpcRegistry
+
+        try:
+            GrpcRegistry([self.to_binding("configuration-validation")])
+        except (ToolError, ValueError, UnicodeError):
+            raise ValueError("invalid or inconsistent gRPC deployment binding") from None
+        return self
 
 
 class ProtocolConfig(StrictModel):
@@ -631,26 +761,36 @@ class ProtocolConfig(StrictModel):
 
     security_profile: str | None = None
     a2a_credential_endpoints: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    openapi_credential_endpoints: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    grpc_credential_endpoints: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    grpc_bindings: dict[str, GrpcBindingConfig] = Field(default_factory=dict)
 
-    @field_validator("a2a_credential_endpoints")
+    @field_validator(
+        "a2a_credential_endpoints", "openapi_credential_endpoints", "grpc_credential_endpoints"
+    )
     @classmethod
     def validate_a2a_credential_endpoints(
         cls,
         value: dict[str, tuple[str, ...]],
+        info: ValidationInfo,
     ) -> dict[str, tuple[str, ...]]:
+        protocol = {
+            "openapi_credential_endpoints": "OpenAPI",
+            "grpc_credential_endpoints": "gRPC",
+        }.get(info.field_name or "", "A2A")
         if len(value) > 64:
-            raise ValueError("A2A credential bindings exceed the finite limit")
+            raise ValueError(f"{protocol} credential bindings exceed the finite limit")
         for profile, endpoints in value.items():
             if not profile or len(profile) > 256 or not 1 <= len(endpoints) <= 64:
-                raise ValueError("A2A credential bindings require bounded named endpoints")
+                raise ValueError(f"{protocol} credential bindings require bounded named endpoints")
             if len(set(endpoints)) != len(endpoints):
-                raise ValueError("A2A credential endpoints must be unique")
+                raise ValueError(f"{protocol} credential endpoints must be unique")
             for endpoint in endpoints:
                 try:
                     parsed = urlparse(endpoint)
                     _ = parsed.port
                 except ValueError as error:
-                    raise ValueError("A2A credential endpoint is invalid") from error
+                    raise ValueError(f"{protocol} credential endpoint is invalid") from error
                 if (
                     len(endpoint) > 4096
                     or parsed.scheme != "https"
@@ -660,7 +800,30 @@ class ProtocolConfig(StrictModel):
                     or parsed.fragment
                     or any(ord(character) < 33 for character in endpoint)
                 ):
-                    raise ValueError("A2A credential endpoints must be exact absolute HTTPS URLs")
+                    raise ValueError(
+                        f"{protocol} credential endpoints must be exact absolute HTTPS URLs"
+                    )
+                if info.field_name == "grpc_credential_endpoints" and (
+                    parsed.path not in {"", "/"} or parsed.query
+                ):
+                    raise ValueError("gRPC credentials must bind an exact channel origin")
+        return value
+
+    @field_validator("grpc_bindings")
+    @classmethod
+    def validate_grpc_bindings(
+        cls, value: dict[str, GrpcBindingConfig]
+    ) -> dict[str, GrpcBindingConfig]:
+        from .grpc_client import GrpcRegistry
+
+        if len(value) > 128 or any(
+            not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", name) for name in value
+        ):
+            raise ValueError("gRPC bindings require at most 128 bounded deployment names")
+        try:
+            GrpcRegistry([binding.to_binding(name) for name, binding in value.items()])
+        except (ToolError, ValueError):
+            raise ValueError("gRPC deployment bindings must be valid and unambiguous") from None
         return value
 
 
@@ -892,6 +1055,14 @@ class RuntimeConfig(StrictModel):
         for profile_name in self.protocols.a2a_credential_endpoints:
             require_header_profile(
                 "protocols.a2a_credential_endpoints", profile_name, outbound=True
+            )
+        for profile_name in self.protocols.openapi_credential_endpoints:
+            require_header_profile(
+                "protocols.openapi_credential_endpoints", profile_name, outbound=True
+            )
+        for profile_name in self.protocols.grpc_credential_endpoints:
+            require_header_profile(
+                "protocols.grpc_credential_endpoints", profile_name, outbound=True
             )
         for catalog_name, catalog in self.workflow.external_catalogs.items():
             require_header_profile(
