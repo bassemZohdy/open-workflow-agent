@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import ssl
 from urllib.parse import parse_qs
 
 import httpx
@@ -262,6 +263,18 @@ async def test_short_lived_token_is_not_cached_as_permanent_authority(monkeypatc
 async def test_issuer_delay_and_resource_io_share_one_original_deadline(monkeypatch):
     calls = []
     resource_cancelled = asyncio.Event()
+    # Mocked wire delays own this tiny budget. Build verified trust before its
+    # clock starts; real TLS setup and certificate isolation have separate tests.
+    context = httpx.create_ssl_context(verify=True, trust_env=False)
+    assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
+    client_type = httpx.AsyncClient
+
+    def mock_client_with_prepared_trust(*args, **kwargs):
+        assert isinstance(kwargs.get("transport"), httpx.MockTransport)
+        assert kwargs.get("verify") is True and kwargs.get("cert") is None
+        return client_type(*args, **{**kwargs, "verify": context})
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_client_with_prepared_trust)
 
     async def delayed(request):
         calls.append(str(request.url))

@@ -369,11 +369,18 @@ async def test_sdk_dispatch_attempt_cannot_repeat_after_known_preflight_failure(
         timeout=1,
         authentication=None,
     )
+    sdk_parameters = {
+        "_meta": {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientInfo": {"name": "owa-fixture", "version": "1.0.0"},
+            "io.modelcontextprotocol/clientCapabilities": {},
+        }
+    }
     with pytest.raises(ToolError, match="host is not allowed"):
-        await dispatcher.send_raw_request("tools/list", {})
+        await dispatcher.send_raw_request("tools/list", sdk_parameters)
     assert not dispatcher._dispatched and calls == []
     with pytest.raises(ToolError) as error:
-        await dispatcher.send_raw_request("tools/list", {})
+        await dispatcher.send_raw_request("tools/list", sdk_parameters)
     assert error.value.details["reason"] == "unexpected_dispatch" and calls == []
 
 
