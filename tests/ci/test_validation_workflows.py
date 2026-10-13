@@ -90,6 +90,8 @@ def test_postgresql_profiles_run_independently_and_gate_both_images():
         "postgres-agent-framework",
         "postgres-adk-lifecycle",
         "postgres-langgraph-lifecycle",
+        "postgres-adk-operations",
+        "postgres-langgraph-operations",
     }
     assert set(jobs["postgres-runtime"]["needs"]) == profiles
     assert jobs["postgres-runtime"]["strategy"]["fail-fast"] == "false"
@@ -97,7 +99,11 @@ def test_postgresql_profiles_run_independently_and_gate_both_images():
         assert "needs" not in jobs[name]
         assert jobs[name]["services"]["postgres"]["image"] == "postgres:16"
         assert jobs[name]["timeout-minutes"] == (
-            "45" if name in {"postgres-adk", "postgres-langgraph"} else "20"
+            "45"
+            if name in {"postgres-adk", "postgres-langgraph"}
+            else "25"
+            if name.endswith("-operations")
+            else "20"
         )
     assert "--kill-after=30s 30m" in _runs(jobs["postgres-adk"])
     assert "--kill-after=30s 30m" in _runs(jobs["postgres-langgraph"])

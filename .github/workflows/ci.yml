@@ -88,6 +88,46 @@ jobs:
           ../../tests/contract/test_catalog_bindings.py
           ../../tests/contract/test_schema_resources.py
 
+  windows-operation-adapters:
+    name: Windows operation adapters and supervised process recovery
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify Windows operation adapters and supervised process recovery
+        run: >-
+          uv run --directory engines/langgraph --locked --extra sqlite
+          --with pytest --with pytest-asyncio pytest -vv --durations=20
+          ../../tests/core/test_openapi_client.py
+          ../../tests/core/test_openapi_admission.py
+          ../../tests/core/test_openapi_protocol_bindings.py
+          ../../tests/core/test_grpc_client.py
+          ../../tests/core/test_grpc_capabilities.py
+          ../../tests/core/test_asyncapi_client.py
+          ../../tests/core/test_http_outputs.py
+          ../../tests/core/test_sandbox_jobs.py
+          ../../tests/core/test_sandbox_job_dispatcher.py
+          ../../tests/core/test_background_job_runtime.py
+          ../../tests/core/test_background_request_admission.py
+          ../../tests/core/test_internal_sandbox_jobs.py
+          ../../tests/core/test_sandbox_job_mutation_fence.py
+          ../../tests/core/test_container_operation_admission.py
+          ../../tests/contract/test_openapi_calls.py
+          ../../tests/contract/test_openapi_process_recovery.py
+          ../../tests/contract/test_grpc_calls.py
+          ../../tests/contract/test_grpc_process_recovery.py
+          ../../tests/contract/test_background_job_recovery.py
+
   windows-native-recovery:
     name: Windows native ownership and effect recovery
     runs-on: windows-latest

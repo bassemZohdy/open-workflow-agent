@@ -11,6 +11,18 @@ on:
   pull_request:
     paths:
       - ".github/workflows/postgres-ci.yml"
+      - "core/src/open_workflow_agent/openapi*.py"
+      - "core/src/open_workflow_agent/grpc*.py"
+      - "core/src/open_workflow_agent/asyncapi*.py"
+      - "core/src/open_workflow_agent/sandbox/**"
+      - "tests/core/test_openapi*.py"
+      - "tests/core/test_grpc*.py"
+      - "tests/core/test_sandbox_job*.py"
+      - "tests/core/test_background*.py"
+      - "tests/contract/test_openapi*.py"
+      - "tests/contract/test_grpc*.py"
+      - "tests/contract/_openapi*.py"
+      - "tests/contract/_grpc*.py"
       - "core/src/open_workflow_agent/persistence.py"
       - "core/src/open_workflow_agent/storage.py"
       - "core/src/open_workflow_agent/services.py"
@@ -221,7 +233,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 5m \
+          timeout --signal=TERM --kill-after=30s 12m \
             uv run --locked --extra knowledge --extra postgres pytest tests/core/test_postgres_persistence.py \
             tests/core/test_effect_journal.py \
             tests/core/test_external_recovery.py \
@@ -230,6 +242,10 @@ jobs:
             tests/core/test_timer_archive_preflight.py \
             tests/core/test_schedule_archive_preflight.py \
             tests/core/test_initial_delivery.py \
+            tests/core/test_openapi_admission.py \
+            tests/core/test_sandbox_jobs.py \
+            tests/core/test_sandbox_job_dispatcher.py \
+            tests/core/test_background_job_runtime.py \
             tests/core/test_a2a_card_admission.py \
             tests/core/test_invocation_cancellation_controls.py \
             tests/core/test_policy_decisions.py \
@@ -556,10 +572,92 @@ jobs:
             ../../tests/contract/test_a2a_sdk_inbound.py \
             ../../tests/contract/test_a2a_initial_delivery.py -vv --durations=20 -k postgresql
 
+  postgres-adk-operations:
+    name: PostgreSQL ADK operation adapter recovery
+    runs-on: ubuntu-latest
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Verify native PostgreSQL operation adapters and process recovery
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 20m \
+            uv run --directory engines/adk --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \
+            ../../tests/contract/test_openapi_process_recovery.py \
+            ../../tests/contract/test_grpc_calls.py \
+            ../../tests/contract/test_grpc_process_recovery.py -vv --durations=20 -k postgresql
+
+  postgres-langgraph-operations:
+    name: PostgreSQL LangGraph operation adapter recovery
+    runs-on: ubuntu-latest
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Verify native PostgreSQL operation adapters and process recovery
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 20m \
+            uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \
+            ../../tests/contract/test_openapi_process_recovery.py \
+            ../../tests/contract/test_grpc_calls.py \
+            ../../tests/contract/test_grpc_process_recovery.py -vv --durations=20 -k postgresql
+
   postgres-runtime:
     name: PostgreSQL persistence ${{ matrix.engine }} acceptance
     runs-on: ubuntu-latest
-    needs: [postgres-core, postgres-langgraph, postgres-adk, postgres-agent-framework, postgres-adk-lifecycle, postgres-langgraph-lifecycle]
+    needs: [postgres-core, postgres-langgraph, postgres-adk, postgres-agent-framework, postgres-adk-lifecycle, postgres-langgraph-lifecycle, postgres-adk-operations, postgres-langgraph-operations]
     timeout-minutes: 25
     strategy:
       fail-fast: false

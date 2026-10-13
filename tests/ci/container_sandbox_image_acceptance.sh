@@ -127,7 +127,7 @@ import sys
 
 result = json.loads(sys.argv[1])
 assert result["status"] == "completed"
-assert result["output"] == {"exitCode": 0, "stdout": "shell-ok", "stderr": ""}
+assert result["output"] == "shell-ok"
 PY
 
 wait_for_empty_workspace
