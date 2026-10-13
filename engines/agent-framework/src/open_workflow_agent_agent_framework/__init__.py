@@ -58,6 +58,7 @@ class AgentFrameworkWorkflowEngine(PortableWorkflowEngine):
             result = self._stored_result(invocation)
             return result
         except InvocationCancelled as exc:
+            self._raise_if_execution_interrupted(active)
             result = self._record_result(invocation, status="cancelled", error=exc.as_dict())
             return result
         except Exception as exc:

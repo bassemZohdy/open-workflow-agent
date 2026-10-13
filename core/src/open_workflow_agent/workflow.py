@@ -11,19 +11,23 @@ import os
 import random
 import re
 import time
-from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Iterable, Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, NoReturn, Protocol, cast
+from typing import TYPE_CHECKING, Any, NoReturn, Protocol, cast
 from uuid import uuid4
 
 import yaml
 from jsonschema import Draft202012Validator
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT202012
+
+if TYPE_CHECKING:
+    from .external_recovery import HttpExternalActionRecovery
 
 from ._version import __version__
 from .catalog import CatalogContext, FunctionCatalog
@@ -1296,19 +1300,23 @@ class WorkflowExecutor:
         reconcile = admitted and timeout is not None and timeout <= 0
         token = _RECONCILE_EXPIRED_RETRY.set(_RECONCILE_EXPIRED_RETRY.get() or reconcile)
         try:
-            await self._run_timed(
-                lambda: self._run_tasks(
-                    _task_body(definition["try"]), state, prefix=self._nested_prefix(state, "try")
-                ),
-                None if reconcile else timeout,
-                "retry attempt timed out",
-                {
-                    "instance": state.variables.get("_task_reference"),
-                    "retry_attempt": attempt,
-                    "timeout_seconds": timeout,
-                },
-                absolute_due=absolute_due,
-            )
+            with self._operation_visit_scope(state):
+                await self._run_timed(
+                    lambda: self._run_tasks(
+                        _task_body(definition["try"]),
+                        state,
+                        prefix=self._nested_prefix(state, "try"),
+                    ),
+                    None if reconcile else timeout,
+                    "retry attempt timed out",
+                    {
+                        "instance": state.variables.get("_task_reference"),
+                        "retry_attempt": attempt,
+                        "timeout_seconds": timeout,
+                    },
+                    absolute_due=absolute_due,
+                    state=state,
+                )
         finally:
             _RECONCILE_EXPIRED_RETRY.reset(token)
 
@@ -1352,6 +1360,7 @@ class WorkflowExecutor:
         details: dict[str, Any],
         *,
         absolute_due: float | None = None,
+        state: ExecutionState | None = None,
     ) -> Any:
         if seconds is None:
             return await operation()
@@ -1367,7 +1376,17 @@ class WorkflowExecutor:
             error.status_code = 408
             return error
 
+        async def cancel_deadline_children() -> None:
+            if state is None:
+                return
+            callback = state.metadata.get("_cancel_child_scopes")
+            handle = state.metadata.get("_invocation_handle")
+            if callback is not None and isinstance(handle, ExecutionHandle):
+                reference = str(state.variables.get("_execution_reference", "/do"))
+                await callback(handle, (reference,), state.execution_path, reason="deadline")
+
         if seconds <= 0:
+            await cancel_deadline_children()
             raise timeout_error()
         started = self._policy_clock()
         deadline = asyncio.timeout(seconds)
@@ -1389,8 +1408,10 @@ class WorkflowExecutor:
             except TimeoutError as exc:
                 if not deadline.expired():
                     raise
+                await cancel_deadline_children()
                 raise timed_out() from exc
             if deadline.expired() or self._policy_clock() - started >= seconds:
+                await cancel_deadline_children()
                 raise timed_out()
             return result
         finally:
@@ -1515,6 +1536,7 @@ class WorkflowExecutor:
                 "workflow timed out",
                 {"timeout_seconds": workflow_timeout},
                 absolute_due=state.metadata.get("_latest_deadline_at"),
+                state=state,
             )
             output = workflow.get("output")
             output_variables = {
@@ -1533,6 +1555,13 @@ class WorkflowExecutor:
             self._validate_data_schema(output, result, "workflow output", state)
             self._set_invocation_status(state, "completed", output=result, error=None)
         except InvocationCancelled as exc:
+            if getattr(self._control(state), "interruption_reason", None) in {
+                "host_drain",
+                "ownership_lost",
+            }:
+                # Execution interruption leaves the durable invocation open
+                # for another owner; it carries no business cancel authority.
+                raise
             self._set_invocation_status(state, "cancelled", output=None, error=_error_details(exc))
             self._emit(
                 "WorkflowCancelled",
@@ -1670,7 +1699,18 @@ class WorkflowExecutor:
                 else self._apply_task_data(definition, result, local)
             )
         except asyncio.CancelledError:
-            if state.flow.ended.is_set():
+            interruption = getattr(self._control(local), "interruption_reason", None)
+            if interruption in {"host_drain", "ownership_lost"}:
+                self._emit(
+                    "TaskProgress",
+                    {
+                        **self._task_event(reference, name, local),
+                        "status": "running",
+                        "reason": interruption,
+                        "progress": {"phase": "interrupted"},
+                    },
+                )
+            elif state.flow.ended.is_set():
                 self._emit(
                     "TaskCancelled",
                     {
@@ -1682,6 +1722,18 @@ class WorkflowExecutor:
                 )
             raise
         except InvocationCancelled as exc:
+            interruption = getattr(self._control(local), "interruption_reason", None)
+            if interruption in {"host_drain", "ownership_lost"}:
+                self._emit(
+                    "TaskProgress",
+                    {
+                        **self._task_event(reference, name, local),
+                        "status": "running",
+                        "reason": interruption,
+                        "progress": {"phase": "interrupted"},
+                    },
+                )
+                raise
             self._emit(
                 "TaskCancelled",
                 {
@@ -1772,15 +1824,17 @@ class WorkflowExecutor:
                         "progress": {"phase": "executing"},
                     },
                 )
-                return await self._run_timed(
-                    lambda: self._await_with_cancellation(
-                        self._run_task(name, definition, state), state
-                    ),
-                    remaining_timeout,
-                    f"task {name} timed out",
-                    {"task": name, "timeout_seconds": timeout_seconds, "instance": reference},
-                    absolute_due=state.metadata.get("_latest_deadline_at"),
-                )
+                with self._operation_visit_scope(state):
+                    return await self._run_timed(
+                        lambda: self._await_with_cancellation(
+                            self._run_task(name, definition, state), state
+                        ),
+                        remaining_timeout,
+                        f"task {name} timed out",
+                        {"task": name, "timeout_seconds": timeout_seconds, "instance": reference},
+                        absolute_due=state.metadata.get("_latest_deadline_at"),
+                        state=state,
+                    )
             except Exception as exc:
                 last_error = exc
                 if isinstance(
@@ -1863,10 +1917,9 @@ class WorkflowExecutor:
                 payload = _resolve_protocol_endpoints(payload, state.data, state.variables)
                 payload = {
                     **payload,
-                    "operation_id": payload.get("operation_id")
-                    or payload.get("operationId")
-                    or state.metadata.get("_catalog_operation_id")
-                    or self._operation_id(state),
+                    "operation_id": self._protocol_operation_id(
+                        str(definition["call"]), payload, state
+                    ),
                 }
             return await self._call(str(definition["call"]), payload, state)
         if "emit" in definition:
@@ -2166,6 +2219,11 @@ class WorkflowExecutor:
                 raise WorkflowExecutionError("retry budget expired before a new action")
             return await dispatch()
         identity = self._effect_identity(state, operation or "call:" + call)
+        operation_id = (
+            payload.get("operation_id")
+            if call in {"http", "mcp", "a2a", "openapi"} and isinstance(payload, Mapping)
+            else None
+        ) or self._operation_id(state)
         if _RECONCILE_EXPIRED_RETRY.get():
             known = journal.get(identity)
             if known is None:
@@ -2184,20 +2242,74 @@ class WorkflowExecutor:
         # Each dispatch attempt gets a fresh private owner. Recovery never adopts
         # an earlier pending intent: its external outcome may be ambiguous.
         owner = str(uuid4())
+        recovery = cast(
+            "HttpExternalActionRecovery | None",
+            getattr(self.services, "external_action_recovery", None),
+        )
+        if (
+            call == "http"
+            and recovery is not None
+            and recovery.http
+            is not getattr(getattr(self.services, "protocols", None), "http", None)
+        ):
+            raise _EffectRecoveryRequired("external action recovery transport binding changed")
         try:
-            receipt = journal.begin(
-                identity,
-                effect_request_digest(call, payload),
-                owner,
-                operation_id=self._operation_id(state),
-                execution_lease=self._execution_lease(state),
+            admitted = (
+                recovery.admit(
+                    identity,
+                    payload,
+                    owner=owner,
+                    operation_id=operation_id,
+                    execution_lease=self._execution_lease(state),
+                )
+                if call == "http" and recovery is not None
+                else None
             )
+            if admitted is not None:
+                receipt, trust = admitted
+                await self._notify_receipt(
+                    state,
+                    replace(identity, operation="policy:external-action-admission:v1"),
+                    trust,
+                )
+            else:
+                receipt = journal.begin(
+                    identity,
+                    effect_request_digest(call, payload),
+                    owner,
+                    operation_id=operation_id,
+                    execution_lease=self._execution_lease(state),
+                )
         except WorkflowExecutionError as exc:
             raise _EffectRecoveryRequired(exc.message, details=exc.details) from exc
         if receipt.status != "pending":
             await self._notify_receipt(state, identity, receipt)
             return self._effect_result(receipt)
         if receipt.owner != owner:
+            if call == "http" and recovery is not None and admitted is not None:
+                try:
+                    recovered = await recovery.recover(
+                        identity, payload, execution_lease=self._execution_lease(state)
+                    )
+                except InvocationStateConflict:
+                    raise
+                except WorkflowExecutionError as exc:
+                    # Failed outcome lookup does not establish that retrying
+                    # the external business request would be safe.
+                    raise _EffectRecoveryRequired(exc.message, details=exc.details) from exc
+                except Exception:
+                    raise _EffectRecoveryRequired(
+                        "external action recovery outcome could not be reconciled"
+                    ) from None
+                if recovered is not None:
+                    resolved, proof = recovered
+                    await self._notify_receipt(
+                        state,
+                        replace(identity, operation="policy:external-action-recovery:v1"),
+                        proof,
+                    )
+                    await self._notify_receipt(state, identity, resolved)
+                    return self._effect_result(resolved)
             raise _EffectRecoveryRequired(
                 "workflow action has an unresolved execution intent",
                 details={"instance": state.variables.get("_task_reference")},
@@ -2218,9 +2330,10 @@ class WorkflowExecutor:
                     details={"instance": reference},
                 ) from None
             raise
-        except InvocationStateConflict:
-            # Losing common state authority does not establish an action
-            # outcome. Leave its intent pending for explicit reconciliation.
+        except (InvocationCancelled, InvocationStateConflict):
+            # Cancellation or loss of common state authority does not prove
+            # an external outcome, even when the invocation itself has an
+            # authorized business cancellation. Retain its pending intent.
             raise
         except Exception as exc:
             # Match the common task boundary and avoid saving unexpected native
@@ -2233,16 +2346,28 @@ class WorkflowExecutor:
                     details={"task": state.variables.get("_task_name", "unknown")},
                 )
             )
-            error._operation_id = error._operation_id or self._operation_id(state)
+            error._operation_id = error._operation_id or operation_id
             receipt = self._store_effect_outcome(
-                journal, identity, owner, state, error=error, child_dependency=child_dependency
+                journal,
+                identity,
+                owner,
+                state,
+                error=error,
+                child_dependency=child_dependency,
+                operation_id=operation_id,
             )
             await self._notify_receipt(state, identity, receipt)
             if error is exc:
                 raise
             raise error from exc
         receipt = self._store_effect_outcome(
-            journal, identity, owner, state, output=result, child_dependency=child_dependency
+            journal,
+            identity,
+            owner,
+            state,
+            output=result,
+            child_dependency=child_dependency,
+            operation_id=operation_id,
         )
         await self._notify_receipt(state, identity, receipt)
         return self._effect_result(receipt)
@@ -2357,6 +2482,7 @@ class WorkflowExecutor:
         output: Any = None,
         error: OwaError | None = None,
         child_dependency: Callable[[], ChildInvocationDependency] | None = None,
+        operation_id: str | None = None,
     ) -> EffectReceipt:
         try:
             return journal.finish(
@@ -2365,7 +2491,8 @@ class WorkflowExecutor:
                 output=output,
                 error=error.as_dict() if error else None,
                 error_status_code=error.status_code if error else None,
-                operation_id=error._operation_id if error else self._operation_id(state),
+                operation_id=operation_id
+                or (error._operation_id if error else self._operation_id(state)),
                 child_invocation=child_dependency() if child_dependency else None,
             )
         except WorkflowExecutionError as exc:
@@ -2525,6 +2652,7 @@ class WorkflowExecutor:
                             if branch not in state.flow.owners
                         ),
                         state.execution_path,
+                        reason="workflow_end",
                     )
                 state.stop = True
                 state.context = copy.deepcopy(state.flow.context)
@@ -3437,12 +3565,113 @@ class WorkflowExecutor:
         }
 
     @staticmethod
-    def _operation_id(state: ExecutionState) -> str:
+    def _legacy_operation_id(state: ExecutionState) -> str:
         invocation = state.metadata.get("invocation_id", "unknown-invocation")
         reference = state.variables.get(
             "_execution_reference", state.variables.get("_task_reference", "unknown-task")
         )
         return f"{invocation}:{reference}"
+
+    @staticmethod
+    @contextmanager
+    def _operation_visit_scope(state: ExecutionState) -> Iterator[None]:
+        """Keep child visit ordinals relative to this attempt's entry boundary.
+
+        Physical task counters remain native/common replay evidence. Generated
+        receiver keys identify a logical action instead: a try retry restarts
+        its child ordinals, while a loop within that attempt keeps each visit.
+        These private live baselines are rebuilt during normal execution; they
+        neither replace checkpoints nor change admitted effect identities.
+        """
+        previous = state.metadata.get("_operation_visit_scopes", ())
+        reference = str(
+            state.variables.get("_execution_reference", state.variables.get("_task_reference", ""))
+        )
+        state.metadata["_operation_visit_scopes"] = (
+            *previous,
+            (reference, dict(state.task_visits)),
+        )
+        try:
+            yield
+        finally:
+            if previous:
+                state.metadata["_operation_visit_scopes"] = previous
+            else:
+                state.metadata.pop("_operation_visit_scopes", None)
+
+    @staticmethod
+    def _logical_operation_path(state: ExecutionState) -> tuple[tuple[str, int], ...]:
+        scopes = cast(
+            tuple[tuple[str, Mapping[str, int]], ...],
+            state.metadata.get("_operation_visit_scopes", ()),
+        )
+        logical: list[tuple[str, int]] = []
+        for reference, visit in state.execution_path:
+            if reference.endswith(("/@attempt", "/@catch-attempt")):
+                continue
+            for parent, baseline in reversed(scopes):
+                if reference.startswith(parent + "/"):
+                    visit -= baseline.get(reference, 0)
+                    break
+            if visit < 1:
+                raise _EffectRecoveryRequired("logical action occurrence is inconsistent")
+            logical.append((reference, visit))
+        return tuple(logical)
+
+    @staticmethod
+    def _operation_id(state: ExecutionState) -> str:
+        legacy = WorkflowExecutor._legacy_operation_id(state)
+        logical = WorkflowExecutor._logical_operation_path(state)
+        if not any(visit > 1 for _, visit in logical):
+            # Retain the original first-visit key and diagnostic suffix. Existing
+            # admitted receipts separately retain their original keys on replay.
+            return legacy
+        invocation = str(state.metadata.get("invocation_id", "unknown-invocation"))
+        reference = str(
+            state.variables.get(
+                "_execution_reference", state.variables.get("_task_reference", "unknown-task")
+            )
+        )
+        digest = effect_request_digest(
+            "owa/logical-operation/v1",
+            {
+                "invocation_id": invocation,
+                "fingerprint": state.metadata.get("_workflow_fingerprint"),
+                "occurrence": logical,
+            },
+        )
+        return f"{invocation}:visit-v1:{digest}:{reference}"
+
+    def _protocol_operation_id(
+        self, call: str, payload: Mapping[str, Any], state: ExecutionState
+    ) -> Any:
+        explicit = payload.get("operation_id") or payload.get("operationId")
+        if explicit:
+            return explicit
+        journal = getattr(self.services, "effect_journal", None)
+        if journal is not None and "_workflow_fingerprint" in state.metadata:
+            known = journal.get(self._effect_identity(state, "call:" + call))
+            if known is not None:
+                # A persisted intent predates current key generation. Retain
+                # its complete prepared request, including the original key.
+                return known.operation_id or self._legacy_operation_id(state)
+        catalog_key = state.metadata.get("_catalog_operation_id")
+        if catalog_key:
+            reference = state.variables.get(
+                "_execution_reference", state.variables.get("_task_reference")
+            )
+            if reference in state.metadata.get("_catalog_tasks", {}):
+                return catalog_key
+            digest = effect_request_digest(
+                "owa/catalog-logical-operation/v1",
+                {
+                    "parent_key": catalog_key,
+                    "reference": reference,
+                    "occurrence": self._logical_operation_path(state),
+                },
+            )
+            return f"{catalog_key}:visit-v1:{digest}:{reference}"
+        return self._operation_id(state)
 
 
 def _merge(left: Any, right: Any) -> Any:

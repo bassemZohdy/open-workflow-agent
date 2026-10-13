@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from ._version import __version__
 from .child_suspension import ChildSuspension
@@ -42,6 +44,10 @@ from .workflow import (
     WorkflowPlan,
 )
 from .workflow_profile import WORKFLOW_DSL, workflow_profile
+
+_PARENT_LIFECYCLE: ContextVar[LifecycleControl | None] = ContextVar(
+    "owa_parent_lifecycle", default=None
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +167,15 @@ class WorkflowEngine:
             try:
                 while True:
                     await self._wait_for_ownership_renewal()
+                    current = self.services.invocations.get(handle.invocation_id)
+                    if current is not None and current.status == "cancelled":
+                        # A different worker's authorized control write remains
+                        # authoritative while this worker owns a suspended await.
+                        self.services.invocations.refresh(handle, terminal_only=True)
+                        active = self._active.get(handle.invocation_id)
+                        if active is not None:
+                            active.control.token.cancel("cancelled")
+                        return
                     lease = store.renew(lease, seconds=self._execution_ownership_seconds)
                     self._execution_leases[handle.invocation_id] = lease
                     handle._execution_lease = lease
@@ -170,13 +185,23 @@ class WorkflowEngine:
                     if isinstance(error, OwaError)
                     else InvocationStateError("execution ownership renewal failed")
                 )
+                active = self._active.get(handle.invocation_id)
+                if active is not None:
+                    active.control.interrupt("ownership_lost")
                 if owner_task is not None:
                     owner_task.cancel()
 
         heartbeat = asyncio.create_task(renew())
         try:
             yield
-            store.verify(lease)
+            current = self.services.invocations.get(handle.invocation_id)
+            if current is not None and current.status == "cancelled":
+                # Authoritative cancellation atomically revokes execution. A
+                # read-only return of that first terminal outcome needs no new
+                # execution authority; nonterminal ownership loss still fails.
+                self.services.invocations.refresh(handle, terminal_only=True)
+            else:
+                store.verify(lease)
         except asyncio.CancelledError:
             if lost is not None:
                 raise InvocationStateConflict(
@@ -219,17 +244,20 @@ class WorkflowEngine:
         observer = parent_context.get("_child_invocation_observer")
         if observer is not None:
             observer(child)
+        parent_control = parent_context.get("_lifecycle")
+        context_token = _PARENT_LIFECYCLE.set(
+            parent_control if isinstance(parent_control, LifecycleControl) else None
+        )
         try:
+            # Task cancellation also transports host drain and ownership loss.
+            # Business cancellation is an explicit persisted parent/scope control
+            # operation; interruption alone cannot authorize a child state write.
             if child.status in TERMINAL_INVOCATION_STATES:
                 result = self._stored_result(child)
             else:
                 result = await self.invoke(workflow, child, input_data)
-        except asyncio.CancelledError:
-            await self.cancel(
-                child,
-                operation_id=f"{parent_handle.invocation_id}:{task_reference}",
-            )
-            raise
+        finally:
+            _PARENT_LIFECYCLE.reset(context_token)
         if result.status == "completed":
             return result.output
         if result.status == "waiting":
@@ -420,9 +448,7 @@ class WorkflowEngine:
                 if wake["reason"] == "deadline":
                     child = self.services.invocations.get(registration.suspension.child_id)
                     if child is not None:
-                        await self.cancel(
-                            child, operation_id=f"{handle.invocation_id}:child-deadline"
-                        )
+                        await self._cancel_child_for_control(handle, child, reason="deadline")
         self._child_wakes[handle.invocation_id] = self.services.child_waits.known_wakes(
             handle.invocation_id, plan.fingerprint
         )
@@ -560,9 +586,7 @@ class WorkflowEngine:
             self.services.invocations.refresh(handle)
             return self._stored_result(control_handle)
         try:
-            self.services.invocations.update(
-                control_handle, status="cancelled", error=error.as_dict()
-            )
+            self.services.invocations.cancel_authoritatively(control_handle, error=error.as_dict())
         except InvocationStateConflict:
             self.services.invocations.refresh(control_handle, terminal_only=True)
             self.services.invocations.refresh(owned_handle)
@@ -633,32 +657,162 @@ class WorkflowEngine:
         handle: ExecutionHandle,
         prefixes: tuple[str, ...],
         occurrence: tuple[tuple[str, int], ...],
+        *,
+        reason: Literal["fork_loser", "workflow_end", "deadline"] = "fork_loser",
     ) -> None:
-        for registration in self.services.child_waits.for_invocation(
-            handle.invocation_id, handle.workflow_fingerprint
-        ):
-            identity = registration.identity
+        roots = tuple(prefix.rstrip("/") for prefix in prefixes)
+        lease = self._execution_leases.get(handle.invocation_id)
+        if lease is None or handle._execution_lease != lease:
+            raise InvocationStateConflict(
+                "child scope cancellation requires current parent authority"
+            )
+        self.services.execution_ownership.verify(lease)
+        rows = self.services.children.connection.execute(
+            "SELECT b.binding_key,b.root_id,b.parent_id,b.child_id,b.depth,b.request_digest,"
+            "b.source_json,b.digest,b.parent_task_reference,i.payload "
+            "FROM child_workflow_bindings b "
+            "LEFT JOIN workflow_effect_invocations i ON i.identity=b.binding_key "
+            "LEFT JOIN detached_child_jobs j ON j.binding_key=b.binding_key "
+            "WHERE b.parent_id=? AND j.job_key IS NULL",
+            (handle.invocation_id,),
+        ).fetchall()
+        for row in rows:
+            binding = self.services.children._binding(row[:9])
+            if row[9] is None:
+                if any(
+                    binding.parent_task_reference == root
+                    or binding.parent_task_reference.startswith(root + "/")
+                    for root in roots
+                ):
+                    raise WorkflowExecutionError("child scope action identity is absent")
+                continue
+            try:
+                identity = EffectIdentity.from_value(json.loads(row[9]))
+            except (TypeError, ValueError, KeyError):
+                raise WorkflowExecutionError(
+                    "child scope action identity is inconsistent"
+                ) from None
             if (
-                not identity.task_reference.startswith(prefixes)
+                identity.operation != "run:workflow"
+                or identity.key != binding.key
+                or identity.invocation_id != handle.invocation_id
+                or identity.workflow_fingerprint != handle.workflow_fingerprint
+            ):
+                raise WorkflowExecutionError("child scope action identity is inconsistent")
+            if (
+                not any(
+                    identity.task_reference == root
+                    or identity.task_reference.startswith(root + "/")
+                    for root in roots
+                )
                 or identity.occurrence[: len(occurrence)] != occurrence
             ):
                 continue
-            child = self.services.invocations.get(registration.suspension.child_id)
-            if child is None:
-                raise WorkflowExecutionError("fork child is absent")
-            await self.cancel(child, operation_id=f"{handle.invocation_id}:fork-loser")
-            executor = getattr(self, "executor", None)
-            self.services.child_waits.wake(
-                registration, handle, now=executor._absolute_clock() if executor else time.time()
+            child = self.services.children.verify_control(binding, handle)
+            await self._cancel_child_for_control(handle, child, reason=reason)
+            registration = self.services.child_waits.registration(identity)
+            if registration is not None:
+                executor = getattr(self, "executor", None)
+                self.services.child_waits.wake(
+                    registration,
+                    handle,
+                    now=executor._absolute_clock() if executor else time.time(),
+                )
+                self.services.child_waits.consume(registration, handle)
+
+    async def _cancel_child_for_control(
+        self,
+        parent: ExecutionHandle,
+        child: ExecutionHandle,
+        *,
+        reason: Literal["fork_loser", "workflow_end", "deadline"],
+    ) -> None:
+        """Persist an internal scope decision under live parent authority."""
+        lease = self._execution_leases.get(parent.invocation_id)
+        if lease is None or parent._execution_lease != lease:
+            raise InvocationStateConflict("child control requires current parent authority")
+        row = self.services.children.connection.execute(
+            "SELECT binding_key,root_id,parent_id,child_id,depth,request_digest,source_json,"
+            "digest,parent_task_reference FROM child_workflow_bindings WHERE child_id=?",
+            (child.invocation_id,),
+        ).fetchone()
+        binding = self.services.children._binding(row)
+        current = self.services.children.verify_control(binding, parent)
+        operation_id = (
+            f"{parent.invocation_id}:"
+            + {
+                "fork_loser": "fork-loser",
+                "workflow_end": "workflow-end",
+                "deadline": "child-deadline",
+            }[reason]
+        )
+        error = InvocationCancelled(
+            "child scope cancellation requested",
+            details={"reason": reason, "operation_id": operation_id},
+        )
+        executor = getattr(self, "executor", None)
+        controlled = self.services.invocations.cancel_under_parent_control(
+            current,
+            parent,
+            execution_lease=lease,
+            error=error.as_dict(),
+            completed_at=executor._absolute_clock() if executor is not None else time.time(),
+        )
+        if controlled.status != "cancelled":
+            # A different worker's first terminal result remains authoritative.
+            return
+        active = self._active.get(controlled.invocation_id)
+        if active is not None:
+            if active.handle is not None:
+                self.services.invocations.refresh(active.handle, terminal_only=True)
+            active.control.token.cancel(reason)
+        self.services.invocations.refresh(child, terminal_only=True)
+        if self.services.event_store is not None:
+            self.services.event_store.close_invocation(
+                controlled.invocation_id, controlled.workflow_fingerprint
             )
-            self.services.child_waits.consume(registration, handle)
+        self.services.timers.close_invocation(
+            controlled.invocation_id, controlled.workflow_fingerprint
+        )
+        # The recorded child cancellation supplies durable authority to finish
+        # its synchronous descendants even if this host subsequently drains.
+        await self._cancel_synchronous_children(controlled)
+        if active is None:
+            self.services.lifecycle_events.emit(
+                WorkflowEvent(
+                    event_type="WorkflowCancelled",
+                    invocation_id=controlled.invocation_id,
+                    session_id=controlled.session_id,
+                    workflow_name=controlled.workflow_name,
+                    workflow_version=controlled.workflow_version,
+                    engine=controlled.engine,
+                    operation_id=operation_id,
+                    status="cancelled",
+                    reason=reason,
+                    error=error.as_dict(),
+                )
+            )
+
+    def _raise_if_execution_interrupted(self, active: ActiveInvocation) -> None:
+        """Do not turn a callback's translated host interruption into control."""
+        if active.control.interruption_reason not in {"host_drain", "ownership_lost"}:
+            return
+        handle = active.handle
+        if handle is not None:
+            current = self.services.invocations.get(handle.invocation_id)
+            if current is not None and current.status == "cancelled":
+                # An independently authorized cancellation still wins when
+                # its worker is also draining or losing execution ownership.
+                self.services.invocations.refresh(handle, terminal_only=True)
+                return
+        raise asyncio.CancelledError
 
     def _begin_active(self, handle: ExecutionHandle) -> ActiveInvocation:
         existing = self._active.get(handle.invocation_id)
         if existing is not None:
             return existing
         active = ActiveInvocation(
-            control=LifecycleControl(),
+            control=LifecycleControl(parent_interruption=_PARENT_LIFECYCLE.get()),
             task=asyncio.current_task(),
             result=asyncio.get_running_loop().create_future(),
             handle=handle,
@@ -851,6 +1005,10 @@ class WorkflowEngine:
         return EngineCapabilities(engine=self.engine_name)
 
     async def shutdown(self) -> None:
+        # Mark every local scope before propagating asyncio cancellation through
+        # nested awaits. This private signal never persists a cancelled outcome.
+        for active in self._active.values():
+            active.control.interrupt("host_drain")
         if self._timer_dispatcher is not None:
             await self._timer_dispatcher.stop()
         tasks = {
@@ -918,6 +1076,7 @@ class PortableWorkflowEngine(WorkflowEngine):
             result = self._stored_result(invocation)
             return result
         except InvocationCancelled as exc:
+            self._raise_if_execution_interrupted(active)
             result = self._record_result(
                 invocation,
                 status="cancelled",

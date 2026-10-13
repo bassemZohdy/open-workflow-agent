@@ -8,13 +8,16 @@ import re
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from .errors import InvocationStateConflict, WorkflowExecutionError
 from .expressions import validate_expression_data
 from .ownership import ExecutionLease, owned_write_transaction
 from .persistence import InvocationStore
 from .storage import StorageConnection, open_storage
+
+if TYPE_CHECKING:
+    from .external_recovery import ExternalOutcomeDependency
 
 
 @dataclass(frozen=True, slots=True)
@@ -250,6 +253,7 @@ class EffectReceipt:
     error_status_code: int | None = None
     operation_id: str | None = None
     child_invocation: ChildInvocationDependency | None = None
+    external_outcome: ExternalOutcomeDependency | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.request_digest, str) or not re.fullmatch(
@@ -286,10 +290,21 @@ class EffectReceipt:
             or self.status == "pending"
         ):
             raise ValueError("workflow effect child dependency is invalid")
+        if self.external_outcome is not None:
+            from .external_recovery import ExternalOutcomeDependency
+
+            if (
+                not isinstance(self.external_outcome, ExternalOutcomeDependency)
+                or self.status == "pending"
+                or self.child_invocation is not None
+            ):
+                raise ValueError("workflow effect external dependency is invalid")
 
 
 def _receipt_payload(receipt: EffectReceipt) -> dict[str, Any]:
     value = asdict(receipt)
+    if receipt.external_outcome is None:
+        value.pop("external_outcome")
     # Existing non-child receipts and their native digests retain their exact
     # logical format. A child binding is present only on a new child outcome.
     if receipt.child_invocation is None:
@@ -399,6 +414,12 @@ class EffectJournal:
             if row is None:
                 return None
             payload = json.loads(row[2])
+            if payload.get("external_outcome") is not None:
+                from .external_recovery import ExternalOutcomeDependency
+
+                payload["external_outcome"] = ExternalOutcomeDependency.from_value(
+                    payload["external_outcome"]
+                )
             if payload.get("child_invocation") is not None:
                 payload["child_invocation"] = ChildInvocationDependency.from_value(
                     payload["child_invocation"]
@@ -406,6 +427,13 @@ class EffectJournal:
             receipt = EffectReceipt(**payload)
             if receipt.owner != row[0] or receipt.status != row[1]:
                 raise ValueError("workflow effect columns differ from the saved receipt")
+            if receipt.external_outcome is not None or identity.operation in {
+                "policy:external-action-admission:v1",
+                "policy:external-action-recovery:v1",
+            }:
+                from .external_recovery import verify_external_receipt
+
+                verify_external_receipt(self.connection, self._invocations, identity, receipt)
             if identity.operation == "policy:detached-child:v1":
                 from .children import verify_detached_child_receipt
 
@@ -694,6 +722,22 @@ class EffectJournal:
         if completed is None or completed.status == "pending":
             raise WorkflowExecutionError("child outcome reconciliation was not recorded")
         return completed
+
+    def finish_external(
+        self,
+        identity: EffectIdentity,
+        payload: Any,
+        *,
+        receiver: dict[str, Any],
+        proof: dict[str, Any],
+        execution_lease: ExecutionLease | None,
+    ) -> tuple[EffectReceipt, EffectReceipt]:
+        """Resolve only an originally admitted trusted HTTP receiver outcome."""
+        from .external_recovery import finish_external
+
+        return finish_external(
+            self, identity, payload, receiver=receiver, proof=proof, execution_lease=execution_lease
+        )
 
     def close(self) -> None:
         self.connection.close()

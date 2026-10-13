@@ -79,7 +79,14 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
 
 def test_postgresql_profiles_run_independently_and_gate_both_images():
     jobs = _workflow("postgres-ci.yml")["jobs"]
-    profiles = {"postgres-core", "postgres-langgraph", "postgres-adk", "postgres-agent-framework"}
+    profiles = {
+        "postgres-core",
+        "postgres-langgraph",
+        "postgres-adk",
+        "postgres-agent-framework",
+        "postgres-adk-lifecycle",
+        "postgres-langgraph-lifecycle",
+    }
     assert set(jobs["postgres-runtime"]["needs"]) == profiles
     assert jobs["postgres-runtime"]["strategy"]["fail-fast"] == "false"
     for name in profiles:
@@ -103,6 +110,34 @@ def test_windows_timing_folded_command_passes_all_fixtures_to_pytest():
     assert "\n" not in command
     assert "../../tests/contract/test_child_lifecycle_acceptance.py" in command
     assert "../../tests/contract/test_event_backend_admission.py" in command
+
+
+def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs():
+    fixtures = {
+        "test_external_operation_keys.py",
+        "test_external_recovery_process.py",
+        "test_host_drain_child_controls.py",
+        "test_explicit_compensation.py",
+    }
+    workflow = _workflow("postgres-ci.yml")
+    for engine in ("adk", "langgraph"):
+        job = workflow["jobs"][f"postgres-{engine}-lifecycle"]
+        command = _runs(job)
+        assert "--kill-after=30s 14m" in command
+        assert f"--directory engines/{engine}" in command
+        assert "--locked --exact --extra knowledge --extra postgres" in command
+        assert "-k postgresql" in command
+        assert all(f"../../tests/contract/{name}" in command for name in fixtures)
+    core = _runs(workflow["jobs"]["postgres-core"])
+    assert "tests/core/test_external_recovery.py" in core
+    assert "tests/core/test_invocation_cancellation_controls.py" in core
+    paths = set(workflow["on"]["pull_request"]["paths"])
+    assert {f"tests/contract/{name}" for name in fixtures} <= paths
+    windows = _workflow("ci.yml")["jobs"]["windows-native-lifecycle"]
+    assert windows["timeout-minutes"] == "20" and "needs" not in windows
+    command = next(step["run"] for step in windows["steps"] if "pytest" in step.get("run", ""))
+    assert "\n" not in command
+    assert all(f"../../tests/contract/{name}" in command for name in fixtures)
 
 
 def test_independent_principal_jobs_finish_both_profiles_before_workflow_success():

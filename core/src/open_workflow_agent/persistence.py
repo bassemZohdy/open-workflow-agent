@@ -7,6 +7,8 @@ import json
 import math
 import time
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -394,6 +396,187 @@ class InvocationStore:
             "ON CONFLICT(invocation_id) DO NOTHING",
             (handle.invocation_id, payload),
         )
+
+    @contextmanager
+    def _operator_control_transaction(self) -> Iterator[None]:
+        if self.connection.is_postgresql:
+            with self.connection.raw.transaction():
+                yield
+            return
+        try:
+            self.connection.execute("BEGIN IMMEDIATE")
+            yield
+            self.connection.commit()
+        except BaseException:
+            self.connection.raw.rollback()
+            raise
+
+    def cancel_authoritatively(
+        self,
+        handle: ExecutionHandle,
+        *,
+        error: dict[str, Any],
+        completed_at: float | None = None,
+    ) -> ExecutionHandle:
+        """Commit an authorized operator control and execution revocation together.
+
+        Caller authorization remains at the existing operator boundary. This
+        control does not adopt a worker lease or establish any remote undo.
+        """
+        return self._cancel_controlled(handle, error=error, completed_at=completed_at)
+
+    def cancel_under_parent_control(
+        self,
+        handle: ExecutionHandle,
+        parent: ExecutionHandle,
+        *,
+        execution_lease: ExecutionLease,
+        error: dict[str, Any],
+        completed_at: float | None = None,
+    ) -> ExecutionHandle:
+        """Fence a workflow-owned child cancellation through its parent's commit."""
+        if (
+            execution_lease is None
+            or execution_lease.invocation_id != parent.invocation_id
+            or execution_lease.engine != parent.engine
+            or execution_lease.workflow_fingerprint != parent.workflow_fingerprint
+        ):
+            raise InvocationStateConflict("parent execution ownership is inconsistent")
+        return self._cancel_controlled(
+            handle,
+            error=error,
+            completed_at=completed_at,
+            parent=parent,
+            execution_lease=execution_lease,
+        )
+
+    def _cancel_controlled(
+        self,
+        handle: ExecutionHandle,
+        *,
+        error: dict[str, Any],
+        completed_at: float | None,
+        parent: ExecutionHandle | None = None,
+        execution_lease: ExecutionLease | None = None,
+    ) -> ExecutionHandle:
+        from .ownership import owned_write_transaction
+
+        expected = handle._persisted_payload
+        if expected is None:
+            raise InvocationStateError("invocation handle must be loaded before control")
+        original = _decode_payload(expected)
+        _verify_identity(handle, original)
+        validate_expression_data(error)
+        if parent is not None:
+            if parent._persisted_payload is None:
+                raise InvocationStateError("parent handle must be loaded before control")
+            _verify_identity(parent, _decode_payload(parent._persisted_payload))
+            if (
+                handle.invocation_id == parent.invocation_id
+                or handle.parent_invocation_id != parent.invocation_id
+                or handle.engine != parent.engine
+                or handle.owner_principal != parent.owner_principal
+                or handle.user_id != parent.user_id
+                or handle.session_id == parent.session_id
+            ):
+                raise InvocationStateConflict("child control identity is inconsistent")
+        transaction = (
+            self._operator_control_transaction()
+            if parent is None
+            else owned_write_transaction(
+                self.connection,
+                execution_lease,
+                invocation_id=parent.invocation_id,
+                workflow_fingerprint=parent.workflow_fingerprint,
+            )
+        )
+        try:
+            with transaction:
+                if parent is not None:
+                    lock = " FOR SHARE" if self.connection.is_postgresql else ""
+                    row = self.connection.execute(
+                        "SELECT payload,status FROM invocations WHERE invocation_id=?" + lock,
+                        (parent.invocation_id,),
+                    ).fetchone()
+                    if (
+                        row is None
+                        or row[0] != parent._persisted_payload
+                        or row[1] not in {"running", "waiting"}
+                    ):
+                        raise InvocationStateConflict("parent control state has changed")
+                # Native/common writers lock ownership before invocation state.
+                # Take the same order to avoid a revoke-versus-checkpoint deadlock.
+                if self.connection.is_postgresql:
+                    has_ownership = (
+                        self.connection.execute(
+                            "SELECT to_regclass('invocation_ownership')"
+                        ).fetchone()[0]
+                        is not None
+                    )
+                else:
+                    has_ownership = (
+                        self.connection.execute(
+                            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                            ("invocation_ownership",),
+                        ).fetchone()
+                        is not None
+                    )
+                owner = None
+                if has_ownership:
+                    lock = " FOR UPDATE" if self.connection.is_postgresql else ""
+                    owner = self.connection.execute(
+                        "SELECT engine,fingerprint FROM invocation_ownership "
+                        "WHERE invocation_id=?" + lock,
+                        (handle.invocation_id,),
+                    ).fetchone()
+                    if owner is not None and owner != (
+                        handle.engine,
+                        handle.workflow_fingerprint,
+                    ):
+                        raise InvocationStateConflict("controlled execution identity disagrees")
+                current = self.get(handle.invocation_id)
+                if current is None:
+                    raise InvocationStateConflict("controlled invocation is absent")
+                _verify_identity(handle, _public_fields(current))
+                if current.status in TERMINAL_INVOCATION_STATES:
+                    if (
+                        original["status"] in TERMINAL_INVOCATION_STATES
+                        and current._persisted_payload != expected
+                    ):
+                        raise InvocationStateConflict("terminal control state has changed")
+                    result = current
+                else:
+                    if current._persisted_payload != expected:
+                        raise InvocationStateConflict("controlled invocation state has changed")
+                    result = replace(current, status="cancelled", output=None, error=error)
+                    encoded = _encode_handle(result)
+                    changed = self.connection.execute(
+                        "UPDATE invocations SET payload=?,status='cancelled' "
+                        "WHERE invocation_id=? AND status=? AND payload=?",
+                        (encoded, handle.invocation_id, current.status, expected),
+                    )
+                    if changed.rowcount != 1:
+                        raise InvocationStateConflict("controlled invocation state has changed")
+                    self._record_terminal_time(result, encoded, completed_at)
+                    result._persisted_payload = encoded
+                if owner is not None and result.status == "cancelled":
+                    self.connection.execute(
+                        "UPDATE invocation_ownership SET expires_at=0 "
+                        "WHERE invocation_id=? AND engine=? AND fingerprint=?",
+                        (handle.invocation_id, handle.engine, handle.workflow_fingerprint),
+                    )
+        except InvocationStateConflict:
+            raise
+        except InvocationStateError:
+            raise
+        except Exception:
+            raise WorkflowExecutionError(
+                "invocation cancellation control could not be stored"
+            ) from None
+        for name, value in _public_fields(result).items():
+            setattr(handle, name, value)
+        handle._persisted_payload = result._persisted_payload
+        return handle
 
     def terminal_completed_at(self, handle: ExecutionHandle) -> float:
         """Read the original terminal instant bound to the immutable common snapshot."""

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from .errors import InvocationCancelled
 
@@ -93,6 +93,18 @@ class LifecycleControl:
     token: CancellationToken = field(default_factory=CancellationToken)
     resume_event: asyncio.Event = field(default_factory=asyncio.Event)
     resume_input: Any = None
+    parent_interruption: LifecycleControl | None = None
+    _interruption_reason: Literal["host_drain", "ownership_lost"] | None = None
+
+    @property
+    def interruption_reason(self) -> Literal["host_drain", "ownership_lost"] | None:
+        if self._interruption_reason is not None:
+            return self._interruption_reason
+        return self.parent_interruption.interruption_reason if self.parent_interruption else None
+
+    def interrupt(self, reason: Literal["host_drain", "ownership_lost"]) -> None:
+        """Record execution interruption without signalling business cancellation."""
+        self._interruption_reason = reason
 
     def request_resume(self, value: Any) -> None:
         self.resume_input = value

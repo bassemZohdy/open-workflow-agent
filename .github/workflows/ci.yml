@@ -157,6 +157,31 @@ jobs:
           ../../tests/contract/test_schedule_event_triggers.py
           ../../tests/contract/test_event_backend_admission.py
 
+  windows-native-lifecycle:
+    name: Windows native lifecycle and receiver recovery
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify Windows native lifecycle and receiver recovery
+        run: >-
+          uv run --directory engines/langgraph --locked --extra sqlite
+          --with pytest --with pytest-asyncio pytest -vv --durations=20
+          ../../tests/contract/test_external_operation_keys.py
+          ../../tests/contract/test_external_recovery_process.py
+          ../../tests/contract/test_host_drain_child_controls.py
+          ../../tests/contract/test_explicit_compensation.py
+
   manifests:
     name: Validate deployment manifests
     runs-on: ubuntu-latest

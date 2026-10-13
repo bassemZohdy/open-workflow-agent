@@ -18,6 +18,7 @@ from .effects import EffectJournal
 from .event_store import EventStore, EventStoreLimits
 from .events import EventBus, InMemoryEventBus
 from .external_catalog import ExternalCatalogResolver
+from .external_recovery import HttpExternalActionRecovery, TrustedHttpReceiver
 from .forks import ForkDecisionStore
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
 from .memory import MemoryService
@@ -45,6 +46,7 @@ class RuntimeServices:
         database_root: str | Path | None = None,
         event_sink: EventSink | None = None,
         event_bus: EventBus | None = None,
+        trusted_http_receivers: tuple[TrustedHttpReceiver, ...] = (),
     ) -> None:
         self.config = config
         self.model = model or (
@@ -109,6 +111,16 @@ class RuntimeServices:
         self.execution_ownership = ExecutionOwnershipStore(invocation_path)
         self.fork_decisions = ForkDecisionStore(invocation_path)
         self.effect_journal = EffectJournal(invocation_path, invocations=self.invocations)
+        self.external_action_recovery: HttpExternalActionRecovery | None = (
+            HttpExternalActionRecovery(
+                self.effect_journal,
+                self.invocations,
+                self.protocols.http,
+                trusted_http_receivers,
+            )
+            if trusted_http_receivers
+            else None
+        )
         self.children = ChildWorkflowStore(
             self.effect_journal, self.invocations, config.child_workflows
         )
