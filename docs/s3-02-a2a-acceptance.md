@@ -255,3 +255,41 @@ actual dispatch and stream cleanup. Metadata rejection fixtures no longer rely
 on a sub-scheduler-sized timeout unrelated to their admission purpose. No
 runtime deadline/classification or known/uncertain replay semantics changed.
 Full hosted qualification and final common fixture validation remain required.
+
+### Hosted f020d6e failure review and grouped corrections (unqualified)
+
+The final scoped common checks passed237 root,228 ADK,228 LangGraph and229
+optional Framework cases, and five fresh package builds passed with unchanged
+source inputs. The pushed checkpoint passed Docs, Security, external sandbox,
+both standard runtime images, and both Linux native lifecycle selections except
+the four LangGraph SDK inbound PostgreSQL-labeled cases. These scoped results do
+not qualify the failed aggregate workflows or close any pending task.
+
+PR CI root and principal shared suites exhausted their eight-minute commands at
+22%,46% and51%. Optional Framework exhausted its ten-minute job at36%; its
+PostgreSQL selection exhausted five minutes before the final OS-stop case.
+Windows timing exceeded its job budget and also retained two deadline recovery
+failures; Windows ownership retained one first-invoke waiting timeout. PostgreSQL
+common retained29 failures. Principal PostgreSQL recovery selections retained
+assertion failures before their14-minute bounds; their aborts omit final failure
+stacks and cannot establish exclusive causes. Original logs and artifacts are
+retained in the primary checkout's `tmp/ci-f020d6e-*` evidence.
+
+The grouped fixture corrections isolate content archives and retire only
+fixture-owned queues/schedules after negative snapshots, supply genuine leased
+original parent/child admissions before pending effects, observe archive-first
+timer recovery rather than expecting network compilation, and suppress global
+timer polling only in fixtures proving explicit invoke/resume boundaries.
+Automatic-delivery acceptance retains real pollers. The child deadline OS worker
+now reopens the original32/1000 deployment quotas; its former64/100000 recovery
+policy was correctly rejected by the retained profile. Separate common controls
+require changed quotas to fail without mutation. Worker failures retain common
+reason details. SDK inbound PostgreSQL selection now uses its actual configured
+database and asserts the common/native storage destination before network I/O.
+
+Finite aggregate CI budgets now cover the measured complete selections while
+preserving every fixture, original per-case deadline, independent backend/job,
+90% root coverage, image/audit, CTK and benchmark gate. These edits still require
+one frozen grouped behavioral run and fresh complete hosted qualification. No
+cancelled, timed-out, mislabeled-backend or earlier-source result is counted as
+acceptance, and no task is deferred while actionable corrections remain.

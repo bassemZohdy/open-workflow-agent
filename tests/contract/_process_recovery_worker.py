@@ -13,12 +13,14 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity
 from open_workflow_agent.errors import InvocationStateConflict, OwaError
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
+from open_workflow_agent.timer_dispatcher import TimerDispatcher
 from open_workflow_agent.workflow import compile_workflow
 
 
@@ -32,6 +34,15 @@ def write_json(path: Path, value: Any) -> None:
 
 
 async def run(directory: Path, mode: str) -> None:
+    patches = pytest.MonkeyPatch()
+
+    async def no_automatic_delivery(_dispatcher: TimerDispatcher) -> None:
+        # This worker proves explicit invoke/resume and OS-stop boundaries.
+        # Shared PostgreSQL history belongs to other independent fixtures;
+        # automatic timer/child delivery has its own qualification witnesses.
+        return None
+
+    patches.setattr(TimerDispatcher, "start", no_automatic_delivery)
     scenario = json.loads((directory / "scenario.json").read_text(encoding="utf-8"))
     engine_name = scenario["engine"]
     boundary = scenario["boundary"]
@@ -240,6 +251,7 @@ async def run(directory: Path, mode: str) -> None:
     finally:
         await engine.shutdown()
         services.close()
+        patches.undo()
         write_json(directory / (mode + "-cleaned.json"), {"pid": os.getpid()})
 
 

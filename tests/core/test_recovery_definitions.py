@@ -8,6 +8,7 @@ import json
 import os
 from dataclasses import replace
 from types import SimpleNamespace
+from uuid import uuid4
 
 import httpx
 import pytest
@@ -65,7 +66,9 @@ def archive_tree(tmp_path, request):
             "document": {
                 "dsl": "1.0.3",
                 "namespace": "test",
-                "name": "retained",
+                # A corruption case owns its content-addressed archive. Shared
+                # PostgreSQL fixtures must not poison another invocation's plan.
+                "name": "retained-" + uuid4().hex,
                 "version": "1.0.0",
             },
             "do": [{"pause": {"wait": {"seconds": 60}}}],
@@ -574,6 +577,60 @@ def test_declared_deployment_binding_never_qualifies_changed_physical_sdk(tmp_pa
     finally:
         if parent is not None:
             services.execution_ownership.release(parent._execution_lease)
+        services.close()
+
+
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("field,value", [("max_depth", 64), ("max_children", 100_000)])
+def test_changed_child_quota_cannot_reinterpret_original_deployment(
+    tmp_path, backend, field, value
+):
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+    services = RuntimeServices(
+        RuntimeConfig.model_validate({"persistence": {"datasource": datasource}}),
+        model=FakeModel(),
+        database_root=None if datasource else tmp_path,
+    )
+    handle = None
+    try:
+        plan = compile_workflow(
+            {
+                "document": {
+                    "dsl": "1.0.3",
+                    "namespace": "test",
+                    "name": "original-child-policy-" + uuid4().hex,
+                    "version": "1.0.0",
+                },
+                "do": [{"pause": {"wait": {"seconds": 60}}}],
+            }
+        )
+        handle = services.invocations.create(
+            engine="reference",
+            session_id=None,
+            user_id=None,
+            owner_principal="owner",
+            workflow_name=plan.name,
+            workflow_version=plan.version,
+            workflow_fingerprint=plan.fingerprint,
+        )
+        handle._execution_lease = services.execution_ownership.acquire(handle, seconds=300)
+        archive = services.recovery_definitions
+        archive.admit(plan, handle, {"original": True}, execution_lease=handle._execution_lease)
+        assert archive.resolve(handle).fingerprint == plan.fingerprint
+        before = _rows((services, archive, handle, plan, {}))
+        original = services.invocations.get(handle.invocation_id)._persisted_payload
+        setattr(services.config.child_workflows, field, value)
+        with pytest.raises(InvocationStateError) as caught:
+            archive.resolve(handle)
+        assert caught.value.details["reason"] == "runtime_profile_changed"
+        assert _rows((services, archive, handle, plan, {})) == before
+        assert services.invocations.get(handle.invocation_id)._persisted_payload == original
+        assert services.model.calls == []
+    finally:
+        if handle is not None:
+            services.execution_ownership.release(handle._execution_lease)
         services.close()
 
 

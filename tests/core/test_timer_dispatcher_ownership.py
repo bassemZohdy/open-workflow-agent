@@ -30,14 +30,39 @@ async def test_separate_timer_worker_rejects_owned_invocation_before_dependency_
         RuntimeConfig(), model=FakeModel({"done": True}), database_root=tmp_path
     )
     owner, worker = PortableWorkflowEngine(), PortableWorkflowEngine()
-    resolved = []
+    network_resolved = []
+    archive_reads = []
     resolve = timer_module.resolve_and_compile_sandbox_workflow
 
     async def counted(*args, **kwargs):
-        resolved.append(args[0])
+        network_resolved.append(args[0])
         return await resolve(*args, **kwargs)
 
     monkeypatch.setattr(timer_module, "resolve_and_compile_sandbox_workflow", counted)
+    retained = other.resolve_original_definition
+
+    def archived(handle):
+        lease = handle._execution_lease
+        if lease is not None:
+            other.execution_ownership.verify(lease)
+        original = retained(handle)
+        archive_reads.append((handle.invocation_id, lease, original.fingerprint))
+        return original
+
+    monkeypatch.setattr(other, "resolve_original_definition", archived)
+    resume = worker._resume_owned
+
+    async def observed_resume(handle, resume_input, original):
+        # Pure archive preflight is intentionally permitted before ownership.
+        # Execution observes the same original definition under the real lease;
+        # it never compiles/fetches dependencies from the timer's source copy.
+        assert handle._execution_lease is not None
+        other.execution_ownership.verify(handle._execution_lease)
+        assert other.resolve_original_definition(handle) == original
+        assert other.invocations.read_input(handle) == {"original": True}
+        return await resume(handle, resume_input, original)
+
+    monkeypatch.setattr(worker, "_resume_owned", observed_resume)
     plan = compile_workflow(
         {
             "document": {"dsl": "1.0.3", "namespace": "tests", "name": "owner", "version": "1.0.0"},
@@ -69,7 +94,8 @@ async def test_separate_timer_worker_rejects_owned_invocation_before_dependency_
             async with asyncio.timeout(10):
                 while worker._timer_dispatcher._workers:
                     await asyncio.sleep(0.005)
-            assert resolved == [] and other.model.calls == []
+            assert network_resolved == [] and other.model.calls == []
+            assert all(lease is None for _, lease, _ in archive_reads)
             assert other.invocations.get(handle.invocation_id)._persisted_payload == before
         assert await worker._timer_dispatcher.tick(invocation_id=handle.invocation_id) == 1
         async with asyncio.timeout(10):
@@ -77,7 +103,10 @@ async def test_separate_timer_worker_rejects_owned_invocation_before_dependency_
                 await asyncio.sleep(0.005)
         stored = other.invocations.get(handle.invocation_id)
         assert stored.status == "completed" and stored.output == {"done": True}
-        assert len(resolved) == 1 and other.model.calls == [{"prompt": "done"}]
+        leased = [value for value in archive_reads if value[1] is not None]
+        assert len(leased) == 1 and leased[0][0] == handle.invocation_id
+        assert all(fingerprint == plan.fingerprint for _, _, fingerprint in archive_reads)
+        assert network_resolved == [] and other.model.calls == [{"prompt": "done"}]
         assert other.invocations.read_input(stored) == {"original": True}
     finally:
         await owner.shutdown()

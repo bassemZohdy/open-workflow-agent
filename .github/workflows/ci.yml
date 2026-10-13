@@ -91,7 +91,7 @@ jobs:
   windows-native-recovery:
     name: Windows native ownership and effect recovery
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
         with:
@@ -107,7 +107,7 @@ jobs:
       - name: Verify Windows native ownership and effect recovery
         run: >-
           uv run --directory engines/langgraph --locked --extra sqlite
-          --with pytest --with pytest-asyncio pytest -q
+          --with pytest --with pytest-asyncio pytest -vv --durations=20
           ../../tests/contract/test_process_crash_recovery.py
           ../../tests/contract/test_runtime_execution_ownership.py
           ../../tests/contract/test_action_execution_authority.py
@@ -123,7 +123,7 @@ jobs:
   windows-native-timing:
     name: Windows native timers events and scheduling
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
         with:
@@ -139,7 +139,7 @@ jobs:
       - name: Verify Windows native timers events and scheduling
         run: >-
           uv run --directory engines/langgraph --locked --extra sqlite
-          --with pytest --with pytest-asyncio pytest -q
+          --with pytest --with pytest-asyncio pytest -vv --durations=20
           ../../tests/contract/test_detached_children.py
           ../../tests/contract/test_synchronous_child_waits.py
           ../../tests/contract/test_child_lifecycle_acceptance.py
@@ -264,9 +264,11 @@ jobs:
             | kubeconform -strict -summary -kubernetes-version 1.31.0
 
   root:
+    # f020d6e reached only 22% in eight minutes; preserve full coverage and
+    # provide a finite aggregate budget, separate from per-fixture deadlines.
     name: Root quality gates
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v10.1.0
@@ -308,7 +310,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 8m \
+          timeout --signal=TERM --kill-after=30s 45m \
             uv run --locked pytest tests -vv --durations=20 \
               --cov=core/src/open_workflow_agent --cov-report=term-missing \
               --cov-fail-under=90
@@ -385,9 +387,10 @@ jobs:
         run: uv run --locked --group mutation mutmut results
 
   engines:
+    # Full shared recovery selections exceeded eight minutes at 46-51%.
     name: ${{ matrix.engine }} native and contract tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -419,7 +422,7 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 8m \
+          timeout --signal=TERM --kill-after=30s 30m \
             uv run --locked --extra knowledge --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
             pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract -vv --durations=20 \
             --ignore=../../tests/contract/test_external_operation_keys.py \

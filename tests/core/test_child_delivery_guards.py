@@ -144,6 +144,11 @@ async def test_corrupt_child_index_cannot_block_later_valid_durable_delivery(
         await engine.initialize(services)
         parent._execution_lease = services.execution_ownership.acquire(parent, seconds=30)
         try:
+            # Detached delivery retains the real parent's original admission,
+            # even after the parent has completed and released its owner.
+            services.recovery_definitions.admit(
+                parent_plan, parent, {}, execution_lease=parent._execution_lease
+            )
             decisions = []
             for index in (1, 2):
                 identity = EffectIdentity(

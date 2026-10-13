@@ -49,6 +49,10 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
     root_tests = next(step for step in jobs["root"]["steps"] if step.get("name") == "Tests")
     assert "pytest tests -vv" in root_tests["run"]
     assert "--cov-fail-under=90" in root_tests["run"]
+    assert "--kill-after=30s 45m" in root_tests["run"]
+    assert jobs["root"]["timeout-minutes"] == "60"
+    assert jobs["engines"]["timeout-minutes"] == "45"
+    assert "--kill-after=30s 30m" in _runs(jobs["engines"])
     engines = jobs["engines"]
     assert {entry["engine"] for entry in engines["strategy"]["matrix"]["include"]} == {
         "adk",
@@ -73,8 +77,8 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
         assert filename in windows
     assert jobs["windows-expressions"]["timeout-minutes"] == "20"
     assert jobs["windows-native"]["timeout-minutes"] == "20"
-    assert jobs["windows-native-recovery"]["timeout-minutes"] == "20"
-    assert jobs["windows-native-timing"]["timeout-minutes"] == "20"
+    assert jobs["windows-native-recovery"]["timeout-minutes"] == "35"
+    assert jobs["windows-native-timing"]["timeout-minutes"] == "35"
 
 
 def test_postgresql_profiles_run_independently_and_gate_both_images():
@@ -92,9 +96,12 @@ def test_postgresql_profiles_run_independently_and_gate_both_images():
     for name in profiles:
         assert "needs" not in jobs[name]
         assert jobs[name]["services"]["postgres"]["image"] == "postgres:16"
-        assert jobs[name]["timeout-minutes"] == "20"
-    assert "--kill-after=30s 14m" in _runs(jobs["postgres-adk"])
-    assert "--kill-after=30s 14m" in _runs(jobs["postgres-langgraph"])
+        assert jobs[name]["timeout-minutes"] == (
+            "45" if name in {"postgres-adk", "postgres-langgraph"} else "20"
+        )
+    assert "--kill-after=30s 30m" in _runs(jobs["postgres-adk"])
+    assert "--kill-after=30s 30m" in _runs(jobs["postgres-langgraph"])
+    assert "--kill-after=30s 12m" in _runs(jobs["postgres-agent-framework"])
 
 
 def test_windows_timing_folded_command_passes_all_fixtures_to_pytest():
@@ -211,7 +218,9 @@ def test_optional_framework_is_checked_when_common_semantics_or_fixtures_change(
         paths = set(workflow["on"][event]["paths"])
         assert {"core/**", "tests/contract/**", "tests/ctk/**", "tests/engine_cases.py"} <= paths
     assert "workflow_dispatch" in workflow["on"]
+    assert workflow["jobs"]["native"]["timeout-minutes"] == "50"
     commands = _runs(workflow["jobs"]["native"])
+    assert "--kill-after=30s 40m" in commands
     assert "--locked" in commands and "--extra native" in commands
     assert "../../tests/agent_framework" in commands and "../../tests/contract" in commands
 

@@ -2139,6 +2139,15 @@ packaging and hosted validation is pending. S2-09 remains unchecked. See
 
 ## S3-02 A2A implementation work -- 2026-10-13 pending verification
 
+Hosted checkpoint `f020d6e` passed Docs, Security, external sandbox and both
+standard runtime images, but PR CI, PostgreSQL and optional Framework did not
+complete successfully. Shared-PG fixture contamination, missing original child
+definition evidence, changed recovery quotas and incomplete aggregate budgets
+have actionable grouped corrections; native wait timeouts remain under review.
+SDK inbound PostgreSQL fixtures also require corrected actual storage selection.
+S2-09/S3-01/S3-02 remain unchecked, with failed logs preserved and full fresh
+qualification still mandatory. See the failure history in the finite A2A record.
+
 The next isolated authoring batch addresses typed common A2A client/card
 semantics, native workflow/tool parity and protected asynchronous inbound
 delivery before acknowledgment. Task identity and lifecycle remain projections
