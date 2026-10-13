@@ -2219,6 +2219,15 @@ class WorkflowExecutor:
         raise UnsupportedWorkflowFeature(f"unsupported task {name}")
 
     async def _call(self, call: str, payload: Any, state: ExecutionState) -> Any:
+        if call == "grpc":
+            registry = getattr(getattr(self.services, "protocols", None), "grpc_registry", None)
+            if registry is None or not isinstance(payload, Mapping):
+                raise ToolError("gRPC deployment registry or payload is unavailable")
+            # Evaluate/validate the exact immutable request before recording a
+            # business intent. The client repeats this pure guard at dispatch.
+            registry.prepare(
+                {key: value for key, value in payload.items() if key != "operation_id"}
+            )
         imported = state.metadata.get("_catalog_tasks", {}).get(
             state.variables.get("_execution_reference")
         )

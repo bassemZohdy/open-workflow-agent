@@ -156,6 +156,19 @@ def _bytes_value(value: Any) -> None:
     base64.b64decode(value.translate(str.maketrans("-_", "+/")) + padding, validate=True)
 
 
+def _guard_scalar(value: Any, field: Any) -> None:
+    if field.type == 12:
+        _bytes_value(value)
+    if field.enum_type is not None and (
+        type(value) not in {str, int, float}
+        or type(value) is float
+        and (not math.isfinite(value) or not value.is_integer())
+    ):
+        # The SDK calls int(value); bools and fractional floats can otherwise
+        # silently become a different, valid enum member before dispatch.
+        raise ValueError("enum")
+
+
 def _guard_aliases(value: Any, descriptor: Any) -> None:
     if descriptor.full_name == "google.protobuf.BytesValue" and value is not None:
         _bytes_value(value)
@@ -170,23 +183,41 @@ def _guard_aliases(value: Any, descriptor: Any) -> None:
         if field is None or field.name in seen:
             raise ValueError("unknown or repeated field")
         seen.add(field.name)
-        if item is not None and field.type == 12:
-            for byte_value in item if field.is_repeated else [item]:
-                _bytes_value(byte_value)
-        if item is not None and field.enum_type is not None and type(item) is bool:
-            raise ValueError("enum")
+        if item is not None and field.message_type is None:
+            for scalar in item if field.is_repeated and isinstance(item, list) else [item]:
+                _guard_scalar(scalar, field)
         if field.message_type is not None and item is not None:
             if field.message_type.GetOptions().map_entry:
-                child = field.message_type.fields_by_name["value"].message_type
-                if child is not None and isinstance(item, dict):
+                entry_field = field.message_type.fields_by_name["value"]
+                child = entry_field.message_type
+                if isinstance(item, dict):
                     for entry in item.values():
-                        _guard_aliases(entry, child)
+                        if child is not None:
+                            _guard_aliases(entry, child)
+                        else:
+                            _guard_scalar(entry, entry_field)
             elif field.is_repeated:
                 if isinstance(item, list):
                     for entry in item:
                         _guard_aliases(entry, field.message_type)
             else:
                 _guard_aliases(item, field.message_type)
+
+
+def _guard_descriptor_closure(*roots: Any) -> None:
+    """Selected messages only; packed Any needs a separately qualified codec."""
+    pending = list(roots)
+    visited: set[str] = set()
+    while pending:
+        message = pending.pop()
+        if message.full_name in visited:
+            continue
+        visited.add(message.full_name)
+        if message.full_name == "google.protobuf.Any":
+            raise ValueError("unsupported packed codec")
+        pending.extend(
+            field.message_type for field in message.fields if field.message_type is not None
+        )
 
 
 def _descriptor(binding: GrpcBinding) -> tuple[Any, Any]:
@@ -250,6 +281,7 @@ def _descriptor(binding: GrpcBinding) -> tuple[Any, Any]:
             for item in (method.input_type, method.output_type)
         ):
             raise ValueError("unsupported root codec")
+        _guard_descriptor_closure(method.input_type, method.output_type)
         return pool, method
     except Exception as error:
         if isinstance(error, ToolError):
@@ -458,7 +490,8 @@ async def call_grpc(
             http._check_endpoint(selected.endpoint)
             metadata: dict[str, str] = {}
             client_cert = None
-            ca_bundle = http.verify_tls if isinstance(http.verify_tls, str) else None
+            inherited = authentication is None or authentication is http.authentication
+            ca_bundle = http.verify_tls if inherited and isinstance(http.verify_tls, str) else None
             if authentication is not None:
                 prepare = getattr(authentication, "prepare", None)
                 if prepare is None:
@@ -468,7 +501,8 @@ async def call_grpc(
                         selected.endpoint, remaining_timeout=timeout - (time.monotonic() - started)
                     )
                     metadata = dict(auth.headers)
-                    client_cert, ca_bundle = auth.client_cert, auth.ca_bundle
+                    client_cert = auth.client_cert
+                    ca_bundle = auth.ca_bundle or ca_bundle
             lowered: dict[str, str] = {}
             for name, value in metadata.items():
                 normalized = name.lower()

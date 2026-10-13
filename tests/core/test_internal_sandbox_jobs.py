@@ -370,6 +370,77 @@ def test_private_ipc_authentication_size_duplicate_json_and_key_integrity(tmp_pa
         read_key(directory / "auth.key")
 
 
+@pytest.mark.parametrize("failure", ["write", "fsync", "replace"])
+def test_failed_ipc_publication_removes_only_owned_temp_and_keeps_original(
+    tmp_path, monkeypatch, failure
+):
+    from open_workflow_agent.sandbox import _job_ipc
+
+    directory = tmp_path / "ipc"
+    private_directory(directory)
+    key = create_key(directory / "auth.key")
+    target = directory / "observation.json"
+    write_frame(target, {"known": "original"}, key)
+    retained = target.read_bytes()
+    unrelated = directory / "another.tmp-foreign"
+    unrelated.write_bytes(b"not-ours")
+
+    def fail(*args, **kwargs):
+        raise OSError("controlled fixture write failure")
+
+    if failure == "write":
+        original = _job_ipc.os.fdopen
+
+        class Writer:
+            def __init__(self, stream):
+                self.stream = stream
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                self.stream.close()
+
+            def write(self, value):
+                self.stream.write(value[:16])
+                self.stream.flush()
+                fail()
+
+        monkeypatch.setattr(
+            _job_ipc.os, "fdopen", lambda *args, **kwargs: Writer(original(*args, **kwargs))
+        )
+    else:
+        monkeypatch.setattr(_job_ipc.os, failure, fail)
+    for _ in range(3):
+        with pytest.raises(OSError):
+            write_frame(target, {"new": "never-published"}, key)
+        assert target.read_bytes() == retained
+        assert list(directory.glob("observation.json.tmp-*")) == []
+        assert unrelated.read_bytes() == b"not-ours"
+
+
+def test_failed_exclusive_bootstrap_retains_first_submission_tombstone(tmp_path, monkeypatch):
+    from open_workflow_agent.sandbox import _job_ipc
+
+    directory = tmp_path / "ipc"
+    private_directory(directory)
+    key = create_key(directory / "auth.key")
+    target = directory / "bootstrap.json"
+
+    def fail(*args, **kwargs):
+        raise OSError("controlled fixture fsync failure")
+
+    monkeypatch.setattr(_job_ipc.os, "fsync", fail)
+    with pytest.raises(OSError):
+        write_frame(target, {"first": "retained-only"}, key, exclusive=True)
+    assert target.exists()
+    retained = target.read_bytes()
+    with pytest.raises(FileExistsError):
+        write_frame(target, {"second": "must-not-replace"}, key, exclusive=True)
+    assert target.read_bytes() == retained
+    assert list(directory.glob("bootstrap.json.tmp-*")) == []
+
+
 @pytest.mark.skipif(os.name != "posix", reason="POSIX owner/mode control")
 def test_posix_private_ipc_rejects_broadened_permissions_and_symlink(tmp_path):
     directory = tmp_path / "ipc"

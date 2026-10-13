@@ -256,6 +256,30 @@ class InternalSandboxBackend:
                 details={"max_input_bytes": self.config.max_input_bytes},
             )
 
+    def validate_background_request(self, request: SandboxExecutionRequest) -> None:
+        """Validate a transformed request without workspace, secret reads or launch."""
+        if not self.config.enabled or request.kind not in {"script", "shell"}:
+            raise SandboxPolicyError("background internal operation is unavailable")
+        self._validate_request_size(request)
+        if request.kind == "script":
+            if (
+                request.script_language != "python"
+                or request.script_language not in self.config.script_runtimes
+                or not isinstance(request.script_code, str)
+            ):
+                raise SandboxPolicyError("only enabled inline Python jobs are supported")
+        else:
+            # Shell preparation only resolves the explicitly approved search
+            # path; unlike script preparation it creates no workspace file.
+            self._prepare_command(request, Path())
+        for name, value in request.environment:
+            if (
+                name in RESERVED_ENVIRONMENT
+                or not isinstance(value, SandboxSecretReference)
+                or value.name not in self.config.secret_environment
+            ):
+                raise SandboxPolicyError("background environment reference is not approved")
+
     def _prepare_command(
         self, request: SandboxExecutionRequest, workspace: Path
     ) -> tuple[str, tuple[str, ...]]:

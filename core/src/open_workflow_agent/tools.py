@@ -134,6 +134,7 @@ class ToolRegistry:
                 payload,
                 _authentication=tool.authentication,
                 _openapi_selection=selection,
+                _openapi_bound_endpoint=tool.endpoint,
             )
         if tool.authentication is not None:
             if tool.type == "a2a" and tool.endpoint is not None:

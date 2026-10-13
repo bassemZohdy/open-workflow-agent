@@ -128,6 +128,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             raise SandboxPolicyError("background execution admission is unavailable")
         identity = self._effect_identity(state, "run:" + request.kind)
         request = replace(request, execution_id=job_id(identity))
+        self.services.sandbox.validate_job_request(request)
         prior = store.get(request.execution_id)
         if prior is None and _RECONCILE_EXPIRED_RETRY.get():
             raise WorkflowExecutionError("retry budget expired before a new sandbox job")

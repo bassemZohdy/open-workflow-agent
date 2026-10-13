@@ -14,14 +14,22 @@ class ProtocolStub:
         self.calls: list[tuple[str, object]] = []
         self.authentication = []
         self.selection = []
+        self.bound_endpoints = []
         self.http = HttpClient()
 
     async def call(
-        self, protocol: str, payload: object, *, _authentication=None, _openapi_selection=None
+        self,
+        protocol: str,
+        payload: object,
+        *,
+        _authentication=None,
+        _openapi_selection=None,
+        _openapi_bound_endpoint=None,
     ) -> object:
         self.calls.append((protocol, payload))
         self.authentication.append(_authentication)
         self.selection.append(_openapi_selection)
+        self.bound_endpoints.append(_openapi_bound_endpoint)
         return {"protocol": protocol, "payload": payload}
 
 
@@ -68,7 +76,7 @@ async def test_tool_registry_invokes_configured_mcp_and_openapi_tools(monkeypatc
             ToolConfig(
                 type="openapi",
                 name="weather",
-                endpoint="https://api.test",
+                endpoint="https://api.test/weather",
                 security_profile="outbound",
                 options={"operationId": "weather"},
                 openapi_binding={
@@ -113,7 +121,8 @@ async def test_tool_registry_invokes_configured_mcp_and_openapi_tools(monkeypatc
 
     await registry.invoke("weather", {"parameters": {"X-Caller": "yes"}})
     openapi_payload = protocols.calls[1][1]
-    assert openapi_payload["endpoint"] == "https://api.test"
+    assert openapi_payload["endpoint"] == "https://api.test/weather"
+    assert protocols.bound_endpoints[1] == "https://api.test/weather"
     assert openapi_payload["parameters"] == {
         "X-Caller": "yes",
     }

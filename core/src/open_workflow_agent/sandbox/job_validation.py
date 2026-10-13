@@ -7,7 +7,11 @@ proofs immediately before its fenced mutation. No descriptor alone is authority.
 
 from __future__ import annotations
 
+import sqlite3
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import asdict
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 from ..effects import EffectIdentity, ReceiptDependency, effect_request_digest
@@ -39,6 +43,50 @@ from .jobs import (
 
 if TYPE_CHECKING:
     from .job_backend import SandboxJobLaunch
+
+
+@contextmanager
+def backend_mutation_fence(
+    database: Path,
+    launch: SandboxJobLaunch,
+    *,
+    expected_profile: SandboxJobProfile,
+    purpose: Literal["submit", "control"],
+    control_generation: int | None = None,
+    reason: Literal["cancel", "deadline"] | None = None,
+) -> Iterator[Callable[[], None]]:
+    """Serialize the exact launch/control moment without changing stored evidence."""
+    if not database.is_absolute() or database.is_symlink() or not database.is_file():
+        raise WorkflowExecutionError("sandbox mutation database is unavailable")
+    try:
+        raw = sqlite3.connect(database.as_uri() + "?mode=rw", uri=True, timeout=3)
+    except sqlite3.Error:
+        raise WorkflowExecutionError("sandbox mutation fence is unavailable") from None
+    connection = StorageConnection(raw, "sqlite")
+
+    def verify() -> None:
+        verify_backend_launch(
+            connection,
+            launch,
+            expected_profile=expected_profile,
+            purpose=purpose,
+            control_generation=control_generation,
+            reason=reason,
+        )
+
+    try:
+        raw.execute("BEGIN IMMEDIATE")
+        verify()
+        yield verify
+    except sqlite3.Error:
+        raise WorkflowExecutionError("sandbox mutation fence is unavailable") from None
+    finally:
+        # No admission, ownership extension, bootstrap or repair statement is
+        # issued here. The write reservation exists only around physical I/O.
+        try:
+            raw.rollback()
+        finally:
+            raw.close()
 
 
 def _json_row(

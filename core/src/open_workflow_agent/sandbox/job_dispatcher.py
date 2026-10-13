@@ -58,7 +58,7 @@ class SandboxJobDispatcher:
         return tuple(self._errors)
 
     async def start(self) -> None:
-        if self._task is None:
+        if self._task is None or self._task.done():
             self._task = asyncio.create_task(self._run())
 
     async def stop(self) -> None:
@@ -69,7 +69,12 @@ class SandboxJobDispatcher:
 
     async def _run(self) -> None:
         while True:
-            await self.tick()
+            try:
+                await self.tick()
+            except Exception as error:
+                # A failed bounded scan grants no execution authority. Retain
+                # only its category and let later polls inspect restored proof.
+                self._errors.append(type(error).__name__)
             await asyncio.sleep(self.poll_seconds)
 
     async def tick(self) -> None:

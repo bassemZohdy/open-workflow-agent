@@ -15,10 +15,11 @@ from ..config import SandboxConfig
 from ..errors import SandboxPolicyError
 from ..storage import StorageConnection
 from ._job_ipc import check_path, read_frame, read_key, write_frame
-from ._job_runner import run_job, validate_platform
+from ._job_runner import ControlMutation, run_job, validate_platform
 from .backends.internal import InternalSandboxBackend
 from .internal_jobs import immutable, internal_job_profile, parse_launch
-from .job_validation import verify_backend_launch
+from .job_backend import SandboxJobLaunch
+from .job_validation import backend_mutation_fence, verify_backend_launch
 
 
 async def supervise(directory: Path) -> None:
@@ -64,6 +65,7 @@ async def supervise(directory: Path) -> None:
     }
     stop = asyncio.Event()
     background: list[asyncio.Task[Any]] = []
+    pending_control: tuple[SandboxJobLaunch, int, Literal["cancel", "deadline"]] | None = None
 
     def publish() -> None:
         write_frame(directory / "observation.json", state, key)
@@ -87,9 +89,30 @@ async def supervise(directory: Path) -> None:
             await asyncio.sleep(0.25)
 
     def expire() -> None:
-        if not stop.is_set():
-            state["reason"] = "deadline"
-            stop.set()
+        state["reason"], state["control_ack_generation"] = "deadline", None
+        stop.set()
+
+    def control_mutation() -> ControlMutation | None:
+        nonlocal pending_control
+        if pending_control is None:
+            return None
+        selected, generation, reason = pending_control
+        pending_control = None
+
+        def applied() -> None:
+            state["reason"], state["control_ack_generation"] = reason, generation
+
+        return (
+            backend_mutation_fence(
+                database,
+                selected,
+                expected_profile=expected,
+                purpose="control",
+                control_generation=generation,
+                reason=reason,
+            ),
+            applied,
+        )
 
     async def deadline(running: asyncio.Task[Any]) -> None:
         await asyncio.sleep(max(0, launch.deadline_at - time.time()))
@@ -97,7 +120,7 @@ async def supervise(directory: Path) -> None:
             expire()
 
     async def controls(running: asyncio.Task[Any]) -> None:
-        applied: int | None = None
+        nonlocal pending_control
         while not running.done():
             try:
                 value = read_frame(directory / "control.json", key)
@@ -121,7 +144,11 @@ async def supervise(directory: Path) -> None:
                     raise SandboxPolicyError("supervisor control differs from accepted job")
                 reason: Literal["cancel", "deadline"] = value["reason"]
                 generation = value["generation"]
-                if applied != generation and not running.done() and not stop.is_set():
+                if (
+                    state["control_ack_generation"] != generation
+                    and not running.done()
+                    and not stop.is_set()
+                ):
                     verify_backend_launch(
                         connection,
                         selected,
@@ -130,9 +157,9 @@ async def supervise(directory: Path) -> None:
                         control_generation=generation,
                         reason=reason,
                     )
-                    state["reason"] = reason
-                    applied = generation
-                    state["control_ack_generation"] = generation
+                    # This is a request, not an acknowledgement. The runner
+                    # revalidates under the RW fence at physical termination.
+                    pending_control = selected, generation, reason
                     stop.set()
             except Exception:
                 # A rejected stale/tampered control cannot disable subsequent
@@ -155,9 +182,11 @@ async def supervise(directory: Path) -> None:
                 started=started,
                 stop=stop,
                 deadline_reached=expire,
-                validate_launch=lambda: verify_backend_launch(
-                    connection, launch, expected_profile=expected, purpose="submit"
+                deadline_due=lambda: time.time() >= launch.deadline_at,
+                launch_fence=lambda: backend_mutation_fence(
+                    database, launch, expected_profile=expected, purpose="submit"
                 ),
+                control_mutation=control_mutation,
             )
         )
         background = [

@@ -196,6 +196,21 @@ def test_admission_is_atomic_frozen_acceptance_not_process_completion(jobs, monk
     assert admit(jobs) == job
 
 
+@pytest.mark.parametrize(
+    "untrusted",
+    [{"transformed": (1, 2)}, {"transformed": object()}, {"transformed": float("inf")}],
+    ids=["application-tuple", "application-object", "nonfinite-number"],
+)
+def test_private_identity_serialization_never_coerces_invalid_application_input(jobs, untrusted):
+    services, _, handle = jobs[:3]
+    before = snapshot(jobs)
+    original = services.invocations.read_input(handle)
+    with pytest.raises(OwaError):
+        admit(jobs, input=untrusted)
+    assert snapshot(jobs) == before
+    assert services.invocations.read_input(handle) == original and services.model.calls == []
+
+
 @pytest.mark.parametrize("change", ["request", "input", "deadline", "profile", "lifetime"])
 def test_original_acceptance_cannot_be_rebound(jobs, change):
     job = admit(jobs)

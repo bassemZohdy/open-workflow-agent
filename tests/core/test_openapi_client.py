@@ -822,3 +822,152 @@ async def test_actual_mtls_selected_operation_uses_exact_named_endpoint_binding(
         assert result == {"identity": "client-A"} and len(server.requests) == 1
         assert server.requests[0][3] == "client-A"
         assert str(key) not in json.dumps(selected.as_value())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "header",
+    [
+        "Host",
+        "HOST",
+        "Content-Length",
+        "Transfer-Encoding",
+        "Connection",
+        "Keep-Alive",
+        "Proxy-Connection",
+        "TE",
+        "Trailer",
+        "Upgrade",
+        "HTTP2-Settings",
+    ],
+)
+async def test_reserved_authority_and_framing_parameters_reject_before_named_credentials_or_io(
+    monkeypatch, header
+):
+    monkeypatch.setenv("OPENAPI_RESERVED_TOKEN", "must-not-be-forwarded")
+    auth = ProfileAuthentication(
+        SecurityConfig.model_validate(
+            {
+                "profiles": {
+                    "named": {"type": "bearer", "token": {"from_env": "OPENAPI_RESERVED_TOKEN"}}
+                }
+            }
+        ),
+        "named",
+    )
+    prepared = []
+    original = auth.prepare
+
+    async def observe(*args, **kwargs):
+        prepared.append(True)
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(auth, "prepare", observe)
+    document = source()
+    operation(document)["parameters"].append(
+        {"name": header, "in": "header", "schema": {"type": "string"}}
+    )
+    requests = []
+
+    def receiver(request):
+        requests.append(request)
+        return httpx.Response(200, json={"id": "42"})
+
+    with pytest.raises(ToolError) as failure:
+        selected = selection(document, "named")
+        await call_openapi(
+            HttpClient(transport=httpx.MockTransport(receiver)),
+            payload(parameters={"id": "42", header: "foreign-virtual-host.test"}),
+            selection=selected,
+            timeout=1,
+            authentication=auth,
+            credential_endpoints={"named": (TARGET,)},
+        )
+    assert failure.value.details["reason"] == "unsupported_header_parameter"
+    assert prepared == [] and requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("segment", [".", ".."])
+async def test_dot_path_parameter_rejects_before_exact_named_grant_credential_resolution_or_io(
+    monkeypatch, segment
+):
+    monkeypatch.setenv("OPENAPI_DOT_TOKEN", "must-not-be-forwarded")
+    auth = ProfileAuthentication(
+        SecurityConfig.model_validate(
+            {"profiles": {"named": {"type": "bearer", "token": {"from_env": "OPENAPI_DOT_TOKEN"}}}}
+        ),
+        "named",
+    )
+    prepared = []
+    original = auth.prepare
+
+    async def observe(*args, **kwargs):
+        prepared.append(True)
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(auth, "prepare", observe)
+    requests = []
+    client = HttpClient(transport=httpx.MockTransport(lambda request: requests.append(request)))
+    with pytest.raises(ToolError) as failure:
+        await call_openapi(
+            client,
+            payload(parameters={"id": segment}),
+            selection=selection(profile="named"),
+            timeout=1,
+            authentication=auth,
+            credential_endpoints={"named": ("https://api.test/v1/items/" + segment,)},
+        )
+    assert failure.value.details["reason"] == "normalization_changing_path"
+    assert prepared == [] and requests == []
+
+
+@pytest.mark.parametrize("route", ["server", "relative-server", "server-variable", "path", "self"])
+def test_raw_description_routes_cannot_hide_dot_normalization_before_selection(route):
+    document = source("3.2.0")
+    if route == "server":
+        document["servers"] = [{"url": "https://api.test/v1/../private"}]
+    elif route == "relative-server":
+        document["servers"] = [{"url": "../private"}]
+    elif route == "server-variable":
+        document["servers"] = [
+            {
+                "url": "https://api.test/{version}/private",
+                "variables": {"version": {"default": ".."}},
+            }
+        ]
+    elif route == "path":
+        document["paths"] = {"/items/../private/{id}": document["paths"]["/items/{id}"]}
+    else:
+        document["$self"] = "../private/spec.json"
+    with pytest.raises(ToolError) as failure:
+        selection(document)
+    assert failure.value.details["reason"] == "normalization_changing_path"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "parameter,encoded",
+    [
+        ("literal..segment", "literal..segment"),
+        ("literal%2E%2E", "literal%252E%252E"),
+        ("a/../b", "a%2F..%2Fb"),
+    ],
+)
+async def test_opaque_encoded_path_values_keep_admitted_route_and_actual_wire_uri(
+    parameter, encoded
+):
+    requests = []
+
+    def receiver(request):
+        requests.append(request)
+        return httpx.Response(200, json={"id": parameter})
+
+    result = await call_openapi(
+        HttpClient(transport=httpx.MockTransport(receiver)),
+        payload(parameters={"id": parameter}),
+        selection=selection(),
+        timeout=1,
+    )
+    assert result == {"id": parameter}
+    assert len(requests) == 1 and str(requests[0].url) == "https://api.test/v1/items/" + encoded

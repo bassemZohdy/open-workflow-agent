@@ -45,7 +45,17 @@ class SandboxManager:
             raise SandboxPolicyError("sandbox job backend is unavailable")
         return self._job_backend
 
+    def validate_job_request(self, request: SandboxExecutionRequest) -> None:
+        from .backends.internal import InternalSandboxBackend
+
+        if type(self.backend) is not InternalSandboxBackend:
+            raise SandboxPolicyError(
+                "background request preflight requires the selected internal backend"
+            )
+        self.backend.validate_background_request(request)
+
     async def submit_job(self, launch: SandboxJobLaunch) -> SandboxJobObservation:
+        self.validate_job_request(launch.request)
         return await self._jobs(launch).submit(launch)
 
     async def inspect_job(

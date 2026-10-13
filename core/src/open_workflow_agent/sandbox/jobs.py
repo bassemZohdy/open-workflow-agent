@@ -98,10 +98,29 @@ def _digest(value: Any) -> str:
     return value
 
 
+def _identity_value(identity: EffectIdentity) -> dict[str, Any]:
+    """Serialize the known private identity, leaving application values strict."""
+    return {
+        "invocation_id": identity.invocation_id,
+        "workflow_fingerprint": identity.workflow_fingerprint,
+        "task_reference": identity.task_reference,
+        "occurrence": [[reference, visit] for reference, visit in identity.occurrence],
+        "operation": identity.operation,
+    }
+
+
+def _dependency_value(identity: EffectIdentity, receipt: EffectReceipt) -> dict[str, Any]:
+    dependency = ReceiptDependency.capture(identity, receipt)
+    return {
+        "identity": _identity_value(dependency.identity),
+        "receipt_digest": dependency.receipt_digest,
+    }
+
+
 def job_id(identity: EffectIdentity) -> str:
     if identity.operation not in {"run:script", "run:shell", "run:container"}:
         raise _failure()
-    return "job_" + effect_request_digest(_PROFILE, asdict(identity))
+    return "job_" + effect_request_digest(_PROFILE, _identity_value(identity))
 
 
 def policy_identity(identity: EffectIdentity, policy: str = ADMISSION_POLICY) -> EffectIdentity:
@@ -831,24 +850,17 @@ class SandboxJobStore:
         _encoded(transformed_input)
         value = {
             "profile": _PROFILE,
-            "identity": asdict(identity),
+            "identity": _identity_value(identity),
             "creator": _creator(handle),
             "original_input_digest": effect_request_digest(_PROFILE, self._original_input(handle)),
-            "definition_receipt": asdict(
-                ReceiptDependency.capture(definition_identity, definition)
-            ),
-            "clock_receipt": asdict(
-                ReceiptDependency.capture(
-                    root_clock_identity(handle.invocation_id, handle.workflow_fingerprint),
-                    root_clock,
-                )
+            "definition_receipt": _dependency_value(definition_identity, definition),
+            "clock_receipt": _dependency_value(
+                root_clock_identity(handle.invocation_id, handle.workflow_fingerprint), root_clock
             )
             if root_clock is not None
             else None,
-            "task_deadline_receipt": asdict(
-                ReceiptDependency.capture(
-                    policy_identity(identity, "policy:task-deadline:v1"), task_clock
-                )
+            "task_deadline_receipt": _dependency_value(
+                policy_identity(identity, "policy:task-deadline:v1"), task_clock
             )
             if task_clock is not None
             else None,

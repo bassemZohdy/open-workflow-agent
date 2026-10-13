@@ -721,3 +721,97 @@ async def test_ambiguous_or_oversized_saved_json_rejects_without_mutation_or_ref
     with pytest.raises(WorkflowExecutionError):
         await _prepare(admitted_parent)
     assert len(calls) == 1 and _rows(services, identity) == before
+
+
+def _business_rows(services, identity):
+    connection = services.effect_journal.connection
+    return tuple(
+        connection.execute(statement, (identity.key,)).fetchall()
+        for statement in (
+            "SELECT * FROM workflow_effects WHERE identity=?",
+            "SELECT * FROM workflow_effect_invocations WHERE identity=?",
+        )
+    )
+
+
+def _retain_orphan_business_index(tree):
+    services, handle, identity, payload, _, _ = tree
+    services.effect_journal.begin(
+        identity,
+        effect_request_digest("openapi", payload),
+        "original-unresolved-owner",
+        execution_lease=handle._execution_lease,
+    )
+    services.effect_journal.connection.execute(
+        "DELETE FROM workflow_effects WHERE identity=?", (identity.key,)
+    )
+    services.effect_journal.connection.commit()
+    assert _business_rows(services, identity)[0] == []
+    assert len(_business_rows(services, identity)[1]) == 1
+
+
+@pytest.mark.asyncio
+async def test_orphan_business_index_rejects_fresh_description_without_io_or_adoption(
+    admitted_parent,
+):
+    services, handle, identity, _, calls, _ = admitted_parent
+    _retain_orphan_business_index(admitted_parent)
+    before_business = _business_rows(services, identity)
+    before_policy = _rows(services, identity)
+    before_owner = services.execution_ownership.connection.execute(
+        "SELECT * FROM invocation_ownership WHERE invocation_id=?", (handle.invocation_id,)
+    ).fetchone()
+    before_parent = services.invocations.get(handle.invocation_id)._persisted_payload
+    with pytest.raises(WorkflowExecutionError):
+        await _prepare(admitted_parent)
+    assert calls == [] and _business_rows(services, identity) == before_business
+    assert _rows(services, identity) == before_policy == ([], [], [])
+    assert (
+        services.execution_ownership.connection.execute(
+            "SELECT * FROM invocation_ownership WHERE invocation_id=?", (handle.invocation_id,)
+        ).fetchone()
+        == before_owner
+    )
+    assert services.invocations.get(handle.invocation_id)._persisted_payload == before_parent
+    with pytest.raises(WorkflowExecutionError):
+        services.effect_journal.verify_invocation(handle.invocation_id, handle.workflow_fingerprint)
+    assert services.model.calls == []
+
+
+@pytest.mark.asyncio
+async def test_saved_policy_dependency_rejects_orphan_business_index_independently_of_projection(
+    admitted_parent,
+):
+    services, _, identity, _, calls, _ = admitted_parent
+    decision = await _prepare(admitted_parent)
+    dependency = ReceiptDependency.capture(decision.identity, decision.receipt)
+    _retain_orphan_business_index(admitted_parent)
+    before_business = _business_rows(services, identity)
+    before_policy = _rows(services, identity)
+    with pytest.raises(WorkflowExecutionError):
+        dependency.verify(services.effect_journal)
+    with pytest.raises(WorkflowExecutionError):
+        await _prepare(admitted_parent, allow_fetch=False)
+    assert len(calls) == 1 and _business_rows(services, identity) == before_business
+    assert _rows(services, identity) == before_policy and services.model.calls == []
+
+
+@pytest.mark.asyncio
+async def test_business_index_orphan_created_during_metadata_cannot_publish_a_fresh_policy(
+    admitted_parent,
+):
+    services, _, identity, _, calls, state = admitted_parent
+
+    async def receiver(request):
+        calls.append(request)
+        _retain_orphan_business_index(admitted_parent)
+        return httpx.Response(200, json=state["document"])
+
+    services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(receiver)))
+    with pytest.raises(WorkflowExecutionError):
+        await _prepare(admitted_parent)
+    assert len(calls) == 1 and calls[0].method == "GET"
+    assert _rows(services, identity) == ([], [], [])
+    assert _business_rows(services, identity)[0] == []
+    assert len(_business_rows(services, identity)[1]) == 1
+    assert services.model.calls == []

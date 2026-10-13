@@ -142,6 +142,10 @@ def _verify_record(
             or replace(business, operation=OPERATION_POLICY) != identity
         ):
             raise ValueError("invalid action identity")
+        # A policy-only pre-dispatch boundary is valid. A retained business
+        # index with its receipt removed is unresolved evidence, never fresh
+        # work. Check the pair independently of the native projection too.
+        _receipt(connection, business)
         row = connection.execute(
             "SELECT invocation_id,fingerprint,CASE WHEN length(payload)<=? THEN payload "
             "ELSE NULL END,digest FROM openapi_operation_admissions "
@@ -365,7 +369,11 @@ class OpenApiOperationAdmission:
         indexed = self.connection.execute(
             "SELECT 1 FROM openapi_operation_admissions WHERE business_key=?", (identity.key,)
         ).fetchone()
-        if indexed is not None or self.journal.get(identity) is not None or not allow_fetch:
+        if (
+            indexed is not None
+            or _receipt(self.connection, identity) is not None
+            or not allow_fetch
+        ):
             raise WorkflowExecutionError("OpenAPI operation original admission is missing")
         if deadline_at is not None and (
             type(deadline_at) not in {int, float}
@@ -449,6 +457,8 @@ class OpenApiOperationAdmission:
             workflow_fingerprint=identity.workflow_fingerprint,
         ):
             self.services.recovery_definitions.verify_admission(handle)
+            if _receipt(self.connection, identity) is not None:
+                raise WorkflowExecutionError("OpenAPI business intent appeared during admission")
             self.connection.execute(
                 "INSERT INTO openapi_operation_admissions "
                 "(business_key,invocation_id,fingerprint,payload,digest) VALUES(?,?,?,?,?) "

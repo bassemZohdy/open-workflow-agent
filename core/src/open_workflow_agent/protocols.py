@@ -388,6 +388,7 @@ class ProtocolServices:
         _a2a_selection: A2ACardSelection | None = None,
         _a2a_bound_endpoint: str | None = None,
         _openapi_selection: OpenApiOperationSelection | None = None,
+        _openapi_bound_endpoint: str | None = None,
     ) -> Any:
         if protocol not in {"http", "mcp", "a2a", "openapi", "grpc"}:
             raise ToolError(f"unsupported protocol: {protocol}")
@@ -477,6 +478,17 @@ class ProtocolServices:
             )
             started = time.monotonic()
             timeout = self.http.timeout
+            requested_timeout = payload.get("timeout")
+            if requested_timeout is not None:
+                if isinstance(requested_timeout, bool):
+                    raise ToolError("OpenAPI timeout must be finite and positive")
+                try:
+                    seconds = _duration_seconds(requested_timeout)
+                except (ValueError, TypeError):
+                    raise ToolError("OpenAPI timeout must be finite and positive") from None
+                if seconds is None or not math.isfinite(seconds) or seconds <= 0:
+                    raise ToolError("OpenAPI timeout must be finite and positive")
+                timeout = min(timeout, seconds)
             selection = _openapi_selection
             if selection is None:
                 document = payload.get("document") or (
@@ -500,6 +512,7 @@ class ProtocolServices:
                 operation_id=operation_id,
                 authentication=authentication,
                 credential_endpoints=self._openapi_credential_endpoints,
+                bound_endpoint=_openapi_bound_endpoint,
             )
         endpoint = payload.get("endpoint")
         if not endpoint:

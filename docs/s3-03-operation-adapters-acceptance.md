@@ -298,7 +298,7 @@ owner context; mutable catalog content is not substituted during replay.
 
 Authored inventories, not passing test counts:
 
-- `tests/core/test_grpc_client.py`: 55 finite client/registry/type/security cases.
+- `tests/core/test_grpc_client.py`: 71 authored client/registry/type/security cases.
 - `tests/contract/test_grpc_calls.py`: 17 per principal/backend, 68 across actual
   ADK/LangGraph and SQLite/PostgreSQL, including imported workflows, null/value/
   fault recovery, logical loop identity, deadline, uncertainty and ownership.
@@ -309,7 +309,7 @@ Authored inventories, not passing test counts:
   Committed calls lacking a receipt remain pending without resend; known value/
   fault outcomes recover across the native-commit gap without another call.
   Missing archived binding and changed descriptors fail before mutation.
-- `tests/core/test_internal_sandbox_jobs.py`: 17 embedded supervisor/IPC/platform
+- `tests/core/test_internal_sandbox_jobs.py`: 21 authored supervisor/IPC/platform
   cases authored separately, including a real independently living supervisor,
   real exit codes, manager drain, original deadline/late-cancel race, stale
   controls, resource uncertainty, supervisor loss and no ambiguous relaunch.
@@ -325,3 +325,45 @@ claimed.
 [official gRPC v1.84.0 release](https://github.com/grpc/grpc/releases/tag/v1.84.0),
 and [ProtoJSON rules](https://protobuf.dev/programming-guides/json/) define the
 reviewed client and encoding boundaries.
+
+## Review corrections before the first behavioral batch
+
+Independent source review found and corrected unsafe OpenAPI authority/framing
+headers, HTTPX dot-segment route normalization, orphan business action indexes,
+configured endpoint forwarding and original timeout propagation. Description
+selection grants no permission to override the actual wire authority or endpoint.
+The reviewed OWS1.0.3 OpenAPI table defines named parameters but no requestBody
+mapping; required requestBody profiles remain explicitly rejected pending a
+reviewed mapping, rather than receiving an invented public argument.
+
+gRPC now rejects permissive protobuf byte/enum coercions in scalar, repeated and
+map values, and rejects packed Any in the selected descriptor closure. Pure
+evaluated-request validation precedes the business intent; dispatch repeats it.
+The client's own named authentication retains its configured CA, while a foreign
+profile cannot inherit that trust. IPC publication failures remove only the
+owned temporary file and preserve original frames and one-time bootstrap history.
+
+Background identity/dependency serialization normalizes only private dataclass
+occurrence arrays, retaining strict validation of untrusted task input. Actual
+manager/backend request validation checks transformed input sizes, operation,
+runtime, executable availability and approved references before job acceptance.
+Transient queue-scan failures retain bounded diagnostic categories and leave the
+observer polling; an uncertain submission remains inspect-only.
+
+The embedded supervisor retains read-only ordinary inspection. Physical launch,
+Windows suspended-process resume and explicit control termination use a bounded
+write reservation on the already-selected existing SQLite database, with no
+adoption, bootstrap or evidence updates. Guards recheck the current generation,
+DB clock, original source/input/deadline, submit nonce and control. Rejected
+control does not terminate an independent live job; autonomous original deadline
+remains effective after observer expiry. New gated real-process/SQLite tests
+require these properties. The internal process boundary remains controlled,
+and does not provide container/VM hard isolation.
+
+All corrections and their authored tests remain unqualified until the coherent
+source is frozen and every required behavioral, native, process, platform,
+database, package, image, security and publication gate finishes successfully.
+No source review, inventory count, parser or fake backend proves those gates.
+
+[Pinned OWS1.0.3 OpenAPI call contract](https://github.com/open-workflow-specification/specification/blob/v1.0.3/dsl-reference.md#openapi-call)
+is the public argument authority.

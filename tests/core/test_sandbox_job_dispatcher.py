@@ -20,6 +20,13 @@ class _Foreground:
         return {"enabled": True, "backend": "internal"}
 
 
+class _Manager(SandboxManager):
+    # Dispatcher protocol fixtures have no real process backend. Actual manager
+    # request admission is covered separately against InternalSandboxBackend.
+    def validate_job_request(self, request):
+        return None
+
+
 class _Peer:
     """Protocol fake: never creates an OS process or proves hard isolation."""
 
@@ -69,7 +76,7 @@ class _Peer:
 
 def dispatcher(tree, *, behavior="accepted", **options):
     peer = _Peer(tree, behavior=behavior)
-    manager = SandboxManager(_Foreground(), job_backend=peer)
+    manager = _Manager(_Foreground(), job_backend=peer)
     return SandboxJobDispatcher(tree[1], manager, **options), peer
 
 
@@ -166,3 +173,29 @@ async def test_changed_or_absent_manager_binding_rejects_before_submit_intent(jo
 def test_dispatcher_requires_bounded_observation_and_queue_selection(jobs, options):
     with pytest.raises(ValueError, match="bounds"):
         dispatcher(jobs, **options)
+
+
+@pytest.mark.asyncio
+async def test_transient_scan_failure_does_not_stop_later_valid_delivery(jobs, monkeypatch):
+    job = admit(jobs)
+    worker, peer = dispatcher(jobs, poll_seconds=0.01)
+    pending = jobs[1].pending
+    attempts = []
+
+    def scan(**kwargs):
+        attempts.append(True)
+        if len(attempts) == 1:
+            raise OSError("private shared database diagnostic")
+        return pending(**kwargs)
+
+    monkeypatch.setattr(jobs[1], "pending", scan)
+    await worker.start()
+    try:
+        async with asyncio.timeout(10):
+            while jobs[1].get(job.job_id).status != "accepted":
+                await asyncio.sleep(0.01)
+        assert not worker._task.done()
+        assert worker.errors == ("OSError",)
+        assert [call[0] for call in peer.calls].count("submit") == 1
+    finally:
+        await worker.stop()

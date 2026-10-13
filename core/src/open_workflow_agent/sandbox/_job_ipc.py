@@ -225,17 +225,23 @@ def write_frame(path: Path, value: Any, key: bytes, *, exclusive: bool = False) 
         temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600
     )
     try:
-        if os.name == "nt":
-            _windows_private(temporary)
-        with os.fdopen(descriptor, "wb", closefd=False) as output:
-            output.write(frame)
-            output.flush()
-            os.fsync(output.fileno())
+        try:
+            if os.name == "nt":
+                _windows_private(temporary)
+            with os.fdopen(descriptor, "wb", closefd=False) as output:
+                output.write(frame)
+                output.flush()
+                os.fsync(output.fileno())
+        finally:
+            os.close(descriptor)
+        if not exclusive:
+            os.replace(temporary, path)
+        check_path(path)
     finally:
-        os.close(descriptor)
-    if not exclusive:
-        os.replace(temporary, path)
-    check_path(path)
+        if not exclusive:
+            # Only this successful O_EXCL creation is ours. Never unlink the
+            # retained target or an exclusive first-submission tombstone.
+            temporary.unlink(missing_ok=True)
 
 
 def create_key(path: Path) -> bytes:

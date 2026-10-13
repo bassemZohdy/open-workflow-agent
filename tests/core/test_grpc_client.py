@@ -15,7 +15,7 @@ from pathlib import PurePosixPath
 from urllib.parse import urlparse
 
 import pytest
-from google.protobuf import descriptor_pb2, descriptor_pool, message_factory, struct_pb2
+from google.protobuf import any_pb2, descriptor_pb2, descriptor_pool, message_factory, struct_pb2
 from open_workflow_agent import grpc_client
 from open_workflow_agent.config import GrpcBindingConfig, ProtocolConfig, RuntimeConfig
 from open_workflow_agent.errors import InvocationStateError, ToolError, UnsupportedWorkflowFeature
@@ -121,7 +121,7 @@ def payload(selected, arguments=None):
 
 
 @asynccontextmanager
-async def peer(*, outcome="echo", tls=None):
+async def peer(*, outcome="echo", tls=None, require_client_auth=True):
     # Absence/wrong SDK is a failure, never a passing native/server skip.
     verify_sdk()
     grpc = importlib.import_module("grpc")
@@ -186,7 +186,7 @@ async def peer(*, outcome="echo", tls=None):
             root_certificates=b"\n".join(
                 tls.certificates[name][0].read_bytes() for name in ("client-A", "client-B")
             ),
-            require_client_auth=True,
+            require_client_auth=require_client_auth,
         )
         port = server.add_secure_port("127.0.0.1:0", credentials)
     else:
@@ -704,3 +704,246 @@ def test_captured_catalog_grpc_requires_same_private_activation_gate(enabled):
     else:
         call, parameters = _validate_function_definition(definition, reference, grpc_enabled=True)
         assert call == "grpc" and parameters == definition["with"]
+
+
+def rich_binding():
+    selected = binding()
+    files = descriptor_pb2.FileDescriptorSet.FromString(selected.descriptor_set)
+    request = files.file[-1].message_type[0]
+    request.field.add(name="modes", number=9, type=14, label=3, type_name=".bound.Mode")
+    for number, name, kind in ((10, "raw_map", 12), (11, "mode_map", 14)):
+        entry_name = "RawMapEntry" if kind == 12 else "ModeMapEntry"
+        entry = request.nested_type.add(name=entry_name)
+        entry.options.map_entry = True
+        entry.field.add(name="key", number=1, type=9, label=1)
+        value = entry.field.add(name="value", number=2, type=kind, label=1)
+        if kind == 14:
+            value.type_name = ".bound.Mode"
+        request.field.add(
+            name=name, number=number, type=11, label=3, type_name=".bound.Request." + entry_name
+        )
+    request.field.add(name="raw_list", number=12, type=12, label=3)
+    source = PROTO.replace(
+        b"google.protobuf.Value payload = 8; }",
+        b"google.protobuf.Value payload = 8; repeated Mode modes = 9; "
+        b"map<string,bytes> raw_map = 10; map<string,Mode> mode_map = 11; "
+        b"repeated bytes raw_list = 12; }",
+    )
+    data = files.SerializeToString(deterministic=True)
+    return replace(
+        selected,
+        proto_source=source,
+        proto_sha256=hashlib.sha256(source).hexdigest(),
+        descriptor_set=data,
+        descriptor_sha256=hashlib.sha256(data).hexdigest(),
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"mode": True},
+        {"mode": 1.5},
+        {"modes": [True]},
+        {"modes": [1.5]},
+        {"modeMap": {"key": True}},
+        {"modeMap": {"key": 1.5}},
+        {"rawMap": {"key": "!!!!"}},
+        {"rawList": ["!!!!"]},
+    ],
+)
+async def test_scalar_repeated_and_map_coercions_reject_before_channel_creation(
+    monkeypatch, arguments
+):
+    verify_sdk()
+    grpc = importlib.import_module("grpc")
+    touched = []
+
+    def forbidden(*args, **kwargs):
+        touched.append("channel")
+        raise AssertionError("invalid ProtoJSON must not create a channel")
+
+    monkeypatch.setattr(grpc.aio, "secure_channel", forbidden)
+    monkeypatch.setattr(grpc.aio, "insecure_channel", forbidden)
+    selected = rich_binding()
+    with pytest.raises(ToolError) as failure:
+        await call_grpc(
+            HttpClient(), payload(selected, arguments), registry=GrpcRegistry([selected])
+        )
+    assert failure.value.details == {"reason": "invalid_parameters"} and touched == []
+
+
+@pytest.mark.parametrize("shape", ["scalar", "repeated", "map", "nested", "unused"])
+def test_packed_any_selected_descriptor_closure_rejects_before_sdk_or_channel(monkeypatch, shape):
+    def forbidden():
+        raise AssertionError("descriptor admission is network and SDK free")
+
+    monkeypatch.setattr(grpc_client, "verify_sdk", forbidden)
+    selected = binding()
+    files = descriptor_pb2.FileDescriptorSet.FromString(selected.descriptor_set)
+    file = files.file[-1]
+    request = file.message_type[0]
+    file.dependency.append("google/protobuf/any.proto")
+    files.file.add().ParseFromString(any_pb2.DESCRIPTOR.serialized_pb)
+    declarations = b"google.protobuf.Any packed = 9;"
+    if shape in {"scalar", "repeated"}:
+        request.field.add(
+            name="packed",
+            number=9,
+            type=11,
+            label=3 if shape == "repeated" else 1,
+            type_name=".google.protobuf.Any",
+        )
+        if shape == "repeated":
+            declarations = b"repeated " + declarations
+    elif shape == "map":
+        entry = request.nested_type.add(name="PackedEntry")
+        entry.options.map_entry = True
+        entry.field.add(name="key", number=1, type=9, label=1)
+        entry.field.add(name="value", number=2, type=11, label=1, type_name=".google.protobuf.Any")
+        request.field.add(
+            name="packed", number=9, type=11, label=3, type_name=".bound.Request.PackedEntry"
+        )
+        declarations = b"map<string,google.protobuf.Any> packed = 9;"
+    else:
+        nested = file.message_type.add(name="Packed")
+        nested.field.add(name="value", number=1, type=11, label=1, type_name=".google.protobuf.Any")
+        if shape == "nested":
+            request.field.add(name="packed", number=9, type=11, label=1, type_name=".bound.Packed")
+            declarations = b"Packed packed = 9;"
+        else:
+            declarations = b""
+    source = PROTO.replace(b"package bound;", b'package bound; import "google/protobuf/any.proto";')
+    source = source.replace(
+        b"google.protobuf.Value payload = 8; }",
+        b"google.protobuf.Value payload = 8; " + declarations + b" }",
+    )
+    if shape in {"nested", "unused"}:
+        source += b"message Packed { google.protobuf.Any value = 1; }"
+    raw = files.SerializeToString(deterministic=True)
+    selected = replace(
+        selected,
+        proto_source=source,
+        proto_sha256=hashlib.sha256(source).hexdigest(),
+        descriptor_set=raw,
+        descriptor_sha256=hashlib.sha256(raw).hexdigest(),
+    )
+    if shape == "unused":
+        assert GrpcRegistry([selected]).prepare(payload(selected)).request == b""
+    else:
+        with pytest.raises(ToolError) as failure:
+            GrpcRegistry([selected])
+        assert failure.value.details == {"reason": "invalid_descriptor"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("selected_profile", ["inherited", "foreign"])
+async def test_actual_bearer_uses_only_its_bound_private_ca(tmp_path, selected_profile):
+    from _auth_tls_fixture import auth_tls_receiver
+
+    class Bearer:
+        async def prepare(self, endpoint, *, remaining_timeout):
+            return AuthenticationBinding({"Authorization": "Bearer controlled-test-secret"})
+
+    with auth_tls_receiver(tmp_path) as tls:
+        async with peer(tls=tls, require_client_auth=False) as (selected, http, calls, _entered):
+            original = Bearer()
+            http.authentication, http.verify_tls = original, tls.ca_bundle
+            authentication = original if selected_profile == "inherited" else Bearer()
+            invocation = call_grpc(
+                http,
+                payload(selected, {"choiceText": "retained-ca"}),
+                registry=GrpcRegistry([selected]),
+                authentication=authentication,
+                credential_endpoints=frozenset({selected.endpoint}),
+            )
+            if selected_profile == "inherited":
+                result = await asyncio.wait_for(invocation, 3)
+                assert result == {"choiceText": "retained-ca"} and len(calls) == 1
+                assert calls[0]["metadata"]["authorization"] == "Bearer controlled-test-secret"
+            else:
+                with pytest.raises(ToolError) as failure:
+                    await asyncio.wait_for(invocation, 3)
+                assert failure.value.details == {"reason": "pre_dispatch_failure"}
+                assert calls == []
+            assert http.verify_tls == tls.ca_bundle and http.authentication is original
+
+
+@pytest.mark.asyncio
+async def test_evaluated_invalid_workflow_arguments_have_no_business_intent_or_channel(
+    tmp_path, monkeypatch
+):
+    from open_workflow_agent.catalog import FakeModel
+    from open_workflow_agent.engine import PortableWorkflowEngine
+    from open_workflow_agent.workflow import compile_workflow
+
+    verify_sdk()
+    grpc = importlib.import_module("grpc")
+    selected = rich_binding()
+    config_binding = deployment_binding()
+    config_binding.update(
+        proto_source=selected.proto_source.decode(),
+        proto_sha256=selected.proto_sha256,
+        descriptor_set_base64=base64.b64encode(selected.descriptor_set).decode(),
+        descriptor_sha256=selected.descriptor_sha256,
+    )
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake"},
+            "protocols": {"grpc_bindings": {"fixture-v1": config_binding}},
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    touched = []
+
+    def forbidden(*args, **kwargs):
+        touched.append("channel")
+        raise AssertionError("evaluated invalid request cannot create a channel")
+
+    monkeypatch.setattr(grpc.aio, "secure_channel", forbidden)
+    monkeypatch.setattr(grpc.aio, "insecure_channel", forbidden)
+    parameters = payload(selected, {"modes": "${ .bad }"})
+    plan = compile_workflow(
+        {
+            "document": {
+                "dsl": "1.0.3",
+                "namespace": "grpc",
+                "name": "input-preflight",
+                "version": "1.0.0",
+            },
+            "do": [
+                {
+                    "guard": {
+                        "try": [{"action": {"call": "grpc", "with": parameters}}],
+                        "catch": {"do": [{"handled": {"set": {"caught": True}}}]},
+                    }
+                }
+            ],
+        },
+        grpc_enabled=True,
+    )
+    engine = PortableWorkflowEngine()
+    try:
+        await engine.initialize(services)
+        handle = services.invocations.create(
+            engine=engine.engine_name,
+            session_id=None,
+            user_id=None,
+            workflow_name=plan.name,
+            workflow_version=plan.version,
+            workflow_fingerprint=plan.fingerprint,
+        )
+        result = await engine.invoke(plan, handle, {"bad": [True]})
+        assert result.status == "completed" and result.output == {"caught": True}
+        operations = [
+            json.loads(row[0])["operation"]
+            for row in services.effect_journal.connection.execute(
+                "SELECT payload FROM workflow_effect_invocations WHERE invocation_id=?",
+                (handle.invocation_id,),
+            ).fetchall()
+        ]
+        assert "call:grpc" not in operations and touched == [] and services.model.calls == []
+    finally:
+        await engine.shutdown()
+        services.close()

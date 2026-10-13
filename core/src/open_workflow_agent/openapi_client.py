@@ -41,6 +41,20 @@ MAX_LOCAL_REFERENCES = 32
 _PROFILE = "owa/openapi-operation/v1"
 _METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch", "trace"})
 _HEADER = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
+_TRANSPORT_HEADERS = frozenset(
+    {
+        "host",
+        "content-length",
+        "transfer-encoding",
+        "connection",
+        "keep-alive",
+        "proxy-connection",
+        "te",
+        "trailer",
+        "upgrade",
+        "http2-settings",
+    }
+)
 _ANNOTATIONS = {
     "title",
     "description",
@@ -164,9 +178,21 @@ def _parse(raw: bytes) -> dict[str, Any]:
         raise _failure("invalid_document") from None
 
 
+def _reject_dot_path(value: str) -> None:
+    # HTTPX removes literal dot segments when constructing its request URL.
+    # Admission must never grant one route and dispatch a normalized other.
+    try:
+        path = urlparse(value).path
+    except ValueError:
+        raise _failure("invalid_endpoint") from None
+    if any(segment in {".", ".."} for segment in path.split("/")):
+        raise _failure("normalization_changing_path")
+
+
 def _uri(value: Any) -> str:
     if not isinstance(value, str) or len(value) > 4096 or any(ord(char) < 33 for char in value):
         raise _failure("invalid_endpoint")
+    _reject_dot_path(value)
     try:
         parsed = urlparse(value)
         if (
@@ -378,6 +404,7 @@ def _server(
         url = url.replace("{" + variable + "}", value)
     if "{" in url or "}" in url:
         raise _failure("invalid_server_variable")
+    _reject_dot_path(url)
     endpoint = _uri(urljoin(base, url))
     if urlparse(endpoint).query:
         raise _failure("invalid_server")
@@ -424,6 +451,7 @@ def _parameters(
                 raise _failure("invalid_path_parameter")
             if location == "header" and (
                 not _HEADER.fullmatch(name)
+                or name.lower() in _TRANSPORT_HEADERS
                 or name.lower()
                 in {"authorization", "content-type", "accept", "cookie", "proxy-authorization"}
             ):
@@ -632,6 +660,7 @@ def select_operation(
     if "$self" in document:
         if document["openapi"] != "3.2.0" or not isinstance(document["$self"], str):
             raise _failure("unsupported_base_uri")
+        _reject_dot_path(document["$self"])
         base = _uri(urljoin(base, document["$self"]))
     server = _server(document, item, operation, base)
     parameters = _parameters(refs, item, operation, document["openapi"])
