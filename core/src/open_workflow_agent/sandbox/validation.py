@@ -110,6 +110,10 @@ def _rewrite_executable_runs(value: Any, *, sandbox: SandboxConfig, reference: s
 def _validate_executable_run(
     run: Mapping[str, Any], *, sandbox: SandboxConfig, reference: str
 ) -> dict[str, Any] | None:
+    if not {"script", "shell", "container"}.intersection(run):
+        # Workflow child lifetime and return modes belong to the common
+        # workflow contract; executable-process restrictions do not apply.
+        return None
     if run.get("await", True) is not True or "return" in run:
         raise UnsupportedWorkflowFeature(
             "background execution and run return selection are not enabled",

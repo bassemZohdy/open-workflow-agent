@@ -12,6 +12,15 @@ from open_workflow_agent.sandbox.validation import (
 _IMAGE = "registry.example/worker@sha256:" + ("a" * 64)
 
 
+@pytest.mark.parametrize("mode", [{"await": False}, {"return": "all"}])
+def test_child_workflow_modes_are_not_rejected_as_external_process_modes(mode):
+    run = {
+        "workflow": {"namespace": "child", "name": "worker", "version": "1.0.0"},
+        **mode,
+    }
+    assert _validate_executable_run(run, sandbox=SandboxConfig(), reference="/do/child") is None
+
+
 @pytest.mark.parametrize("option", [{"await": False}, {"return": "all"}])
 def test_sandbox_rewrite_does_not_hide_unsupported_process_modes(option):
     config = SandboxConfig(enabled=True, backend="internal")

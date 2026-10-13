@@ -222,3 +222,21 @@ for the same official validator. First/changed/invalid inputs and custom capture
 registries retain validation. Schema bytes, capability checks, profile matching
 and current trust verification remain unchanged. Corrected fixture selectors
 retain original negative recovery, immutable admission and no-replay assertions.
+
+Correction snapshot `72fa61f` passes 97 root checks with 31 unavailable
+PostgreSQL skips, all 17 selected actual version/process cases per principal,
+the synthetic cancellation regressions, LangGraph memory/fork regressions and
+13 nested/leaf/deadline cases per principal. All five fresh builds pass. The
+next broad run preserves 397 unchanged inputs under `tmp/s2-09-sixth-batch`.
+LangGraph stops with five detached-producer admission failures after 432 passes
+and 199 skips; optional Framework stops with the same five failures after 526
+passes and 283 skips. Root/ADK runs are explicitly interrupted after the common
+guard defect is established; they are not complete successful suites.
+
+The recovery trust check newly exercises the existing sandbox capability gate
+for every original definition. Its executable-run helper incorrectly applies
+process background/return restrictions to standard child workflows. Restricting
+that helper to script/shell/container retains executable restrictions while
+allowing the existing common workflow lifetime semantics. Unit guard cases and
+actual detached-child/process-stop regression cases accompany the correction.
+No timeout, admission-proof requirement or validation gate is weakened.
