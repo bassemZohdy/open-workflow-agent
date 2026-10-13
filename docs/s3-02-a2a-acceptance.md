@@ -69,6 +69,14 @@ approval or other input-required waits using authoritative common evidence.
 | A2A07 | Actual TLS and named bearer/API-key/finite OAuth/mTLS controls. Card-selected origin, redirect, resource/audience and credential policy rejects before preparation/business send when unauthorized. No resolved secrets in card/Task/capabilities/errors/logs/ordinary receipts. Existing inbound bearer scope is preserved; no delegated identity forwarding. |
 | A2A08 | Bounded streaming/resubscription, initial Task and ordered status/artifact alternatives, cross-worker final state, expiry/backpressure/size/malformed/lost-response cleanup and precise optional-method rejection. Push, delegated grants and unqualified transports cannot become capabilities from SDK availability. |
 
+The unchanged official OWS 1.0.3 inline A2A schema includes the seven supported
+methods, including `tasks/list` and `agent/getAuthenticatedExtendedCard`.
+Its `parameters` property is optional, but an object must contain at least one
+property. Empty SDK parameters therefore omit the DSL property rather than
+supplying `{}`. The shared native grid retains seven inline methods and one
+configured-tool call; neither internal normalization nor the SDK expands the
+public schema or enables its separately gated push operations.
+
 The authored inventory currently includes common initial-delivery controls
 (26 SQLite/PostgreSQL nodes), actual native workflow/tool calls (64), official
 SDK inbound socket cases (16), actual process-stop initial delivery (24), and
@@ -110,3 +118,21 @@ Authoring starts in isolated `codex/a2a-integrations` from source
 That source is an implementation baseline, not successful S2-09/S3-01 or new
 A2A evidence. There is no established blocker: the identified gaps have concrete
 implementation steps, with publication waiting on the stated dependency gates.
+
+
+## Retained first combined batch
+
+Frozen source `ad441432` remained unchanged throughout the first batch. Root
+reported 12 failed / 203 passed / 26 skipped; actual ADK reported 12 failed /
+28 passed / 75 skipped; actual LangGraph reported 12 failed / 28 passed /
+76 skipped; optional Agent Framework reported 81 passed / 316 skipped. Five
+independent wheel/sdist builds passed. These results are retained under
+`tmp/s3-02-first-batch` and do not qualify the source or any skipped principal.
+
+Failures exposed fixture setup mismatches (invented configuration field,
+nonexistent child dispatcher start hook, incomplete modern messages, empty
+optional parameters) and stale typed-error/structured-Task assertions. They also
+exposed a real terminal queue settlement early-return defect, now corrected.
+The correction retains owner/input/identity assertions and adds stop-window
+coverage within the existing counts. The full corrected batch remains pending;
+S3-02 and its feature criteria stay unchecked and unqualified.

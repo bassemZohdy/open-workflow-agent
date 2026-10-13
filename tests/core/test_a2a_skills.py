@@ -77,10 +77,15 @@ async def test_declared_skills_are_advertised_and_routed(tmp_path) -> None:
             assert card["skills"][1]["name"] == "Skill B"
 
             first = await _send(client, "a")
-            assert first.json()["result"]["message"]["parts"][0]["text"] == '{"skill": "a"}'
+            first_task = first.json()["result"]["task"]
+            assert first_task["status"]["state"] == "TASK_STATE_COMPLETED"
+            assert first_task["artifacts"][0]["parts"][0]["data"] == {"skill": "a"}
 
             second = await _send(client, "b")
-            assert second.json()["result"]["message"]["parts"][0]["text"] == '{"skill": "b"}'
+            second_task = second.json()["result"]["task"]
+            assert second_task["status"]["state"] == "TASK_STATE_COMPLETED"
+            assert second_task["artifacts"][0]["parts"][0]["data"] == {"skill": "b"}
+            assert first_task["id"] != second_task["id"]
 
 
 @pytest.mark.asyncio

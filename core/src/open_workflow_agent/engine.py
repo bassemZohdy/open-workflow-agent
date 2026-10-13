@@ -1208,6 +1208,11 @@ class WorkflowEngine:
         if status not in INVOCATION_STATES:
             raise ValueError(f"unsupported invocation status: {status}")
         if handle.status in TERMINAL_INVOCATION_STATES:
+            # The executor may have committed its terminal result already.
+            # Retire the admitted delivery while this worker still owns it;
+            # otherwise successful work needlessly occupies queue capacity.
+            if handle.status != "cancelled":
+                self.services.initial_deliveries.settle(handle)
             return self._stored_result(handle)
         executor = getattr(self, "executor", None)
         try:

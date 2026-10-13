@@ -128,7 +128,7 @@ SendStreamingMessage
 SubscribeToTask
 ```
 
-Any other wire method — including `SendStreamingMessage`, `SubscribeToTask`, and the push-notification config operations — is rejected before any network call. Open Workflow DSL call values such as `tasks/list` and `agent/getAuthenticatedExtendedCard` are translated at the `RuntimeServices.call_protocol()` boundary onto the wire methods above; DSL values whose translated wire operation is outside this set fail closed.
+Any other wire method, including push-notification configuration operations, is rejected before any network call. The unchanged official Open Workflow 1.0.3 inline A2A schema includes `tasks/list` and `agent/getAuthenticatedExtendedCard` alongside send, stream, get, cancel and resubscribe. The optional `parameters` property cannot be an empty object; no-argument requests omit it. Configured agent tools use the same common SDK service. Internal normalization does not expand the official schema or enable separately gated push operations.
 
 Legacy v0.3 discovery paths/method names remain unsupported on the A2A wire endpoint.
 

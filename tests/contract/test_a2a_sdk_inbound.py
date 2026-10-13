@@ -69,7 +69,6 @@ async def test_official_sdk_client_discovers_sends_and_reads_native_task(
     config = RuntimeConfig.model_validate(
         {
             "model": {"provider": "fake"},
-            "engine": {"name": engine_name},
             "persistence": {"datasource": datasource},
             "workflow": {
                 "definition": {

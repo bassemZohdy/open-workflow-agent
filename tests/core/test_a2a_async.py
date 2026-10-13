@@ -301,7 +301,9 @@ async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
             )
             assert response.status_code == 200
             body = response.json()["result"]
-            assert body["message"]["parts"][0]["text"] == '{"resumed": true}'
+            assert body["task"]["id"] == handle.invocation_id
+            assert body["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
+            assert body["task"]["artifacts"][0]["parts"][0]["data"] == {"resumed": True}
 
             final = await _poll_task_state(client, handle.invocation_id, "TASK_STATE_COMPLETED")
             assert final["id"] == handle.invocation_id

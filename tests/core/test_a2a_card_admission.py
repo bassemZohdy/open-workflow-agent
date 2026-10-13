@@ -18,7 +18,12 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity, ReceiptDependency, effect_request_digest
 from open_workflow_agent.engine import PortableWorkflowEngine
-from open_workflow_agent.errors import InvocationStateConflict, ToolError, WorkflowExecutionError
+from open_workflow_agent.errors import (
+    InvocationStateConflict,
+    InvocationStateError,
+    ToolError,
+    WorkflowExecutionError,
+)
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.security import ProfileAuthentication, SecurityConfig
 from open_workflow_agent.services import RuntimeServices
@@ -225,11 +230,60 @@ async def test_missing_or_changed_native_policy_dependency_fails_without_new_fet
         )
     connection.commit()
     before = _rows(services, identity)
+    invocation_before = connection.execute(
+        "SELECT payload,status FROM invocations WHERE invocation_id=?", (handle.invocation_id,)
+    ).fetchone()
+    ownership_before = connection.execute(
+        "SELECT * FROM invocation_ownership WHERE invocation_id=?", (handle.invocation_id,)
+    ).fetchone()
+    input_before = connection.execute(
+        "SELECT fingerprint,payload FROM invocation_inputs WHERE invocation_id=?",
+        (handle.invocation_id,),
+    ).fetchone()
+    definition_before = connection.execute(
+        "SELECT * FROM recovery_invocation_definitions WHERE invocation_id=?",
+        (handle.invocation_id,),
+    ).fetchone()
     with pytest.raises(WorkflowExecutionError):
         dependency.verify(services.effect_journal)
-    with pytest.raises(WorkflowExecutionError):
-        await _prepare(admitted_parent)
-    assert len(calls) == 1 and _rows(services, identity) == before
+    if damage in {"input", "definition"}:
+        with pytest.raises(InvocationStateError) as rejected:
+            await _prepare(admitted_parent)
+        assert rejected.value.details == {
+            "reason": "input_changed" if damage == "input" else "binding_missing"
+        }
+    else:
+        with pytest.raises(WorkflowExecutionError):
+            await _prepare(admitted_parent)
+    assert [request.method for request in calls] == ["GET"]
+    assert _rows(services, identity) == before
+    assert services.effect_journal.get(identity) is None and services.model.calls == []
+    assert (
+        connection.execute(
+            "SELECT payload,status FROM invocations WHERE invocation_id=?", (handle.invocation_id,)
+        ).fetchone()
+        == invocation_before
+    )
+    assert (
+        connection.execute(
+            "SELECT * FROM invocation_ownership WHERE invocation_id=?", (handle.invocation_id,)
+        ).fetchone()
+        == ownership_before
+    )
+    assert (
+        connection.execute(
+            "SELECT fingerprint,payload FROM invocation_inputs WHERE invocation_id=?",
+            (handle.invocation_id,),
+        ).fetchone()
+        == input_before
+    )
+    assert (
+        connection.execute(
+            "SELECT * FROM recovery_invocation_definitions WHERE invocation_id=?",
+            (handle.invocation_id,),
+        ).fetchone()
+        == definition_before
+    )
 
 
 @pytest.mark.asyncio

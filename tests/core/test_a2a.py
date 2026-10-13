@@ -165,7 +165,7 @@ async def test_a2a_v1_version_is_required_and_wrong_version_is_rejected(tmp_path
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             missing = await client.post("/a2a", json=payload)
             assert missing.json()["error"]["code"] == -32009
-            assert missing.json()["error"]["data"]["supportedVersion"] == "1.0"
+            assert missing.json()["error"]["data"][0]["metadata"]["supportedVersion"] == "1.0"
 
             legacy = await client.post("/a2a", headers={"A2A-Version": "0.3"}, json=payload)
             assert legacy.json()["error"]["code"] == -32009
@@ -204,7 +204,8 @@ async def test_jsonrpc_rejects_legacy_method_and_legacy_part_shape(tmp_path) -> 
                 },
             )
             assert legacy_part.json()["error"]["code"] == -32602
-            assert "legacy A2A part.kind" in legacy_part.json()["error"]["message"]
+            assert legacy_part.json()["error"]["message"] == "SendMessage parameters are invalid"
+            assert legacy_part.json()["error"]["data"][0]["reason"] == "INVALID_PARAMS"
 
 
 @pytest.mark.asyncio
@@ -391,9 +392,14 @@ def test_a2a_text_output_and_response_helpers():
     assert response.status_code == 200
     assert httpx.Response(200, content=response.body).json()["result"] == {"ok": True}
     error = _jsonrpc_error(1, JsonRpcError(-1, "bad", details={"safe": True}, http_status=422))
-    assert httpx.Response(error.status_code, content=error.body).json()["error"]["data"] == {
-        "safe": True
-    }
+    assert httpx.Response(error.status_code, content=error.body).json()["error"]["data"] == [
+        {
+            "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+            "reason": "INTERNAL_ERROR",
+            "domain": "open-workflow-agent",
+            "metadata": {"safe": "True"},
+        }
+    ]
     http_response = _http_json_response({"ok": True}, status_code=201)
     assert http_response.status_code == 201
     assert http_response.media_type == A2A_HTTP_JSON_MEDIA_TYPE

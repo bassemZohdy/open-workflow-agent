@@ -88,6 +88,31 @@ async def test_ack_boundary_commits_archive_input_identity_and_queue_without_bus
         assert len(model.calls) == 1 and services.initial_deliveries.get(handle).status == "settled"
         again = await engine.dispatch_initial_delivery(handle, lambda handle, plan: None)
         assert again == result and len(model.calls) == 1
+
+        # A stop between the terminal commit and queue cleanup must preserve
+        # the first result and allow cleanup without repeating model work.
+        stopped_handle = new_handle(services, plan)
+        await engine.prepare_initial_delivery(plan, stopped_handle, {}, skill_id=None)
+
+        class DeliveryStopped(BaseException):
+            pass
+
+        def stop_before_cleanup(current):
+            assert current.status == "completed"
+            raise DeliveryStopped
+
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(services.initial_deliveries, "settle", stop_before_cleanup)
+            with pytest.raises(DeliveryStopped):
+                await engine.dispatch_initial_delivery(stopped_handle, lambda handle, plan: None)
+        terminal = services.invocations.get(stopped_handle.invocation_id)
+        assert terminal.status == "completed"
+        assert services.initial_deliveries.get(terminal).status == "ready"
+        assert len(model.calls) == 2
+        recovered = await engine.dispatch_initial_delivery(terminal, lambda handle, plan: None)
+        assert recovered.status == "completed" and recovered.output == {"answer": "original"}
+        assert services.initial_deliveries.get(terminal).status == "settled"
+        assert len(model.calls) == 2
     finally:
         await engine.shutdown()
 

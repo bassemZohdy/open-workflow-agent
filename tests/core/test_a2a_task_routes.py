@@ -9,6 +9,12 @@ from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
 A2A_HEADERS = {"A2A-Version": "1.0"}
+TASK_NOT_FOUND_INFO = {
+    "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+    "reason": "TASK_NOT_FOUND",
+    "domain": "open-workflow-agent",
+    "metadata": {},
+}
 
 
 def _runtime(tmp_path, *, transport: str):
@@ -113,7 +119,7 @@ def test_jsonrpc_task_not_found_uses_official_error_code_and_request_id(tmp_path
     assert response.json() == {
         "jsonrpc": "2.0",
         "id": "missing-1",
-        "error": {"code": -32001, "message": "task not found"},
+        "error": {"code": -32001, "message": "task not found", "data": [TASK_NOT_FOUND_INFO]},
     }
 
 
@@ -242,6 +248,7 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                     assert response.json()["error"] == {
                         "code": -32001,
                         "message": "task not found",
+                        "data": [TASK_NOT_FOUND_INFO],
                     }
                 resume = bob_client.post(
                     "/a2a",
@@ -252,6 +259,8 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                         "method": "SendMessage",
                         "params": {
                             "message": {
+                                "messageId": "foreign-resume",
+                                "role": "ROLE_USER",
                                 "taskId": handle.invocation_id,
                                 "parts": [{"text": "continue"}],
                             }
@@ -261,6 +270,7 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                 assert resume.json()["error"] == {
                     "code": -32001,
                     "message": "task not found",
+                    "data": [TASK_NOT_FOUND_INFO],
                 }
             else:
                 get_response = bob_client.get(
@@ -277,6 +287,8 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                     headers=bob_headers,
                     json={
                         "message": {
+                            "messageId": "foreign-resume",
+                            "role": "ROLE_USER",
                             "taskId": handle.invocation_id,
                             "parts": [{"text": "continue"}],
                         }
@@ -287,7 +299,13 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                 assert subscribe_response.status_code == 404
                 assert resume.status_code == 404
                 assert get_response.json() == {
-                    "error": {"code": "task_not_found", "message": "task not found"}
+                    "error": {
+                        "code": 5,
+                        "message": "task not found",
+                        "details": [
+                            {**TASK_NOT_FOUND_INFO, "metadata": {"owaCode": "task_not_found"}}
+                        ],
+                    }
                 }
                 assert cancel_response.json() == get_response.json()
                 assert subscribe_response.json() == get_response.json()
@@ -315,7 +333,11 @@ def test_authenticated_a2a_start_persists_creator_identity(tmp_path, monkeypatch
                     "id": "start-1",
                     "method": "SendMessage",
                     "params": {
-                        "message": {"parts": [{"text": "hello"}]},
+                        "message": {
+                            "messageId": "start-message",
+                            "role": "ROLE_USER",
+                            "parts": [{"text": "hello"}],
+                        },
                         "configuration": {"returnImmediately": True},
                     },
                 },

@@ -81,7 +81,7 @@ def definition(endpoint, method="message/send"):
                     "with": {
                         "server": endpoint,
                         "method": method,
-                        "parameters": copy.deepcopy(PARAMS[method]),
+                        **({"parameters": copy.deepcopy(PARAMS[method])} if PARAMS[method] else {}),
                     },
                 }
             }

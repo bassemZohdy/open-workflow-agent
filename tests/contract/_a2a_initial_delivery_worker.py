@@ -134,11 +134,12 @@ async def run(directory: Path, mode: str):
     _clock(patches, [1000.0 if mode == "start" else 1010.0])
     os.environ["OWA_A2A_INITIAL_TOKEN"] = TOKEN
 
-    async def no_delivery(_dispatcher):
+    async def no_delivery(_dispatcher, *args, **kwargs):
         return None
 
-    for cls in (TimerDispatcher, ChildDispatcher, ChildWaitDispatcher):
-        patches.setattr(cls, "start", no_delivery)
+    patches.setattr(TimerDispatcher, "start", no_delivery)
+    for cls in (ChildDispatcher, ChildWaitDispatcher):
+        patches.setattr(cls, "tick", no_delivery)
     if mode == "recover":
 
         async def manual_delivery(dispatcher, authorize):
@@ -174,7 +175,6 @@ async def run(directory: Path, mode: str):
     assert backend != "postgresql" or datasource
     config = RuntimeConfig.model_validate(
         {
-            "engine": {"name": engine_name},
             "model": {"provider": "fake"},
             "persistence": {"datasource": datasource},
             "workflow": {"definition": source},
