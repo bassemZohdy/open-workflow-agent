@@ -117,6 +117,18 @@ on:
       - "tests/ci/test_protected_approval_ci_selection.py"
       - "tests/ci/test_execution_authority_ci_selection.py"
       - "core/src/open_workflow_agent/agent_roles.py"
+      - "core/src/open_workflow_agent/bounded_memory.py"
+      - "core/src/open_workflow_agent/memory.py"
+      - "core/src/open_workflow_agent/model_responses.py"
+      - "core/src/open_workflow_agent/catalog.py"
+      - "core/src/open_workflow_agent/event_transport.py"
+      - "tests/core/test_bounded_memory.py"
+      - "tests/core/test_provider_model_spi.py"
+      - "tests/core/test_provider_service_composition.py"
+      - "tests/core/test_event_transport.py"
+      - "tests/contract/test_selected_adapter*.py"
+      - "tests/contract/_selected_adapter*.py"
+      - "tests/ci/test_selected_adapter_ci_selection.py"
       - "resources/patterns/**"
       - "tests/core/test_agent_role*.py"
       - "tests/contract/*agent_pattern*.py"
@@ -302,6 +314,10 @@ jobs:
             tests/core/test_authenticated_catalog_metadata.py \
             tests/core/test_agent_roles.py \
             tests/core/test_agent_role_boundaries.py \
+            tests/core/test_bounded_memory.py \
+            tests/core/test_provider_model_spi.py \
+            tests/core/test_provider_service_composition.py \
+            tests/core/test_event_transport.py \
             tests/core/test_timer_store.py \
             tests/core/test_child_workflow_budgets.py \
             tests/core/test_child_delivery_guards.py \
@@ -668,6 +684,8 @@ jobs:
             ../../tests/contract/test_execution_authority_process_recovery.py \
             ../../tests/contract/test_agent_patterns.py \
             ../../tests/contract/test_agent_pattern_process_recovery.py \
+            ../../tests/contract/test_selected_adapter_contracts.py \
+            ../../tests/contract/test_selected_adapter_process_recovery.py \
             ../../tests/core/test_executable_source_admission.py \
             ../../tests/contract/test_executable_source_calls.py \
             ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql
@@ -718,6 +736,8 @@ jobs:
             ../../tests/contract/test_execution_authority_process_recovery.py \
             ../../tests/contract/test_agent_patterns.py \
             ../../tests/contract/test_agent_pattern_process_recovery.py \
+            ../../tests/contract/test_selected_adapter_contracts.py \
+            ../../tests/contract/test_selected_adapter_process_recovery.py \
             ../../tests/core/test_executable_source_admission.py \
             ../../tests/contract/test_executable_source_calls.py \
             ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql

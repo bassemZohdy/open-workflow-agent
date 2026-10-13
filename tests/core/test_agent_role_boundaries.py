@@ -27,9 +27,24 @@ from open_workflow_agent.execution_authority import (
 from open_workflow_agent.recovery_definitions import PROFILE
 from open_workflow_agent.security import static_principal
 from open_workflow_agent.services import RuntimeServices
+from open_workflow_agent.timer_dispatcher import TimerDispatcher
 from open_workflow_agent.workflow import compile_workflow
 
 pytestmark = pytest.mark.usefixtures("explicit_workflow_delivery")
+
+
+@pytest.fixture
+def explicit_workflow_delivery(monkeypatch):
+    """This common-unit module drives its own invokes and approval resumes.
+
+    Keep unrelated PostgreSQL timer rows out of its model/cardinality oracle;
+    this fixture does not qualify automatic timer delivery.
+    """
+
+    async def no_automatic_delivery(_dispatcher):
+        return None
+
+    monkeypatch.setattr(TimerDispatcher, "start", no_automatic_delivery)
 
 
 @dataclass(repr=False)

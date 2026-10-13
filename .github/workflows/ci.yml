@@ -52,6 +52,10 @@ jobs:
           tests/core/test_action_progress_ownership.py
           tests/core/test_native_write_fence_storage.py
           tests/core/test_native_sqlite_inspection.py
+          tests/core/test_bounded_memory.py
+          tests/core/test_provider_model_spi.py
+          tests/core/test_provider_service_composition.py
+          tests/core/test_event_transport.py
           tests/contract/test_jq_portability.py
           tests/contract/test_data_pipeline.py
           tests/contract/test_scoped_flow.py
@@ -87,6 +91,8 @@ jobs:
           ../../tests/contract/test_reusable_definitions.py
           ../../tests/contract/test_catalog_bindings.py
           ../../tests/contract/test_schema_resources.py
+          ../../tests/contract/test_selected_adapter_contracts.py
+          ../../tests/contract/test_selected_adapter_process_recovery.py
 
   windows-operation-adapters:
     name: Windows operation adapters and supervised process recovery

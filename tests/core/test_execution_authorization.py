@@ -132,7 +132,10 @@ def authority_tree(tmp_path, request):
     try:
         yield services, archive, store, plan, handle, authority, identity
     finally:
-        services.execution_ownership.release(lease)
+        try:
+            services.execution_ownership.release(lease)
+        except InvocationStateConflict:
+            pass  # The expiry/takeover cases already deliberately released this generation.
         # Keep corrupt proof evidence, but settle only this fixture's queued
         # work so a later PostgreSQL dispatcher cannot claim its schedule.
         for invocation_id in services._authority_fixture_invocations:

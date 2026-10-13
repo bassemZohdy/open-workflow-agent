@@ -308,15 +308,22 @@ def _known_receipt(
     saved = _bounded(connection, "workflow_effects", "identity", identity.key, limit=limit)
     if type(saved) is not dict:
         raise _invalid("authorization_business_receipt_missing")
-    if saved.get("child_invocation") is not None:
-        from .effects import ChildInvocationDependency
+    try:
+        if saved.get("child_invocation") is not None:
+            from .effects import ChildInvocationDependency
 
-        saved["child_invocation"] = ChildInvocationDependency.from_value(saved["child_invocation"])
-    if saved.get("external_outcome") is not None:
-        from .external_recovery import ExternalOutcomeDependency
+            saved["child_invocation"] = ChildInvocationDependency.from_value(
+                saved["child_invocation"]
+            )
+        if saved.get("external_outcome") is not None:
+            from .external_recovery import ExternalOutcomeDependency
 
-        saved["external_outcome"] = ExternalOutcomeDependency.from_value(saved["external_outcome"])
-    return EffectReceipt(**saved)
+            saved["external_outcome"] = ExternalOutcomeDependency.from_value(
+                saved["external_outcome"]
+            )
+        return EffectReceipt(**saved)
+    except (TypeError, ValueError, KeyError):
+        raise _invalid("authorization_business_receipt_invalid") from None
 
 
 def _record(
@@ -1141,9 +1148,15 @@ class ExecutionAuthorizationStore:
     def intent_receipt(self, identity: EffectIdentity) -> AuthorizationDecision | None:
         handle = self.invocations.get(identity.invocation_id)
         if handle is None:
+            if self._unbound_legacy(identity):
+                return None
             raise _invalid("authorization_invocation_missing")
         authority = _read_authority(self.connection, self.invocations, handle)
-        if authority is None or not authority["policy"]["enabled"]:
+        if authority is None:
+            if _authority_hint(self.connection, identity):
+                raise _invalid("authority_binding_missing")
+            return None
+        if not authority["policy"]["enabled"]:
             return None
         receipt = _known_receipt(
             self.connection, identity, limit=authority["policy"]["max_business_receipt_bytes"]

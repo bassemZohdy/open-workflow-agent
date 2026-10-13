@@ -2,15 +2,23 @@
 
 from __future__ import annotations
 
+import asyncio
+import copy
+import inspect
+import json
 import math
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from .credential_guard import credential_scope
-from .errors import ModelError, OwaError, ToolError
+from .errors import ModelError, OwaError, ToolError, _ModelOutcomeUncertain
+from .model_responses import bounded_model_json, completion_message
 from .security import SecretReference, resolve_secret
+
+if TYPE_CHECKING:
+    from .config import ProviderBoundsConfig
 
 
 class Model(Protocol):
@@ -44,6 +52,109 @@ class FakeModel:
         return {"response": prompt}
 
 
+def _completion_due(seconds: float, *, started: float | None = None) -> float:
+    from .workflow import _ACTIVE_TIMEOUTS
+
+    due = (started if started is not None else asyncio.get_running_loop().time()) + seconds
+    for scope in _ACTIVE_TIMEOUTS.get():
+        original_due = scope.deadline.when()
+        if original_due is not None:
+            due = min(due, original_due)
+    return due
+
+
+class BoundedModel:
+    """Opt-in finite guard over a trusted common Model implementation."""
+
+    def __init__(self, model: Model, bounds: ProviderBoundsConfig) -> None:
+        from .config import ProviderBoundsConfig
+
+        self._model = model
+        self.bounds = ProviderBoundsConfig.model_validate(bounds.model_dump())
+
+    @property
+    def calls(self) -> Any:
+        # Preserve deterministic injected-model counters without copying them.
+        return getattr(self._model, "calls", None)
+
+    async def complete(self, prompt: Any, *, options: dict[str, Any] | None = None) -> Any:
+        due = _completion_due(self.bounds.timeout_seconds)
+        bounded_model_json(prompt, limit=self.bounds.max_input_bytes)
+        bounded_model_json(options or {}, limit=65_536)
+        from .config import MODEL_CREDENTIAL_OPTIONS
+
+        if set(options or {}) & MODEL_CREDENTIAL_OPTIONS:
+            raise ModelError("model credential overrides are forbidden")
+        attempted = False
+        returned = False
+        with credential_scope() as guard:
+            try:
+                if asyncio.get_running_loop().time() >= due:
+                    raise TimeoutError
+                async with asyncio.timeout_at(due):
+                    pending = self._model.complete(prompt, options=options)
+                    if not inspect.isawaitable(pending):
+                        raise ModelError("common model async interface is invalid")
+                    attempted = True
+                    result = await pending
+                    returned = True
+                    encoded = bounded_model_json(result, limit=self.bounds.max_output_bytes)
+                    if isinstance(result, dict) and {"tool_call", "tool_calls"}.intersection(
+                        result
+                    ):
+                        if {"tool_call", "tool_calls"} <= set(result):
+                            raise ModelError("common model tool request is ambiguous")
+                        requests = result.get("tool_calls", [result.get("tool_call")])
+                        if (
+                            type(requests) is not list
+                            or not requests
+                            or len(requests) > self.bounds.max_tool_calls
+                        ):
+                            raise ModelError("common model tool request count is invalid")
+                        for request in requests:
+                            if (
+                                type(request) is not dict
+                                or set(request) - {"name", "arguments", "input"}
+                                or type(request.get("name")) is not str
+                                or not request["name"]
+                                or len(request["name"].encode("utf-8")) > 128
+                                or {"arguments", "input"} <= set(request)
+                            ):
+                                raise ModelError("common model tool request is invalid")
+                            if "arguments" in request and type(request["arguments"]) is not dict:
+                                raise ModelError("common model tool arguments require an object")
+                            bounded_model_json(
+                                request.get("arguments", request.get("input", {})),
+                                limit=self.bounds.max_argument_bytes,
+                            )
+                    if asyncio.get_running_loop().time() >= due:
+                        raise TimeoutError
+                    return guard.project(json.loads(encoded))
+            except TimeoutError:
+                if attempted:
+                    raise _ModelOutcomeUncertain(
+                        "model outcome remains unresolved", details={"reason": "timeout"}
+                    ) from None
+                raise ModelError("model preparation deadline expired") from None
+            except OwaError as error:
+                if returned:
+                    raise _ModelOutcomeUncertain(
+                        "model returned an unusable outcome", details={"reason": "invalid_response"}
+                    ) from None
+                guard.error(error)
+                raise
+            except Exception:
+                if returned:
+                    raise _ModelOutcomeUncertain(
+                        "model returned an unusable outcome", details={"reason": "invalid_response"}
+                    ) from None
+                if attempted:
+                    raise _ModelOutcomeUncertain(
+                        "model outcome remains unresolved", details={"reason": "transport_failure"}
+                    ) from None
+                raise ModelError("model completion failed") from None
+
+
 class LiteLLMModel:
     """Optional provider adapter; importing LiteLLM is deferred until invocation."""
 
@@ -55,14 +166,82 @@ class LiteLLMModel:
         options: dict[str, Any] | None = None,
         credentials: Mapping[str, SecretReference] | None = None,
         authorize_credential: Callable[[str], Awaitable[None]] | None = None,
+        bounds: ProviderBoundsConfig | None = None,
     ) -> None:
         self.name = name
         self.temperature = temperature
-        self.options = options or {}
-        self._credentials = MappingProxyType(dict(credentials or {}))
+        from .config import ProviderBoundsConfig
+
+        self.options = copy.deepcopy(options or {})
+        self._credentials = MappingProxyType(
+            {
+                key: SecretReference.model_validate(reference.model_dump())
+                for key, reference in (credentials or {}).items()
+            }
+        )
         self._authorize_credential = authorize_credential
+        self.bounds = ProviderBoundsConfig.model_validate(
+            bounds.model_dump() if bounds is not None else {}
+        )
 
     async def complete(self, prompt: Any, *, options: dict[str, Any] | None = None) -> Any:
+        loop = asyncio.get_running_loop()
+        started = loop.time()
+        due = _completion_due(self.bounds.timeout_seconds, started=started)
+        bounded_model_json(prompt, limit=self.bounds.max_input_bytes)
+        bounded_model_json(options or {}, limit=65_536)
+        from .config import MODEL_CREDENTIAL_OPTIONS
+
+        if set(options or {}) & (
+            MODEL_CREDENTIAL_OPTIONS
+            | {
+                "model",
+                "messages",
+                "temperature",
+                "api_base",
+                "base_url",
+                "client",
+                "http_client",
+                "tools",
+                "headers",
+                "extra_headers",
+            }
+        ):
+            raise ModelError("model credential/routing overrides are forbidden")
+        kwargs = {**self.options, **(options or {})}
+        bounded_model_json(kwargs, limit=262_144)
+        if set(kwargs) & (
+            MODEL_CREDENTIAL_OPTIONS | {"model", "messages", "temperature", "client", "http_client"}
+        ):
+            raise ModelError("provider identity/options are outside its deployment binding")
+        if (
+            kwargs.get("stream", False) is not False
+            or type(kwargs.get("num_retries", 0)) is not int
+            or kwargs.get("num_retries", 0) != 0
+            or type(kwargs.get("max_retries", 0)) is not int
+            or kwargs.get("max_retries", 0) != 0
+            or type(kwargs.get("n", 1)) is not int
+            or kwargs.get("n", 1) != 1
+            or any(
+                key in kwargs
+                for key in (
+                    "fallbacks",
+                    "context_window_fallbacks",
+                    "content_policy_fallbacks",
+                    "stream_options",
+                )
+            )
+        ):
+            raise ModelError("provider streams/retries/fallbacks are outside the finite profile")
+        timeout = kwargs.pop("timeout", self.bounds.timeout_seconds)
+        if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
+            raise ModelError("provider timeout is invalid")
+        timeout = min(timeout, self.bounds.timeout_seconds)
+        due = min(due, started + timeout)
+        # Preserve the enclosing common task/workflow deadline, including time
+        # spent preparing/importing the provider before its first awaited send.
+        kwargs["num_retries"] = 0
+        kwargs["max_retries"] = 0
         try:
             from litellm import acompletion  # type: ignore[import-not-found]
         except ImportError as exc:
@@ -73,30 +252,67 @@ class LiteLLMModel:
             prompt if isinstance(prompt, list) else [{"role": "user", "content": str(prompt)}]
         )
         with credential_scope() as guard:
+            attempted = False
+            returned = False
             try:
-                from .config import MODEL_CREDENTIAL_OPTIONS
-
-                if set(options or {}) & MODEL_CREDENTIAL_OPTIONS:
-                    raise ModelError("model credential overrides are forbidden")
-                if self._authorize_credential is not None:
-                    for reference in self._credentials.values():
-                        await self._authorize_credential(reference.from_env)
-                selected = {
-                    key: resolve_secret(reference) for key, reference in self._credentials.items()
-                }
-                response = await acompletion(
-                    model=self.name,
-                    messages=messages,
-                    temperature=self.temperature,
-                    **self.options,
-                    **(options or {}),
-                    **selected,
-                )
-                return guard.project(response.choices[0].message.content)
+                if loop.time() >= due:
+                    raise TimeoutError
+                async with asyncio.timeout_at(due):
+                    if self._authorize_credential is not None:
+                        for reference in self._credentials.values():
+                            await self._authorize_credential(reference.from_env)
+                    selected = {
+                        key: resolve_secret(reference)
+                        for key, reference in self._credentials.items()
+                    }
+                    remaining = due - loop.time()
+                    if remaining <= 0:
+                        raise TimeoutError
+                    pending = acompletion(
+                        model=self.name,
+                        messages=messages,
+                        temperature=self.temperature,
+                        timeout=remaining,
+                        **kwargs,
+                        **selected,
+                    )
+                    if not inspect.isawaitable(pending):
+                        raise ModelError("provider async interface is invalid")
+                    attempted = True
+                    response = await pending
+                    returned = True
+                    result = completion_message(
+                        response,
+                        max_output_bytes=self.bounds.max_output_bytes,
+                        max_tool_calls=self.bounds.max_tool_calls,
+                        max_argument_bytes=self.bounds.max_argument_bytes,
+                    )
+                    if loop.time() >= due:
+                        raise TimeoutError
+                    return guard.project(result)
+            except TimeoutError:
+                if attempted:
+                    raise _ModelOutcomeUncertain(
+                        "model provider outcome remains unresolved", details={"reason": "timeout"}
+                    ) from None
+                raise ModelError("model preparation deadline expired") from None
             except OwaError as error:
+                if returned:
+                    raise _ModelOutcomeUncertain(
+                        "model returned an unusable outcome", details={"reason": "invalid_response"}
+                    ) from None
                 guard.error(error)
                 raise
             except Exception:
+                if returned:
+                    raise _ModelOutcomeUncertain(
+                        "model returned an unusable outcome", details={"reason": "invalid_response"}
+                    ) from None
+                if attempted:
+                    raise _ModelOutcomeUncertain(
+                        "model provider outcome remains unresolved",
+                        details={"reason": "transport_failure"},
+                    ) from None
                 raise ModelError("model completion failed") from None
 
 

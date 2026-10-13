@@ -20,7 +20,8 @@ from .a2a_client import A2ACardSelection
 from .agent_roles import RoleBindings, authorize_role_action
 from .approval_dispatcher import ApprovalExpiryDispatcher
 from .approvals import ApprovalEventBus, ApprovalService
-from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
+from .bounded_memory import BoundedMemoryService
+from .catalog import BoundedModel, FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .child_waits import ChildWaitStore
 from .children import ChildWorkflowStore
 from .config import ExternalCatalogConfig, RuntimeConfig
@@ -28,6 +29,7 @@ from .durable_events import DurableEventBus
 from .effects import EffectIdentity, EffectJournal, effect_request_digest
 from .errors import ConfigurationError, UnsupportedWorkflowFeature
 from .event_store import EventStore, EventStoreLimits
+from .event_transport import EmbeddedEventTransport
 from .events import EventBus, InMemoryEventBus
 from .execution_authorization import ExecutionAuthorizationStore
 from .execution_context import ExecutionActionContext, action_scope, current_action_context
@@ -87,6 +89,7 @@ class RuntimeServices:
         database_root: str | Path | None = None,
         event_sink: EventSink | None = None,
         event_bus: EventBus | None = None,
+        embedded_event_transport: bool = False,
         trusted_http_receivers: tuple[TrustedHttpReceiver, ...] = (),
         recovery_profile_provider: Callable[[str], dict[str, Any]] | None = None,
     ) -> None:
@@ -100,6 +103,21 @@ class RuntimeServices:
         # It cannot replace installed artifact, SDK, backend or trust evidence.
         self._recovery_profile_provider = recovery_profile_provider
         self.config = config
+        if type(embedded_event_transport) is not bool or (
+            embedded_event_transport
+            and (event_bus is not None or config.events.backend == "memory")
+        ):
+            raise ConfigurationError(
+                "embedded transport requires the actual durable common event store"
+            )
+        self._bounded_memory = config.memory.bounds is not None and config.memory.bounds.enabled
+        if self._bounded_memory and (
+            config.memory.enabled is False or "database" in config.memory.model_fields_set
+        ):
+            raise ConfigurationError(
+                "bounded memory requires the common persistence connection "
+                "without a legacy memory database override"
+            )
         if config.sandbox.background.enabled:
             candidate = (
                 Path(database_root) / "runtime.sqlite3"
@@ -141,8 +159,11 @@ class RuntimeServices:
                 options=config.model.options,
                 credentials=config.model.credentials,
                 authorize_credential=self.authorize_model_credential,
+                bounds=config.model.bounds,
             )
         )
+        if config.model.bounds is not None and not isinstance(self.model, LiteLLMModel):
+            self.model = BoundedModel(self.model, config.model.bounds)
         self.agent_instruction = config.agent.instruction
         self.database_root = Path(database_root) if database_root else None
         self.datasource = resolve_datasource(config.persistence.datasource)
@@ -248,6 +269,11 @@ class RuntimeServices:
             raw_event_bus = DurableEventBus(
                 self.event_store, poll_interval_seconds=config.events.poll_interval_seconds
             )
+        self.event_transport = (
+            EmbeddedEventTransport(self.event_store)
+            if embedded_event_transport and self.event_store is not None
+            else None
+        )
         self.approvals = ApprovalService(
             invocation_path,
             enabled=config.approvals.enabled,
@@ -288,7 +314,11 @@ class RuntimeServices:
             and (root is not None or config.memory.enabled is True or config.persistence.datasource)
             else None
         )
-        self.memory = MemoryService(str(memory_database) if memory_database else None)
+        self.memory: MemoryService = (
+            BoundedMemoryService(self.invocations, config.memory.bounds)
+            if self._bounded_memory and config.memory.bounds is not None
+            else MemoryService(str(memory_database) if memory_database else None)
+        )
         self.schedules = ScheduleStore(invocation_path, invocations=self.invocations)
         self.catalog = FunctionCatalog.default(
             self.model, instruction=self.agent_instruction, services=self
@@ -541,6 +571,10 @@ class RuntimeServices:
         # deployment-owned policy map, including injected resolvers, rather
         # than a potentially different configuration used at construction.
         policy = value.setdefault("policy", {})
+        if self._bounded_memory and self.config.memory.bounds is not None:
+            policy["memory_bounds"] = self.config.memory.bounds.model_dump(mode="json")
+        if self.event_transport is not None:
+            policy["event_transport"] = self.event_transport.descriptor()
         if self.role_function_calls:
             policy["agent_roles"] = self.role_bindings.snapshot()
         if self.config.model.credentials:
@@ -548,6 +582,10 @@ class RuntimeServices:
                 name: reference.model_dump(mode="json")
                 for name, reference in sorted(self.config.model.credentials.items())
             }
+        if self.config.model.bounds is not None:
+            policy.setdefault("model", {})["bounds"] = self.config.model.bounds.model_dump(
+                mode="json"
+            )
         policy["approvals"] = self.config.approvals.model_dump(mode="json")
         if self.config.approvals.protected:
             bindings = []
@@ -876,7 +914,7 @@ class RuntimeServices:
             else None
         )
         if authority is None:
-            if self.config.execution_authorization.enabled:
+            if self.config.execution_authorization.enabled or self._bounded_memory:
                 raise ConfigurationError("shared memory is unavailable without original authority")
             return None
         return (
@@ -891,6 +929,8 @@ class RuntimeServices:
         return self.knowledge.search(query, limit)
 
     async def _add_memory(self, payload: Any, _context: Any) -> dict[str, int]:
+        if isinstance(self.memory, BoundedMemoryService):
+            self.memory.validate_payload("add_memory", payload)
         namespace = self._memory_namespace()
         if (
             namespace is not None
@@ -904,9 +944,21 @@ class RuntimeServices:
         metadata = payload.get("metadata", {})
         if not isinstance(metadata, dict):
             raise ValueError("add_memory metadata must be an object")
+        if isinstance(self.memory, BoundedMemoryService):
+            context = current_action_context()
+            return {
+                "id": self.memory.add(
+                    payload["text"],
+                    metadata,
+                    namespace=namespace,
+                    execution_handle=context.handle if context is not None else None,
+                )
+            }
         return {"id": self.memory.add(payload["text"], metadata, namespace=namespace)}
 
     async def _search_memory(self, payload: Any, _context: Any) -> list[dict[str, Any]]:
+        if isinstance(self.memory, BoundedMemoryService):
+            self.memory.validate_payload("search_memory", payload)
         namespace = self._memory_namespace()
         if (
             namespace is not None
@@ -918,19 +970,53 @@ class RuntimeServices:
         if not isinstance(payload, dict):
             payload = {"query": str(payload)}
         query = payload.get("query", "")
-        limit = int(payload.get("limit", 10))
+        limit = (
+            payload.get("limit", 10)
+            if isinstance(self.memory, BoundedMemoryService)
+            else int(payload.get("limit", 10))
+        )
         if not isinstance(query, str) or limit < 1 or limit > 100:
             raise ValueError("search_memory requires a query and a limit between 1 and 100")
+        if isinstance(self.memory, BoundedMemoryService):
+            context = current_action_context()
+            return self.memory.search(
+                query,
+                limit,
+                namespace=namespace,
+                execution_handle=context.handle if context is not None else None,
+            )
         return self.memory.search(query, limit, namespace=namespace)
 
     async def _delete_memory(self, payload: Any, _context: Any) -> dict[str, bool]:
+        if isinstance(self.memory, BoundedMemoryService):
+            self.memory.validate_payload("delete_memory", payload)
         namespace = self._memory_namespace()
         if namespace is not None and isinstance(payload, dict) and set(payload) - {"id"}:
             raise ConfigurationError("memory input cannot select another namespace")
         await self.authorize_current_action("memory.delete", "memory:self")
         if not isinstance(payload, dict) or not isinstance(payload.get("id"), int):
             raise ValueError("delete_memory requires an integer id")
+        if isinstance(self.memory, BoundedMemoryService):
+            context = current_action_context()
+            return {
+                "deleted": self.memory.delete(
+                    payload["id"],
+                    namespace=namespace,
+                    execution_handle=context.handle if context is not None else None,
+                )
+            }
         return {"deleted": self.memory.delete(payload["id"], namespace=namespace)}
+
+    async def _prune_memory(self) -> int:
+        """Owner-fenced private retention maintenance; not an agent tool."""
+        if not isinstance(self.memory, BoundedMemoryService):
+            raise ConfigurationError("bounded memory maintenance is not enabled")
+        namespace = self._memory_namespace()
+        await self.authorize_current_action("memory.prune", "memory:self")
+        context = current_action_context()
+        return self.memory.prune_due(
+            namespace=namespace, execution_handle=context.handle if context is not None else None
+        )
 
     async def invoke_agent_tool(self, name: str, payload: Any) -> Any:
         if name not in self.agent_tools:
@@ -950,6 +1036,11 @@ class RuntimeServices:
         """Validate a whole role tool batch before any member can act."""
         if name not in self.agent_tools:
             raise ConfigurationError("agent tool is not deployment-bound")
+        if name in {"add_memory", "search_memory", "delete_memory"} and isinstance(
+            self.memory, BoundedMemoryService
+        ):
+            self.memory.validate_payload(name, payload)
+            return
         if name not in {"search_knowledge", "add_memory", "search_memory", "delete_memory"}:
             self.tools.validate_payload(name, payload, strict=True)
             return

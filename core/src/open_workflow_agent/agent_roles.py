@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from jsonschema import Draft202012Validator
 
-from .catalog import CatalogContext, FakeModel, FunctionCatalog, LiteLLMModel, Model
+from .catalog import BoundedModel, CatalogContext, FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .effects import effect_request_digest
 from .errors import ConfigurationError, ModelError, ToolError
 from .execution_authority import current_authority
@@ -25,7 +25,7 @@ from .expressions import validate_expression_data
 from .security import AuthorizationPolicy, ProfileAuthentication, authorize
 
 if TYPE_CHECKING:
-    from .config import AgentRoleConfig
+    from .config import AgentRoleConfig, ProviderBoundsConfig
     from .services import RuntimeServices
 
 PROFILE = "owa/agent-role-binding/v1"
@@ -157,6 +157,32 @@ def authorize_role_action(action: str, resource: str) -> None:
             raise ToolError("original caller is outside the role action policy")
 
 
+def _provider_bounds(config: AgentRoleConfig) -> ProviderBoundsConfig:
+    from .config import ProviderBoundsConfig
+
+    return ProviderBoundsConfig(
+        timeout_seconds=config.model.options.get("timeout", 30),
+        max_output_bytes=config.max_output_bytes,
+        max_tool_calls=config.max_tool_calls,
+    )
+
+
+def _bounded_role_model(model: Model, config: AgentRoleConfig) -> Model:
+    bounds = config.model.bounds
+    if bounds is None or isinstance(model, LiteLLMModel):
+        return model
+    return BoundedModel(
+        model,
+        bounds.model_copy(
+            update={
+                "timeout_seconds": min(
+                    bounds.timeout_seconds, config.model.options.get("timeout", 30)
+                )
+            }
+        ),
+    )
+
+
 class RoleBindings:
     def __init__(
         self, services: RuntimeServices, role_models: Mapping[str, Model] | None = None
@@ -181,9 +207,16 @@ class RoleBindings:
                         options=config.model.options,
                         credentials=config.model.credentials,
                         authorize_credential=services.authorize_model_credential,
+                        bounds=config.model.bounds or _provider_bounds(config),
                     )
                 )
                 for name, config in configured.items()
+            }
+        )
+        self._models = MappingProxyType(
+            {
+                name: _bounded_role_model(model, configured[name])
+                for name, model in self._models.items()
             }
         )
         self._tool_bindings_json = _json(self._tool_bindings(), limit=262_144)
@@ -356,8 +389,13 @@ class RoleBindings:
                 )
                 model_calls += 1
                 try:
-                    async with asyncio.timeout(value["model"]["options"].get("timeout", 30)):
+                    if isinstance(model, (LiteLLMModel, BoundedModel)):
+                        # The provider owns preparation + send in one deadline,
+                        # distinguishing local denial from an unresolved attempt.
                         response = await model.complete(current)
+                    else:
+                        async with asyncio.timeout(value["model"]["options"].get("timeout", 30)):
+                            response = await model.complete(current)
                 except TimeoutError:
                     raise ModelError("role model-call budget expired") from None
                 _json(response, limit=value["max_output_bytes"])

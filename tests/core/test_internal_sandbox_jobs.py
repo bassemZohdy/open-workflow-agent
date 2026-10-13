@@ -168,11 +168,11 @@ def supervisor(tmp_path):
         services.close()
 
 
-async def terminal(backend, launch, binding=None):
+async def terminal(backend, launch, binding=None, *, allow_unknown=False):
     async with asyncio.timeout(20):
         while True:
             value = await backend.inspect(launch, binding)
-            if value.state in {"terminal", "unknown"}:
+            if value.state == "terminal" or (allow_unknown and value.state == "unknown"):
                 return value
             await asyncio.sleep(0.025)
 
@@ -328,7 +328,7 @@ async def test_actual_resource_failure_is_unknown_without_invented_exit_or_relau
     value = (
         observed
         if observed.state == "unknown"
-        else await terminal(backend, launch, observed.binding)
+        else await terminal(backend, launch, observed.binding, allow_unknown=True)
     )
     assert value.state == "unknown" and value.outcome is None
     before = (backend._directory(launch) / "bootstrap.json").read_bytes()

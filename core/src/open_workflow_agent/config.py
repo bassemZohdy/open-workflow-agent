@@ -18,9 +18,11 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    SerializerFunctionWrapHandler,
     ValidationError,
     ValidationInfo,
     field_validator,
+    model_serializer,
     model_validator,
 )
 
@@ -67,12 +69,39 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True, hide_input_in_errors=True)
 
 
+class ProviderBoundsConfig(StrictModel):
+    """Optional finite provider adapter policy; it grants no new provider authority."""
+
+    id: str = "completion"
+    version: str = "1"
+    timeout_seconds: float = Field(default=30, gt=0, le=120, allow_inf_nan=False, strict=True)
+    max_input_bytes: int = Field(default=1_048_576, ge=1, le=16_777_216, strict=True)
+    max_output_bytes: int = Field(default=1_048_576, ge=1, le=16_777_216, strict=True)
+    max_tool_calls: int = Field(default=16, ge=0, le=64, strict=True)
+    max_argument_bytes: int = Field(default=65_536, ge=1, le=1_048_576, strict=True)
+
+    @field_validator("id", "version")
+    @classmethod
+    def bounded_reference(cls, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}", value):
+            raise ValueError("provider bound reference is malformed")
+        return value
+
+
 class ModelConfig(StrictModel):
-    provider: str = "fake"
+    provider: Literal["fake", "litellm"] = "fake"
     name: str = "fake/default"
     temperature: float = 0.0
     options: dict[str, Any] = Field(default_factory=dict)
     credentials: dict[str, SecretReference] = Field(default_factory=dict)
+    bounds: ProviderBoundsConfig | None = None
+
+    @model_serializer(mode="wrap")
+    def serialized_model(self, handler: SerializerFunctionWrapHandler) -> Any:
+        value = handler(self)
+        if self.bounds is None:
+            value.pop("bounds", None)
+        return value
 
     @model_validator(mode="after")
     def validate_credential_references(self) -> ModelConfig:
@@ -362,9 +391,48 @@ class EmbeddingConfig(StrictModel):
     revision: str = "ea78891063587eb050ed4166b20062eaf978037c"
 
 
+class MemoryBoundsConfig(StrictModel):
+    enabled: bool = False
+    id: str = "principal-memory"
+    version: str = "1"
+    max_text_bytes: int = Field(default=65_536, ge=1, le=1_048_576, strict=True)
+    max_metadata_bytes: int = Field(default=16_384, ge=1, le=262_144, strict=True)
+    max_query_bytes: int = Field(default=4096, ge=1, le=65_536, strict=True)
+    max_query_terms: int = Field(default=32, ge=1, le=128, strict=True)
+    max_results: int = Field(default=100, ge=1, le=1000, strict=True)
+    max_entries: int = Field(default=1000, ge=1, le=10_000, strict=True)
+    max_namespace_bytes: int = Field(default=16_777_216, ge=1, le=67_108_864, strict=True)
+    max_scan_rows: int = Field(default=1000, ge=1, le=10_000, strict=True)
+    retention_seconds: float | None = Field(
+        default=None, gt=0, le=31_536_000, allow_inf_nan=False, strict=True
+    )
+    sweep_limit: int = Field(default=100, ge=1, le=1000, strict=True)
+
+    @field_validator("id", "version")
+    @classmethod
+    def bounded_reference(cls, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}", value):
+            raise ValueError("memory bound reference is malformed")
+        return value
+
+    @model_validator(mode="after")
+    def finite_scan(self) -> MemoryBoundsConfig:
+        if self.max_entries > self.max_scan_rows:
+            raise ValueError("memory entries must fit the finite scan")
+        return self
+
+
 class MemoryConfig(StrictModel):
     enabled: bool | Literal["auto"] = "auto"
     database: str = "/data/memory.sqlite3"
+    bounds: MemoryBoundsConfig | None = None
+
+    @model_serializer(mode="wrap")
+    def serialized_memory(self, handler: SerializerFunctionWrapHandler) -> Any:
+        value = handler(self)
+        if self.bounds is None:
+            value.pop("bounds", None)
+        return value
 
 
 class PersistenceConfig(StrictModel):

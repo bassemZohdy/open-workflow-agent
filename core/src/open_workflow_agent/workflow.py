@@ -61,6 +61,7 @@ from .errors import (
     WorkflowSemanticError,
     _A2AOutcomeUncertain,
     _McpOutcomeUncertain,
+    _ModelOutcomeUncertain,
 )
 from .event_matching import candidate_matcher, event_projection
 from .events import EventEnvelope, EventProgress, EventRegistration
@@ -2471,6 +2472,7 @@ class WorkflowExecutor:
                 return await dispatch()
             except (
                 _McpOutcomeUncertain,
+                _ModelOutcomeUncertain,
                 _A2AOutcomeUncertain,
                 _OpenApiOutcomeUncertain,
                 _GrpcOutcomeUncertain,
@@ -2690,6 +2692,7 @@ class WorkflowExecutor:
             raise
         except (
             _McpOutcomeUncertain,
+            _ModelOutcomeUncertain,
             _A2AOutcomeUncertain,
             _OpenApiOutcomeUncertain,
             _GrpcOutcomeUncertain,
