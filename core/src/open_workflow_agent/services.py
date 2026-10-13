@@ -9,7 +9,7 @@ import inspect
 import json
 import re
 import time
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -17,6 +17,7 @@ from typing import Any
 from ._event_triggers import EventTriggerStore
 from .a2a_admission import A2AAgentCardAdmission
 from .a2a_client import A2ACardSelection
+from .agent_roles import RoleBindings, authorize_role_action
 from .approval_dispatcher import ApprovalExpiryDispatcher
 from .approvals import ApprovalEventBus, ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
@@ -82,6 +83,7 @@ class RuntimeServices:
         config: RuntimeConfig,
         *,
         model: Model | None = None,
+        role_models: Mapping[str, Model] | None = None,
         database_root: str | Path | None = None,
         event_sink: EventSink | None = None,
         event_bus: EventBus | None = None,
@@ -137,6 +139,8 @@ class RuntimeServices:
                 config.model.name,
                 temperature=config.model.temperature,
                 options=config.model.options,
+                credentials=config.model.credentials,
+                authorize_credential=self.authorize_model_credential,
             )
         )
         self.agent_instruction = config.agent.instruction
@@ -187,6 +191,7 @@ class RuntimeServices:
             ("add_memory", "search_memory", "delete_memory") if self.memory_enabled else ()
         )
         self.agent_tools = ("search_knowledge", *memory_tools, *self.tools.names())
+        self.role_bindings = RoleBindings(self, role_models)
         root = self.database_root
         knowledge_path: str | Path
         memory_path: str | Path
@@ -288,6 +293,7 @@ class RuntimeServices:
         self.catalog = FunctionCatalog.default(
             self.model, instruction=self.agent_instruction, services=self
         )
+        self.role_bindings.register(self.catalog)
         self.catalog.register("search_knowledge", self._search_knowledge)
         if self.memory_enabled:
             self.catalog.register("add_memory", self._add_memory)
@@ -535,6 +541,13 @@ class RuntimeServices:
         # deployment-owned policy map, including injected resolvers, rather
         # than a potentially different configuration used at construction.
         policy = value.setdefault("policy", {})
+        if self.role_function_calls:
+            policy["agent_roles"] = self.role_bindings.snapshot()
+        if self.config.model.credentials:
+            policy.setdefault("model", {})["credentials"] = {
+                name: reference.model_dump(mode="json")
+                for name, reference in sorted(self.config.model.credentials.items())
+            }
         policy["approvals"] = self.config.approvals.model_dump(mode="json")
         if self.config.approvals.protected:
             bindings = []
@@ -623,6 +636,7 @@ class RuntimeServices:
             trusted_catalogs=self.external_catalogs.policies,
             _schema_registry=schema_registry(plan.resources),
             grpc_enabled=self.grpc_enabled,
+            enabled_function_calls=self.role_function_calls,
             executable_sources=self.executable_sources,
         )
         for binding in plan.imports:
@@ -731,6 +745,7 @@ class RuntimeServices:
     async def authorize_current_action(
         self, action: str, resource: str, request_digest: str | None = None
     ) -> None:
+        authorize_role_action(action, resource)
         context = current_action_context()
         if context is None:
             if self.config.execution_authorization.enabled:
@@ -805,8 +820,27 @@ class RuntimeServices:
     async def authorize_model_completion(self) -> None:
         await self.authorize_current_action("model.complete", self.config.model.name)
 
+    async def authorize_model_credential(self, reference: str) -> None:
+        await self.authorize_current_action("credential.resolve", "model-secret:" + reference)
+
     async def authorize_tool_invocation(self, name: str, _payload: Any) -> None:
         await self.authorize_current_action("tool.invoke", name)
+
+    async def preflight_agent_tool(self, name: str, payload: Any) -> None:
+        self.validate_agent_tool_payload(name, payload)
+        await self.authorize_tool_invocation(name, payload)
+        if name == "search_knowledge":
+            await self.authorize_current_action("knowledge.search", "knowledge")
+        elif name in {"add_memory", "search_memory", "delete_memory"}:
+            self._memory_namespace()
+            action = {
+                "add_memory": "memory.add",
+                "search_memory": "memory.search",
+                "delete_memory": "memory.delete",
+            }[name]
+            await self.authorize_current_action(action, "memory:self")
+        else:
+            await self.tools.preflight_policy(name, payload)
 
     async def authorize_protocol_destination(
         self, protocol: str, endpoint: str, _payload: Any
@@ -911,6 +945,43 @@ class RuntimeServices:
         if name == "delete_memory":
             return await self._delete_memory(payload, None)
         return await self.tools.invoke(name, payload)
+
+    def validate_agent_tool_payload(self, name: str, payload: Any) -> None:
+        """Validate a whole role tool batch before any member can act."""
+        if name not in self.agent_tools:
+            raise ConfigurationError("agent tool is not deployment-bound")
+        if name not in {"search_knowledge", "add_memory", "search_memory", "delete_memory"}:
+            self.tools.validate_payload(name, payload, strict=True)
+            return
+        if not isinstance(payload, dict):
+            if name in {"search_knowledge", "search_memory"}:
+                return
+            raise ConfigurationError("memory tool requires a bounded object")
+        fields = {
+            "search_knowledge": {"query", "limit"},
+            "add_memory": {"text", "metadata"},
+            "search_memory": {"query", "limit"},
+            "delete_memory": {"id"},
+        }[name]
+        if set(payload) - fields:
+            raise ConfigurationError("role memory/knowledge input cannot choose its namespace")
+        if name == "add_memory" and (
+            type(payload.get("text")) is not str or type(payload.get("metadata", {})) is not dict
+        ):
+            raise ConfigurationError("memory tool input is invalid")
+        if name == "delete_memory" and type(payload.get("id")) is not int:
+            raise ConfigurationError("memory tool input is invalid")
+        if name in {"search_knowledge", "search_memory"} and (
+            type(payload.get("query", "")) is not str
+            or type(payload.get("limit", 5)) is not int
+            or not 1 <= payload.get("limit", 5) <= 100
+        ):
+            raise ConfigurationError("search tool input is invalid")
+
+    @property
+    def role_function_calls(self) -> frozenset[str]:
+        self.role_bindings.verify()
+        return self.role_bindings.function_calls
 
     def agent_tool_bindings(self) -> tuple[AgentToolBinding, ...]:
         bindings: list[AgentToolBinding] = [

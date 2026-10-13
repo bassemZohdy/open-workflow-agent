@@ -170,6 +170,26 @@ def _table_exists(connection: StorageConnection, table: str) -> bool:
 
 
 def _authority_hint(connection: StorageConnection, identity: EffectIdentity) -> bool:
+    if _table_exists(connection, "workflow_effects"):
+        authority = replace(
+            identity,
+            task_reference="/do",
+            occurrence=(("/do", 1),),
+            operation=AUTHORITY_OPERATION,
+        )
+        keys = (
+            authority.key,
+            replace(authority, operation="policy:execution-authority-origin:v1").key,
+            replace(identity, operation=SEAL_OPERATION).key,
+            intent_identity(identity).key,
+        )
+        if (
+            connection.execute(
+                "SELECT 1 FROM workflow_effects WHERE identity IN (?,?,?,?) LIMIT 1", keys
+            ).fetchone()
+            is not None
+        ):
+            return True
     if _table_exists(connection, "recovery_invocation_definitions"):
         binding = _bounded(
             connection,
@@ -199,16 +219,31 @@ def _authority_hint(connection: StorageConnection, identity: EffectIdentity) -> 
         _table_exists(connection, "workflow_effect_invocations")
         and connection.execute(
             "SELECT 1 FROM workflow_effect_invocations WHERE invocation_id=? "
-            "AND (payload LIKE ? OR payload LIKE ?) LIMIT 1",
+            "AND (payload LIKE ? OR payload LIKE ? OR payload LIKE ?) LIMIT 1",
             (
                 identity.invocation_id,
                 "%policy:execution-authority:v1%",
                 "%policy:execution-authorization%",
+                "%policy:execution-authority-origin:v1%",
             ),
         ).fetchone()
         is not None
     ):
         return True
+    for table in (
+        "execution_authorization_decisions",
+        "execution_authorization_intents",
+        "execution_authorization_outcomes",
+    ):
+        if (
+            _table_exists(connection, table)
+            and connection.execute(
+                f"SELECT 1 FROM {table} WHERE invocation_id=? LIMIT 1",
+                (identity.invocation_id,),
+            ).fetchone()
+            is not None
+        ):
+            return True
     return False
 
 
@@ -521,6 +556,8 @@ def _read_authority(
             is not None
         ):
             raise _invalid("authority_binding_missing")
+        if _authority_hint(connection, identity):
+            raise _invalid("authority_binding_missing")
         return None
     if (
         set(value)
@@ -785,6 +822,8 @@ def verify_execution_authorization_business_receipt(
         else _read_authority(connection, invocations, handle)
     )
     value = _record(connection, "execution_authorization_outcomes", "business_key", identity.key)
+    if authority is None and _authority_hint(connection, identity):
+        raise _invalid("authority_binding_missing")
     if authority is None and value is None:
         if (
             connection.execute(
@@ -1578,6 +1617,19 @@ class ExecutionAuthorizationStore:
             "invocation:" + handle.invocation_id, binding, authority, connection=connection
         )
 
+    def _unbound_legacy(self, identity: EffectIdentity) -> bool:
+        """Standalone default-off common services never issue admission authority.
+
+        Remaining original markers, independent proofs or candidates still make
+        missing authority a fault; actual engines retain their archive preflight.
+        """
+        return (
+            not self.config_provider().enabled
+            and current_authority() is None
+            and not _authority_hint(self.connection, identity)
+            and self._candidate("invocation:" + identity.invocation_id) is None
+        )
+
     def verify_invocation(self, handle: ExecutionHandle) -> ExecutionAuthority | None:
         value = _read_authority(self.connection, self.invocations, handle)
         if value is not None:
@@ -1702,6 +1754,8 @@ class ExecutionAuthorizationStore:
                         )
             return authority
         candidate = self.reserved_invocation(handle)
+        if candidate is None and self._unbound_legacy(authority_identity(handle)):
+            return None
         if self.archive.has_binding(handle):
             if candidate is not None:
                 raise _invalid("authority_binding_missing")
@@ -1899,9 +1953,15 @@ class ExecutionAuthorizationStore:
             return None
         handle = self.invocations.get(identity.invocation_id)
         if handle is None:
+            if self._unbound_legacy(identity):
+                return None
             raise _invalid("authorization_invocation_missing")
         authority = _read_authority(self.connection, self.invocations, handle)
-        if authority is None or not authority["policy"]["enabled"]:
+        if authority is None:
+            if _authority_hint(self.connection, identity):
+                raise _invalid("authority_binding_missing")
+            return None
+        if not authority["policy"]["enabled"]:
             return None
         if authority["policy"] != self._policy():
             raise _denied("execution_policy_changed")
@@ -1993,9 +2053,13 @@ class ExecutionAuthorizationStore:
             return
         handle = self.invocations.get(identity.invocation_id)
         if handle is None:
+            if self._unbound_legacy(identity):
+                return None
             raise _invalid("authorization_invocation_missing")
         authority = self.verify_invocation(handle)
         if authority is None:
+            if _authority_hint(self.connection, identity):
+                raise _invalid("authority_binding_missing")
             return
         record = _read_authority(self.connection, self.invocations, handle)
         if record is None:

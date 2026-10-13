@@ -22,7 +22,13 @@ from open_workflow_agent.execution_authority import (
 from open_workflow_agent.security import SecurityConfig, static_principal
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
+from test_protected_approvals import approval_runtime as approval_runtime
 from test_protected_approvals import seed, snapshot
+
+
+@pytest.fixture
+def protected_runtime(approval_runtime):
+    return approval_runtime
 
 
 def named_config(monkeypatch, kind="bearer"):

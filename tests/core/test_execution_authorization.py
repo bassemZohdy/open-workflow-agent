@@ -125,7 +125,7 @@ def authority_tree(tmp_path, request):
     lease = services.execution_ownership.acquire(handle, seconds=300)
     handle._execution_lease = lease
     identity = EffectIdentity(
-        handle.invocation_id, plan.fingerprint, "/do/0/action", (("/do/0/action", 0),), "call:http"
+        handle.invocation_id, plan.fingerprint, "/do/0/action", (("/do/0/action", 1),), "call:http"
     )
     services._authority_fixture_invocations = [handle.invocation_id]
     services._authority_fixture_schedules = []
@@ -928,3 +928,85 @@ def test_permission_before_intent_is_valid_but_missing_existing_marker_is_not_re
             identity, original, execution_lease=handle._execution_lease, first_intent=False
         )
     assert _snapshot(authority_tree) == before
+
+
+@pytest.mark.parametrize(
+    "remaining",
+    ["decision", "intent", "outcome", "authority-receipt", "intent-receipt", "seal-receipt"],
+)
+def test_removed_original_authority_cannot_be_downgraded_by_disabling_policy(
+    authority_tree, remaining
+):
+    import open_workflow_agent.execution_authorization as module
+
+    services, _, store, _, handle, _, identity = authority_tree
+    _admit(authority_tree)
+    _decision(authority_tree)
+    completed = _finish(authority_tree, {"known": True})
+    connection = services.effect_journal.connection
+    selected = {
+        "authority-receipt": authority_identity(handle),
+        "intent-receipt": module.intent_identity(identity),
+        "seal-receipt": replace(identity, operation=module.SEAL_OPERATION),
+    }.get(remaining)
+    own_keys = [
+        row[0]
+        for row in connection.execute(
+            "SELECT identity FROM workflow_effect_invocations WHERE invocation_id=?",
+            (handle.invocation_id,),
+        ).fetchall()
+    ]
+    for key in own_keys:
+        if selected is None or key != selected.key:
+            connection.execute("DELETE FROM workflow_effects WHERE identity=?", (key,))
+    for table in (
+        "execution_authorities",
+        "execution_authorization_decisions",
+        "execution_authorization_intents",
+        "execution_authorization_outcomes",
+        "recovery_invocation_definitions",
+        "workflow_effect_invocations",
+    ):
+        if table == "execution_authorization_" + remaining + "s":
+            continue
+        connection.execute(f"DELETE FROM {table} WHERE invocation_id=?", (handle.invocation_id,))
+    connection.execute(
+        "DELETE FROM execution_authority_candidates WHERE candidate_key=?",
+        ("invocation:" + handle.invocation_id,),
+    )
+    connection.commit()
+    services.config.execution_authorization.enabled = False
+    before = _snapshot(authority_tree)
+    marker_before = (
+        None
+        if selected is None
+        else connection.execute(
+            "SELECT * FROM workflow_effects WHERE identity=?",
+            (selected.key,),
+        ).fetchall()
+    )
+    with pytest.raises(OwaError):
+        store.seal_intent(identity, completed, execution_lease=handle._execution_lease)
+    with pytest.raises(OwaError):
+        store.seal_business(identity, completed, execution_lease=handle._execution_lease)
+    if remaining in {"decision", "intent", "outcome", "authority-receipt"}:
+        with pytest.raises(OwaError):
+            store.verify_invocation(handle)
+    if remaining == "authority-receipt":
+        connection.execute("DELETE FROM invocations WHERE invocation_id=?", (handle.invocation_id,))
+        connection.commit()
+        with pytest.raises(OwaError):
+            store.seal_intent(identity, completed, execution_lease=handle._execution_lease)
+    assert _snapshot(authority_tree) == before and services.model.calls == []
+    if selected is not None:
+        assert (
+            connection.execute(
+                "SELECT * FROM workflow_effects WHERE identity=?", (selected.key,)
+            ).fetchall()
+            == marker_before
+        )
+    # Only fixture-owned orphan markers are removed so real PostgreSQL profiles
+    # retain unrelated fixtures and cannot mistake this fault injection for work.
+    for key in own_keys:
+        connection.execute("DELETE FROM workflow_effects WHERE identity=?", (key,))
+    connection.commit()

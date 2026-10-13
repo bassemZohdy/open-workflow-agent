@@ -38,6 +38,7 @@ def validate_sandbox_capabilities(
     _resource_preflight: bool = False,
     _schema_registry: Any = None,
     grpc_enabled: bool = False,
+    enabled_function_calls: frozenset[str] = frozenset(),
     executable_sources: ExecutableSourceRegistry | None = None,
 ) -> None:
     effective = resolve_reusable_components(workflow)
@@ -69,6 +70,7 @@ def validate_sandbox_capabilities(
         _schema_registry=_schema_registry,
         _mcp_stdio=True,
         grpc_enabled=grpc_enabled,
+        enabled_function_calls=enabled_function_calls,
     )
     validate_expression_profile(effective)
 
@@ -108,6 +110,7 @@ def compile_sandbox_workflow(
     sandbox: SandboxConfig,
     trusted_catalogs: Mapping[str, Any] | None = None,
     grpc_enabled: bool = False,
+    enabled_function_calls: frozenset[str] = frozenset(),
     executable_sources: ExecutableSourceRegistry | None = None,
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
@@ -117,6 +120,7 @@ def compile_sandbox_workflow(
         sandbox=sandbox,
         trusted_catalogs=trusted_catalogs,
         grpc_enabled=grpc_enabled,
+        enabled_function_calls=enabled_function_calls,
         executable_sources=executable_sources,
     )
     registry = executable_sources or ExecutableSourceRegistry(
@@ -138,6 +142,7 @@ async def resolve_and_compile_sandbox_workflow(
     resolver: Any,
     catalog: FunctionCatalog,
     grpc_enabled: bool = False,
+    enabled_function_calls: frozenset[str] = frozenset(),
     executable_sources: ExecutableSourceRegistry | None = None,
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
@@ -149,6 +154,7 @@ async def resolve_and_compile_sandbox_workflow(
         trusted_catalogs=trusted_catalogs,
         _resource_preflight=enabled,
         grpc_enabled=grpc_enabled,
+        enabled_function_calls=enabled_function_calls,
         executable_sources=executable_sources,
     )
     imports, resources = await resolve_workflow_dependencies(workflow, resolver, catalog)
@@ -159,6 +165,7 @@ async def resolve_and_compile_sandbox_workflow(
         trusted_catalogs=trusted_catalogs,
         _schema_registry=schema_registry(resources),
         grpc_enabled=grpc_enabled,
+        enabled_function_calls=enabled_function_calls,
         executable_sources=executable_sources,
     )
     registry = executable_sources or ExecutableSourceRegistry(

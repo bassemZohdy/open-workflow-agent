@@ -165,7 +165,7 @@ def test_plain_standalone_legacy_effect_journal_requires_no_authority_bootstrap(
     path = tmp_path / "legacy.sqlite3"
     invocations = InvocationStore(path) if with_invocations else None
     journal = EffectJournal(path, invocations=invocations)
-    identity = EffectIdentity("legacy", "a" * 64, "/do/0/http", (), "call:http")
+    identity = EffectIdentity("legacy", "a" * 64, "/do/0/http", (("/do/0/http", 1),), "call:http")
     try:
         journal.begin(identity, "b" * 64, "first")
         receipt = journal.finish(identity, "first", output=None)

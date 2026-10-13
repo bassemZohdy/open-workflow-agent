@@ -272,6 +272,7 @@ def create_app(
                 resolver=runtime_services.external_catalogs,
                 catalog=runtime_services.catalog,
                 grpc_enabled=runtime_services.grpc_enabled,
+                enabled_function_calls=runtime_services.role_function_calls,
             )
             runtime_services.verify_grpc_plan(app.state.plan)
             runtime_services.workflow_catalog.register(app.state.plan)
@@ -283,6 +284,7 @@ def create_app(
                     resolver=runtime_services.external_catalogs,
                     catalog=runtime_services.catalog,
                     grpc_enabled=runtime_services.grpc_enabled,
+                    enabled_function_calls=runtime_services.role_function_calls,
                 )
                 runtime_services.verify_grpc_plan(child_plan)
                 runtime_services.workflow_catalog.register(child_plan)
@@ -691,7 +693,9 @@ def create_app(
             app.state,
             "plan",
             compile_sandbox_workflow(
-                sandbox=runtime_config.sandbox, grpc_enabled=runtime_services.grpc_enabled
+                sandbox=runtime_config.sandbox,
+                grpc_enabled=runtime_services.grpc_enabled,
+                enabled_function_calls=runtime_services.role_function_calls,
             ),
         )
         if (
@@ -753,7 +757,9 @@ def create_app(
             app.state,
             "plan",
             compile_sandbox_workflow(
-                sandbox=runtime_config.sandbox, grpc_enabled=runtime_services.grpc_enabled
+                sandbox=runtime_config.sandbox,
+                grpc_enabled=runtime_services.grpc_enabled,
+                enabled_function_calls=runtime_services.role_function_calls,
             ),
         )
         _authorize_request(
@@ -842,7 +848,9 @@ def create_app(
         fallback: WorkflowPlan | None = getattr(app.state, "plan", None)
         if fallback is None:
             return compile_sandbox_workflow(
-                sandbox=runtime_config.sandbox, grpc_enabled=runtime_services.grpc_enabled
+                sandbox=runtime_config.sandbox,
+                grpc_enabled=runtime_services.grpc_enabled,
+                enabled_function_calls=runtime_services.role_function_calls,
             )
         return fallback
 

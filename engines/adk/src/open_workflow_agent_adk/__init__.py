@@ -14,6 +14,7 @@ from open_workflow_agent.errors import (
     OwaError,
     WorkflowExecutionError,
 )
+from open_workflow_agent.execution_authorization import authority_identity
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.workflow import WorkflowPlan
@@ -324,6 +325,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
             metadata=metadata,
             require_waiting=require_waiting,
             child_waits=self.services.child_waits,
+            authority_admission=authority_identity(handle),
         )
 
     async def _scheduled_native_state_exists(

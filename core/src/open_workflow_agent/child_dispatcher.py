@@ -103,6 +103,7 @@ class ChildDispatcher:
                         resolver=self.services.external_catalogs,
                         catalog=self.services.catalog,
                         grpc_enabled=self.services.grpc_enabled,
+                        enabled_function_calls=self.services.role_function_calls,
                     )
                 self.services.children.verify(
                     binding, parent, plan, self.services.invocations.read_input(child)

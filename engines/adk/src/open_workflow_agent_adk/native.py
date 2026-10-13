@@ -23,6 +23,7 @@ from open_workflow_agent.effects import (
     ReceiptDependency,
 )
 from open_workflow_agent.errors import InvocationStateConflict, InvocationStateError
+from open_workflow_agent.execution_authorization import AUTHORITY_OPERATION
 from open_workflow_agent.expressions import validate_expression_data
 from open_workflow_agent.ownership import (
     NativeWriteFence,
@@ -231,6 +232,7 @@ class AdkRecoveryContext:
     require_waiting: bool = False
     uses_timing: bool = False
     child_waits: Any = None
+    authority_admission: EffectIdentity | None = None
 
 
 class _ReceiptEvents:
@@ -274,11 +276,21 @@ class _ReceiptEvents:
             for raw in frame["receipts"]:
                 dependency = ReceiptDependency.from_value(raw)
                 identity = dependency.identity
+                authority_admission = (
+                    identity.operation == AUTHORITY_OPERATION
+                    and identity == self.context.authority_admission
+                )
+                if authority_admission:
+                    # The adapter supplies the exact common handle identity.
+                    # Reading this policy receipt independently verifies its
+                    # retained authority and original definition binding.
+                    dependency.verify(self.context.journal)
                 if (
                     identity.invocation_id != self.context.invocation_id
                     or identity.workflow_fingerprint != self.context.workflow_fingerprint
                     or (
                         identity.task_reference not in self.context.task_references
+                        and not authority_admission
                         and not (
                             self.context.uses_timing
                             and identity

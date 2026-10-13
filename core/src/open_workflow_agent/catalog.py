@@ -8,7 +8,9 @@ from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import Any, Protocol
 
-from .errors import ModelError, ToolError
+from .credential_guard import credential_scope
+from .errors import ModelError, OwaError, ToolError
+from .security import SecretReference, resolve_secret
 
 
 class Model(Protocol):
@@ -46,11 +48,19 @@ class LiteLLMModel:
     """Optional provider adapter; importing LiteLLM is deferred until invocation."""
 
     def __init__(
-        self, name: str, *, temperature: float = 0.0, options: dict[str, Any] | None = None
+        self,
+        name: str,
+        *,
+        temperature: float = 0.0,
+        options: dict[str, Any] | None = None,
+        credentials: Mapping[str, SecretReference] | None = None,
+        authorize_credential: Callable[[str], Awaitable[None]] | None = None,
     ) -> None:
         self.name = name
         self.temperature = temperature
         self.options = options or {}
+        self._credentials = MappingProxyType(dict(credentials or {}))
+        self._authorize_credential = authorize_credential
 
     async def complete(self, prompt: Any, *, options: dict[str, Any] | None = None) -> Any:
         try:
@@ -62,17 +72,32 @@ class LiteLLMModel:
         messages = (
             prompt if isinstance(prompt, list) else [{"role": "user", "content": str(prompt)}]
         )
-        response = await acompletion(
-            model=self.name,
-            messages=messages,
-            temperature=self.temperature,
-            **self.options,
-            **(options or {}),
-        )
-        try:
-            return response.choices[0].message.content
-        except (AttributeError, IndexError, KeyError) as exc:
-            raise ModelError("LiteLLM returned an invalid completion response") from exc
+        with credential_scope() as guard:
+            try:
+                from .config import MODEL_CREDENTIAL_OPTIONS
+
+                if set(options or {}) & MODEL_CREDENTIAL_OPTIONS:
+                    raise ModelError("model credential overrides are forbidden")
+                if self._authorize_credential is not None:
+                    for reference in self._credentials.values():
+                        await self._authorize_credential(reference.from_env)
+                selected = {
+                    key: resolve_secret(reference) for key, reference in self._credentials.items()
+                }
+                response = await acompletion(
+                    model=self.name,
+                    messages=messages,
+                    temperature=self.temperature,
+                    **self.options,
+                    **(options or {}),
+                    **selected,
+                )
+                return guard.project(response.choices[0].message.content)
+            except OwaError as error:
+                guard.error(error)
+                raise
+            except Exception:
+                raise ModelError("model completion failed") from None
 
 
 @dataclass(slots=True)
@@ -183,6 +208,7 @@ CatalogFunction = Callable[[Any, CatalogContext], Awaitable[Any]]
 class FunctionCatalog:
     def __init__(self) -> None:
         self._functions: dict[str, CatalogFunction] = {}
+        self.role_function_calls: frozenset[str] = frozenset()
 
     def register(self, name: str, function: CatalogFunction) -> None:
         self._functions[name] = function

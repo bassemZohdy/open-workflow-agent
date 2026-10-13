@@ -146,6 +146,8 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   No behavioral or publication gate is complete.
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and applicable delegated authorization.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
+  Eight finite recipe families and named role bindings are authored; see
+  [the acceptance plan](docs/s3-07-agent-pattern-acceptance.md). Required validation remains open.
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
 
 ## Stage 4 — Advanced features and full verification

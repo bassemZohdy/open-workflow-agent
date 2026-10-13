@@ -1,0 +1,104 @@
+document:
+  dsl: 1.0.3
+  namespace: patterns
+  name: approval-gate
+  version: 1.0.0
+  title: Approval Gate
+  summary: Bounded canonical OWS recipe. Named roles are immutable deployment bindings;
+    model output never grants authority.
+input:
+  schema:
+    format: json
+    document:
+      type: object
+      required:
+      - question
+      - requestId
+      - expiresAt
+      - assignee
+      properties:
+        question:
+          type: string
+          maxLength: 65536
+        requestId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        expiresAt:
+          type: string
+          format: date-time
+        assignee:
+          type: string
+          pattern: ^[A-Za-z0-9_.:@/-]{1,128}$
+        reassignmentTargets:
+          type: array
+          maxItems: 8
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9_.:@/-]{1,128}$
+        escalationTargets:
+          type: array
+          maxItems: 8
+          uniqueItems: true
+          items:
+            type: string
+            pattern: ^[A-Za-z0-9_.:@/-]{1,128}$
+      additionalProperties: false
+timeout:
+  after:
+    seconds: 120
+do:
+- request:
+    emit:
+      event:
+        with:
+          id: ${ $workflow.input.requestId }
+          source: urn:open-workflow-agent:patterns:approval-gate
+          type: io.openworkflow.agent.approval.requested
+          subject: ${ $workflow.input.requestId }
+          approvalexpiresat: ${ $workflow.input.expiresAt }
+          data:
+            question: ${ $workflow.input.question }
+            approvalPolicy:
+              profile: owa/protected-approval/v1
+              assignee: ${ $workflow.input.assignee }
+              reassignmentTargets: ${ $workflow.input.reassignmentTargets // [] }
+              escalationTargets: ${ $workflow.input.escalationTargets // [] }
+- decision:
+    listen:
+      to:
+        one:
+          with:
+            type: io.openworkflow.agent.approval.decided
+            subject: ${ $workflow.input.requestId }
+      read: data
+    timeout:
+      after:
+        seconds: 90
+- route:
+    switch:
+    - approved:
+        when: ${ .[0].decision == "approved" }
+        then: act
+    - blocked:
+        then: end
+- act:
+    call: agent-approver-action:1.0.0@default
+    with:
+      input: ${ {question:$workflow.input.question,approval:.[0]} }
+    timeout:
+      after:
+        seconds: 30
+    output:
+      schema:
+        format: json
+        document:
+          type: object
+          required:
+          - answer
+          properties:
+            answer:
+              type: string
+              maxLength: 65536
+          additionalProperties: false

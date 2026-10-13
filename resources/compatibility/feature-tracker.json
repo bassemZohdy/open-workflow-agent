@@ -64892,6 +64892,11 @@
         "status": "Authored; qualification pending",
         "record": "docs/s3-06-identity-security-acceptance.md",
         "scope": "Original authenticated principal propagation, default-disabled action/resource policy, independent bounded audit, scoped context/memory and literal credential echo boundaries; original native/backend/platform/publication gates pending; federation and delegated consent remain conditional S4-11"
+      },
+      "S3-07": {
+        "status": "Authored; static/schema checks passed; behavioral qualification pending",
+        "record": "docs/s3-07-agent-pattern-acceptance.md",
+        "scope": "Eight finite independently authored OWS recipe families, original default recipes plus separate named role bindings, fixed child workflows, strict routes/plan/refinement budgets and protected approval; no native API parity or row completion claimed; shared/process/platform/backend/publication gates pending"
       }
     }
   },

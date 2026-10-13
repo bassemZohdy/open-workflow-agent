@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
+import math
 import os
 import re
 from pathlib import Path
@@ -24,7 +26,12 @@ from pydantic import (
 
 from ._version import __version__
 from .errors import ConfigurationError, ToolError
-from .security import AuthorizationPolicy, ExecutionAuthorizationConfig, SecurityConfig
+from .security import (
+    AuthorizationPolicy,
+    ExecutionAuthorizationConfig,
+    SecretReference,
+    SecurityConfig,
+)
 
 if TYPE_CHECKING:
     from .grpc_client import GrpcBinding
@@ -32,10 +39,32 @@ if TYPE_CHECKING:
 
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _IMAGE_DIGEST = re.compile(r"^.+@sha256:[0-9a-fA-F]{64}$")
+MODEL_CREDENTIAL_OPTIONS = frozenset(
+    {
+        "api_key",
+        "azure_ad_token",
+        "aws_access_key_id",
+        "aws_secret_access_key",
+        "aws_session_token",
+        "vertex_credentials",
+    }
+)
+ROLE_MODEL_OPTIONS = frozenset(
+    {
+        "max_tokens",
+        "max_completion_tokens",
+        "top_p",
+        "seed",
+        "presence_penalty",
+        "frequency_penalty",
+        "stop",
+        "timeout",
+    }
+)
 
 
 class StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+    model_config = ConfigDict(extra="forbid", validate_assignment=True, hide_input_in_errors=True)
 
 
 class ModelConfig(StrictModel):
@@ -43,6 +72,16 @@ class ModelConfig(StrictModel):
     name: str = "fake/default"
     temperature: float = 0.0
     options: dict[str, Any] = Field(default_factory=dict)
+    credentials: dict[str, SecretReference] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_credential_references(self) -> ModelConfig:
+        if (
+            set(self.options) & MODEL_CREDENTIAL_OPTIONS
+            or set(self.credentials) - MODEL_CREDENTIAL_OPTIONS
+        ):
+            raise ValueError("model credentials require explicit supported deployment references")
+        return self
 
     @model_validator(mode="before")
     @classmethod
@@ -56,10 +95,107 @@ class ModelConfig(StrictModel):
         return value
 
 
+class AgentRoleConfig(StrictModel):
+    id: str
+    version: str = "1.0.0"
+    model: ModelConfig = Field(default_factory=ModelConfig)
+    instruction: str = ""
+    tools: list[str] = Field(default_factory=list)
+    max_rounds: int = Field(default=8, ge=1, le=32, strict=True)
+    max_model_calls: int = Field(default=8, ge=1, le=32, strict=True)
+    max_tool_calls: int = Field(default=16, ge=0, le=64, strict=True)
+    max_child_invocations: int = Field(default=0, ge=0, le=0, strict=True)
+    max_output_bytes: int = Field(default=1_048_576, ge=1, le=4_194_304, strict=True)
+    policy: AuthorizationPolicy | None = None
+    output_schema: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def validate_finite_role(self) -> AgentRoleConfig:
+        if (
+            not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,127}", self.id)
+            or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?", self.version)
+            or len(self.version) > 64
+        ):
+            raise ValueError("agent role binding requires bounded explicit identity/version")
+        if (
+            len(self.instruction.encode("utf-8")) > 16_384
+            or len(self.tools) > 64
+            or len(self.tools) != len(set(self.tools))
+            or any(not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,127}", name) for name in self.tools)
+        ):
+            raise ValueError("agent role instruction/tool declaration exceeds its finite profile")
+        if (
+            self.model.provider not in {"fake", "litellm"}
+            or not self.model.name
+            or len(self.model.name.encode()) > 256
+            or not math.isfinite(self.model.temperature)
+            or not 0 <= self.model.temperature <= 2
+            or set(self.model.options) - ROLE_MODEL_OPTIONS
+        ):
+            raise ValueError("agent role model descriptor is unqualified")
+        for key, value in self.model.options.items():
+            if key in {"max_tokens", "max_completion_tokens"}:
+                valid = type(value) is int and 1 <= value <= 32_768
+            elif key == "seed":
+                valid = type(value) is int and -(2**31) <= value < 2**31
+            elif key == "stop":
+                items = [value] if type(value) is str else value
+                valid = (
+                    type(items) is list
+                    and len(items) <= 8
+                    and all(type(item) is str and 0 < len(item.encode()) <= 256 for item in items)
+                )
+            else:
+                valid = (
+                    type(value) in {int, float}
+                    and math.isfinite(value)
+                    and {
+                        "top_p": (0, 1),
+                        "timeout": (0.001, 120),
+                        "presence_penalty": (-2, 2),
+                        "frequency_penalty": (-2, 2),
+                    }[key][0]
+                    <= value
+                    <= {
+                        "top_p": (0, 1),
+                        "timeout": (0.001, 120),
+                        "presence_penalty": (-2, 2),
+                        "frequency_penalty": (-2, 2),
+                    }[key][1]
+                )
+            if not valid:
+                raise ValueError("agent role model option is outside its finite profile")
+        from .agent_roles import validate_role_schema
+
+        validate_role_schema(self.output_schema)
+        if self.policy is not None and (
+            len(self.policy.rules) > 256
+            or any(
+                len(values) > 128 or any(len(item.encode()) > 4096 for item in values)
+                for rule in self.policy.rules
+                for values in (rule.actions, rule.resources, rule.roles, rule.scopes, rule.audience)
+            )
+        ):
+            raise ValueError("agent role policy exceeds its finite profile")
+        if len(json.dumps(self.model_dump(mode="json"), allow_nan=False).encode()) > 262_144:
+            raise ValueError("agent role descriptor exceeds its finite profile")
+        return self
+
+
 class AgentConfig(StrictModel):
     name: str = "default"
     instruction: str = "You are a helpful assistant."
     tools: list[str] = Field(default_factory=list)
+    roles: dict[str, AgentRoleConfig] = Field(default_factory=dict)
+
+    @field_validator("roles")
+    @classmethod
+    def validate_role_names(cls, value: dict[str, AgentRoleConfig]) -> dict[str, AgentRoleConfig]:
+        if len(value) > 32 or any(
+            not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", name) for name in value
+        ):
+            raise ValueError("agent roles require bounded lowercase catalog names")
+        return value
 
 
 class CatalogAuthenticationConfig(StrictModel):

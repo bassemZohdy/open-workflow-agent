@@ -1,0 +1,281 @@
+"""Independent producer stopped at an actual role intent or known-receipt boundary."""
+
+from __future__ import annotations
+
+import asyncio
+import importlib
+import json
+import os
+import sqlite3
+import sys
+from pathlib import Path
+
+import pytest
+from _agent_pattern_fixtures import (
+    actual_native,
+    compiled,
+    configuration,
+    create,
+    expected,
+    invoke,
+    original_authority,
+    providers,
+    register_workers,
+    retained,
+    runtime,
+    scripts,
+)
+from _process_recovery_worker import write_json
+from open_workflow_agent.catalog import FakeModel
+from open_workflow_agent.errors import OwaError
+from open_workflow_agent.execution_authority import authority_scope, current_authority
+from open_workflow_agent.execution_context import current_action_context
+from test_agent_patterns import QUESTION, approval_input, decision, waiting
+from test_execution_authority_isolation import snapshot
+
+STOP_ROLE = {
+    "assistant": "assistant",
+    "pipeline": "drafter",
+    "multi_perspective": "synthesizer",
+    "refine_until_good": "drafter",
+    "expert_dispatch": "router",
+    "team_coordinator": "synthesizer",
+    "plan_and_execute": "planner",
+    "approval_gate": "approver-action",
+}
+
+
+def ledger(directory):
+    with sqlite3.connect(directory / "provider.sqlite3", timeout=3) as db:
+        return db.execute("SELECT role,prompt,response,pid FROM calls ORDER BY rowid").fetchall()
+
+
+async def run(directory, mode):
+    scenario = json.loads((directory / "scenario.json").read_text(encoding="utf-8"))
+    pattern, backend = scenario["pattern"], scenario["backend"]
+    engine_name = scenario["engine"]
+    module, cls = {
+        "adk": ("open_workflow_agent_adk", "AdkWorkflowEngine"),
+        "langgraph": ("open_workflow_agent_langgraph", "LangGraphWorkflowEngine"),
+    }[engine_name]
+    engine = getattr(importlib.import_module(module), cls)()
+    actual_native(engine, engine_name)
+    with sqlite3.connect(directory / "provider.sqlite3") as db:
+        # No uniqueness constraint or deduplication: every provider call is observable.
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS calls(role TEXT,prompt TEXT,response TEXT,pid INTEGER)"
+        )
+    script = scripts(pattern)
+    roles, _ = providers(pattern)
+    services = None
+    handle = None
+    original = None
+
+    async def park(identity, receipt):
+        assert services is not None and handle is not None
+        proof = retained(services, handle, backend)
+        lease = handle._execution_lease
+        assert lease is not None
+        services.execution_ownership.verify(lease)
+        lease_row = services.execution_ownership.connection.execute(
+            "SELECT expires_at FROM invocation_ownership "
+            "WHERE invocation_id=? AND owner=? AND generation=?",
+            (handle.invocation_id, lease.owner, lease.generation),
+        ).fetchone()
+        assert lease_row is not None
+        rows = ledger(directory)
+        write_json(
+            directory / "ready.json",
+            {
+                "pid": os.getpid(),
+                "invocation_id": handle.invocation_id,
+                "backend": backend,
+                "source": dict(plan.source),
+                "original_input": original,
+                "authority": proof["authority"],
+                "clock": proof["clock"],
+                "receipt_key": identity.key,
+                "receipt_status": receipt.status,
+                "receipts": proof["receipts"],
+                "native": proof["native"],
+                "lease_until": lease_row[0],
+                "provider_count": len(rows),
+                "provider_counts": {name: sum(row[0] == name for row in rows) for name in script},
+            },
+        )
+        while not (directory / "ack.json").exists():
+            await asyncio.sleep(0.01)
+        assert json.loads((directory / "ack.json").read_text())["pid"] == os.getpid()
+        write_json(directory / "acknowledged.json", {"pid": os.getpid()})
+        await asyncio.Event().wait()
+
+    async def response(name, prompt):
+        assert current_authority().principal.identity == "alice"
+        with sqlite3.connect(directory / "provider.sqlite3", timeout=3) as db:
+            count = db.execute("SELECT COUNT(*) FROM calls WHERE role=?", (name,)).fetchone()[0]
+            # An unintended replay calls beyond the script and fails instead of
+            # hiding duplicate dispatch through an idempotent test receiver.
+            assert count < len(script[name]), (name, count)
+            output = script[name][count]
+            db.execute(
+                "INSERT INTO calls VALUES (?,?,?,?)",
+                (
+                    name,
+                    json.dumps(prompt, sort_keys=True),
+                    json.dumps(output, sort_keys=True),
+                    os.getpid(),
+                ),
+            )
+        if mode == "start" and scenario["boundary"] == "pending":
+            context = current_action_context()
+            assert context is not None
+            receipt = services.effect_journal.get(context.identity)
+            assert receipt is not None and receipt.status == "pending"
+            await park(context.identity, receipt)
+        return output
+
+    models = {name: FakeModel(lambda prompt, name=name: response(name, prompt)) for name in script}
+    config = configuration(backend, roles, approvals=pattern == "approval_gate")
+    if mode == "recover" and scenario["boundary"] == "role-change":
+        config.agent.roles[STOP_ROLE[pattern]].instruction += " Different deployment revision."
+    services = runtime(directory / "runtime", backend, roles, models, config=config)
+    await engine.initialize(services)
+    # A finite original lease, renewed normally by the genuine producer. The
+    # recovery process waits for this exact recorded lease; it never rewrites it.
+    engine._execution_ownership_seconds = 5
+    await engine._timer_dispatcher.stop()
+    if pattern == "team_coordinator":
+        register_workers(services)
+    try:
+        if mode == "start":
+            plan = compiled(services, pattern)
+            original = approval_input() if pattern == "approval_gate" else dict(QUESTION)
+            handle = create(services, engine_name, plan)
+            original_notify = engine.executor._notify_receipt
+
+            async def notify(state, identity, receipt):
+                await original_notify(state, identity, receipt)
+                if (
+                    scenario["boundary"] != "pending"
+                    and receipt.status == "completed"
+                    and identity.invocation_id == handle.invocation_id
+                    and identity.operation == "call:agent-" + STOP_ROLE[pattern] + ":1.0.0@default"
+                ):
+                    await park(identity, receipt)
+
+            engine.executor._notify_receipt = notify
+            task = asyncio.create_task(invoke(engine, services, plan, handle, original))
+            if pattern == "approval_gate":
+                await waiting(services, handle, task)
+                assert models["approver-action"].calls == []
+                await decision(services, original)
+            await task
+            raise AssertionError("producer passed its protected stop boundary")
+        else:
+            ready = json.loads((directory / "ready.json").read_text(encoding="utf-8"))
+            handle = services.invocations.get(ready["invocation_id"])
+            original = ready["original_input"]
+            before_counts = {
+                name: sum(row[0] == name for row in ledger(directory)) for name in script
+            }
+            if scenario["boundary"] == "role-change":
+                plan = compiled(services, pattern)
+                before = snapshot(services, handle, backend)
+                with pytest.raises(OwaError):
+                    await engine.resume(handle, {"question": "replacement"}, plan)
+                assert snapshot(services, handle, backend) == before
+                assert all(model.calls == [] for model in models.values())
+                write_json(
+                    directory / "result.json",
+                    {
+                        "pid": os.getpid(),
+                        "producer_pid": ready["pid"],
+                        "rejected": True,
+                        "unchanged": True,
+                        "provider_count": len(ledger(directory)),
+                    },
+                )
+                return
+            plan = services.resolve_original_definition(handle)
+            async with asyncio.timeout(40):
+                while True:
+                    live = services.execution_ownership.connection.execute(
+                        "SELECT 1 FROM invocation_ownership WHERE invocation_id=? AND expires_at>"
+                        + services.execution_ownership._clock,
+                        (handle.invocation_id,),
+                    ).fetchone()
+                    if live is None:
+                        break
+                    await asyncio.sleep(0.02)
+            with authority_scope(original_authority(services)):
+                result = await engine.resume(handle, {"question": "replacement"}, plan)
+            rows = ledger(directory)
+            if scenario["boundary"] == "pending":
+                assert (
+                    result.status == "faulted"
+                    and result.error["code"] == "workflow_execution_error"
+                )
+                assert len(rows) == 1 and all(model.calls == [] for model in models.values())
+                assert (
+                    services.effect_journal.connection.execute(
+                        "SELECT status FROM workflow_effects WHERE identity=?",
+                        (ready["receipt_key"],),
+                    ).fetchone()[0]
+                    == "pending"
+                )
+            else:
+                assert result.status == "completed" and result.output == expected(pattern), (
+                    result.error
+                )
+                for name in script:
+                    assert sum(row[0] == name for row in rows) == (
+                        0
+                        if pattern == "expert_dispatch" and name == "finance"
+                        else len(script[name])
+                    )
+                remaining = len(script[STOP_ROLE[pattern]]) - before_counts[STOP_ROLE[pattern]]
+                assert len(models[STOP_ROLE[pattern]].calls) == remaining
+                assert await engine.resume(handle, {}, plan) == result
+                assert ledger(directory) == rows
+            proof = retained(services, handle, backend)
+            assert proof["clock"] == ready["clock"] and proof["authority"] == ready["authority"]
+            assert proof["input"] == original
+            for key, dependency in ready["receipts"].items():
+                assert proof["receipts"][key] == dependency
+            write_json(
+                directory / "result.json",
+                {
+                    "pid": os.getpid(),
+                    "producer_pid": ready["pid"],
+                    "status": result.status,
+                    "original_input": proof["input"],
+                    "authority": proof["authority"],
+                    "clock": proof["clock"],
+                    "provider_count": len(rows),
+                    "before_counts": before_counts,
+                    "recovery_counts": {name: len(model.calls) for name, model in models.items()},
+                    "provider_counts": {
+                        name: sum(row[0] == name for row in rows) for name in script
+                    },
+                },
+            )
+    finally:
+        await engine.shutdown()
+        services.close()
+        if mode == "start":
+            write_json(directory / "start-cleaned.json", {"pid": os.getpid()})
+
+
+if __name__ == "__main__":
+    directory, mode = Path(sys.argv[1]), sys.argv[2]
+    try:
+        asyncio.run(run(directory, mode))
+    except BaseException as error:
+        write_json(
+            directory / (mode + "-failure.json"),
+            {
+                "exception": type(error).__name__,
+                "error": error.as_dict() if isinstance(error, OwaError) else None,
+            },
+        )
+        raise

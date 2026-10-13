@@ -342,7 +342,7 @@ class HttpClient:
         except ToolError:
             raise
         except httpx.HTTPError:
-            raise ToolError("HTTP transport request failed") from None
+            raise ToolError("HTTP request failed") from None
         except (ssl.SSLError, OSError):
             raise ToolError("HTTP TLS or transport binding failed") from None
 

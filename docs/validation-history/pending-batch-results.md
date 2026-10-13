@@ -64,3 +64,37 @@ independent evidence. Protected approval native/process cases share the tuple
 serialization issue and require review of producer ownership failures. These are
 actionable correction work, not task deferrals. Original lease durations, captured
 byte digests, public task references and fail-before-mutation gates remain required.
+
+## Frozen S3-06 broad validation — dc71ecb
+
+The combined correction/S3-06 source at `dc71ecb` freezes 1,034 tracked inputs.
+All five fresh build/provenance checks passed. The broad common profile ended
+with **46 failures, 2,684 passes, 591 skips and 59 setup errors** in 1,160.53 pytest
+seconds (1,176.51 driver seconds), with no tracked input changes. Full isolated
+ADK, LangGraph and optional Agent Framework contract/adapter profiles are still
+running; their final results must be recorded separately.
+
+Fifty setup errors came from a new fixture using occurrence zero where the
+existing common effect identity requires a positive visit; two standalone journal
+checks supplied an empty occurrence. Four API fixture errors lacked an explicit
+fixture import. Repeated legacy component failures exposed an optional audit
+participant treating unrelated standalone receipt history as native admission
+history. The correction permits only default-disabled, unbound legacy services
+with no current authority, candidate, original marker or independent authorization
+proof; engine archive preflight and protected history remain fail closed.
+
+Two PostgreSQL selector checks still expected 18 sandbox cases after five real
+native return-projection cases were added (23 per engine). Other protocol/security
+fixture failures have actionable fixes. Corrections and S3-07 source are authored
+in a separate checkout; this failed frozen source is preserved. No completion or
+CI qualification follows from these partial passes.
+
+Source review of retained native failure evidence found a concrete engine filter
+gap: independently verified original-authority receipts use the `/do` admission
+scope, but both native adapters accepted only task references and the root clock.
+LangGraph's initial SDK starter proof also retained a three-receipt bound while
+valid authority admission can add a fourth internal receipt. Corrections must
+allow only the exact original authority identity after common proof verification,
+preserve all physical SDK starter checks, and continue rejecting business progress
+or unrelated scope/policy records. These corrections remain source work until the
+next frozen batch; unfinished native runs are not retroactively qualified.

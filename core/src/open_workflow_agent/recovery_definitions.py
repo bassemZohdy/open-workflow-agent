@@ -432,8 +432,11 @@ def recovery_profile(
                 binding.recovery_snapshot(name)
                 for name, binding in sorted(config.protocols.grpc_bindings.items())
             ]
+            agent_policy = config.agent.model_dump(mode="json")
+            if not config.agent.roles:
+                agent_policy.pop("roles")
             policy = {
-                "agent": config.agent.model_dump(mode="json"),
+                "agent": agent_policy,
                 "security": config.security.model_dump(mode="json"),
                 "execution_authorization": config.execution_authorization.model_dump(mode="json"),
                 "protocols": protocol_policy,
@@ -588,7 +591,7 @@ def _definition(plan: WorkflowPlan) -> dict[str, Any]:
     }
 
 
-def _plan(value: Any) -> WorkflowPlan:
+def _plan(value: Any, *, enabled_function_calls: frozenset[str] = frozenset()) -> WorkflowPlan:
     if (
         not isinstance(value, dict)
         or set(value) - {"script_resources"}
@@ -650,6 +653,24 @@ def _plan(value: Any) -> WorkflowPlan:
     ) != len(resources):
         raise _unavailable("archive_invalid")
     validate_schema(value["source"])
+
+    def role_calls(item: Any) -> None:
+        if isinstance(item, dict):
+            call = item.get("call")
+            if (
+                isinstance(call, str)
+                and call.startswith(("agent-", "llm-"))
+                and call.endswith("@default")
+                and call not in enabled_function_calls
+            ):
+                raise _unavailable("archived_role_binding_missing")
+            for child in item.values():
+                role_calls(child)
+        elif isinstance(item, list):
+            for child in item:
+                role_calls(child)
+
+    role_calls(value["source"])
     from .executable_sources import ExecutableScriptBinding
 
     captured = value.get("script_resources", [])
@@ -738,7 +759,46 @@ def _stored_evidence(
     value = _parsed(archive[0])
     if archive[1] != _digest(value) or archive[1] != binding["definition_digest"]:
         raise _unavailable("archive_invalid")
-    plan = _plan(value)
+    from .agent_roles import PROFILE as ROLE_PROFILE
+    from .agent_roles import RoleDescriptor
+    from .config import AgentRoleConfig
+
+    role_profile = binding["runtime_profile"].get("policy", {}).get("agent_roles")
+    enabled_function_calls: set[str] = set()
+    if role_profile is not None:
+        if (
+            type(role_profile) is not dict
+            or set(role_profile)
+            != {"profile", "bindings", "current_tool_allowlist", "effective_tool_bindings"}
+            or role_profile["profile"] != ROLE_PROFILE
+            or type(role_profile["bindings"]) is not list
+            or len(role_profile["bindings"]) > 32
+            or type(role_profile["current_tool_allowlist"]) is not list
+            or len(role_profile["current_tool_allowlist"]) > 256
+            or any(type(item) is not str for item in role_profile["current_tool_allowlist"])
+            or role_profile["current_tool_allowlist"]
+            != sorted(set(role_profile["current_tool_allowlist"]))
+            or type(role_profile["effective_tool_bindings"]) is not list
+            or len(role_profile["effective_tool_bindings"]) > 64
+        ):
+            raise _unavailable("archive_invalid")
+        for role in role_profile["bindings"]:
+            if (
+                type(role) is not dict
+                or role.get("profile") != ROLE_PROFILE
+                or type(role.get("name")) is not str
+                or not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", role["name"])
+                or f"agent-{role['name']}:{role.get('version')}@default" in enabled_function_calls
+            ):
+                raise _unavailable("archive_invalid")
+            descriptor = RoleDescriptor.capture(
+                role["name"],
+                AgentRoleConfig.model_validate(
+                    {name: item for name, item in role.items() if name not in {"name", "profile"}}
+                ),
+            )
+            enabled_function_calls.update(descriptor.references)
+    plan = _plan(value, enabled_function_calls=frozenset(enabled_function_calls))
     if (plan.fingerprint, plan.name, plan.version) != (
         handle.workflow_fingerprint,
         handle.workflow_name,
@@ -867,8 +927,13 @@ class RecoveryDefinitionArchive:
     def _read(
         self, handle: ExecutionHandle, *, allow_unqualified: bool = False
     ) -> tuple[WorkflowPlan, dict[str, Any]]:
-        plan, binding = _stored_evidence(self.connection, self.invocations, handle)
-        _verify_admission_record(self.connection, handle, binding)
+        row = self.connection.execute(
+            "SELECT payload FROM recovery_invocation_definitions WHERE invocation_id=?",
+            (handle.invocation_id,),
+        ).fetchone()
+        if row is None:
+            raise _unavailable("binding_missing")
+        binding = _parsed(row[0], limit=MAX_PROFILE_BYTES)
         manifest = self.profile_provider(handle.engine)
         _encoded(manifest, limit=MAX_PROFILE_BYTES)
         if (
@@ -879,6 +944,8 @@ class RecoveryDefinitionArchive:
             raise _unavailable("runtime_profile_changed")
         if manifest.get("continuation_supported") is False and not allow_unqualified:
             raise _unavailable("deployment_profile_unqualified")
+        plan, binding = _stored_evidence(self.connection, self.invocations, handle)
+        _verify_admission_record(self.connection, handle, binding)
         if self.trust_verifier is not None:
             try:
                 self.trust_verifier(plan)

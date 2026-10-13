@@ -21,6 +21,7 @@ from open_workflow_agent.effects import (
     ReceiptDependency,
 )
 from open_workflow_agent.errors import InvocationStateError, OwaError, WorkflowExecutionError
+from open_workflow_agent.execution_authorization import AUTHORITY_OPERATION
 from open_workflow_agent.expressions import (
     ExpressionEvaluator,
     ExpressionMode,
@@ -287,6 +288,37 @@ class LangGraphScopeExecutor:
                 "native execution state is unavailable or inconsistent; recovery is required"
             ) from None
 
+    def _original_authority_identity(self) -> EffectIdentity | None:
+        """Verify the one immutable origin receipt, never a generic scope policy."""
+        if self.effect_journal is None:
+            return None
+        identity = EffectIdentity(
+            self.invocation_id,
+            self.plan.fingerprint,
+            "/do",
+            (("/do", 1),),
+            AUTHORITY_OPERATION,
+        )
+        receipt = self.effect_journal.get(identity)
+        if receipt is None:
+            return None
+        invocations = self.effect_journal._invocations
+        if invocations is None or receipt.status != "completed":
+            raise ValueError("original authority receipt is unavailable")
+        # Journal reads already verify the independent original authority row,
+        # archive, exact receipt and index; do not repeat that physical proof.
+        return identity
+
+    def _is_original_authority(self, identity: EffectIdentity) -> bool:
+        expected = EffectIdentity(
+            self.invocation_id,
+            self.plan.fingerprint,
+            "/do",
+            (("/do", 1),),
+            AUTHORITY_OPERATION,
+        )
+        return identity == expected and self._original_authority_identity() == expected
+
     def validate_initial_projection(self, checkpoint: Any, expected_input: Any) -> None:
         """Authenticate only the SDK's unexecuted root initializer projection."""
         try:
@@ -358,14 +390,17 @@ class LangGraphScopeExecutor:
                 if self.plan.uses_timing
                 else set()
             )
+            original_authority = self._original_authority_identity()
+            if original_authority is not None:
+                expected_receipts.add(original_authority.key)
             if bindings["scopes"] or set(self.receipts) != expected_receipts:
                 raise ValueError("initial native dependencies contain task progress")
             if self.effect_journal is not None:
                 indexed = self.effect_journal.connection.execute(
-                    "SELECT payload FROM workflow_effect_invocations WHERE invocation_id=? LIMIT 4",
+                    "SELECT payload FROM workflow_effect_invocations WHERE invocation_id=? LIMIT 5",
                     (self.invocation_id,),
                 ).fetchall()
-                if len(indexed) > 3:
+                if len(indexed) > 3 + (original_authority is not None):
                     raise ValueError("initial invocation already has action evidence")
                 admissions = {
                     root_clock_identity(self.invocation_id, self.plan.fingerprint),
@@ -384,6 +419,8 @@ class LangGraphScopeExecutor:
                         "policy:initial-delivery:v1",
                     ),
                 }
+                if original_authority is not None:
+                    admissions.add(original_authority)
                 for row in indexed:
                     identity = EffectIdentity.from_value(_native_json(row[0]))
                     if identity not in admissions:
@@ -445,6 +482,7 @@ class LangGraphScopeExecutor:
                 or (
                     reference.task_reference not in self.task_references
                     and reference != root_clock_identity(self.invocation_id, self.plan.fingerprint)
+                    and not self._is_original_authority(reference)
                 )
                 or reference.key in seen
             ):
@@ -522,6 +560,7 @@ class LangGraphScopeExecutor:
                         reference.task_reference not in self.task_references
                         and reference
                         != root_clock_identity(self.invocation_id, self.plan.fingerprint)
+                        and not self._is_original_authority(reference)
                     )
                     or reference.key in dependencies
                 ):
@@ -714,6 +753,7 @@ class LangGraphScopeExecutor:
                 or identity.workflow_fingerprint != self.plan.fingerprint
                 or (
                     identity.task_reference not in self.task_references
+                    and not self._is_original_authority(identity)
                     and not (
                         self.plan.uses_timing
                         and identity

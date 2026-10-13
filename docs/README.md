@@ -14,6 +14,7 @@ passes do not establish delivery or conformance.
 | Unfinished continuation and protocol work | [S2-09 policy](s2-09-version-recovery-acceptance.md), [MCP gates](s3-01-mcp-acceptance.md), [A2A gates](s3-02-a2a-acceptance.md) |
 | Unfinished operation and executable work | [S3-03 gates](s3-03-operation-adapters-acceptance.md), [S3-04 gates](s3-04-executable-source-acceptance.md) |
 | Unfinished protected approvals | [S3-05 gates](s3-05-protected-approval-acceptance.md) |
+| Unfinished agent patterns | [S3-07 scope and gates](s3-07-agent-pattern-acceptance.md) |
 | Unfinished identity and security | [S3-06 scope and gates](s3-06-identity-security-acceptance.md) |
 | Sandbox boundary and deployment acceptance | [Sandbox execution](sandbox-execution.md), [verified cluster record](../PROJECT.md#verified-kubernetes-and-openshift-sandbox-acceptance--2026-09-12) |
 | Inventory and consolidation | [Implementation audit](current-implementation-audit.md), [consolidation](agent-runtime-consolidation.md), [full feature tracker](../resources/compatibility/feature-tracker.json) |

@@ -116,6 +116,11 @@ on:
       - "tests/contract/_protected_approval*.py"
       - "tests/ci/test_protected_approval_ci_selection.py"
       - "tests/ci/test_execution_authority_ci_selection.py"
+      - "core/src/open_workflow_agent/agent_roles.py"
+      - "resources/patterns/**"
+      - "tests/core/test_agent_role*.py"
+      - "tests/contract/*agent_pattern*.py"
+      - "tests/ci/test_agent_pattern_ci_selection.py"
       - "core/src/open_workflow_agent/events.py"
       - "core/src/open_workflow_agent/event_store.py"
       - "core/src/open_workflow_agent/durable_events.py"
@@ -295,6 +300,8 @@ jobs:
             tests/core/test_credential_projection.py \
             tests/core/test_api_execution_authority.py \
             tests/core/test_authenticated_catalog_metadata.py \
+            tests/core/test_agent_roles.py \
+            tests/core/test_agent_role_boundaries.py \
             tests/core/test_timer_store.py \
             tests/core/test_child_workflow_budgets.py \
             tests/core/test_child_delivery_guards.py \
@@ -659,6 +666,8 @@ jobs:
             ../../tests/contract/test_protected_approval_process_recovery.py \
             ../../tests/contract/test_execution_authority_isolation.py \
             ../../tests/contract/test_execution_authority_process_recovery.py \
+            ../../tests/contract/test_agent_patterns.py \
+            ../../tests/contract/test_agent_pattern_process_recovery.py \
             ../../tests/core/test_executable_source_admission.py \
             ../../tests/contract/test_executable_source_calls.py \
             ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql
@@ -707,6 +716,8 @@ jobs:
             ../../tests/contract/test_protected_approval_process_recovery.py \
             ../../tests/contract/test_execution_authority_isolation.py \
             ../../tests/contract/test_execution_authority_process_recovery.py \
+            ../../tests/contract/test_agent_patterns.py \
+            ../../tests/contract/test_agent_pattern_process_recovery.py \
             ../../tests/core/test_executable_source_admission.py \
             ../../tests/contract/test_executable_source_calls.py \
             ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql

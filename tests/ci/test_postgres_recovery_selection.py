@@ -18,8 +18,8 @@ ROOT = Path(__file__).resolve().parents[2]
     "engine,fixture,expected",
     [
         ("LangGraph", "test_native_scope_dependencies.py", 9),
-        ("LangGraph", "test_sandbox_effect_recovery.py", 18),
-        ("ADK", "test_sandbox_effect_recovery.py", 18),
+        ("LangGraph", "test_sandbox_effect_recovery.py", 23),
+        ("ADK", "test_sandbox_effect_recovery.py", 23),
         ("LangGraph", "test_event_child_effect_recovery.py", 20),
         ("ADK", "test_event_child_effect_recovery.py", 20),
         ("LangGraph", "test_child_invocation_dependencies.py", 17),

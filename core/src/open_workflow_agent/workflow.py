@@ -381,6 +381,7 @@ def validate_capabilities(
     _schema_registry: Registry[Any] | None = None,
     _mcp_stdio: bool = False,
     grpc_enabled: bool = False,
+    enabled_function_calls: frozenset[str] = frozenset(),
 ) -> None:
     _validate_definition_profile(workflow, _resource_preflight, _schema_registry)
     _validate_catalog_capability(workflow, trusted_catalogs=trusted_catalogs)
@@ -429,6 +430,7 @@ def validate_capabilities(
             call = definition["call"]
             if not isinstance(call, str) or (
                 call not in SUPPORTED_CALLS
+                and call not in enabled_function_calls
                 and not (call == "grpc" and grpc_enabled)
                 and call not in functions
                 and not _is_trusted_catalog_call(call, catalogs, trusted_catalogs)
@@ -472,6 +474,7 @@ def validate_capabilities(
                 _schema_registry=_schema_registry,
                 _mcp_stdio=_mcp_stdio,
                 grpc_enabled=grpc_enabled,
+                enabled_function_calls=enabled_function_calls,
             )
         if "emit" in definition:
             _validate_emit_capability(definition["emit"], reference)
@@ -490,6 +493,7 @@ def validate_capabilities(
                 _schema_registry=_schema_registry,
                 _mcp_stdio=_mcp_stdio,
                 grpc_enabled=grpc_enabled,
+                enabled_function_calls=enabled_function_calls,
             )
         validate_expression_profile(workflow)
 
@@ -840,6 +844,7 @@ def compile_workflow(
     *,
     trusted_catalogs: Mapping[str, Any] | None = None,
     grpc_enabled: bool = False,
+    enabled_function_calls: frozenset[str] = frozenset(),
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
@@ -847,6 +852,7 @@ def compile_workflow(
         resolve_reusable_components(workflow),
         trusted_catalogs=trusted_catalogs,
         grpc_enabled=grpc_enabled,
+        enabled_function_calls=enabled_function_calls,
     )
     return normalize_workflow(workflow)
 
@@ -858,6 +864,7 @@ async def resolve_and_compile_workflow(
     resolver: Any,
     catalog: FunctionCatalog,
     grpc_enabled: bool = False,
+    enabled_function_calls: frozenset[str] = frozenset(),
 ) -> WorkflowPlan:
     """Resolve deployment-trusted catalogs before building the internal plan."""
 
@@ -869,6 +876,7 @@ async def resolve_and_compile_workflow(
         trusted_catalogs=trusted_catalogs,
         _resource_preflight=enabled,
         grpc_enabled=grpc_enabled,
+        enabled_function_calls=enabled_function_calls,
     )
     imports, resources = await resolve_workflow_dependencies(workflow, resolver, catalog)
     effective = (
@@ -881,6 +889,7 @@ async def resolve_and_compile_workflow(
         trusted_catalogs=trusted_catalogs,
         _schema_registry=build_schema_registry(resources),
         grpc_enabled=grpc_enabled,
+        enabled_function_calls=enabled_function_calls,
     )
     return normalize_workflow(workflow, imports=imports, resources=resources)
 
