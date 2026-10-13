@@ -136,7 +136,12 @@ async def test_catch_and_retry_use_the_same_error_value(
 )
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_recorded_provider_error_retains_catch_context_after_restart(
-    tmp_path: Path, engine_name: str, engine_type: Any, error_type: type[Exception], backend: str
+    tmp_path: Path,
+    engine_name: str,
+    engine_type: Any,
+    error_type: type[Exception],
+    backend: str,
+    explicit_workflow_delivery: None,
 ) -> None:
     datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
     if backend == "postgresql" and not datasource:

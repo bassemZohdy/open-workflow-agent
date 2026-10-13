@@ -90,6 +90,21 @@ def test_postgresql_profiles_run_independently_and_gate_both_images():
     assert "--kill-after=30s 14m" in _runs(jobs["postgres-langgraph"])
 
 
+def test_windows_timing_folded_command_passes_all_fixtures_to_pytest():
+    job = _workflow("ci.yml")["jobs"]["windows-native-timing"]
+    command = next(
+        step["run"]
+        for step in job["steps"]
+        if step.get("name") == "Verify Windows native timers events and scheduling"
+    )
+    # A more-indented YAML line retains a newline in a folded scalar. On
+    # PowerShell a following .py path becomes a second script launch, rather
+    # than a pytest argument, and can wait for file association indefinitely.
+    assert "\n" not in command
+    assert "../../tests/contract/test_child_lifecycle_acceptance.py" in command
+    assert "../../tests/contract/test_event_backend_admission.py" in command
+
+
 def test_independent_principal_jobs_finish_both_profiles_before_workflow_success():
     workflow = _workflow("ci.yml")
     for name in ("engines", "containers"):

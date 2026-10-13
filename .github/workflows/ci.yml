@@ -140,7 +140,7 @@ jobs:
           --with pytest --with pytest-asyncio pytest -q
           ../../tests/contract/test_detached_children.py
           ../../tests/contract/test_synchronous_child_waits.py
-            ../../tests/contract/test_child_lifecycle_acceptance.py
+          ../../tests/contract/test_child_lifecycle_acceptance.py
           ../../tests/contract/test_detached_child_process_recovery.py
           ../../tests/contract/test_retry_error_context.py
           ../../tests/contract/test_retry_timing.py

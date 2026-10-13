@@ -45,6 +45,7 @@ async def test_retry_schedule_and_known_outcome_survive_restart(
     engine_type: Any,
     backend: str,
     boundary: str,
+    explicit_workflow_delivery: None,
 ) -> None:
     now = 1000.0
     reached = asyncio.Event()

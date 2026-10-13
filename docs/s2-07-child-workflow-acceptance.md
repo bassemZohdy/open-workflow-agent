@@ -15,6 +15,24 @@ and S2-07 remain open; this partial record does not complete the child task.
 
 ## Integrated local validation — 2026-10-13
 
+Hosted source `026969c` passes Docs, optional Framework, external sandbox and
+all seven security audits, but does not qualify S2-07. PostgreSQL reports one
+LangGraph timeout and six ADK recovery failures (five timeouts and one strict
+provider-count mismatch); all 44 new child cases pass on each principal.
+Manual restart fixtures now use the existing explicit-delivery isolation
+fixture, preventing shared-datasource background work from using their local
+fakes. The logs do not identify a specific foreign invocation. All original
+assertions and ten-second bounds remain. Focus passes 29 cases per actual
+principal; fresh PostgreSQL qualification remains required.
+
+The Windows timing job at that source passes its first two files (55 cases),
+then reaches its limit because one over-indented YAML line preserves a newline
+in the folded command. PowerShell consequently receives a separate Python-file
+launch instead of the remaining pytest arguments. The corrected indentation
+and regression guard retain every selected fixture and the twenty-minute bound.
+Seven CI workflow guards pass. Earlier failed/cancelled runs remain historical;
+neither partial pass establishes complete platform qualification.
+
 The frozen behavioral batch passes all four independent environments:
 
 | Profile | Passed | Declared skips | Existing expected failures |

@@ -65,7 +65,13 @@ def _plan():
 @pytest.mark.parametrize("outcome", ["value", "null", "fault"])
 @pytest.mark.parametrize("changed_request", [False, True])
 async def test_action_receipt_survives_interruption_before_native_task_commit(
-    tmp_path, backend, engine_name, engine_type, outcome, changed_request
+    tmp_path,
+    backend,
+    engine_name,
+    engine_type,
+    outcome,
+    changed_request,
+    explicit_workflow_delivery,
 ):
     calls = []
 
