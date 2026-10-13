@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import os
+import sys
 import time
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 from open_workflow_agent.catalog import FakeModel
@@ -91,7 +93,9 @@ def admission(tmp_path, request):
                 "name": "background",
                 "version": "1.0.0",
             },
-            "do": [{"job": {"run": {"await": False, "shell": {"command": "approved"}}}}],
+            "do": [
+                {"job": {"run": {"await": False, "shell": {"command": Path(sys.executable).name}}}}
+            ],
         },
         sandbox=config.sandbox,
     )
@@ -120,7 +124,7 @@ def admission(tmp_path, request):
     executable = SandboxExecutionRequest(
         job_id(identity),
         "shell",
-        command="approved",
+        command=Path(sys.executable).name,
         invocation_id=handle.invocation_id,
         task_reference=identity.task_reference,
     )

@@ -141,7 +141,14 @@ def imported_fixture(services, receiver, monkeypatch):
     services.external_catalogs.http = client
     definition = source()
     definition["use"] = {"catalogs": {"trusted": {"endpoint": "https://catalog.test/root"}}}
-    definition["do"] = [{"remote": {"call": "operation:1.0.0@trusted", "with": "${ . }"}}]
+    definition["do"] = [
+        {
+            "remote": {
+                "call": "operation:1.0.0@trusted",
+                "with": {"id": "${ .id }", "untouched": "${ .untouched }"},
+            }
+        }
+    ]
     return definition, fetched
 
 
@@ -169,9 +176,11 @@ class Receiver:
             raise httpx.ReadError("private-remote-detail")
         if self.outcome == "fault":
             return httpx.Response(503, json={"error": "controlled peer fault"})
-        return httpx.Response(
-            200, json=None if self.outcome == "null" else {"id": "original/value"}
-        )
+        if self.outcome == "null":
+            return httpx.Response(
+                200, content=b"null", headers={"Content-Type": "application/json"}
+            )
+        return httpx.Response(200, json={"id": "original/value"})
 
     def install(self, services):
         services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(self)))
@@ -357,10 +366,9 @@ async def test_registered_import_uncertainty_stays_pending_and_bypasses_catch_re
             engine.invoke(plan, invocation, {"id": "original/value"}), 15
         )
         assert result.status == "faulted" and len(receiver.calls) == 2 and len(fetched) == 1
-        assert (
-            "uncertain" in result.error["message"].lower()
-            or "recovery" in result.error["message"].lower()
-        )
+        assert result.error["code"] == "workflow_execution_error"
+        assert result.error["details"]["reason"] == "transport_or_response_failure"
+        assert "private-remote-detail" not in json.dumps(result.error)
         business = identities(services, invocation.invocation_id)
         policies = identities(services, invocation.invocation_id, OPERATION_POLICY)
         assert len(business) == len(policies) == 1
@@ -617,10 +625,9 @@ async def test_uncertain_dispatched_operation_stays_pending_without_catch_or_ret
         invocation = handle(services, engine_name, plan)
         result = await asyncio.wait_for(engine.invoke(plan, invocation, {}), 15)
         assert result.status == "faulted" and len(receiver.calls) == 2
-        assert (
-            "recovery" in result.error["message"].lower()
-            or "unresolved" in result.error["message"].lower()
-        )
+        assert result.error["code"] == "workflow_execution_error"
+        assert result.error["details"]["reason"] == "transport_or_response_failure"
+        assert "private-remote-detail" not in json.dumps(result.error)
         business = identities(services, invocation.invocation_id)
         assert len(business) == 1 and services.effect_journal.get(business[0]).status == "pending"
         assert services.model.calls == []
