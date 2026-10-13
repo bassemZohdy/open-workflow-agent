@@ -545,6 +545,28 @@ class SandboxBackgroundConfig(StrictModel):
         return self
 
 
+class ExecutableSourceConfig(StrictModel):
+    """Deployment-owned exact script bytes; not a workflow credential or fetch rule."""
+
+    profile: Literal["owa/executable-source/v1"] = "owa/executable-source/v1"
+    id: str
+    version: str
+    uri: str
+    language: Literal["python"] = "python"
+    code: str = Field(repr=False)
+    digest: str
+
+    @model_validator(mode="after")
+    def validate_capture(self) -> ExecutableSourceConfig:
+        from .executable_sources import ExecutableSource
+
+        try:
+            ExecutableSource.from_value(self.model_dump(mode="json"))
+        except Exception:
+            raise ValueError("executable source binding is invalid") from None
+        return self
+
+
 class SandboxConfig(StrictModel):
     """Deployment policy for the selected framework-neutral sandbox backend."""
 
@@ -552,6 +574,7 @@ class SandboxConfig(StrictModel):
     backend: Literal["internal", "docker", "kubernetes"] = "internal"
     allow_shell: bool = False
     script_runtimes: list[str] = Field(default_factory=lambda: ["python"])
+    script_sources: list[ExecutableSourceConfig] = Field(default_factory=list, max_length=32)
     timeout_seconds: float = 30.0
     max_input_bytes: int = 1_048_576
     max_output_bytes: int = 1_048_576

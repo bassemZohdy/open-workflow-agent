@@ -64876,7 +64876,19 @@
       "3": 261
     },
     "baseline_inventory_sha256": "df2c203de28783604b489e6fd0468117a37d01dddd61a4bd3b76ca12b6dfb9c4",
-    "status_note": "Stage assignments are initial planning groups. All implementation statuses await repository/backend verification; no new engine implementation or tests executed."
+    "status_note": "Stage assignments are initial planning groups. All implementation statuses await repository/backend verification; no new engine implementation or tests executed.",
+    "authoring_notes": {
+      "S3-04": {
+        "status": "Authored; qualification pending",
+        "record": "docs/s3-04-executable-source-acceptance.md",
+        "scope": "Finite workflow-owned captured Python script sources and awaited internal process controls; imported executable sources unsupported; all native/backend/platform/publication gates pending"
+      },
+      "S3-05": {
+        "status": "Authored; qualification pending",
+        "record": "docs/s3-05-protected-approval-acceptance.md",
+        "scope": "Finite named-principal protected approvals, immutable assignment/terminal proofs, fair original-expiry observer; all native/backend/platform/publication gates pending"
+      }
+    }
   },
   "repository_tracking": {
     "version": 1,

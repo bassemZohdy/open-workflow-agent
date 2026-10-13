@@ -418,3 +418,19 @@ now reports bounded safe categories within the original ten-second fixture gate.
 The secret-safety positive request supplies the pinned required message ID and
 asserts a successful response before its original no-secret checks. All changes
 require the next frozen behavioral and hosted batch.
+
+The correction batch at `9570557316014542fe10bfbd2361f70e2968df05` froze
+980 inputs. Root ended with 22 failures, 755 passes and 140 skips; optional
+Framework ended with three failures, 251 passes and 429 skips. Both retained
+unchanged-source evidence. Principal native profiles are still running; no
+aggregate success is claimed. Five fresh independent builds passed again.
+
+The next grouped source fixes add the missing process-limit prerequisite in the
+pure Kubernetes policy fixture and finish the repository-owned A2A wire fixture
+migration to `SendMessage` and version-1 text Parts. Actual supervisor handling
+now distinguishes an early asyncio timer wake from a signaled control request,
+preserving the same original autonomous deadline and independent process. Windows
+supervisor-loss cleanup accepts stale-PID error 87 only after a fresh limited
+process query proves absence or actual exit; live-process and unrelated errors
+still fail. Real early-wake continuity and live-PID negative witnesses are authored.
+These corrections remain unqualified until the next coherent batch.

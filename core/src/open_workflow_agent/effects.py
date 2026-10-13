@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from .errors import InvocationStateConflict, WorkflowExecutionError
 from .expressions import validate_expression_data
-from .ownership import ExecutionLease, owned_write_transaction
+from .ownership import ExecutionLease, execution_write_guard, owned_write_transaction
 from .persistence import InvocationStore
 from .storage import StorageConnection, open_storage
 
@@ -471,6 +471,18 @@ class EffectJournal:
                 verify_openapi_operation_receipt(
                     self.connection, self._invocations, identity, receipt
                 )
+            if identity.operation == "policy:executable-source:v1":
+                from .executable_source_admission import verify_executable_source_receipt
+
+                verify_executable_source_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            if identity.operation == "run:script":
+                from .executable_source_admission import verify_executable_source_business_receipt
+
+                verify_executable_source_business_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
             if identity.operation.startswith("policy:sandbox-job-") or identity.operation in {
                 "run:script",
                 "run:shell",
@@ -703,6 +715,98 @@ class EffectJournal:
         if completed is None or completed.owner != owner or completed.status == "pending":
             raise WorkflowExecutionError("workflow effect outcome was not recorded")
         return completed
+
+    def finish_grpc(
+        self,
+        identity: EffectIdentity,
+        owner: str,
+        *,
+        execution_lease: ExecutionLease | None,
+        output: Any = None,
+        error: dict[str, Any] | None = None,
+        error_status_code: int | None = None,
+        operation_id: str | None = None,
+    ) -> EffectReceipt:
+        """Commit one live gRPC owner's known reply under its execution fence.
+
+        The generic first-dispatch finish contract is unchanged. This narrow
+        adapter profile cannot let a late reply cross a generation takeover.
+        """
+        if identity.operation != "call:grpc" or execution_lease is None:
+            raise InvocationStateConflict("gRPC completion requires current execution ownership")
+        return self.finish_owned(
+            identity,
+            owner,
+            execution_lease=execution_lease,
+            output=output,
+            error=error,
+            error_status_code=error_status_code,
+            operation_id=operation_id,
+        )
+
+    def finish_owned(
+        self,
+        identity: EffectIdentity,
+        owner: str,
+        *,
+        execution_lease: ExecutionLease | None,
+        output: Any = None,
+        error: dict[str, Any] | None = None,
+        error_status_code: int | None = None,
+        operation_id: str | None = None,
+    ) -> EffectReceipt:
+        """Atomic outcome primitive for explicitly qualified owned action profiles.
+
+        Callers establish their independent profile admission before choosing
+        this path; ordinary first-owner receipts retain ``finish`` semantics.
+        """
+        if execution_lease is None:
+            raise InvocationStateConflict("action completion requires current execution ownership")
+        try:
+            with owned_write_transaction(
+                self.connection,
+                execution_lease,
+                invocation_id=identity.invocation_id,
+                workflow_fingerprint=identity.workflow_fingerprint,
+            ):
+                recorded = self.get(identity)
+                if recorded is None or recorded.owner != owner:
+                    raise WorkflowExecutionError(
+                        "action completion does not own the original intent"
+                    )
+                if recorded.status != "pending":
+                    return recorded
+                proposed = replace(
+                    recorded,
+                    status="faulted" if error is not None else "completed",
+                    output=output,
+                    error=error,
+                    error_status_code=error_status_code,
+                    operation_id=operation_id
+                    if operation_id is not None
+                    else recorded.operation_id,
+                )
+                self.connection.execute(
+                    "UPDATE workflow_effects SET status=?,payload=? "
+                    "WHERE identity=? AND owner=? AND status='pending'",
+                    (
+                        proposed.status,
+                        json.dumps(_receipt_payload(proposed), ensure_ascii=False, allow_nan=False),
+                        identity.key,
+                        owner,
+                    ),
+                )
+                completed = self.get(identity)
+                if completed != proposed:
+                    raise WorkflowExecutionError("action outcome was not atomically retained")
+                guard, parameters = execution_write_guard(self.connection, execution_lease)
+                if self.connection.execute(guard, parameters).fetchone() is None:
+                    raise InvocationStateConflict("action completion ownership expired")
+                return completed
+        except InvocationStateConflict:
+            raise
+        except Exception:
+            raise WorkflowExecutionError("owned action outcome could not be stored") from None
 
     def finish_child(
         self,

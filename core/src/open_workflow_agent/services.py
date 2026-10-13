@@ -108,6 +108,14 @@ class RuntimeServices:
             binding.to_binding(name) for name, binding in config.protocols.grpc_bindings.items()
         )
         self.grpc_enabled = bool(config.protocols.grpc_bindings)
+        from .executable_sources import ExecutableSource, ExecutableSourceRegistry
+
+        self.executable_sources = ExecutableSourceRegistry(
+            tuple(
+                ExecutableSource.from_value(item.model_dump(mode="json"))
+                for item in config.sandbox.script_sources
+            )
+        )
         if self.grpc_enabled:
             verify_grpc_sdk()
         self.model = model or (
@@ -277,6 +285,9 @@ class RuntimeServices:
         )
         self.a2a_agent_card_admission = A2AAgentCardAdmission(self)
         self.openapi_operation_admission = OpenApiOperationAdmission(self)
+        from .executable_source_admission import ExecutableSourceAdmission
+
+        self.executable_source_admissions = ExecutableSourceAdmission(self, self.executable_sources)
         self.sandbox_jobs: SandboxJobStore | None = None
         self._background_dispatcher: SandboxJobDispatcher | None = None
         if config.sandbox.background.enabled:
@@ -422,6 +433,16 @@ class RuntimeServices:
                     }
                 )
             policy["approvals"]["actorBindings"] = bindings
+        policy.setdefault("sandbox", {})["script_sources"] = [
+            {
+                "id": source.id,
+                "version": source.version,
+                "uri": source.uri,
+                "language": source.language,
+                "digest": source.digest,
+            }
+            for source in self.executable_sources.sources
+        ]
         policy["catalogs"] = {
             name: ExternalCatalogConfig.model_validate(declaration).model_dump(mode="json")
             for name, declaration in self.external_catalogs.policies.items()
@@ -467,7 +488,13 @@ class RuntimeServices:
         return self.recovery_definitions.resolve(handle)
 
     def _verify_archived_definition_trust(self, plan: WorkflowPlan) -> None:
+        from .executable_source_plan import capture_script_resources
+
         self.verify_protected_approval_plan(plan)
+        for item in plan.script_resources:
+            self.executable_sources.verify(item.source)
+        if capture_script_resources(plan.source, self.executable_sources) != plan.script_resources:
+            raise ConfigurationError("archived executable source selection differs")
         self.verify_grpc_plan(plan)
         self.external_catalogs.schemas.verify(plan.resources)
         validate_sandbox_capabilities(
@@ -476,6 +503,7 @@ class RuntimeServices:
             trusted_catalogs=self.external_catalogs.policies,
             _schema_registry=schema_registry(plan.resources),
             grpc_enabled=self.grpc_enabled,
+            executable_sources=self.executable_sources,
         )
         for binding in plan.imports:
             reference = parse_catalog_function_reference(binding.reference)

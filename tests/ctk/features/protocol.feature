@@ -85,8 +85,7 @@ Feature: Protocol Call Tasks
                 messageId: ctk-a2a-message
                 role: ROLE_USER
                 parts:
-                  - kind: text
-                    text: hello from CTK
+                  - text: hello from CTK
           timeout:
             after:
               seconds: 5

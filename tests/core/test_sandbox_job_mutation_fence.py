@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sqlite3
 import time
 from pathlib import Path
@@ -291,9 +292,84 @@ async def test_original_deadline_terminates_without_current_observer_lease(super
         before = snapshot(services)
         async with asyncio.timeout(6):
             result, terminated = await task
-        assert terminated and expired == [True] and result.exit_code != 0
+        # Job-object closure can truthfully report zero on Windows. The
+        # termination witness and original due establish cause independently.
+        assert terminated and expired == [True]
+        assert type(result.exit_code) is int
+        assert time.time() >= launch.deadline_at
         assert snapshot(services) == before
     finally:
         if not task.done():
             task.cancel()
         await asyncio.gather(task, return_exceptions=True)
+
+
+async def test_early_timer_wake_is_not_a_control_or_permission_to_terminate(
+    supervisor, tmp_path, monkeypatch
+):
+    ready, proceed = tmp_path / "ready", tmp_path / "proceed"
+    code = (
+        "import time\nfrom pathlib import Path\n"
+        f"Path({str(ready)!r}).write_text('ready')\n"
+        "due=time.monotonic()+9\n"
+        f"while not Path({str(proceed)!r}).exists() and time.monotonic()<due: time.sleep(.01)\n"
+        "print('original-live-result',flush=True)\n"
+    )
+    services, _, _, _, _, launch = supervisor(code)
+    stop, early = asyncio.Event(), asyncio.Event()
+    controls, deadlines = [], []
+    actual_wait = asyncio.wait
+    injected = False
+
+    async def early_wait(futures, **kwargs):
+        nonlocal injected
+        if not injected and kwargs.get("return_when") == asyncio.FIRST_COMPLETED:
+            injected = True
+            await wait_file(ready)
+            early.set()
+            return set(), set(futures)
+        return await actual_wait(futures, **kwargs)
+
+    def control():
+        controls.append(stop.is_set())
+        return None
+
+    monkeypatch.setattr(asyncio, "wait", early_wait)
+    before = snapshot(services)
+    task = asyncio.create_task(
+        run_job(
+            InternalSandboxBackend(services.config.sandbox),
+            launch.request,
+            remaining=launch.deadline_at - time.time(),
+            started=lambda pid: None,
+            stop=stop,
+            deadline_reached=lambda: deadlines.append(True),
+            deadline_due=lambda: time.time() >= launch.deadline_at,
+            launch_fence=lambda: backend_mutation_fence(
+                database(services), launch, expected_profile=launch.profile, purpose="submit"
+            ),
+            control_mutation=control,
+        )
+    )
+    try:
+        async with asyncio.timeout(5):
+            await early.wait()
+        assert not stop.is_set() and not task.done() and snapshot(services) == before
+        proceed.write_text("continue")
+        async with asyncio.timeout(5):
+            result, terminated = await task
+        assert result.exit_code == 0 and result.stdout == "original-live-result\n"
+        assert not terminated and controls == [] and deadlines == []
+        assert snapshot(services) == before
+    finally:
+        if not task.done():
+            task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows process liveness query")
+def test_windows_dead_pid_cleanup_guard_never_labels_current_process_as_absent():
+    from test_internal_sandbox_jobs import _windows_pid_is_gone
+
+    assert not _windows_pid_is_gone(os.getpid())
+    assert not _windows_pid_is_gone(0)

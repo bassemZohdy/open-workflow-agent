@@ -40,6 +40,32 @@ from open_workflow_agent.sandbox.manager import SandboxManager
 from open_workflow_agent.services import RuntimeServices
 
 
+def _windows_pid_is_gone(pid):
+    """Check absence/actual exit before accepting Windows stale-PID cleanup."""
+    import ctypes
+    from ctypes import wintypes
+
+    if type(pid) is not int or pid <= 0:
+        return False
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel.OpenProcess.restype = wintypes.HANDLE
+    kernel.GetExitCodeProcess.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+    kernel.GetExitCodeProcess.restype = wintypes.BOOL
+    kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+    kernel.CloseHandle.restype = wintypes.BOOL
+    handle = kernel.OpenProcess(0x1000, False, pid)
+    if not handle:
+        return ctypes.get_last_error() == 87
+    try:
+        code = wintypes.DWORD()
+        if not kernel.GetExitCodeProcess(handle, ctypes.byref(code)):
+            raise ctypes.WinError(ctypes.get_last_error())
+        return code.value != 259  # STILL_ACTIVE
+    finally:
+        kernel.CloseHandle(handle)
+
+
 @pytest.fixture
 def supervisor(tmp_path):
     records = []
@@ -348,6 +374,13 @@ async def test_actual_supervisor_loss_is_unknown_and_never_relaunches(supervisor
                 os.kill(child_pid, signal.SIGTERM)
         except (ProcessLookupError, PermissionError):
             pass
+        except OSError as error:
+            if not (
+                os.name == "nt"
+                and getattr(error, "winerror", None) == 87
+                and _windows_pid_is_gone(child_pid)
+            ):
+                raise
 
 
 def test_private_ipc_authentication_size_duplicate_json_and_key_integrity(tmp_path):

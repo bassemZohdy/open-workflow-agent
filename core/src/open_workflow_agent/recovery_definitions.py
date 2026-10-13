@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import csv
 import hashlib
 import importlib.metadata
 import importlib.util
+import io
 import json
 import os
 import platform
 import re
+import stat
 import sys
 import threading
 import tomllib
@@ -246,14 +249,48 @@ def _sdk_file_digest(entries: tuple[tuple[str, str, int, int], ...]) -> str:
     return digest.hexdigest()
 
 
+@lru_cache(maxsize=32)
+def _record_paths(digest: str, metadata_root: str, content: bytes) -> tuple[str, ...]:
+    """Cache only a bounded installed inventory, never physical file evidence."""
+    if hashlib.sha256(content).hexdigest() != digest or not metadata_root:
+        raise _unavailable("runtime_profile_unavailable")
+    rows = csv.reader(io.StringIO(content.decode("utf-8", errors="strict"), newline=""))
+    paths: list[str] = []
+    for row in rows:
+        if len(row) != 3 or not row[0] or "\x00" in row[0] or len(row[0]) > 4096:
+            raise _unavailable("runtime_profile_unavailable")
+        if len(paths) >= 65_536:
+            raise _unavailable("runtime_profile_unavailable")
+        paths.append(row[0])
+    if not paths or len(paths) != len(set(paths)):
+        raise _unavailable("runtime_profile_unavailable")
+    return tuple(sorted(paths))
+
+
+def _sdk_paths(installed: importlib.metadata.Distribution) -> tuple[str, ...]:
+    if isinstance(installed, importlib.metadata.PathDistribution):
+        # PathDistribution is the actual wheel metadata provider. Its metadata
+        # directory identifies this selected installation without scanning an
+        # arbitrary checkout or skipping missing installed files via .files.
+        try:
+            metadata_root = Path(str(cast(Any, installed)._path)).resolve()
+            content = _file_bytes(metadata_root / "RECORD", 4_000_000)
+            return _record_paths(hashlib.sha256(content).hexdigest(), str(metadata_root), content)
+        except (OSError, UnicodeError, csv.Error):
+            raise _unavailable("runtime_profile_unavailable") from None
+    # Preserve the existing custom distribution seam without caching it.
+    files = installed.files
+    if files is None:
+        raise _unavailable("runtime_profile_unavailable")
+    return tuple(sorted(str(item) for item in files))
+
+
 def _sdk_digest(name: str) -> str:
     """Bounded checkpoint/protocol code, including declared gRPC codec binaries."""
     installed = importlib.metadata.distribution(name)
-    if installed.files is None:
-        raise _unavailable("runtime_profile_unavailable")
     entries: list[tuple[str, str, int, int]] = []
     size = 0
-    for item in sorted(installed.files, key=str):
+    for item in _sdk_paths(installed):
         relative = str(item).replace("\\", "/")
         suffixes = (
             (".py", ".pyi", ".so", ".pyd", ".dll", ".dylib")
@@ -263,15 +300,18 @@ def _sdk_digest(name: str) -> str:
         if not relative.endswith(suffixes) or "__pycache__" in relative:
             continue
         path = Path(str(installed.locate_file(item)))
-        if not path.is_file():
+        try:
+            info = path.stat()
+        except OSError:
+            raise _unavailable("runtime_profile_unavailable") from None
+        if not stat.S_ISREG(info.st_mode):
             raise _unavailable("runtime_profile_unavailable")
-        stat = path.stat()
-        size += stat.st_size
+        size += info.st_size
         if len(entries) >= 4096 or size > (
             128_000_000 if name in {"grpcio", "protobuf"} else 32_000_000
         ):
             raise _unavailable("runtime_profile_unavailable")
-        entries.append((relative, str(path), stat.st_mtime_ns, stat.st_size))
+        entries.append((relative, str(path), info.st_mtime_ns, info.st_size))
     if not entries:
         raise _unavailable("runtime_profile_unavailable")
     # Re-stat on every profile read. Content caches are invalidated when the
@@ -404,7 +444,13 @@ def recovery_profile(
                     key: value.model_dump(mode="json")
                     for key, value in config.workflow.external_resources.items()
                 },
-                "sandbox": config.sandbox.model_dump(mode="json"),
+                "sandbox": {
+                    **config.sandbox.model_dump(mode="json", exclude={"script_sources"}),
+                    "script_sources": [
+                        item.model_dump(mode="json", exclude={"code", "profile"})
+                        for item in config.sandbox.script_sources
+                    ],
+                },
                 "timing": config.execution_timing.model_dump(mode="json"),
                 "children": config.child_workflows.model_dump(mode="json"),
                 "events": config.events.model_dump(mode="json"),
@@ -490,13 +536,18 @@ def _identity(handle: ExecutionHandle) -> dict[str, Any]:
 
 
 def _definition(plan: WorkflowPlan) -> dict[str, Any]:
-    if len(plan.imports) > MAX_DEPENDENCIES or len(plan.resources) > MAX_DEPENDENCIES:
+    if (
+        len(plan.imports) > MAX_DEPENDENCIES
+        or len(plan.resources) > MAX_DEPENDENCIES
+        or len(plan.script_resources) > MAX_DEPENDENCIES
+    ):
         raise _unavailable("archive_limit_exceeded")
     size = len(plan.source_json.encode("utf-8"))
     for item in plan.imports:
         size += len(item.definition_json.encode("utf-8"))
         size += len((item.execution_definition_json or item.definition_json).encode("utf-8"))
     size += sum(len(item.document_json.encode("utf-8")) for item in plan.resources)
+    size += sum(len(item.source.verified_bytes()) for item in plan.script_resources)
     if size > MAX_ARCHIVE_BYTES:
         raise _unavailable("archive_limit_exceeded")
     return {
@@ -527,13 +578,18 @@ def _definition(plan: WorkflowPlan) -> dict[str, Any]:
             }
             for item in plan.resources
         ],
+        **(
+            {"script_resources": [item.as_value() for item in plan.script_resources]}
+            if plan.script_resources
+            else {}
+        ),
     }
 
 
 def _plan(value: Any) -> WorkflowPlan:
     if (
         not isinstance(value, dict)
-        or set(value)
+        or set(value) - {"script_resources"}
         != {
             "profile",
             "fingerprint",
@@ -592,7 +648,21 @@ def _plan(value: Any) -> WorkflowPlan:
     ) != len(resources):
         raise _unavailable("archive_invalid")
     validate_schema(value["source"])
-    plan = normalize_workflow(value["source"], imports=tuple(imports), resources=tuple(resources))
+    from .executable_sources import ExecutableScriptBinding
+
+    captured = value.get("script_resources", [])
+    if not isinstance(captured, list) or len(captured) > MAX_DEPENDENCIES:
+        raise _unavailable("archive_invalid")
+    try:
+        script_resources = tuple(ExecutableScriptBinding.from_value(item) for item in captured)
+        plan = normalize_workflow(
+            value["source"],
+            imports=tuple(imports),
+            resources=tuple(resources),
+            script_resources=script_resources,
+        )
+    except Exception:
+        raise _unavailable("archive_invalid") from None
     if (plan.fingerprint, plan.namespace, plan.name, plan.version) != (
         value["fingerprint"],
         value["namespace"],

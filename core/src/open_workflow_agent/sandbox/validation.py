@@ -11,6 +11,8 @@ from ..catalog import FunctionCatalog
 from ..config import SandboxConfig
 from ..definitions import resolve_reusable_components
 from ..errors import SandboxPolicyError, UnsupportedWorkflowFeature, WorkflowSemanticError
+from ..executable_source_plan import capture_script_resources, materialize_script_resources
+from ..executable_sources import ExecutableSource, ExecutableSourceRegistry
 from ..resources import materialize_schema_resources, schema_registry
 from ..workflow import (
     WorkflowPlan,
@@ -36,8 +38,27 @@ def validate_sandbox_capabilities(
     _resource_preflight: bool = False,
     _schema_registry: Any = None,
     grpc_enabled: bool = False,
+    executable_sources: ExecutableSourceRegistry | None = None,
 ) -> None:
     effective = resolve_reusable_components(workflow)
+    registry = executable_sources or ExecutableSourceRegistry(
+        tuple(
+            ExecutableSource.from_value(item.model_dump(mode="json"))
+            for item in sandbox.script_sources
+        )
+    )
+    bindings = capture_script_resources(workflow, registry)
+    if bindings:
+        from ..executable_source_admission import source_business_receipt_limit
+
+        try:
+            source_business_receipt_limit(sandbox.max_output_bytes)
+        except Exception:
+            raise UnsupportedWorkflowFeature(
+                "executable source output profile is unsupported",
+                details={"reason": "executable_source_output_profile_unsupported"},
+            ) from None
+        effective = materialize_script_resources(effective, bindings)
     rewritten = copy.deepcopy(effective)
     _rewrite_executable_runs(rewritten, sandbox=sandbox, reference="")
     _validate_stdio_calls(effective, sandbox=sandbox)
@@ -87,13 +108,26 @@ def compile_sandbox_workflow(
     sandbox: SandboxConfig,
     trusted_catalogs: Mapping[str, Any] | None = None,
     grpc_enabled: bool = False,
+    executable_sources: ExecutableSourceRegistry | None = None,
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
     validate_sandbox_capabilities(
-        workflow, sandbox=sandbox, trusted_catalogs=trusted_catalogs, grpc_enabled=grpc_enabled
+        workflow,
+        sandbox=sandbox,
+        trusted_catalogs=trusted_catalogs,
+        grpc_enabled=grpc_enabled,
+        executable_sources=executable_sources,
     )
-    return normalize_workflow(workflow)
+    registry = executable_sources or ExecutableSourceRegistry(
+        tuple(
+            ExecutableSource.from_value(item.model_dump(mode="json"))
+            for item in sandbox.script_sources
+        )
+    )
+    return normalize_workflow(
+        workflow, script_resources=capture_script_resources(workflow, registry)
+    )
 
 
 async def resolve_and_compile_sandbox_workflow(
@@ -104,6 +138,7 @@ async def resolve_and_compile_sandbox_workflow(
     resolver: Any,
     catalog: FunctionCatalog,
     grpc_enabled: bool = False,
+    executable_sources: ExecutableSourceRegistry | None = None,
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
@@ -114,6 +149,7 @@ async def resolve_and_compile_sandbox_workflow(
         trusted_catalogs=trusted_catalogs,
         _resource_preflight=enabled,
         grpc_enabled=grpc_enabled,
+        executable_sources=executable_sources,
     )
     imports, resources = await resolve_workflow_dependencies(workflow, resolver, catalog)
     effective = materialize_schema_resources(workflow) if resources else workflow
@@ -123,8 +159,20 @@ async def resolve_and_compile_sandbox_workflow(
         trusted_catalogs=trusted_catalogs,
         _schema_registry=schema_registry(resources),
         grpc_enabled=grpc_enabled,
+        executable_sources=executable_sources,
     )
-    return normalize_workflow(workflow, imports=imports, resources=resources)
+    registry = executable_sources or ExecutableSourceRegistry(
+        tuple(
+            ExecutableSource.from_value(item.model_dump(mode="json"))
+            for item in sandbox.script_sources
+        )
+    )
+    return normalize_workflow(
+        workflow,
+        imports=imports,
+        resources=resources,
+        script_resources=capture_script_resources(workflow, registry),
+    )
 
 
 def _rewrite_executable_runs(value: Any, *, sandbox: SandboxConfig, reference: str) -> None:

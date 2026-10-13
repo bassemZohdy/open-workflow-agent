@@ -132,7 +132,9 @@ async def run_job(
                         values = await completion
                         break
                     expired = time.monotonic() - begin >= remaining or deadline_due()
-                    mutation = None if expired else control_mutation()
+                    # asyncio's timer may wake up before the absolute due at
+                    # clock resolution. A timer wake is not a control request.
+                    mutation = control_mutation() if stop.is_set() and not expired else None
                     if mutation is None and not expired:
                         stop.clear()
                         stopping.cancel()

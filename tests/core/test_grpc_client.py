@@ -212,7 +212,12 @@ async def peer(*, outcome="echo", tls=None, require_client_auth=True):
 
 
 @pytest.mark.asyncio
-async def test_actual_unary_preserves_protojson_bytes_int64_enum_oneof_map_and_key(monkeypatch):
+@pytest.mark.parametrize(
+    "operation_key", ["original-effect-key", "invocation:/do/0/call/peer:1.0.0@trusted"]
+)
+async def test_actual_unary_preserves_protojson_bytes_int64_enum_oneof_map_and_key(
+    monkeypatch, operation_key
+):
     monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:1")
     monkeypatch.setenv("grpc_proxy", "http://127.0.0.1:1")
     async with peer() as (selected, http, calls, _entered):
@@ -229,14 +234,46 @@ async def test_actual_unary_preserves_protojson_bytes_int64_enum_oneof_map_and_k
                 http,
                 payload(selected, arguments),
                 registry=GrpcRegistry([selected]),
-                operation_key="original-effect-key",
+                operation_key=operation_key,
             ),
             timeout=3,
         )
         assert result == arguments
         assert len(calls) == 1
-        assert calls[0]["metadata"]["x-owa-operation-id"] == "original-effect-key"
-        assert calls[0]["metadata"]["idempotency-key"] == "original-effect-key"
+        assert calls[0]["metadata"]["x-owa-operation-id"] == operation_key
+        assert calls[0]["metadata"]["idempotency-key"] == operation_key
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "operation_key",
+    ["", "a" * 257, "key\nforged", "key\x00", "nonascii-é"],
+    ids=["empty", "oversize", "newline", "nul", "nonascii"],
+)
+async def test_invalid_operation_metadata_rejects_before_dns_or_channel(monkeypatch, operation_key):
+    grpc = importlib.import_module("grpc")
+    touched = []
+
+    def forbidden(*args, **kwargs):
+        touched.append("channel")
+        raise AssertionError("invalid operation metadata cannot dispatch")
+
+    async def resolve(endpoint):
+        touched.append("dns")
+        raise AssertionError("invalid operation metadata cannot resolve")
+
+    monkeypatch.setattr(grpc.aio, "secure_channel", forbidden)
+    monkeypatch.setattr(grpc.aio, "insecure_channel", forbidden)
+    selected = binding()
+    with pytest.raises(ToolError) as failure:
+        await call_grpc(
+            HttpClient(destination_resolver=resolve),
+            payload(selected),
+            registry=GrpcRegistry([selected]),
+            operation_key=operation_key,
+        )
+    assert failure.value.details == {"reason": "invalid_deadline_or_operation"}
+    assert touched == []
 
 
 @pytest.mark.parametrize(

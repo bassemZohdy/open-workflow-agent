@@ -16,6 +16,7 @@ def configuration(backend):
     policy = {"allowed_images": [IMAGE]}
     if backend == "kubernetes":
         policy["network_policy_enforced"] = True
+        policy["process_limit_enforced"] = True
     return SandboxConfig.model_validate({"enabled": True, "backend": backend, backend: policy})
 
 

@@ -64,6 +64,7 @@ from .errors import (
 )
 from .event_matching import candidate_matcher, event_projection
 from .events import EventEnvelope, EventProgress, EventRegistration
+from .executable_sources import ExecutableScriptBinding
 from .expressions import ExpressionEvaluator as ExpressionEvaluator
 from .expressions import ExpressionMode, validate_expression_data
 from .external_catalog import ResolvedCatalogFunction, parse_catalog_function_reference
@@ -949,6 +950,7 @@ class WorkflowPlan:
     execution_json: str | None = None
     imports: tuple[ResolvedCatalogFunction, ...] = ()
     resources: tuple[SchemaResource, ...] = ()
+    script_resources: tuple[ExecutableScriptBinding, ...] = ()
 
     @property
     def source(self) -> dict[str, Any]:
@@ -985,7 +987,7 @@ class WorkflowPlan:
         import hashlib
 
         content = self.source_json
-        if self.imports or self.resources:
+        if self.imports or self.resources or self.script_resources:
             content = json.dumps(
                 {
                     "source": self.source,
@@ -999,6 +1001,11 @@ class WorkflowPlan:
                         }
                         for item in self.imports
                     ],
+                    **(
+                        {"script_resources": [item.as_value() for item in self.script_resources]}
+                        if self.script_resources
+                        else {}
+                    ),
                     **(
                         {
                             "resources": [
@@ -1023,9 +1030,17 @@ def normalize_workflow(
     *,
     imports: tuple[ResolvedCatalogFunction, ...] = (),
     resources: tuple[SchemaResource, ...] = (),
+    script_resources: tuple[ExecutableScriptBinding, ...] = (),
 ) -> WorkflowPlan:
     _validate_json_value(workflow)
+    from .executable_source_imports import reject_imported_script_sources
+
+    reject_imported_script_sources(imports)
     effective = resolve_reusable_components(workflow)
+    if script_resources:
+        from .executable_source_plan import materialize_script_resources
+
+        effective = materialize_script_resources(effective, script_resources)
     if resources:
         effective = materialize_schema_resources(effective)
     functions = effective.get("use", {}).get("functions", {})
@@ -1157,6 +1172,7 @@ def normalize_workflow(
         ),
         imports=imports,
         resources=resources,
+        script_resources=script_resources,
     )
 
 
@@ -1526,6 +1542,9 @@ class WorkflowExecutor:
         metadata = dict(metadata or {})
         metadata["_workflow_fingerprint"] = plan.fingerprint
         metadata["_workflow_source"] = plan.source
+        metadata["_script_resources"] = {
+            item.reference: item.as_value() for item in plan.script_resources
+        }
         metadata["_source_references"] = {
             task.execution_reference or task.reference: task.reference
             for scope in plan.scopes
@@ -2220,6 +2239,8 @@ class WorkflowExecutor:
 
     async def _call(self, call: str, payload: Any, state: ExecutionState) -> Any:
         if call == "grpc":
+            from .grpc_client import validate_operation_key
+
             registry = getattr(getattr(self.services, "protocols", None), "grpc_registry", None)
             if registry is None or not isinstance(payload, Mapping):
                 raise ToolError("gRPC deployment registry or payload is unavailable")
@@ -2228,6 +2249,7 @@ class WorkflowExecutor:
             registry.prepare(
                 {key: value for key, value in payload.items() if key != "operation_id"}
             )
+            validate_operation_key(self._protocol_operation_id(call, payload, state))
         imported = state.metadata.get("_catalog_tasks", {}).get(
             state.variables.get("_execution_reference")
         )
@@ -2710,6 +2732,34 @@ class WorkflowExecutor:
         operation_id: str | None = None,
     ) -> EffectReceipt:
         try:
+            if (
+                identity.operation == "run:script"
+                and state.metadata.get("_source_script_business_key") == identity.key
+            ):
+                source_policy = replace(identity, operation="policy:executable-source:v1")
+                admitted = journal.get(source_policy)
+                if admitted is None or admitted.status != "completed":
+                    raise WorkflowExecutionError("executable source authority is unavailable")
+                return journal.finish_owned(
+                    identity,
+                    owner,
+                    execution_lease=self._execution_lease(state),
+                    output=output,
+                    error=error.as_dict() if error else None,
+                    error_status_code=error.status_code if error else None,
+                    operation_id=operation_id or self._operation_id(state),
+                )
+            if identity.operation == "call:grpc":
+                return journal.finish_grpc(
+                    identity,
+                    owner,
+                    execution_lease=self._execution_lease(state),
+                    output=output,
+                    error=error.as_dict() if error else None,
+                    error_status_code=error.status_code if error else None,
+                    operation_id=operation_id
+                    or (error._operation_id if error else self._operation_id(state)),
+                )
             return journal.finish(
                 identity,
                 owner,
