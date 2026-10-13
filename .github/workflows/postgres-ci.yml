@@ -70,6 +70,7 @@ on:
       - "tests/contract/test_event_child_effect_recovery.py"
       - "tests/contract/test_child_invocation_dependencies.py"
       - "tests/contract/test_detached_children.py"
+      - "tests/contract/test_recursive_children.py"
       - "tests/contract/test_retry_error_context.py"
       - "tests/contract/test_retry_timing.py"
       - "tests/contract/test_deadline_recovery.py"
@@ -87,6 +88,7 @@ on:
       - "tests/contract/test_schedule_event_triggers.py"
       - "tests/core/test_timer_store.py"
       - "tests/core/test_child_workflow_budgets.py"
+      - "tests/core/test_child_delivery_guards.py"
       - "tests/core/test_timer_dispatcher_ownership.py"
       - "tests/core/test_schedule_store.py"
       - "tests/core/test_event_triggers.py"
@@ -121,9 +123,7 @@ jobs:
   postgres-core:
     name: PostgreSQL common-store integration
     runs-on: ubuntu-latest
-    # S2-05 adds 41 contract cases and five actual process stops per principal.
-    # The prior ADK recovery step already used about 4m42 of its 5m bound.
-    # Keep bounded acceptance with room for the expanded sequential workload.
+    # Each SDK has a fresh database and bounded independent recovery job.
     timeout-minutes: 20
     services:
       postgres:
@@ -165,11 +165,41 @@ jobs:
             tests/core/test_durable_event_approvals.py \
             tests/core/test_timer_store.py \
             tests/core/test_child_workflow_budgets.py \
+            tests/core/test_child_delivery_guards.py \
             tests/core/test_timer_dispatcher_ownership.py \
             tests/core/test_schedule_store.py \
             tests/core/test_event_triggers.py \
             tests/core/test_execution_ownership.py tests/core/test_execution_ownership_fences.py \
             tests/core/test_action_progress_ownership.py -vv --durations=20
+  postgres-langgraph:
+    name: PostgreSQL LangGraph native recovery
+    runs-on: ubuntu-latest
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
       - name: Verify native LangGraph task checkpoints and interrupted restart
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
@@ -187,7 +217,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 9m \
+          timeout --signal=TERM --kill-after=30s 14m \
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
@@ -203,6 +233,7 @@ jobs:
             ../../tests/contract/test_event_child_effect_recovery.py \
             ../../tests/contract/test_child_invocation_dependencies.py \
             ../../tests/contract/test_detached_children.py \
+            ../../tests/contract/test_recursive_children.py \
             ../../tests/contract/test_retry_error_context.py \
             ../../tests/contract/test_retry_timing.py \
             ../../tests/contract/test_deadline_recovery.py \
@@ -219,6 +250,35 @@ jobs:
             ../../tests/contract/test_effect_recovery.py \
             ../../tests/contract/test_invocation_writes.py \
             -k 'postgresql and (langgraph or completed_native_scope_dependencies)' -vv --durations=20
+  postgres-adk:
+    name: PostgreSQL ADK native recovery
+    runs-on: ubuntu-latest
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
       - name: Verify competitive fork and invocation recovery on native ADK with PostgreSQL
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
@@ -226,7 +286,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 9m \
+          timeout --signal=TERM --kill-after=30s 14m \
             uv run --directory engines/adk --locked --exact --extra native --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
@@ -244,6 +304,7 @@ jobs:
             ../../tests/contract/test_event_child_effect_recovery.py \
             ../../tests/contract/test_child_invocation_dependencies.py \
             ../../tests/contract/test_detached_children.py \
+            ../../tests/contract/test_recursive_children.py \
             ../../tests/contract/test_retry_error_context.py \
             ../../tests/contract/test_retry_timing.py \
             ../../tests/contract/test_deadline_recovery.py \
@@ -257,6 +318,35 @@ jobs:
             ../../tests/contract/test_durable_scheduling.py \
             ../../tests/contract/test_schedule_event_triggers.py \
             -k 'postgresql and adk' -vv --durations=20
+  postgres-agent-framework:
+    name: PostgreSQL optional Agent Framework native recovery
+    runs-on: ubuntu-latest
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
       - name: Verify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
@@ -278,15 +368,16 @@ jobs:
             ../../tests/contract/test_event_child_effect_recovery.py \
             ../../tests/contract/test_child_invocation_dependencies.py \
             ../../tests/contract/test_detached_children.py \
+            ../../tests/contract/test_recursive_children.py \
             -k 'postgresql and agent-framework' -vv --durations=20
 
   postgres-runtime:
     name: PostgreSQL persistence ${{ matrix.engine }} acceptance
     runs-on: ubuntu-latest
-    needs: postgres-core
+    needs: [postgres-core, postgres-langgraph, postgres-adk, postgres-agent-framework]
     timeout-minutes: 25
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - engine: adk

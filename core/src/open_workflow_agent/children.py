@@ -383,6 +383,23 @@ class ChildWorkflowStore:
         job_key: str | None = None,
         after_key: str | None = None,
     ) -> list[EffectIdentity]:
+        """Read a strictly validated page for direct contract callers."""
+        return [
+            self.job_identity(key)
+            for key in self.pending_job_keys(
+                engine, limit=limit, job_key=job_key, after_key=after_key
+            )
+        ]
+
+    def pending_job_keys(
+        self,
+        engine: str,
+        *,
+        limit: int = 128,
+        job_key: str | None = None,
+        after_key: str | None = None,
+    ) -> list[str]:
+        """Read bounded candidates without letting one bad index poison a page."""
         if not 1 <= limit <= 1000:
             raise ValueError("detached child scan limit is invalid")
         scoped = " AND jobs.job_key=?" if job_key is not None else ""
@@ -394,27 +411,33 @@ class ChildWorkflowStore:
             parameters += (after_key,)
         parameters += (limit,)
         rows = self.connection.execute(
-            "SELECT jobs.job_key,idx.payload FROM detached_child_jobs AS jobs "
+            "SELECT jobs.job_key FROM detached_child_jobs AS jobs "
             "JOIN invocations AS inv ON inv.invocation_id=jobs.child_id "
-            "LEFT JOIN workflow_effect_invocations AS idx ON idx.identity=jobs.job_key "
             "WHERE jobs.engine=? AND inv.status IN ('running','waiting') "
             + scoped
             + cursor
             + " ORDER BY jobs.job_key LIMIT ?",
             parameters,
         ).fetchall()
-        identities = []
-        for key, payload in rows:
-            try:
-                identity = EffectIdentity.from_value(json.loads(payload))
-                if identity.key != key:
-                    raise ValueError("detached child identity index differs")
-            except (TypeError, ValueError) as error:
-                raise WorkflowExecutionError(
-                    "detached child identity index is inconsistent"
-                ) from error
-            identities.append(identity)
-        return identities
+        return [row[0] for row in rows]
+
+    def job_identity(self, job_key: str) -> EffectIdentity:
+        """Validate one candidate without mutating its recovery evidence."""
+        row = self.connection.execute(
+            "SELECT idx.payload FROM detached_child_jobs AS jobs "
+            "LEFT JOIN workflow_effect_invocations AS idx ON idx.identity=jobs.job_key "
+            "WHERE jobs.job_key=?",
+            (job_key,),
+        ).fetchone()
+        try:
+            if row is None:
+                raise ValueError("detached child job is absent")
+            identity = EffectIdentity.from_value(json.loads(row[0]))
+            if identity.key != job_key or identity.operation != "policy:detached-child:v1":
+                raise ValueError("detached child identity index differs")
+        except (TypeError, ValueError) as error:
+            raise WorkflowExecutionError("detached child identity index is inconsistent") from error
+        return identity
 
 
 def verify_detached_child_receipt(

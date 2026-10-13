@@ -14,6 +14,13 @@ At the user's request, remaining changes are being integrated locally under
 The latest instruction requests a push and complete CI/CD checkpoint for the
 current batch, followed by continued implementation. Subsequent work retains
 the preference for batched validation instead of a full CI cycle per task.
+The first batch was pushed at `2c6d5e6`. Quality/native/image/security checks
+passed, but PostgreSQL ADK recovery reached 89% before its nine-minute command
+limit, with no preceding assertion failure. Database profiles are now split
+into independent bounded jobs, preserving every selector and requiring all
+profiles before both database images. Windows routing, effect/ownership and
+timer/event recovery are similarly separated while retaining their selections
+and twenty-minute limits. Fresh acceptance is required for the correction.
 CI cleanup is also staged: feature pushes no longer duplicate PR CI/audits,
 root contracts run once within the full suite, independent native/image checks
 run in parallel, and optional Framework/Docs checks have stale-PR cancellation.
@@ -35,6 +42,10 @@ reservation and persisted root depth/total-child quotas. Durable detached job
 decisions and bounded engine-owned delivery are wired locally. Nonresident
 parent/child waits, cancellation, queue corruption and crash qualification remain
 open. Fourteen of 37 tasks remain verified; no task is deferred.
+Further S2-07 changes now reject individual damaged queue identities while
+allowing later valid children to run. Finite n=3 recursion and depth/count
+rejection pass locally on actual ADK and LangGraph. These are partial proofs;
+nonresident child waits, cancellation and full crash acceptance remain open.
 
 ## Current Phase — 2026-09-24
 

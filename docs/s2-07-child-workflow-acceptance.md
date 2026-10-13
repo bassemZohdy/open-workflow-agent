@@ -21,6 +21,15 @@ staged for that final run. Synchronous nonresident child waits, durable
 cancellation and complete process/corruption coverage remain open.
 
 Authority: Project Definition.md, TODO S2-07, inventory A034-A036 and T09-T11.
+Next-batch focused evidence: n=3 creates four distinct invocation/session
+identities with pinned version, canonical ancestry and inherited principal/user.
+Depth and total-child limits reject excess work before base-case model dispatch.
+Each principal SDK passes all three recursion cases. Queue corruption tests
+preserve damaged identity evidence, reject its dispatch and allow a later valid
+child to complete once. Each principal SDK passes 21 focused queue/budget/
+detached cases; root passes 26 with 16 unavailable PostgreSQL cases skipped.
+Fresh actual PostgreSQL and full checkpoint acceptance remain required.
+
 The unchanged schema admits run.workflow and run.await. The pinned
 [OWS reference](https://github.com/open-workflow-specification/specification/blob/9b5b1da29e9d4fff2358580241e11aab22704a16/dsl-reference.md#run)
 requires asynchronous run to return transformed input without waiting for or

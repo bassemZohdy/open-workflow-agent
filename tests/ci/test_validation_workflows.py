@@ -49,7 +49,10 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
     assert "--locked" in commands
     assert "--iterations 10 --concurrency 4" in commands
     assert "test_expressions.py" in _runs(jobs["windows-expressions"])
-    windows = _runs(jobs["windows-native"])
+    windows = "\n".join(
+        _runs(jobs[name])
+        for name in ("windows-native", "windows-native-recovery", "windows-native-timing")
+    )
     for filename in (
         "test_native_task_graph.py",
         "test_process_crash_recovery.py",
@@ -60,6 +63,21 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
         assert filename in windows
     assert jobs["windows-expressions"]["timeout-minutes"] == "20"
     assert jobs["windows-native"]["timeout-minutes"] == "20"
+    assert jobs["windows-native-recovery"]["timeout-minutes"] == "20"
+    assert jobs["windows-native-timing"]["timeout-minutes"] == "20"
+
+
+def test_postgresql_profiles_run_independently_and_gate_both_images():
+    jobs = _workflow("postgres-ci.yml")["jobs"]
+    profiles = {"postgres-core", "postgres-langgraph", "postgres-adk", "postgres-agent-framework"}
+    assert set(jobs["postgres-runtime"]["needs"]) == profiles
+    assert jobs["postgres-runtime"]["strategy"]["fail-fast"] == "false"
+    for name in profiles:
+        assert "needs" not in jobs[name]
+        assert jobs[name]["services"]["postgres"]["image"] == "postgres:16"
+        assert jobs[name]["timeout-minutes"] == "20"
+    assert "--kill-after=30s 14m" in _runs(jobs["postgres-adk"])
+    assert "--kill-after=30s 14m" in _runs(jobs["postgres-langgraph"])
 
 
 def test_independent_principal_jobs_finish_both_profiles_before_workflow_success():

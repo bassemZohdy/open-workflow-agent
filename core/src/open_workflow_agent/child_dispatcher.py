@@ -33,19 +33,20 @@ class ChildDispatcher:
         self._workers.clear()
 
     async def tick(self, *, job_key: str | None = None) -> None:
-        jobs = self.services.children.pending_jobs(
+        jobs = self.services.children.pending_job_keys(
             self.engine.engine_name,
             job_key=job_key,
             after_key=self._cursor if job_key is None else None,
         )
         if not jobs and job_key is None:
             self._cursor = None
-        for identity in jobs:
+        for candidate_key in jobs:
             if len(self._workers) >= self.services.config.child_workflows.max_concurrency:
                 break
             if job_key is None:
-                self._cursor = identity.key
+                self._cursor = candidate_key
             try:
+                identity = self.services.children.job_identity(candidate_key)
                 receipt = self.services.effect_journal.get(identity)
                 if receipt is None:
                     raise WorkflowExecutionError("detached child decision is absent")

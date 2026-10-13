@@ -75,7 +75,7 @@ jobs:
         run: uv python install "${{ env.PYTHON_VERSION }}"
       - name: Sync locked expression environment
         run: uv sync --locked
-      - name: Verify native task checkpoints and routing on Windows
+      - name: Verify Windows native task checkpoints and routing
         run: >-
           uv run --directory engines/langgraph --locked --extra sqlite
           --with pytest --with pytest-asyncio pytest -q
@@ -85,6 +85,27 @@ jobs:
           ../../tests/contract/test_reusable_definitions.py
           ../../tests/contract/test_catalog_bindings.py
           ../../tests/contract/test_schema_resources.py
+
+  windows-native-recovery:
+    name: Windows native ownership and effect recovery
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify Windows native ownership and effect recovery
+        run: >-
+          uv run --directory engines/langgraph --locked --extra sqlite
+          --with pytest --with pytest-asyncio pytest -q
           ../../tests/contract/test_process_crash_recovery.py
           ../../tests/contract/test_runtime_execution_ownership.py
           ../../tests/contract/test_action_execution_authority.py
@@ -96,6 +117,27 @@ jobs:
           ../../tests/contract/test_sandbox_effect_recovery.py
           ../../tests/contract/test_event_child_effect_recovery.py
           ../../tests/contract/test_child_invocation_dependencies.py
+
+  windows-native-timing:
+    name: Windows native timers events and scheduling
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify Windows native timers events and scheduling
+        run: >-
+          uv run --directory engines/langgraph --locked --extra sqlite
+          --with pytest --with pytest-asyncio pytest -q
           ../../tests/contract/test_detached_children.py
           ../../tests/contract/test_retry_error_context.py
           ../../tests/contract/test_retry_timing.py

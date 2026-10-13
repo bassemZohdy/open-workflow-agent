@@ -189,6 +189,9 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   are preserved. Durable detached job/return decisions and bounded delivery are
   wired locally. Nonresident child waits, cancellation, crash/corruption tests
   and final behavioral validation remain open.
+  Finite recursion and quota rejection pass on both principal SDKs. Damaged
+  queued identities fail closed without starving valid work. These changes
+  require the corrected full/platform/PostgreSQL checkpoint before qualification.
 - [ ] **S2-08** (L) — Complete cancellation, termination, compensation and idempotent external-action recovery.
 - [ ] **S2-09** (L) — Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.
 

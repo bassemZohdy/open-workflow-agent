@@ -38,10 +38,16 @@ root contract run is removed. Each principal SDK still runs the shared suite
 in its own locked environment, plus its native tests, portable CTK subset and
 benchmark probes. Root fallback results do not qualify a native SDK.
 
-Windows admission and native recovery have independent bounded jobs. The
-existing test selections are retained, with new child fixtures added to the
-native selection. Each keeps its twenty-minute limit so one suite cannot
-consume the other's allowance.
+Windows admission, native routing, effect/ownership recovery and timer/event
+recovery have independent bounded jobs. All existing selections are retained;
+each keeps its twenty-minute limit. This avoids one long sequential selection
+consuming the available allowance for unrelated recovery cases.
+
+PostgreSQL common stores, LangGraph, ADK and optional Agent Framework each run
+with a fresh database in independent twenty-minute jobs. Principal recovery
+commands have fourteen-minute bounds after the expanded ADK selection reached
+89% without an assertion failure at its former nine-minute limit. Both
+database-backed images require all four integration jobs to succeed.
 
 Main native tests and container acceptance read the same source independently;
 they consume no artifact from the root job or each other. Those unnecessary

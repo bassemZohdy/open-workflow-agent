@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
+from dataclasses import replace
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
+from engine_cases import engine_cases
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.child_dispatcher import ChildDispatcher
 from open_workflow_agent.config import RuntimeConfig
@@ -18,6 +22,7 @@ from open_workflow_agent.workflow import (
     _RECONCILE_EXPIRED_RETRY,
     ExecutionState,
     WorkflowExecutor,
+    compile_workflow,
 )
 
 
@@ -77,14 +82,17 @@ async def test_child_scan_advances_past_an_unavailable_prefix():
 
     def page(engine, *, job_key, after_key):
         remaining = [item for item in identities if after_key is None or item.key > after_key]
-        return remaining[:1]
+        return [item.key for item in remaining[:1]]
 
     def get(identity):
         visited.append(identity)
         return SimpleNamespace(output={"child_id": identity.key})
 
     services = SimpleNamespace(
-        children=SimpleNamespace(pending_jobs=page),
+        children=SimpleNamespace(
+            pending_job_keys=page,
+            job_identity=lambda key: next(item for item in identities if item.key == key),
+        ),
         config=RuntimeConfig(),
         effect_journal=SimpleNamespace(get=get),
     )
@@ -96,6 +104,145 @@ async def test_child_scan_advances_past_an_unavailable_prefix():
         await dispatcher.tick()
     assert visited == identities
     assert dispatcher._cursor is None
+
+
+@pytest.mark.parametrize("engine_name,engine_type", engine_cases())
+@pytest.mark.parametrize("damage", ["malformed-index", "missing-index", "changed-index"])
+async def test_corrupt_child_index_cannot_block_later_valid_durable_delivery(
+    tmp_path, monkeypatch: pytest.MonkeyPatch, engine_name: str, engine_type: Any, damage: str
+) -> None:
+    async def no_automatic_delivery(_dispatcher: TimerDispatcher) -> None:
+        return None
+
+    monkeypatch.setattr(TimerDispatcher, "start", no_automatic_delivery)
+    services = RuntimeServices(
+        RuntimeConfig(), model=FakeModel({"delivered": True}), database_root=tmp_path
+    )
+    engine = engine_type()
+    document = {"dsl": "1.0.3", "namespace": "child-delivery-guards", "version": "1.0.0"}
+    parent_plan = compile_workflow(
+        {"document": {**document, "name": "parent"}, "do": [{"finish": {"set": {"done": True}}}]}
+    )
+    child_plan = services.workflow_catalog.register(
+        {
+            "document": {**document, "name": "child"},
+            "do": [{"action": {"call": "llm:1.0.0@default", "with": {"prompt": "${ .name }"}}}],
+        }
+    )
+    parent = services.invocations.create(
+        engine=engine_name,
+        session_id=None,
+        user_id="correlation",
+        owner_principal="principal",
+        workflow_name=parent_plan.name,
+        workflow_version=parent_plan.version,
+        workflow_fingerprint=parent_plan.fingerprint,
+    )
+    children = []
+    dispatcher = ChildDispatcher(services, engine)
+    try:
+        await engine.initialize(services)
+        parent._execution_lease = services.execution_ownership.acquire(parent, seconds=30)
+        try:
+            decisions = []
+            for index in (1, 2):
+                identity = EffectIdentity(
+                    parent.invocation_id,
+                    parent.workflow_fingerprint,
+                    f"/do/{index}/child",
+                    (("/do", 1),),
+                    "run:workflow",
+                )
+                input_data = {"name": f"child-{index}"}
+                child = services.children.reserve(identity, parent, child_plan, input_data)
+                children.append(child)
+                services.children.enqueue(identity, parent, child_plan, input_data, {})
+                decisions.append(replace(identity, operation="policy:detached-child:v1"))
+            services.invocations.update(parent, status="completed", output={})
+        finally:
+            services.execution_ownership.release(parent._execution_lease)
+            parent._execution_lease = None
+        damaged, valid = sorted(decisions, key=lambda identity: identity.key)
+        corrupt_receipt = services.effect_journal.get(damaged)
+        corrupt_child = services.invocations.get(corrupt_receipt.output["child_id"])
+        valid_receipt = services.effect_journal.get(valid)
+        valid_child = services.invocations.get(valid_receipt.output["child_id"])
+        corrupt_before = corrupt_child._persisted_payload
+        valid_prompt = services.invocations.read_input(valid_child)["name"]
+        connection = services.children.connection
+        if damage == "missing-index":
+            connection.execute(
+                "DELETE FROM workflow_effect_invocations WHERE identity=?", (damaged.key,)
+            )
+        else:
+            payload = (
+                "{"
+                if damage == "malformed-index"
+                else json.dumps(
+                    {
+                        "invocation_id": damaged.invocation_id,
+                        "workflow_fingerprint": damaged.workflow_fingerprint,
+                        "task_reference": damaged.task_reference,
+                        "occurrence": [["/do", 99]],
+                        "operation": damaged.operation,
+                    }
+                )
+            )
+            connection.execute(
+                "UPDATE workflow_effect_invocations SET payload=? WHERE identity=?",
+                (payload, damaged.key),
+            )
+        connection.commit()
+        damaged_index = connection.execute(
+            "SELECT payload FROM workflow_effect_invocations WHERE identity=?", (damaged.key,)
+        ).fetchone()
+        with pytest.raises(WorkflowExecutionError, match="identity index"):
+            services.children.pending_jobs(engine_name)
+
+        # Use actual database keyset pages of one candidate. Corrupt evidence
+        # must advance the scan before the valid job becomes visible.
+        read_page = services.children.pending_job_keys
+
+        def one_candidate(engine, **kwargs):
+            return read_page(engine, limit=1, **kwargs)
+
+        monkeypatch.setattr(services.children, "pending_job_keys", one_candidate)
+        await dispatcher.tick()
+        assert dispatcher._cursor == damaged.key
+        assert len(dispatcher._errors) == 1
+        assert services.model.calls == []
+        assert not dispatcher._workers
+        await dispatcher.tick()
+        async with asyncio.timeout(30):
+            while dispatcher._workers:
+                await asyncio.sleep(0.005)
+        assert dispatcher._cursor == valid.key
+        assert len(dispatcher._errors) == 1
+        assert services.model.calls == [{"prompt": valid_prompt}]
+        delivered = services.invocations.get(valid_child.invocation_id)
+        assert delivered.status == "completed" and delivered.output == {"delivered": True}
+        assert (
+            services.invocations.get(corrupt_child.invocation_id)._persisted_payload
+            == corrupt_before
+        )
+        assert (
+            connection.execute(
+                "SELECT payload FROM workflow_effect_invocations WHERE identity=?", (damaged.key,)
+            ).fetchone()
+            == damaged_index
+        )
+        assert services.effect_journal.get(valid) == valid_receipt
+        await dispatcher.tick()
+        assert dispatcher._cursor is None
+        assert services.model.calls == [{"prompt": valid_prompt}]
+    finally:
+        await dispatcher.stop()
+        for child in children:
+            saved = services.invocations.get(child.invocation_id)
+            if saved is not None and saved.status in {"running", "waiting"}:
+                await engine.cancel(saved)
+        await engine.shutdown()
+        services.close()
 
 
 async def test_timer_shutdown_stops_the_poller_before_draining_children():
