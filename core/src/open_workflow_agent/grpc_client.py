@@ -36,6 +36,16 @@ MAX_DESCRIPTOR_BYTES = 1_048_576
 MAX_MESSAGE_BYTES = 4_000_000
 _NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*")
 _KEY = re.compile(r"[A-Za-z0-9._:/-]{1,256}")
+_OPERATION_KEY = re.compile(r"[\x21-\x7e]{1,256}")
+
+
+def validate_operation_key(value: Any) -> str:
+    """Finite ASCII metadata; common logical identities are never rewritten."""
+    if type(value) is not str or _OPERATION_KEY.fullmatch(value) is None:
+        raise _failure("invalid_deadline_or_operation")
+    return value
+
+
 _KNOWN_STATUSES = frozenset(
     {
         "INVALID_ARGUMENT",
@@ -460,11 +470,11 @@ async def call_grpc(
     prepared = registry.prepare(payload)
     selected = prepared.binding
     host, port, secure = _endpoint(selected)
-    key = operation_key or str(uuid4())
+    key = validate_operation_key(operation_key if operation_key is not None else str(uuid4()))
     timeout = min(
         http.timeout, remaining_timeout if remaining_timeout is not None else http.timeout
     )
-    if not _KEY.fullmatch(key) or not math.isfinite(timeout) or timeout <= 0:
+    if not math.isfinite(timeout) or timeout <= 0:
         raise _failure("invalid_deadline_or_operation")
     if secure and http.verify_tls is False:
         raise _failure("tls_verification_required")
