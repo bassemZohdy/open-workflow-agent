@@ -9,6 +9,7 @@ from collections import deque
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
+from .child_dispatcher import ChildDispatcher
 from .errors import OwaError, UnsupportedWorkflowFeature
 from .lifecycle import TERMINAL_INVOCATION_STATES
 from .sandbox import resolve_and_compile_sandbox_workflow
@@ -40,6 +41,7 @@ class TimerDispatcher:
         self._workers: dict[str, asyncio.Task[None]] = {}
         self._errors: deque[Exception] = deque(maxlen=128)
         self._stopping = False
+        self.children = ChildDispatcher(services, engine)
 
     async def start(self) -> None:
         if self._task is None:
@@ -55,6 +57,7 @@ class TimerDispatcher:
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
+        await self.children.stop()
         self._task = None
         self._workers.clear()
         self._stopping = False
@@ -63,6 +66,7 @@ class TimerDispatcher:
         while True:
             try:
                 await self.tick()
+                await self.children.tick()
             except Exception as error:
                 self._errors.append(error)
             await asyncio.sleep(self.poll_seconds)

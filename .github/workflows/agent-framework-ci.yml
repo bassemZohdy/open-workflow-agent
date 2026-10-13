@@ -1,10 +1,16 @@
 name: Agent Framework CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
+      - "core/**"
+      - "tests/contract/**"
+      - "tests/ctk/**"
+      - "tests/conftest.py"
+      - "tests/engine_cases.py"
       - "engines/agent-framework/**"
       - "tests/agent_framework/**"
       - ".github/workflows/agent-framework-ci.yml"
@@ -14,6 +20,11 @@ on:
     branches:
       - main
     paths:
+      - "core/**"
+      - "tests/contract/**"
+      - "tests/ctk/**"
+      - "tests/conftest.py"
+      - "tests/engine_cases.py"
       - "engines/agent-framework/**"
       - "tests/agent_framework/**"
       - ".github/workflows/agent-framework-ci.yml"
@@ -22,6 +33,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: agent-framework-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   native:

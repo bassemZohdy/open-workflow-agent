@@ -7,6 +7,35 @@
 - `TODO.md` — scoped backlog and intentionally deferred work.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
+## Current backlog delivery mode — 2026-10-13
+
+At the user's request, remaining changes are being integrated locally under
+`codex/required-backlog` before one final comprehensive validation pass.
+The latest instruction requests a push and complete CI/CD checkpoint for the
+current batch, followed by continued implementation. Subsequent work retains
+the preference for batched validation instead of a full CI cycle per task.
+CI cleanup is also staged: feature pushes no longer duplicate PR CI/audits,
+root contracts run once within the full suite, independent native/image checks
+run in parallel, and optional Framework/Docs checks have stale-PR cancellation.
+Common changes now trigger optional Framework acceptance. Existing exact-source
+release, security and backend gates remain in place. These changes await the
+same final integrated validation; historical run evidence remains unchanged.
+Small checks may resolve specific implementation issues, but task completion
+requires the final relevant behavioral, native, database, platform, build,
+security and image evidence. No unchecked task is promoted by this batching.
+
+S2-06 runtime source `e56e5b8` passed PR CI, PostgreSQL, optional Agent
+Framework, external sandbox, Security and Docs. PostgreSQL passed 256 core,
+343 LangGraph, 309 ADK and 147 optional AF cases, including all 42 new timer/
+scheduling cases per principal and both database-backed images. Its cancelled
+push Windows job was rerun independently and passed. The scoped capability/API/image
+assertion changes are now applied in the working tree; final batch acceptance
+is pending. S2-07 implementation has started with atomic child identity/input
+reservation and persisted root depth/total-child quotas. Durable detached job
+decisions and bounded engine-owned delivery are wired locally. Nonresident
+parent/child waits, cancellation, queue corruption and crash qualification remain
+open. Fourteen of 37 tasks remain verified; no task is deferred.
+
 ## Current Phase — 2026-09-24
 
 `v0.1.0` is the previous formal release. `v0.2.0` is the current formal

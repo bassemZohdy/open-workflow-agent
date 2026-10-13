@@ -2699,7 +2699,19 @@ class WorkflowExecutor:
         reference = definition.get("workflow")
         if not isinstance(reference, Mapping):
             raise WorkflowSemanticError("run.workflow must be an object")
-        plan = self.services.workflow_catalog.resolve(reference)
+        identity = self._effect_identity(state, "run:workflow")
+        binding = self.services.children.get(identity)
+        if binding is None:
+            plan = self.services.workflow_catalog.resolve(reference)
+        else:
+            pinned = json.loads(binding.workflow_source_json)["document"]
+            if (
+                reference.get("namespace") != pinned["namespace"]
+                or reference.get("name") != pinned["name"]
+                or reference.get("version") not in {"latest", pinned["version"]}
+            ):
+                raise _EffectRecoveryRequired("recorded child workflow reference changed")
+            plan = self.services.workflow_catalog.resolve(pinned)
         child_input = (
             self._expressions(state).evaluate(
                 reference["input"], state.data, variables=state.variables
@@ -2708,6 +2720,20 @@ class WorkflowExecutor:
             else copy.deepcopy(state.data)
         )
         task_reference = str(state.variables.get("_task_reference", "unknown-task"))
+        request_digest = effect_request_digest(
+            "run:workflow", {"workflow_fingerprint": plan.fingerprint, "input": child_input}
+        )
+        if binding is not None and binding.request_digest != request_digest:
+            raise _EffectRecoveryRequired("recorded child workflow request differs")
+        if definition.get("await", True) is False and _RECONCILE_EXPIRED_RETRY.get():
+            decision = replace(identity, operation="policy:detached-child:v1")
+            recorded = self.services.effect_journal.get(decision)
+            if recorded is None or recorded.status != "completed":
+                raise WorkflowExecutionError("retry budget expired before detached child admission")
+            if recorded.output["request_digest"] != request_digest:
+                raise _EffectRecoveryRequired("recorded child workflow request differs")
+            await self._notify_receipt(state, decision, recorded)
+            return copy.deepcopy(recorded.output["returned_input"])
         child_id: str | None = None
 
         def observe_child(child: ExecutionHandle) -> None:
@@ -2726,7 +2752,43 @@ class WorkflowExecutor:
                 raise WorkflowExecutionError("child invocation recovery binding is unavailable")
             return ChildInvocationDependency.capture(self.services.invocations, child_id)
 
-        child_context = {**state.metadata, "_child_invocation_observer": observe_child}
+        known = self.services.effect_journal.get(identity)
+        if known is not None and known.status != "pending":
+            if known.request_digest != effect_request_digest(
+                "run:workflow", {"workflow_fingerprint": plan.fingerprint, "input": child_input}
+            ):
+                raise _EffectRecoveryRequired("recorded child workflow request differs")
+            # Existing terminal receipts own their recorded child dependency.
+            # Recovery must not reserve an extra orphan to replay that result.
+            await self._notify_receipt(state, identity, known)
+            return self._effect_result(known)
+        parent_handle = state.metadata.get("_invocation_handle")
+        if isinstance(parent_handle, ExecutionHandle):
+            # Admit quotas before opening an external-action intent. A quota
+            # rejection has created no child and is an ordinary policy fault.
+            parent_child = (
+                self.services.children.verify(binding, parent_handle, plan, child_input)
+                if binding is not None
+                else self.services.children.reserve(
+                    identity, parent_handle, plan, child_input, task_reference=task_reference
+                )
+            )
+            if parent_child.parent_task_reference != task_reference:
+                raise _EffectRecoveryRequired("recorded child task reference changed")
+            if definition.get("await", True) is False:
+                receipt = self.services.children.enqueue(
+                    identity, parent_handle, plan, child_input, copy.deepcopy(state.data)
+                )
+                decision = replace(identity, operation="policy:detached-child:v1")
+                await self._notify_receipt(state, decision, receipt)
+                return copy.deepcopy(receipt.output["returned_input"])
+            child_context = {
+                **state.metadata,
+                "_child_invocation_handle": parent_child,
+                "_child_invocation_observer": observe_child,
+            }
+        else:
+            child_context = {**state.metadata, "_child_invocation_observer": observe_child}
         # The resolved definition, not just its catalog label, determines the
         # child action request. Native progress may lag a known child outcome.
         operation = "run:workflow"
@@ -3263,9 +3325,10 @@ def _validate_listen_capability(definition: Any, reference: str) -> None:
 def _validate_run_capability(definition: Any, reference: str) -> None:
     if not isinstance(definition, Mapping):
         raise WorkflowSemanticError(f"run configuration must be an object at {reference}")
-    if definition.get("await", True) is not True:
+    detached_workflow = definition.get("await", True) is False and "workflow" in definition
+    if definition.get("await", True) is not True and not detached_workflow:
         _unsupported("background run", f"{reference}/run/await")
-    if "return" in definition:
+    if "return" in definition and not detached_workflow:
         _unsupported("run return selection", f"{reference}/run/return")
     if "container" in definition:
         _unsupported("deployment-disabled container execution", f"{reference}/run/container")

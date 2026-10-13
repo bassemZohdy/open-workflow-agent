@@ -4,10 +4,13 @@ import asyncio
 
 import httpx
 import pytest
+from engine_cases import engine_cases
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.engine import PortableWorkflowEngine
 from open_workflow_agent.errors import ToolError
+from open_workflow_agent.events import InMemoryEventBus
 from open_workflow_agent.external_catalog import ExternalCatalogResolver
 from open_workflow_agent.protocols import HttpClient
 from open_workflow_agent.services import RuntimeServices
@@ -392,3 +395,74 @@ async def test_api_runs_a_registered_local_subworkflow(tmp_path):
             assert response.status_code == 200
             assert response.json()["output"] == {"result": "api"}
     services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("backend", ["embedded", "embedded-approval", "memory", "custom"])
+@pytest.mark.parametrize(
+    "engine_name,engine_type", [("base", PortableWorkflowEngine), *engine_cases()]
+)
+async def test_scheduling_capabilities_match_known_event_backend(
+    tmp_path, monkeypatch, backend, engine_name, engine_type
+):
+    settings = {
+        "model": {"provider": "fake"},
+        "events": {"backend": "memory" if backend == "memory" else "embedded"},
+        "workflow": {
+            "definition": {
+                "document": {
+                    "dsl": "1.0.3",
+                    "namespace": "tests",
+                    "name": "capability-event-schedule",
+                    "version": "1.0.0",
+                },
+                "schedule": {"on": {"one": {"with": {"type": "ready"}}}},
+                "do": [{"finish": {"set": {"done": True}}}],
+            }
+        },
+    }
+    if backend == "embedded-approval":
+        monkeypatch.setenv("SCHEDULE_CAPABILITY_OPERATOR_TOKEN", "test-operator-token")
+        settings["approvals"] = {"enabled": True, "operator_security_profile": "operator"}
+        settings["security"] = {
+            "profiles": {
+                "operator": {
+                    "type": "bearer",
+                    "token": {"from_env": "SCHEDULE_CAPABILITY_OPERATOR_TOKEN"},
+                }
+            }
+        }
+    config = RuntimeConfig.model_validate(settings)
+    services = RuntimeServices(
+        config,
+        model=FakeModel(),
+        database_root=tmp_path,
+        event_bus=InMemoryEventBus() if backend == "custom" else None,
+    )
+    app = create_app(config=config, services=services, engine=engine_type())
+    expected = backend in {"embedded", "embedded-approval"}
+    try:
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                capabilities = (await client.get("/v1/capabilities")).json()
+                assert capabilities["engine"] == engine_name
+                assert capabilities["features"]["scheduling"] == {
+                    "after": True,
+                    "every": True,
+                    "cron": True,
+                    "on": expected,
+                    "durable": True,
+                    "owner": "fenced_workers",
+                }
+                created = await client.post("/v1/schedules", json={"input": {}})
+                assert created.status_code == (200 if expected else 400), created.text
+                if expected:
+                    cancelled = await client.post(
+                        f"/v1/schedules/{created.json()['schedule_id']}/cancel"
+                    )
+                    assert cancelled.status_code == 200
+                assert services.model.calls == []
+    finally:
+        services.close()

@@ -180,7 +180,15 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   benchmark harness failure with a proven correction. Actual PostgreSQL,
   exact-source configured validation and capability publication remain open
   in the [finite record](docs/s2-06-timer-schedule-acceptance.md).
+  Latest runtime `e56e5b8` passes all actual PostgreSQL recovery and both database
+  images plus six configured runs. Publication changes are applied locally;
+  completion awaits the user-requested final batch validation.
 - [ ] **S2-07** (L) — Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.
+  In progress: atomic child identity/input reservations and persisted root
+  depth/total-child quotas. Existing finite recursion and child outcome guards
+  are preserved. Durable detached job/return decisions and bounded delivery are
+  wired locally. Nonresident child waits, cancellation, crash/corruption tests
+  and final behavioral validation remain open.
 - [ ] **S2-08** (L) — Complete cancellation, termination, compensation and idempotent external-action recovery.
 - [ ] **S2-09** (L) — Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.
 
@@ -204,6 +212,10 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 - [ ] **S4-05** (M) — Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.
 - [ ] **S4-06** (M) — Run matched latency/CPU/memory/concurrency/persistence/recovery benchmarks; publish measured results.
 - [ ] **S4-07** (M) — Keep CI, builds, releases, capability reports and rollback tied to verified versions and acceptance gates.
+  User-requested cleanup is staged: PR/main trigger separation, independent
+  Windows/native/image checks, one root contract execution, optional Framework
+  coverage for common changes, and stale-PR cancellation. Required release
+  gates are preserved; final batch acceptance and remaining S4-07 scope stay open.
 - [ ] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.
 - [ ] **S4-09** (L) — Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; require its own native acceptance.
 - [ ] **S4-10** (L) — Preserve EVENT-1 through EVENT-5; add optional external brokers, AsyncAPI and A2A push only with delivery/security contracts.

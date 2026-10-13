@@ -143,9 +143,24 @@ accepts a limit from 1 through 100, and `delete_memory` requires an integer id.
 
 ## Scheduling
 
-Scheduling is durable and owned by the single runtime process. The schedule rule
-(`after` or `every`) comes from the configured workflow definition; the API request
-supplies the input for each scheduled invocation.
+Scheduling uses durable, fenced claims over the configured common SQLite or
+PostgreSQL store. The schedule rule comes from the Open Workflow definition;
+the API request supplies invocation input. `/v1/capabilities` reports the
+supported profile for the active backend.
+
+`every` retains nominal cadence and permits overlapping invocations within the
+configured concurrency limit. `after` repeats following successful completion
+plus its delay and stops after fault or cancellation. `cron` accepts the bounded
+five-field calendar profile; bootstrap `execution_timing.timezone` defaults to
+UTC and accepts IANA zones. Missed occurrences retain their nominal slots and
+are delivered in bounded batches. `on` creates a separate invocation for each
+completed event-selection cycle and requires the embedded event store; memory
+and arbitrary custom buses reject event schedule creation.
+
+Schedule ownership is fenced across workers sharing the tested common store.
+The default deployment retains one container. General workflow migration,
+external event transports and broader deployment scale-out have their own
+acceptance gates.
 
 Create a schedule:
 

@@ -350,7 +350,7 @@ Reference manifests that follow this guidance are provided in the repository and
 - `deploy/openshift/runtime.yaml` — the same layout for the LangGraph image without a pinned UID (OpenShift's restricted-v2 SCC allocates an arbitrary non-root UID, which the images support).
 - `deploy/kubernetes/sandbox-boundary.yaml` and `deploy/openshift/sandbox-boundary.yaml` — the restricted sandbox-controller namespace, ServiceAccounts, and RBAC boundary (see [sandbox-execution.md](sandbox-execution.md)).
 
-`replicas: 1` with a `Recreate` strategy is intentional: the scheduler uses single-runtime ownership and the default deployment keeps durable state on one `ReadWriteOnce` volume. Horizontal scale-out requires external coordination of scheduler ownership and state and is not part of the bounded profile.
+`replicas: 1` with a `Recreate` strategy keeps the default durable state on one `ReadWriteOnce` volume. Scheduler claims are fenced across workers sharing the tested SQLite/PostgreSQL store. Broader horizontal deployment and storage acceptance remains separately gated.
 
 Use either published registry in the workload specification. Docker Hub is shown below for consistency with end-user examples; replace it with the corresponding GHCR image if your organization prefers the canonical provenance registry.
 
@@ -512,9 +512,9 @@ CI also validates:
 
 Current bounded features should not be interpreted as broader infrastructure guarantees:
 
-- generic event delivery is process-local and non-durable (durable approval state/replay is a separate bounded mechanism); future external event integrations must follow the [event integration readiness plan](event-integration-readiness.md);
+- embedded event delivery has the verified SQLite/PostgreSQL durable inbox/outbox profile; memory and custom buses retain their declared limits, and external integrations follow the [event integration readiness plan](event-integration-readiness.md);
 - lifecycle CloudEvents are a bounded snapshot and the SSE endpoint is bounded to lifecycle events, not a general output stream/broker;
-- scheduling uses single-runtime ownership rather than distributed scheduler ownership;
+- scheduling uses fenced claims over the configured common store; the default deployment remains one container, with broader scale-out acceptance separately gated;
 - external workflow catalogs are disabled unless a deployment explicitly configures catalog trust policy (HTTPS-only, pinned, allowlisted; see the external catalog section above);
 - shell/script execution uses the internal sandbox only when enabled by deployment configuration and is not a hard isolation boundary; container execution uses the selected external backend (Docker and the verified Kubernetes/OpenShift profile accepted);
 - authentication is expected at the deployment boundary unless another trusted layer is introduced.

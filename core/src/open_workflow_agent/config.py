@@ -718,6 +718,14 @@ class ExecutionTimingConfig(StrictModel):
         return value
 
 
+class ChildWorkflowConfig(StrictModel):
+    """Deployment limits for one root invocation's child execution tree."""
+
+    max_depth: int = Field(default=32, ge=1, le=64)
+    max_children: int = Field(default=1000, ge=1, le=100_000)
+    max_concurrency: int = Field(default=16, ge=1, le=1000)
+
+
 class RuntimeConfig(StrictModel):
     agent: AgentConfig = Field(default_factory=AgentConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
@@ -737,6 +745,7 @@ class RuntimeConfig(StrictModel):
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     events: EventConfig = Field(default_factory=EventConfig)
     execution_timing: ExecutionTimingConfig = Field(default_factory=ExecutionTimingConfig)
+    child_workflows: ChildWorkflowConfig = Field(default_factory=ChildWorkflowConfig)
 
     @model_validator(mode="after")
     def validate_a2a_security_profile(self) -> RuntimeConfig:

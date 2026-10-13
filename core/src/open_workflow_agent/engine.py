@@ -87,10 +87,10 @@ class EngineCapabilities:
                 "scheduling": {
                     "after": True,
                     "every": True,
-                    "cron": False,
+                    "cron": True,
                     "on": False,
                     "durable": True,
-                    "owner": "single_runtime",
+                    "owner": "fenced_workers",
                 },
                 "subWorkflows": {
                     "run": True,
@@ -209,17 +209,9 @@ class WorkflowEngine:
         parent_handle = parent_context.get("_invocation_handle")
         if not isinstance(parent_handle, ExecutionHandle):
             raise WorkflowExecutionError("nested workflow requires an invocation handle")
-        child = self.services.invocations.create(
-            engine=self.engine_name,
-            session_id=None,
-            user_id=parent_handle.user_id,
-            workflow_name=workflow.name,
-            workflow_version=workflow.version,
-            workflow_fingerprint=workflow.fingerprint,
-            parent_invocation_id=parent_handle.invocation_id,
-            parent_task_reference=task_reference,
-            owner_principal=parent_handle.owner_principal,
-        )
+        child = parent_context.get("_child_invocation_handle")
+        if not isinstance(child, ExecutionHandle):
+            raise WorkflowExecutionError("nested workflow requires an admitted child binding")
         observer = parent_context.get("_child_invocation_observer")
         if observer is not None:
             observer(child)
@@ -335,6 +327,29 @@ class WorkflowEngine:
                 self._prepare_timer_wake(handle, plan, None)
                 return await self._resume_owned(handle, None, plan)
             return await self._invoke_owned(plan, handle, input_data)
+
+    async def dispatch_child(
+        self, handle: ExecutionHandle, load_plan: Callable[[], Awaitable[WorkflowPlan]]
+    ) -> InvocationResult:
+        """Acquire child authority before dependency resolution or native reentry."""
+        self._verify_execution_engine(handle)
+        async with self._own_execution(handle):
+            self.services.invocations.refresh(handle)
+            if handle.status in TERMINAL_INVOCATION_STATES:
+                return self._stored_result(handle)
+            plan = await load_plan()
+            self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+            if self.services.timers.resumable_for_invocation(
+                handle.invocation_id, plan.fingerprint
+            ):
+                return self._stored_result(handle)
+            if await self._scheduled_native_state_exists(handle, plan):
+                await self._verify_resume_state(handle, plan)
+                self._prepare_timer_wake(handle, plan, None)
+                return await self._resume_owned(handle, None, plan)
+            return await self._invoke_owned(
+                plan, handle, self.services.invocations.read_input(handle)
+            )
 
     async def _dispatch_timer(
         self, claim: TimerClaim, load_plan: Callable[[], Awaitable[WorkflowPlan]]

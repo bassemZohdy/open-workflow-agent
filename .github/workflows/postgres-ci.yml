@@ -14,6 +14,8 @@ on:
       - "core/src/open_workflow_agent/persistence.py"
       - "core/src/open_workflow_agent/storage.py"
       - "core/src/open_workflow_agent/services.py"
+      - "core/src/open_workflow_agent/children.py"
+      - "core/src/open_workflow_agent/child_dispatcher.py"
       - "core/src/open_workflow_agent/forks.py"
       - "core/src/open_workflow_agent/effects.py"
       - "core/src/open_workflow_agent/config.py"
@@ -67,6 +69,7 @@ on:
       - "tests/contract/test_sandbox_effect_recovery.py"
       - "tests/contract/test_event_child_effect_recovery.py"
       - "tests/contract/test_child_invocation_dependencies.py"
+      - "tests/contract/test_detached_children.py"
       - "tests/contract/test_retry_error_context.py"
       - "tests/contract/test_retry_timing.py"
       - "tests/contract/test_deadline_recovery.py"
@@ -83,6 +86,7 @@ on:
       - "tests/contract/test_durable_scheduling.py"
       - "tests/contract/test_schedule_event_triggers.py"
       - "tests/core/test_timer_store.py"
+      - "tests/core/test_child_workflow_budgets.py"
       - "tests/core/test_timer_dispatcher_ownership.py"
       - "tests/core/test_schedule_store.py"
       - "tests/core/test_event_triggers.py"
@@ -160,6 +164,7 @@ jobs:
             tests/core/test_durable_event_api.py \
             tests/core/test_durable_event_approvals.py \
             tests/core/test_timer_store.py \
+            tests/core/test_child_workflow_budgets.py \
             tests/core/test_timer_dispatcher_ownership.py \
             tests/core/test_schedule_store.py \
             tests/core/test_event_triggers.py \
@@ -197,6 +202,7 @@ jobs:
             ../../tests/contract/test_sandbox_effect_recovery.py \
             ../../tests/contract/test_event_child_effect_recovery.py \
             ../../tests/contract/test_child_invocation_dependencies.py \
+            ../../tests/contract/test_detached_children.py \
             ../../tests/contract/test_retry_error_context.py \
             ../../tests/contract/test_retry_timing.py \
             ../../tests/contract/test_deadline_recovery.py \
@@ -237,6 +243,7 @@ jobs:
             ../../tests/contract/test_sandbox_effect_recovery.py \
             ../../tests/contract/test_event_child_effect_recovery.py \
             ../../tests/contract/test_child_invocation_dependencies.py \
+            ../../tests/contract/test_detached_children.py \
             ../../tests/contract/test_retry_error_context.py \
             ../../tests/contract/test_retry_timing.py \
             ../../tests/contract/test_deadline_recovery.py \
@@ -270,6 +277,7 @@ jobs:
             ../../tests/contract/test_sandbox_effect_recovery.py \
             ../../tests/contract/test_event_child_effect_recovery.py \
             ../../tests/contract/test_child_invocation_dependencies.py \
+            ../../tests/contract/test_detached_children.py \
             -k 'postgresql and agent-framework' -vv --durations=20
 
   postgres-runtime:
@@ -373,6 +381,8 @@ jobs:
             sleep 1
           done
           curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/health/ready" >/dev/null
+          capabilities="$(curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/v1/capabilities")"
+          python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["engine"] == sys.argv[2]; assert d["workflowDsl"] == "1.0.3"; assert d["features"]["scheduling"] == {"after": True, "every": True, "cron": True, "on": True, "durable": True, "owner": "fenced_workers"}' "$capabilities" "${{ matrix.engine }}"
           curl --fail --silent --request POST --header 'content-type: application/json' \
             --data '{"input":{"question":"postgres-after-restart"}}' \
             "http://127.0.0.1:${{ matrix.port }}/v1/invoke" \

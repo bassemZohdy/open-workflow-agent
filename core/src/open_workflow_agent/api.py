@@ -492,6 +492,7 @@ def create_app(
     @app.get("/v1/capabilities")
     async def capabilities() -> dict[str, Any]:
         value = runtime_engine.capabilities().as_dict()
+        value["features"]["scheduling"]["on"] = runtime_services.event_store is not None
         value.setdefault("features", {})["events"] = event_capabilities(runtime_services.event_bus)
         value.setdefault("features", {})["approvals"] = runtime_services.approvals.capabilities()
         value.setdefault("features", {})["catalogs"] = (

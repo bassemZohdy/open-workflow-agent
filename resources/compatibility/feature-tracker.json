@@ -68721,8 +68721,20 @@
         "module": "M03",
         "description": "Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.",
         "effort": "L",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "In progress",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "status": "Implementation in progress; not qualified",
+          "finite_acceptance": "docs/s2-07-child-workflow-acceptance.md",
+          "scope": "Recursive/nested/detached child workflows with pinned identity, durable depth/work budgets and lifetime/cancellation contracts",
+          "remaining": "Nonresident synchronous parent/child waiting, durable cancellation and complete process/corruption coverage; finish all remaining backlog implementation then one comprehensive final validation before checkboxes",
+          "working_implementation": [
+            "Atomic child identity/input reservations and saved root quotas",
+            "Pinned child reference reuse and canonical parent task references",
+            "Durable detached job/return decisions and bounded engine-owned delivery",
+            "New quota, corruption and detached lifecycle fixtures staged for final batch"
+          ]
+        }
       },
       {
         "id": "S2-08",
@@ -68875,7 +68887,20 @@
         "description": "Keep CI, builds, releases, capability reports and rollback tied to verified versions and acceptance gates.",
         "effort": "M",
         "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "working_cleanup": {
+          "status": "Local changes staged; final batch validation pending",
+          "record": "docs/ci-runners.md",
+          "changes": [
+            "PR/main trigger separation removes duplicate feature pushes",
+            "Root full tests explicitly includes shared contracts once",
+            "Independent Windows/native/image checks with complete principal matrices",
+            "Common core/contracts trigger optional Framework acceptance",
+            "Stale PR cancellation preserves main acceptance",
+            "Exact-source publication, vulnerability preflight and release environment preserved"
+          ],
+          "validation": "Workflow YAML parsed and new guard fixtures authored; execution deferred to final integrated validation"
+        }
       },
       {
         "id": "S4-08",

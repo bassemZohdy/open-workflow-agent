@@ -224,7 +224,6 @@ def test_listener_iterator_at_its_official_task_location_preserves_child_scope()
 @pytest.mark.parametrize(
     "run",
     [
-        {"workflow": {"namespace": "test", "name": "child", "version": "1.0.0"}, "await": False},
         {"workflow": {"namespace": "test", "name": "child", "version": "1.0.0"}, "return": "all"},
         {"container": {"image": "untrusted/image"}},
     ],
@@ -234,6 +233,17 @@ def test_unimplemented_run_modes_are_rejected(run):
     workflow["do"] = [{"child": {"run": run}}]
     with pytest.raises(UnsupportedWorkflowFeature):
         compile_workflow(workflow)
+
+
+def test_detached_workflow_run_is_preserved_by_admission():
+    workflow = generate_default_workflow()
+    run = {
+        "workflow": {"namespace": "test", "name": "child", "version": "1.0.0"},
+        "await": False,
+    }
+    workflow["do"] = [{"child": {"run": run}}]
+    plan = compile_workflow(workflow)
+    assert plan.tasks[0].definition["run"] == run
 
 
 def test_duplicate_task_names_are_rejected_in_nested_scope():

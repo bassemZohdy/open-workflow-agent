@@ -305,6 +305,10 @@ class EffectJournal:
             receipt = EffectReceipt(**payload)
             if receipt.owner != row[0] or receipt.status != row[1]:
                 raise ValueError("workflow effect columns differ from the saved receipt")
+            if identity.operation == "policy:detached-child:v1":
+                from .children import verify_detached_child_receipt
+
+                verify_detached_child_receipt(self.connection, self._invocations, identity, receipt)
             if identity.operation == "run:workflow" and receipt.status != "pending":
                 if receipt.child_invocation is None:
                     raise ValueError("child invocation binding is absent")
