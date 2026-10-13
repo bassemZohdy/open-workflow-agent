@@ -17,7 +17,7 @@ from engine_cases import engine_cases
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity
-from open_workflow_agent.errors import OwaError
+from open_workflow_agent.errors import InvocationStateConflict, OwaError
 from open_workflow_agent.executable_source_admission import SOURCE_POLICY
 from open_workflow_agent.executable_sources import ExecutableSource, ExecutableSourceRegistry
 from open_workflow_agent.protocols import HttpClient
@@ -169,6 +169,81 @@ def handle_for(services, engine_name, plan):
         workflow_version=plan.version,
         workflow_fingerprint=plan.fingerprint,
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_late_source_worker_cannot_publish_after_actual_parent_takeover(
+    tmp_path, engine_name, engine_type, backend
+):
+    code = CODE + (
+        b"from pathlib import Path\nimport time\n"
+        b"while not (Path(sys.argv[1]).parent / 'release-takeover').exists():\n"
+        b"    time.sleep(0.025)\n"
+    )
+    config = configuration(tmp_path, backend, artifact(code))
+    services, engine = await setup(tmp_path, engine_name, engine_type, backend, config)
+    other = RuntimeServices(
+        config,
+        model=FakeModel(),
+        database_root=None if backend == "postgresql" else tmp_path / "runtime",
+    )
+    initialize_ledger(tmp_path)
+    public = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "captured-source",
+            "name": "takeover",
+            "version": "1.0.0",
+        },
+        "do": [{"action": {**action(tmp_path), "timeout": {"after": {"seconds": 120}}}}],
+    }
+    plan = compile_original(services, public)
+    handle = handle_for(services, engine_name, plan)
+    running = asyncio.create_task(engine.invoke(plan, handle, {"original": None}))
+    successor = None
+    try:
+        async with asyncio.timeout(30):
+            while not ledger(tmp_path):
+                if running.done():
+                    raise AssertionError("source execution ended before the real commit barrier")
+                await asyncio.sleep(0.025)
+        business = identities(services, handle)
+        assert len(business) == 1 and services.effect_journal.get(business[0]).status == "pending"
+        native_before = native_snapshot(services, handle, backend)
+        source_before = services.effect_journal.connection.execute(
+            "SELECT * FROM executable_source_admissions WHERE invocation_id=?",
+            (handle.invocation_id,),
+        ).fetchall()
+        old = engine._execution_leases[handle.invocation_id]
+        services.execution_ownership.release(old)
+        fresh = other.invocations.get(handle.invocation_id)
+        successor = other.execution_ownership.acquire(fresh)
+        assert successor.generation > old.generation and successor.owner != old.owner
+        (tmp_path / "release-takeover").touch()
+        with pytest.raises(InvocationStateConflict):
+            await asyncio.wait_for(running, 30)
+        assert services.effect_journal.get(business[0]).status == "pending"
+        assert native_snapshot(services, handle, backend) == native_before
+        assert other.invocations.get(handle.invocation_id).status == "running"
+        assert (
+            services.effect_journal.connection.execute(
+                "SELECT * FROM executable_source_admissions WHERE invocation_id=?",
+                (handle.invocation_id,),
+            ).fetchall()
+            == source_before
+        )
+        assert len(ledger(tmp_path)) == 1 and services.model.calls == other.model.calls == []
+    finally:
+        (tmp_path / "release-takeover").touch()
+        running.cancel()
+        await asyncio.gather(running, return_exceptions=True)
+        if successor is not None:
+            other.execution_ownership.release(successor)
+        await engine.shutdown()
+        other.close()
+        services.close()
 
 
 @pytest.mark.asyncio

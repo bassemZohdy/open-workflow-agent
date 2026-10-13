@@ -125,6 +125,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
                 allow_new=not _RECONCILE_EXPIRED_RETRY.get(),
             )
             request = replace(request, script_code=decision.source.verified_bytes().decode("utf-8"))
+            state.metadata["_source_script_business_key"] = identity.key
             await self._notify_receipt(state, decision.identity, decision.receipt)
         return await (
             self._execute_background(request, state)

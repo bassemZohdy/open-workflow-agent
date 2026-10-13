@@ -2732,6 +2732,23 @@ class WorkflowExecutor:
         operation_id: str | None = None,
     ) -> EffectReceipt:
         try:
+            if (
+                identity.operation == "run:script"
+                and state.metadata.get("_source_script_business_key") == identity.key
+            ):
+                source_policy = replace(identity, operation="policy:executable-source:v1")
+                admitted = journal.get(source_policy)
+                if admitted is None or admitted.status != "completed":
+                    raise WorkflowExecutionError("executable source authority is unavailable")
+                return journal.finish_owned(
+                    identity,
+                    owner,
+                    execution_lease=self._execution_lease(state),
+                    output=output,
+                    error=error.as_dict() if error else None,
+                    error_status_code=error.status_code if error else None,
+                    operation_id=operation_id or self._operation_id(state),
+                )
             if identity.operation == "call:grpc":
                 return journal.finish_grpc(
                     identity,
