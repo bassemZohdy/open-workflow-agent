@@ -136,3 +136,24 @@ exposed a real terminal queue settlement early-return defect, now corrected.
 The correction retains owner/input/identity assertions and adds stop-window
 coverage within the existing counts. The full corrected batch remains pending;
 S3-02 and its feature criteria stay unchecked and unqualified.
+
+
+## Retained second combined batch
+
+Frozen source `296c60e` remained unchanged throughout the second batch. Root
+reported 2 failed / 424 passed / 79 skipped; actual ADK and actual LangGraph
+each reported 13 failed / 112 passed / 232 skipped; optional Agent Framework
+reported 81 passed / 316 skipped. Five independent wheel/sdist builds passed.
+Full proof is retained under `tmp/s3-02-second-batch`; no skipped SDK/backend
+profile or successful build substitutes for runtime qualification.
+
+The remaining failures identified a real authenticated AgentCard compatibility
+defect (legacy bearer security fields), an incorrect SDK subscription method in
+the peer fixture, shared-helper import placement, and older version-recovery
+fixtures with incomplete modern requests or stale artifact assertions. The
+correction publishes strict SDK-parsed v1 `httpAuthSecurityScheme` and
+`securityRequirements` while retaining the bearer scheme identifier and excluding
+secrets. The existing positive card test now parses the complete response through
+the official SDK. The stream fixture uses its actual `subscribe` SPI. Counts
+remain unchanged; the complete correction batch and full qualification remain
+pending, with S3-02 and its feature criteria unchecked.

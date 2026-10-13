@@ -263,13 +263,18 @@ async def test_public_resume_uses_retained_v1_after_v2_deployment_and_reopen(
                             "params": {
                                 "message": {
                                     "role": "ROLE_USER",
+                                    "messageId": "resume-original-version",
                                     "taskId": invocation_id,
                                     "parts": [{"text": "continue original"}],
                                 }
                             },
                         },
                     )
-                    output = json.loads(resumed.json()["result"]["message"]["parts"][0]["text"])
+                    projected = resumed.json()["result"]["task"]
+                    assert projected["id"] == invocation_id
+                    assert projected["contextId"] == saved_identity[1]
+                    assert projected["status"]["state"] == "TASK_STATE_COMPLETED"
+                    output = projected["artifacts"][0]["parts"][0]["data"]
                     expected_resume = {"question": "continue original"}
                 assert resumed.status_code == 200, resumed.text
                 assert output == {
@@ -618,6 +623,7 @@ async def test_a2a_cannot_grant_an_unadvertised_archived_workflow_default_skill_
                         "params": {
                             "message": {
                                 "role": "ROLE_USER",
+                                "messageId": "denied-default-authority",
                                 "taskId": handle.invocation_id,
                                 "parts": [{"text": "resume under default authority"}],
                             },

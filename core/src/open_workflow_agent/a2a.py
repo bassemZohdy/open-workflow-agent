@@ -95,7 +95,7 @@ def build_agent_card(
 ) -> dict[str, Any]:
     """Build the bounded A2A v1 Agent Card for the configured workflow(s)."""
 
-    from ._a2a_types import verify_sdk
+    from ._a2a_types import validate_v1_card, verify_sdk
 
     verify_sdk()
     card: dict[str, Any] = {
@@ -127,14 +127,11 @@ def build_agent_card(
 
     # Advertise security schemes when authentication is configured
     if config.security_profile:
-        card["securitySchemes"] = {
-            "bearer": {
-                "type": "http",
-                "scheme": "bearer",
-            }
-        }
-        card["security"] = [{"bearer": []}]
+        card["securitySchemes"] = {"bearer": {"httpAuthSecurityScheme": {"scheme": "bearer"}}}
+        card["securityRequirements"] = [{"schemes": {"bearer": {"list": []}}}]
 
+    # Check the reviewed SDK without dropping explicit public false/empty values.
+    validate_v1_card(card)
     return card
 
 

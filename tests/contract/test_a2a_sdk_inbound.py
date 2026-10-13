@@ -120,7 +120,7 @@ async def test_official_sdk_client_discovers_sends_and_reads_native_task(
                         assert first.HasField("task")
                         task_id = first.task.id
                         assert first.task.context_id == "sdk-context"
-                        subscription = peer.subscribe_to_task(SubscribeToTaskRequest(id=task_id))
+                        subscription = peer.subscribe(SubscribeToTaskRequest(id=task_id))
                         initial = await anext(subscription)
                         assert initial.HasField("task") and initial.task.id == task_id
 
