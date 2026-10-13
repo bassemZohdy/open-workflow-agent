@@ -2220,6 +2220,8 @@ class WorkflowExecutor:
 
     async def _call(self, call: str, payload: Any, state: ExecutionState) -> Any:
         if call == "grpc":
+            from .grpc_client import validate_operation_key
+
             registry = getattr(getattr(self.services, "protocols", None), "grpc_registry", None)
             if registry is None or not isinstance(payload, Mapping):
                 raise ToolError("gRPC deployment registry or payload is unavailable")
@@ -2228,6 +2230,7 @@ class WorkflowExecutor:
             registry.prepare(
                 {key: value for key, value in payload.items() if key != "operation_id"}
             )
+            validate_operation_key(self._protocol_operation_id(call, payload, state))
         imported = state.metadata.get("_catalog_tasks", {}).get(
             state.variables.get("_execution_reference")
         )
@@ -2710,6 +2713,17 @@ class WorkflowExecutor:
         operation_id: str | None = None,
     ) -> EffectReceipt:
         try:
+            if identity.operation == "call:grpc":
+                return journal.finish_grpc(
+                    identity,
+                    owner,
+                    execution_lease=self._execution_lease(state),
+                    output=output,
+                    error=error.as_dict() if error else None,
+                    error_status_code=error.status_code if error else None,
+                    operation_id=operation_id
+                    or (error._operation_id if error else self._operation_id(state)),
+                )
             return journal.finish(
                 identity,
                 owner,
