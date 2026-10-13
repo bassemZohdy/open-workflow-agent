@@ -215,3 +215,24 @@ uses verbose rows so all13 initializer controls can be independently audited.
 Corrected scoped checks, fresh builds and all exact-source hosted full-suite,
 coverage, PostgreSQL, Windows, image, audit, CTK and benchmark gates remain
 mandatory before S2-09/S3-01/S3-02 closure or publication qualification.
+
+### Grouped trust correction at 39b1024 (scoped history only)
+
+The corrected real TLS grid passes all10 cases in independent common/principal
+and optional Framework environments. Actual ADK and LangGraph each pass35
+selected checks (69 explicit foreign/backend skips), including every applicable
+11 native corruption and12 OS-stop recovery case that previously failed before
+TLS admission. Optional Framework passes13 selected cases. Five fresh builds
+pass, and every supervisor records zero source changes. These scoped passes do
+not turn the earlier bounded full suites into green full/coverage evidence.
+
+The common root check retains411 passes/26 skips and one timing-dependent MCP
+fixture failure. Its original30ms whole-operation budget expired before the
+shared dispatch marker, so the runtime correctly returned a known pre-send
+ToolError. The fixture now keeps a finite1s original budget, explicitly waits
+for response-body entry, and then requires post-send uncertainty, exactly one
+request and actual stream closure. The body remains indefinitely stalled; no
+clock is reset and no runtime classification or retry rule is relaxed. Final
+fixture checks, source-matched builds and hosted full acceptance remain pending.
+Logs and immutable source/result records are retained in
+`tmp/s3-02-postfull-39b1024`; earlier failure history remains distinct.

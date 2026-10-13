@@ -388,9 +388,11 @@ async def test_sdk_dispatch_attempt_cannot_repeat_after_known_preflight_failure(
 async def test_mcp_resource_timeout_after_send_preserves_unknown_outcome_and_closes_stream():
     calls = []
     closed = asyncio.Event()
+    body_entered = asyncio.Event()
 
     class StalledResponse(httpx.AsyncByteStream):
         async def __aiter__(self):
+            body_entered.set()
             await asyncio.Event().wait()
             yield b""
 
@@ -403,9 +405,18 @@ async def test_mcp_resource_timeout_after_send_preserves_unknown_outcome_and_clo
             200, headers={"Content-Type": "application/json"}, stream=StalledResponse()
         )
 
-    services = ProtocolServices(HttpClient(timeout=0.03, transport=httpx.MockTransport(receiver)))
-    with pytest.raises(_McpOutcomeUncertain):
-        await services.call("mcp", payload("tools/call"))
+    services = ProtocolServices(HttpClient(timeout=1, transport=httpx.MockTransport(receiver)))
+    running = asyncio.create_task(services.call("mcp", payload("tools/call")))
+    try:
+        # The original whole-operation clock includes SDK setup. Witness the
+        # dispatched response body before asserting post-send uncertainty.
+        await asyncio.wait_for(body_entered.wait(), 2)
+        with pytest.raises(_McpOutcomeUncertain):
+            await asyncio.wait_for(running, 2)
+    finally:
+        if not running.done():
+            running.cancel()
+        await asyncio.gather(running, return_exceptions=True)
     assert len(calls) == 1 and closed.is_set()
 
 
