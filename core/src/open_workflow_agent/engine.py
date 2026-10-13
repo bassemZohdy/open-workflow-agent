@@ -195,6 +195,9 @@ class WorkflowEngine:
 
         heartbeat = asyncio.create_task(renew())
         try:
+            # Start the renewal timer before synchronous admission/recovery
+            # stages run. No database transaction is held across this yield.
+            await asyncio.sleep(0)
             yield
             current = self.services.invocations.get(handle.invocation_id)
             if current is not None and current.status == "cancelled":
@@ -429,10 +432,14 @@ class WorkflowEngine:
                 original = archive.verify_admission(handle)
                 self.services.invocations.verify_fingerprint(handle, original.fingerprint)
                 self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+                await asyncio.sleep(0)
                 self.services.verify_background_jobs(handle)
+                await asyncio.sleep(0)
                 return
             archive.verify(handle, plan)
+            await asyncio.sleep(0)
             self.services.verify_background_jobs(handle)
+            await asyncio.sleep(0)
             return
         await self._verify_initial_nohistory(handle)
 
@@ -440,6 +447,7 @@ class WorkflowEngine:
         # Validate installed evidence and any explicit nonsecret deployment
         # declaration before adopting even a first execution lease.
         self.services.recovery_definitions.profile_provider(handle.engine)
+        await asyncio.sleep(0)
         # Input-only queued reservations are not executed history. Every actual
         # reentry requires its admitted archive; current source cannot retrofit it.
         if (
@@ -473,6 +481,7 @@ class WorkflowEngine:
                 self.services.recovery_definitions.verify_admission(parent)
             else:
                 self.services.resolve_original_definition(parent)
+            await asyncio.sleep(0)
         if await self._native_initial_history_exists(handle):
             raise InvocationStateError(
                 "native invocation has no original definition admission",
@@ -499,6 +508,7 @@ class WorkflowEngine:
                 await self._preflight_definition(invocation, workflow, initial=True)
                 try:
                     input_data = self._prepare_workflow_input(workflow, invocation, input_data)
+                    await asyncio.sleep(0)
                 except UnsupportedWorkflowFeature as error:
                     # A known admission rejection retains the invocation's
                     # fault-result contract without binding input or starting
@@ -1156,14 +1166,18 @@ class WorkflowEngine:
 
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
         self.services.recovery_definitions.verify(handle, plan)
+        await asyncio.sleep(0)
         self._verify_event_requirements(plan)
         self._verify_execution_engine(handle)
         self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
         original_input = self.services.invocations.read_input(handle)
         try:
             self.services.effect_journal.verify_invocation(handle.invocation_id, plan.fingerprint)
+            await asyncio.sleep(0)
             self.services.timers.verify_invocation(handle.invocation_id, plan.fingerprint)
+            await asyncio.sleep(0)
             self.services.child_waits.verify_invocation(handle.invocation_id, plan.fingerprint)
+            await asyncio.sleep(0)
             pending = [(handle.invocation_id, plan.fingerprint)]
             visited: set[str] = set()
             while pending:
@@ -1180,12 +1194,15 @@ class WorkflowEngine:
                     self.services.effect_journal.verify_invocation(
                         child.invocation_id, child.workflow_fingerprint
                     )
+                    await asyncio.sleep(0)
                     self.services.timers.verify_invocation(
                         child.invocation_id, child.workflow_fingerprint
                     )
+                    await asyncio.sleep(0)
                     self.services.child_waits.verify_invocation(
                         child.invocation_id, child.workflow_fingerprint
                     )
+                    await asyncio.sleep(0)
                     pending.append((child.invocation_id, child.workflow_fingerprint))
             if self.services.event_store is not None:
                 self.services.event_store.verify_invocation(
@@ -1193,6 +1210,7 @@ class WorkflowEngine:
                     plan.fingerprint,
                     require_profile=plan.uses_durable_events,
                 )
+                await asyncio.sleep(0)
             if plan.uses_timing:
                 clock = self.services.effect_journal.get(
                     root_clock_identity(handle.invocation_id, plan.fingerprint)

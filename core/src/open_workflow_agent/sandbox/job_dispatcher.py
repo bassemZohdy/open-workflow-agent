@@ -133,14 +133,21 @@ class SandboxJobDispatcher:
         lease = self.store.claim(identifier, seconds=self.lease_seconds)
         submitting = False
         try:
+            # Each store operation commits/releases its own fence before
+            # yielding; parent execution heartbeats must not be starved by
+            # several consecutive physical-profile verification stages.
+            await asyncio.sleep(0)
             job = self.store.get(identifier)
+            await asyncio.sleep(0)
             if job is None or job.status == "terminal":
                 return
             admission = json.loads(job.admission_json)
             self.manager.validate_job_profile_from_admission(admission)
             if self.store._now() >= admission["deadline_at"] and job.control_json is None:
                 self.store.request_control(lease, reason="deadline")
+                await asyncio.sleep(0)
                 job = self.store.get(identifier)
+                await asyncio.sleep(0)
                 if job is None:
                     raise SandboxPolicyError("sandbox job disappeared during deadline control")
             if job.status == "ready" and job.control_json is not None:
@@ -149,8 +156,11 @@ class SandboxJobDispatcher:
             if job.status == "ready":
                 self.store.begin_submit(lease)
                 submitting = True
+                await asyncio.sleep(0)
             lease = self.store.renew(lease, seconds=self.lease_seconds)
+            await asyncio.sleep(0)
             job, launch = self._current(lease)
+            await asyncio.sleep(0)
             async with asyncio.timeout(self.io_timeout):
                 observation = (
                     await self.manager.submit_job(launch)
@@ -158,7 +168,9 @@ class SandboxJobDispatcher:
                     else await self.manager.inspect_job(launch, self._binding(job))
                 )
             self._record(lease, observation)
+            await asyncio.sleep(0)
             job = self.store.get(identifier)
+            await asyncio.sleep(0)
             if job is None or job.status == "terminal" or job.control_json is None:
                 return
             binding = self._binding(job)
@@ -166,7 +178,9 @@ class SandboxJobDispatcher:
                 return
             control = json.loads(job.control_json)
             lease = self.store.renew(lease, seconds=self.lease_seconds)
+            await asyncio.sleep(0)
             job, launch = self._current(lease)
+            await asyncio.sleep(0)
             async with asyncio.timeout(self.io_timeout):
                 observation = await self.manager.cancel_job(
                     launch,
