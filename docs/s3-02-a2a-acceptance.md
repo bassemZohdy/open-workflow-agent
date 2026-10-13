@@ -236,3 +236,22 @@ clock is reset and no runtime classification or retry rule is relaxed. Final
 fixture checks, source-matched builds and hosted full acceptance remain pending.
 Logs and immutable source/result records are retained in
 `tmp/s3-02-postfull-39b1024`; earlier failure history remains distinct.
+
+### Transport fixture phase review at e63d096 (not a green root batch)
+
+Independent ADK/LangGraph fixture checks pass98 cases each and optional
+Framework passes99; all common TLS10 and MCP86 witnesses execute. Five builds
+pass on that source with zero changed inputs. Root retains411 passes/26 skips
+and one60ms issuer/resource phase assertion failure: issuer handling consumed
+the budget before any resource request, which is a valid pre-send timeout.
+The saved root log is retained in `tmp/s3-02-final-fixture-e63d096`.
+
+The grouped fixture correction uses explicit issuer/resource/body entry events
+and modest finite original budgets, with permanently stalled mocked receivers.
+The combined issuer/resource witness additionally inspects the actual resource
+request's remaining read timeout after a known issuer delay; resetting a new
+full resource budget still fails. Post-send MCP/A2A witnesses require one
+actual dispatch and stream cleanup. Metadata rejection fixtures no longer rely
+on a sub-scheduler-sized timeout unrelated to their admission purpose. No
+runtime deadline/classification or known/uncertain replay semantics changed.
+Full hosted qualification and final common fixture validation remain required.

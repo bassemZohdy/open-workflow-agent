@@ -145,7 +145,7 @@ async def test_every_method_rejects_errors_limits_and_uncorrelated_results(metho
         body = json.loads(request.content)
         calls.append(body)
         if failure == "timeout":
-            await asyncio.sleep(0.15)
+            await asyncio.Event().wait()
         if failure == "protocol_error":
             return httpx.Response(
                 200,
@@ -167,7 +167,7 @@ async def test_every_method_rejects_errors_limits_and_uncorrelated_results(metho
     services = ProtocolServices(
         HttpClient(
             transport=httpx.MockTransport(receiver),
-            timeout=0.05 if failure == "timeout" else 2,
+            timeout=1 if failure == "timeout" else 2,
             max_response_bytes=200 if failure == "size" else 4000,
         )
     )
