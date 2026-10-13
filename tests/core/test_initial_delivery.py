@@ -46,10 +46,31 @@ def delivery_tree(tmp_path, request, monkeypatch):
         pass
 
     monkeypatch.setattr(TimerDispatcher, "start", no_timer_workers)
+    created = []
+    create = services.invocations.create
+
+    def tracked_create(**kwargs):
+        handle = create(**kwargs)
+        created.append(handle.invocation_id)
+        return handle
+
+    monkeypatch.setattr(services.invocations, "create", tracked_create)
     try:
         yield services, model
     finally:
-        services.close()
+        try:
+            # Negative cases deliberately retain damaged/ready deliveries for
+            # their snapshots. Remove only this fixture's queue entries after
+            # its engine has drained; preserve original invocation/proof rows.
+            connection = services.initial_deliveries.connection
+            for invocation_id in created:
+                connection.execute(
+                    "DELETE FROM initial_invocation_deliveries WHERE invocation_id=?",
+                    (invocation_id,),
+                )
+            connection.commit()
+        finally:
+            services.close()
 
 
 def new_handle(services, plan):

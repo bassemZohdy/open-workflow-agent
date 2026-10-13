@@ -21,6 +21,8 @@ from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import ExecutionState, compile_workflow
 
+pytestmark = pytest.mark.usefixtures("explicit_workflow_delivery")
+
 
 class _ObservedEventBus(InMemoryEventBus):
     """Actual process-local publication with a deterministic interruption point."""

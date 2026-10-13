@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import socket
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import httpx
 import pytest
@@ -88,8 +90,48 @@ async def test_official_sdk_client_discovers_sends_and_reads_native_task(
         }
     )
     model = FakeModel()
-    services = RuntimeServices(config, model=model, database_root=tmp_path)
+    services = RuntimeServices(config, model=model, database_root=None if datasource else tmp_path)
+    assert services.effect_journal.connection.kind == backend
+    native_path = services.engine_database_path(engine_name, create_namespace=False)
+    if datasource:
+        assert native_path.startswith(("postgresql://", "postgresql+"))
+        assert services.database_root is None
+    else:
+        assert Path(native_path).parent == tmp_path
     app = create_app(config=config, services=services, engine=engine)
+    acknowledged_task_id = None
+
+    def diagnostic(task_id):
+        handle = services.invocations.get(task_id)
+        dispatcher = engine._initial_delivery_dispatcher
+        return json.dumps(
+            {
+                "status": handle.status if handle is not None else "absent",
+                "error": handle.error if handle is not None else None,
+                "dispatcher_errors": [
+                    {"type": type(error).__name__, "code": getattr(error, "code", None)}
+                    for error in tuple(dispatcher._errors)[-4:]
+                ]
+                if dispatcher is not None
+                else [],
+                "dispatcher_workers": len(dispatcher._workers) if dispatcher is not None else 0,
+                "active": task_id in engine._active,
+                "ownership_active": task_id in engine._ownership_tasks,
+            },
+            sort_keys=True,
+        )[:2048]
+
+    @asynccontextmanager
+    async def bounded_task():
+        try:
+            async with asyncio.timeout(15):
+                yield
+        except TimeoutError as error:
+            error.add_note(
+                diagnostic(acknowledged_task_id) if acknowledged_task_id else "no Task ACK"
+            )
+            raise
+
     try:
         async with listening(app) as base:
             async with httpx.AsyncClient(timeout=10, headers={"A2A-Version": "1.0"}) as http:
@@ -113,12 +155,13 @@ async def test_official_sdk_client_discovers_sends_and_reads_native_task(
                     SendMessageRequest(),
                     ignore_unknown_fields=False,
                 )
-                async with asyncio.timeout(15):
+                async with bounded_task():
                     if mode == "cancel_stream":
                         updates = peer.send_message_streaming(request)
                         first = await anext(updates)
                         assert first.HasField("task")
                         task_id = first.task.id
+                        acknowledged_task_id = task_id
                         assert first.task.context_id == "sdk-context"
                         subscription = peer.subscribe(SubscribeToTaskRequest(id=task_id))
                         initial = await anext(subscription)
@@ -131,6 +174,11 @@ async def test_official_sdk_client_discovers_sends_and_reads_native_task(
                         subscribed = asyncio.create_task(drain(subscription))
                         try:
                             while services.invocations.get(task_id).status != "waiting":
+                                assert services.invocations.get(task_id).status not in {
+                                    "completed",
+                                    "faulted",
+                                    "cancelled",
+                                }, diagnostic(task_id)
                                 await asyncio.sleep(0.025)
                             before = services.invocations.get(task_id)
                             assert (
@@ -168,12 +216,17 @@ async def test_official_sdk_client_discovers_sends_and_reads_native_task(
                     response = await peer.send_message(request)
                     assert response.HasField("task") and not response.HasField("message")
                     task_id = response.task.id
+                    acknowledged_task_id = task_id
                     assert response.task.context_id == "sdk-context"
                     while True:
                         task = await peer.get_task(GetTaskRequest(id=task_id))
                         value = MessageToDict(task)
                         if value["status"]["state"] == "TASK_STATE_COMPLETED":
                             break
+                        assert services.invocations.get(task_id).status not in {
+                            "faulted",
+                            "cancelled",
+                        }, diagnostic(task_id)
                         await asyncio.sleep(0.025)
                 assert value["artifacts"][0]["parts"][0]["data"] == {"value": None}
                 handle = services.invocations.get(task_id)

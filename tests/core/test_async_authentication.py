@@ -187,8 +187,15 @@ async def test_deadline_and_cancellation_close_auth_without_a_resource_request_o
             cancelled.set()
 
     auth = authentication(monkeypatch, blocked)
-    with pytest.raises(ToolError) as error:
-        await auth.prepare(RESOURCE, remaining_timeout=0.03)
+    timed = asyncio.create_task(auth.prepare(RESOURCE, remaining_timeout=1))
+    try:
+        await asyncio.wait_for(entered.wait(), 2)
+        with pytest.raises(ToolError) as error:
+            await asyncio.wait_for(timed, 2)
+    finally:
+        if not timed.done():
+            timed.cancel()
+        await asyncio.gather(timed, return_exceptions=True)
     assert error.value.details["reason"] == "deadline_expired" and cancelled.is_set()
     cancelled.clear()
     entered.clear()
@@ -263,7 +270,9 @@ async def test_short_lived_token_is_not_cached_as_permanent_authority(monkeypatc
 async def test_issuer_delay_and_resource_io_share_one_original_deadline(monkeypatch):
     calls = []
     resource_cancelled = asyncio.Event()
-    # Mocked wire delays own this tiny budget. Build verified trust before its
+    resource_entered = asyncio.Event()
+    resource_timeouts = []
+    # Mocked wire delays own this finite budget. Build verified trust before its
     # clock starts; real TLS setup and certificate isolation have separate tests.
     context = httpx.create_ssl_context(verify=True, trust_env=False)
     assert context.verify_mode == ssl.CERT_REQUIRED and context.check_hostname
@@ -279,19 +288,30 @@ async def test_issuer_delay_and_resource_io_share_one_original_deadline(monkeypa
     async def delayed(request):
         calls.append(str(request.url))
         if str(request.url) == ISSUER:
-            await asyncio.sleep(0.03)
+            await asyncio.sleep(0.3)
             return httpx.Response(200, json=TOKEN)
+        resource_timeouts.append(request.extensions["timeout"]["read"])
+        resource_entered.set()
         try:
-            await asyncio.sleep(0.05)
-            return httpx.Response(200, json={"completed": True})
+            await asyncio.Event().wait()
         finally:
             resource_cancelled.set()
 
     auth = authentication(monkeypatch, delayed)
     client = HttpClient(authentication=auth, transport=httpx.MockTransport(delayed))
-    with pytest.raises(ToolError):
-        await client.request("POST", RESOURCE, request_timeout=0.06, json={})
+    running = asyncio.create_task(client.request("POST", RESOURCE, request_timeout=1, json={}))
+    try:
+        await asyncio.wait_for(resource_entered.wait(), 2)
+        with pytest.raises(ToolError):
+            await asyncio.wait_for(running, 2)
+    finally:
+        if not running.done():
+            running.cancel()
+        await asyncio.gather(running, return_exceptions=True)
     assert calls == [ISSUER, RESOURCE] and resource_cancelled.is_set()
+    # The issuer consumed at least 0.3s. Inspect the actual resource timeout,
+    # rather than a scheduler-sensitive final elapsed-time assertion.
+    assert len(resource_timeouts) == 1 and 0 < resource_timeouts[0] <= 0.75
 
 
 @pytest.mark.parametrize(

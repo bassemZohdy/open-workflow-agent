@@ -227,9 +227,11 @@ async def test_failed_credential_preparation_is_known_before_business_send():
 async def test_post_send_timeout_closes_body_and_preserves_uncertainty():
     calls = []
     closed = asyncio.Event()
+    body_entered = asyncio.Event()
 
     class StalledBody(httpx.AsyncByteStream):
         async def __aiter__(self):
+            body_entered.set()
             await asyncio.Event().wait()
             yield b""
 
@@ -242,9 +244,18 @@ async def test_post_send_timeout_closes_body_and_preserves_uncertainty():
             200, headers={"Content-Type": "application/json"}, stream=StalledBody()
         )
 
-    services = ProtocolServices(HttpClient(timeout=0.05, transport=httpx.MockTransport(receiver)))
-    with pytest.raises(_A2AOutcomeUncertain):
-        await services.call("a2a", payload("SendMessage", "https://a2a.test/a2a"))
+    services = ProtocolServices(HttpClient(timeout=1, transport=httpx.MockTransport(receiver)))
+    running = asyncio.create_task(
+        services.call("a2a", payload("SendMessage", "https://a2a.test/a2a"))
+    )
+    try:
+        await asyncio.wait_for(body_entered.wait(), 2)
+        with pytest.raises(_A2AOutcomeUncertain):
+            await asyncio.wait_for(running, 2)
+    finally:
+        if not running.done():
+            running.cancel()
+        await asyncio.gather(running, return_exceptions=True)
     assert len(calls) == 1 and closed.is_set()
 
 
@@ -318,7 +329,7 @@ async def test_card_fetch_is_bounded_and_sanitized_without_business_dispatch(fai
         await fetch_validate_card(
             HttpClient(transport=httpx.MockTransport(receiver)),
             {"endpoint": "https://a2a.test/card"},
-            timeout=0.05,
+            timeout=2,
         )
     assert len(calls) == 1 and calls[0].method == "GET"
     assert "private-card-secret" not in str(error.value)

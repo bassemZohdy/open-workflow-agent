@@ -16,6 +16,8 @@ from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
+pytestmark = pytest.mark.usefixtures("explicit_workflow_delivery")
+
 
 def _services(tmp_path, backend, handler):
     datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None

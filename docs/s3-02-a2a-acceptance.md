@@ -187,3 +187,109 @@ a required `user_id` was omitted, before archive or SDK setup; that fixture fiel
 is corrected without changing runtime code or assertions. Exact failed and passing
 history is retained in `tmp/s3-02-fourth-batch`. Final full suites, actual PostgreSQL,
 platform, image, security, CTK and exact-source hosted acceptance remain required.
+
+### Bounded full-suite history at 072fa41 (not qualification)
+
+Four independent local full suites retained an unchanged 433-input source
+snapshot and continued making progress until their explicit 3,000-second
+Windows bound. Each exited124 with timed_out=true; none is a passing full
+suite or coverage gate. Five standalone/root/engine builds passed on that source.
+The original full logs, start/result records and source manifest are retained in
+`tmp/s3-02-full-bounded-072fa41`; no timeout or earlier failure is promoted.
+
+The catalog mock did not provide the pinned SDK's correlated JSON-RPC2.0 typed
+Task result. Its correction retains the inline/imported translation comparison,
+adds exact request version and unique IDs, echoes the request ID and returns the
+typed Task directly. Final LangGraph log review also exposed the common HTTP
+regression in preexisting recovery fixtures: preparing the client's own named
+bearer binding discarded its explicit verified private CA. Positive preparation
+failed TLS before native-corruption controls could execute. A bounded standalone
+reproduction and saved producer/query-only artifacts confirmed that shared cause.
+
+The grouped correction preserves a client's selected CA only for its inherited
+or exact same authentication object, while an explicitly different selected
+profile still replaces global trust and client identity. Six new direct/pinned
+real TLS witnesses cover retained bearer trust and rejection of foreign-profile
+CA inheritance. The common TLS suite now declares10 cases. Windows native routing
+uses verbose rows so all13 initializer controls can be independently audited.
+Corrected scoped checks, fresh builds and all exact-source hosted full-suite,
+coverage, PostgreSQL, Windows, image, audit, CTK and benchmark gates remain
+mandatory before S2-09/S3-01/S3-02 closure or publication qualification.
+
+### Grouped trust correction at 39b1024 (scoped history only)
+
+The corrected real TLS grid passes all10 cases in independent common/principal
+and optional Framework environments. Actual ADK and LangGraph each pass35
+selected checks (69 explicit foreign/backend skips), including every applicable
+11 native corruption and12 OS-stop recovery case that previously failed before
+TLS admission. Optional Framework passes13 selected cases. Five fresh builds
+pass, and every supervisor records zero source changes. These scoped passes do
+not turn the earlier bounded full suites into green full/coverage evidence.
+
+The common root check retains411 passes/26 skips and one timing-dependent MCP
+fixture failure. Its original30ms whole-operation budget expired before the
+shared dispatch marker, so the runtime correctly returned a known pre-send
+ToolError. The fixture now keeps a finite1s original budget, explicitly waits
+for response-body entry, and then requires post-send uncertainty, exactly one
+request and actual stream closure. The body remains indefinitely stalled; no
+clock is reset and no runtime classification or retry rule is relaxed. Final
+fixture checks, source-matched builds and hosted full acceptance remain pending.
+Logs and immutable source/result records are retained in
+`tmp/s3-02-postfull-39b1024`; earlier failure history remains distinct.
+
+### Transport fixture phase review at e63d096 (not a green root batch)
+
+Independent ADK/LangGraph fixture checks pass98 cases each and optional
+Framework passes99; all common TLS10 and MCP86 witnesses execute. Five builds
+pass on that source with zero changed inputs. Root retains411 passes/26 skips
+and one60ms issuer/resource phase assertion failure: issuer handling consumed
+the budget before any resource request, which is a valid pre-send timeout.
+The saved root log is retained in `tmp/s3-02-final-fixture-e63d096`.
+
+The grouped fixture correction uses explicit issuer/resource/body entry events
+and modest finite original budgets, with permanently stalled mocked receivers.
+The combined issuer/resource witness additionally inspects the actual resource
+request's remaining read timeout after a known issuer delay; resetting a new
+full resource budget still fails. Post-send MCP/A2A witnesses require one
+actual dispatch and stream cleanup. Metadata rejection fixtures no longer rely
+on a sub-scheduler-sized timeout unrelated to their admission purpose. No
+runtime deadline/classification or known/uncertain replay semantics changed.
+Full hosted qualification and final common fixture validation remain required.
+
+### Hosted f020d6e failure review and grouped corrections (unqualified)
+
+The final scoped common checks passed237 root,228 ADK,228 LangGraph and229
+optional Framework cases, and five fresh package builds passed with unchanged
+source inputs. The pushed checkpoint passed Docs, Security, external sandbox,
+both standard runtime images, and both Linux native lifecycle selections except
+the four LangGraph SDK inbound PostgreSQL-labeled cases. These scoped results do
+not qualify the failed aggregate workflows or close any pending task.
+
+PR CI root and principal shared suites exhausted their eight-minute commands at
+22%,46% and51%. Optional Framework exhausted its ten-minute job at36%; its
+PostgreSQL selection exhausted five minutes before the final OS-stop case.
+Windows timing exceeded its job budget and also retained two deadline recovery
+failures; Windows ownership retained one first-invoke waiting timeout. PostgreSQL
+common retained29 failures. Principal PostgreSQL recovery selections retained
+assertion failures before their14-minute bounds; their aborts omit final failure
+stacks and cannot establish exclusive causes. Original logs and artifacts are
+retained in the primary checkout's `tmp/ci-f020d6e-*` evidence.
+
+The grouped fixture corrections isolate content archives and retire only
+fixture-owned queues/schedules after negative snapshots, supply genuine leased
+original parent/child admissions before pending effects, observe archive-first
+timer recovery rather than expecting network compilation, and suppress global
+timer polling only in fixtures proving explicit invoke/resume boundaries.
+Automatic-delivery acceptance retains real pollers. The child deadline OS worker
+now reopens the original32/1000 deployment quotas; its former64/100000 recovery
+policy was correctly rejected by the retained profile. Separate common controls
+require changed quotas to fail without mutation. Worker failures retain common
+reason details. SDK inbound PostgreSQL selection now uses its actual configured
+database and asserts the common/native storage destination before network I/O.
+
+Finite aggregate CI budgets now cover the measured complete selections while
+preserving every fixture, original per-case deadline, independent backend/job,
+90% root coverage, image/audit, CTK and benchmark gate. These edits still require
+one frozen grouped behavioral run and fresh complete hosted qualification. No
+cancelled, timed-out, mislabeled-backend or earlier-source result is counted as
+acceptance, and no task is deferred while actionable corrections remain.

@@ -57,9 +57,11 @@ async def test_damaged_archived_schedule_is_not_claimed_and_later_ready_work_run
     bad_plan, good_plan = _plan(), _plan()
     handles = []
     records = []
+    scheduler = None
     try:
         for plan in (bad_plan, good_plan):
             record = services.schedules.create(plan, {"original": True}, now=1000.0)
+            records.append(record)
             claimed = services.schedules.claim_due(
                 now=1001.0, schedule_id=record.schedule_id, lease_seconds=1
             )
@@ -72,7 +74,6 @@ async def test_damaged_archived_schedule_is_not_claimed_and_later_ready_work_run
                 )
             finally:
                 services.execution_ownership.release(lease)
-            records.append(record)
             handles.append(handle)
         archive = services.recovery_definitions
         if damage == "binding":
@@ -108,10 +109,18 @@ async def test_damaged_archived_schedule_is_not_claimed_and_later_ready_work_run
         assert good is not None and good.status == "completed"
         assert good.output == {"original": True}
         assert scheduler._errors and not services.model.calls
-        await scheduler.stop()
     finally:
-        await engine.shutdown()
-        services.close()
+        try:
+            if scheduler is not None:
+                await scheduler.stop()
+            await engine.shutdown()
+            # The rejected occurrence stays unchanged through every assertion.
+            # Retire only our schedules afterwards so later shared-PG polls
+            # cannot execute this fixture's still-due recurring work.
+            for record in records:
+                services.schedules.cancel(record.schedule_id)
+        finally:
+            services.close()
 
 
 @pytest.mark.asyncio
@@ -142,6 +151,7 @@ async def test_archive_binding_removed_between_preflight_and_claim_keeps_deliver
             plan = _plan()
             admitted_at = 1001.0 + index * 0.1
             record = services.schedules.create(plan, {"original": True}, now=admitted_at - 1)
+            records.append(record)
             claimed = services.schedules.claim_due(
                 now=admitted_at, schedule_id=record.schedule_id, lease_seconds=0.5
             )
@@ -154,7 +164,6 @@ async def test_archive_binding_removed_between_preflight_and_claim_keeps_deliver
                 )
             finally:
                 services.execution_ownership.release(lease)
-            records.append(record)
             handles.append(handle)
         bad, good = handles
         before = services.schedules.connection.execute(
@@ -197,6 +206,10 @@ async def test_archive_binding_removed_between_preflight_and_claim_keeps_deliver
         assert await scheduler.tick(now=1002.0) == 0
         assert not services.model.calls
     finally:
-        await scheduler.stop()
-        await engine.shutdown()
-        services.close()
+        try:
+            await scheduler.stop()
+            await engine.shutdown()
+            for record in records:
+                services.schedules.cancel(record.schedule_id)
+        finally:
+            services.close()

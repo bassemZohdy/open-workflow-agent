@@ -55,11 +55,9 @@ async def run(directory: Path, mode: str) -> None:
         RuntimeConfig.model_validate(
             {
                 "persistence": {"datasource": datasource},
-                **(
-                    {"child_workflows": {"max_depth": 64, "max_children": 100_000}}
-                    if mode == "recover" and deadline_boundary
-                    else {}
-                ),
+                # Recovery must retain the original deployment policy pinned
+                # by the archive, including its child quota authority.
+                "child_workflows": {"max_depth": 32, "max_children": 1000},
             }
         ),
         model=FakeModel(),
@@ -358,6 +356,10 @@ if __name__ == "__main__":
     except BaseException as error:
         write_json(
             directory / (mode + "-failure.json"),
-            {"type": type(error).__name__, "message": str(error)},
+            {
+                "type": type(error).__name__,
+                "message": str(error),
+                "details": getattr(error, "details", None),
+            },
         )
         raise

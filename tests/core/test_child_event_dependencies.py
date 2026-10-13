@@ -31,16 +31,17 @@ def _source(name):
     }
 
 
-@pytest.fixture(params=["sqlite", "postgresql"])
-def child_outcome(tmp_path, request):
-    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if request.param == "postgresql" else None
-    if request.param == "postgresql" and datasource is None:
+def _child_outcome(tmp_path, backend, *, archive_definitions):
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and datasource is None:
         pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
     services = RuntimeServices(
         RuntimeConfig.model_validate({"persistence": {"datasource": datasource}}),
         model=FakeModel(),
         database_root=None if datasource else tmp_path,
     )
+    assert services.invocations.connection.kind == backend
+    assert services.effect_journal.connection.kind == backend
     parent_plan, child_plan = (
         compile_workflow(_source("parent")),
         compile_workflow(_source("child")),
@@ -58,6 +59,10 @@ def child_outcome(tmp_path, request):
     original = {"original": True}
     services.invocations.bind_input(parent, original)
     parent._execution_lease = services.execution_ownership.acquire(parent, seconds=300)
+    if archive_definitions:
+        services.recovery_definitions.admit(
+            parent_plan, parent, original, execution_lease=parent._execution_lease
+        )
     reference = "/do/0/start"
     identity = EffectIdentity(
         parent.invocation_id,
@@ -67,6 +72,15 @@ def child_outcome(tmp_path, request):
         "run:workflow",
     )
     child = services.children.reserve(identity, parent, child_plan, original)
+    if archive_definitions:
+        child._execution_lease = services.execution_ownership.acquire(child, seconds=300)
+        try:
+            services.recovery_definitions.admit(
+                child_plan, child, original, execution_lease=child._execution_lease
+            )
+        finally:
+            services.execution_ownership.release(child._execution_lease)
+            child._execution_lease = None
     digest = effect_request_digest(
         "run:workflow", {"workflow_fingerprint": child_plan.fingerprint, "input": original}
     )
@@ -95,6 +109,20 @@ def child_outcome(tmp_path, request):
             services.invocations.update(parent, status="cancelled")
         services.execution_ownership.release(parent._execution_lease)
         services.close()
+
+
+@pytest.fixture(params=["sqlite", "postgresql"])
+def child_outcome(tmp_path, request):
+    # Common terminal-DAG evidence remains readable without legacy archives.
+    # The deliberate ancestry corruption must reach the cycle guard, rather
+    # than fail an earlier archived parent-identity comparison.
+    yield from _child_outcome(tmp_path, request.param, archive_definitions=False)
+
+
+@pytest.fixture(params=["sqlite", "postgresql"])
+def archived_child_outcome(tmp_path, request):
+    # Nonterminal continuation cannot adopt missing original definition proof.
+    yield from _child_outcome(tmp_path, request.param, archive_definitions=True)
 
 
 def test_event_recovery_accepts_same_child_in_wake_and_action_outcomes(child_outcome):
@@ -218,9 +246,9 @@ async def test_terminal_child_replay_rejects_damaged_root_budget_without_new_dis
 @pytest.mark.asyncio
 @pytest.mark.parametrize("terminal", [False, True])
 async def test_live_child_can_finish_its_action_but_terminal_tree_cannot_bless_uncertainty(
-    child_outcome, terminal
+    archived_child_outcome, terminal
 ):
-    services, parent, _, _, _, child_plan, original = child_outcome
+    services, parent, _, _, _, child_plan, original = archived_child_outcome
     reference = "/do/1/live"
     identity = EffectIdentity(
         parent.invocation_id,
@@ -231,6 +259,10 @@ async def test_live_child_can_finish_its_action_but_terminal_tree_cannot_bless_u
     )
     child = services.children.reserve(identity, parent, child_plan, original)
     child._execution_lease = services.execution_ownership.acquire(child, seconds=300)
+    services.recovery_definitions.admit(
+        child_plan, child, original, execution_lease=child._execution_lease
+    )
+    nested_lease = None
     digest = effect_request_digest(
         "run:workflow", {"workflow_fingerprint": child_plan.fingerprint, "input": original}
     )
@@ -252,6 +284,11 @@ async def test_live_child_can_finish_its_action_but_terminal_tree_cannot_bless_u
             "run:workflow",
         )
         leaf = services.children.reserve(nested, child, child_plan, original)
+        nested_lease = services.execution_ownership.acquire(leaf, seconds=300)
+        leaf._execution_lease = nested_lease
+        services.recovery_definitions.admit(
+            child_plan, leaf, original, execution_lease=nested_lease
+        )
         services.effect_journal.begin(
             nested, digest, "nested-action", execution_lease=child._execution_lease
         )
@@ -263,7 +300,10 @@ async def test_live_child_can_finish_its_action_but_terminal_tree_cannot_bless_u
         "call:http",
     )
     services.effect_journal.begin(
-        external, effect_request_digest("call:http", {"original": True}), "still-dispatched"
+        external,
+        effect_request_digest("call:http", {"original": True}),
+        "still-dispatched",
+        execution_lease=leaf._execution_lease,
     )
     if terminal:
         services.invocations.update(leaf, status="cancelled")
@@ -316,4 +356,8 @@ async def test_live_child_can_finish_its_action_but_terminal_tree_cannot_bless_u
         assert services.effect_journal.get(external).status == "pending"
         assert services.model.calls == []
     finally:
+        if nested_lease is not None:
+            services.execution_ownership.release(nested_lease)
+            leaf._execution_lease = None
         services.execution_ownership.release(child._execution_lease)
+        child._execution_lease = None

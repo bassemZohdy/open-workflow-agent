@@ -36,6 +36,77 @@ def oauth(monkeypatch, server, client):
     )
 
 
+def bearer(monkeypatch):
+    monkeypatch.setenv("REAL_AUTH_BEARER", "real-issued-token")
+    security = SecurityConfig.model_validate(
+        {
+            "profiles": {
+                name: {"type": "bearer", "token": {"from_env": "REAL_AUTH_BEARER"}}
+                for name in ("inherited", "selected")
+            }
+        }
+    )
+    return ProfileAuthentication(security, "inherited"), ProfileAuthentication(security, "selected")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("network_mode", ["direct", "pinned"])
+@pytest.mark.parametrize("explicit_same_binding", [False, True])
+async def test_inherited_bearer_preparation_preserves_verified_deployment_ca(
+    monkeypatch, tls_receiver, network_mode, explicit_same_binding
+):
+    server = tls_receiver
+    inherited, _ = bearer(monkeypatch)
+
+    async def pinned(endpoint):
+        assert endpoint == server.origin + "/resource"
+        return ("127.0.0.1",)
+
+    client = HttpClient(
+        timeout=3,
+        ca_bundle=server.ca_bundle,
+        authentication=inherited,
+        destination_resolver=pinned if network_mode == "pinned" else None,
+    )
+    before = len(server.requests)
+    result = await client.request(
+        "POST",
+        server.origin + "/resource",
+        json={},
+        _authentication=inherited if explicit_same_binding else None,
+    )
+    assert result == {"accepted": True}
+    requests = server.requests[before:]
+    assert len(requests) == 1 and requests[0][3] is None
+    assert requests[0][1]["Authorization"] == "Bearer real-issued-token"
+    assert client.verify_tls == server.ca_bundle
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("network_mode", ["direct", "pinned"])
+async def test_explicit_different_bearer_profile_does_not_inherit_private_ca(
+    monkeypatch, tls_receiver, network_mode
+):
+    server = tls_receiver
+    inherited, selected = bearer(monkeypatch)
+
+    async def pinned(endpoint):
+        assert endpoint == server.origin + "/resource"
+        return ("127.0.0.1",)
+
+    client = HttpClient(
+        timeout=3,
+        ca_bundle=server.ca_bundle,
+        authentication=inherited,
+        destination_resolver=pinned if network_mode == "pinned" else None,
+    )
+    before = len(server.requests)
+    with pytest.raises(ToolError):
+        await client.request("POST", server.origin + "/resource", json={}, _authentication=selected)
+    assert server.requests[before:] == []
+    assert client.verify_tls == server.ca_bundle
+
+
 @pytest.mark.asyncio
 async def test_real_tls_issuer_and_resource_do_not_inherit_unrelated_global_client_identity(
     monkeypatch, tls_receiver

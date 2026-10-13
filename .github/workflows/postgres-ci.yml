@@ -253,7 +253,7 @@ jobs:
     name: PostgreSQL LangGraph native recovery
     runs-on: ubuntu-latest
     # Each SDK has a fresh database and bounded independent recovery job.
-    timeout-minutes: 20
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:16
@@ -295,7 +295,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 14m \
+          timeout --signal=TERM --kill-after=30s 30m \
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
@@ -335,7 +335,7 @@ jobs:
     name: PostgreSQL ADK native recovery
     runs-on: ubuntu-latest
     # Each SDK has a fresh database and bounded independent recovery job.
-    timeout-minutes: 20
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:16
@@ -367,7 +367,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 14m \
+          timeout --signal=TERM --kill-after=30s 30m \
             uv run --directory engines/adk --locked --exact --extra native --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
@@ -438,7 +438,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 5m \
+          timeout --signal=TERM --kill-after=30s 12m \
             uv run --directory engines/agent-framework --locked --exact --extra native --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
             ../../tests/contract/test_checkpoint_recovery.py \
