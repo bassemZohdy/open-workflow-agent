@@ -67,12 +67,12 @@ def test_source_capture_registry_and_binding_do_not_open_import_compile_or_execu
 
     with monkeypatch.context() as patch:
         patch.setattr(builtins, "open", forbidden)
-        patch.setattr(builtins, "__import__", forbidden)
         patch.setattr(builtins, "compile", forbidden)
         patch.setattr(builtins, "exec", forbidden)
         patch.setattr(Path, "open", forbidden)
         patch.setattr(socket, "create_connection", forbidden)
         patch.setattr(urllib.request, "urlopen", forbidden)
+        patch.setattr(builtins, "__import__", forbidden)
         source = ExecutableSource.capture(
             id="approved", version="1", uri=URI, code=code, digest=digest
         )
@@ -151,6 +151,7 @@ def test_unsafe_dynamic_or_undeclared_uri_profiles_reject_with_sanitized_error(u
         memoryview(CODE),
         "print(1)",
     ],
+    ids=["invalid-utf8", "overlong-utf8", "nul", "oversize", "mutable", "view", "string"],
 )
 def test_source_bytes_require_bounded_immutable_strict_utf8(code):
     with pytest.raises(ConfigurationError):

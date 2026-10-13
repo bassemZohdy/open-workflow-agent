@@ -78,7 +78,7 @@ Feature: Protocol Call Tasks
       - askAgent:
           call: a2a
           with:
-            method: SendMessage
+            method: message/send
             server: https://service.test/a2a
             parameters:
               message:

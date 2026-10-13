@@ -426,29 +426,39 @@ def test_pure_native_policy_verifier_rejects_missing_or_corrupt_independent_evid
 
 @pytest.mark.parametrize("status", ["pending", "value", "null", "fault", "orphan-index"])
 def test_legacy_business_intent_is_never_promoted_to_source_authority(original, status):
-    services, _, handle, identity, _, payload, _ = original
+    services, _, _, identity, _, payload, _ = original
     journal = services.effect_journal
-    journal.begin(
-        identity,
+    # Arrange prior/corrupt evidence directly. Production journal reads now
+    # deliberately reject business-only source evidence before returning it.
+    receipt = EffectReceipt(
         effect_request_digest("run:script", payload),
         "original-business-owner",
-        execution_lease=handle._execution_lease,
+        status="faulted"
+        if status == "fault"
+        else "pending"
+        if status in {"pending", "orphan-index"}
+        else "completed",
+        output={"known": True} if status == "value" else None,
+        error={"code": "known", "message": "known failure", "details": {}}
+        if status == "fault"
+        else None,
     )
-    if status in {"value", "null"}:
-        journal.finish(
-            identity,
-            "original-business-owner",
-            output={"known": True} if status == "value" else None,
+    journal.connection.execute(
+        "INSERT INTO workflow_effect_invocations(identity,invocation_id,fingerprint,payload) "
+        "VALUES (?,?,?,?)",
+        (
+            identity.key,
+            identity.invocation_id,
+            identity.workflow_fingerprint,
+            json.dumps(identity.as_value()),
+        ),
+    )
+    if status != "orphan-index":
+        journal.connection.execute(
+            "INSERT INTO workflow_effects(identity,owner,status,payload) VALUES (?,?,?,?)",
+            (identity.key, receipt.owner, receipt.status, json.dumps(asdict(receipt))),
         )
-    elif status == "fault":
-        journal.finish(
-            identity,
-            "original-business-owner",
-            error={"code": "known", "message": "known failure", "details": {}},
-        )
-    elif status == "orphan-index":
-        journal.connection.execute("DELETE FROM workflow_effects WHERE identity=?", (identity.key,))
-        journal.connection.commit()
+    journal.connection.commit()
     before = snapshot(original)
     with pytest.raises(OwaError):
         prepare(original)
@@ -796,9 +806,9 @@ def test_source_output_profile_is_qualified_before_any_business_dispatch(
         handle.invocation_id, plan.fingerprint, "/do/0/action", (("/do/0/action", 1),), "run:script"
     )
     try:
-        services.recovery_definitions.admit(plan, handle, {}, execution_lease=lease)
         args = identity, {"run": "original"}, source, handle
         if budget == 10 * 1_048_576:
+            services.recovery_definitions.admit(plan, handle, {}, execution_lease=lease)
             decision = services.executable_source_admissions.prepare(
                 *args,
                 execution_lease=lease,
@@ -806,12 +816,11 @@ def test_source_output_profile_is_qualified_before_any_business_dispatch(
             )
             assert decision.source == source
         else:
-            with pytest.raises(WorkflowExecutionError, match="finite receipt boundary"):
-                services.executable_source_admissions.prepare(
-                    *args,
-                    execution_lease=lease,
-                    deadline_at=None,
-                )
+            with pytest.raises(OwaError) as rejected:
+                services.recovery_definitions.admit(plan, handle, {}, execution_lease=lease)
+            assert (
+                rejected.value.details["reason"] == "executable_source_output_profile_unsupported"
+            )
             assert (
                 services.effect_journal.connection.execute(
                     "SELECT 1 FROM executable_source_admissions WHERE invocation_id=?",

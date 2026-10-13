@@ -9,13 +9,14 @@ from open_workflow_agent.sandbox.validation import (
     _validate_environment,
     _validate_executable_run,
 )
+from sandbox_fixture_policy import supported_process_limits
 
 _IMAGE = "registry.example/worker@sha256:" + ("a" * 64)
 
 
 @pytest.mark.parametrize("enabled", [False, True])
 def test_sandbox_return_capability_keeps_background_execution_disabled(enabled):
-    backend = InternalSandboxBackend(SandboxConfig(enabled=enabled))
+    backend = InternalSandboxBackend(SandboxConfig(**supported_process_limits(), enabled=enabled))
     original = backend.capabilities()
     projected = SandboxManager(backend).capabilities()
     assert projected["awaitedReturn"] == {

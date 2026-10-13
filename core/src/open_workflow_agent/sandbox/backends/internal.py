@@ -62,6 +62,7 @@ class InternalSandboxBackend:
         self._active: dict[str, asyncio.subprocess.Process] = {}
         self._awaited_jobs: dict[str, Any] = {}
         self._awaited_starts: dict[str, asyncio.Task[Any]] = {}
+        self._awaited_stops: set[str] = set()
         self._stdio_sessions: dict[str, SandboxStdioSession] = {}
         self._stdio_starting: set[str] = set()
         self._stdio_starts: dict[str, asyncio.Task[Any]] = {}
@@ -216,6 +217,7 @@ class InternalSandboxBackend:
             return await self._execute_awaited(request)
         finally:
             self._awaited_starts.pop(request.execution_id, None)
+            self._awaited_stops.discard(request.execution_id)
 
     async def _execute_awaited(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
         self._validate_request_size(request)
@@ -300,6 +302,11 @@ class InternalSandboxBackend:
             stderr = cast(str, results[2])
             exit_code = cast(int, results[3])
             self._check_workspace(workspace)
+            if request.execution_id in self._awaited_stops:
+                raise SandboxProcessError(
+                    "sandbox execution was stopped before completion",
+                    details={"exit_code": exit_code},
+                )
             if exit_code != 0:
                 if exit_code < 0 and self._resource_signal(-exit_code):
                     raise SandboxResourceLimitError(
@@ -333,6 +340,8 @@ class InternalSandboxBackend:
             await session.aclose()
         process = self._active.get(execution_id)
         if process is not None:
+            if process.returncode is None:
+                self._awaited_stops.add(execution_id)
             await self._stop_awaited_process(process, self._awaited_jobs.get(execution_id))
 
     async def _stop_awaited_process(self, process: asyncio.subprocess.Process, job: Any) -> None:
@@ -343,6 +352,9 @@ class InternalSandboxBackend:
 
     async def shutdown(self) -> None:
         self._stdio_closing = True
+        self._awaited_stops.update(
+            identifier for identifier, process in self._active.items() if process.returncode is None
+        )
         awaited = tuple(
             owner
             for identifier, owner in self._awaited_starts.items()
