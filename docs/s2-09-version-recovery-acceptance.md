@@ -5,6 +5,16 @@ no new continuation profile is qualified until its complete finite validation
 and hosted gates pass. This record defines supported decisions and exclusions,
 not a successful in-place migration algorithm or full A086/T44 completion.
 
+The combined `325458a` full local batch is retained as a failed unchanged-source
+attempt in `tmp/s3-01-third-batch`, including actual ADK process-stop failure
+with a hot attached SQLite rollback journal. The authored correction preserves
+pre-lease read-only inspection of originals by recovering only a bounded stable
+private copy after strict journal/master validation. It does not transplant a
+checkpoint or authorize missing native history. Original-version child replay
+fixtures now preserve the retained source/outcome when a mutable catalog changes.
+These corrections require behavioral/native/backend/platform qualification
+before this task or its finite continuation profile can be marked complete.
+
 ## Supported continuation
 
 An existing invocation retains its originally admitted full definition

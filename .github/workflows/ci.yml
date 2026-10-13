@@ -51,6 +51,7 @@ jobs:
           tests/core/test_execution_ownership_fences.py
           tests/core/test_action_progress_ownership.py
           tests/core/test_native_write_fence_storage.py
+          tests/core/test_native_sqlite_inspection.py
           tests/contract/test_jq_portability.py
           tests/contract/test_data_pipeline.py
           tests/contract/test_scoped_flow.py

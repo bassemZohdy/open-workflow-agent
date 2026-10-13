@@ -11756,7 +11756,7 @@
         },
         {
           "path": "core/src/open_workflow_agent/security.py",
-          "symbol": "ProfileAuthentication._resolve_oauth2_token"
+          "symbol": "ProfileAuthentication.prepare"
         },
         {
           "path": "core/src/open_workflow_agent/a2a_tasks.py",

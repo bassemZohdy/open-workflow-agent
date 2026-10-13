@@ -232,11 +232,26 @@ async def test_event_or_child_receipt_prevents_another_recovery_dispatch(
             and event.parent_invocation_id == handle.invocation_id
             for event in cast(InMemoryEventSink, restarted.events).events
         )
-        if request_change != "none" or outcome == "pending":
+        if request_change == "definition":
+            # A newer mutable catalog selection cannot reinterpret the admitted
+            # child's original source or replace its known/uncertain outcome.
+            original_child = restarted.invocations.get(child_id)
+            assert original_child is not None
+            archived = restarted.resolve_original_definition(original_child)
+            assert archived.fingerprint == compile_workflow(_child()).fingerprint
+            assert (
+                archived.fingerprint
+                != compile_workflow(_child("https://service.test/changed")).fingerprint
+            )
+            assert restarted.invocations.read_input(original_child) == {"request": "original"}
+        if request_change == "input" or outcome == "pending":
             assert result.status == "faulted" and result.error is not None
-            assert ("differs" if request_change != "none" else "unresolved") in result.error[
-                "message"
-            ]
+            failure = result.error
+            if outcome == "pending" and kind == "workflow" and request_change != "input":
+                assert failure["message"] == "nested workflow faulted"
+                assert failure["details"]["invocation_id"] == child_id
+                failure = failure["details"]["error"]
+            assert ("differs" if request_change == "input" else "unresolved") in failure["message"]
         elif outcome == "fault":
             assert expected_error is not None
             assert result.status == "faulted" and result.error == {

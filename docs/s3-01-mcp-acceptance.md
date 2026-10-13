@@ -89,3 +89,28 @@ Windows fixture IDs, actual TLS certificate wiring, valid negative backend
 configuration, the native deployment-binding callback and stdio result/EOF
 handling. Existing byte/time/security assertions remain. Author the complete
 correction set before the next integrated behavioral batch.
+
+The corrected focused snapshot `b20ade2` passes 256 common cases (four unrelated
+native skips) except two test setup errors; both actual principal focused suites
+pass 79 cases each, with 48 foreign/backend skips each. Five builds/provenance
+checks pass. `325458a` corrects only those two setups, preserving runtime bytes.
+The two affected cases then pass. The full frozen batch retains 416 inputs and
+finishes unchanged: root 720 passed/492 skipped/eight failed, ADK 680/418/eight,
+LangGraph 684/430/eight, optional Framework 827/575/eight. The eight-failure
+limit ends these incomplete suites; they do not qualify the source. Records and
+logs remain in `tmp/s3-01-third-batch`.
+
+That batch exposes an obsolete audit symbol, an HTTP-only mock used as an MCP
+reply, and child catalog replacement assertions superseded by original-definition
+recovery. Corrections retain strict protocol correlation, original child source,
+input, known outcome and no-second-dispatch assertions. An actual ADK hard stop
+also leaves a recoverable SQLite attached-transaction rollback journal. Read-only
+native preflight cannot recover the original database. A bounded helper now
+inspects a stable private copy, validates and removes trusted master references
+only in the copy, and lets SQLite recover that copy. Ordinary reads stay read-only;
+unqualified formats, changed/corrupt files, WAL and unknown paths fail closed.
+Original database/journal files remain untouched before lease acquisition. The
+diagnostic over the exact failed database records original hashes and timestamps
+unchanged; this is a reproduction, not completed behavioral qualification.
+Thirteen dedicated controls and the original actual-process case require the
+next corrected batch, followed by full independent and exact hosted gates.

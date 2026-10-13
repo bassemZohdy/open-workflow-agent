@@ -2,11 +2,10 @@
 
 import hashlib
 import json
-import sqlite3
-from contextlib import closing
 from pathlib import Path
 from typing import Any
 
+from open_workflow_agent._native_sqlite_inspection import inspect_native_sqlite
 from open_workflow_agent.child_suspension import ChildSuspension
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
 from open_workflow_agent.errors import (
@@ -103,7 +102,10 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             path = Path(self.native.database_path or "")
             if not path.is_file():
                 return False
-            with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
+            common_path = next(
+                Path(row[2]) for row in common.execute("PRAGMA database_list") if row[1] == "main"
+            )
+            with inspect_native_sqlite(path, common_database=common_path) as db:
                 tables = {
                     row[0]
                     for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
