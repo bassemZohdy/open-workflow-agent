@@ -29,6 +29,14 @@ def _json(value: Any) -> str:
     return json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False)
 
 
+def _identity_value(identity: EffectIdentity) -> dict[str, Any]:
+    # The immutable internal path uses tuples; its stored JSON representation
+    # uses arrays. Normalize only typed identity fields, never user payloads.
+    value = asdict(identity)
+    value["occurrence"] = [list(entry) for entry in identity.occurrence]
+    return value
+
+
 def canonical_endpoint(value: str) -> str:
     """Pin an exact credential-free HTTPS service route, not a host wildcard."""
     try:
@@ -496,7 +504,7 @@ class HttpExternalActionRecovery:
             assert parent is not None
             value = {
                 "profile": "owa/external-action-admission/v1",
-                "identity": json.loads(_json(asdict(identity))),
+                "identity": _identity_value(identity),
                 "receiver": self._receiver(receiver),
                 "request_digest": digest,
                 "wire_request_digest": receiver_request_digest(
@@ -531,7 +539,7 @@ class HttpExternalActionRecovery:
                     identity.key,
                     identity.invocation_id,
                     identity.workflow_fingerprint,
-                    _json(asdict(identity)),
+                    _json(_identity_value(identity)),
                 ),
             )
             self.connection.execute(

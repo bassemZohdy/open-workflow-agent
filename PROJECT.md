@@ -64,6 +64,19 @@ profile is verified; sixteen of 37 tasks are complete. S2-08 is next and no
 task is deferred. Earlier failure and cancellation evidence remains historical.
 See the [child acceptance record](docs/s2-07-child-workflow-acceptance.md).
 
+The isolated S2-08 batch adds atomic authorized cancellation and lease
+revocation, separates host drain from business cancellation, and preserves
+uncertain external action intents. Repeated logical HTTP operations receive
+distinct keys while retries retain the original admitted key. Optional trusted
+receiver lookup uses the same bounded authenticated HTTPS client and never
+repeats the business request during recovery. Compensation remains an explicit
+workflow operation. All capabilities remain unqualified until the finite
+[lifecycle acceptance record](docs/s2-08-lifecycle-acceptance.md) passes.
+The first frozen batch run was stopped after early reusable-task regressions;
+its unchanged-source logs and nonzero results are retained. Serialization
+corrections and missing negative/control proofs have actionable next steps.
+S2-08 is unchecked and no task is deferred.
+
 ## Current Phase — 2026-09-24
 
 `v0.1.0` is the previous formal release. `v0.2.0` is the current formal

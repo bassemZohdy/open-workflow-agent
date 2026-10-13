@@ -209,6 +209,10 @@ async def test_unknown_receiver_outcome_keeps_intent_pending_without_business_re
         "client-timeout",
         "client-tls",
         "credential-reference",
+        "credential-source",
+        "lookup-endpoint",
+        "admission-index",
+        "action-index",
         "principal",
         "input",
         "missing-trust",
@@ -232,6 +236,21 @@ async def test_changed_original_admission_rejects_before_lookup_or_state_mutatio
         helper.http.verify_tls = False
     elif damage == "credential-reference":
         helper.http.authentication.profile_name = "different"
+    elif damage == "credential-source":
+        helper.http.authentication.security.profiles["receiver"].token.from_env = "CHANGED_SOURCE"
+    elif damage == "lookup-endpoint":
+        helper.receivers = (
+            replace(helper.receivers[0], lookup_endpoint=remote.lookup_endpoint + "-changed"),
+        )
+    elif damage in {"admission-index", "action-index"}:
+        connection.execute(
+            "DELETE FROM workflow_effect_invocations WHERE identity=?",
+            (
+                replace(identity, operation=ADMISSION_OPERATION).key
+                if damage == "admission-index"
+                else identity.key,
+            ),
+        )
     elif damage == "principal":
         helper.http.authentication.security.profiles["receiver"].principal = "different"
     elif damage == "input":

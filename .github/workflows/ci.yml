@@ -179,6 +179,7 @@ jobs:
           --with pytest --with pytest-asyncio pytest -vv --durations=20
           ../../tests/contract/test_external_operation_keys.py
           ../../tests/contract/test_external_recovery_process.py
+          ../../tests/contract/test_external_recovery_native_corruption.py
           ../../tests/contract/test_host_drain_child_controls.py
           ../../tests/contract/test_explicit_compensation.py
 

@@ -4,6 +4,18 @@ Status: implementation in progress; S2-08 remains unchecked. No new lifecycle
 or receiver-recovery capability is qualified by this record until the complete
 batch passes its required native, storage, process-stop and hosted gates.
 
+The first integrated source `dc0af64` passed formatting, lint, strict typing
+(86 runtime and three CI modules) and all five builds. Its four full test runs
+were stopped after 113 seconds on early reusable-task control regressions;
+all 372 input hashes remained unchanged and all four results are nonzero.
+The logs and frozen manifest are retained in `tmp/s2-08-first-batch`.
+Subsequent focused checks identify typed occurrence tuples passed to strict JSON
+validation at new operation-key/trusted-admission serialization seams. The
+correction uses JSON arrays at those seams, preserving immutable internal
+identities and strict arbitrary-request validation. Required active-child and
+native corrupted-receiver proofs are being added before final batch testing.
+No interrupted run or static check qualifies a behavioral requirement.
+
 ## Contract and limits
 
 Operator cancellation is a durable business control. Its common terminal
@@ -11,6 +23,13 @@ snapshot, completion time and execution-lease revocation share one transaction.
 A completed or faulted result retains its original outcome. Workflow-owned child
 cancellation additionally requires the original parent identity and current
 execution lease; a stale worker cannot cancel a child after takeover.
+
+A deadline that interrupts an unresolved remote action retains the existing
+recovery-required error and original deadline instead of fabricating a known
+HTTP fault or allowing a retry. The child scope is cancelled explicitly; the
+receiver's already committed business action and pending common receipt remain
+visible. Ordinary deadlines with no uncertain external action retain their
+existing timeout policy.
 
 Host drain and lost ownership interrupt execution without inventing a business
 cancellation or a known external outcome. Deadline, END and competitive-fork
@@ -20,7 +39,7 @@ hard preemption of blocking Python or undo of a committed remote action.
 
 HTTP operation keys identify logical operations. Repeated loop, jump, reusable
 task and fork occurrences receive distinct keys; retries and admitted recovery
-retain the original key. Explicit workflow keys and already recorded legacy
+retain the original key. Explicit prepared-request keys and already recorded legacy
 keys remain unchanged. A receiver must enforce its own deduplication contract.
 
 Pending external actions fail closed by default. A deployment may supply exact

@@ -20,6 +20,7 @@ on:
       - "tests/core/test_invocation_cancellation_controls.py"
       - "tests/contract/test_external_operation_keys.py"
       - "tests/contract/test_external_recovery_process.py"
+      - "tests/contract/test_external_recovery_native_corruption.py"
       - "tests/contract/test_host_drain_child_controls.py"
       - "tests/contract/test_explicit_compensation.py"
       - "tests/contract/_external_receiver.py"
@@ -451,6 +452,7 @@ jobs:
             uv run --directory engines/adk --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_external_operation_keys.py \
             ../../tests/contract/test_external_recovery_process.py \
+            ../../tests/contract/test_external_recovery_native_corruption.py \
             ../../tests/contract/test_host_drain_child_controls.py \
             ../../tests/contract/test_explicit_compensation.py -vv --durations=20 -k postgresql
 
@@ -492,6 +494,7 @@ jobs:
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_external_operation_keys.py \
             ../../tests/contract/test_external_recovery_process.py \
+            ../../tests/contract/test_external_recovery_native_corruption.py \
             ../../tests/contract/test_host_drain_child_controls.py \
             ../../tests/contract/test_explicit_compensation.py -vv --durations=20 -k postgresql
 

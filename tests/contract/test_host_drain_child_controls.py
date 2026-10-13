@@ -317,11 +317,13 @@ async def test_lost_parent_owner_cannot_turn_interruption_into_child_cancellatio
 @pytest.mark.asyncio
 @pytest.mark.parametrize("engine_name,engine_type", engine_cases())
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("reply", ["observed", "unobserved"])
 async def test_other_worker_operator_cancel_remains_authoritative_for_active_nested_await(
     tmp_path: Path,
     engine_name: str,
     engine_type: Any,
     backend: str,
+    reply: str,
 ) -> None:
     first = _services(tmp_path, backend)
     second = _services(tmp_path, backend)
@@ -350,6 +352,8 @@ async def test_other_worker_operator_cancel_remains_authoritative_for_active_nes
             # reply explicitly rather than claiming cooperative hard preemption.
             late.set()
             await release.wait()
+            if reply == "unobserved":
+                raise InvocationCancelled("remote reply unavailable after cancellation") from None
         return httpx.Response(200, json={"late": True})
 
     async def renewal() -> None:
@@ -400,8 +404,13 @@ async def test_other_worker_operator_cancel_remains_authoritative_for_active_nes
         ]
         assert len(identities) == 1
         uncertain = first.effect_journal.get(identities[0])
-        assert uncertain is not None and uncertain.status == "pending"
-        assert uncertain.output is None and uncertain.error is None
+        assert uncertain is not None
+        if reply == "unobserved":
+            assert uncertain.status == "pending"
+            assert uncertain.output is None and uncertain.error is None
+        else:
+            assert uncertain.status == "completed"
+            assert uncertain.output == {"late": True} and uncertain.error is None
         assert not local._active and not local._ownership_tasks
     finally:
         release.set()
@@ -413,6 +422,154 @@ async def test_other_worker_operator_cancel_remains_authoritative_for_active_nes
             await asyncio.gather(invocation, return_exceptions=True)
         second.close()
         first.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "engine_name,engine_type", [case for case in engine_cases() if case[0] in {"adk", "langgraph"}]
+)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("control", ["deadline", "workflow_end"])
+async def test_active_child_scope_control_preserves_committed_external_uncertainty(
+    tmp_path: Path,
+    engine_name: str,
+    engine_type: Any,
+    backend: str,
+    control: str,
+) -> None:
+    services = _services(tmp_path, backend)
+    parent_plan, child_plan = _plans(services)
+    child_task = parent_plan.source["do"][0]["child"]
+    source = _source("positive-control", [{"child": child_task}])
+    if control == "deadline":
+        source["timeout"] = {"after": {"seconds": 5}}
+    else:
+        source["do"] = [
+            {
+                "parallel": {
+                    "fork": {
+                        "branches": [
+                            {"child": child_task},
+                            {
+                                "finish": {
+                                    "call": "http",
+                                    "with": {
+                                        "method": "POST",
+                                        "endpoint": "https://control.test/end",
+                                    },
+                                    "then": "end",
+                                }
+                            },
+                        ]
+                    }
+                }
+            },
+            {"unreachable": {"set": {"wrong": True}}},
+        ]
+    plan = compile_workflow(source)
+    engine = engine_type()
+    await engine.initialize(services)
+    native = engine.native.available if engine_name == "adk" else engine.native.task_nodes_available
+    if not native:
+        await engine.shutdown()
+        services.close()
+        pytest.skip("actual independent native SDK environment required")
+    entered, stopped = asyncio.Event(), asyncio.Event()
+    commits: list[str] = []
+    calls: list[str] = []
+
+    async def action(request: httpx.Request) -> httpx.Response:
+        phase = "child" if request.url.host == "child.test" else "end"
+        calls.append(phase)
+        if phase == "end":
+            await entered.wait()
+            return httpx.Response(200, json={"ended": True})
+        commits.append(request.headers["Idempotency-Key"])
+        entered.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            stopped.set()
+        return httpx.Response(200, json={"unreachable": True})
+
+    services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(action)))
+    services.tools.protocols = services.protocols
+    parent = _parent(services, engine_name, plan)
+    invocation = asyncio.create_task(engine.invoke(plan, parent, {"original": True}))
+    try:
+        async with asyncio.timeout(30):
+            await entered.wait()
+        binding = services.children.connection.execute(
+            "SELECT child_id FROM child_workflow_bindings WHERE parent_id=?",
+            (parent.invocation_id,),
+        ).fetchone()
+        assert binding is not None
+        child_id = binding[0]
+        clock_before = services.effect_journal.connection.execute(
+            "SELECT e.payload FROM workflow_effect_invocations i "
+            "JOIN workflow_effects e ON e.identity=i.identity "
+            "WHERE i.invocation_id=? AND i.payload LIKE ?",
+            (parent.invocation_id, '%"policy:clock:v1"%'),
+        ).fetchall()
+        assert len(clock_before) == (1 if control == "deadline" else 0)
+        async with asyncio.timeout(30):
+            result = await invocation
+        assert stopped.is_set() and len(commits) == 1
+        child = _record(services, child_id)
+        assert child.status == "cancelled" and child.output is None
+        assert child.error and child.error["details"]["reason"] == control
+        assert child.workflow_fingerprint == child_plan.fingerprint
+        assert services.invocations.read_input(child) == {"original": True}
+        rows = services.effect_journal.connection.execute(
+            "SELECT payload FROM workflow_effect_invocations WHERE invocation_id=?",
+            (child_id,),
+        ).fetchall()
+        identities = [
+            EffectIdentity.from_value(json.loads(row[0]))
+            for row in rows
+            if json.loads(row[0])["operation"] == "call:http"
+        ]
+        assert len(identities) == 1
+        uncertain = services.effect_journal.get(identities[0])
+        assert uncertain is not None and uncertain.status == "pending"
+        assert uncertain.operation_id == commits[0]
+        assert uncertain.output is None and uncertain.error is None
+        if control == "deadline":
+            assert result.status == "faulted" and result.error
+            assert "unresolved execution intent" in result.error["message"]
+            parent_rows = services.effect_journal.connection.execute(
+                "SELECT i.payload,e.payload FROM workflow_effect_invocations i "
+                "JOIN workflow_effects e ON e.identity=i.identity WHERE i.invocation_id=?",
+                (parent.invocation_id,),
+            ).fetchall()
+            deadlines = [
+                json.loads(row[1])
+                for row in parent_rows
+                if json.loads(row[0])["operation"] == "policy:clock:v1"
+            ]
+            assert len(deadlines) == 1 and deadlines[0]["status"] == "completed"
+            assert deadlines[0] == json.loads(clock_before[0][0])
+            assert deadlines[0]["output"]["profile"] == "owa/timing/v1"
+            assert engine.executor._absolute_clock() >= deadlines[0]["output"]["started_at"] + 5
+            assert plan.source["timeout"] == {"after": {"seconds": 5}}
+            assert calls == ["child"]
+        else:
+            assert result.status == "completed" and result.output == {"ended": True}
+            assert sorted(calls) == ["child", "end"]
+        before = child._persisted_payload
+        duplicate = await engine.resume(parent, {"replacement": True}, plan)
+        assert duplicate.as_dict() == result.as_dict()
+        assert _record(services, child_id)._persisted_payload == before
+        assert services.effect_journal.get(identities[0]) == uncertain
+        assert len(commits) == 1
+        assert isinstance(services.model, FakeModel) and services.model.calls == []
+        assert not engine._active and not engine._ownership_tasks
+    finally:
+        if not invocation.done():
+            invocation.cancel()
+            await asyncio.gather(invocation, return_exceptions=True)
+        await engine.shutdown()
+        services.close()
 
 
 def _start(directory: Path, mode: str) -> subprocess.Popen[bytes]:

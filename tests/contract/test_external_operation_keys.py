@@ -15,6 +15,7 @@ import pytest
 from engine_cases import engine_cases
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.definitions import definition_at_pointer
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
@@ -177,7 +178,9 @@ async def test_receiver_commits_distinct_logical_visits_with_distinct_default_ke
             for event in services.events.events
             if event.event_type == "TaskCompleted"
         ]
-        assert references and all(reference.startswith("/do/") for reference in references)
+        assert references and all(definition_at_pointer(plan.source, ref) for ref in references)
+        if case == "reusable":
+            assert references.count("/use/functions/shared") == 2
         assert not any("visit-v1" in reference for reference in references)
     finally:
         await engine.shutdown()
@@ -232,7 +235,12 @@ async def test_retry_of_nested_loop_actions_reuses_each_business_key_and_commits
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("field", ["operation_id", "operationId"])
 async def test_explicit_business_key_remains_authoritative_across_distinct_visits(
-    tmp_path: Path, engine_name: str, engine_type: Any, backend: str, field: str
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    engine_name: str,
+    engine_type: Any,
+    backend: str,
+    field: str,
 ) -> None:
     receiver = Receiver(tmp_path / "receiver.sqlite3")
     services = _services(tmp_path, backend, receiver)
@@ -243,9 +251,7 @@ async def test_explicit_business_key_remains_authoritative_across_distinct_visit
                 {
                     "repeat": {
                         "for": {"each": "number", "in": [10, 20]},
-                        "do": [
-                            {"action": _action("${ $number }", **{field: "explicit-business-key"})}
-                        ],
+                        "do": [{"action": _action("${ $number }")}],
                     }
                 }
             ]
@@ -253,6 +259,14 @@ async def test_explicit_business_key_remains_authoritative_across_distinct_visit
     )
     try:
         await engine.initialize(services)
+        prepare_key = engine.executor._protocol_operation_id
+
+        def explicit_prepared_key(call: str, payload: Any, state: Any) -> Any:
+            # These aliases are existing prepared-client inputs; the official
+            # HTTP task schema deliberately does not add either public field.
+            return prepare_key(call, {**payload, field: "explicit-business-key"}, state)
+
+        monkeypatch.setattr(engine.executor, "_protocol_operation_id", explicit_prepared_key)
         result = await engine.invoke(plan, _handle(services, engine_name, plan), {})
         assert result.status == "completed", result.error
         assert [key for key, _, _ in receiver.calls] == [

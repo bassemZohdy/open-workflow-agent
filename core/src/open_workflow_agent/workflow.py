@@ -3637,7 +3637,7 @@ class WorkflowExecutor:
             {
                 "invocation_id": invocation,
                 "fingerprint": state.metadata.get("_workflow_fingerprint"),
-                "occurrence": logical,
+                "occurrence": [[reference, visit] for reference, visit in logical],
             },
         )
         return f"{invocation}:visit-v1:{digest}:{reference}"
@@ -3667,7 +3667,10 @@ class WorkflowExecutor:
                 {
                     "parent_key": catalog_key,
                     "reference": reference,
-                    "occurrence": self._logical_operation_path(state),
+                    "occurrence": [
+                        [reference, visit]
+                        for reference, visit in self._logical_operation_path(state)
+                    ],
                 },
             )
             return f"{catalog_key}:visit-v1:{digest}:{reference}"

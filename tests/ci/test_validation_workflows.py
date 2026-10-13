@@ -116,6 +116,7 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     fixtures = {
         "test_external_operation_keys.py",
         "test_external_recovery_process.py",
+        "test_external_recovery_native_corruption.py",
         "test_host_drain_child_controls.py",
         "test_explicit_compensation.py",
     }

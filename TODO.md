@@ -194,6 +194,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   General lifecycle/uncertain external actions and compatible migration retain
   S2-08/S2-09 ownership; full proposed/JavaScript gates remain Stage 4.
 - [ ] **S2-08** (L) — Complete cancellation, termination, compensation and idempotent external-action recovery.
+  The implementation batch is undergoing verification; see the finite
+  [lifecycle acceptance record](docs/s2-08-lifecycle-acceptance.md). Early
+  regression evidence remains retained. Completion requires actual native,
+  PostgreSQL, process-stop, Windows, build, quality and security qualification;
+  no new capability or automatic remote rollback is advertised by this entry.
 - [ ] **S2-09** (L) — Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.
 
 ## Stage 3 — Agents, tools and integrations
