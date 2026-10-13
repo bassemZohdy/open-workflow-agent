@@ -2125,7 +2125,7 @@ uv run --directory engines/agent-framework --locked --extra native --extra knowl
 
 The CI source-integrity gate caught three ignored predecessor reference files missing from the initial PR. Those exact source bytes are now explicitly tracked; the gate remains enforced. MIG-01 transfer/license disposition is complete: both imported sources retain Apache attribution, and unlicensed generic source stays at origin. No active compiler, checkpoint service or unsafe approval implementation is introduced by the frozen reference import.
 
-## S2-09 version recovery work — 2026-10-13 pending verification
+## S2-09 version recovery work -- 2026-10-13 pending verification
 
 The isolated batch retains immutable original public definition inputs and
 invocation bindings before native projection. New invocations may select a newer

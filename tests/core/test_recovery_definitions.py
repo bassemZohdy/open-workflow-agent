@@ -571,3 +571,212 @@ def test_declared_deployment_binding_never_qualifies_changed_physical_sdk(tmp_pa
         if parent is not None:
             services.execution_ownership.release(parent._execution_lease)
         services.close()
+
+
+def _root_editable_fallback(tmp_path, monkeypatch, engine):
+    import open_workflow_agent.recovery_definitions as module
+
+    project = tmp_path / "explicitly-installed-root"
+    core = project / "core" / "src" / "open_workflow_agent"
+    adapter_name, package = module._ADAPTERS[engine]
+    engine_project = project / "engines" / engine
+    adapter = engine_project / "src" / package
+    for directory in (core, adapter):
+        directory.mkdir(parents=True)
+        (directory / "__init__.py").write_text("# exact installed development source\n")
+    (project / "uv.lock").write_text("version = 1\n")
+    (project / "pyproject.toml").write_text('[project]\nname="open-workflow-agent"\nversion="1"\n')
+    (engine_project / "uv.lock").write_text("version = 1\n# adapter's independent lock\n")
+    (engine_project / "pyproject.toml").write_text(
+        f'[project]\nname="{adapter_name}"\nversion="0.2.0"\n'
+    )
+    state = {"editable": True, "sdk_present": False, "origin": adapter / "__init__.py"}
+    installed = SimpleNamespace(
+        version="0.2.0",
+        locate_file=lambda name: project / name,
+        read_text=lambda _name: json.dumps(
+            {"url": project.as_uri(), "dir_info": {"editable": state["editable"]}}
+        ),
+    )
+
+    def distribution(name):
+        root_name = "open-workflow-agent-core" if state.get("standalone") else "open-workflow-agent"
+        if name == root_name:
+            return installed
+        if state["sdk_present"] and name == module._NATIVE_SDKS[engine]:
+            return SimpleNamespace(version="1.0.0")
+        raise module.importlib.metadata.PackageNotFoundError(name)
+
+    def version(name):
+        raise module.importlib.metadata.PackageNotFoundError(name)
+
+    monkeypatch.setattr(module.importlib.metadata, "distribution", distribution)
+    monkeypatch.setattr(module.importlib.metadata, "version", version)
+    monkeypatch.setattr(
+        module.importlib.util,
+        "find_spec",
+        lambda name: SimpleNamespace(
+            origin=str(core / "__init__.py" if name == "open_workflow_agent" else state["origin"])
+        ),
+    )
+    return module, state, engine_project
+
+
+@pytest.mark.parametrize("engine", ["adk", "langgraph"])
+def test_root_editable_source_fallback_has_exact_independent_artifact_binding(
+    tmp_path, monkeypatch, engine
+):
+    module, _, engine_project = _root_editable_fallback(tmp_path, monkeypatch, engine)
+    original = module.recovery_profile(engine, backend="sqlite")
+    assert original["adapter_mode"] == "common_fallback"
+    assert original["native_binding"] == "common-fallback-v1"
+    adapter = original["artifacts"][1]
+    assert adapter["provenance"] == "owa/root-editable-adapter-source/v1"
+    assert adapter["root_distribution"] == "open-workflow-agent"
+    assert original["dependencies"][module._NATIVE_SDKS[engine]] is None
+    assert module.recovery_profile(engine, backend="sqlite") == original
+    (engine_project / "uv.lock").write_text("version = 1\n# changed locked dependency\n")
+    changed = module.recovery_profile(engine, backend="sqlite")
+    assert changed["artifacts"][1]["lock_sha256"] != adapter["lock_sha256"]
+    package = module._ADAPTERS[engine][1]
+    (engine_project / "src" / package / "__init__.py").write_text("# changed fallback semantics\n")
+    assert (
+        module.recovery_profile(engine, backend="sqlite")["artifacts"][1]["code_sha256"]
+        != adapter["code_sha256"]
+    )
+
+
+@pytest.mark.parametrize("engine", ["adk", "langgraph"])
+@pytest.mark.parametrize(
+    "damage", ["production", "sdk_present", "foreign_checkout", "metadata", "standalone"]
+)
+def test_source_adapter_provenance_cannot_be_inferred_for_production_or_native_execution(
+    tmp_path, monkeypatch, engine, damage
+):
+    module, state, engine_project = _root_editable_fallback(tmp_path, monkeypatch, engine)
+    if damage == "production":
+        state["editable"] = False
+        # A valid installed root wheel marker does not permit finding its
+        # missing optional adapter in a neighboring source checkout.
+        marker = engine_project.parents[1] / "open_workflow_agent" / "_recovery_build.json"
+        marker.parent.mkdir()
+        marker.write_text(
+            json.dumps(
+                {
+                    "profile": "owa/recovery-build/v1",
+                    "project": "open-workflow-agent",
+                    "version": "0.2.0",
+                    "lock_sha256": "e" * 64,
+                    "metadata_sha256": "f" * 64,
+                }
+            )
+        )
+    elif damage == "sdk_present":
+        state["sdk_present"] = True
+    elif damage == "foreign_checkout":
+        foreign = tmp_path / "neighboring-checkout" / "__init__.py"
+        foreign.parent.mkdir()
+        foreign.write_text("# source from an unrelated checkout\n")
+        state["origin"] = foreign
+    elif damage == "standalone":
+        state["standalone"] = True
+    else:
+        (engine_project / "pyproject.toml").write_text(
+            '[project]\nname="different-project"\nversion="0.2.0"\n'
+        )
+    with pytest.raises(InvocationStateError) as caught:
+        module.recovery_profile(engine, backend="sqlite")
+    assert caught.value.details["reason"] == "runtime_profile_unavailable"
+
+
+@pytest.mark.parametrize("oversized", [False, True])
+def test_installed_source_read_is_file_sized_and_rejects_oversize_before_read(
+    tmp_path, monkeypatch, oversized
+):
+    from pathlib import Path
+
+    import open_workflow_agent.recovery_definitions as module
+
+    path = tmp_path / "installed.py"
+    path.write_bytes(b"small")
+    original_open = Path.open
+    reads = []
+
+    class ObservedFile:
+        def __init__(self, source):
+            self.source = source
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.source.close()
+
+        def fileno(self):
+            return self.source.fileno()
+
+        def read(self, size):
+            reads.append(size)
+            return self.source.read(size)
+
+    def observed_open(candidate, mode="r", *args, **kwargs):
+        source = original_open(candidate, mode, *args, **kwargs)
+        return ObservedFile(source) if candidate == path and mode == "rb" else source
+
+    monkeypatch.setattr(Path, "open", observed_open)
+    if oversized:
+        with pytest.raises(InvocationStateError) as caught:
+            module._file_bytes(path, 4)
+        assert caught.value.details["reason"] == "runtime_profile_unavailable"
+        assert reads == []
+    else:
+        assert module._file_bytes(path, 128_000_000) == b"small"
+        assert reads == [6]
+        path.write_bytes(b"fresh")
+        assert module._file_bytes(path, 128_000_000) == b"fresh"
+        assert reads == [6, 6]
+
+
+@pytest.mark.parametrize("change", ["growth", "truncation", "metadata"])
+def test_installed_source_change_during_read_fails_closed(tmp_path, monkeypatch, change):
+    from pathlib import Path
+
+    import open_workflow_agent.recovery_definitions as module
+
+    path = tmp_path / "installed.py"
+    path.write_bytes(b"original")
+    original_open = Path.open
+
+    class ChangingFile:
+        def __init__(self, source):
+            self.source = source
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            self.source.close()
+
+        def fileno(self):
+            return self.source.fileno()
+
+        def read(self, size):
+            assert size == len(b"original") + 1
+            if change == "growth":
+                path.write_bytes(b"original-and-new")
+            elif change == "truncation":
+                path.write_bytes(b"cut")
+            value = self.source.read(size)
+            if change == "metadata":
+                current = path.stat()
+                os.utime(path, ns=(current.st_atime_ns, current.st_mtime_ns + 1_000_000_000))
+            return value
+
+    def changing_open(candidate, mode="r", *args, **kwargs):
+        source = original_open(candidate, mode, *args, **kwargs)
+        return ChangingFile(source) if candidate == path and mode == "rb" else source
+
+    monkeypatch.setattr(Path, "open", changing_open)
+    with pytest.raises(InvocationStateError) as caught:
+        module._file_bytes(path, 128_000_000)
+    assert caught.value.details["reason"] == "runtime_profile_unavailable"

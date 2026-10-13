@@ -130,3 +130,34 @@ approved source-to-target mapping remains unverified. T44/A086 must retain that
 remaining scope even if the finite S2-09 **Define** task is later validated.
 T45 diagnostic correlation does not activate native history export, earlier
 checkpoint replay, state edits/forks or later-stage capabilities.
+
+## Initial recorded batch -- 2026-10-13
+
+Frozen source 65a26db runs 394 fixed inputs. Root-focused verification passes
+58 cases with 29 unavailable PostgreSQL skips and one fixture failure: the
+foreign-owner resume case sent an invalid empty request rather than its required
+input field, producing schema validation before the intended object check.
+Both actual native engines pass retained public version cases before this
+attempt is explicitly interrupted at 227 seconds for an actionable provenance
+read-cost correction. Original logs, hashes and interruption records are retained
+in `tmp/s2-09-first-batch`; interrupted suites are not successful full runs.
+
+Independent profiling isolates repeated oversized allocation in source-file
+reads. The correction preserves fresh exact hashes, bounded reads and metadata
+checks rather than relaxing recovery compatibility. All five source/wheel builds
+and their source-lock/metadata provenance inspections pass. Final corrected
+focused, full-suite and hosted qualification remain required.
+
+The optional-adapter development profile is explicitly common fallback. It
+requires the installed root editable declaration, exact adapter source origin
+under that project, and independent lock/metadata/code hashes while the native
+SDK is absent. Production wheels, standalone core, foreign origins and an
+installed SDK without its adapter cannot use this path. Installing the SDK
+changes the profile and requires native provenance; fallback is not native
+qualification. Twelve source/provenance negative cases are authored.
+
+The exact-size read correction measures 0.52 seconds cold and 0.27 seconds warm
+per LangGraph profile, compared with approximately 3.1 seconds before correction.
+It retains fresh source hashing and checks the opened file metadata before and
+after its size-bounded read. Growth, truncation, mutation and oversize tests are
+included in the corrected batch.

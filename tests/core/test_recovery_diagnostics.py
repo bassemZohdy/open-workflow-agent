@@ -201,8 +201,11 @@ async def test_invocation_routes_hide_other_principals_before_archive_or_native_
             ) as client:
                 path = f"/v1/invocations/{foreign.invocation_id}/{route}"
                 call = client.get if route == "recovery" else client.post
-                assert (await call(path)).status_code == 401
-                response = await call(path, headers={"Authorization": "Bearer test-api-token"})
+                request_body = {"json": {"input": None}} if route == "resume" else {}
+                assert (await call(path, **request_body)).status_code == 401
+                response = await call(
+                    path, headers={"Authorization": "Bearer test-api-token"}, **request_body
+                )
                 assert response.status_code == 404
                 assert response.json()["error"]["code"] == "invocation_not_found"
                 assert SECRET not in response.text and "other-owner" not in response.text

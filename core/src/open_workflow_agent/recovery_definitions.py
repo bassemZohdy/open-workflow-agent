@@ -6,10 +6,12 @@ import hashlib
 import importlib.metadata
 import importlib.util
 import json
+import os
 import platform
 import re
 import sys
 import threading
+import tomllib
 from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
@@ -46,6 +48,11 @@ _ADAPTERS = {
         "open-workflow-agent-agent-framework",
         "open_workflow_agent_agent_framework",
     ),
+}
+_NATIVE_SDKS = {
+    "adk": "google-adk",
+    "langgraph": "langgraph",
+    "agent-framework": "agent-framework-core",
 }
 
 
@@ -89,9 +96,29 @@ def _digest(value: Any) -> str:
 
 def _file_bytes(path: Path, limit: int) -> bytes:
     with path.open("rb") as source:
-        value = source.read(limit + 1)
-    if len(value) > limit:
-        raise _unavailable("runtime_profile_unavailable")
+        before = os.fstat(source.fileno())
+        if before.st_size < 0 or before.st_size > limit:
+            raise _unavailable("runtime_profile_unavailable")
+        # A package can contain many tiny files. Allocate for the current file,
+        # not the full remaining package budget, and reject concurrent changes.
+        value = source.read(before.st_size + 1)
+        after = os.fstat(source.fileno())
+        if len(value) != before.st_size or (
+            before.st_dev,
+            before.st_ino,
+            before.st_mode,
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+        ) != (
+            after.st_dev,
+            after.st_ino,
+            after.st_mode,
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+        ):
+            raise _unavailable("runtime_profile_unavailable")
     return value
 
 
@@ -121,6 +148,58 @@ def _code_digest(package: str) -> str:
     return digest.hexdigest()
 
 
+def _editable_project(installed: importlib.metadata.Distribution) -> Path:
+    value = _parsed(installed.read_text("direct_url.json"), limit=MAX_PROFILE_BYTES)
+    if not isinstance(value, dict) or value.get("dir_info", {}).get("editable") is not True:
+        raise _unavailable("runtime_profile_unavailable")
+    parsed = urlsplit(value.get("url", ""))
+    if parsed.scheme != "file" or parsed.netloc not in {"", "localhost"}:
+        raise _unavailable("runtime_profile_unavailable")
+    return Path(url2pathname(parsed.path)).resolve()
+
+
+def _project_digest(project: Path, name: str) -> str:
+    data = _file_bytes(project / name, 16_000_000).replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
+
+
+def _root_editable_adapter(engine: str, core: str) -> dict[str, Any]:
+    """Root development fallback only; never infer provenance from adjacent files."""
+    if core != "open-workflow-agent":
+        raise _unavailable("runtime_profile_unavailable")
+    root_distribution = importlib.metadata.distribution(core)
+    project = _editable_project(root_distribution)
+    distribution, package = _ADAPTERS[engine]
+    engine_project = project / "engines" / engine
+    expected = engine_project / "src" / package / "__init__.py"
+    spec = importlib.util.find_spec(package)
+    if (
+        spec is None
+        or spec.origin is None
+        or not expected.resolve().is_relative_to(project)
+        or Path(spec.origin).resolve() != expected.resolve()
+        or any(
+            not (engine_project / name).resolve().is_relative_to(engine_project.resolve())
+            for name in ("pyproject.toml", "uv.lock")
+        )
+    ):
+        raise _unavailable("runtime_profile_unavailable")
+    metadata = tomllib.loads(_file_bytes(engine_project / "pyproject.toml", 16_000_000).decode())
+    declaration = metadata.get("project", {})
+    if declaration.get("name") != distribution or not isinstance(declaration.get("version"), str):
+        raise _unavailable("runtime_profile_unavailable")
+    return {
+        "distribution": distribution,
+        "version": declaration["version"],
+        "provenance": "owa/root-editable-adapter-source/v1",
+        "root_distribution": core,
+        "root_version": root_distribution.version,
+        "lock_sha256": _project_digest(engine_project, "uv.lock"),
+        "metadata_sha256": _project_digest(engine_project, "pyproject.toml"),
+        "code_sha256": _code_digest(package),
+    }
+
+
 def _artifact(distribution: str, package: str) -> dict[str, Any]:
     installed = importlib.metadata.distribution(distribution)
     marker = Path(str(installed.locate_file(package + "/_recovery_build.json")))
@@ -142,22 +221,11 @@ def _artifact(distribution: str, package: str) -> dict[str, Any]:
     else:
         # Editable provenance is explicit installed metadata. A production wheel
         # without its build marker cannot fall back to a convenient checkout.
-        direct = installed.read_text("direct_url.json")
-        value = _parsed(direct, limit=MAX_PROFILE_BYTES)
-        if not isinstance(value, dict) or value.get("dir_info", {}).get("editable") is not True:
-            raise _unavailable("runtime_profile_unavailable")
-        parsed = urlsplit(value.get("url", ""))
-        if parsed.scheme != "file" or parsed.netloc not in {"", "localhost"}:
-            raise _unavailable("runtime_profile_unavailable")
-        project = Path(url2pathname(parsed.path))
-
-        def content(name: str) -> str:
-            data = _file_bytes(project / name, 16_000_000).replace(b"\r\n", b"\n")
-            if len(data) > 16_000_000:
-                raise _unavailable("runtime_profile_unavailable")
-            return hashlib.sha256(data).hexdigest()
-
-        value = {"lock_sha256": content("uv.lock"), "metadata_sha256": content("pyproject.toml")}
+        project = _editable_project(installed)
+        value = {
+            "lock_sha256": _project_digest(project, "uv.lock"),
+            "metadata_sha256": _project_digest(project, "pyproject.toml"),
+        }
     return {
         "distribution": distribution,
         "version": installed.version,
@@ -217,8 +285,19 @@ def recovery_profile(
         except importlib.metadata.PackageNotFoundError:
             core = "open-workflow-agent-core"
         artifacts = [_artifact(core, "open_workflow_agent")]
+        adapter_mode = "common"
         if engine in _ADAPTERS:
-            artifacts.append(_artifact(*_ADAPTERS[engine]))
+            try:
+                importlib.metadata.distribution(_NATIVE_SDKS[engine])
+                adapter_mode = "native"
+            except importlib.metadata.PackageNotFoundError:
+                adapter_mode = "common_fallback"
+            try:
+                artifacts.append(_artifact(*_ADAPTERS[engine]))
+            except importlib.metadata.PackageNotFoundError:
+                if adapter_mode != "common_fallback":
+                    raise _unavailable("runtime_profile_unavailable") from None
+                artifacts.append(_root_editable_adapter(engine, core))
         elif engine not in {"base", "reference", "portable"}:
             raise _unavailable("runtime_profile_unavailable")
         relevant = {
@@ -318,10 +397,15 @@ def recovery_profile(
             "backend": backend,
             "continuation_supported": continuation_supported,
             "common_schema": "owa-runtime-v1",
-            "native_binding": {
-                "adk": "adk-receipts-v1",
-                "langgraph": "langgraph-receipts-v2",
-            }.get(engine, "common-reference-v1"),
+            "adapter_mode": adapter_mode,
+            "native_binding": (
+                "common-fallback-v1"
+                if adapter_mode == "common_fallback"
+                else {
+                    "adk": "adk-receipts-v1",
+                    "langgraph": "langgraph-receipts-v2",
+                }.get(engine, "common-reference-v1")
+            ),
             "python": {
                 "version": platform.python_version(),
                 "abi": sys.implementation.cache_tag,
