@@ -133,14 +133,24 @@ async def test_imported_a2a_calls_use_the_same_ows_method_translation_as_inline_
         },
     }
     methods = []
+    request_ids = []
+    task = {
+        "id": "task-1",
+        "contextId": "fixture-context",
+        "status": {"state": "TASK_STATE_COMPLETED"},
+    }
 
     async def handler(request):
         if request.url.host == "catalog.test":
             return httpx.Response(200, json=definition)
         body = json.loads(request.content)
+        assert body["jsonrpc"] == "2.0"
+        assert isinstance(body["id"], str) and body["id"]
         assert body["params"] == {"id": "task-1"}
+        assert request.headers["A2A-Version"] == "1.0"
+        request_ids.append(body["id"])
         methods.append(body["method"])
-        return httpx.Response(200, json={"result": {"id": "task-1"}})
+        return httpx.Response(200, json={"jsonrpc": "2.0", "id": body["id"], "result": task})
 
     resolver = _resolver(services, handler)
     services.protocols.http = resolver.http
@@ -162,10 +172,11 @@ async def test_imported_a2a_calls_use_the_same_ows_method_translation_as_inline_
             )
             result = await engine.invoke(await engine.compile(plan), handle, {"id": "task-1"})
             assert result.status == "completed", result.error
-            assert result.output == {"result": {"id": "task-1"}}
+            assert result.output == task
     finally:
         await engine.shutdown()
     assert methods == ["GetTask", "GetTask"]
+    assert len(request_ids) == len(set(request_ids)) == 2
 
 
 @pytest.mark.parametrize("engine_name,engine_type", engine_cases())

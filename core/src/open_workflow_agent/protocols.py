@@ -201,9 +201,13 @@ class HttpClient:
                     binding = await prepare(endpoint, remaining_timeout=timeout)
                 auth_headers = binding.headers
                 client_cert = binding.client_cert
-                # A selected profile replaces global TLS identity; ordinary
-                # public trust remains enabled when it supplies no custom CA.
-                verify_tls = binding.ca_bundle or True
+                # An explicit different profile replaces global TLS trust.
+                # Preparing the client's own authentication must preserve its
+                # deployment-selected CA, including query-only recovery clients.
+                inherited = _authentication is None or _authentication is self.authentication
+                verify_tls = binding.ca_bundle or (
+                    self.verify_tls if inherited and self.verify_tls is not False else True
+                )
             headers = _merge_authoritative_headers(headers, auth_headers)
             sensitive_headers = frozenset(name.lower() for name in auth_headers)
         if operation_id:

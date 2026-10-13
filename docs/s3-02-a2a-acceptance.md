@@ -187,3 +187,31 @@ a required `user_id` was omitted, before archive or SDK setup; that fixture fiel
 is corrected without changing runtime code or assertions. Exact failed and passing
 history is retained in `tmp/s3-02-fourth-batch`. Final full suites, actual PostgreSQL,
 platform, image, security, CTK and exact-source hosted acceptance remain required.
+
+### Bounded full-suite history at 072fa41 (not qualification)
+
+Four independent local full suites retained an unchanged 433-input source
+snapshot and continued making progress until their explicit 3,000-second
+Windows bound. Each exited124 with timed_out=true; none is a passing full
+suite or coverage gate. Five standalone/root/engine builds passed on that source.
+The original full logs, start/result records and source manifest are retained in
+`tmp/s3-02-full-bounded-072fa41`; no timeout or earlier failure is promoted.
+
+The catalog mock did not provide the pinned SDK's correlated JSON-RPC2.0 typed
+Task result. Its correction retains the inline/imported translation comparison,
+adds exact request version and unique IDs, echoes the request ID and returns the
+typed Task directly. Final LangGraph log review also exposed the common HTTP
+regression in preexisting recovery fixtures: preparing the client's own named
+bearer binding discarded its explicit verified private CA. Positive preparation
+failed TLS before native-corruption controls could execute. A bounded standalone
+reproduction and saved producer/query-only artifacts confirmed that shared cause.
+
+The grouped correction preserves a client's selected CA only for its inherited
+or exact same authentication object, while an explicitly different selected
+profile still replaces global trust and client identity. Six new direct/pinned
+real TLS witnesses cover retained bearer trust and rejection of foreign-profile
+CA inheritance. The common TLS suite now declares10 cases. Windows native routing
+uses verbose rows so all13 initializer controls can be independently audited.
+Corrected scoped checks, fresh builds and all exact-source hosted full-suite,
+coverage, PostgreSQL, Windows, image, audit, CTK and benchmark gates remain
+mandatory before S2-09/S3-01/S3-02 closure or publication qualification.
