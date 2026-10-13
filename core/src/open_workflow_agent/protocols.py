@@ -5,20 +5,30 @@ from __future__ import annotations
 import asyncio
 import base64
 import ipaddress
+import json
 import math
 import os
 import re
 import socket
 import ssl
 import time
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterator, Mapping
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import urlparse
 from uuid import uuid4
 
 import httpx
 
-from .errors import ToolError
+from .credential_guard import (
+    LiteralCredentialGuard,
+    capture_authentication_headers,
+    capture_credentials,
+    credential_scope,
+)
+from .credential_guard import active_projection_guard as _active_projection_guard
+from .errors import OwaError, ToolError
 from .security import ProfileAuthentication, SecurityConfig
 
 if TYPE_CHECKING:
@@ -26,6 +36,15 @@ if TYPE_CHECKING:
     from .grpc_client import GrpcRegistry
     from .openapi_client import OpenApiOperationSelection
     from .sandbox import SandboxManager
+
+_DESTINATION_POLICY: ContextVar[Callable[[str], Awaitable[None]] | None] = ContextVar(
+    "owa_protocol_destination", default=None
+)
+_CREDENTIAL_POLICY: ContextVar[Callable[[str], Awaitable[None]] | None] = ContextVar(
+    "owa_protocol_credential", default=None
+)
+DestinationAuthorization = Callable[[str, str, dict[str, Any]], Awaitable[None]]
+CredentialAuthorization = Callable[[str], Awaitable[None]]
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
 A2A_PROTOCOL_VERSION = "1.0"
@@ -146,24 +165,29 @@ class HttpClient:
             budget = min(budget, request_timeout)
         if not math.isfinite(budget) or budget <= 0:
             raise ToolError("HTTP request deadline must be finite and positive")
-        try:
-            async with asyncio.timeout(budget):
-                return await self._request_bounded(
-                    method,
-                    endpoint,
-                    operation_id=operation_id,
-                    follow_redirects=follow_redirects,
-                    output=output,
-                    request_timeout=budget,
-                    allow_not_modified=allow_not_modified,
-                    _return_response=_return_response,
-                    _authentication=_authentication,
-                    _on_dispatch=_on_dispatch,
-                    _allow_redirect_status=_allow_redirect_status,
-                    **kwargs,
-                )
-        except TimeoutError:
-            raise ToolError("HTTP request deadline exceeded") from None
+        with credential_scope() as guard:
+            try:
+                async with asyncio.timeout(budget):
+                    result = await self._request_bounded(
+                        method,
+                        endpoint,
+                        operation_id=operation_id,
+                        follow_redirects=follow_redirects,
+                        output=output,
+                        request_timeout=budget,
+                        allow_not_modified=allow_not_modified,
+                        _return_response=_return_response,
+                        _authentication=_authentication,
+                        _on_dispatch=_on_dispatch,
+                        _allow_redirect_status=_allow_redirect_status,
+                        **kwargs,
+                    )
+                return result if _return_response else guard.project(result)
+            except OwaError as error:
+                guard.error(error)
+                raise error from None
+            except TimeoutError:
+                raise ToolError("HTTP request deadline exceeded") from None
 
     async def _request_bounded(
         self,
@@ -182,6 +206,9 @@ class HttpClient:
         **kwargs: Any,
     ) -> Any:
         self._check_endpoint(endpoint)
+        destination_policy = _DESTINATION_POLICY.get()
+        if destination_policy is not None:
+            await destination_policy(endpoint)
         if output not in OUTPUT_MODES:
             raise ToolError(f"unsupported HTTP output mode: {output}")
         headers = dict(kwargs.pop("headers", {}) or {})
@@ -196,9 +223,16 @@ class HttpClient:
         client_cert = self.client_cert
         verify_tls: bool | str | ssl.SSLContext = self.verify_tls
         sensitive_headers: frozenset[str] = frozenset()
+        capture_credentials(*(client_cert or ()))
+        if isinstance(verify_tls, str):
+            capture_credentials(verify_tls)
         if authentication:
             # Deployment-owned authentication and operation identity cannot be
             # replaced by workflow-provided headers.
+            credential_policy = _CREDENTIAL_POLICY.get()
+            profile_name = getattr(authentication, "profile_name", None)
+            if credential_policy is not None and isinstance(profile_name, str):
+                await credential_policy(profile_name)
             prepare = getattr(authentication, "prepare", None)
             if prepare is None:
                 auth_headers = authentication.headers(endpoint)
@@ -214,6 +248,10 @@ class HttpClient:
                 verify_tls = binding.ca_bundle or (
                     self.verify_tls if inherited and self.verify_tls is not False else True
                 )
+            capture_authentication_headers(auth_headers)
+            capture_credentials(*(client_cert or ()))
+            if isinstance(verify_tls, str):
+                capture_credentials(verify_tls)
             headers = _merge_authoritative_headers(headers, auth_headers)
             sensitive_headers = frozenset(name.lower() for name in auth_headers)
         if operation_id:
@@ -286,18 +324,25 @@ class HttpClient:
                             "status": response.status_code,
                             "type": "https://open-workflow-specification.org/dsl/errors/types/communication",
                             "title": response.reason_phrase,
-                            "detail": response.text[:1024],
+                            "detail": _project_response_bytes(
+                                response, _active_projection_guard()
+                            ).decode("utf-8", errors="replace")[:1024],
                         },
                     )
                 return (
                     response
                     if _return_response
-                    else _format_response(response, output, _sensitive_headers=sensitive_headers)
+                    else _format_response(
+                        response,
+                        output,
+                        _sensitive_headers=sensitive_headers,
+                        _credential_guard=_active_projection_guard(),
+                    )
                 )
         except ToolError:
             raise
-        except httpx.HTTPError as exc:
-            raise ToolError(f"HTTP request failed: {exc}") from exc
+        except httpx.HTTPError:
+            raise ToolError("HTTP transport request failed") from None
         except (ssl.SSLError, OSError):
             raise ToolError("HTTP TLS or transport binding failed") from None
 
@@ -334,7 +379,11 @@ class ProtocolServices:
         openapi_credential_endpoints: Mapping[str, tuple[str, ...]] | None = None,
         grpc_registry: GrpcRegistry | None = None,
         grpc_credential_endpoints: Mapping[str, tuple[str, ...]] | None = None,
+        authorize_destination: DestinationAuthorization | None = None,
+        authorize_credential: CredentialAuthorization | None = None,
     ) -> None:
+        self.authorize_destination = authorize_destination
+        self.authorize_credential = authorize_credential
         self._a2a_credential_endpoints = {
             name: tuple(endpoints) for name, endpoints in (a2a_credential_endpoints or {}).items()
         }
@@ -361,8 +410,7 @@ class ProtocolServices:
             if hasattr(auth, "_supports_oauth2") and auth._supports_oauth2:
                 authentication = auth
             elif hasattr(auth, "_supports_mtls") and auth._supports_mtls:
-                client_cert = auth.client_cert()
-                ca_bundle = auth.ca_bundle()
+                authentication = auth
             else:
                 authentication = auth
         self.http = http or HttpClient(
@@ -379,7 +427,159 @@ class ProtocolServices:
         if isinstance(self._profile_authentication, ProfileAuthentication):
             self._profile_authentication.bind_transport(self.http)
 
+    @contextmanager
+    def authorization_scope(
+        self, protocol: str, payload: dict[str, Any] | None = None
+    ) -> Iterator[None]:
+        """Apply operation-local policy to metadata, issuer and business HTTP.
+
+        This only binds callbacks. It resolves no credentials or destinations,
+        opens no transport, and cannot issue an execution authority.
+        """
+
+        async def destination(endpoint: str) -> None:
+            if self.authorize_destination is not None:
+                await self.authorize_destination(protocol, endpoint, payload or {})
+
+        destination_token = _DESTINATION_POLICY.set(
+            destination if self.authorize_destination else None
+        )
+        credential_token = _CREDENTIAL_POLICY.set(self.authorize_credential)
+        try:
+            yield
+        finally:
+            _CREDENTIAL_POLICY.reset(credential_token)
+            _DESTINATION_POLICY.reset(destination_token)
+
+    async def authorize_prepared_call(
+        self,
+        protocol: str,
+        payload: Any,
+        *,
+        _a2a_selection: A2ACardSelection | None = None,
+        _openapi_selection: OpenApiOperationSelection | None = None,
+    ) -> None:
+        """Check exact prepared business destination before recording intent.
+
+        Immutable card/description selection must already exist for discovered
+        operations. Metadata fetches use authorization_scope separately.
+        """
+        if self.authorize_destination is None:
+            return
+        if not isinstance(payload, dict):
+            raise ToolError("protocol payload must be an object")
+        safe_payload = payload
+        endpoint: str | None = None
+        if protocol == "grpc":
+            if self.grpc_registry is None:
+                raise ToolError("gRPC deployment registry is not enabled")
+            endpoint = self.grpc_registry.prepare(
+                {key: value for key, value in payload.items() if key != "operation_id"}
+            ).binding.endpoint
+        elif protocol == "mcp":
+            transport = payload.get("transport", {})
+            if not isinstance(transport, dict):
+                raise ToolError("mcp call requires a transport object")
+            if "stdio" in transport:
+                from .sandbox.backends.internal import InternalSandboxBackend
+                from .sandbox.stdio_policy import validate_stdio_transport
+
+                if self.sandbox is None or not isinstance(
+                    self.sandbox.backend, InternalSandboxBackend
+                ):
+                    raise ToolError("mcp stdio transport is not enabled")
+                binding = validate_stdio_transport(transport, self.sandbox.backend.config)
+                endpoint = "stdio:" + binding.id
+                safe_payload = {**payload, "transport": {"stdio": {"binding": binding.id}}}
+            else:
+                http = transport.get("http", {})
+                if not isinstance(http, dict) or set(transport) - {"http"}:
+                    raise ToolError("mcp HTTP transport is invalid")
+                endpoint = _endpoint_value(payload.get("endpoint") or http.get("endpoint"))
+        elif protocol == "a2a":
+            if _a2a_selection is not None:
+                from .a2a_client import A2ACardSelection
+
+                endpoint = A2ACardSelection.from_value(_a2a_selection.as_value()).endpoint
+            elif "agentCard" in payload:
+                from .a2a_client import select_interface
+
+                endpoint = select_interface(payload["agentCard"]).endpoint
+            else:
+                endpoint = _endpoint_value(payload.get("endpoint") or payload.get("server"))
+        elif protocol == "openapi":
+            if _openapi_selection is None:
+                raise ToolError("OpenAPI business authorization requires admitted selection")
+            from .openapi_client import prepare_request
+
+            endpoint = prepare_request(_openapi_selection, payload.get("parameters", {})).endpoint
+        elif protocol == "http":
+            endpoint = _endpoint_value(payload.get("endpoint") or payload.get("url"))
+        else:
+            raise ToolError("unsupported protocol")
+        if not endpoint:
+            raise ToolError("protocol call requires an exact prepared endpoint")
+        if protocol != "grpc" and not endpoint.startswith("stdio:"):
+            self.http._check_endpoint(endpoint)
+        await self.authorize_destination(protocol, endpoint, safe_payload)
+
     async def call(
+        self,
+        protocol: str,
+        payload: Any,
+        *,
+        _authentication: AuthenticationProvider | None = None,
+        _a2a_selection: A2ACardSelection | None = None,
+        _a2a_bound_endpoint: str | None = None,
+        _openapi_selection: OpenApiOperationSelection | None = None,
+        _openapi_bound_endpoint: str | None = None,
+    ) -> Any:
+        if protocol not in {"http", "mcp", "a2a", "openapi", "grpc"} or not isinstance(
+            payload, dict
+        ):
+            return await self._call_dispatch(protocol, payload)
+
+        with self.authorization_scope(protocol, payload):
+            with credential_scope() as guard:
+                try:
+                    if (
+                        protocol == "mcp"
+                        and isinstance(payload.get("transport"), dict)
+                        and "stdio" in payload["transport"]
+                    ):
+                        from .sandbox.backends.internal import InternalSandboxBackend
+                        from .sandbox.stdio_policy import validate_stdio_transport
+
+                        if self.sandbox is None or not isinstance(
+                            self.sandbox.backend, InternalSandboxBackend
+                        ):
+                            raise ToolError("mcp stdio transport is not enabled")
+                        binding = validate_stdio_transport(
+                            payload["transport"], self.sandbox.backend.config
+                        )
+                        if self.authorize_destination is not None:
+                            safe_payload = {
+                                **payload,
+                                "transport": {"stdio": {"binding": binding.id}},
+                            }
+                            await self.authorize_destination(
+                                protocol, "stdio:" + binding.id, safe_payload
+                            )
+                    result = await self._call_dispatch(
+                        protocol,
+                        payload,
+                        _authentication=_authentication,
+                        _a2a_selection=_a2a_selection,
+                        _a2a_bound_endpoint=_a2a_bound_endpoint,
+                        _openapi_selection=_openapi_selection,
+                        _openapi_bound_endpoint=_openapi_bound_endpoint,
+                    )
+                    return guard.project(result)
+                except OwaError as error:
+                    guard.error(error)
+                    raise error from None
+
+    async def _call_dispatch(
         self,
         protocol: str,
         payload: Any,
@@ -402,6 +602,13 @@ class ProtocolServices:
                 raise ToolError("gRPC deployment registry is not enabled")
             authentication = _authentication or self._profile_authentication
             profile = getattr(authentication, "profile_name", None)
+            prepared = self.grpc_registry.prepare(
+                {key: value for key, value in payload.items() if key != "operation_id"}
+            )
+            if self.authorize_destination is not None:
+                await self.authorize_destination(protocol, prepared.binding.endpoint, payload)
+            if self.authorize_credential is not None and isinstance(profile, str):
+                await self.authorize_credential(profile)
             return await call_grpc(
                 self.http,
                 {key: value for key, value in payload.items() if key != "operation_id"},
@@ -691,14 +898,33 @@ def _endpoint_value(value: Any) -> str | None:
     return str(endpoint) if isinstance(endpoint, str) else None
 
 
+def _project_response_bytes(
+    response: httpx.Response, guard: LiteralCredentialGuard | None
+) -> bytes:
+    if guard is None:
+        return response.content
+    try:
+        value = response.json()
+    except ValueError:
+        return guard.raw(response.content)
+    projected = guard.project(value)
+    if projected == value:
+        return response.content
+    return json.dumps(projected, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode(
+        "utf-8"
+    )
+
+
 def _format_response(
     response: httpx.Response,
     output: str,
     *,
     _sensitive_headers: frozenset[str] = frozenset(),
+    _credential_guard: LiteralCredentialGuard | None = None,
 ) -> Any:
     if output == "raw":
-        return base64.b64encode(response.content).decode("ascii")
+        content = _project_response_bytes(response, _credential_guard)
+        return base64.b64encode(content).decode("ascii")
     try:
         body: Any = response.json()
     except ValueError:
@@ -706,7 +932,12 @@ def _format_response(
     if output == "response":
         formatted: dict[str, Any] = {
             "status": response.status_code,
-            "headers": dict(response.headers),
+            "headers": {
+                key: value
+                for key, value in response.headers.items()
+                if key.lower() not in {"authorization", "proxy-authorization", "set-cookie"}
+                and key.lower() not in _sensitive_headers
+            },
             "body": body,
             # Keep the compact response keys used by OWA callers while also
             # exposing the Open Workflow response vocabulary. Request

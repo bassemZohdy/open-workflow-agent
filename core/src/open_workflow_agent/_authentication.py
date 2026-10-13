@@ -12,6 +12,7 @@ from urllib.parse import urlencode, urlparse
 
 import httpx
 
+from .credential_guard import capture_credentials
 from .errors import ToolError
 from .security import OAuth2ClientCredentialsSecurityProfile, resolve_secret
 
@@ -126,6 +127,7 @@ class OAuthTokenProvider:
                     resolve_secret(profile.client_secret),
                 )
                 ca_bundle = resolve_secret(profile.ca_bundle) if profile.ca_bundle else None
+                capture_credentials(client_id, client_secret, *((ca_bundle,) if ca_bundle else ()))
                 if any(
                     len(value.encode()) > MAX_CREDENTIAL_BYTES
                     for value in (client_id, client_secret)
@@ -140,6 +142,7 @@ class OAuthTokenProvider:
                     self._transport_binding(),
                 )
                 if self._binding == binding and self._token and time.monotonic() < self._expires_at:
+                    capture_credentials(self._token)
                     return self._token
                 # A changed endpoint, policy, credential or transport cannot
                 # inherit the previous profile's token, even on fetch failure.
@@ -159,6 +162,7 @@ class OAuthTokenProvider:
                 remaining_lifetime = lifetime - (now - requested_at)
                 if remaining_lifetime <= 0:
                     raise authentication_failure("token_expired")
+                capture_credentials(token)
                 self._token, self._binding = token, binding
                 self._expires_at = now + remaining_lifetime - min(60.0, remaining_lifetime * 0.1)
                 return token

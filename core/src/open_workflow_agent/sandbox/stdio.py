@@ -297,6 +297,9 @@ async def open_internal_stdio(
     with tempfile.TemporaryDirectory(prefix="owa-stdio-", dir=root) as directory:
         workspace = Path(directory)
         child_environment = backend._build_environment(binding, workspace)
+        from .credential_guard import process_credential_guard
+
+        process_credential_guard(binding, child_environment)
         backend._check_workspace(workspace)
         job = None
         if os.name == "nt":

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+import math
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import Any, Protocol
 
 from .errors import ModelError, ToolError
@@ -96,19 +98,77 @@ class ManagedFunctionCapabilities:
         return await self._invoke_agent_tool(name, payload)
 
 
+_PUBLIC_CONTEXT_FIELDS = frozenset(
+    {
+        "invocation_id",
+        "session_id",
+        "user_id",
+        "engine",
+        "workflow_name",
+        "workflow_version",
+        "parent_invocation_id",
+        "parent_task_reference",
+        "task_reference",
+        "task_name",
+        "occurrence",
+        "authority",
+    }
+)
+
+
+def _immutable_context_value(value: Any, depth: int = 0) -> Any:
+    if depth > 16:
+        raise ValueError("catalog metadata exceeds its finite profile")
+    if value is None or type(value) in {str, bool, int, float}:
+        if isinstance(value, str) and len(value.encode("utf-8")) > 4096:
+            raise ValueError("catalog metadata exceeds its finite profile")
+        if type(value) is int and abs(value) > 2**53 - 1:
+            raise ValueError("catalog metadata number is outside its finite profile")
+        if type(value) is float and not math.isfinite(value):
+            raise ValueError("catalog metadata number is outside its finite profile")
+        return value
+    if isinstance(value, Mapping) and all(isinstance(key, str) for key in value):
+        return MappingProxyType(
+            {key: _immutable_context_value(item, depth + 1) for key, item in value.items()}
+        )
+    if isinstance(value, (tuple, list)):
+        return tuple(_immutable_context_value(item, depth + 1) for item in value)
+    raise ValueError("catalog metadata is not an approved public descriptor")
+
+
+@dataclass(frozen=True, slots=True, repr=False)
+class _CatalogModel:
+    _complete: Callable[..., Awaitable[Any]]
+    _authorize: Callable[[], Awaitable[None]]
+
+    async def complete(self, prompt: Any, *, options: dict[str, Any] | None = None) -> Any:
+        await self._authorize()
+        return await self._complete(prompt, options=options)
+
+
 @dataclass(slots=True)
 class CatalogContext:
     model: Model
     agent_instruction: str = ""
     services: Any = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Replace broad runtime services with a capability-scoped facade."""
 
+        self.metadata = MappingProxyType(
+            {
+                key: _immutable_context_value(value)
+                for key, value in self.metadata.items()
+                if key in _PUBLIC_CONTEXT_FIELDS
+            }
+        )
         services = self.services
         if services is None or isinstance(services, ManagedFunctionCapabilities):
             return
+        authorize_model = getattr(services, "authorize_model_completion", None)
+        if callable(authorize_model):
+            self.model = _CatalogModel(self.model.complete, authorize_model)
         tools = tuple(str(name) for name in getattr(services, "agent_tools", ()))
         invoker = getattr(services, "invoke_agent_tool", None)
         self.services = ManagedFunctionCapabilities(

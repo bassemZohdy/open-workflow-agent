@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import copy
+import hashlib
+import inspect
+import json
 import re
 import time
 from collections.abc import Awaitable, Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -19,10 +24,12 @@ from .child_waits import ChildWaitStore
 from .children import ChildWorkflowStore
 from .config import ExternalCatalogConfig, RuntimeConfig
 from .durable_events import DurableEventBus
-from .effects import EffectJournal
+from .effects import EffectIdentity, EffectJournal, effect_request_digest
 from .errors import ConfigurationError, UnsupportedWorkflowFeature
 from .event_store import EventStore, EventStoreLimits
 from .events import EventBus, InMemoryEventBus
+from .execution_authorization import ExecutionAuthorizationStore
+from .execution_context import ExecutionActionContext, action_scope, current_action_context
 from .external_catalog import (
     ExternalCatalogResolver,
     _function_uri,
@@ -40,7 +47,7 @@ from .metrics import Metrics, MetricsEventSink
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
 from .openapi_admission import OpenApiOperationAdmission
 from .openapi_client import OpenApiOperationSelection
-from .ownership import ExecutionOwnershipStore
+from .ownership import ExecutionLease, ExecutionOwnershipStore
 from .persistence import ExecutionHandle, InvocationStore
 from .protocols import ProtocolServices, workflow_protocol_payload
 from .recovery_definitions import RecoveryDefinitionArchive, recovery_profile
@@ -55,9 +62,14 @@ from .sandbox.backends.docker import DockerSandboxBackend
 from .sandbox.backends.kubernetes import KubernetesSandboxBackend
 from .sandbox.job_dispatcher import SandboxJobDispatcher
 from .sandbox.jobs import SandboxJobStore
-from .scheduling import ScheduleStore
-from .security import BearerSecurityProfile, static_principal
-from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
+from .scheduling import ScheduleClaim, ScheduleRecord, ScheduleStore
+from .security import BearerSecurityProfile, ProfileAuthentication, static_principal
+from .storage import (
+    StorageConnection,
+    ensure_storage_namespace,
+    namespaced_datasource,
+    resolve_datasource,
+)
 from .timers import TimerStore
 from .tools import AgentToolBinding, ToolRegistry
 from .workflow import WorkflowPlan
@@ -153,10 +165,14 @@ class RuntimeServices:
             openapi_credential_endpoints=config.protocols.openapi_credential_endpoints,
             grpc_registry=self.grpc_registry if self.grpc_enabled else None,
             grpc_credential_endpoints=config.protocols.grpc_credential_endpoints,
+            authorize_destination=self.authorize_protocol_destination,
+            authorize_credential=self.authorize_protocol_credential,
         )
         self.tools = ToolRegistry.from_config(
             config.tools, self.protocols, security=config.security
         )
+        self.tools.authorize = self.authorize_tool_invocation
+        self.tools.authority_enabled = lambda: self.config.execution_authorization.enabled
         sandbox_backend: SandboxBackend
         if config.sandbox.backend == "docker":
             sandbox_backend = DockerSandboxBackend(config.sandbox)
@@ -283,6 +299,45 @@ class RuntimeServices:
             profile_provider=self._recovery_profile,
             trust_verifier=self._verify_archived_definition_trust,
         )
+        self.execution_authorizations = ExecutionAuthorizationStore(
+            self.effect_journal,
+            self.invocations,
+            self.recovery_definitions,
+            config_provider=lambda: self.config.execution_authorization,
+            security_provider=lambda: self.config.security,
+        )
+        self.recovery_definitions.admission_participant = (
+            self.execution_authorizations.admission_participant
+        )
+        self.recovery_definitions.authority_verifier = (
+            self.execution_authorizations.verify_invocation
+        )
+        self.effect_journal._execution_authorization_seal = (
+            self.execution_authorizations.seal_business
+        )
+        self.effect_journal._execution_authorization_intent = (
+            self.execution_authorizations.seal_intent
+        )
+        if self.external_action_recovery is not None:
+            self.external_action_recovery.authorize_lookup = self._authorize_external_lookup
+        self.recovery_definitions.authority_expectation = (
+            self.execution_authorizations.expected_authority_digest
+        )
+        self.children.authority_participant = lambda child, parent, lease: (
+            self.execution_authorizations.reserve_child(child, parent, execution_lease=lease)
+        )
+        self.schedules.authority_expectation = (
+            self.execution_authorizations.expected_schedule_authority_digest
+        )
+        self.schedules.authority_verifier = self._verify_schedule_authority
+        self.schedules.authority_participant = lambda connection, record: (
+            self.execution_authorizations.reserve_schedule(
+                record, commit=False, connection=connection
+            )
+        )
+        self.schedules.invocation_authority_participant = self._reserve_scheduled_authority
+        if self.event_store is not None:
+            self.event_store.outcome_participant = self.execution_authorizations.seal_business
         self.a2a_agent_card_admission = A2AAgentCardAdmission(self)
         self.openapi_operation_admission = OpenApiOperationAdmission(self)
         from .executable_source_admission import ExecutableSourceAdmission
@@ -300,6 +355,7 @@ class RuntimeServices:
                 profile_provider=lambda: internal_job_profile(self.config.sandbox),
                 max_pending=config.sandbox.background.max_pending,
             )
+            self.sandbox_jobs.outcome_participant = self.execution_authorizations.seal_business
             job_backend = InternalSandboxJobBackend(config.sandbox, self.sandbox_jobs)
             self.sandbox = SandboxManager(sandbox_backend, job_backend=job_backend)
             self.protocols.sandbox = self.sandbox
@@ -346,6 +402,70 @@ class RuntimeServices:
                 self.effect_journal.connection, handle.invocation_id
             ):
                 raise ConfigurationError("protected approval deployment is unavailable")
+
+    async def verify_executable_source_history(self, handle: ExecutionHandle) -> None:
+        """Discover independent retained source proof before taking execution ownership."""
+        from .executable_source_admission import SOURCE_POLICY
+
+        connection = self.effect_journal.connection
+        rows = connection.execute(
+            "SELECT business_key,fingerprint,CASE WHEN length(payload)<=524288 "
+            "THEN payload ELSE NULL END FROM executable_source_admissions "
+            "WHERE invocation_id=? ORDER BY business_key LIMIT 10001",
+            (handle.invocation_id,),
+        ).fetchall()
+        if len(rows) > 10000:
+            raise ConfigurationError("executable source history capacity is exceeded")
+        total = 0
+        for key, fingerprint, encoded in rows:
+            if encoded is None or fingerprint != handle.workflow_fingerprint:
+                raise ConfigurationError("executable source history is inconsistent")
+            total += len(encoded.encode("utf-8"))
+            if total > 16 * 1024 * 1024:
+                raise ConfigurationError("executable source history capacity is exceeded")
+            try:
+                value = json.loads(encoded)
+                identity = EffectIdentity.from_value(value["business_identity"])
+            except (ValueError, TypeError, KeyError):
+                raise ConfigurationError("executable source history is inconsistent") from None
+            if identity.key != key or identity.invocation_id != handle.invocation_id:
+                raise ConfigurationError("executable source history is inconsistent")
+            policy = replace(identity, operation=SOURCE_POLICY)
+            receipt = self.effect_journal.get(policy)
+            if receipt is None or receipt.status != "completed":
+                raise ConfigurationError("executable source history proof is unavailable")
+            await asyncio.sleep(0)
+            await asyncio.sleep(0)
+        indexed = connection.execute(
+            "SELECT identity,CASE WHEN length(payload)<=65536 THEN payload ELSE NULL END "
+            "FROM workflow_effect_invocations WHERE invocation_id=? ORDER BY identity LIMIT 10001",
+            (handle.invocation_id,),
+        ).fetchall()
+        if len(indexed) > 10000:
+            raise ConfigurationError("executable source index capacity is exceeded")
+        for key, encoded in indexed:
+            if encoded is None:
+                raise ConfigurationError("executable source history index is inconsistent")
+            total += len(encoded.encode("utf-8"))
+            if total > 16 * 1024 * 1024:
+                raise ConfigurationError("executable source history capacity is exceeded")
+            try:
+                identity = EffectIdentity.from_value(json.loads(encoded))
+            except (ValueError, TypeError):
+                raise ConfigurationError(
+                    "executable source history index is inconsistent"
+                ) from None
+            if identity.operation not in {"run:script", SOURCE_POLICY}:
+                continue
+            if (
+                identity.key != key
+                or identity.invocation_id != handle.invocation_id
+                or identity.workflow_fingerprint != handle.workflow_fingerprint
+                or self.effect_journal.get(identity) is None
+            ):
+                raise ConfigurationError("executable source history proof is unavailable")
+            await asyncio.sleep(0)
+            await asyncio.sleep(0)
 
     def verify_protected_approval_plan(self, plan: WorkflowPlan) -> None:
         from .protected_approval_policy import ProtectedApprovalPolicy, original_expiry
@@ -608,34 +728,180 @@ class RuntimeServices:
         }.get(engine, f"{engine}-persistence.sqlite3")
         return str(Path(self.config.persistence.database).with_name(filename))
 
+    async def authorize_current_action(
+        self, action: str, resource: str, request_digest: str | None = None
+    ) -> None:
+        context = current_action_context()
+        if context is None:
+            if self.config.execution_authorization.enabled:
+                raise ConfigurationError("execution action requires an original invocation scope")
+            return
+        decision = self.execution_authorizations.authorize(
+            context.handle,
+            context.identity,
+            action,
+            resource,
+            request_digest
+            or effect_request_digest(
+                "owa/action-permission/v1",
+                {"identity": context.identity.key, "action": action, "resource": resource},
+            ),
+            execution_lease=context.handle._execution_lease,
+        )
+        if decision is not None and context.observer is not None:
+            value = context.observer(decision.identity, decision.receipt)
+            if inspect.isawaitable(value):
+                await value
+
+    def _verify_schedule_authority(
+        self, connection: StorageConnection, record: ScheduleRecord
+    ) -> None:
+        self.execution_authorizations.reserved_schedule(record, connection=connection)
+
+    def _reserve_scheduled_authority(
+        self,
+        connection: StorageConnection,
+        record: ScheduleRecord,
+        handle: ExecutionHandle,
+        claim: ScheduleClaim,
+    ) -> None:
+        self.execution_authorizations.reserve_scheduled_invocation(
+            handle, record, claim, connection=connection
+        )
+
+    async def authorize_action_for(
+        self,
+        handle: ExecutionHandle,
+        identity: EffectIdentity,
+        action: str,
+        resource: str,
+        *,
+        observer: Callable[..., Any] | None = None,
+    ) -> None:
+        with action_scope(ExecutionActionContext(handle, identity, observer)):
+            await self.authorize_current_action(action, resource)
+
+    async def _authorize_external_lookup(
+        self, identity: EffectIdentity, endpoint: str, lease: ExecutionLease | None
+    ) -> None:
+        handle = self.invocations.get(identity.invocation_id)
+        if handle is None or handle.workflow_fingerprint != identity.workflow_fingerprint:
+            raise ConfigurationError("external lookup requires the original invocation")
+        self.execution_authorizations.verify_invocation(handle)
+        handle._execution_lease = lease
+        context = current_action_context()
+        observer = (
+            context.observer if context is not None and context.identity == identity else None
+        )
+        with action_scope(ExecutionActionContext(handle, identity, observer)):
+            await self.authorize_protocol_destination("http", endpoint, {})
+            helper = self.external_action_recovery
+            if helper is None or helper.http is not self.protocols.http:
+                raise ConfigurationError("external lookup requires its original transport")
+            authentication = helper.http.authentication
+            if isinstance(authentication, ProfileAuthentication):
+                await self.authorize_protocol_credential(authentication.profile_name)
+
+    async def authorize_model_completion(self) -> None:
+        await self.authorize_current_action("model.complete", self.config.model.name)
+
+    async def authorize_tool_invocation(self, name: str, _payload: Any) -> None:
+        await self.authorize_current_action("tool.invoke", name)
+
+    async def authorize_protocol_destination(
+        self, protocol: str, endpoint: str, _payload: Any
+    ) -> None:
+        await self.authorize_current_action("protocol.call", protocol + ":" + endpoint)
+        if protocol == "mcp" and endpoint.startswith("stdio:"):
+            binding_id = endpoint.removeprefix("stdio:")
+            binding = next(
+                (
+                    server
+                    for server in self.config.sandbox.mcp_stdio.servers
+                    if server.id == binding_id
+                ),
+                None,
+            )
+            if binding is None:
+                raise ConfigurationError("stdio credential binding is not deployment-bound")
+            for reference in sorted(set(binding.secret_environment.values())):
+                await self.authorize_current_action(
+                    "credential.resolve", "sandbox-secret:" + reference
+                )
+
+    async def authorize_protocol_credential(self, profile_name: str) -> None:
+        await self.authorize_current_action(
+            "credential.resolve", "security-profile:" + profile_name
+        )
+
+    def _memory_namespace(self) -> str | None:
+        context = current_action_context()
+        authority = (
+            self.execution_authorizations.verify_invocation(context.handle)
+            if context is not None
+            else None
+        )
+        if authority is None:
+            if self.config.execution_authorization.enabled:
+                raise ConfigurationError("shared memory is unavailable without original authority")
+            return None
+        return (
+            "owa/principal-memory/v1:"
+            + hashlib.sha256(authority.principal.identity.encode("utf-8")).hexdigest()
+        )
+
     async def _search_knowledge(self, payload: Any, _context: Any) -> Any:
+        await self.authorize_current_action("knowledge.search", "knowledge")
         query = payload.get("query", "") if isinstance(payload, dict) else str(payload)
         limit = int(payload.get("limit", 5)) if isinstance(payload, dict) else 5
         return self.knowledge.search(query, limit)
 
     async def _add_memory(self, payload: Any, _context: Any) -> dict[str, int]:
+        namespace = self._memory_namespace()
+        if (
+            namespace is not None
+            and isinstance(payload, dict)
+            and set(payload) - {"text", "metadata"}
+        ):
+            raise ConfigurationError("memory input cannot select another namespace")
+        await self.authorize_current_action("memory.add", "memory:self")
         if not isinstance(payload, dict) or not isinstance(payload.get("text"), str):
             raise ValueError("add_memory requires a text string")
         metadata = payload.get("metadata", {})
         if not isinstance(metadata, dict):
             raise ValueError("add_memory metadata must be an object")
-        return {"id": self.memory.add(payload["text"], metadata)}
+        return {"id": self.memory.add(payload["text"], metadata, namespace=namespace)}
 
     async def _search_memory(self, payload: Any, _context: Any) -> list[dict[str, Any]]:
+        namespace = self._memory_namespace()
+        if (
+            namespace is not None
+            and isinstance(payload, dict)
+            and set(payload) - {"query", "limit"}
+        ):
+            raise ConfigurationError("memory input cannot select another namespace")
+        await self.authorize_current_action("memory.search", "memory:self")
         if not isinstance(payload, dict):
             payload = {"query": str(payload)}
         query = payload.get("query", "")
         limit = int(payload.get("limit", 10))
         if not isinstance(query, str) or limit < 1 or limit > 100:
             raise ValueError("search_memory requires a query and a limit between 1 and 100")
-        return self.memory.search(query, limit)
+        return self.memory.search(query, limit, namespace=namespace)
 
     async def _delete_memory(self, payload: Any, _context: Any) -> dict[str, bool]:
+        namespace = self._memory_namespace()
+        if namespace is not None and isinstance(payload, dict) and set(payload) - {"id"}:
+            raise ConfigurationError("memory input cannot select another namespace")
+        await self.authorize_current_action("memory.delete", "memory:self")
         if not isinstance(payload, dict) or not isinstance(payload.get("id"), int):
             raise ValueError("delete_memory requires an integer id")
-        return {"deleted": self.memory.delete(payload["id"])}
+        return {"deleted": self.memory.delete(payload["id"], namespace=namespace)}
 
     async def invoke_agent_tool(self, name: str, payload: Any) -> Any:
+        if name not in self.agent_tools:
+            raise ConfigurationError("agent tool is not deployment-bound")
+        await self.authorize_tool_invocation(name, payload)
         if name == "search_knowledge":
             return await self._search_knowledge(payload, None)
         if name == "add_memory":
@@ -651,7 +917,7 @@ class RuntimeServices:
             AgentToolBinding(
                 name="search_knowledge",
                 description="Search mounted knowledge documents.",
-                invoke=lambda payload: self._search_knowledge(payload, None),
+                invoke=lambda payload: self.invoke_agent_tool("search_knowledge", payload),
             )
         ]
         if self.memory_enabled:
@@ -660,17 +926,17 @@ class RuntimeServices:
                     AgentToolBinding(
                         name="add_memory",
                         description="Store durable agent memory with optional metadata.",
-                        invoke=lambda payload: self._add_memory(payload, None),
+                        invoke=lambda payload: self.invoke_agent_tool("add_memory", payload),
                     ),
                     AgentToolBinding(
                         name="search_memory",
                         description="Search long-term agent memory.",
-                        invoke=lambda payload: self._search_memory(payload, None),
+                        invoke=lambda payload: self.invoke_agent_tool("search_memory", payload),
                     ),
                     AgentToolBinding(
                         name="delete_memory",
                         description="Delete a long-term agent memory by id.",
-                        invoke=lambda payload: self._delete_memory(payload, None),
+                        invoke=lambda payload: self.invoke_agent_tool("delete_memory", payload),
                     ),
                 ]
             )
@@ -685,6 +951,7 @@ class RuntimeServices:
         _a2a_selection: A2ACardSelection | None = None,
         _openapi_selection: OpenApiOperationSelection | None = None,
     ) -> Any:
+        self.verify_protocol_authorization_binding()
         prepared = workflow_protocol_payload(protocol, payload)
         if _a2a_selection is None and _openapi_selection is None:
             return await self.protocols.call(protocol, prepared)
@@ -694,6 +961,13 @@ class RuntimeServices:
             _a2a_selection=_a2a_selection,
             _openapi_selection=_openapi_selection,
         )
+
+    def verify_protocol_authorization_binding(self) -> None:
+        if self.config.execution_authorization.enabled and (
+            self.protocols.authorize_destination != self.authorize_protocol_destination
+            or self.protocols.authorize_credential != self.authorize_protocol_credential
+        ):
+            raise ConfigurationError("protocol authorization is not deployment-bound")
 
     def close(self) -> None:
         if self._approval_expiry_dispatcher is not None:

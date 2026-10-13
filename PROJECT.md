@@ -9,7 +9,7 @@
 
 ## Current backlog delivery mode — 2026-10-13
 
-**17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-07 and S2-08 retain their accepted finite profiles. S2-09 is the earliest unfinished milestone; independent source authoring continues through S3-05 while its qualification gates remain open.
+**17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-07 and S2-08 retain their accepted finite profiles. S2-09 is the earliest unfinished milestone; independent source authoring continues through S3-05 while its qualification gates remain open. S3-06 source authoring and static checks are complete in a separate checkout; its full qualification remains pending.
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
@@ -18,9 +18,10 @@
 | S3-01 / S3-02 | Pinned MCP/A2A integration authored; latest hosted checkpoint failed. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
 | S3-03 | Operation adapters and independent jobs authored; lease/recovery corrections and acceptance pending. | [Operations](docs/s3-03-operation-adapters-acceptance.md) |
 | S3-04 | Captured sources and awaited controls authored; first common batch failed, corrections pending verification. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
-| S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored; integration and qualification pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md) |
+| S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored; first combined common profile failed; corrections and full qualification pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md) |
+| S3-06 | Identity, action policy, isolation and credential safeguards are authored; full batch qualification pending. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
 
-The published feature checkpoint is `67aa724` on draft [PR 64](https://github.com/bassemZohdy/open-workflow-agent/pull/64). Its aggregate CI failed; passing image, security and individual platform/database checks do not qualify the unfinished tasks. Later local batches retain commands, frozen-source manifests and failed results. No new task, full inventory row, JavaScript profile or release is qualified by source authoring or selected passes.
+The published feature checkpoint is `67aa724` on draft [PR 64](https://github.com/bassemZohdy/open-workflow-agent/pull/64). Its aggregate CI failed; passing image, security and individual platform/database checks do not qualify the unfinished tasks. Later local batches retain commands, frozen-source manifests and failed results. The combined S3-03/04/05 batch at `ebc2694` retains 1,016 unchanged tracked inputs. Its five build/provenance checks passed; the common profile failed with 23 failures, 1,089 passes and 227 skips. ADK and LangGraph each failed with 30 failures, 274 passes and 397 skips; optional Agent Framework passed with 254 passes and 565 skips. All four profiles ended without tracked source changes. Corrections are being authored separately and have not been retested. S3-06 edits do not change that frozen batch. No new task, full inventory row, JavaScript profile or release is qualified by source authoring or selected passes.
 
 Continue ready work in parallel, complete a coherent source batch before testing it, and push validated feature work. Running checks and failures with an actionable fix remain active. Only a repeated blocker with no next step moves the original unchecked task to the final deferred section, with full evidence and resume conditions. See [TODO.md](TODO.md) for the complete ordered scope, [documentation guide](docs/README.md) for topic navigation, and [earlier delivery checkpoints](docs/validation-history/backlog-delivery-2026-10-13.md) for retained history.
 
@@ -45,63 +46,63 @@ Core owns the public OWS 1.0.3 contract and common services; principal adapters 
 
 ### Dependency audit correction — 2026-10-11 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#dependency-audit-correction--2026-10-11-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#dependency-audit-correction--2026-10-11-verified).
 
 ### S2-04 retry, timeout and exception work — 2026-10-12 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-04-retry-timeout-and-exception-work--2026-10-12-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-04-retry-timeout-and-exception-work--2026-10-12-verified).
 
 ### S2-06 durable timer and schedule work — 2026-10-13 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-06-durable-timer-and-schedule-work--2026-10-13-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-06-durable-timer-and-schedule-work--2026-10-13-verified).
 
 ### S2-05 embedded event work — 2026-10-12 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-05-embedded-event-work--2026-10-12-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-05-embedded-event-work--2026-10-12-verified).
 
 ### S2-03 checkpoint recovery — 2026-10-12 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-03-checkpoint-recovery--2026-10-12-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-03-checkpoint-recovery--2026-10-12-verified).
 
 ### S2-02 competitive fork decisions — 2026-10-11 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-02-competitive-fork-decisions--2026-10-11-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-02-competitive-fork-decisions--2026-10-11-verified).
 
 ### S2-01 ordered fork results — 2026-10-11 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-01-ordered-fork-results--2026-10-11-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-01-ordered-fork-results--2026-10-11-verified).
 
 ### S1-08 current implementation audit — 2026-10-11 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-08-current-implementation-audit--2026-10-11-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-08-current-implementation-audit--2026-10-11-verified).
 
 ### S1-07 reusable definitions and resource identity — 2026-10-11 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-07-reusable-definitions-and-resource-identity--2026-10-11-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-07-reusable-definitions-and-resource-identity--2026-10-11-verified).
 
 ### S1-06 embedded/bootstrap defaults — 2026-10-11 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-06-embeddedbootstrap-defaults--2026-10-11-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-06-embeddedbootstrap-defaults--2026-10-11-verified).
 
 ### S1-05 native task execution — 2026-10-11 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-05-native-task-execution--2026-10-11-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-05-native-task-execution--2026-10-11-verified).
 
 ### Stage 1 admission work — 2026-10-11 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#stage-1-admission-work--2026-10-11-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#stage-1-admission-work--2026-10-11-verified).
 
 ### S1-02 expression work — 2026-10-11 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-02-expression-work--2026-10-11-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-02-expression-work--2026-10-11-verified).
 
 ### S1-03 data-flow work — 2026-10-11 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-03-data-flow-work--2026-10-11-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-03-data-flow-work--2026-10-11-verified).
 
 ### S1-04 control-flow work — 2026-10-11 (verified)
 
-[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-04-control-flow-work--2026-10-11-verified)..
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-04-control-flow-work--2026-10-11-verified).
 
 ## Formal Release v0.1.0 — 2026-08-28
 

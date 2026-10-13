@@ -450,7 +450,7 @@ def test_legacy_business_intent_is_never_promoted_to_source_authority(original, 
             identity.key,
             identity.invocation_id,
             identity.workflow_fingerprint,
-            json.dumps(identity.as_value()),
+            json.dumps(asdict(identity)),
         ),
     )
     if status != "orphan-index":

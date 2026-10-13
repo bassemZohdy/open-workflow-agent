@@ -435,6 +435,7 @@ def recovery_profile(
             policy = {
                 "agent": config.agent.model_dump(mode="json"),
                 "security": config.security.model_dump(mode="json"),
+                "execution_authorization": config.execution_authorization.model_dump(mode="json"),
                 "protocols": protocol_policy,
                 "catalogs": {
                     key: value.model_dump(mode="json")
@@ -488,6 +489,7 @@ def recovery_profile(
             "continuation_supported": continuation_supported,
             "common_schema": "owa-runtime-v1",
             "adapter_mode": adapter_mode,
+            "native_authority_namespace": "owa/principal-native/v1" if engine == "adk" else None,
             "native_binding": (
                 "common-fallback-v1"
                 if adapter_mode == "common_fallback"
@@ -702,7 +704,7 @@ def _stored_evidence(
     binding = _parsed(row[1], limit=MAX_PROFILE_BYTES)
     if (
         not isinstance(binding, dict)
-        or set(binding)
+        or set(binding) - {"execution_authority_digest"}
         != {
             "profile",
             "identity",
@@ -715,6 +717,11 @@ def _stored_evidence(
         or row[0] != handle.workflow_fingerprint
         or binding["identity"] != _identity(handle)
         or row[2] != _digest(binding)
+        or "execution_authority_digest" in binding
+        and (
+            type(binding["execution_authority_digest"]) is not str
+            or _SHA256.fullmatch(binding["execution_authority_digest"]) is None
+        )
     ):
         raise _unavailable("binding_invalid")
     current = invocations.get(handle.invocation_id)
@@ -810,6 +817,11 @@ class RecoveryDefinitionArchive:
             lambda engine: recovery_profile(engine, backend=self.connection.kind)
         )
         self.trust_verifier = trust_verifier
+        self.admission_participant: (
+            Callable[[WorkflowPlan, ExecutionHandle, Any, ExecutionLease | None, bool], None] | None
+        ) = None
+        self.authority_verifier: Callable[[ExecutionHandle], Any] | None = None
+        self.authority_expectation: Callable[[ExecutionHandle], str | None] | None = None
         self._lock = threading.RLock()
         self.connection.execute(
             "CREATE TABLE IF NOT EXISTS recovery_definitions "
@@ -872,6 +884,8 @@ class RecoveryDefinitionArchive:
                 self.trust_verifier(plan)
             except OwaError:
                 raise _unavailable("deployment_trust_changed") from None
+        if self.authority_verifier is not None:
+            self.authority_verifier(handle)
         return plan, binding
 
     def admit(
@@ -923,6 +937,10 @@ class RecoveryDefinitionArchive:
             "runtime_profile": manifest,
             "runtime_profile_digest": _digest(manifest),
         }
+        if self.authority_expectation is not None:
+            expected_authority = self.authority_expectation(handle)
+            if expected_authority is not None:
+                binding["execution_authority_digest"] = expected_authority
         with (
             self._lock,
             owned_write_transaction(
@@ -947,6 +965,8 @@ class RecoveryDefinitionArchive:
                 _, original = self._read(handle, allow_unqualified=True)
                 if original != binding:
                     raise _unavailable("binding_invalid")
+                if self.admission_participant is not None:
+                    self.admission_participant(plan, handle, input_data, execution_lease, False)
                 return
             if self.has_binding(handle):
                 raise _unavailable("binding_invalid")
@@ -981,6 +1001,8 @@ class RecoveryDefinitionArchive:
             insert_completed_receipt(
                 self.connection, admission_identity(handle), _expected_receipt(binding)
             )
+            if self.admission_participant is not None:
+                self.admission_participant(plan, handle, input_data, execution_lease, True)
             self._read(handle, allow_unqualified=True)
 
     def resolve(self, handle: ExecutionHandle) -> WorkflowPlan:

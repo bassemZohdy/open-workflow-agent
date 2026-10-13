@@ -56,6 +56,7 @@ class ScheduleRecord:
     event_scope: str = "anonymous"
     timezone: str = "UTC"
     next_sequence: int = 1
+    execution_authority_digest: str | None = None
     _claim: ScheduleClaim | None = field(default=None, init=False, repr=False, compare=False)
 
     def as_dict(self) -> dict[str, Any]:
@@ -85,6 +86,7 @@ def _payload(record: ScheduleRecord) -> dict[str, Any]:
         key: getattr(record, key)
         for key in record.__dataclass_fields__
         if key not in {"_claim", "lease_until"}
+        and not (key == "execution_authority_digest" and getattr(record, key) is None)
     }
 
 
@@ -109,6 +111,15 @@ class ScheduleStore:
         self._failpoint: Callable[[str], None] = lambda _name: None
         self.trigger_scan_cursor: str | None = None
         self.trigger_scan_errors: tuple[tuple[str, Exception], ...] = ()
+        self.authority_expectation: Callable[[ScheduleRecord], str | None] | None = None
+        self.authority_verifier: Callable[[StorageConnection, ScheduleRecord], None] | None = None
+        self.authority_participant: Callable[[StorageConnection, ScheduleRecord], None] | None = (
+            None
+        )
+        self.invocation_authority_participant: (
+            Callable[[StorageConnection, ScheduleRecord, ExecutionHandle, ScheduleClaim], None]
+            | None
+        ) = None
 
     def _get(self, connection: StorageConnection, schedule_id: str) -> ScheduleRecord | None:
         row = connection.execute(
@@ -141,6 +152,8 @@ class ScheduleStore:
             profile = parse_schedule(json.loads(record.workflow_source_json).get("schedule"))
             if profile.kind != record.kind or profile.interval_seconds != record.interval_seconds:
                 raise ValueError("schedule profile disagrees")
+            if self.authority_verifier is not None:
+                self.authority_verifier(connection, record)
             return record
         except Exception:
             raise ScheduleValidationError(
@@ -216,6 +229,8 @@ class ScheduleStore:
                 event_scope=event_scope,
                 timezone=timezone,
             )
+            if self.authority_expectation is not None:
+                record.execution_authority_digest = self.authority_expectation(record)
             connection.execute(
                 "INSERT INTO schedules(schedule_id,payload,status,next_run_at,"
                 "lease_until,operation_key)"
@@ -232,6 +247,8 @@ class ScheduleStore:
                 "INSERT INTO schedule_definitions(schedule_id,payload) VALUES (?, ?)",
                 (record.schedule_id, _definition(record)),
             )
+            if self.authority_participant is not None:
+                self.authority_participant(connection, record)
             return record
 
     def get(self, schedule_id: str) -> ScheduleRecord | None:
@@ -460,6 +477,7 @@ class ScheduleStore:
             handle = self._binding(connection, row, record)
             if handle.engine != engine:
                 raise ScheduleOperationConflict("schedule belongs to a different engine")
+            self._bind_authority(connection, record, row, handle)
             return handle
         handle = self.invocations.create_in_transaction(
             connection,
@@ -497,7 +515,25 @@ class ScheduleStore:
         record.last_invocation_id = handle.invocation_id
         self._save(connection, record)
         self._failpoint("binding-before-commit")
+        self._bind_authority(connection, record, row, handle)
         return handle
+
+    def _bind_authority(
+        self,
+        connection: StorageConnection,
+        record: ScheduleRecord,
+        row: Any,
+        handle: ExecutionHandle,
+    ) -> None:
+        if self.invocation_authority_participant is None or not row[3] or row[5] is None:
+            return
+        occurrence = connection.execute(
+            "SELECT occurrence_key FROM schedule_slots WHERE slot_key=?", (row[0],)
+        ).fetchone()
+        if occurrence is None:
+            raise ScheduleValidationError("schedule authority slot is unavailable")
+        claim = ScheduleClaim(record.schedule_id, occurrence[0], row[3], row[4], row[5])
+        self.invocation_authority_participant(connection, record, handle, claim)
 
     def bind_trigger_in_transaction(
         self,

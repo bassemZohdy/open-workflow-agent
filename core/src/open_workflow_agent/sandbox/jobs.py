@@ -22,7 +22,13 @@ from dataclasses import asdict, dataclass, replace
 from typing import TYPE_CHECKING, Any, Literal
 
 from .._effect_storage import insert_completed_receipt
-from ..effects import EffectIdentity, EffectReceipt, ReceiptDependency, effect_request_digest
+from ..effects import (
+    EffectIdentity,
+    EffectReceipt,
+    OutcomeParticipant,
+    ReceiptDependency,
+    effect_request_digest,
+)
 from ..errors import InvocationStateConflict, WorkflowExecutionError
 from ..ownership import ExecutionLease, owned_write_transaction
 from ..persistence import ExecutionHandle
@@ -354,6 +360,7 @@ class SandboxJobStore:
         if type(max_pending) is not int or not 1 <= max_pending <= 10_000:
             raise ValueError("sandbox job capacity must be bounded")
         self.services = services
+        self.outcome_participant: OutcomeParticipant | None = None
         self.connection = services.effect_journal.connection
         self.profile_provider = profile_provider
         self.max_pending = max_pending
@@ -927,7 +934,10 @@ class SandboxJobStore:
                 self.connection, policy_identity(identity), _receipt(value, ADMISSION_POLICY)
             )
             if _action:
-                insert_completed_receipt(self.connection, identity, self._action_receipt(value))
+                completed = self._action_receipt(value)
+                if self.outcome_participant is not None:
+                    self.outcome_participant(identity, completed, execution_lease=execution_lease)
+                insert_completed_receipt(self.connection, identity, completed)
             result = self.get(identifier)
             if result is None:
                 raise _failure()

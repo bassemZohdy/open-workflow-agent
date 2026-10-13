@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, replace
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -100,6 +100,24 @@ def _known(value: dict[str, Any], operation: str) -> EffectReceipt:
     return EffectReceipt(
         effect_request_digest(operation, value), _OWNER, status="completed", output=value
     )
+
+
+def _identity_value(identity: EffectIdentity) -> dict[str, Any]:
+    """Project the private typed identity into finite JSON before hashing."""
+    return {
+        "invocation_id": identity.invocation_id,
+        "workflow_fingerprint": identity.workflow_fingerprint,
+        "task_reference": identity.task_reference,
+        "occurrence": [list(item) for item in identity.occurrence],
+        "operation": identity.operation,
+    }
+
+
+def _dependency_value(dependency: ReceiptDependency) -> dict[str, Any]:
+    return {
+        "identity": _identity_value(dependency.identity),
+        "receipt_digest": dependency.receipt_digest,
+    }
 
 
 def _identity(value: Any) -> EffectIdentity:
@@ -503,13 +521,13 @@ class ProtectedApprovalStore:
             "policy": policy.as_value(),
             "event_scope": record.event_scope,
             "request_event": event.as_dict(),
-            "origin": asdict(origin_identity),
+            "origin": _identity_value(origin_identity),
             "origin_request_digest": request_digest,
             "invocation_binding": _binding(handle),
             "input_digest": effect_request_digest(
                 REQUEST_PROFILE, self.invocations.read_input(handle)
             ),
-            "definition_receipt": asdict(
+            "definition_receipt": _dependency_value(
                 ReceiptDependency.capture(definition_identity, definition)
             ),
             "expires_at": expiry,

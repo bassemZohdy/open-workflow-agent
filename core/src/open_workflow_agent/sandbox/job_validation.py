@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from ..effects import EffectIdentity, ReceiptDependency, effect_request_digest
 from ..errors import InvocationStateConflict, WorkflowExecutionError
+from ..execution_authorization import verify_authorized_business_snapshot
 from ..recovery_definitions import (
     ADMISSION_OPERATION,
     MAX_ARCHIVE_BYTES,
@@ -33,6 +34,7 @@ from .jobs import (
     _PROFILE,
     ADMISSION_POLICY,
     SandboxJobProfile,
+    SandboxJobStore,
     _decode,
     _raw_receipt,
     _receipt,
@@ -206,6 +208,15 @@ def verify_backend_launch(
             or binding["runtime_profile_digest"] != archive_digest(binding["runtime_profile"])
         ):
             raise ValueError("changed original definition binding")
+        action_receipt = _raw_receipt(connection, identity)
+        expected_action = SandboxJobStore._action_receipt(value)
+        if (
+            action_receipt is not None or "execution_authority_digest" in binding
+        ) and action_receipt != expected_action:
+            raise ValueError("changed accepted action")
+        verify_authorized_business_snapshot(
+            connection, identity, expected_action, creator=value["creator"]
+        )
         definition = _json_row(
             connection,
             "recovery_definitions",

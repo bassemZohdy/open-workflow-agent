@@ -75,7 +75,11 @@ def snapshot(services, handle):
 @pytest.mark.parametrize("outcome", ["value", "null", "fault"])
 def test_current_unary_owner_retains_one_immutable_known_outcome(pending_call, outcome):
     services, _handle, lease, identity, pending = pending_call
-    error = {"code": "tool_error", "message": "known remote fault"} if outcome == "fault" else None
+    error = (
+        {"code": "tool_error", "message": "known remote fault", "details": {}}
+        if outcome == "fault"
+        else None
+    )
     output = {"value": 7} if outcome == "value" else None
     completed = services.effect_journal.finish_grpc(
         identity,

@@ -36,6 +36,8 @@ class ToolRegistry:
     ) -> None:
         self.tools = {tool.name: tool for tool in tools or []}
         self.protocols = protocols or ProtocolServices()
+        self.authorize: Callable[[str, Any], Awaitable[None]] | None = None
+        self.authority_enabled: Callable[[], bool] = lambda: False
 
     @classmethod
     def from_config(
@@ -115,6 +117,19 @@ class ToolRegistry:
         tool = self.tools.get(name)
         if tool is None:
             raise ToolError(f"configured tool not found: {name}")
+        if self.authorize is not None:
+            await self.authorize(name, payload)
+        if self.authority_enabled() and (
+            self.protocols.authorize_destination is None
+            or self.protocols.authorize_credential is None
+        ):
+            raise ToolError("configured tool authorization transport is unavailable")
+        if self.authority_enabled() and isinstance(payload, dict):
+            if {"security_profile", "securityProfile"}.intersection(payload):
+                raise ToolError("agent tool input cannot select deployment credentials")
+            for key in ("method", "name", "transport", "protocolVersion", "binding"):
+                if key in tool.options and key in payload and payload[key] != tool.options[key]:
+                    raise ToolError("agent tool input cannot replace its deployment routing")
         if tool.type == "openapi" and (
             not isinstance(payload, dict) or set(payload) - {"parameters", "output", "redirect"}
         ):

@@ -228,6 +228,9 @@ class InternalSandboxBackend:
             workspace = Path(temporary)
             executable, arguments = self._prepare_command(request, workspace)
             environment = self._build_environment(request, workspace)
+            from ..credential_guard import process_credential_guard
+
+            output_guard = process_credential_guard(request, environment)
             self._check_workspace(workspace)
             process = None
             job: Any = None
@@ -298,8 +301,8 @@ class InternalSandboxBackend:
                             transport.close()
                 elif job is not None:
                     job.close()
-            stdout = cast(str, results[1])
-            stderr = cast(str, results[2])
+            stdout = output_guard.text(cast(str, results[1]))
+            stderr = output_guard.text(cast(str, results[2]))
             exit_code = cast(int, results[3])
             self._check_workspace(workspace)
             if request.execution_id in self._awaited_stops:
@@ -490,6 +493,11 @@ class InternalSandboxBackend:
                 environment[name] = resolved
             else:
                 environment[name] = configured_value
+        if request.kind == "script":
+            # The admitted Python source/input are UTF-8 on every host. This
+            # controlled interpreter binding overrides a requested host codec;
+            # no ambient locale/environment is inherited for encoding identity.
+            environment["PYTHONIOENCODING"] = "utf-8:strict"
         total = sum(
             len(key.encode()) + len(environment_value.encode())
             for key, environment_value in environment.items()

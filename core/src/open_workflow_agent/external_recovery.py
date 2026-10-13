@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import threading
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, replace
 from typing import Any
 from urllib.parse import urlsplit, urlunsplit
@@ -345,6 +346,9 @@ class HttpExternalActionRecovery:
         self.receivers = receivers
         self.connection = journal.connection
         self._lock = threading.RLock()
+        self.authorize_lookup: (
+            Callable[[EffectIdentity, str, ExecutionLease | None], Awaitable[None]] | None
+        ) = None
         if len({r.business_endpoint for r in receivers}) != len(receivers) or len(
             {r.id for r in receivers}
         ) != len(receivers):
@@ -557,6 +561,10 @@ class HttpExternalActionRecovery:
                     ),
                 ),
             )
+            if self.journal._execution_authorization_intent is not None:
+                self.journal._execution_authorization_intent(
+                    identity, intent, execution_lease=execution_lease, first_intent=True
+                )
             policy = EffectReceipt(
                 admission_digest, "external-recovery", status="completed", output=value
             )
@@ -608,6 +616,8 @@ class HttpExternalActionRecovery:
             if intent.status != "pending":
                 policy = self.journal.get(replace(identity, operation=RECOVERY_OPERATION))
                 return (intent, policy) if policy is not None else None
+        if self.authorize_lookup is not None:
+            await self.authorize_lookup(identity, receiver.lookup_endpoint, execution_lease)
         try:
             proof = await self.http.request(
                 "GET",
@@ -698,6 +708,10 @@ def finish_external(
             error_status_code=outcome["error_status_code"],
             external_outcome=ExternalOutcomeDependency(admission_digest, digest),
         )
+        if journal._execution_authorization_seal is not None:
+            journal._execution_authorization_seal(
+                identity, resolved, execution_lease=execution_lease
+            )
         connection.execute(
             "UPDATE workflow_effects SET status=?,payload=? "
             "WHERE identity=? AND owner=? AND status='pending'",

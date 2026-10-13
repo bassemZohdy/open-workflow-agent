@@ -62,6 +62,18 @@ on:
       - "tests/contract/_version_recovery_worker.py"
       - "core/src/open_workflow_agent/protocols.py"
       - "core/src/open_workflow_agent/security.py"
+      - "core/src/open_workflow_agent/execution_author*.py"
+      - "core/src/open_workflow_agent/execution_context.py"
+      - "core/src/open_workflow_agent/credential_guard.py"
+      - "tests/core/test_execution_author*.py"
+      - "tests/core/test_execution_context_isolation.py"
+      - "tests/core/test_memory_namespaces.py"
+      - "tests/core/test_credential_projection.py"
+      - "tests/core/test_api_execution_authority.py"
+      - "tests/core/test_authenticated_catalog_metadata.py"
+      - "tests/core/_credential_catalog_peer.py"
+      - "tests/contract/test_execution_author*.py"
+      - "tests/contract/_execution_authority_recovery_worker.py"
       - "core/src/open_workflow_agent/_authentication.py"
       - "core/src/open_workflow_agent/mcp*.py"
       - "core/src/open_workflow_agent/sandbox/**"
@@ -103,6 +115,7 @@ on:
       - "tests/contract/test_protected_approval*.py"
       - "tests/contract/_protected_approval*.py"
       - "tests/ci/test_protected_approval_ci_selection.py"
+      - "tests/ci/test_execution_authority_ci_selection.py"
       - "core/src/open_workflow_agent/events.py"
       - "core/src/open_workflow_agent/event_store.py"
       - "core/src/open_workflow_agent/durable_events.py"
@@ -275,6 +288,13 @@ jobs:
             tests/core/test_protected_approvals.py \
             tests/core/test_approval_dispatcher.py \
             tests/core/test_protected_approval_recovery.py \
+            tests/core/test_execution_authority.py \
+            tests/core/test_execution_authorization.py \
+            tests/core/test_execution_context_isolation.py \
+            tests/core/test_memory_namespaces.py \
+            tests/core/test_credential_projection.py \
+            tests/core/test_api_execution_authority.py \
+            tests/core/test_authenticated_catalog_metadata.py \
             tests/core/test_timer_store.py \
             tests/core/test_child_workflow_budgets.py \
             tests/core/test_child_delivery_guards.py \
@@ -637,6 +657,8 @@ jobs:
             ../../tests/contract/test_grpc_process_recovery.py \
             ../../tests/contract/test_protected_approval_workflows.py \
             ../../tests/contract/test_protected_approval_process_recovery.py \
+            ../../tests/contract/test_execution_authority_isolation.py \
+            ../../tests/contract/test_execution_authority_process_recovery.py \
             ../../tests/core/test_executable_source_admission.py \
             ../../tests/contract/test_executable_source_calls.py \
             ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql
@@ -683,6 +705,8 @@ jobs:
             ../../tests/contract/test_grpc_process_recovery.py \
             ../../tests/contract/test_protected_approval_workflows.py \
             ../../tests/contract/test_protected_approval_process_recovery.py \
+            ../../tests/contract/test_execution_authority_isolation.py \
+            ../../tests/contract/test_execution_authority_process_recovery.py \
             ../../tests/core/test_executable_source_admission.py \
             ../../tests/contract/test_executable_source_calls.py \
             ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql

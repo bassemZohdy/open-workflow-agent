@@ -14,10 +14,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urljoin, urlparse
 
-import yaml
+import httpx
 
 from .catalog import CatalogContext, FunctionCatalog
 from .config import CatalogAuthenticationConfig, ExternalCatalogConfig
+from .credential_guard import LiteralCredentialGuard, credential_scope
 from .errors import OwaError, ToolError, UnsupportedWorkflowFeature, WorkflowSchemaError
 from .expressions import ExpressionEvaluator, ExpressionMode
 from .observability import EventSink, WorkflowEvent
@@ -448,6 +449,19 @@ class ExternalCatalogResolver:
     async def _fetch(
         self, resource_uri: str, policy: ExternalCatalogConfig, reference: str
     ) -> _CachedResource:
+        with credential_scope() as guard:
+            return await self._fetch_checked(
+                resource_uri, policy, reference, credential_guard=guard
+            )
+
+    async def _fetch_checked(
+        self,
+        resource_uri: str,
+        policy: ExternalCatalogConfig,
+        reference: str,
+        *,
+        credential_guard: LiteralCredentialGuard,
+    ) -> _CachedResource:
         now = time.monotonic()
         cached = self._cache.get(resource_uri)
         if cached is not None and now - cached.fetched_at > policy.max_cache_age_seconds:
@@ -476,6 +490,7 @@ class ExternalCatalogResolver:
                 output="response",
                 request_timeout=policy.timeout_seconds,
                 allow_not_modified=True,
+                _return_response=True,
             )
         except OwaError as exc:
             safe_code = exc.code
@@ -502,30 +517,34 @@ class ExternalCatalogResolver:
                 "external catalog resolution failed",
                 details={"function": reference, "code": "catalog_resolution_failed"},
             ) from exc
-        if not isinstance(response, Mapping):
+        if not isinstance(response, httpx.Response):
             raise ToolError("external catalog returned an invalid HTTP response")
-        status = response.get("status")
+        if credential_guard.contains_literal(response.content) or any(
+            credential_guard.contains_literal(value) for value in response.headers.values()
+        ):
+            raise UnsupportedWorkflowFeature(
+                "external catalog metadata contains private credentials"
+            )
+        status = response.status_code
         if status == 304 and cached is not None:
             self._verify_pin(cached.digest, policy, reference, resource_uri)
             cached.fetched_at = now
             self._emit("CatalogRevalidated", reference, status="revalidated")
             return cached
-        if not isinstance(status, int) or status < 200 or status >= 300:
+        if not 200 <= status < 300:
             raise ToolError(
                 "external catalog returned an invalid status",
                 details={"function": reference, "status": status},
             )
-        body = response.get("body")
+        raw = response.content
+        try:
+            body = response.json()
+        except ValueError:
+            body = raw
         from .workflow import _validate_json_value, load_workflow_text
 
         if not isinstance(body, (bytes, str)):
             _validate_json_value(body)
-        if isinstance(body, bytes):
-            raw = body
-        elif isinstance(body, str):
-            raw = body.encode("utf-8")
-        else:
-            raw = yaml.safe_dump(body, sort_keys=True).encode("utf-8")
         if len(raw) > policy.max_response_bytes:
             raise ToolError("external catalog response exceeds configured maximum size")
         digest = hashlib.sha256(raw).hexdigest()
@@ -541,8 +560,11 @@ class ExternalCatalogResolver:
             ) from None
         if not isinstance(definition, Mapping):
             raise WorkflowSchemaError(f"external catalog function {reference} must be an object")
-        headers_value = response.get("headers")
-        response_headers = dict(headers_value) if isinstance(headers_value, Mapping) else {}
+        if credential_guard.project(dict(definition)) != dict(definition):
+            raise UnsupportedWorkflowFeature(
+                "external catalog metadata contains private credentials"
+            )
+        response_headers = dict(response.headers)
         resource = _CachedResource(
             resource_uri=resource_uri,
             reference=reference,
@@ -908,6 +930,7 @@ def _contains_sensitive_header(value: Any) -> bool:
 class _HostBoundAuthentication:
     def __init__(self, provider: AuthenticationProvider, host: str) -> None:
         self.provider = provider
+        self.profile_name = getattr(provider, "profile_name", None)
         self.host = host.lower()
 
     def headers(self, endpoint: str) -> Mapping[str, str]:

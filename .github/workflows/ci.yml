@@ -210,7 +210,7 @@ jobs:
           ../../tests/core/test_approval_dispatcher.py
           ../../tests/core/test_protected_approval_recovery.py
           ../../tests/contract/test_protected_approval_workflows.py
-          ../../tests/contract/test_protected_approval_process_recovery.py
+          ../../tests/contract/test_protected_approval_process_recovery.py ../../tests/contract/test_execution_authority_isolation.py ../../tests/contract/test_execution_authority_process_recovery.py ../../tests/core/test_execution_authority.py ../../tests/core/test_execution_authorization.py ../../tests/core/test_execution_context_isolation.py ../../tests/core/test_memory_namespaces.py ../../tests/core/test_credential_projection.py ../../tests/core/test_api_execution_authority.py ../../tests/core/test_authenticated_catalog_metadata.py
 
   windows-native-lifecycle:
     name: Windows native lifecycle and receiver recovery

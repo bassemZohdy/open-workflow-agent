@@ -23,6 +23,7 @@ from .errors import (
     UnsupportedWorkflowFeature,
     WorkflowExecutionError,
 )
+from .execution_authority import authority_scope
 from .initial_delivery_dispatcher import InitialDeliveryDispatcher
 from .lifecycle import (
     INVOCATION_STATES,
@@ -153,6 +154,13 @@ class WorkflowEngine:
 
     @asynccontextmanager
     async def _own_execution(self, handle: ExecutionHandle) -> AsyncIterator[None]:
+        authority = self.services.execution_authorizations.verify_invocation(handle)
+        with authority_scope(authority):
+            async with self._own_execution_scoped(handle):
+                yield
+
+    @asynccontextmanager
+    async def _own_execution_scoped(self, handle: ExecutionHandle) -> AsyncIterator[None]:
         store = self.services.execution_ownership
         lease = store.acquire(handle, seconds=self._execution_ownership_seconds)
         released = asyncio.Event()
@@ -417,6 +425,7 @@ class WorkflowEngine:
 
     async def _preflight_timer_delivery(self, handle: ExecutionHandle) -> WorkflowPlan:
         plan = self.services.resolve_original_definition(handle)
+        await self.services.verify_executable_source_history(handle)
         self.services.verify_protected_approvals(handle)
         self._verify_event_requirements(plan)
         await self._preflight_native_continuation(handle)
@@ -425,6 +434,8 @@ class WorkflowEngine:
     async def _preflight_definition(
         self, handle: ExecutionHandle, plan: WorkflowPlan, *, initial: bool = False
     ) -> None:
+        await self.services.verify_executable_source_history(handle)
+        self.services.execution_authorizations.verify_invocation(handle)
         self.services.verify_protected_approval_plan(plan)
         self.services.verify_protected_approvals(handle)
         self.services.verify_grpc_plan(plan)
@@ -1130,6 +1141,17 @@ class WorkflowEngine:
             "engine_execution_reference": invocation.engine_execution_reference,
             "workflow_name": workflow.name,
             "workflow_version": workflow.version,
+            "user_id": invocation.user_id,
+            "authority": (
+                authority.as_value()
+                if (
+                    authority := self.services.execution_authorizations.verify_invocation(
+                        invocation
+                    )
+                )
+                is not None
+                else None
+            ),
             "parent_invocation_id": invocation.parent_invocation_id,
             "parent_task_reference": invocation.parent_task_reference,
             "_invocation_handle": invocation,

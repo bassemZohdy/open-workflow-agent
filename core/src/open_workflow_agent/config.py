@@ -24,7 +24,7 @@ from pydantic import (
 
 from ._version import __version__
 from .errors import ConfigurationError, ToolError
-from .security import AuthorizationPolicy, SecurityConfig
+from .security import AuthorizationPolicy, ExecutionAuthorizationConfig, SecurityConfig
 
 if TYPE_CHECKING:
     from .grpc_client import GrpcBinding
@@ -1030,6 +1030,9 @@ class RuntimeConfig(StrictModel):
     a2a: A2AConfig = Field(default_factory=A2AConfig)
     protocols: ProtocolConfig = Field(default_factory=ProtocolConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
+    execution_authorization: ExecutionAuthorizationConfig = Field(
+        default_factory=ExecutionAuthorizationConfig
+    )
     traffic_policy: TrafficPolicyConfig = Field(default_factory=TrafficPolicyConfig)
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
     tools: list[ToolConfig] = Field(default_factory=list)

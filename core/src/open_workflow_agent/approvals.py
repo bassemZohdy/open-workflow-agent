@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hmac
 import json
 import re
 import time
@@ -21,13 +20,14 @@ from .errors import (
     ApprovalConflict,
     ApprovalNotFound,
     ApprovalValidationError,
+    OwaError,
 )
 from .events import EventBus, EventDecision, EventEnvelope, EventProgress, EventRegistration
 from .ownership import ExecutionLease
 from .persistence import InvocationStore
 from .protected_approval_policy import actor_identity
 from .protected_approval_store import ProtectedApprovalStore, _tables, table_exists
-from .security import BearerSecurityProfile, Principal, SecurityConfig, resolve_secret
+from .security import BearerSecurityProfile, Principal, SecurityConfig, authenticate_static
 from .storage import StorageConnection, ensure_storage_namespace, open_storage
 
 APPROVAL_REQUEST_EVENT = "io.openworkflow.agent.approval.requested"
@@ -671,15 +671,12 @@ class ApprovalService:
             raise ApprovalAuthorizationError("approval operator authorization failed") from exc
         if not isinstance(profile, BearerSecurityProfile):
             raise ApprovalAuthorizationError("approval operator authorization failed")
-        if not authorization or not authorization.startswith("Bearer "):
-            raise ApprovalAuthorizationError("approval operator bearer token is required")
-        supplied = authorization.removeprefix("Bearer ").strip()
         try:
-            expected = resolve_secret(profile.token)
-        except ValueError as exc:
-            raise ApprovalAuthorizationError("approval operator authorization failed") from exc
-        if not hmac.compare_digest(supplied, expected):
-            raise ApprovalAuthorizationError("approval operator authorization failed")
+            if not isinstance(authorization, str):
+                raise ValueError
+            authenticate_static([(b"authorization", authorization.encode("ascii"))], profile)
+        except (OwaError, ValueError, TypeError, UnicodeError):
+            raise ApprovalAuthorizationError("approval operator authorization failed") from None
         if operator_id is None or not operator_id.strip():
             raise ApprovalAuthorizationError("approval operator identity is required")
         return operator_id.strip()

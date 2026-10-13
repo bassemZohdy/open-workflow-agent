@@ -8,7 +8,13 @@ from typing import TYPE_CHECKING, Any
 from .durable_events import DurableEventBus
 from .errors import ApprovalAuthorizationError, ApprovalConflict, ApprovalValidationError, OwaError
 from .protected_approval_policy import ProtectedApprovalPolicy, actor_identity, bounded_json
-from .security import BearerSecurityProfile, Principal, resolve_secret, static_principal
+from .security import (
+    BearerSecurityProfile,
+    Principal,
+    parse_static_credentials,
+    resolve_secret,
+    static_principal,
+)
 
 if TYPE_CHECKING:
     from .approvals import ApprovalRecord, ApprovalService
@@ -18,25 +24,25 @@ def authorize_actor(
     service: ApprovalService, authorization: str | None, operator_id: str | None = None
 ) -> Principal:
     service.ensure_enabled()
-    if (
-        service.protected_store is None
-        or not authorization
-        or not authorization.startswith("Bearer ")
-        or len(authorization) > 8192
-    ):
+    if service.protected_store is None:
         raise ApprovalAuthorizationError("protected approval actor authentication failed")
-    supplied, matches = authorization[7:], []
+    matches = []
     try:
+        if not isinstance(authorization, str):
+            raise ValueError
+        raw_headers = [(b"authorization", authorization.encode("ascii"))]
         for name in service.actor_security_profiles:
             profile = service.security.profile(name)
             if not isinstance(profile, BearerSecurityProfile) or not profile.principal:
                 raise ValueError
-            if hmac.compare_digest(
-                supplied.encode("utf-8"), resolve_secret(profile.token).encode("utf-8")
-            ):
+            supplied = parse_static_credentials(raw_headers, profile)
+            expected = resolve_secret(profile.token)
+            if len(expected.encode("utf-8")) > 8192:
+                raise ValueError
+            if hmac.compare_digest(supplied.encode("utf-8"), expected.encode("utf-8")):
                 actor_identity(profile.principal)
                 matches.append(static_principal(profile))
-    except (ValueError, TypeError, UnicodeError, ApprovalValidationError):
+    except (OwaError, ValueError, TypeError, UnicodeError, ApprovalValidationError):
         raise ApprovalAuthorizationError("protected approval actor authentication failed") from None
     if len(matches) != 1 or operator_id is not None and operator_id != matches[0].identity:
         raise ApprovalAuthorizationError("protected approval actor authentication failed")

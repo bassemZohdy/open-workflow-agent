@@ -13,7 +13,13 @@ from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 from ._effect_storage import insert_completed_receipt
-from .effects import EffectIdentity, EffectJournal, EffectReceipt, effect_request_digest
+from .effects import (
+    EffectIdentity,
+    EffectJournal,
+    EffectReceipt,
+    OutcomeParticipant,
+    effect_request_digest,
+)
 from .errors import EventValidationError, InvocationStateConflict, OwaError, WorkflowExecutionError
 from .events import EventDecision, EventEnvelope, EventProgress, EventRegistration, _make_envelope
 from .expressions import validate_expression_data
@@ -103,6 +109,7 @@ class EventStore:
 
     def __init__(self, journal: EffectJournal, *, limits: EventStoreLimits | None = None) -> None:
         self.journal = journal
+        self.outcome_participant: OutcomeParticipant | None = None
         self.connection = journal.connection
         self.limits = limits or EventStoreLimits()
         self._lock = threading.RLock()
@@ -656,6 +663,8 @@ class EventStore:
                 output=envelope.as_dict(),
                 operation_id=operation_id,
             )
+            if self.outcome_participant is not None:
+                self.outcome_participant(identity, receipt, execution_lease=execution_lease)
             insert_completed_receipt(self.connection, identity, receipt)
             return receipt
 
@@ -1083,6 +1092,10 @@ class EventStore:
                     final = EffectReceipt(
                         registration.request_digest, "event", status="completed", output=outputs
                     )
+                    if self.outcome_participant is not None:
+                        self.outcome_participant(
+                            registration.identity, final, execution_lease=execution_lease
+                        )
                     insert_completed_receipt(self.connection, registration.identity, final)
                 result = self.state(registration)
                 return replace(
@@ -1113,6 +1126,10 @@ class EventStore:
                 status="completed",
                 output=[event.as_dict() for event in current.events],
             )
+            if self.outcome_participant is not None:
+                self.outcome_participant(
+                    registration.identity, receipt, execution_lease=execution_lease
+                )
             insert_completed_receipt(self.connection, registration.identity, receipt)
             self._save_progress(registration, payload, "completed")
             return self.state(registration)

@@ -1,5 +1,7 @@
 """ADK engine adapter."""
 
+import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +36,18 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
     def _session_database_path(self) -> str:
         return self.services.engine_database_path("adk")
 
+    def _native_user(self, handle: ExecutionHandle) -> str | None:
+        authority = self.services.execution_authorizations.verify_invocation(handle)
+        if authority is None:
+            return handle.user_id
+        binding = json.dumps(
+            [authority.principal.identity, handle.user_id or "owa-user"],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        # The actual ADK session schema bounds user keys to 128 characters.
+        return "owa/principal-native/v1:" + hashlib.sha256(binding.encode("utf-8")).hexdigest()
+
     async def _native_initial_history_exists(self, handle: ExecutionHandle) -> bool:
         common = self.services.effect_journal.connection
         try:
@@ -55,7 +69,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                         "AND session_id=? AND invocation_id=? LIMIT 1",
                         (
                             "open-workflow-agent",
-                            handle.user_id or "owa-user",
+                            self._native_user(handle) or "owa-user",
                             handle.session_id,
                             handle.engine_execution_reference,
                         ),
@@ -83,7 +97,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                         "AND session_id=? AND invocation_id=? LIMIT 1",
                         (
                             "open-workflow-agent",
-                            handle.user_id or "owa-user",
+                            self._native_user(handle) or "owa-user",
                             handle.session_id,
                             handle.engine_execution_reference,
                         ),
@@ -143,7 +157,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 ),
                 input_data,
                 session_id=invocation.session_id,
-                user_id=invocation.user_id,
+                user_id=self._native_user(invocation),
                 invocation_id=invocation.engine_execution_reference,
                 database_path=self._session_database_path(),
                 _recovery_context=self._recovery_context(workflow, invocation, metadata),
@@ -221,7 +235,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 execute_workflow,
                 workflow_input,
                 session_id=handle.session_id,
-                user_id=handle.user_id,
+                user_id=self._native_user(handle),
                 invocation_id=handle.engine_execution_reference,
                 database_path=self._session_database_path(),
                 _recovery_context=self._recovery_context(plan, handle, metadata),
@@ -280,7 +294,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
             await self.native.admit_resume(
                 workflow_input,
                 session_id=handle.session_id,
-                user_id=handle.user_id,
+                user_id=self._native_user(handle),
                 invocation_id=handle.engine_execution_reference,
                 database_path=self._session_database_path(),
                 _recovery_context=self._recovery_context(
@@ -322,7 +336,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         return await self.native.scheduled_state_exists(
             self.services.invocations.read_input(handle),
             session_id=handle.session_id,
-            user_id=handle.user_id,
+            user_id=self._native_user(handle),
             invocation_id=handle.engine_execution_reference,
             database_path=self._session_database_path(),
             _recovery_context=self._recovery_context(plan, handle, {}),

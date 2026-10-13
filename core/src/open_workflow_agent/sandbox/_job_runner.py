@@ -82,6 +82,9 @@ async def run_job(
         workspace = Path(temporary)
         executable, arguments = backend._prepare_command(request, workspace)
         environment = backend._build_environment(request, workspace)
+        from .credential_guard import process_credential_guard
+
+        output_guard = process_credential_guard(request, environment)
         backend._check_workspace(workspace)
         if os.name == "nt":
             from ._windows_job import WindowsProcessJob
@@ -186,8 +189,8 @@ async def run_job(
                     SandboxExecutionResult(
                         request.execution_id,
                         values[3],
-                        values[1],
-                        values[2],
+                        output_guard.text(values[1]),
+                        output_guard.text(values[2]),
                         time.monotonic() - begin,
                     ),
                     terminated,

@@ -30,3 +30,37 @@ seven-second diagnostic is not qualification of the original shorter fixture.
 Required next evidence and exclusions remain in [S3-03](../s3-03-operation-adapters-acceptance.md)
 and [S3-04](../s3-04-executable-source-acceptance.md). Current completion and deferral
 status remain in [PROJECT.md](../../PROJECT.md) and [TODO.md](../../TODO.md).
+
+## Combined source, operations and approvals — `ebc2694`
+
+The immutable local batch retains 1,016 tracked-input hashes. The common profile
+ended with 23 failures, 1,089 passes and 227 skips in 528.37 pytest seconds
+(545.19 seconds including driver/startup). Its end manifest records no tracked
+source changes. All five fresh independent package build/provenance checks passed.
+The optional Agent Framework profile finished with 254 passes and 565 skips in
+581.03 pytest seconds; its end manifest records no tracked source changes.
+Principal-only profiles skipped in this optional environment remain unqualified.
+LangGraph finished with 30 failures, 274 passes and 397 skips in 1,165.04
+pytest seconds (1,198.55 driver seconds), with no tracked source changes.
+ADK finished with 30 failures, 274 passes and 397 skips in 1,344.40 pytest
+seconds. Its end manifest records no tracked source changes. All four behavior
+profiles have ended; the three failed profiles require a coherent correction batch.
+
+The common failures identify five fixture calls to a nonexistent identity
+projection, one fault fixture lacking required common error details, sixteen
+protected-approval paths hashing tuple-based dataclass identity projections before
+finite-JSON serialization, and one timer test assuming two renewals where one
+unchanged five-second renewal already covered the seven-second workload. Source
+corrections preserve strict JSON validation, actual original lease duration and
+ownership checks. They are authored in the separate S3-06 checkout and remain
+untested until that coherent batch is complete. This record qualifies no task.
+
+The LangGraph failures also expose six reusable inline-script identity lookups
+using a public reference where the private execution reference is needed; three
+captured-script business-ledger assertions expose Windows Python stdin decoding
+UTF-8 as the system code page, despite the returned stdout appearing correct;
+and one source-proof corruption path acquires ownership before rejecting damaged
+independent evidence. Protected approval native/process cases share the tuple
+serialization issue and require review of producer ownership failures. These are
+actionable correction work, not task deferrals. Original lease durations, captured
+byte digests, public task references and fail-before-mutation gates remain required.

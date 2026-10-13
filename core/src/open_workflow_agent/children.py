@@ -5,13 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from ._effect_storage import insert_completed_receipt
 from .effects import EffectIdentity, EffectJournal, EffectReceipt, effect_request_digest
 from .errors import InvocationStateConflict, WorkflowExecutionError
-from .ownership import owned_write_transaction
+from .ownership import ExecutionLease, owned_write_transaction
 from .persistence import ExecutionHandle, InvocationStore
 
 if TYPE_CHECKING:
@@ -41,6 +42,9 @@ class ChildWorkflowStore:
         self.journal = journal
         self.invocations = invocations
         self.policy = policy
+        self.authority_participant: (
+            Callable[[ExecutionHandle, ExecutionHandle, ExecutionLease], None] | None
+        ) = None
         self._lock = threading.RLock()
         self.connection.execute(
             "CREATE TABLE IF NOT EXISTS child_workflow_budgets ("
@@ -260,6 +264,8 @@ class ChildWorkflowStore:
                     "UPDATE child_workflow_budgets SET used = used + 1 WHERE root_id = ?",
                     (root_id,),
                 )
+                if self.authority_participant is not None:
+                    self.authority_participant(child, parent, parent._execution_lease)
             return child
         except BaseException:
             if not self.connection.is_postgresql:

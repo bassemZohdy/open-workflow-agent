@@ -29,6 +29,16 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
         ):
             raise WorkflowSemanticError("invalid executable run return mode")
         background = executable and definition.get("await", True) is False
+        handle = state.metadata.get("_invocation_handle")
+        if executable and self.services is not None and isinstance(handle, ExecutionHandle):
+            kind = next(item for item in ("script", "shell", "container") if item in definition)
+            await self.services.authorize_action_for(
+                handle,
+                self._effect_identity(state, "run:" + kind),
+                "sandbox.run",
+                "run:" + kind,
+                observer=lambda identity, receipt: self._notify_receipt(state, identity, receipt),
+            )
         if "script" in definition:
             result = await self._run_script(definition["script"], state, background=background)
         elif "shell" in definition:
@@ -65,8 +75,10 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             invocation_id=cast(str | None, state.metadata.get("invocation_id")),
             task_reference=cast(str | None, state.variables.get("_task_reference")),
         )
+        await self._authorize_environment(request, state)
+        execution_reference = state.variables.get("_execution_reference", request.task_reference)
         original_reference = state.metadata.get("_source_references", {}).get(
-            request.task_reference, request.task_reference
+            execution_reference, request.task_reference
         )
         captured = state.metadata.get("_script_resources", {}).get(original_reference)
         handle = state.metadata.get("_invocation_handle")
@@ -77,7 +89,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
                     task
                     for scope in original_plan.scopes
                     for task in scope.tasks
-                    if (task.execution_reference or task.reference) == request.task_reference
+                    if (task.execution_reference or task.reference) == execution_reference
                 ),
                 None,
             )
@@ -148,6 +160,7 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             invocation_id=cast(str | None, state.metadata.get("invocation_id")),
             task_reference=cast(str | None, state.variables.get("_task_reference")),
         )
+        await self._authorize_environment(request, state)
         return await (
             self._execute_background(request, state)
             if background
@@ -170,11 +183,37 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             invocation_id=cast(str | None, state.metadata.get("invocation_id")),
             task_reference=cast(str | None, state.variables.get("_task_reference")),
         )
+        await self._authorize_environment(request, state)
         return await (
             self._execute_background(request, state)
             if background
             else self._execute_sandbox(request, state)
         )
+
+    async def _authorize_environment(
+        self, request: SandboxExecutionRequest, state: ExecutionState
+    ) -> None:
+        handle = state.metadata.get("_invocation_handle")
+        if self.services is None or not isinstance(handle, ExecutionHandle):
+            return
+        identity = self._effect_identity(state, "run:" + request.kind)
+        references = sorted(
+            {
+                value.name
+                for _, value in request.environment
+                if isinstance(value, SandboxSecretReference)
+            }
+        )
+        for reference in references:
+            await self.services.authorize_action_for(
+                handle,
+                identity,
+                "credential.resolve",
+                "sandbox-secret:" + reference,
+                observer=lambda decision_identity, receipt: self._notify_receipt(
+                    state, decision_identity, receipt
+                ),
+            )
 
     async def _execute_background(
         self, request: SandboxExecutionRequest, state: ExecutionState

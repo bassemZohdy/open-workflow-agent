@@ -173,6 +173,28 @@ The same policy removed the remaining ad-hoc credential surfaces: external-catal
 
 The target schema is defined in [protocol-security-decisions.md](protocol-security-decisions.md). Profile definitions (`security.profiles`, `type`, `token`), A2A bearer authentication (`a2a.security_profile`), and per-principal A2A authorization (`a2a.authorization`) are implemented and strict-parsed today; verified implementation status is recorded in `PROJECT.md`.
 
+## Staged execution authorization
+
+S3-06 is authored work awaiting qualification. The deployment-only
+`execution_authorization` profile defaults to `enabled: false`; it does not add
+workflow DSL fields. Actual named ingress identity is retained independently of
+whether per-action policy is enabled. Caller correlation labels grant no authority.
+
+| Setting | Authored default / scope |
+| --- | --- |
+| `enabled` | `false`; action decisions and outcome seals require the originally admitted opt-in profile. |
+| `id`, `version` | `default`, `1`; bounded deployment policy references. |
+| `policy.rules` | Existing exact action/resource, role, scope and audience vocabulary; an enabled empty rule set permits no actions. |
+| `max_business_receipt_bytes` | 67,108,864 bytes maximum, configurable down to 1,024; a separate bound for opt-in business audit evidence. |
+
+Original authority, policy and audit bounds are pinned for continuation. Turning off
+current policy cannot downgrade previously protected history. The disabled profile
+retains legacy first-owner outcome semantics; existing source and gRPC ownership
+fences remain independently enforced. Oversize results after dispatch must retain
+uncertainty and prevent automatic resend. Policy records have separate smaller
+bounds. See [scope and required security evidence](s3-06-identity-security-acceptance.md)
+before treating this staged profile as delivered.
+
 ## Shared security profiles
 
 Authentication and authorization are deployment/runtime configuration. The shared schema intentionally supports only the most common interoperable mechanisms:

@@ -13,7 +13,7 @@ import re
 import time
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable, Iterable, Iterator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
@@ -65,6 +65,7 @@ from .errors import (
 from .event_matching import candidate_matcher, event_projection
 from .events import EventEnvelope, EventProgress, EventRegistration
 from .executable_sources import ExecutableScriptBinding
+from .execution_context import ExecutionActionContext, action_scope
 from .expressions import ExpressionEvaluator as ExpressionEvaluator
 from .expressions import ExpressionMode, validate_expression_data
 from .external_catalog import ResolvedCatalogFunction, parse_catalog_function_reference
@@ -1599,6 +1600,15 @@ class WorkflowExecutor:
             ),
         )
         try:
+            handle = state.metadata.get("_invocation_handle")
+            if isinstance(handle, ExecutionHandle) and self.services is not None:
+                original_authority = self.services.execution_authorizations.authority_receipt(
+                    handle
+                )
+                if original_authority is not None:
+                    await self._notify_receipt(
+                        state, original_authority.identity, original_authority.receipt
+                    )
             if plan.uses_timing:
                 clock = await self._record_policy(
                     state,
@@ -1747,6 +1757,34 @@ class WorkflowExecutor:
             index += 1
 
     async def _run_task_item(
+        self,
+        name: str,
+        definition: Mapping[str, Any],
+        state: ExecutionState,
+        reference: str,
+        *,
+        execution_reference: str | None = None,
+    ) -> None:
+        handle = state.metadata.get("_invocation_handle")
+        if not isinstance(handle, ExecutionHandle):
+            return await self._run_task_item_scoped(
+                name, definition, state, reference, execution_reference=execution_reference
+            )
+        resolved = execution_reference or reference
+        identity = EffectIdentity(
+            handle.invocation_id,
+            handle.workflow_fingerprint,
+            reference,
+            state.execution_path + ((resolved, state.task_visits.get(resolved, 0) + 1),),
+            "task",
+        )
+        observer = state.metadata.get("_effect_receipt_observer")
+        with action_scope(ExecutionActionContext(handle, identity, observer)):
+            await self._run_task_item_scoped(
+                name, definition, state, reference, execution_reference=execution_reference
+            )
+
+    async def _run_task_item_scoped(
         self,
         name: str,
         definition: Mapping[str, Any],
@@ -2339,13 +2377,72 @@ class WorkflowExecutor:
             model=self.services.model,
             agent_instruction=getattr(self.services, "agent_instruction", ""),
             services=self.services,
-            metadata=state.metadata,
+            metadata={
+                **state.metadata,
+                "task_reference": state.variables.get("_task_reference"),
+                "task_name": state.variables.get("_task_name"),
+                "occurrence": state.execution_path,
+            },
         )
         return await self._run_effect(
             call, payload, state, lambda: self.catalog.call(call, payload, context)
         )
 
     async def _run_effect(
+        self,
+        call: str,
+        payload: Any,
+        state: ExecutionState,
+        dispatch: Callable[[], Awaitable[Any]],
+        *,
+        operation: str | None = None,
+        child_dependency: Callable[[], ChildInvocationDependency] | None = None,
+        a2a_dispatch: Callable[[A2ACardSelection], Awaitable[Any]] | None = None,
+        openapi_dispatch: Callable[[OpenApiOperationSelection], Awaitable[Any]] | None = None,
+    ) -> Any:
+        handle = state.metadata.get("_invocation_handle")
+        if not isinstance(handle, ExecutionHandle):
+            return await self._run_effect_scoped(
+                call,
+                payload,
+                state,
+                dispatch,
+                operation=operation,
+                child_dependency=child_dependency,
+                a2a_dispatch=a2a_dispatch,
+                openapi_dispatch=openapi_dispatch,
+            )
+        identity = self._effect_identity(state, operation or "call:" + call)
+        observer = state.metadata.get("_effect_receipt_observer")
+        if self.services is not None and call in {"http", "mcp", "a2a", "openapi", "grpc"}:
+            self.services.verify_protocol_authorization_binding()
+        with (
+            action_scope(ExecutionActionContext(handle, identity, observer)),
+            self.services.protocols.authorization_scope(call, payload)
+            if self.services is not None and call in {"http", "mcp", "a2a", "openapi", "grpc"}
+            else nullcontext(),
+        ):
+            if self.services is not None and call.startswith("run:"):
+                await self.services.authorize_current_action(
+                    "workflow.run" if call == "run:workflow" else "sandbox.run",
+                    call,
+                )
+            elif (
+                call not in {"http", "mcp", "a2a", "openapi", "grpc"} and self.services is not None
+            ):
+                await self.services.authorize_current_action("catalog.call", call)
+            return await self._run_effect_scoped(
+                call,
+                payload,
+                state,
+                dispatch,
+                operation=operation,
+                child_dependency=child_dependency,
+                a2a_dispatch=a2a_dispatch,
+                openapi_dispatch=openapi_dispatch,
+            )
+
+    async def _run_effect_scoped(
         self,
         call: str,
         payload: Any,
@@ -2378,6 +2475,8 @@ class WorkflowExecutor:
             if call in {"http", "mcp", "a2a", "openapi", "grpc"} and isinstance(payload, Mapping)
             else None
         ) or self._operation_id(state)
+        prepared_a2a: A2ACardSelection | None = None
+        prepared_openapi: OpenApiOperationSelection | None = None
         if call == "openapi" and isinstance(payload, Mapping):
             from .openapi_admission import OpenApiOperationAdmission
 
@@ -2403,6 +2502,7 @@ class WorkflowExecutor:
             if openapi_admission is None:
                 raise _EffectRecoveryRequired("OpenAPI operation has no admitted description")
             admitted_openapi = openapi_admission
+            prepared_openapi = admitted_openapi.selection
             prepared_at = time.monotonic()
             await self._notify_receipt(state, admitted_openapi.identity, admitted_openapi.receipt)
             selected_openapi_dispatch = openapi_dispatch
@@ -2445,6 +2545,7 @@ class WorkflowExecutor:
                 allow_fetch=not _RECONCILE_EXPIRED_RETRY.get(),
             )
             if admission is not None:
+                prepared_a2a = admission.selection
                 prepared_at = time.monotonic()
                 await self._notify_receipt(state, admission.identity, admission.receipt)
                 selected_dispatch = a2a_dispatch
@@ -2489,6 +2590,13 @@ class WorkflowExecutor:
             is not getattr(getattr(self.services, "protocols", None), "http", None)
         ):
             raise _EffectRecoveryRequired("external action recovery transport binding changed")
+        if self.services is not None and call in {"http", "mcp", "a2a", "openapi", "grpc"}:
+            await self.services.protocols.authorize_prepared_call(
+                call,
+                payload,
+                _a2a_selection=prepared_a2a,
+                _openapi_selection=prepared_openapi,
+            )
         try:
             admitted = (
                 recovery.admit(
@@ -2521,6 +2629,11 @@ class WorkflowExecutor:
         if receipt.status != "pending":
             await self._notify_receipt(state, identity, receipt)
             return self._effect_result(receipt)
+        authorization = getattr(self.services, "execution_authorizations", None)
+        if authorization is not None:
+            audited_intent = authorization.intent_receipt(identity)
+            if audited_intent is not None:
+                await self._notify_receipt(state, audited_intent.identity, audited_intent.receipt)
         if receipt.owner != owner:
             if call == "http" and recovery is not None and admitted is not None:
                 try:
@@ -2732,6 +2845,23 @@ class WorkflowExecutor:
         operation_id: str | None = None,
     ) -> EffectReceipt:
         try:
+            handle = state.metadata.get("_invocation_handle")
+            if (
+                isinstance(handle, ExecutionHandle)
+                and self.services is not None
+                and self.services.execution_authorizations.has_protected_business(identity)
+            ):
+                return journal.finish_owned(
+                    identity,
+                    owner,
+                    execution_lease=self._execution_lease(state),
+                    output=output,
+                    error=error.as_dict() if error else None,
+                    error_status_code=error.status_code if error else None,
+                    operation_id=operation_id
+                    or (error._operation_id if error else self._operation_id(state)),
+                    child_invocation=child_dependency() if child_dependency else None,
+                )
             if (
                 identity.operation == "run:script"
                 and state.metadata.get("_source_script_business_key") == identity.key
@@ -3157,6 +3287,15 @@ class WorkflowExecutor:
         raise registration.suspension
 
     async def _run_subworkflow(self, definition: Any, state: ExecutionState) -> Any:
+        handle = state.metadata.get("_invocation_handle")
+        if isinstance(handle, ExecutionHandle) and self.services is not None:
+            await self.services.authorize_action_for(
+                handle,
+                self._effect_identity(state, "run:workflow"),
+                "workflow.run",
+                "run:workflow",
+                observer=state.metadata.get("_effect_receipt_observer"),
+            )
         if self.services is None or not hasattr(self.services, "workflow_catalog"):
             raise WorkflowExecutionError("workflow catalog is unavailable for run task")
         runner = getattr(self.services, "workflow_runner", None)
@@ -3413,6 +3552,15 @@ class WorkflowExecutor:
             await self._suspend_child(state, parent_child, identity, suspension.deadline_at)
 
     async def _run_emit(self, definition: Any, state: ExecutionState) -> Any:
+        handle = state.metadata.get("_invocation_handle")
+        if isinstance(handle, ExecutionHandle) and self.services is not None:
+            await self.services.authorize_action_for(
+                handle,
+                self._effect_identity(state, "emit"),
+                "event.emit",
+                "events:" + (handle.owner_principal or "anonymous"),
+                observer=state.metadata.get("_effect_receipt_observer"),
+            )
         if self.services is None or not hasattr(self.services, "event_bus"):
             raise WorkflowExecutionError("event service unavailable for emit task")
         if not isinstance(definition, Mapping):
@@ -3573,6 +3721,13 @@ class WorkflowExecutor:
         bus = self.services.event_bus
         journal: EffectJournal = self.services.effect_journal
         identity = self._effect_identity(state, "listen")
+        await self.services.authorize_action_for(
+            handle,
+            identity,
+            "event.listen",
+            "events:" + (handle.owner_principal or "anonymous"),
+            observer=state.metadata.get("_effect_receipt_observer"),
+        )
         if _RECONCILE_EXPIRED_RETRY.get():
             known = journal.get(identity)
             if known is None or known.status != "completed":

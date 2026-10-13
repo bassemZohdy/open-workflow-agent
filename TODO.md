@@ -20,7 +20,7 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 
 ## Delivery status — 2026-10-13
 
-**17 verified / 20 open / 0 deferred.** S2-09 is the earliest unfinished task. S2-09 through S3-05 have authored changes awaiting complete qualification; S3-06 preparation continues in parallel. Latest hosted checkpoint `67aa724` failed, so no pending checkbox changes. The common executable-source batch at `6622ab0` also failed and is being corrected. See [current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-13).
+**17 verified / 20 open / 0 deferred.** S2-09 is the earliest unfinished task. S2-09 through S3-06 have authored changes awaiting complete qualification. Latest hosted checkpoint `67aa724` failed, so no pending checkbox changes. The common executable-source batch at `6622ab0` also failed and is being corrected. See [current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-13).
 
 ## Stage 1 — Correct core execution
 

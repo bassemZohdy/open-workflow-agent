@@ -64887,6 +64887,11 @@
         "status": "Authored; qualification pending",
         "record": "docs/s3-05-protected-approval-acceptance.md",
         "scope": "Finite named-principal protected approvals, immutable assignment/terminal proofs, fair original-expiry observer; all native/backend/platform/publication gates pending"
+      },
+      "S3-06": {
+        "status": "Authored; qualification pending",
+        "record": "docs/s3-06-identity-security-acceptance.md",
+        "scope": "Original authenticated principal propagation, default-disabled action/resource policy, independent bounded audit, scoped context/memory and literal credential echo boundaries; original native/backend/platform/publication gates pending; federation and delegated consent remain conditional S4-11"
       }
     }
   },
