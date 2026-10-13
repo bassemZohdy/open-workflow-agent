@@ -9,17 +9,20 @@ import os
 from dataclasses import replace
 from types import SimpleNamespace
 
+import httpx
 import pytest
 from open_workflow_agent.catalog import FakeModel
-from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.config import ExternalCatalogConfig, ExternalResourceConfig, RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity, ReceiptDependency, effect_request_digest
+from open_workflow_agent.engine import PortableWorkflowEngine
 from open_workflow_agent.errors import (
     InvocationStateConflict,
     InvocationStateError,
     WorkflowDefinitionChanged,
     WorkflowExecutionError,
 )
-from open_workflow_agent.external_catalog import ResolvedCatalogFunction
+from open_workflow_agent.external_catalog import ExternalCatalogResolver, ResolvedCatalogFunction
+from open_workflow_agent.protocols import HttpClient
 from open_workflow_agent.recovery_definitions import (
     PROFILE,
     RecoveryDefinitionArchive,
@@ -31,6 +34,7 @@ from open_workflow_agent.workflow import (
     compile_workflow,
     generate_default_workflow,
     normalize_workflow,
+    resolve_and_compile_workflow,
 )
 
 
@@ -687,6 +691,112 @@ def test_source_adapter_provenance_cannot_be_inferred_for_production_or_native_e
     with pytest.raises(InvocationStateError) as caught:
         module.recovery_profile(engine, backend="sqlite")
     assert caught.value.details["reason"] == "runtime_profile_unavailable"
+
+
+@pytest.mark.parametrize("changed_policy", ["catalog", "schema"])
+@pytest.mark.asyncio
+async def test_composed_resolver_trust_accepts_captured_inputs_and_rejects_changes_before_lease(
+    archive_tree, monkeypatch, changed_policy
+):
+    import open_workflow_agent.services as service_module
+
+    services, _, _, _, _ = archive_tree
+    monkeypatch.setattr(
+        service_module,
+        "recovery_profile",
+        lambda engine, *, backend, config: {
+            "profile": PROFILE,
+            "engine": engine,
+            "backend": backend,
+            "artifacts": [{"code_sha256": "a" * 64}],
+            "continuation_supported": True,
+        },
+    )
+    schema_uri = "https://schema.test/original"
+    schema_bytes = b'{"type":"object"}'
+    fetched = []
+
+    def remote(request):
+        fetched.append(str(request.url))
+        if request.url.host == "schema.test":
+            return httpx.Response(200, content=schema_bytes)
+        assert request.url.host == "catalog.test"
+        return httpx.Response(
+            200,
+            json={"call": "http", "with": {"method": "GET", "endpoint": "https://api.test/result"}},
+        )
+
+    resolver = ExternalCatalogResolver(
+        {"trusted": ExternalCatalogConfig(allowed_hosts=["catalog.test", "api.test"])},
+        resource_policies={
+            "schema": ExternalResourceConfig(
+                allowed_hosts=["schema.test"],
+                allowed_endpoints=[schema_uri],
+                integrity_pins={schema_uri: hashlib.sha256(schema_bytes).hexdigest()},
+            )
+        },
+        http=HttpClient(transport=httpx.MockTransport(remote)),
+    )
+    services.external_catalogs = resolver
+    assert services.config.workflow.external_catalogs == {}
+    assert services.config.workflow.external_resources == {}
+    source = generate_default_workflow()
+    source["use"] = {"catalogs": {"trusted": {"endpoint": "https://catalog.test/root"}}}
+    source["input"] = {"schema": {"format": "json", "resource": {"endpoint": schema_uri}}}
+    source["do"] = [{"remote": {"call": "echo:1.0.0@trusted"}}]
+    plan = await resolve_and_compile_workflow(
+        source, trusted_catalogs=resolver.policies, resolver=resolver, catalog=services.catalog
+    )
+    assert len(plan.imports) == len(plan.resources) == 1 and len(fetched) == 2
+    # Admission and recovery retain a named credential reference without ever
+    # resolving that credential or fetching the captured definition again.
+    resolver.policies["trusted"].authentication.security_profile = "catalog-reader"
+    handle = services.invocations.create(
+        engine="reference",
+        session_id=None,
+        user_id="correlation",
+        owner_principal="owner",
+        workflow_name=plan.name,
+        workflow_version=plan.version,
+        workflow_fingerprint=plan.fingerprint,
+    )
+    lease = services.execution_ownership.acquire(handle, seconds=300)
+    handle._execution_lease = lease
+    archive = services.recovery_definitions
+    try:
+        archive.admit(plan, handle, {"original": True}, execution_lease=lease)
+        assert archive.resolve(handle).fingerprint == plan.fingerprint
+        profile = services._recovery_profile("reference")
+        assert profile["policy"]["catalogs"]["trusted"]["authentication"] == {
+            "security_profile": "catalog-reader"
+        }
+        assert profile["policy"]["schemas"]["schema"]["integrity_pins"] == {
+            schema_uri: hashlib.sha256(schema_bytes).hexdigest()
+        }
+        services.invocations.update(handle, status="waiting")
+    finally:
+        services.execution_ownership.release(lease)
+        handle._execution_lease = None
+    engine = PortableWorkflowEngine()
+    await engine.initialize(services)
+    try:
+        before = _rows((services, archive, handle, plan, {}))
+        state = services.invocations.get(handle.invocation_id)._persisted_payload
+        events = list(services.events.events)
+        if changed_policy == "catalog":
+            resolver.policies["trusted"].allowed_hosts = ["different.test"]
+        else:
+            resolver.schemas.policies["schema"].integrity_pins = {schema_uri: "f" * 64}
+        with pytest.raises(InvocationStateError) as caught:
+            await engine.resume(handle, None, plan)
+        assert caught.value.details["reason"] == "runtime_profile_changed"
+        assert _rows((services, archive, handle, plan, {})) == before
+        assert services.invocations.get(handle.invocation_id)._persisted_payload == state
+        assert services.events.events == events
+        assert len(fetched) == 2 and services.model.calls == []
+        assert handle._execution_lease is None and engine._active == {}
+    finally:
+        await engine.shutdown()
 
 
 @pytest.mark.parametrize("oversized", [False, True])

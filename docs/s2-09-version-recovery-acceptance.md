@@ -161,3 +161,13 @@ per LangGraph profile, compared with approximately 3.1 seconds before correction
 It retains fresh source hashing and checks the opened file metadata before and
 after its size-bounded read. Growth, truncation, mutation and oversize tests are
 included in the corrected batch.
+
+The first corrected full-suite attempt at d406398 is retained under
+`tmp/s2-09-second-batch`. All four profiles are explicitly interrupted at
+165 seconds with unchanged inputs after reproducible catalog composition and
+positive SDK-prestart fixture gaps. The actual installed resolver trust map
+must be used consistently for admission and profile comparison. The existing
+positive prestart fixture must record real owned archive admission before
+publishing native history; the no-retrofit guard remains. Next broad runs use
+a finite early failure limit for diagnosis; only complete zero-failure suites
+can qualify completion. No interrupted run is relabelled successful.

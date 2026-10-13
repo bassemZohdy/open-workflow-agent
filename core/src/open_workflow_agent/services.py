@@ -14,7 +14,7 @@ from .approvals import ApprovalEventBus, ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .child_waits import ChildWaitStore
 from .children import ChildWorkflowStore
-from .config import RuntimeConfig
+from .config import ExternalCatalogConfig, RuntimeConfig
 from .durable_events import DurableEventBus
 from .effects import EffectJournal
 from .errors import ConfigurationError
@@ -36,7 +36,7 @@ from .ownership import ExecutionOwnershipStore
 from .persistence import ExecutionHandle, InvocationStore
 from .protocols import ProtocolServices, workflow_protocol_payload
 from .recovery_definitions import RecoveryDefinitionArchive, recovery_profile
-from .resources import schema_registry
+from .resources import materialize_schema_resources, schema_registry
 from .sandbox import (
     InternalSandboxBackend,
     SandboxBackend,
@@ -219,6 +219,18 @@ class RuntimeServices:
                 engine, backend=self.effect_journal.connection.kind, config=self.config
             )
         )
+        # Compilation and dispatch use the composed resolver. Pin that same
+        # deployment-owned policy map, including injected resolvers, rather
+        # than a potentially different configuration used at construction.
+        policy = value.setdefault("policy", {})
+        policy["catalogs"] = {
+            name: ExternalCatalogConfig.model_validate(declaration).model_dump(mode="json")
+            for name, declaration in self.external_catalogs.policies.items()
+        }
+        policy["schemas"] = {
+            name: ExternalCatalogConfig.model_validate(declaration).model_dump(mode="json")
+            for name, declaration in self.external_catalogs.schemas.policies.items()
+        }
         recovery = self.external_action_recovery
         value["trusted_http_receivers"] = (
             [
@@ -257,9 +269,9 @@ class RuntimeServices:
     def _verify_archived_definition_trust(self, plan: WorkflowPlan) -> None:
         self.external_catalogs.schemas.verify(plan.resources)
         validate_sandbox_capabilities(
-            plan.source,
+            materialize_schema_resources(plan.source),
             sandbox=self.config.sandbox,
-            trusted_catalogs=self.config.workflow.external_catalogs,
+            trusted_catalogs=self.external_catalogs.policies,
             _schema_registry=schema_registry(plan.resources),
         )
         for binding in plan.imports:

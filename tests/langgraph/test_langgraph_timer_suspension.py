@@ -239,6 +239,13 @@ async def test_scheduled_valid_sdk_prestart_checkpoint_reuses_bound_invocation(
     assert claimed is not None
     handle = services.schedules.bind_invocation(claimed, engine=engine.engine_name, now=102)
     try:
+        lease = services.execution_ownership.acquire(handle, seconds=60)
+        try:
+            services.recovery_definitions.admit(
+                plan, handle, {"original": True}, execution_lease=lease
+            )
+        finally:
+            services.execution_ownership.release(lease)
         # Capture the SDK's actual prestart serialization. Publishing a copy
         # through the SDK models this exact initial boundary, without assuming
         # that failure of a pipelined write prevents later queued checkpoints.
