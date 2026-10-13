@@ -690,7 +690,7 @@ async def test_bound_waiting_child_continues_its_archive_with_only_catalog_v2_de
                 },
             ],
         }
-        value = _config(parent, backend).model_dump(mode="json")
+        value = _config(parent, backend).model_dump(mode="json", exclude_unset=True)
         value["workflow"]["catalog"] = [child]
         return RuntimeConfig.model_validate(value)
 

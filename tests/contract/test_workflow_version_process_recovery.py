@@ -63,13 +63,21 @@ def test_actual_producer_stop_preserves_original_definition_and_public_recovery_
     first = _start(tmp_path, "start")
     try:
         deadline = time.monotonic() + 100
-        while not (tmp_path / "ready.json").exists():
+        while True:
             assert first.poll() is None, _failure(tmp_path, "start")
             assert time.monotonic() < deadline, (
                 "producer did not acknowledge committed definition boundary"
             )
-            time.sleep(0.02)
-        ready = json.loads((tmp_path / "ready.json").read_text(encoding="utf-8"))
+            try:
+                # The producer fsyncs and closes a sibling temporary before
+                # atomic replace. Windows may briefly deny an open of that
+                # published file; retain the same producer and deadline.
+                ready_text = (tmp_path / "ready.json").read_text(encoding="utf-8")
+            except (FileNotFoundError, PermissionError):
+                time.sleep(0.02)
+                continue
+            ready = json.loads(ready_text)
+            break
         assert ready["pid"] == first.pid and ready["native_available"] and ready["binding_present"]
         assert ready["version"] == "1.0.0"
         assert ready["remote_commits"] == (0 if boundary == "archive" else 1)

@@ -184,3 +184,14 @@ finalization records real leased common admission and keeps an explicit fake
 SDK boundary; it is not counted as native qualification. All ten-second bounds
 and outcome/identity/cancellation assertions remain. The versioned API snapshot
 is regenerated and included in subsequent fixed-input manifests.
+
+Correction focus 01d13a6 passes 85 root cases with 31 unavailable PostgreSQL
+skips; actual ADK passes16/17 selected version cases, LangGraph15/17. The
+remaining nested-child fixture serializes unset Linux path defaults before
+Windows validation, and one process fixture observes transient Windows file
+sharing on its already atomic readiness publication. Both are fixture-only
+corrections: retain explicit config fields and retry only missing/sharing reads
+within the unchanged live-producer100-second bound. Malformed JSON still fails.
+Original source hashes/logs remain in `tmp/s2-09-fourth-batch`. Synthetic late
+finalization and memory corrections follow in the same supervised bundle; no
+partial failed bundle is qualified as complete.
