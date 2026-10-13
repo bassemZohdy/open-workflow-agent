@@ -347,7 +347,13 @@ async def test_shutdown_drains_recovery_admission_before_execution_begins(
         entered.set()
         await asyncio.Event().wait()
 
+    async def synthetic_native_presence(_: Any) -> None:
+        # This fixture isolates shutdown during the deliberately blocked fake
+        # SDK verification seam; native checkpoint presence has separate proof.
+        return None
+
     engine._verify_resume_state = verify
+    engine._preflight_native_continuation = synthetic_native_presence
     running = None
     try:
         await engine.initialize(service)
@@ -359,7 +365,13 @@ async def test_shutdown_drains_recovery_admission_before_execution_begins(
             workflow_version=plan.version,
             workflow_fingerprint=plan.fingerprint,
         )
-        service.invocations.bind_input(handle, {"original": True})
+        lease = service.execution_ownership.acquire(handle)
+        try:
+            service.recovery_definitions.admit(
+                plan, handle, {"original": True}, execution_lease=lease
+            )
+        finally:
+            service.execution_ownership.release(lease)
         service.invocations.update(handle, status="waiting")
         before = handle._persisted_payload
         running = asyncio.create_task(engine.resume(handle, None, plan))

@@ -250,7 +250,10 @@ async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
                             "name": "echo-flow",
                             "version": "1.0.0",
                         },
-                        "do": [{"mark": {"set": {"resumed": True}}}],
+                        "do": [
+                            {"pause": {"wait": {"seconds": 300}}},
+                            {"mark": {"set": {"resumed": True}}},
+                        ],
                     }
                 ]
             },
@@ -271,9 +274,19 @@ async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
             workflow_version=plan.version,
             workflow_fingerprint=plan.fingerprint,
         )
-        # Emulate an executed invocation, including its original input binding.
-        services.invocations.bind_input(handle, {"original": "first message"})
-        services.invocations.update(handle, status="waiting")
+        original_input = {"original": "first message"}
+        waiting = await asyncio.wait_for(
+            app.state.engine.invoke(plan, handle, original_input), timeout=10
+        )
+        assert waiting.status == "waiting", waiting.error
+        assert handle.status == "waiting"
+        assert handle.invocation_id not in app.state.engine._active
+        assert handle._execution_lease is None
+        assert services.invocations.read_input(handle) == original_input
+        assert not any(
+            event.invocation_id == handle.invocation_id and event.task_name == "mark"
+            for event in services.events.events
+        )
 
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -288,6 +301,29 @@ async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
 
             final = await _poll_task_state(client, handle.invocation_id, "TASK_STATE_COMPLETED")
             assert final["id"] == handle.invocation_id
+            assert final["artifacts"][0]["parts"][0]["data"] == {"resumed": True}
+            assert services.invocations.read_input(handle) == original_input
+            events = [
+                event
+                for event in services.events.events
+                if event.invocation_id == handle.invocation_id
+            ]
+            assert sum(event.event_type == "WorkflowResumed" for event in events) == 1
+            assert (
+                sum(
+                    event.event_type == "TaskStarted" and event.task_name == "mark"
+                    for event in events
+                )
+                == 1
+            )
+            assert (
+                sum(
+                    event.event_type == "TaskCompleted" and event.task_name == "mark"
+                    for event in events
+                )
+                == 1
+            )
+            assert services.model.calls == []
 
 
 @pytest.mark.asyncio

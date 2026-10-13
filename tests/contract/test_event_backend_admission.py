@@ -60,6 +60,7 @@ def _source(strategy: dict[str, Any], *, iterator: bool = False) -> dict[str, An
 @pytest.mark.parametrize("strategy_name", ["all", "any", "correlate"])
 async def test_nondurable_backend_rejects_advanced_listener_before_earlier_dispatch(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     engine_name: str,
     engine_type: Any,
     backend: str,
@@ -99,7 +100,21 @@ async def test_nondurable_backend_rejects_advanced_listener_before_earlier_dispa
             assert result.error["code"] == "unsupported_workflow_feature"
         else:
             original = {"original": "must-remain"}
-            services.invocations.bind_input(handle, original)
+            lease = services.execution_ownership.acquire(handle, seconds=60)
+            try:
+                services.recovery_definitions.admit(plan, handle, original, execution_lease=lease)
+            finally:
+                services.execution_ownership.release(lease)
+            native_presence_checks = 0
+
+            async def admitted_native_boundary(_handle: Any) -> None:
+                # This fixture isolates the event capability gate, rather than
+                # qualifying SDK history. Original common admission is real;
+                # actual native presence/corruption has dedicated SDK fixtures.
+                nonlocal native_presence_checks
+                native_presence_checks += 1
+
+            monkeypatch.setattr(engine, "_preflight_native_continuation", admitted_native_boundary)
             services.invocations.update(handle, status="waiting")
             before = handle._persisted_payload
             with pytest.raises(UnsupportedWorkflowFeature):
@@ -107,6 +122,7 @@ async def test_nondurable_backend_rejects_advanced_listener_before_earlier_dispa
             saved = services.invocations.get(handle.invocation_id)
             assert saved is not None and saved._persisted_payload == before
             assert services.invocations.read_input(saved) == original
+            assert native_presence_checks == 1
         assert not model.calls
         if operation != "resume":
             assert not services.invocations.connection.execute(

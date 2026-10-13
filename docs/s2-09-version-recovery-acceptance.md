@@ -240,3 +240,19 @@ that helper to script/shell/container retains executable restrictions while
 allowing the existing common workflow lifetime semantics. Unit guard cases and
 actual detached-child/process-stop regression cases accompany the correction.
 No timeout, admission-proof requirement or validation gate is weakened.
+
+The corrected `7a3f9ab` broad snapshot is retained in
+`tmp/s2-09-seventh-batch`: root reaches 638 passes/464 skips, LangGraph
+602/402 and optional Framework716/548 before their five-failure event-admission
+limit. ADK is explicitly stopped after the same actionable defect is established.
+Inputs remain unchanged; none is a complete successful broad suite. The new
+preparation guard moved a known unsupported event rejection outside the former
+invocation fault-result boundary. That boundary is restored before input binding,
+archive admission or native execution. Strict recovery-evidence rejection remains.
+
+Three old waiting fixtures are corrected together: protected leased admission
+for deliberately synthetic shutdown/event capability seams, and real acknowledged
+wait execution for A2A continuation. Existing input, no-dispatch, shutdown and
+task identity assertions are retained. New MCP work is authored separately;
+final combined source qualification must cover this recovery task and the MCP
+batch without relabelling earlier partial failed attempts as successful.

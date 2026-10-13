@@ -405,7 +405,16 @@ class WorkflowEngine:
                 if invocation.status in TERMINAL_INVOCATION_STATES:
                     return self._stored_result(invocation)
                 await self._preflight_definition(invocation, workflow, initial=True)
-                input_data = self._prepare_workflow_input(workflow, invocation, input_data)
+                try:
+                    input_data = self._prepare_workflow_input(workflow, invocation, input_data)
+                except UnsupportedWorkflowFeature as error:
+                    # A known admission rejection retains the invocation's
+                    # fault-result contract without binding input or starting
+                    # native execution. Recovery evidence errors still reject.
+                    self.services.invocations.update(
+                        invocation, status="faulted", error=error.as_dict()
+                    )
+                    return self._stored_result(invocation)
                 if self.services.child_waits.for_invocation(
                     invocation.invocation_id, workflow.fingerprint
                 ):
