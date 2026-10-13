@@ -34,17 +34,19 @@ failed. Later source and corrections remain local feature work pending validatio
 | --- | --- | --- |
 | `dc71ecb`, 1,034 inputs | Five builds passed; common 46 failures/59 errors; optional framework three failures; principal SDK suites reached the unchanged 75-minute bounds with failures | Failed/incomplete |
 | `3aaaf30`, 1,054 inputs | Static/schema/admission checks and five builds passed; common 8 failures, 2,822 passes, 601 skips and 52 errors; source unchanged | Behavioral gates open |
-| `4740732`, 1,067 inputs | Optional Framework: 767 passes, 354 skips, 2,934 deselections, exit 0. LangGraph: 73 failures, 1,146 passes, 672 skips, 1,467 deselections, exit 1. Both completed reports retain unchanged source; common and ADK final reports remain pending. | Integrated qualification open |
+| `4740732`, 1,067 inputs | Optional Framework: 767 passes, 354 skips, 2,934 deselections, exit 0. LangGraph: 73 failures, 1,146 passes, 672 skips, 1,467 deselections, exit 1. Common and ADK each reached the 4,500-second bound at logged 97% progress, exit 124, without final pytest totals. All four end reports retain unchanged source. | Integrated qualification open |
+| `883cd1a`, 1,068 inputs | Launch snapshot: all five fresh build/provenance checks passed; four full profiles started, with 5,400-second root/ADK and 4,500-second LangGraph/optional Framework batch bounds. No final behavioral results captured in this record. | Qualification pending |
 
 Earlier `7214f46` and `caa32c8` outcomes remain in
 [the batch evidence record](docs/validation-history/pending-batch-results.md).
-The latest qualification source is `4740732`; its completed optional Framework
-profile does not qualify the failed LangGraph profile or unfinished common/ADK
-profiles. A separate renewal correction moves only bounded physical artifact/SDK
-verification off-loop, retaining original leases and synchronous database/trust
-phases. That source and five grouped fixture patches are authored; Ruff and
-formatting (527 files) and strict typing (134 source files) pass. Their coherent
-behavioral batch remains pending. Full commands, counts, source hashes and
+All four `4740732` profiles have ended. Its optional Framework pass does not
+qualify the failed LangGraph profile or bounded incomplete common/ADK profiles.
+The renewal correction and five grouped fixture patches are frozen at `883cd1a`;
+only bounded physical artifact/SDK verification moves off-loop, retaining original
+leases and synchronous database/trust phases. Ruff and formatting (527 files),
+strict typing (134 source files), and all five fresh build/provenance checks pass.
+The four full profiles have started; final behavioral acceptance remains pending
+at this launch snapshot. Full commands, counts, source hashes and
 actionable causes are retained in the evidence record.
 Source changes and partial passes qualify no unchecked task, full inventory row,
 JavaScript profile or release.
@@ -449,7 +451,7 @@ Agent Card now advertises `securitySchemes` and `security` requirements when aut
 
 ## A2A Deferred Scope
 
-The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining deferred work is listed in `TODO.md`.
+The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining backlog and conditional profiles are listed in `TODO.md`.
 
 The official A2A v1 semantics are the guide: ordinary `SendMessage` blocks by default, while `returnImmediately=true` is the protocol-native non-blocking request and returns Task state for later `GetTask`/subscription. OWA will not add a custom async flag.
 

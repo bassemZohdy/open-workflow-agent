@@ -24,10 +24,12 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 S2-09 through S3-08 have authored changes awaiting complete qualification.
 The latest hosted checkpoint (`67aa724`) failed; grouped corrections and selected
 adapters remain unqualified. At frozen local source `4740732`, optional Agent
-Framework passed its selected profile; LangGraph failed, while common and ADK
-results remain pending. A bounded physical-profile renewal correction and five
-grouped fixture patches are authored; Ruff/format and strict typing pass, but
-their behavioral batch has not run. No pending task is marked complete. See
+Framework passed its selected profile; LangGraph failed, and common/ADK both
+reached their 4,500-second bounds without final pytest totals. Source remained
+unchanged. The renewal correction and grouped fixture patches are frozen at
+`883cd1a`; five fresh builds pass and all four full profiles have started. This
+launch record has no final behavioral results. No pending task is marked complete.
+See
 [current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-13)
 and [retained validation evidence](docs/validation-history/pending-batch-results.md).
 

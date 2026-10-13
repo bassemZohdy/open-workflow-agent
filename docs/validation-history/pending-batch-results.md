@@ -173,8 +173,12 @@ tracked-input hashes. The optional Agent Framework profile completed with
 (1,661.19 driver seconds), exit 0. LangGraph completed with **73 failures,
 1,146 passes, 672 skips and 1,467 deselections** in 3,865.85 pytest seconds
 (3,895.09 driver seconds), exit 1. Neither completed end report records tracked
-source changes or a timeout. Common and ADK are still running at this record;
-their final reports and totals remain pending.
+source changes or a timeout. Common and ADK were running when that initial
+record was prepared; both subsequently reached the original 4,500-second batch
+bound at logged 97% progress, exit 124. Common elapsed 4,501.184787511826 driver
+seconds; ADK elapsed 4,501.303903102875 driver seconds. Both end reports record
+`timed_out: true` and `source_changes: []`. No final pytest totals or qualified
+union are inferred from their progress. All four profiles have ended.
 
 The originating `qualification-fixes` worktree retains each command, source
 manifest, log and end report under `tmp/adapter-batch-4740732-*`. The optional
@@ -182,6 +186,10 @@ Framework log SHA-256 is
 `2b79d2ec1679f1b46147fb8340ea5c97d025e0b1e70c2c535bbe959fa4724a68`;
 the LangGraph log SHA-256 is
 `de9775018b5a37898d07d7a44524e461f0969aac1eccce5ff156d5e100ee4576`.
+The bounded common log SHA-256 is
+`1f02ae5243e5f60a7039110e4294409b71194ddd2513947ec0ee29d894a791fd`;
+the bounded ADK log SHA-256 is
+`eccf597cd5ff716ec9c23f4c2242e5ade4e0eedcc61bb2f72e728ff42444a8e0`.
 Foreign native instances were deselected only in their independent environments;
 actual PostgreSQL and other skipped gates are not inferred from local passes.
 
@@ -197,8 +205,27 @@ expiry before validating renewed ownership; expiry/takeover and no-mutation
 negatives remain required behavioral evidence.
 
 Ruff and formatting pass across 527 files; strict typing passes across 134 source
-files. The coherent correction source has not yet run its behavioral batch. These
+files. Those were authoring-time checks before the correction source was frozen
+at `883cd1a` and its full profiles launched, as recorded below. These
 static results and authored witnesses do not retroactively qualify `4740732`,
 complete any task, change feature statuses or substitute for remaining native,
 database, platform, image, security and hosted publication gates. Earlier results
 remain preserved in the sections above.
+
+## Renewal correction batch launch — 883cd1a
+
+Source `883cd1ae18662bb34f6deea76f41476c262c1f8b` freezes 1,068 tracked
+inputs in `admission-renewal`. All five fresh independent build/provenance checks
+passed before launch. At this source-time snapshot, four full profiles have
+started and no final result reports are available. The common and ADK batch
+supervisors use 5,400-second bounds (90 minutes); LangGraph and optional Agent
+Framework retain 4,500-second bounds (75 minutes). These are batch supervision
+bounds, not changed invocation leases, task deadlines or outcome assertions.
+
+The originating worktree retains commands, selected environments, start records
+and tracked-input hashes under `tmp/adapter-batch-883cd1a-*`. Final exit codes,
+source-change records, log hashes and pytest totals must be added from the real
+end reports after the profiles finish. This launch snapshot claims no behavioral,
+backend, native, platform, security, image or hosted qualification and advances no
+task checkbox or feature status. The preceding failed/bounded records remain
+historical evidence, not qualified by the newer source or its passing builds.
