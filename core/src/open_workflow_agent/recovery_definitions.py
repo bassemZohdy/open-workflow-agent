@@ -404,7 +404,13 @@ def recovery_profile(
                     key: value.model_dump(mode="json")
                     for key, value in config.workflow.external_resources.items()
                 },
-                "sandbox": config.sandbox.model_dump(mode="json"),
+                "sandbox": {
+                    **config.sandbox.model_dump(mode="json", exclude={"script_sources"}),
+                    "script_sources": [
+                        item.model_dump(mode="json", exclude={"code", "profile"})
+                        for item in config.sandbox.script_sources
+                    ],
+                },
                 "timing": config.execution_timing.model_dump(mode="json"),
                 "children": config.child_workflows.model_dump(mode="json"),
                 "events": config.events.model_dump(mode="json"),
@@ -490,13 +496,18 @@ def _identity(handle: ExecutionHandle) -> dict[str, Any]:
 
 
 def _definition(plan: WorkflowPlan) -> dict[str, Any]:
-    if len(plan.imports) > MAX_DEPENDENCIES or len(plan.resources) > MAX_DEPENDENCIES:
+    if (
+        len(plan.imports) > MAX_DEPENDENCIES
+        or len(plan.resources) > MAX_DEPENDENCIES
+        or len(plan.script_resources) > MAX_DEPENDENCIES
+    ):
         raise _unavailable("archive_limit_exceeded")
     size = len(plan.source_json.encode("utf-8"))
     for item in plan.imports:
         size += len(item.definition_json.encode("utf-8"))
         size += len((item.execution_definition_json or item.definition_json).encode("utf-8"))
     size += sum(len(item.document_json.encode("utf-8")) for item in plan.resources)
+    size += sum(len(item.source.verified_bytes()) for item in plan.script_resources)
     if size > MAX_ARCHIVE_BYTES:
         raise _unavailable("archive_limit_exceeded")
     return {
@@ -527,13 +538,18 @@ def _definition(plan: WorkflowPlan) -> dict[str, Any]:
             }
             for item in plan.resources
         ],
+        **(
+            {"script_resources": [item.as_value() for item in plan.script_resources]}
+            if plan.script_resources
+            else {}
+        ),
     }
 
 
 def _plan(value: Any) -> WorkflowPlan:
     if (
         not isinstance(value, dict)
-        or set(value)
+        or set(value) - {"script_resources"}
         != {
             "profile",
             "fingerprint",
@@ -592,7 +608,21 @@ def _plan(value: Any) -> WorkflowPlan:
     ) != len(resources):
         raise _unavailable("archive_invalid")
     validate_schema(value["source"])
-    plan = normalize_workflow(value["source"], imports=tuple(imports), resources=tuple(resources))
+    from .executable_sources import ExecutableScriptBinding
+
+    captured = value.get("script_resources", [])
+    if not isinstance(captured, list) or len(captured) > MAX_DEPENDENCIES:
+        raise _unavailable("archive_invalid")
+    try:
+        script_resources = tuple(ExecutableScriptBinding.from_value(item) for item in captured)
+        plan = normalize_workflow(
+            value["source"],
+            imports=tuple(imports),
+            resources=tuple(resources),
+            script_resources=script_resources,
+        )
+    except Exception:
+        raise _unavailable("archive_invalid") from None
     if (plan.fingerprint, plan.namespace, plan.name, plan.version) != (
         value["fingerprint"],
         value["namespace"],

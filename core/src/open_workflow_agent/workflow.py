@@ -64,6 +64,7 @@ from .errors import (
 )
 from .event_matching import candidate_matcher, event_projection
 from .events import EventEnvelope, EventProgress, EventRegistration
+from .executable_sources import ExecutableScriptBinding
 from .expressions import ExpressionEvaluator as ExpressionEvaluator
 from .expressions import ExpressionMode, validate_expression_data
 from .external_catalog import ResolvedCatalogFunction, parse_catalog_function_reference
@@ -949,6 +950,7 @@ class WorkflowPlan:
     execution_json: str | None = None
     imports: tuple[ResolvedCatalogFunction, ...] = ()
     resources: tuple[SchemaResource, ...] = ()
+    script_resources: tuple[ExecutableScriptBinding, ...] = ()
 
     @property
     def source(self) -> dict[str, Any]:
@@ -985,7 +987,7 @@ class WorkflowPlan:
         import hashlib
 
         content = self.source_json
-        if self.imports or self.resources:
+        if self.imports or self.resources or self.script_resources:
             content = json.dumps(
                 {
                     "source": self.source,
@@ -999,6 +1001,11 @@ class WorkflowPlan:
                         }
                         for item in self.imports
                     ],
+                    **(
+                        {"script_resources": [item.as_value() for item in self.script_resources]}
+                        if self.script_resources
+                        else {}
+                    ),
                     **(
                         {
                             "resources": [
@@ -1023,9 +1030,17 @@ def normalize_workflow(
     *,
     imports: tuple[ResolvedCatalogFunction, ...] = (),
     resources: tuple[SchemaResource, ...] = (),
+    script_resources: tuple[ExecutableScriptBinding, ...] = (),
 ) -> WorkflowPlan:
     _validate_json_value(workflow)
+    from .executable_source_imports import reject_imported_script_sources
+
+    reject_imported_script_sources(imports)
     effective = resolve_reusable_components(workflow)
+    if script_resources:
+        from .executable_source_plan import materialize_script_resources
+
+        effective = materialize_script_resources(effective, script_resources)
     if resources:
         effective = materialize_schema_resources(effective)
     functions = effective.get("use", {}).get("functions", {})
@@ -1157,6 +1172,7 @@ def normalize_workflow(
         ),
         imports=imports,
         resources=resources,
+        script_resources=script_resources,
     )
 
 
@@ -1526,6 +1542,9 @@ class WorkflowExecutor:
         metadata = dict(metadata or {})
         metadata["_workflow_fingerprint"] = plan.fingerprint
         metadata["_workflow_source"] = plan.source
+        metadata["_script_resources"] = {
+            item.reference: item.as_value() for item in plan.script_resources
+        }
         metadata["_source_references"] = {
             task.execution_reference or task.reference: task.reference
             for scope in plan.scopes

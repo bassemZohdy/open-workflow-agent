@@ -231,6 +231,10 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   Behavioral/native/backend/platform, physical lifetime, packaging and hosted
   qualification remain outstanding; no new profile or inventory row is complete.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
+  Finite captured script sources, independent recovery proofs and awaited internal
+  process controls are authored. See [the acceptance plan](docs/s3-04-executable-source-acceptance.md).
+  The coherent source batch and all platform/backend/publication gates remain
+  pending; no new executable or isolation profile is complete.
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and applicable delegated authorization.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.

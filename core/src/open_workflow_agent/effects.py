@@ -459,6 +459,18 @@ class EffectJournal:
                 verify_openapi_operation_receipt(
                     self.connection, self._invocations, identity, receipt
                 )
+            if identity.operation == "policy:executable-source:v1":
+                from .executable_source_admission import verify_executable_source_receipt
+
+                verify_executable_source_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            if identity.operation == "run:script":
+                from .executable_source_admission import verify_executable_source_business_receipt
+
+                verify_executable_source_business_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
             if identity.operation.startswith("policy:sandbox-job-") or identity.operation in {
                 "run:script",
                 "run:shell",

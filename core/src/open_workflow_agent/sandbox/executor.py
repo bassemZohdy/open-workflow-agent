@@ -13,7 +13,7 @@ from ..expressions import expression_string
 from ..persistence import ExecutionHandle
 from ..workflow import _ACTIVE_TIMEOUTS, _RECONCILE_EXPIRED_RETRY, ExecutionState, WorkflowExecutor
 from .contract import SandboxExecutionRequest, SandboxExecutionResult, SandboxSecretReference
-from .jobs import SandboxJobStore, job_id, policy_identity
+from .jobs import SandboxJobStore, _request, job_id, policy_identity
 
 
 class SandboxWorkflowExecutor(WorkflowExecutor):
@@ -65,6 +65,67 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             invocation_id=cast(str | None, state.metadata.get("invocation_id")),
             task_reference=cast(str | None, state.variables.get("_task_reference")),
         )
+        original_reference = state.metadata.get("_source_references", {}).get(
+            request.task_reference, request.task_reference
+        )
+        captured = state.metadata.get("_script_resources", {}).get(original_reference)
+        handle = state.metadata.get("_invocation_handle")
+        if self.services is not None and isinstance(handle, ExecutionHandle):
+            original_plan = self.services.recovery_definitions.verify_admission(handle)
+            original_task = next(
+                (
+                    task
+                    for scope in original_plan.scopes
+                    for task in scope.tasks
+                    if (task.execution_reference or task.reference) == request.task_reference
+                ),
+                None,
+            )
+            if original_task is None or original_task.reference != original_reference:
+                raise SandboxPolicyError("executable task differs from original admission")
+            required = next(
+                (
+                    item
+                    for item in original_plan.script_resources
+                    if item.reference == original_reference
+                ),
+                None,
+            )
+            if (required is None) != (captured is None) or (
+                required is not None and required.as_value() != captured
+            ):
+                raise SandboxPolicyError(
+                    "executable source capture differs from original admission"
+                )
+        if captured is not None:
+            from ..executable_sources import ExecutableScriptBinding
+
+            binding = ExecutableScriptBinding.from_value(captured)
+            lease = self._execution_lease(state)
+            if self.services is None or not isinstance(handle, ExecutionHandle) or lease is None:
+                raise SandboxPolicyError("executable source admission is unavailable")
+            identity = self._effect_identity(state, "run:script")
+            if background:
+                request = replace(request, execution_id=job_id(identity))
+                payload = {"request": _request(request, identity), "input": state.data}
+            else:
+                payload = json.loads(json.dumps(asdict(request), allow_nan=False))
+            deadlines = [
+                scope.absolute_due
+                for scope in _ACTIVE_TIMEOUTS.get()
+                if scope.absolute_due is not None
+            ]
+            decision = self.services.executable_source_admissions.prepare(
+                identity,
+                payload,
+                binding.source,
+                handle,
+                execution_lease=lease,
+                deadline_at=min(deadlines) if deadlines else None,
+                allow_new=not _RECONCILE_EXPIRED_RETRY.get(),
+            )
+            request = replace(request, script_code=decision.source.verified_bytes().decode("utf-8"))
+            await self._notify_receipt(state, decision.identity, decision.receipt)
         return await (
             self._execute_background(request, state)
             if background

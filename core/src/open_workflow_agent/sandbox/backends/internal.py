@@ -9,6 +9,7 @@ paths.
 from __future__ import annotations
 
 import asyncio
+import math
 import os
 import shutil
 import signal
@@ -59,6 +60,8 @@ class InternalSandboxBackend:
     def __init__(self, config: SandboxConfig) -> None:
         self.config = config
         self._active: dict[str, asyncio.subprocess.Process] = {}
+        self._awaited_jobs: dict[str, Any] = {}
+        self._awaited_starts: dict[str, asyncio.Task[Any]] = {}
         self._stdio_sessions: dict[str, SandboxStdioSession] = {}
         self._stdio_starting: set[str] = set()
         self._stdio_starts: dict[str, asyncio.Task[Any]] = {}
@@ -74,6 +77,11 @@ class InternalSandboxBackend:
     def capabilities(self) -> dict[str, Any]:
         posix = os.name == "posix"
         enabled = self.config.enabled and self.config.backend == "internal"
+        awaited = enabled and not self._stdio_closing
+        try:
+            self._validate_awaited_controls()
+        except SandboxPolicyError:
+            awaited = False
         stdio_enabled = enabled and self.config.mcp_stdio.enabled and not self._stdio_closing
         if stdio_enabled:
             from ..stdio_policy import validate_stdio_transport
@@ -87,19 +95,31 @@ class InternalSandboxBackend:
             except (SandboxPolicyError, IndexError):
                 stdio_enabled = False
         return {
-            "enabled": enabled,
+            "enabled": awaited,
             "backend": "internal",
-            "internalProcess": enabled,
+            "internalProcess": awaited,
             "script": {
-                "enabled": enabled,
+                "enabled": awaited,
                 "runtimes": list(self.config.script_runtimes),
                 "externalSource": False,
             },
-            "shell": {"enabled": enabled and self.config.allow_shell},
+            "shell": {"enabled": awaited and self.config.allow_shell},
             "container": {"enabled": False},
             "cancellation": True,
             "resourceLimits": {
-                "posixRlimit": posix,
+                "posixRlimit": posix and awaited,
+                "windowsJob": os.name == "nt" and awaited,
+                "cpu": awaited and self.config.cpu_seconds is not None,
+                "memory": awaited and self.config.memory_bytes is not None,
+                "fileSize": posix and awaited and self.config.file_size_bytes is not None,
+                "processCount": awaited and self.config.process_count is not None,
+                "processTree": (
+                    "windows_job"
+                    if os.name == "nt" and awaited
+                    else "posix_process_group"
+                    if posix and awaited
+                    else "unavailable"
+                ),
                 "workspaceQuota": "monitored",
                 "outputBytes": True,
                 "timeout": True,
@@ -124,9 +144,80 @@ class InternalSandboxBackend:
             },
         }
 
+    def _validate_awaited_controls(self) -> None:
+        if not math.isfinite(self.config.timeout_seconds) or self.config.timeout_seconds <= 0:
+            raise SandboxPolicyError("sandbox timeout must be finite and positive")
+        if os.name == "nt":
+            if self.config.file_size_bytes is not None:
+                raise SandboxPolicyError("Windows awaited file-size enforcement is unavailable")
+            return
+        if os.name != "posix":
+            raise SandboxPolicyError("awaited sandbox process controls are unavailable")
+        import resource
+
+        if not callable(getattr(resource, "setrlimit", None)) or not callable(
+            getattr(os, "killpg", None)
+        ):
+            raise SandboxPolicyError("awaited sandbox process controls are unavailable")
+        for name, value in (
+            ("RLIMIT_CPU", self.config.cpu_seconds),
+            ("RLIMIT_AS", self.config.memory_bytes),
+            ("RLIMIT_FSIZE", self.config.file_size_bytes),
+            ("RLIMIT_NPROC", self.config.process_count),
+        ):
+            if value is not None and not hasattr(resource, name):
+                raise SandboxPolicyError(
+                    "requested awaited process resource control is unavailable"
+                )
+        if self.config.process_count is not None and getattr(os, "getuid", lambda: 0)() == 0:
+            raise SandboxPolicyError("privileged awaited process-count enforcement is unavailable")
+
+    @staticmethod
+    def _close_awaited_tree(process: asyncio.subprocess.Process, job: Any) -> None:
+        if job is not None:
+            job.close()
+        elif os.name == "posix":
+            killpg = getattr(os, "killpg", None)
+            sigkill = getattr(signal, "SIGKILL", None)
+            if not callable(killpg) or sigkill is None:
+                raise SandboxProcessError("awaited process group control is unavailable")
+            try:
+                killpg(process.pid, sigkill)
+            except ProcessLookupError:
+                pass
+
+    async def _wait_awaited_leader(self, process: asyncio.subprocess.Process, job: Any) -> int:
+        # Process.wait can wait for inherited pipes as well as the leader on
+        # asyncio. Observe the actual exit before closing descendants' pipes.
+        while process.returncode is None:
+            await asyncio.sleep(0.01)
+        code = process.returncode
+        self._close_awaited_tree(process, job)
+        return code
+
     async def execute(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
         if not self.config.enabled or self.config.backend != "internal":
             raise SandboxPolicyError("internal sandbox execution is disabled")
+        if self._stdio_closing:
+            raise SandboxPolicyError("internal sandbox is shutting down")
+        self._validate_awaited_controls()
+        if (
+            request.execution_id in self._active
+            or request.execution_id in self._awaited_starts
+            or request.execution_id in self._stdio_starting
+            or request.execution_id in self._stdio_sessions
+        ):
+            raise SandboxPolicyError("sandbox execution identity is already active")
+        owner = asyncio.current_task()
+        if owner is None:
+            raise SandboxPolicyError("sandbox execution ownership is unavailable")
+        self._awaited_starts[request.execution_id] = owner
+        try:
+            return await self._execute_awaited(request)
+        finally:
+            self._awaited_starts.pop(request.execution_id, None)
+
+    async def _execute_awaited(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
         self._validate_request_size(request)
         root = Path(self.config.workspace_root)
         root.mkdir(parents=True, exist_ok=True)
@@ -136,53 +227,75 @@ class InternalSandboxBackend:
             executable, arguments = self._prepare_command(request, workspace)
             environment = self._build_environment(request, workspace)
             self._check_workspace(workspace)
+            process = None
+            job: Any = None
+            tasks: list[asyncio.Task[Any]] = []
+            if os.name == "nt":
+                from .._windows_job import WindowsProcessJob
+
+                job = WindowsProcessJob(self.config)
             try:
-                process = await asyncio.create_subprocess_exec(
-                    executable,
-                    *arguments,
-                    cwd=workspace,
-                    env=environment,
-                    stdin=asyncio.subprocess.PIPE,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    start_new_session=os.name == "posix",
-                    close_fds=True,
-                    preexec_fn=self._resource_limiter(),
-                )
-            except (OSError, subprocess.SubprocessError) as exc:
-                raise SandboxProcessError(
-                    "sandbox process failed to start",
-                    details={"execution_id": request.execution_id},
-                ) from exc
-            self._active[request.execution_id] = process
-            budget = _OutputBudget(self.config.max_output_bytes)
-            tasks: list[asyncio.Task[Any]] = [
-                asyncio.create_task(self._write_stdin(process, request.stdin)),
-                asyncio.create_task(self._read_stream(process.stdout, budget)),
-                asyncio.create_task(self._read_stream(process.stderr, budget)),
-                asyncio.create_task(process.wait()),
-                asyncio.create_task(self._monitor_workspace(process, workspace)),
-            ]
-            try:
-                async with asyncio.timeout(self.config.timeout_seconds):
+                remaining = self.config.timeout_seconds - (time.perf_counter() - started)
+                if remaining <= 0:
+                    raise TimeoutError
+                async with asyncio.timeout(remaining):
+                    try:
+                        process = await asyncio.create_subprocess_exec(
+                            executable,
+                            *arguments,
+                            cwd=workspace,
+                            env=environment,
+                            stdin=asyncio.subprocess.PIPE,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                            start_new_session=os.name == "posix",
+                            close_fds=True,
+                            preexec_fn=self._resource_limiter(),
+                            creationflags=0x00000004 if os.name == "nt" else 0,
+                        )
+                    except (OSError, subprocess.SubprocessError) as exc:
+                        raise SandboxProcessError(
+                            "sandbox process failed to start",
+                            details={"execution_id": request.execution_id},
+                        ) from exc
+                    self._active[request.execution_id] = process
+                    if job is not None:
+                        self._awaited_jobs[request.execution_id] = job
+                        job.assign_and_resume(process.pid)
+                    budget = _OutputBudget(self.config.max_output_bytes)
+                    tasks = [
+                        asyncio.create_task(self._write_stdin(process, request.stdin)),
+                        asyncio.create_task(self._read_stream(process.stdout, budget)),
+                        asyncio.create_task(self._read_stream(process.stderr, budget)),
+                        asyncio.create_task(self._wait_awaited_leader(process, job)),
+                        asyncio.create_task(self._monitor_workspace(process, workspace)),
+                    ]
                     results = await asyncio.gather(*tasks)
             except TimeoutError as exc:
-                await self._terminate_process(process)
-                await self._cancel_tasks(tasks)
                 raise SandboxTimeoutError(
                     "sandbox execution timed out",
                     details={"timeout_seconds": self.config.timeout_seconds},
                 ) from exc
-            except asyncio.CancelledError:
-                await self._terminate_process(process)
-                await self._cancel_tasks(tasks)
-                raise
-            except Exception:
-                await self._terminate_process(process)
-                await self._cancel_tasks(tasks)
-                raise
             finally:
                 self._active.pop(request.execution_id, None)
+                self._awaited_jobs.pop(request.execution_id, None)
+                if process is not None:
+                    self._close_awaited_tree(process, job)
+                    unwinding = sys.exc_info()[0] is not None
+                    try:
+                        await asyncio.wait_for(self._terminate_process(process), timeout=2)
+                    except TimeoutError:
+                        if not unwinding:
+                            raise SandboxProcessError(
+                                "sandbox process cleanup could not be verified"
+                            ) from None
+                    finally:
+                        await self._cancel_tasks(tasks)
+                        transport = getattr(process, "_transport", None)
+                        if transport is not None:
+                            transport.close()
+                elif job is not None:
+                    job.close()
             stdout = cast(str, results[1])
             stderr = cast(str, results[2])
             exit_code = cast(int, results[3])
@@ -206,6 +319,11 @@ class InternalSandboxBackend:
             )
 
     async def cancel(self, execution_id: str) -> None:
+        awaited = self._awaited_starts.get(execution_id)
+        if awaited is not None and execution_id not in self._active:
+            if awaited is not asyncio.current_task():
+                awaited.cancel()
+                await asyncio.gather(awaited, return_exceptions=True)
         starting = self._stdio_starts.get(execution_id)
         if starting is not None and starting is not asyncio.current_task():
             starting.cancel()
@@ -215,10 +333,24 @@ class InternalSandboxBackend:
             await session.aclose()
         process = self._active.get(execution_id)
         if process is not None:
-            await self._terminate_process(process)
+            await self._stop_awaited_process(process, self._awaited_jobs.get(execution_id))
+
+    async def _stop_awaited_process(self, process: asyncio.subprocess.Process, job: Any) -> None:
+        if job is not None:
+            job.close()
+        await self._terminate_process(process)
+        self._close_awaited_tree(process, job)
 
     async def shutdown(self) -> None:
         self._stdio_closing = True
+        awaited = tuple(
+            owner
+            for identifier, owner in self._awaited_starts.items()
+            if identifier not in self._active and owner is not asyncio.current_task()
+        )
+        for owner in awaited:
+            owner.cancel()
+        await asyncio.gather(*awaited, return_exceptions=True)
         starting = tuple(
             task for task in self._stdio_starts.values() if task is not asyncio.current_task()
         )
@@ -230,12 +362,15 @@ class InternalSandboxBackend:
             return_exceptions=True,
         )
         self._stdio_sessions.clear()
-        processes = list(self._active.values())
         await asyncio.gather(
-            *(self._terminate_process(process) for process in processes),
+            *(
+                self._stop_awaited_process(process, self._awaited_jobs.get(identifier))
+                for identifier, process in tuple(self._active.items())
+            ),
             return_exceptions=True,
         )
         self._active.clear()
+        self._awaited_jobs.clear()
 
     def _validate_request_size(self, request: SandboxExecutionRequest) -> None:
         values = [

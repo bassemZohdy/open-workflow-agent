@@ -392,6 +392,18 @@ Backends:
 
 The backend request/result/interface contract remains in `sandbox/contract.py`; portable requirements/capability compatibility live in `sandbox_capabilities.py`. These are intentionally separate concepts.
 
+The S3-04 authored, unqualified source profile adds `sandbox.script_sources`.
+Each deployment-owned entry contains `profile: owa/executable-source/v1`, `id`,
+`version`, literal HTTPS `uri`, `language: python`, exact UTF-8 `code` and mandatory
+SHA-256 `digest`. Code is private configuration, excluded from configuration
+representations; it must not contain credentials. The URI names preloaded approved
+bytes and triggers no network fetch or filesystem import. Registry entries are
+bounded to 32, with 1 MiB per source and 16 MiB total. Public workflows retain
+`run.script.source.endpoint`, while the private plan captures the verified bytes.
+Unknown or changed bindings fail admission/recovery. Imported catalog executable
+sources remain unsupported. Qualification is pending in
+[the acceptance record](s3-04-executable-source-acceptance.md).
+
 ## `tools`
 
 Configured tool types are:

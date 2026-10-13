@@ -9,6 +9,14 @@
 
 ## Current backlog delivery mode — 2026-10-13
 
+S3-04 has a source-authored finite executable-source and awaited-process control
+batch, documented in `docs/s3-04-executable-source-acceptance.md`. Original public
+source references and private archived bytes are bound independently to actual
+business receipts. Imported catalog executable sources remain unsupported. The
+first coherent behavioral/native/process/database/platform and publication gates
+are pending; S3-04 and its feature rows remain incomplete. This authoring does not
+replace the existing deployment or real-cluster acceptance gates.
+
 At the user's request, remaining changes are being integrated locally under
 `codex/required-backlog` before one final comprehensive validation pass.
 The latest instruction requests a push and complete CI/CD checkpoint for the

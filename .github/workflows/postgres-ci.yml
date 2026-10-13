@@ -14,11 +14,17 @@ on:
       - "core/src/open_workflow_agent/openapi*.py"
       - "core/src/open_workflow_agent/grpc*.py"
       - "core/src/open_workflow_agent/asyncapi*.py"
+      - "core/src/open_workflow_agent/executable_source*.py"
       - "core/src/open_workflow_agent/sandbox/**"
       - "tests/core/test_openapi*.py"
       - "tests/core/test_grpc*.py"
       - "tests/core/test_sandbox_job*.py"
       - "tests/core/test_background*.py"
+      - "tests/core/test_executable_source*.py"
+      - "tests/core/test_internal_awaited_process_controls.py"
+      - "tests/core/test_engine_shutdown_initialization.py"
+      - "tests/contract/test_executable_source*.py"
+      - "tests/contract/_executable_source*.py"
       - "tests/contract/test_openapi*.py"
       - "tests/contract/test_grpc*.py"
       - "tests/contract/_openapi*.py"
@@ -243,6 +249,7 @@ jobs:
             tests/core/test_schedule_archive_preflight.py \
             tests/core/test_initial_delivery.py \
             tests/core/test_openapi_admission.py \
+            tests/core/test_executable_source_admission.py \
             tests/core/test_sandbox_jobs.py \
             tests/core/test_sandbox_job_dispatcher.py \
             tests/core/test_background_job_runtime.py \
@@ -611,7 +618,10 @@ jobs:
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \
             ../../tests/contract/test_openapi_process_recovery.py \
             ../../tests/contract/test_grpc_calls.py \
-            ../../tests/contract/test_grpc_process_recovery.py -vv --durations=20 -k postgresql
+            ../../tests/contract/test_grpc_process_recovery.py \
+            ../../tests/core/test_executable_source_admission.py \
+            ../../tests/contract/test_executable_source_calls.py \
+            ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql
 
   postgres-langgraph-operations:
     name: PostgreSQL LangGraph operation adapter recovery
@@ -652,7 +662,10 @@ jobs:
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \
             ../../tests/contract/test_openapi_process_recovery.py \
             ../../tests/contract/test_grpc_calls.py \
-            ../../tests/contract/test_grpc_process_recovery.py -vv --durations=20 -k postgresql
+            ../../tests/contract/test_grpc_process_recovery.py \
+            ../../tests/core/test_executable_source_admission.py \
+            ../../tests/contract/test_executable_source_calls.py \
+            ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql
 
   postgres-runtime:
     name: PostgreSQL persistence ${{ matrix.engine }} acceptance

@@ -10,6 +10,7 @@ from open_workflow_agent.sandbox import compile_sandbox_workflow
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent_adk import AdkWorkflowEngine
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
+from sandbox_fixture_policy import supported_process_limits
 from test_native_checkpoint_fencing import _snapshot as native_snapshot
 
 
@@ -59,6 +60,7 @@ async def test_internal_sandbox_run_tasks_have_cross_engine_parity(
         workflow["use"] = {"functions": {"execute": definition}}
         workflow["do"] = [{"runReusable": {"call": "execute"}}]
     sandbox = SandboxConfig(
+        **supported_process_limits(),
         enabled=True,
         allow_shell=True,
         workspace_root=str(tmp_path / engine_name / "sandbox"),
@@ -187,6 +189,7 @@ async def test_sandbox_retry_reexecutes_with_new_identity_and_at_least_once_side
         ],
     }
     sandbox = SandboxConfig(
+        **supported_process_limits(),
         enabled=True,
         workspace_root=str(tmp_path / engine_name / "sandbox"),
         memory_bytes=None,

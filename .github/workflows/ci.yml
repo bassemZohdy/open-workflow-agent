@@ -122,6 +122,14 @@ jobs:
           ../../tests/core/test_internal_sandbox_jobs.py
           ../../tests/core/test_sandbox_job_mutation_fence.py
           ../../tests/core/test_container_operation_admission.py
+          ../../tests/core/test_executable_sources.py
+          ../../tests/core/test_executable_source_plan.py
+          ../../tests/core/test_executable_source_imports.py
+          ../../tests/core/test_executable_source_admission.py
+          ../../tests/core/test_internal_awaited_process_controls.py
+          ../../tests/core/test_engine_shutdown_initialization.py
+          ../../tests/contract/test_executable_source_calls.py
+          ../../tests/contract/test_executable_source_process_recovery.py
           ../../tests/contract/test_openapi_calls.py
           ../../tests/contract/test_openapi_process_recovery.py
           ../../tests/contract/test_grpc_calls.py
