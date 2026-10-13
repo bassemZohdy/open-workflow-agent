@@ -9,7 +9,10 @@
 
 ## Current backlog delivery mode — 2026-10-13
 
-**17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-07 and S2-08 retain their accepted finite profiles. S2-09 is the earliest unfinished milestone; independent source authoring continues through S3-05 while its qualification gates remain open. S3-06 source authoring and static checks are complete; its frozen full validation batch is running and has found actionable failures. S3-07 source and coherent recovery corrections are ready in a separate checkout; schema, admission, lint/format and strict typing checks pass, with behavioral qualification pending.
+**17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-09 is
+the earliest unfinished milestone. Coherent source authoring continues through
+S3-08 in parallel; failed or incomplete validation advances no task checkbox or
+inventory row.
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
@@ -21,8 +24,22 @@
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored; first combined common profile failed; corrections and full qualification pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md) |
 | S3-06 | Identity, action policy, isolation and credential safeguards are authored; full batch qualification pending. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
 | S3-07 | Eight finite recipe families and named role bindings authored; static/schema checks pass, behavioral qualification pending. | [Pattern scope and gates](docs/s3-07-agent-pattern-acceptance.md) |
+| S3-08 | Selected compiler/provider/memory/embedded event adaptations are being authored; no behavioral qualification. | [Selected scope and gates](docs/s3-08-selected-adapter-acceptance.md) |
 
-The published feature checkpoint is `67aa724` on draft [PR 64](https://github.com/bassemZohdy/open-workflow-agent/pull/64). Its aggregate CI failed; passing image, security and individual platform/database checks do not qualify the unfinished tasks. Later local batches retain commands, frozen-source manifests and failed results. The combined S3-03/04/05 batch at `ebc2694` retains 1,016 unchanged tracked inputs. Its five build/provenance checks passed; the common profile failed with 23 failures, 1,089 passes and 227 skips. ADK and LangGraph each failed with 30 failures, 274 passes and 397 skips; optional Agent Framework passed with 254 passes and 565 skips. All four profiles ended without tracked source changes. Corrections and S3-06 source are frozen at `dc71ecb` with 1,034 tracked inputs. All five fresh builds passed; the common suite ended with 46 failures, 2,684 passes, 591 skips and 59 setup errors, with unchanged tracked inputs. Its full SDK suites are still running. S3-07 source changes are isolated in a separate checkout and do not alter that frozen batch. No new task, full inventory row, JavaScript profile or release is qualified by source authoring or selected passes.
+The published feature checkpoint is `67aa724` on draft
+[PR 64](https://github.com/bassemZohdy/open-workflow-agent/pull/64); aggregate CI
+failed. Later source and corrections remain local feature work pending validation.
+
+| Frozen source | Latest evidence | Qualification |
+| --- | --- | --- |
+| `dc71ecb`, 1,034 inputs | Five builds passed; common 46 failures/59 errors; optional framework three failures; principal SDK suites reached the unchanged 75-minute bounds with failures | Failed/incomplete |
+| `3aaaf30`, 1,054 inputs | Static/schema/admission checks and five builds passed; common 8 failures, 2,822 passes, 601 skips and 52 errors; source unchanged | Behavioral gates open |
+
+All profiles have ended. Corrections and selected S3-08 adapters are authored in a
+separate checkout. Full commands, counts, source hashes and actionable causes are
+retained in [the batch evidence record](docs/validation-history/pending-batch-results.md).
+Source changes and partial passes qualify no unchecked task, full inventory row,
+JavaScript profile or release.
 
 Continue ready work in parallel, complete a coherent source batch before testing it, and push validated feature work. Running checks and failures with an actionable fix remain active. Only a repeated blocker with no next step moves the original unchecked task to the final deferred section, with full evidence and resume conditions. See [TODO.md](TODO.md) for the complete ordered scope, [documentation guide](docs/README.md) for topic navigation, and [earlier delivery checkpoints](docs/validation-history/backlog-delivery-2026-10-13.md) for retained history.
 

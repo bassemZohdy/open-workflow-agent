@@ -70,9 +70,8 @@ byte digests, public task references and fail-before-mutation gates remain requi
 The combined correction/S3-06 source at `dc71ecb` freezes 1,034 tracked inputs.
 All five fresh build/provenance checks passed. The broad common profile ended
 with **46 failures, 2,684 passes, 591 skips and 59 setup errors** in 1,160.53 pytest
-seconds (1,176.51 driver seconds), with no tracked input changes. Full isolated
-ADK, LangGraph and optional Agent Framework contract/adapter profiles are still
-running; their final results must be recorded separately.
+seconds (1,176.51 driver seconds), with no tracked input changes. The isolated ADK, LangGraph and optional Agent Framework profiles have also
+ended; their final outcomes and bounds are recorded below.
 
 Fifty setup errors came from a new fixture using occurrence zero where the
 existing common effect identity requires a positive visit; two standalone journal
@@ -97,4 +96,39 @@ valid authority admission can add a fourth internal receipt. Corrections must
 allow only the exact original authority identity after common proof verification,
 preserve all physical SDK starter checks, and continue rejecting business progress
 or unrelated scope/policy records. These corrections remain source work until the
-next frozen batch; unfinished native runs are not retroactively qualified.
+next frozen batch; those failed native runs are not retroactively qualified.
+
+The remaining `dc71ecb` profiles have ended with unchanged tracked inputs.
+Optional Agent Framework failed with 3 failures, 1,696 passes and 2,152 skips in
+3,799.22 pytest seconds (3,831.87 driver seconds); the failures use a Windows
+script fixture requesting an unsupported awaited file-size control. The runtime
+rejection is preserved, and the positive fixture explicitly opts out of that
+unavailable control on Windows in the next source batch. Both full principal SDK
+profiles reached their original 4,500-second batch bound (exit 124), not a green
+aggregate: ADK logged 1,266 passes, 33 failures and 1,422 skips; LangGraph logged
+1,407 passes, 59 failures and 1,478 skips before termination. These are observed
+progress counts, not final pytest totals or qualified test unions. Their artifacts
+retain source hashes and full commands. Future isolated profiles exclude only
+parameter instances belonging to the other unavailable SDKs; those instances run
+in their own actual native environment, preserving shared fixture coverage.
+
+## Frozen S3-07 and corrections — 3aaaf30
+
+Commit `3aaaf30` freezes 1,054 tracked inputs. Static lint/format/type checks,
+all 12 recipe schema/admission checks and all five fresh build/provenance checks
+passed. The broad common run ended with **8 failures, 2,822 passes, 601 skips and
+52 errors** in 1,037.85 pytest seconds (1,046.31 driver seconds), with no source
+changes. Fifty errors were the new core role-boundary module requesting a fixture
+scoped under the contract directory; two teardown errors released leases already
+deliberately released by expiry/takeover tests. Remaining failures identify a
+malformed-receipt exception escaping the common error contract, another legacy
+unbound intent lookup, and an independent supervisor deadline observation gap.
+The role fixture wiring, receipt translation, intent lookup and intentional stale
+cleanup are corrected in the separate S3-08 checkout. Read-only verification of the retained HMAC observations found both original
+deadline cases eventually terminal with the original deadline cause; the helper
+returned an intermediate unknown observation too early. Healthy-terminal tests
+now wait for terminal within the unchanged 20-second bound, while explicit
+resource-failure cases still require unknown. The original seven-second execution
+deadline and all production controls remain unchanged. Independent native
+supervisor startup still needs diagnostic evidence; no security gate is weakened. Source authoring,
+builds and partial passes qualify no unchecked task.

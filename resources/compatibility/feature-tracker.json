@@ -64897,6 +64897,11 @@
         "status": "Authored; static/schema checks passed; behavioral qualification pending",
         "record": "docs/s3-07-agent-pattern-acceptance.md",
         "scope": "Eight finite independently authored OWS recipe families, original default recipes plus separate named role bindings, fixed child workflows, strict routes/plan/refinement budgets and protected approval; no native API parity or row completion claimed; shared/process/platform/backend/publication gates pending"
+      },
+      "S3-08": {
+        "status": "Authoring; qualification pending",
+        "record": "docs/s3-08-selected-adapter-acceptance.md",
+        "scope": "Selected independently adapted Apache compiler/provider/common bounded memory and embedded event codec/atomic ACK seams; real providers/remote brokers/native metadata and stronger transport selection proof remain gated; no inventory row completion claimed"
       }
     }
   },

@@ -20,7 +20,12 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 
 ## Delivery status — 2026-10-13
 
-**17 verified / 20 open / 0 deferred.** S2-09 is the earliest unfinished task. S2-09 through S3-06 have authored changes awaiting complete qualification. Latest hosted checkpoint `67aa724` failed, so no pending checkbox changes. The common executable-source batch at `6622ab0` also failed and is being corrected. See [current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-13).
+**17 verified / 20 open / 0 deferred.** S2-09 is the earliest unfinished task.
+S2-09 through S3-08 have authored changes awaiting complete qualification.
+The latest hosted checkpoint (`67aa724`) failed; grouped corrections and selected
+adapters are being prepared for one complete validation batch. No pending task is
+marked complete. See [current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-13)
+and [retained validation evidence](docs/validation-history/pending-batch-results.md).
 
 ## Stage 1 — Correct core execution
 
@@ -149,6 +154,8 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   Eight finite recipe families and named role bindings are authored; see
   [the acceptance plan](docs/s3-07-agent-pattern-acceptance.md). Required validation remains open.
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
+  Selected finite adapters and fixtures are being authored; see
+  [the acceptance plan](docs/s3-08-selected-adapter-acceptance.md). Qualification remains pending.
 
 ## Stage 4 — Advanced features and full verification
 
@@ -162,7 +169,8 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   User-requested cleanup is verified at `3f568e5`: PR/main trigger separation, independent
   Windows/native/image checks, one root contract execution, optional Framework
   coverage for common changes, and stale-PR cancellation. Required release
-  gates are preserved and all six configured workflows pass. Remaining S4-07
+  gates were preserved and all six configured workflows passed at that checkpoint.
+  The later hosted checkpoint failed, as recorded in the delivery status above. Remaining S4-07
   release/rollback and broader capability/version acceptance stay open.
 - [ ] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.
 - [ ] **S4-09** (L) — Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; require its own native acceptance.
@@ -177,8 +185,6 @@ Earlier completed release/readiness work and deferred details are preserved in [
 
 ## Deferred tasks
 
-No active backlog tasks are currently deferred. S2-08 is verified; S2-09 is
-the next ready task. Scoped acceptance and prior failures are recorded above.
-Move a task's
-entry here when the blocked-task rule applies, keeping its checkbox unchecked
-and including the full deferral record described above.
+No active backlog task is currently deferred. Actionable validation failures
+remain with their original task. Move an entry here only when the blocked-task
+rule applies, preserving its unchecked scope and the full deferral record.
