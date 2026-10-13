@@ -171,3 +171,16 @@ positive prestart fixture must record real owned archive admission before
 publishing native history; the no-retrofit guard remains. Next broad runs use
 a finite early failure limit for diagnosis; only complete zero-failure suites
 can qualify completion. No interrupted run is relabelled successful.
+
+The next broad snapshot 8a87640 is retained in `tmp/s2-09-third-batch`.
+LangGraph reaches its five-failure limit after 131 passes/73 skips: valid
+in-memory saver presence, an overlapping probe setup/write, and the older
+synthetic late-finalization admission seam. Other profiles are explicitly
+interrupted at 349 seconds with unchanged source; the API schema snapshot also
+needs its newly declared route. Native memory inspection now reads only existing
+official saver maps without setup or mutation and adds three actual SDK tests.
+The probe finishes its setup before the runtime writer starts. Synthetic
+finalization records real leased common admission and keeps an explicit fake
+SDK boundary; it is not counted as native qualification. All ten-second bounds
+and outcome/identity/cancellation assertions remain. The versioned API snapshot
+is regenerated and included in subsequent fixed-input manifests.

@@ -449,11 +449,15 @@ async def test_restart_preserves_ordered_fork_results_and_completed_branch_effec
     handle = _handle(services, plan)
     driver = LangGraphScopeExecutor(plan, None, handle.invocation_id)
     completed_scope = driver.scopes["/do/0/fanout/fork/branches/0"]
-    running = asyncio.create_task(engine.invoke(plan, handle, {"original": True}))
+    running = None
     try:
         async with asyncio.timeout(10):
+            services.engine_database_path("langgraph")
             async with saver_type.from_conn_string(engine.native.database_path) as probe:
                 await probe.setup()
+                # The probe must finish its DDL before the runtime's writer
+                # starts; subsequent checkpoint inspection is read-only.
+                running = asyncio.create_task(engine.invoke(plan, handle, {"original": True}))
                 driver = LangGraphScopeExecutor(plan, probe, handle.invocation_id)
                 graph = driver.compile_scope(
                     completed_scope, engine.executor, ExecutionState(data={})
@@ -474,8 +478,9 @@ async def test_restart_preserves_ordered_fork_results_and_completed_branch_effec
         assert handle.invocation_id not in engine._ownership_tasks
         assert handle._execution_lease is None
     finally:
-        running.cancel()
-        await asyncio.gather(running, return_exceptions=True)
+        if running is not None:
+            running.cancel()
+            await asyncio.gather(running, return_exceptions=True)
         await engine.shutdown()
         services.close()
 

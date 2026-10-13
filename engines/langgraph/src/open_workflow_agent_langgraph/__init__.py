@@ -19,6 +19,7 @@ from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.workflow import WorkflowPlan
 
+from . import native as native_module
 from .agent import LangGraphAgentFactory
 from .native import LANGGRAPH_AVAILABLE, NATIVE_SCOPE_STEP_LIMIT, LangGraphFunctionalAdapter
 
@@ -64,6 +65,20 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         thread_ids = ("owa-scope-v1:" + key, handle.invocation_id)
         common = self.services.effect_journal.connection
         try:
+            if not self.native.database_path:
+                saver = self.native.checkpointer
+                memory_saver_type = getattr(native_module, "InMemorySaver", None)
+                if memory_saver_type is None or not isinstance(saver, memory_saver_type):
+                    return False
+                # The official get_tuple reader inserts absent defaultdict
+                # entries. Presence admission must leave even missing evidence
+                # untouched and leave serialization validation to native replay.
+                return any(
+                    saver.storage.get(thread_id, {}).get("", {}) for thread_id in thread_ids
+                ) or any(
+                    value and identity[0] in thread_ids and identity[1] == ""
+                    for identity, value in saver.writes.items()
+                )
             if common.is_postgresql:
                 tables = {
                     row[0]

@@ -234,15 +234,20 @@ async def test_late_native_resume_result_preserves_committed_cancellation(
         return {"late": True}
 
     async def native_admission(*args, **kwargs):
-        # This fixture injects only finalization, after valid native admission.
-        # Actual missing/inconsistent native records have separate SDK probes.
+        # This is a synthetic adapter-finalization race, not native recovery
+        # qualification. Actual missing/inconsistent native records have
+        # separate SDK probes; common definition admission remains real below.
         return None
 
+    engine._preflight_native_continuation = native_admission
     engine.native = (
         SimpleNamespace(available=True, resume=native_completion, admit_resume=native_admission)
         if engine_name == "adk"
         else SimpleNamespace(
-            task_nodes_available=True, execute_plan=native_completion, admit_resume=native_admission
+            task_nodes_available=True,
+            execute_plan=native_completion,
+            admit_resume=native_admission,
+            prepare_storage=native_admission,
         )
     )
     plan = compile_workflow()
@@ -254,7 +259,11 @@ async def test_late_native_resume_result_preserves_committed_cancellation(
         workflow_version=plan.version,
         workflow_fingerprint=plan.fingerprint,
     )
-    services.invocations.bind_input(handle, {})
+    lease = services.execution_ownership.acquire(handle, seconds=60)
+    try:
+        services.recovery_definitions.admit(plan, handle, {}, execution_lease=lease)
+    finally:
+        services.execution_ownership.release(lease)
     running = asyncio.create_task(engine.resume(handle, {}, plan))
     try:
         await asyncio.wait_for(started.wait(), 10)
