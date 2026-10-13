@@ -399,7 +399,18 @@ def test_legacy_child_payload_and_native_hash_remain_exact_without_creating_bind
             "record_digest": dependency.record_digest,
         }
         assert _receipt_payload(receipt)["child_invocation"] == legacy_value
-        expected = {**asdict(receipt), "child_invocation": legacy_value}
+        # The legacy ABI is fixed independently of future optional dataclass
+        # fields. It never included an absent external-outcome extension.
+        expected = {
+            "request_digest": digest,
+            "owner": "legacy-owner",
+            "status": "completed",
+            "output": {"legacy": "output"},
+            "error": None,
+            "error_status_code": None,
+            "operation_id": None,
+            "child_invocation": legacy_value,
+        }
         encoded = json.dumps(
             expected, sort_keys=True, ensure_ascii=False, allow_nan=False, separators=(",", ":")
         ).encode()

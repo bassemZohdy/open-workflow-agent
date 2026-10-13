@@ -104,7 +104,7 @@ def test_trusted_receiver_outcome_recovers_actual_native_process_stop_without_po
             assert result["original"] == ready["original"]
             assert result["duplicate"]["status"] == result["status"]
             assert result["duplicate"]["output"] == result["output"]
-            assert result["duplicate"]["error"] == result["error"]
+            assert result["duplicate"].get("error") == result["error"]
             assert result["model_calls"] == []
             assert all(method != "POST" for method, _ in remote.requests[len(requests_before) :])
             assert remote.commits() == (0 if boundary == "before-dispatch" else 1)

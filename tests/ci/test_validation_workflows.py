@@ -140,6 +140,18 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     assert "\n" not in command
     assert all(f"../../tests/contract/{name}" in command for name in fixtures)
 
+    native = _workflow("ci.yml")["jobs"]["native-lifecycle"]
+    assert "needs" not in native and native["strategy"]["fail-fast"] == "false"
+    assert {entry["engine"] for entry in native["strategy"]["matrix"]["include"]} == {
+        "adk",
+        "langgraph",
+    }
+    command = _runs(native)
+    assert "--kill-after=30s 8m" in command and "--locked --extra knowledge" in command
+    assert all(f"../../tests/contract/{name}" in command for name in fixtures)
+    main = _runs(_workflow("ci.yml")["jobs"]["engines"])
+    assert all(f"--ignore=../../tests/contract/{name}" in main for name in fixtures)
+
 
 def test_independent_principal_jobs_finish_both_profiles_before_workflow_success():
     workflow = _workflow("ci.yml")

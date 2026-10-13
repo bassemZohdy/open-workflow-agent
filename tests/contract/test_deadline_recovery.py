@@ -15,7 +15,7 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import InvocationStateError
 from open_workflow_agent.services import RuntimeServices
-from open_workflow_agent.workflow import compile_workflow
+from open_workflow_agent.workflow import ExecutionState, compile_workflow
 from test_durable_timers import _use_clock
 
 
@@ -153,10 +153,13 @@ async def test_original_deadline_is_reused_after_native_waiting_restart(
         details: dict[str, Any],
         *,
         absolute_due: float | None = None,
+        state: ExecutionState | None = None,
     ) -> Any:
         if seconds is not None:
             remaining_budgets.append(seconds)
-        return await original_timed(operation, seconds, message, details, absolute_due=absolute_due)
+        return await original_timed(
+            operation, seconds, message, details, absolute_due=absolute_due, state=state
+        )
 
     resumed.executor._run_timed = record_timed
     persisted = restarted.invocations.get(handle.invocation_id)

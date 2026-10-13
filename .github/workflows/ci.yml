@@ -376,7 +376,12 @@ jobs:
           set -euo pipefail
           timeout --signal=TERM --kill-after=30s 8m \
             uv run --locked --extra knowledge --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
-            pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract -vv --durations=20
+            pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract -vv --durations=20 \
+            --ignore=../../tests/contract/test_external_operation_keys.py \
+            --ignore=../../tests/contract/test_external_recovery_process.py \
+            --ignore=../../tests/contract/test_external_recovery_native_corruption.py \
+            --ignore=../../tests/contract/test_host_drain_child_controls.py \
+            --ignore=../../tests/contract/test_explicit_compensation.py
       - name: Portable Profile CTK subset
         shell: bash
         run: |
@@ -419,6 +424,46 @@ jobs:
           name: engine-benchmark-${{ matrix.engine }}
           path: ${{ runner.temp }}/engine-benchmark-${{ matrix.engine }}.json
           if-no-files-found: warn
+
+  native-lifecycle:
+    name: ${{ matrix.engine }} native lifecycle recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: adk
+            extra: native
+          - engine: langgraph
+            extra: sqlite
+    defaults:
+      run:
+        working-directory: engines/${{ matrix.engine }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Native lifecycle contract tests
+        shell: bash
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 8m \
+            uv run --locked --extra knowledge --extra ${{ matrix.extra }} \
+            --with pytest --with pytest-asyncio pytest \
+            ../../tests/contract/test_external_operation_keys.py \
+            ../../tests/contract/test_external_recovery_process.py \
+            ../../tests/contract/test_external_recovery_native_corruption.py \
+            ../../tests/contract/test_host_drain_child_controls.py \
+            ../../tests/contract/test_explicit_compensation.py -vv --durations=20
 
   containers:
     name: Docker ${{ matrix.engine }} acceptance

@@ -16,6 +16,47 @@ identities and strict arbitrary-request validation. Required active-child and
 native corrupted-receiver proofs are being added before final batch testing.
 No interrupted run or static check qualifies a behavioral requirement.
 
+## Integrated local verification — 2026-10-13
+
+All 373 inputs of runtime source `688563a` remain unchanged throughout the
+completed four-environment full batch; no supervisor reaches its fifty-minute
+limit. Root coverage is 90.52%, above the unchanged 90% requirement.
+
+| Full snapshot | Passed | Failed fixtures | Declared skips | Tracked expected failures |
+| --- | ---: | ---: | ---: | ---: |
+| Root | 2,414 | 1 | 1,423 | 2 |
+| Actual ADK, shared contracts and CTK | 1,355 | 10 | 998 | 2 |
+| Actual LangGraph, shared contracts and CTK | 1,394 | 10 | 971 | 2 |
+| Optional Framework, shared contracts and CTK | 1,698 | 0 | 1,396 | 2 |
+
+The principal failures are the observation wrapper not forwarding the new
+private deadline state argument (four cases each), and the process-stop fixture
+indexing an optional successful-result error field (six cases each). The workers
+recover successfully. The root legacy-hash fixture built its expected old ABI
+from an evolving dataclass, inadvertently adding the absent optional external
+proof. Its expectation now states the fixed original field set explicitly.
+Original budget, value/null/fault, identity, owner, zero-replay, commit-count and
+legacy-hash assertions remain. The corrected fixtures and CI layout are the
+only changes after the broad snapshot; every runtime hash is unchanged.
+
+Corrected root legacy/CI focus passes 22 cases, with nine unavailable PostgreSQL
+skips. Both actual principal engines pass all 54 selected SQLite cases in the complete
+new lifecycle/key/receiver/compensation/corruption/process-stop block and existing
+deadline fixtures under a 900-second supervisor (ADK 283 seconds, LangGraph
+243 seconds). No test is skipped and all runtime/input hashes remain unchanged
+during these corrected runs. Final results are retained in
+`tmp/s2-08-final-focus-*`; final source still requires full hosted qualification.
+All five fresh builds, documentation links, formatting, lint and strict typing
+(86 runtime and three CI modules) pass. Earlier nonzero broad results remain
+retained; they are not relabelled as successful full runs.
+
+CI runs the complete new block in two additional independent native jobs while
+the original suites retain their prior selection. Matching ignore/include
+guards ensure every moved fixture is tested on both principal engines. Actual
+PostgreSQL has two separate lifecycle profiles that also gate both images, and
+Windows has its own lifecycle profile. Existing eight-minute command and
+fifteen/twenty-minute job bounds remain; no required fixture is skipped to pass.
+
 ## Contract and limits
 
 Operator cancellation is a durable business control. Its common terminal
