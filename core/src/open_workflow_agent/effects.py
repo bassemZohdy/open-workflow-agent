@@ -442,6 +442,12 @@ class EffectJournal:
                 from .child_waits import verify_child_wait_receipt
 
                 verify_child_wait_receipt(self.connection, self._invocations, identity, receipt)
+            if identity.operation == "policy:definition-admission:v1":
+                from .recovery_definitions import verify_definition_admission_receipt
+
+                verify_definition_admission_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
             if identity.operation == "run:workflow" and receipt.status != "pending":
                 if receipt.child_invocation is None:
                     raise ValueError("child invocation binding is absent")

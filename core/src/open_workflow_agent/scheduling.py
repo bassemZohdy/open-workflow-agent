@@ -65,6 +65,7 @@ class WorkflowScheduler:
         )
         self._errors: dict[str, Exception] = {}
         self._trigger_cursor: str | None = None
+        self._definition_cursor: tuple[float, str] | None = None
         self._failed_schedules: set[str] = set()
 
     def _trigger_store(self) -> EventTriggerStore | None:
@@ -108,6 +109,24 @@ class WorkflowScheduler:
     async def tick(self, *, now: float | None = None) -> int:
         """Admit a bounded fair batch using the same clock as claim/disposition."""
         current = self.clock() if now is None else now
+        definition_snapshots = await self._definition_preflight(current)
+
+        def eligible(handle: ExecutionHandle) -> bool:
+            if definition_snapshots is None:
+                return True
+            if definition_snapshots.get(handle.invocation_id) != handle._persisted_payload:
+                return False
+            archive = self.services.recovery_definitions
+            if handle.status not in {"completed", "faulted", "cancelled"} and archive.has_binding(
+                handle
+            ):
+                try:
+                    archive.resolve(handle)
+                except Exception as error:
+                    self._errors["definition:" + handle.invocation_id] = error
+                    return False
+            return True
+
         triggers = self._trigger_store()
         if triggers is not None:
             records = self.services.schedules.active_triggers(
@@ -141,6 +160,7 @@ class WorkflowScheduler:
                 lease_seconds=30.0,
                 owner=self._owner,
                 exclude_schedule_ids=tuple(selected | self._failed_schedules),
+                eligible_invocation=eligible,
             )
             if record is None:
                 break
@@ -163,27 +183,101 @@ class WorkflowScheduler:
             await asyncio.sleep(0)
         return count
 
-    async def _execute(self, record: ScheduleRecord) -> None:
-        plan = await resolve_and_compile_sandbox_workflow(
-            json.loads(record.workflow_source_json),
-            sandbox=self.services.config.sandbox,
-            trusted_catalogs=self.services.config.workflow.external_catalogs,
-            resolver=self.services.external_catalogs,
-            catalog=self.services.catalog,
+    async def _definition_preflight(self, now: float) -> dict[str, str | None] | None:
+        archive = getattr(self.services, "recovery_definitions", None)
+        if archive is None:
+            # Independent common-store primitives may use a non-runtime fake.
+            return None
+        store = self.services.schedules
+        statement = (
+            "SELECT schedule_id,occurrence_key,nominal_at,slot_key FROM schedule_slots "
+            "WHERE invocation_id IS NOT NULL AND state IN ('pending','running','waiting') "
+            "AND (lease_until IS NULL OR lease_until<=?) "
+            "AND (state!='waiting' OR NOT EXISTS (SELECT 1 FROM invocations "
+            "WHERE invocations.invocation_id=schedule_slots.invocation_id "
+            "AND invocations.status NOT IN ('completed','faulted','cancelled'))) "
         )
-        if plan.fingerprint != record.workflow_fingerprint:
-            raise ScheduleValidationError("scheduled workflow definition changed")
+        parameters: tuple[Any, ...] = (now,)
+        if self._definition_cursor is not None:
+            nominal, key = self._definition_cursor
+            statement += "AND (nominal_at>? OR (nominal_at=? AND slot_key>?)) "
+            parameters += (nominal, nominal, key)
+        rows = store.connection.execute(
+            statement + "ORDER BY nominal_at,slot_key LIMIT 128", parameters
+        ).fetchall()
+        if not rows and self._definition_cursor is not None:
+            self._definition_cursor = None
+            return await self._definition_preflight(now)
+        if rows:
+            self._definition_cursor = (rows[-1][2], rows[-1][3])
+        verified: dict[str, str | None] = {}
+        for schedule_id, occurrence, _nominal, _key in rows:
+            try:
+                record = store._require(store.connection, schedule_id)
+                row = slot_row(store.connection, schedule_id, occurrence)
+                handle = store._binding(store.connection, row, record)
+                if handle.status not in {"completed", "faulted", "cancelled"}:
+                    if archive.has_binding(handle):
+                        archive.resolve(handle)
+                    else:
+                        await self.engine._verify_initial_nohistory(handle)
+                verified[handle.invocation_id] = handle._persisted_payload
+                self._failed_schedules.discard(schedule_id)
+                self._errors.pop("definition:" + schedule_id, None)
+            except Exception as error:
+                self._failed_schedules.add(schedule_id)
+                self._errors["definition:" + schedule_id] = error
+        return verified
+
+    async def _execute(self, record: ScheduleRecord) -> None:
         claim = record._claim
         if claim is None:
             raise ScheduleOperationConflict("schedule occurrence has not been claimed")
+        row = slot_row(self.services.schedules.connection, record.schedule_id, claim.occurrence_key)
         triggers = self._trigger_store()
         if record.kind == "on" and triggers is not None:
-            row = slot_row(
-                self.services.schedules.connection, record.schedule_id, claim.occurrence_key
-            )
             if row is None or row[6] is None:
                 raise ScheduleValidationError("event trigger invocation binding is missing")
             triggers.verify_invocation(row[6])
+        archived_handle = (
+            self.services.schedules._binding(self.services.schedules.connection, row, record)
+            if row is not None and row[6] is not None
+            else None
+        )
+        archive = getattr(self.services, "recovery_definitions", None)
+        terminal = archived_handle is not None and archived_handle.status in {
+            "completed",
+            "faulted",
+            "cancelled",
+        }
+        if terminal:
+            assert archived_handle is not None
+            self.services.schedules.finish(
+                record.schedule_id,
+                invocation_id=archived_handle.invocation_id,
+                status=archived_handle.status,
+                claim=claim,
+                now=self.clock(),
+            )
+            return
+        if (
+            archived_handle is not None
+            and archive is not None
+            and archive.has_binding(archived_handle)
+        ):
+            plan = self.services.resolve_original_definition(archived_handle)
+        else:
+            if archived_handle is not None and archive is not None:
+                await self.engine._verify_initial_nohistory(archived_handle)
+            plan = await resolve_and_compile_sandbox_workflow(
+                json.loads(record.workflow_source_json),
+                sandbox=self.services.config.sandbox,
+                trusted_catalogs=self.services.config.workflow.external_catalogs,
+                resolver=self.services.external_catalogs,
+                catalog=self.services.catalog,
+            )
+        if plan.fingerprint != record.workflow_fingerprint:
+            raise ScheduleValidationError("scheduled workflow definition changed")
         handle = self.services.schedules.bind_invocation(
             record, engine=self.engine.engine_name, now=self.clock()
         )

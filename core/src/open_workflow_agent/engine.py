@@ -227,6 +227,7 @@ class WorkflowEngine:
     async def initialize(self, services: RuntimeServices) -> None:
         self.services = services
         services.workflow_runner = self.run_child
+        services._workflow_initial_child_preflight = self._verify_initial_nohistory
 
     async def run_child(
         self,
@@ -314,6 +315,78 @@ class WorkflowEngine:
         if handle.engine != self.engine_name and not reference_alias:
             raise InvocationStateError("invocation belongs to a different engine")
 
+    async def _native_initial_history_exists(self, handle: ExecutionHandle) -> bool:
+        """Portable execution has no separate durable native history."""
+        return False
+
+    async def _preflight_native_continuation(self, handle: ExecutionHandle) -> None:
+        """Common reference execution has no separately required SDK checkpoint."""
+
+    async def _preflight_timer_delivery(self, handle: ExecutionHandle) -> WorkflowPlan:
+        plan = self.services.resolve_original_definition(handle)
+        self._verify_event_requirements(plan)
+        await self._preflight_native_continuation(handle)
+        return plan
+
+    async def _preflight_definition(
+        self, handle: ExecutionHandle, plan: WorkflowPlan, *, initial: bool = False
+    ) -> None:
+        archive = self.services.recovery_definitions
+        if archive.has_binding(handle) or not initial:
+            lease = self._execution_leases.get(handle.invocation_id)
+            if initial and handle.invocation_id in self._active and lease is not None:
+                self.services.execution_ownership.verify(lease)
+                original = archive.verify_admission(handle)
+                self.services.invocations.verify_fingerprint(handle, original.fingerprint)
+                self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
+                return
+            archive.verify(handle, plan)
+            return
+        await self._verify_initial_nohistory(handle)
+
+    async def _verify_initial_nohistory(self, handle: ExecutionHandle) -> None:
+        # Validate installed evidence and any explicit nonsecret deployment
+        # declaration before adopting even a first execution lease.
+        self.services.recovery_definitions.profile_provider(handle.engine)
+        # Input-only queued reservations are not executed history. Every actual
+        # reentry requires its admitted archive; current source cannot retrofit it.
+        if (
+            handle.status != "running"
+            or self.services.effect_journal.connection.execute(
+                "SELECT 1 FROM workflow_effect_invocations WHERE invocation_id=? LIMIT 1",
+                (handle.invocation_id,),
+            ).fetchone()
+            is not None
+        ):
+            raise InvocationStateError(
+                "executed invocation has no original definition admission",
+                details={"reason": "definition_archive_missing", "stage": "definition"},
+            )
+        if (
+            self.services.event_store is not None
+            and self.services.event_store.connection.execute(
+                "SELECT 1 FROM event_invocation_profiles WHERE invocation_id=? LIMIT 1",
+                (handle.invocation_id,),
+            ).fetchone()
+            is not None
+        ):
+            raise InvocationStateError("executed event invocation has no definition admission")
+        if handle.parent_invocation_id is not None:
+            parent = self.services.invocations.get(handle.parent_invocation_id)
+            if parent is None:
+                raise InvocationStateError("initial child parent is unavailable")
+            parent_lease = self._execution_leases.get(parent.invocation_id)
+            if parent.invocation_id in self._active and parent_lease is not None:
+                self.services.execution_ownership.verify(parent_lease)
+                self.services.recovery_definitions.verify_admission(parent)
+            else:
+                self.services.resolve_original_definition(parent)
+        if await self._native_initial_history_exists(handle):
+            raise InvocationStateError(
+                "native invocation has no original definition admission",
+                details={"reason": "definition_archive_missing", "stage": "definition"},
+            )
+
     async def invoke(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> InvocationResult:
@@ -322,6 +395,7 @@ class WorkflowEngine:
         self.services.invocations.refresh(invocation)
         if invocation.status in TERMINAL_INVOCATION_STATES:
             return self._stored_result(invocation)
+        await self._preflight_definition(invocation, workflow, initial=True)
         active = self._active.get(invocation.invocation_id)
         if active is not None:
             return await asyncio.shield(active.result)
@@ -330,6 +404,8 @@ class WorkflowEngine:
                 self.services.invocations.refresh(invocation)
                 if invocation.status in TERMINAL_INVOCATION_STATES:
                     return self._stored_result(invocation)
+                await self._preflight_definition(invocation, workflow, initial=True)
+                input_data = self._prepare_workflow_input(workflow, invocation, input_data)
                 if self.services.child_waits.for_invocation(
                     invocation.invocation_id, workflow.fingerprint
                 ):
@@ -368,6 +444,7 @@ class WorkflowEngine:
         if handle.status in TERMINAL_INVOCATION_STATES:
             await self._cancel_synchronous_children(handle)
             return self._stored_result(handle)
+        await self._preflight_definition(handle, plan, initial=True)
         active = self._active.get(handle.invocation_id)
         if active is not None:
             return await asyncio.shield(active.result)
@@ -375,36 +452,57 @@ class WorkflowEngine:
             self.services.invocations.refresh(handle)
             if handle.status in TERMINAL_INVOCATION_STATES:
                 return self._stored_result(handle)
+            await self._preflight_definition(handle, plan, initial=True)
+            if not self.services.recovery_definitions.has_binding(handle):
+                self._prepare_workflow_input(plan, handle, input_data)
             if await self._scheduled_native_state_exists(handle, plan):
                 await self._verify_resume_state(handle, plan)
                 if not await self._prepare_child_wakes(handle, plan):
                     return self._stored_result(handle)
                 self._prepare_timer_wake(handle, plan, None)
                 return await self._resume_owned(handle, None, plan)
-            return await self._invoke_owned(plan, handle, input_data)
+            original = self._prepare_workflow_input(plan, handle, input_data)
+            return await self._invoke_owned(plan, handle, original)
 
     async def dispatch_child(
         self, handle: ExecutionHandle, load_plan: Callable[[], Awaitable[WorkflowPlan]]
     ) -> InvocationResult:
         """Acquire child authority before dependency resolution or native reentry."""
         self._verify_execution_engine(handle)
+        self.services.invocations.refresh(handle)
+        if handle.status in TERMINAL_INVOCATION_STATES:
+            return self._stored_result(handle)
+        if self.services.recovery_definitions.has_binding(handle):
+            plan = self.services.resolve_original_definition(handle)
+            await self._preflight_definition(handle, plan)
+        else:
+            # No dependency resolution happens before initial ownership.
+            await self._verify_initial_nohistory(handle)
+            plan = None
         async with self._own_execution(handle):
             self.services.invocations.refresh(handle)
             if handle.status in TERMINAL_INVOCATION_STATES:
                 return self._stored_result(handle)
-            plan = await load_plan()
+            if plan is None:
+                plan = await load_plan()
+            await self._preflight_definition(handle, plan, initial=True)
             self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
             if self.services.timers.resumable_for_invocation(
                 handle.invocation_id, plan.fingerprint
             ) or self.services.child_waits.for_invocation(handle.invocation_id, plan.fingerprint):
                 return self._stored_result(handle)
+            if not self.services.recovery_definitions.has_binding(handle):
+                self._prepare_workflow_input(
+                    plan, handle, self.services.invocations.read_input(handle)
+                )
             if await self._scheduled_native_state_exists(handle, plan):
                 await self._verify_resume_state(handle, plan)
                 self._prepare_timer_wake(handle, plan, None)
                 return await self._resume_owned(handle, None, plan)
-            return await self._invoke_owned(
+            original = self._prepare_workflow_input(
                 plan, handle, self.services.invocations.read_input(handle)
             )
+            return await self._invoke_owned(plan, handle, original)
 
     async def dispatch_child_wait(
         self,
@@ -415,12 +513,18 @@ class WorkflowEngine:
         if handle is None:
             raise InvocationStateError("child wait parent is unavailable")
         self._verify_execution_engine(handle)
+        self.services.invocations.refresh(handle)
+        if handle.status in TERMINAL_INVOCATION_STATES:
+            return self._stored_result(handle)
+        plan = self.services.resolve_original_definition(handle)
+        await self._preflight_definition(handle, plan)
+        await self._preflight_native_continuation(handle)
         async with self._own_execution(handle):
             self.services.invocations.refresh(handle)
             if handle.status in TERMINAL_INVOCATION_STATES:
                 await self._cancel_synchronous_children(handle)
                 return self._stored_result(handle)
-            plan = await load_plan()
+            await self._preflight_definition(handle, plan)
             self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
             if await self._scheduled_native_state_exists(handle, plan):
                 await self._verify_resume_state(handle, plan)
@@ -464,6 +568,12 @@ class WorkflowEngine:
         self.services.invocations.verify_fingerprint(
             handle, claim.registration.identity.workflow_fingerprint
         )
+        self.services.invocations.refresh(handle)
+        if handle.status in TERMINAL_INVOCATION_STATES:
+            return self._stored_result(handle)
+        plan = self.services.resolve_original_definition(handle)
+        await self._preflight_definition(handle, plan)
+        await self._preflight_native_continuation(handle)
         async with self._own_execution(handle):
             self.services.invocations.refresh(handle)
             if handle.status in TERMINAL_INVOCATION_STATES:
@@ -476,7 +586,7 @@ class WorkflowEngine:
                 else time.time()
             )
             self.services.timers.verify_claim(claim, now=now)
-            plan = await load_plan()
+            await self._preflight_definition(handle, plan)
             self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
             await self._verify_resume_state(handle, plan)
             await self._prepare_child_wakes(handle, plan)
@@ -488,6 +598,12 @@ class WorkflowEngine:
     ) -> InvocationResult:
         self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
         self._verify_execution_engine(handle)
+        self.services.invocations.refresh(handle)
+        if handle.status in TERMINAL_INVOCATION_STATES:
+            return self._stored_result(handle)
+        await self._preflight_definition(handle, plan)
+        if handle.invocation_id not in self._active:
+            await self._preflight_native_continuation(handle)
         active_result = await self._resume_active_or_terminal(handle, resume_input)
         if active_result is not None:
             return active_result
@@ -502,6 +618,7 @@ class WorkflowEngine:
                 self.services.invocations.refresh(handle)
                 if handle.status in TERMINAL_INVOCATION_STATES:
                     return self._stored_result(handle)
+                await self._preflight_definition(handle, plan)
                 await self._verify_resume_state(handle, plan)
                 if not await self._prepare_child_wakes(handle, plan):
                     if not self.services.timers.resumable_for_invocation(
@@ -912,7 +1029,19 @@ class WorkflowEngine:
         self.services.invocations.verify_fingerprint(invocation, workflow.fingerprint)
         self._verify_event_requirements(workflow)
         self.services.timers.verify_invocation(invocation.invocation_id, workflow.fingerprint)
-        original = self.services.invocations.bind_input(invocation, input_data)
+        archive = self.services.recovery_definitions
+        if archive.has_binding(invocation):
+            original = self.services.invocations.read_input(invocation)
+            # Repeated initial preparation stays inside the same owned admission.
+            # Strict continuation verification already precedes resume ownership.
+            archive.admit(
+                workflow, invocation, original, execution_lease=invocation._execution_lease
+            )
+        else:
+            archive.admit(
+                workflow, invocation, input_data, execution_lease=invocation._execution_lease
+            )
+            original = self.services.invocations.read_input(invocation)
         if workflow.uses_durable_events and self.services.event_store is not None:
             self.services.event_store.bind_invocation(
                 invocation.invocation_id,
@@ -923,6 +1052,7 @@ class WorkflowEngine:
         return original
 
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
+        self.services.recovery_definitions.verify(handle, plan)
         self._verify_event_requirements(plan)
         self._verify_execution_engine(handle)
         self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
@@ -1038,6 +1168,7 @@ class PortableWorkflowEngine(WorkflowEngine):
             clock=lambda: self.executor._absolute_clock(),
             poll_seconds=services.config.execution_timing.poll_interval_seconds,
             max_concurrency=services.config.execution_timing.max_concurrency,
+            definition_preflight=self._preflight_timer_delivery,
         )
         await self._timer_dispatcher.start()
 

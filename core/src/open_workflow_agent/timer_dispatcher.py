@@ -6,7 +6,8 @@ import asyncio
 import json
 import uuid
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
+from inspect import isawaitable
 from typing import TYPE_CHECKING
 
 from .child_dispatcher import ChildDispatcher
@@ -18,6 +19,7 @@ from .timers import _CURRENT_TIMER_CLAIM, TimerClaim
 
 if TYPE_CHECKING:
     from .engine import WorkflowEngine
+    from .persistence import ExecutionHandle
     from .services import RuntimeServices
     from .workflow import WorkflowPlan
 
@@ -31,12 +33,17 @@ class TimerDispatcher:
         clock: Callable[[], float],
         poll_seconds: float = 0.05,
         max_concurrency: int = 16,
+        definition_preflight: Callable[[ExecutionHandle], WorkflowPlan | Awaitable[WorkflowPlan]]
+        | None = None,
     ) -> None:
         self.services = services
         self.engine = engine
         self.clock = clock
         self.poll_seconds = poll_seconds
         self.max_concurrency = max_concurrency
+        self._definition_preflight = definition_preflight or getattr(
+            services, "resolve_original_definition", None
+        )
         self.owner = uuid.uuid4().hex
         self._task: asyncio.Task[None] | None = None
         self._workers: dict[str, asyncio.Task[None]] = {}
@@ -99,6 +106,15 @@ class TimerDispatcher:
                     or handle.invocation_id in self.engine._ownership_tasks
                 ):
                     continue
+                if self._definition_preflight is None:
+                    raise UnsupportedWorkflowFeature(
+                        "timer recovery requires original definition verification"
+                    )
+                # Pure metadata/trust verification precedes the mutable claim.
+                # SDK setup and execution remain inside the owning engine.
+                checked = self._definition_preflight(handle)
+                if isawaitable(checked):
+                    await checked
                 claim = self.services.timers.claim_due(owner=self.owner, now=current, timer_key=key)
                 if claim is None:
                     continue

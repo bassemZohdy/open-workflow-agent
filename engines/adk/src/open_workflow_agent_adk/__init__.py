@@ -1,5 +1,8 @@
 """ADK engine adapter."""
 
+import sqlite3
+from contextlib import closing
+from pathlib import Path
 from typing import Any
 
 from open_workflow_agent.child_suspension import ChildSuspension
@@ -31,6 +34,73 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
 
     def _session_database_path(self) -> str:
         return self.services.engine_database_path("adk")
+
+    async def _native_initial_history_exists(self, handle: ExecutionHandle) -> bool:
+        common = self.services.effect_journal.connection
+        try:
+            if common.is_postgresql:
+                tables = {
+                    row[0]
+                    for row in common.execute(
+                        "SELECT table_name FROM information_schema.tables "
+                        "WHERE table_schema='owa_adk'"
+                    ).fetchall()
+                }
+                if not tables:
+                    return False
+                if not {"sessions", "events"}.issubset(tables):
+                    raise InvocationStateError("native initial storage schema is incomplete")
+                return (
+                    common.execute(
+                        "SELECT 1 FROM owa_adk.events WHERE app_name=? AND user_id=? "
+                        "AND session_id=? AND invocation_id=? LIMIT 1",
+                        (
+                            "open-workflow-agent",
+                            handle.user_id or "owa-user",
+                            handle.session_id,
+                            handle.engine_execution_reference,
+                        ),
+                    ).fetchone()
+                    is not None
+                )
+            path = Path(self.services.engine_database_path("adk", create_namespace=False))
+            if not path.is_file():
+                return False
+            with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
+                tables = {
+                    row[0]
+                    for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                }
+                if not tables:
+                    return False
+                if not {"sessions", "events"}.issubset(tables):
+                    raise InvocationStateError("native initial storage schema is incomplete")
+                return (
+                    db.execute(
+                        "SELECT 1 FROM events WHERE app_name=? AND user_id=? "
+                        "AND session_id=? AND invocation_id=? LIMIT 1",
+                        (
+                            "open-workflow-agent",
+                            handle.user_id or "owa-user",
+                            handle.session_id,
+                            handle.engine_execution_reference,
+                        ),
+                    ).fetchone()
+                    is not None
+                )
+        except InvocationStateError:
+            raise
+        except Exception:
+            raise InvocationStateError("native initial storage could not be inspected") from None
+
+    async def _preflight_native_continuation(self, handle: ExecutionHandle) -> None:
+        if ADK_AVAILABLE and not self.native.available:
+            raise InvocationStateError("native recovery storage is unavailable")
+        if self.native.available and not await self._native_initial_history_exists(handle):
+            raise InvocationStateError(
+                "native recovery evidence is missing",
+                details={"reason": "native_state_missing", "stage": "native"},
+            )
 
     def __init__(self) -> None:
         super().__init__()

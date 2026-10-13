@@ -36,7 +36,10 @@ from .errors import (
     ScheduleValidationError,
 )
 from .event_capabilities import event_capabilities
+from .lifecycle import TERMINAL_INVOCATION_STATES
 from .metrics import MetricsMiddleware
+from .persistence import ExecutionHandle
+from .recovery_diagnostics import recovery_diagnostics
 from .sandbox import compile_sandbox_workflow, resolve_and_compile_sandbox_workflow
 from .schedule_profile import parse_schedule
 from .scheduling import WorkflowScheduler
@@ -702,18 +705,13 @@ def create_app(
     async def resume(
         invocation_id: str,
         request: ResumeRequest,
+        http_request: Request,
     ) -> Any:
-        handle = runtime_services.invocations.get(invocation_id)
-        if handle is None:
-            raise InvocationNotFound(
-                "invocation not found", details={"invocation_id": invocation_id}
-            )
-        plan = getattr(
-            app.state,
-            "plan",
-            compile_sandbox_workflow(sandbox=runtime_config.sandbox),
-        )
+        handle = authorized_invocation(invocation_id, http_request)
+        if handle.status in TERMINAL_INVOCATION_STATES:
+            return runtime_engine._stored_result(handle).as_dict()
         try:
+            plan = runtime_services.resolve_original_definition(handle)
             result = await runtime_engine.resume(handle, request.input, plan)
         except OwaError as exc:
             return JSONResponse(status_code=exc.status_code, content={"error": exc.as_dict()})
@@ -722,15 +720,32 @@ def create_app(
     @app.post("/v1/invocations/{invocation_id}/cancel")
     async def cancel(
         invocation_id: str,
+        http_request: Request,
         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     ) -> Any:
+        handle = authorized_invocation(invocation_id, http_request)
+        result = await runtime_engine.cancel(handle, operation_id=idempotency_key)
+        return result.as_dict()
+
+    def authorized_invocation(invocation_id: str, request: Request) -> ExecutionHandle:
         handle = runtime_services.invocations.get(invocation_id)
-        if handle is None:
+        principal = _trusted_event_scope(request)
+        ownerless_anonymous = (
+            not runtime_config.server.api_security_profile
+            and principal == DEFAULT_EVENT_SCOPE
+            and handle is not None
+            and handle.owner_principal is None
+        )
+        if handle is None or (handle.owner_principal != principal and not ownerless_anonymous):
             raise InvocationNotFound(
                 "invocation not found", details={"invocation_id": invocation_id}
             )
-        result = await runtime_engine.cancel(handle, operation_id=idempotency_key)
-        return result.as_dict()
+        return handle
+
+    @app.get("/v1/invocations/{invocation_id}/recovery")
+    async def inspect_recovery(invocation_id: str, http_request: Request) -> dict[str, Any]:
+        handle = authorized_invocation(invocation_id, http_request)
+        return recovery_diagnostics(runtime_services, handle)
 
     @app.post("/v1/admin/knowledge/reload")
     async def reload_knowledge() -> dict[str, Any]:
@@ -806,42 +821,47 @@ def create_app(
         background.add(task)
         task.add_done_callback(background.discard)
 
-    def _a2a_plan_for_fingerprint(fingerprint: str) -> WorkflowPlan | None:
-        candidates: list[WorkflowPlan] = list(
-            (getattr(app.state, "a2a_skill_plans", {}) or {}).values()
-        )
-        default = getattr(app.state, "plan", None)
-        if default is not None:
-            candidates.append(default)
-        for plan in candidates:
-            if plan.fingerprint == fingerprint:
-                return plan
-        return None
-
     async def _a2a_resolve_resume_target(task_id: str) -> ResumeTarget | None:
         handle = runtime_services.invocations.get(task_id)
         if handle is None:
             return None
+        if handle.status in TERMINAL_INVOCATION_STATES:
+            return ResumeTarget(status=handle.status, skill_id=None, deployable=True)
         skill_plans = getattr(app.state, "a2a_skill_plans", {}) or {}
         skill_id: str | None = None
-        for candidate, plan in skill_plans.items():
-            if plan.fingerprint == handle.workflow_fingerprint:
-                skill_id = candidate
-                break
-        deployable = skill_id is not None or (
-            _a2a_plan_for_fingerprint(handle.workflow_fingerprint) is not None
-        )
+        try:
+            original = runtime_services.resolve_original_definition(handle)
+            # Current advertised skill authority remains separate from the
+            # pinned executable version. Match the workflow's declared identity
+            # across a version deployment, never silently grant an unrelated
+            # archived invocation the implicit default skill's authority.
+            candidates = [
+                candidate
+                for candidate, plan in skill_plans.items()
+                if (plan.namespace, plan.name) == (original.namespace, original.name)
+            ]
+            if len(candidates) == 1:
+                skill_id = candidates[0]
+            current = getattr(app.state, "plan", None)
+            implicit = current is not None and (current.namespace, current.name) == (
+                original.namespace,
+                original.name,
+            )
+            deployable = len(candidates) <= 1 and (skill_id is not None or implicit)
+        except OwaError:
+            deployable = False
         return ResumeTarget(status=handle.status, skill_id=skill_id, deployable=deployable)
 
     async def _a2a_resume_task(text: str, task_id: str, return_immediately: bool) -> A2ASendOutcome:
         handle = runtime_services.invocations.get(task_id)
         if handle is None:
             return A2ASendOutcome(error_code="task_not_found")
-        plan = _a2a_plan_for_fingerprint(handle.workflow_fingerprint)
-        if plan is None:
-            return A2ASendOutcome(error_code="task_not_resumeable")
         if handle.status != "waiting":
             return A2ASendOutcome(error_code="task_not_accepting_input")
+        try:
+            plan = runtime_services.resolve_original_definition(handle)
+        except OwaError:
+            return A2ASendOutcome(error_code="task_not_resumeable")
         resumption = runtime_engine.resume(handle, {"question": text}, plan)
         if return_immediately:
             _a2a_spawn(resumption)

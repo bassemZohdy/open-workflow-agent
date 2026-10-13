@@ -182,6 +182,8 @@ jobs:
           ../../tests/contract/test_external_recovery_native_corruption.py
           ../../tests/contract/test_host_drain_child_controls.py
           ../../tests/contract/test_explicit_compensation.py
+          ../../tests/contract/test_workflow_version_recovery.py
+          ../../tests/contract/test_workflow_version_process_recovery.py
 
   manifests:
     name: Validate deployment manifests
@@ -316,6 +318,8 @@ jobs:
                   schema = "open_workflow_agent/_resources/open-workflow/1.0.3/workflow.yaml"
                   assert schema in names, f"missing packaged Open Workflow schema in {wheel.name}"
           PY
+          python ci/recovery_build.py --project . --dist dist
+          python ci/recovery_build.py --project core --dist core/dist
 
   mutation:
     name: Mutation testing
@@ -381,7 +385,9 @@ jobs:
             --ignore=../../tests/contract/test_external_recovery_process.py \
             --ignore=../../tests/contract/test_external_recovery_native_corruption.py \
             --ignore=../../tests/contract/test_host_drain_child_controls.py \
-            --ignore=../../tests/contract/test_explicit_compensation.py
+            --ignore=../../tests/contract/test_explicit_compensation.py \
+            --ignore=../../tests/contract/test_workflow_version_recovery.py \
+            --ignore=../../tests/contract/test_workflow_version_process_recovery.py
       - name: Portable Profile CTK subset
         shell: bash
         run: |
@@ -426,7 +432,7 @@ jobs:
           if-no-files-found: warn
 
   native-lifecycle:
-    name: ${{ matrix.engine }} native lifecycle recovery
+    name: ${{ matrix.engine }} native lifecycle and version recovery
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -450,7 +456,7 @@ jobs:
           enable-cache: true
       - name: Install Python
         run: uv python install "$PYTHON_VERSION"
-      - name: Native lifecycle contract tests
+      - name: Native lifecycle and original-definition contract tests
         shell: bash
         env:
           PYTHONUNBUFFERED: "1"
@@ -463,9 +469,12 @@ jobs:
             ../../tests/contract/test_external_recovery_process.py \
             ../../tests/contract/test_external_recovery_native_corruption.py \
             ../../tests/contract/test_host_drain_child_controls.py \
-            ../../tests/contract/test_explicit_compensation.py -vv --durations=20
+            ../../tests/contract/test_explicit_compensation.py \
+            ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_workflow_version_process_recovery.py -vv --durations=20
 
   containers:
+    # Principal lifecycle/process fixtures run in the independent job above.
     name: Docker ${{ matrix.engine }} acceptance
     runs-on: ubuntu-latest
     timeout-minutes: 30

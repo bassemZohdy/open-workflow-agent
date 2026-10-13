@@ -15,6 +15,21 @@ on:
       - "core/src/open_workflow_agent/storage.py"
       - "core/src/open_workflow_agent/services.py"
       - "core/src/open_workflow_agent/external_recovery.py"
+      - "core/src/open_workflow_agent/recovery_definitions.py"
+      - "core/src/open_workflow_agent/recovery_diagnostics.py"
+      - "core/src/open_workflow_agent/api.py"
+      - "core/src/open_workflow_agent/a2a_server.py"
+      - "tests/core/test_recovery_definitions.py"
+      - "tests/core/test_recovery_diagnostics.py"
+      - "tests/core/test_timer_archive_preflight.py"
+      - "tests/core/test_schedule_archive_preflight.py"
+      - "tests/contract/test_workflow_version_recovery.py"
+      - "tests/contract/test_workflow_version_process_recovery.py"
+      - "tests/contract/_version_recovery_worker.py"
+      - "hatch_build.py"
+      - "core/hatch_build.py"
+      - "engines/adk/hatch_build.py"
+      - "engines/langgraph/hatch_build.py"
       - "core/src/open_workflow_agent/lifecycle.py"
       - "tests/core/test_external_recovery.py"
       - "tests/core/test_invocation_cancellation_controls.py"
@@ -187,6 +202,10 @@ jobs:
             uv run --locked --extra knowledge --extra postgres pytest tests/core/test_postgres_persistence.py \
             tests/core/test_effect_journal.py \
             tests/core/test_external_recovery.py \
+            tests/core/test_recovery_definitions.py \
+            tests/core/test_recovery_diagnostics.py \
+            tests/core/test_timer_archive_preflight.py \
+            tests/core/test_schedule_archive_preflight.py \
             tests/core/test_invocation_cancellation_controls.py \
             tests/core/test_policy_decisions.py \
             tests/core/test_event_store.py \
@@ -454,7 +473,9 @@ jobs:
             ../../tests/contract/test_external_recovery_process.py \
             ../../tests/contract/test_external_recovery_native_corruption.py \
             ../../tests/contract/test_host_drain_child_controls.py \
-            ../../tests/contract/test_explicit_compensation.py -vv --durations=20 -k postgresql
+            ../../tests/contract/test_explicit_compensation.py \
+            ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_workflow_version_process_recovery.py -vv --durations=20 -k postgresql
 
   postgres-langgraph-lifecycle:
     name: PostgreSQL LangGraph lifecycle recovery
@@ -496,7 +517,9 @@ jobs:
             ../../tests/contract/test_external_recovery_process.py \
             ../../tests/contract/test_external_recovery_native_corruption.py \
             ../../tests/contract/test_host_drain_child_controls.py \
-            ../../tests/contract/test_explicit_compensation.py -vv --durations=20 -k postgresql
+            ../../tests/contract/test_explicit_compensation.py \
+            ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_workflow_version_process_recovery.py -vv --durations=20 -k postgresql
 
   postgres-runtime:
     name: PostgreSQL persistence ${{ matrix.engine }} acceptance

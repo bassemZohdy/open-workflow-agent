@@ -1,5 +1,10 @@
 """LangGraph engine adapter."""
 
+import hashlib
+import json
+import sqlite3
+from contextlib import closing
+from pathlib import Path
 from typing import Any
 
 from open_workflow_agent.child_suspension import ChildSuspension
@@ -40,8 +45,80 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             services.config.model,
             factory.bind_tools(services.agent_tool_bindings()),
         )
-        self.native.database_path = services.engine_database_path("langgraph")
-        await self.native.prepare_storage()
+        self.native.database_path = services.engine_database_path(
+            "langgraph", create_namespace=False
+        )
+
+    async def _native_initial_history_exists(self, handle: ExecutionHandle) -> bool:
+        key = hashlib.sha256(
+            json.dumps(
+                [
+                    "owa/native-scopes/v1",
+                    handle.invocation_id,
+                    handle.workflow_fingerprint,
+                    "/do",
+                    1,
+                ]
+            ).encode()
+        ).hexdigest()
+        thread_ids = ("owa-scope-v1:" + key, handle.invocation_id)
+        common = self.services.effect_journal.connection
+        try:
+            if common.is_postgresql:
+                tables = {
+                    row[0]
+                    for row in common.execute(
+                        "SELECT table_name FROM information_schema.tables "
+                        "WHERE table_schema='owa_langgraph'"
+                    ).fetchall()
+                }
+                if not tables:
+                    return False
+                required = {"checkpoints", "checkpoint_writes"}
+                if not required.issubset(tables):
+                    raise InvocationStateError("native initial storage schema is incomplete")
+                return any(
+                    common.execute(
+                        f"SELECT 1 FROM owa_langgraph.{table} WHERE thread_id IN (?,?) LIMIT 1",
+                        thread_ids,
+                    ).fetchone()
+                    is not None
+                    for table in sorted(required)
+                )
+            path = Path(self.native.database_path or "")
+            if not path.is_file():
+                return False
+            with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as db:
+                tables = {
+                    row[0]
+                    for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")
+                }
+                if not tables:
+                    return False
+                if not {"checkpoints", "writes"}.issubset(tables):
+                    raise InvocationStateError("native initial storage schema is incomplete")
+                return any(
+                    db.execute(
+                        f"SELECT 1 FROM {table} WHERE thread_id IN (?,?) LIMIT 1", thread_ids
+                    ).fetchone()
+                    is not None
+                    for table in ("checkpoints", "writes")
+                )
+        except InvocationStateError:
+            raise
+        except Exception:
+            raise InvocationStateError("native initial storage could not be inspected") from None
+
+    async def _preflight_native_continuation(self, handle: ExecutionHandle) -> None:
+        if LANGGRAPH_AVAILABLE and not self.native.task_nodes_available:
+            raise InvocationStateError("native recovery storage is unavailable")
+        if self.native.task_nodes_available and not await self._native_initial_history_exists(
+            handle
+        ):
+            raise InvocationStateError(
+                "native recovery evidence is missing",
+                details={"reason": "native_state_missing", "stage": "native"},
+            )
 
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(
@@ -68,6 +145,8 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         result: InvocationResult | None = None
         try:
             input_data = self._prepare_workflow_input(workflow, invocation, input_data)
+            self.services.engine_database_path("langgraph")
+            await self.native.prepare_storage()
             output = await self.native.execute_plan(
                 self.executor,
                 workflow,
@@ -129,6 +208,8 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         active = self._begin_active(handle)
         result: InvocationResult | None = None
         try:
+            self.services.engine_database_path("langgraph")
+            await self.native.prepare_storage()
             output = await self.native.execute_plan(
                 self.executor,
                 plan,

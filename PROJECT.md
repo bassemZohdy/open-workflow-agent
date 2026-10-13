@@ -2124,3 +2124,15 @@ uv run --directory engines/agent-framework --locked --extra native --extra knowl
 ```
 
 The CI source-integrity gate caught three ignored predecessor reference files missing from the initial PR. Those exact source bytes are now explicitly tracked; the gate remains enforced. MIG-01 transfer/license disposition is complete: both imported sources retain Apache attribution, and unlicensed generic source stays at origin. No active compiler, checkpoint service or unsafe approval implementation is introduced by the frozen reference import.
+
+## S2-09 version recovery work — 2026-10-13 pending verification
+
+The isolated batch retains immutable original public definition inputs and
+invocation bindings before native projection. New invocations may select a newer
+workflow version; retained invocations require their original definition and
+exact qualified execution profile. Authenticated recovery diagnostics inspect
+bounded common evidence without leases, native mutation or business I/O.
+Explicit mapping, checkpoint transplant and arbitrary SDK upgrade remain
+unsupported. Authoring is complete; finite actual native, backend, process-stop,
+packaging and hosted validation is pending. S2-09 remains unchecked. See
+[the finite policy](docs/s2-09-version-recovery-acceptance.md).

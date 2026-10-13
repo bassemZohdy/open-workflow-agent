@@ -119,6 +119,8 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
         "test_external_recovery_native_corruption.py",
         "test_host_drain_child_controls.py",
         "test_explicit_compensation.py",
+        "test_workflow_version_recovery.py",
+        "test_workflow_version_process_recovery.py",
     }
     workflow = _workflow("postgres-ci.yml")
     for engine in ("adk", "langgraph"):
@@ -132,6 +134,10 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     core = _runs(workflow["jobs"]["postgres-core"])
     assert "tests/core/test_external_recovery.py" in core
     assert "tests/core/test_invocation_cancellation_controls.py" in core
+    assert "tests/core/test_recovery_definitions.py" in core
+    assert "tests/core/test_recovery_diagnostics.py" in core
+    assert "tests/core/test_timer_archive_preflight.py" in core
+    assert "tests/core/test_schedule_archive_preflight.py" in core
     paths = set(workflow["on"]["pull_request"]["paths"])
     assert {f"tests/contract/{name}" for name in fixtures} <= paths
     windows = _workflow("ci.yml")["jobs"]["windows-native-lifecycle"]

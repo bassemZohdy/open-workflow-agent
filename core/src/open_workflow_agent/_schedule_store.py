@@ -342,6 +342,7 @@ class ScheduleStore:
         owner: str | None = None,
         schedule_id: str | None = None,
         exclude_schedule_ids: tuple[str, ...] = (),
+        eligible_invocation: Callable[[ExecutionHandle], bool] | None = None,
     ) -> ScheduleRecord | None:
         current = time.time() if now is None else now
         if not math.isfinite(current) or not math.isfinite(lease_seconds) or lease_seconds <= 0:
@@ -376,6 +377,8 @@ class ScheduleStore:
                 if row[6] is not None:
                     handle = self._binding(connection, row, record)
                     if row[2] == "waiting" and handle.status not in _TERMINAL:
+                        continue
+                    if eligible_invocation is not None and not eligible_invocation(handle):
                         continue
                 return self._claim(
                     connection, record, occurrence, row, owner, current, lease_seconds

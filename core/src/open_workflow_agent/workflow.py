@@ -2894,6 +2894,13 @@ class WorkflowExecutor:
             raise WorkflowSemanticError("run.workflow must be an object")
         identity = self._effect_identity(state, "run:workflow")
         binding = self.services.children.get(identity)
+        child_input = (
+            self._expressions(state).evaluate(
+                reference["input"], state.data, variables=state.variables
+            )
+            if "input" in reference
+            else copy.deepcopy(state.data)
+        )
         if binding is None:
             plan = self.services.workflow_catalog.resolve(reference)
         else:
@@ -2904,14 +2911,37 @@ class WorkflowExecutor:
                 or reference.get("version") not in {"latest", pinned["version"]}
             ):
                 raise _EffectRecoveryRequired("recorded child workflow reference changed")
-            plan = self.services.workflow_catalog.resolve(pinned)
-        child_input = (
-            self._expressions(state).evaluate(
-                reference["input"], state.data, variables=state.variables
+            parent = state.metadata.get("_invocation_handle")
+            if not isinstance(parent, ExecutionHandle):
+                raise _EffectRecoveryRequired("recorded child parent authority is unavailable")
+            admitted_child = self.services.children.verify_control(binding, parent)
+            recorded_digest = effect_request_digest(
+                "run:workflow",
+                {"workflow_fingerprint": admitted_child.workflow_fingerprint, "input": child_input},
             )
-            if "input" in reference
-            else copy.deepcopy(state.data)
-        )
+            if binding.request_digest != recorded_digest:
+                raise _EffectRecoveryRequired("recorded child workflow request differs")
+            outcome = self.services.effect_journal.get(identity)
+            if outcome is not None and outcome.status != "pending":
+                if outcome.request_digest != recorded_digest:
+                    raise _EffectRecoveryRequired("recorded child workflow request differs")
+                # A retained terminal receipt is a common outcome read. It does
+                # not need current catalog content or another child execution.
+                await self._notify_receipt(state, identity, outcome)
+                return self._effect_result(outcome)
+            if self.services.recovery_definitions.has_binding(admitted_child):
+                plan = self.services.resolve_original_definition(admitted_child)
+            else:
+                if admitted_child.status not in {"completed", "faulted", "cancelled"}:
+                    preflight = self.services._workflow_initial_child_preflight
+                    if preflight is None:
+                        raise _EffectRecoveryRequired(
+                            "child initial definition verification unavailable"
+                        )
+                    # Verify unstarted origin/progress before current catalog
+                    # lookup can select or compile any executable definition.
+                    await preflight(admitted_child)
+                plan = self.services.workflow_catalog.resolve(pinned)
         task_reference = str(state.variables.get("_task_reference", "unknown-task"))
         request_digest = effect_request_digest(
             "run:workflow", {"workflow_fingerprint": plan.fingerprint, "input": child_input}

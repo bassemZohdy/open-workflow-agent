@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import copy
+import re
 import time
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
 
@@ -15,9 +17,15 @@ from .children import ChildWorkflowStore
 from .config import RuntimeConfig
 from .durable_events import DurableEventBus
 from .effects import EffectJournal
+from .errors import ConfigurationError
 from .event_store import EventStore, EventStoreLimits
 from .events import EventBus, InMemoryEventBus
-from .external_catalog import ExternalCatalogResolver
+from .external_catalog import (
+    ExternalCatalogResolver,
+    _function_uri,
+    _validate_endpoint,
+    parse_catalog_function_reference,
+)
 from .external_recovery import HttpExternalActionRecovery, TrustedHttpReceiver
 from .forks import ForkDecisionStore
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
@@ -25,15 +33,23 @@ from .memory import MemoryService
 from .metrics import Metrics, MetricsEventSink
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
 from .ownership import ExecutionOwnershipStore
-from .persistence import InvocationStore
+from .persistence import ExecutionHandle, InvocationStore
 from .protocols import ProtocolServices, workflow_protocol_payload
-from .sandbox import InternalSandboxBackend, SandboxBackend, SandboxManager
+from .recovery_definitions import RecoveryDefinitionArchive, recovery_profile
+from .resources import schema_registry
+from .sandbox import (
+    InternalSandboxBackend,
+    SandboxBackend,
+    SandboxManager,
+    validate_sandbox_capabilities,
+)
 from .sandbox.backends.docker import DockerSandboxBackend
 from .sandbox.backends.kubernetes import KubernetesSandboxBackend
 from .scheduling import ScheduleStore
 from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
 from .timers import TimerStore
 from .tools import AgentToolBinding, ToolRegistry
+from .workflow import WorkflowPlan
 from .workflow_catalog import WorkflowCatalog
 
 
@@ -47,7 +63,17 @@ class RuntimeServices:
         event_sink: EventSink | None = None,
         event_bus: EventBus | None = None,
         trusted_http_receivers: tuple[TrustedHttpReceiver, ...] = (),
+        recovery_profile_provider: Callable[[str], dict[str, Any]] | None = None,
     ) -> None:
+        """Compose runtime services with an optional nonsecret deployment revision.
+
+        recovery_profile_provider returns only {"id": reference, "version": revision}.
+        The declaration attests opaque option semantics; installed artifact,
+        dependency, backend and receiver trust evidence remains mandatory.
+        """
+        # This callback declares a nonsecret deployment binding revision only.
+        # It cannot replace installed artifact, SDK, backend or trust evidence.
+        self._recovery_profile_provider = recovery_profile_provider
         self.config = config
         self.model = model or (
             FakeModel()
@@ -72,6 +98,9 @@ class RuntimeServices:
             resource_policies=config.workflow.external_resources,
         )
         self.workflow_runner: Any = None
+        self._workflow_initial_child_preflight: (
+            Callable[[ExecutionHandle], Awaitable[None]] | None
+        ) = None
         self.protocols = ProtocolServices(
             security=config.security, security_profile=config.protocols.security_profile
         )
@@ -177,6 +206,76 @@ class RuntimeServices:
             self.catalog.register("add_memory", self._add_memory)
             self.catalog.register("search_memory", self._search_memory)
             self.catalog.register("delete_memory", self._delete_memory)
+        self.recovery_definitions = RecoveryDefinitionArchive(
+            self.effect_journal,
+            self.invocations,
+            profile_provider=self._recovery_profile,
+            trust_verifier=self._verify_archived_definition_trust,
+        )
+
+    def _recovery_profile(self, engine: str) -> dict[str, Any]:
+        value = copy.deepcopy(
+            recovery_profile(
+                engine, backend=self.effect_journal.connection.kind, config=self.config
+            )
+        )
+        recovery = self.external_action_recovery
+        value["trusted_http_receivers"] = (
+            [
+                recovery._receiver(receiver)
+                for receiver in sorted(recovery.receivers, key=lambda r: r.id)
+            ]
+            if recovery is not None
+            else []
+        )
+        if self._recovery_profile_provider is not None:
+            declaration = self._recovery_profile_provider(engine)
+            if (
+                not isinstance(declaration, dict)
+                or set(declaration) != {"id", "version"}
+                or not isinstance(declaration["id"], str)
+                or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,127}", declaration["id"])
+                or not isinstance(declaration["version"], str)
+                or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,63}", declaration["version"])
+            ):
+                raise ConfigurationError("recovery deployment binding declaration is invalid")
+            value["deployment_binding"] = {
+                "profile": "owa/deployment-binding/v1",
+                "id": declaration["id"],
+                "version": declaration["version"],
+            }
+            # Deployment ownership attests opaque option semantics under this
+            # revision. Meaningful option changes require a new revision; option
+            # values and credentials are never retained as manifest evidence.
+            value["continuation_supported"] = True
+        return value
+
+    def resolve_original_definition(self, handle: ExecutionHandle) -> WorkflowPlan:
+        """Resolve admitted source without resource fetching or SDK initialization."""
+        return self.recovery_definitions.resolve(handle)
+
+    def _verify_archived_definition_trust(self, plan: WorkflowPlan) -> None:
+        self.external_catalogs.schemas.verify(plan.resources)
+        validate_sandbox_capabilities(
+            plan.source,
+            sandbox=self.config.sandbox,
+            trusted_catalogs=self.config.workflow.external_catalogs,
+            _schema_registry=schema_registry(plan.resources),
+        )
+        for binding in plan.imports:
+            reference = parse_catalog_function_reference(binding.reference)
+            if reference is None:
+                raise ValueError("archived catalog reference is invalid")
+            policy = self.external_catalogs._policy(reference.catalog)
+            _validate_endpoint(binding.resource_uri, policy)
+            if policy.allowed_endpoints and not any(
+                _function_uri(endpoint, reference) == binding.resource_uri
+                for endpoint in policy.allowed_endpoints
+            ):
+                raise ValueError("archived catalog binding is no longer approved")
+            self.external_catalogs._verify_pin(
+                binding.digest, policy, binding.reference, binding.resource_uri
+            )
 
     def event_triggers(
         self, engine: str, *, clock: Callable[[], float] | None = None
@@ -199,7 +298,7 @@ class RuntimeServices:
             self._event_triggers[engine] = store
         return store
 
-    def engine_database_path(self, engine: str) -> str:
+    def engine_database_path(self, engine: str, *, create_namespace: bool = True) -> str:
         """Return the native persistence path without exposing engine state publicly."""
 
         if self.database_root:
@@ -209,7 +308,8 @@ class RuntimeServices:
             }.get(engine, f"{engine}-persistence.sqlite3")
             return str(self.database_root / filename)
         if self.datasource:
-            ensure_storage_namespace(self.datasource, f"owa_{engine}")
+            if create_namespace:
+                ensure_storage_namespace(self.datasource, f"owa_{engine}")
             return namespaced_datasource(self.datasource, f"owa_{engine}")
         filename = {
             "adk": "adk-sessions.sqlite3",
