@@ -24,6 +24,7 @@ from open_workflow_agent.execution_authority import (
     authority_scope,
     current_authority,
 )
+from open_workflow_agent.openapi_client import OpenApiDescription
 from open_workflow_agent.recovery_definitions import PROFILE
 from open_workflow_agent.security import static_principal
 from open_workflow_agent.services import RuntimeServices
@@ -101,6 +102,38 @@ class RoleRuntime:
         return result, handle, plan
 
 
+def _deployed_tool(name):
+    document = {
+        "openapi": "3.0.3",
+        "info": {"title": name, "version": "1.0.0"},
+        "servers": [{"url": "https://tool.test"}],
+        "paths": {
+            "/" + name: {
+                "get": {
+                    "operationId": "tool-" + name,
+                    "responses": {"200": {"description": "Known tool response"}},
+                }
+            }
+        },
+    }
+    description = OpenApiDescription.capture(
+        "https://tool.test/" + name + "-openapi.json", document
+    )
+    return {
+        "name": name,
+        "type": "openapi",
+        "endpoint": "https://tool.test/" + name,
+        "options": {"operationId": "tool-" + name},
+        "openapi_binding": {
+            "id": "role-tool-" + name,
+            "version": "1.0.0",
+            "document_uri": description.uri,
+            "document": document,
+            "digest": description.digest,
+        },
+    }
+
+
 @pytest.fixture(params=["sqlite", "postgresql"])
 async def role_runtime(tmp_path, monkeypatch, request):
     backend = request.param
@@ -168,33 +201,7 @@ async def role_runtime(tmp_path, monkeypatch, request):
                         },
                     },
                 },
-                "tools": [
-                    {
-                        "name": name,
-                        "type": "openapi",
-                        "endpoint": "https://tool.test/" + name,
-                        "options": {"operationId": "tool-" + name},
-                        "openapi_binding": {
-                            "document_uri": "https://tool.test/" + name + "-openapi.json",
-                            "document": {
-                                "openapi": "3.0.3",
-                                "info": {"title": name, "version": "1.0.0"},
-                                "servers": [{"url": "https://tool.test"}],
-                                "paths": {
-                                    "/" + name: {
-                                        "get": {
-                                            "operationId": "tool-" + name,
-                                            "responses": {
-                                                "200": {"description": "Known tool response"}
-                                            },
-                                        }
-                                    }
-                                },
-                            },
-                        },
-                    }
-                    for name in ("safe", "admin")
-                ],
+                "tools": [_deployed_tool(name) for name in ("safe", "admin")],
                 "approvals": {
                     "enabled": True,
                     "protected": True,
@@ -231,7 +238,7 @@ async def role_runtime(tmp_path, monkeypatch, request):
             "backend": backend,
             "continuation_supported": True,
             "qualification": "test-only/common-role-boundary",
-            "roles": config.agent.model_dump(mode="json")["roles"],
+            "policy": {"agent_roles": services.role_bindings.snapshot()},
         }
         business = []
 
@@ -287,7 +294,7 @@ async def test_role_tool_allow_cannot_grant_original_caller_denied_tool(role_run
                 "roles": ["operator"],
             }
         ],
-        responses=[{"tool_call": {"name": "safe", "arguments": {"body": {"original": None}}}}],
+        responses=[{"tool_call": {"name": "safe", "arguments": {}}}],
     )
     result, _, _ = await runtime.invoke({"input": "user"})
     assert (

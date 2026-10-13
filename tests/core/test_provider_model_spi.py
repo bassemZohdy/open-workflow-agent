@@ -7,6 +7,7 @@ import copy
 import json
 import os
 import sys
+from dataclasses import asdict
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -570,12 +571,12 @@ async def test_changed_provider_bounds_reject_original_archive_before_any_new_ow
     services, _, _, (calls, replies) = provider_runtime
     replies.append(_reply("known"))
     _, handle, plan = await _invoke(provider_runtime)
-    before = services.invocations.get(handle.invocation_id).as_dict()
+    before = asdict(services.invocations.get(handle.invocation_id))
     services.config.model.bounds.max_output_bytes = 2048
     with pytest.raises(OwaError) as caught:
         services.recovery_definitions.verify(handle, plan)
     assert caught.value.details["reason"] == "runtime_profile_changed"
-    assert services.invocations.get(handle.invocation_id).as_dict() == before
+    assert asdict(services.invocations.get(handle.invocation_id)) == before
     assert len(calls) == 1
 
 

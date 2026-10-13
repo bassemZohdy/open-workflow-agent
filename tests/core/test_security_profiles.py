@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 from open_workflow_agent.config import RuntimeConfig, ToolConfig
+from open_workflow_agent.openapi_client import OpenApiDescription
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.security import (
     ProfileAuthentication,
@@ -121,6 +122,22 @@ async def test_tool_security_profile_injects_bearer_header() -> None:
             allowed_hosts={"example.test"},
         )
     )
+    document = {
+        "openapi": "3.0.3",
+        "info": {"title": "Partner", "version": "1.0.0"},
+        "servers": [{"url": "https://example.test"}],
+        "components": {"securitySchemes": {"partnerBearer": {"type": "http", "scheme": "bearer"}}},
+        "security": [{"partnerBearer": []}],
+        "paths": {
+            "/call": {
+                "get": {
+                    "operationId": "get-status",
+                    "responses": {"200": {"description": "Known value"}},
+                }
+            }
+        },
+    }
+    description = OpenApiDescription.capture("https://example.test/openapi.json", document)
     registry = ToolRegistry.from_config(
         [
             ToolConfig.model_validate(
@@ -131,26 +148,11 @@ async def test_tool_security_profile_injects_bearer_header() -> None:
                     "security_profile": "partner",
                     "options": {"operationId": "get-status"},
                     "openapi_binding": {
-                        "document_uri": "https://example.test/openapi.json",
-                        "document": {
-                            "openapi": "3.0.3",
-                            "info": {"title": "Partner", "version": "1.0.0"},
-                            "servers": [{"url": "https://example.test"}],
-                            "components": {
-                                "securitySchemes": {
-                                    "partnerBearer": {"type": "http", "scheme": "bearer"}
-                                }
-                            },
-                            "security": [{"partnerBearer": []}],
-                            "paths": {
-                                "/call": {
-                                    "get": {
-                                        "operationId": "get-status",
-                                        "responses": {"200": {"description": "Known value"}},
-                                    }
-                                }
-                            },
-                        },
+                        "id": "partner-api",
+                        "version": "1.0.0",
+                        "document_uri": description.uri,
+                        "document": document,
+                        "digest": description.digest,
                     },
                 }
             )

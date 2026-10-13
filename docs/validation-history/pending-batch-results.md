@@ -144,6 +144,23 @@ instead of the existing `ExecutionOwnershipStore`. Pytest reported one collectio
 error in 16.20 seconds; the driver ended with exit 2 after 27.72 seconds, with
 no tracked source changes. No behavioral acceptance follows from collection.
 
-Independent ADK, LangGraph and optional Framework profiles are still running.
-The fixture correction is authored separately; the failed source and exact
-commands, manifests and results remain preserved. No task checkbox changes.
+Independent native profiles were stopped after observed failures once the grouped
+corrections were ready: ADK and LangGraph each had 35 observed failures in named
+role admission; optional Framework had one observed projection fixture failure.
+These are progress observations, not final pytest totals. Explicit superseded
+markers and result records preserve the source, command, stop reason and hashes.
+No task checkbox changes.
+
+## Corrected common fixture batch — caa32c8
+
+The frozen common profile completed with 28 failures, 2,980 passes and 666 skips
+in 1,145.42 pytest seconds (1,158.78 driver seconds), with unchanged 1,067 tracked
+inputs. Failures are 25 role-boundary setup cases lacking immutable OpenAPI
+binding fields, one nonexistent handle snapshot method, one older raw credential
+option witness and one positive OpenAPI bearer fixture missing binding fields.
+All have grouped fixture corrections authored separately; the actual initial
+role archive admission defect is also corrected without loosening exact role
+references. The common provider/composition modules recorded 80 passes, one
+fixture failure and six actual PostgreSQL skips. New local memory and event
+profiles passed their executed cases; required native, actual database and hosted
+gates remain open. Source changes qualify no task or inventory row.

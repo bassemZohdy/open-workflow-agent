@@ -712,6 +712,50 @@ def _expected_receipt(binding: dict[str, Any]) -> EffectReceipt:
     )
 
 
+def _role_function_calls(manifest: dict[str, Any]) -> frozenset[str]:
+    """Derive only exact named-role references from the qualified descriptor."""
+    from .agent_roles import PROFILE as ROLE_PROFILE
+    from .agent_roles import RoleDescriptor
+    from .config import AgentRoleConfig
+
+    role_profile = manifest.get("policy", {}).get("agent_roles")
+    enabled_function_calls: set[str] = set()
+    if role_profile is not None:
+        if (
+            type(role_profile) is not dict
+            or set(role_profile)
+            != {"profile", "bindings", "current_tool_allowlist", "effective_tool_bindings"}
+            or role_profile["profile"] != ROLE_PROFILE
+            or type(role_profile["bindings"]) is not list
+            or len(role_profile["bindings"]) > 32
+            or type(role_profile["current_tool_allowlist"]) is not list
+            or len(role_profile["current_tool_allowlist"]) > 256
+            or any(type(item) is not str for item in role_profile["current_tool_allowlist"])
+            or role_profile["current_tool_allowlist"]
+            != sorted(set(role_profile["current_tool_allowlist"]))
+            or type(role_profile["effective_tool_bindings"]) is not list
+            or len(role_profile["effective_tool_bindings"]) > 64
+        ):
+            raise _unavailable("archive_invalid")
+        for role in role_profile["bindings"]:
+            if (
+                type(role) is not dict
+                or role.get("profile") != ROLE_PROFILE
+                or type(role.get("name")) is not str
+                or not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", role["name"])
+                or f"agent-{role['name']}:{role.get('version')}@default" in enabled_function_calls
+            ):
+                raise _unavailable("archive_invalid")
+            descriptor = RoleDescriptor.capture(
+                role["name"],
+                AgentRoleConfig.model_validate(
+                    {name: item for name, item in role.items() if name not in {"name", "profile"}}
+                ),
+            )
+            enabled_function_calls.update(descriptor.references)
+    return frozenset(enabled_function_calls)
+
+
 def _stored_evidence(
     connection: StorageConnection, invocations: InvocationStore, handle: ExecutionHandle
 ) -> tuple[WorkflowPlan, dict[str, Any]]:
@@ -759,46 +803,7 @@ def _stored_evidence(
     value = _parsed(archive[0])
     if archive[1] != _digest(value) or archive[1] != binding["definition_digest"]:
         raise _unavailable("archive_invalid")
-    from .agent_roles import PROFILE as ROLE_PROFILE
-    from .agent_roles import RoleDescriptor
-    from .config import AgentRoleConfig
-
-    role_profile = binding["runtime_profile"].get("policy", {}).get("agent_roles")
-    enabled_function_calls: set[str] = set()
-    if role_profile is not None:
-        if (
-            type(role_profile) is not dict
-            or set(role_profile)
-            != {"profile", "bindings", "current_tool_allowlist", "effective_tool_bindings"}
-            or role_profile["profile"] != ROLE_PROFILE
-            or type(role_profile["bindings"]) is not list
-            or len(role_profile["bindings"]) > 32
-            or type(role_profile["current_tool_allowlist"]) is not list
-            or len(role_profile["current_tool_allowlist"]) > 256
-            or any(type(item) is not str for item in role_profile["current_tool_allowlist"])
-            or role_profile["current_tool_allowlist"]
-            != sorted(set(role_profile["current_tool_allowlist"]))
-            or type(role_profile["effective_tool_bindings"]) is not list
-            or len(role_profile["effective_tool_bindings"]) > 64
-        ):
-            raise _unavailable("archive_invalid")
-        for role in role_profile["bindings"]:
-            if (
-                type(role) is not dict
-                or role.get("profile") != ROLE_PROFILE
-                or type(role.get("name")) is not str
-                or not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", role["name"])
-                or f"agent-{role['name']}:{role.get('version')}@default" in enabled_function_calls
-            ):
-                raise _unavailable("archive_invalid")
-            descriptor = RoleDescriptor.capture(
-                role["name"],
-                AgentRoleConfig.model_validate(
-                    {name: item for name, item in role.items() if name not in {"name", "profile"}}
-                ),
-            )
-            enabled_function_calls.update(descriptor.references)
-    plan = _plan(value, enabled_function_calls=frozenset(enabled_function_calls))
+    plan = _plan(value, enabled_function_calls=_role_function_calls(binding["runtime_profile"]))
     if (plan.fingerprint, plan.name, plan.version) != (
         handle.workflow_fingerprint,
         handle.workflow_name,
@@ -982,7 +987,9 @@ class RecoveryDefinitionArchive:
             raise InvocationStateConflict("definition admission requires execution ownership")
         self.invocations.verify_fingerprint(handle, plan.fingerprint)
         definition = _definition(plan)
-        restored = _plan(definition)
+        manifest = self.profile_provider(handle.engine)
+        _encoded(manifest, limit=MAX_PROFILE_BYTES)
+        restored = _plan(definition, enabled_function_calls=_role_function_calls(manifest))
         if (plan.name, plan.version) != (handle.workflow_name, handle.workflow_version):
             raise _unavailable("binding_invalid")
         if (
@@ -994,8 +1001,6 @@ class RecoveryDefinitionArchive:
         if self.trust_verifier is not None:
             self.trust_verifier(restored)
         definition_digest, input_digest = _digest(definition), _digest(input_data)
-        manifest = self.profile_provider(handle.engine)
-        _encoded(manifest, limit=MAX_PROFILE_BYTES)
         binding = {
             "profile": PROFILE,
             "identity": _identity(handle),

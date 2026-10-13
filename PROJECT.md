@@ -37,8 +37,10 @@ failed. Later source and corrections remain local feature work pending validatio
 
 The preceding profiles have ended. Selected S3-08 adapters and grouped corrections
 are frozen at `7214f46` with 1,067 tracked inputs; all five builds passed. Its common
-profile stopped during collection on a misnamed memory fixture import. Independent
-engine profiles are running; the fixture correction is isolated in a separate checkout. Full commands, counts, source hashes and actionable causes are
+profile stopped during collection on a misnamed memory fixture import. The failed independent engine profiles were superseded after the grouped fixes
+were ready. The corrected common profile at `caa32c8` ended with 28 failures,
+2,980 passes and 666 skips; no source changed. Those fixture failures and the
+initial exact-role archive admission gap are corrected in the next source batch. Full commands, counts, source hashes and actionable causes are
 retained in [the batch evidence record](docs/validation-history/pending-batch-results.md).
 Source changes and partial passes qualify no unchecked task, full inventory row,
 JavaScript profile or release.
