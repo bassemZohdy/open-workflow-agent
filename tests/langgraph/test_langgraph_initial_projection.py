@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import copy
 import hashlib
 import json
@@ -20,7 +21,7 @@ from langgraph.pregel._algo import _xxhash_str
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity, effect_request_digest
-from open_workflow_agent.errors import InvocationStateError, WorkflowExecutionError
+from open_workflow_agent.errors import InvocationStateError
 from open_workflow_agent.execution_authority import ExecutionAuthority, authority_scope
 from open_workflow_agent.execution_authorization import authority_identity
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
@@ -160,11 +161,11 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
             assert services.execution_authorizations.authority_receipt(handle) is not None
 
         async def before_any_task(*args: Any, **kwargs: Any) -> None:
-            raise WorkflowExecutionError("capture the actual SDK initializer")
+            raise asyncio.CancelledError("capture the actual SDK initializer")
 
         with monkeypatch.context() as capture:
             capture.setattr(engine.executor, "_run_task_item", before_any_task)
-            with pytest.raises(WorkflowExecutionError):
+            with pytest.raises(asyncio.CancelledError):
                 await engine.native.execute_plan(
                     engine.executor,
                     plan,
@@ -175,6 +176,14 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
                     },
                     invocation_id=handle.invocation_id,
                 )
+
+        # An initializer interrupted before any business task is still an
+        # admitted, nonterminal delivery. An ordinary workflow fault would
+        # legitimately take the terminal fast path and miss the native checks.
+        current = services.invocations.get(handle.invocation_id)
+        assert current is not None and current.status == "running"
+        delivery = services.initial_deliveries.get(handle)
+        assert delivery is not None and delivery.status == "ready"
 
         async def publish_initial(saver: Any) -> None:
             driver = LangGraphScopeExecutor(plan, saver, handle.invocation_id)

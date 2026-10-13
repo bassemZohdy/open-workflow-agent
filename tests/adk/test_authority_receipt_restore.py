@@ -1,5 +1,6 @@
 """Exact common authority companions admitted by ADK's private receipt reader."""
 
+import json
 from dataclasses import asdict, replace
 from types import SimpleNamespace
 
@@ -7,7 +8,7 @@ import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import ReceiptDependency
-from open_workflow_agent.errors import OwaError
+from open_workflow_agent.errors import WorkflowExecutionError
 from open_workflow_agent.execution_authority import ExecutionAuthority, authority_scope
 from open_workflow_agent.execution_authorization import authority_identity
 from open_workflow_agent.recovery_definitions import PROFILE
@@ -103,6 +104,14 @@ def test_root_authority_companion_requires_exact_independent_evidence(tmp_path, 
         elif corruption == "foreign":
             dependency = replace(dependency, identity=replace(identity, invocation_id="other"))
         connection.commit()
+        # Native SDK storage round-trips event metadata through JSON. Every
+        # corruption below must pass the transport decoder before testing its
+        # intended common proof or exact native scope rejection.
+        serialized_dependency = json.loads(json.dumps(asdict(dependency), allow_nan=False))
+        assert ReceiptDependency.from_value(serialized_dependency) == dependency
+        if corruption is None:
+            with pytest.raises(ValueError, match="workflow receipt occurrence is invalid"):
+                ReceiptDependency.from_value(asdict(dependency))
         session = SimpleNamespace(
             events=[
                 SimpleNamespace(
@@ -115,7 +124,7 @@ def test_root_authority_companion_requires_exact_independent_evidence(tmp_path, 
                         "workflow_fingerprint": plan.fingerprint,
                         "sequence": 1,
                         "phase": "receipt",
-                        "receipts": [asdict(dependency)],
+                        "receipts": [serialized_dependency],
                     },
                 )
             ]
@@ -126,7 +135,17 @@ def test_root_authority_companion_requires_exact_independent_evidence(tmp_path, 
             reader.restore(session, handle.engine_execution_reference)
             assert reader.dependencies == {identity.key: dependency}
         else:
-            with pytest.raises((ValueError, OwaError)):
+            if corruption in {"occurrence", "scope", "foreign"}:
+                expected = ValueError
+                message = "native receipt dependency identity is invalid"
+            else:
+                expected = WorkflowExecutionError
+                message = (
+                    "workflow effect receipt could not be read"
+                    if corruption == "binding-missing"
+                    else "workflow action receipt dependency is unavailable or inconsistent"
+                )
+            with pytest.raises(expected, match=message):
                 reader.restore(session, handle.engine_execution_reference)
         assert tuple(connection.raw.iterdump()) == before
         assert services.model.calls == []

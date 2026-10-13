@@ -1,6 +1,6 @@
 # Pending batch results — 2026-10-13
 
-These attempts do not close S2-09 or S3-01 through S3-05. Passing subsets and fresh
+These attempts do not close S2-09 or S3-01 through S3-08. Passing subsets and fresh
 builds are distinct from complete qualification. Local `tmp/` evidence is ignored
 and retained in its originating worktree; publication still requires reproducible
 source-linked hosted reports.
@@ -164,3 +164,41 @@ references. The common provider/composition modules recorded 80 passes, one
 fixture failure and six actual PostgreSQL skips. New local memory and event
 profiles passed their executed cases; required native, actual database and hosted
 gates remain open. Source changes qualify no task or inventory row.
+
+## Latest qualification source — 4740732
+
+Frozen source `47407323776865704cda3bf5f48c6d9e5a91ea4e` retains 1,067
+tracked-input hashes. The optional Agent Framework profile completed with
+**767 passes, 354 skips and 2,934 deselections** in 1,637.99 pytest seconds
+(1,661.19 driver seconds), exit 0. LangGraph completed with **73 failures,
+1,146 passes, 672 skips and 1,467 deselections** in 3,865.85 pytest seconds
+(3,895.09 driver seconds), exit 1. Neither completed end report records tracked
+source changes or a timeout. Common and ADK are still running at this record;
+their final reports and totals remain pending.
+
+The originating `qualification-fixes` worktree retains each command, source
+manifest, log and end report under `tmp/adapter-batch-4740732-*`. The optional
+Framework log SHA-256 is
+`2b79d2ec1679f1b46147fb8340ea5c97d025e0b1e70c2c535bbe959fa4724a68`;
+the LangGraph log SHA-256 is
+`de9775018b5a37898d07d7a44524e461f0969aac1eccce5ff156d5e100ee4576`.
+Foreign native instances were deselected only in their independent environments;
+actual PostgreSQL and other skipped gates are not inferred from local passes.
+
+The separate `admission-renewal` checkout contains an authored bounded physical
+artifact/SDK verification phase and five grouped fixture patches. Only copied
+configuration and physical file verification move off-loop; database operations,
+original trust checks and synchronous admission transactions stay on-loop.
+Cancelled workers retain their bounded slots until completion. Fresh prepared
+evidence belongs to one task and one synchronous phase, and changed provider or
+deployment bindings reject before admission. The new source-level renewal witness
+retains the original half-second lease and waits past its initial database-clock
+expiry before validating renewed ownership; expiry/takeover and no-mutation
+negatives remain required behavioral evidence.
+
+Ruff and formatting pass across 527 files; strict typing passes across 134 source
+files. The coherent correction source has not yet run its behavioral batch. These
+static results and authored witnesses do not retroactively qualify `4740732`,
+complete any task, change feature statuses or substitute for remaining native,
+database, platform, image, security and hosted publication gates. Earlier results
+remain preserved in the sections above.

@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+from dataclasses import asdict
 from pathlib import Path
 from uuid import uuid4
 
@@ -17,6 +18,7 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity, ReceiptDependency
 from open_workflow_agent.execution_authority import ExecutionAuthority, authority_scope
+from open_workflow_agent.openapi_client import OpenApiDescription
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.security import static_principal
 from open_workflow_agent.services import RuntimeServices
@@ -86,6 +88,45 @@ def configuration(backend, roles, *, approvals=False, **changes):
             "scan_limit": 8,
         }
     return RuntimeConfig.model_validate(original)
+
+
+def deployed_openapi_tool(name, method, *, parameters=()):
+    """Bind a finite tool to an immutable description; no metadata discovery."""
+    document = {
+        "openapi": "3.0.3",
+        "info": {"title": "Pattern " + name, "version": "1.0.0"},
+        "servers": [{"url": "https://patterns.test"}],
+        "paths": {
+            "/" + name: {
+                method.lower(): {
+                    "operationId": "pattern-" + name,
+                    "parameters": list(parameters),
+                    "responses": {
+                        "200": {
+                            "description": "Known controlled JSON response",
+                            "content": {"application/json": {"schema": {"type": "object"}}},
+                        }
+                    },
+                }
+            }
+        },
+    }
+    description = OpenApiDescription.capture(
+        "https://patterns.test/" + name + "-openapi.json", document
+    )
+    return {
+        "name": name,
+        "type": "openapi",
+        "endpoint": "https://patterns.test/" + name,
+        "options": {"operationId": "pattern-" + name},
+        "openapi_binding": {
+            "id": "pattern-tool-" + name,
+            "version": "1.0.0",
+            "document_uri": description.uri,
+            "document": document,
+            "digest": description.digest,
+        },
+    }
 
 
 def runtime(path, backend, roles, models, *, config=None, dispatch=None):
@@ -171,7 +212,9 @@ def retained(services, handle, backend):
         "authority": services.execution_authorizations.verify_invocation(handle).as_value(),
         "clock": clock.output if clock is not None else None,
         "receipts": {
-            identity.key: ReceiptDependency.capture(identity, receipt).as_value()
+            identity.key: json.loads(
+                json.dumps(asdict(ReceiptDependency.capture(identity, receipt)), allow_nan=False)
+            )
             for identity, receipt in selected
             if receipt.status != "pending"
         },

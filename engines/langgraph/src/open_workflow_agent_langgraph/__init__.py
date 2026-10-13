@@ -161,7 +161,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
         try:
-            input_data = self._prepare_workflow_input(workflow, invocation, input_data)
+            input_data = await self._prepare_workflow_input_owned(workflow, invocation, input_data)
             self.services.engine_database_path("langgraph")
             await self.native.prepare_storage()
             output = await self.native.execute_plan(

@@ -19,6 +19,7 @@ from _agent_pattern_fixtures import (
     compiled,
     configuration,
     create,
+    deployed_openapi_tool,
     expected,
     invoke,
     original_authority,
@@ -344,6 +345,8 @@ async def test_native_role_uses_only_its_declared_tool_batch_before_any_business
     business = []
 
     async def dispatch(request):
+        assert request.method == "GET" and str(request.url) == "https://patterns.test/lookup"
+        assert request.content == b""
         business.append(str(request.url))
         return httpx.Response(200, json={"result": "read"})
 
@@ -357,14 +360,7 @@ async def test_native_role_uses_only_its_declared_tool_batch_before_any_business
     config = configuration(
         backend,
         roles,
-        tools=[
-            {
-                "name": "lookup",
-                "type": "http",
-                "endpoint": "https://patterns.test/lookup",
-                "options": {"method": "GET"},
-            }
-        ],
+        tools=[deployed_openapi_tool("lookup", "GET")],
     )
     services = runtime(tmp_path, backend, roles, models, config=config, dispatch=dispatch)
     engine = engine_type()
@@ -452,15 +448,22 @@ async def test_approval_pattern_stays_pending_until_original_protected_control_a
     business = []
 
     async def dispatch(request):
-        assert request.method == "POST" and str(request.url) == "https://patterns.test/commit"
-        business.append(json.loads(request.content))
+        assert request.method == "POST"
+        assert str(request.url.copy_with(query=None)) == "https://patterns.test/commit"
+        assert request.content == b"" and dict(request.url.params) == {"question": "hello"}
+        business.append(dict(request.url.params))
         return httpx.Response(200, json={"committed": True})
 
     roles, models = providers(
         "approval_gate",
         script={
             "approver-action": [
-                {"tool_call": {"name": "commit", "arguments": {"body": {"question": "hello"}}}},
+                {
+                    "tool_call": {
+                        "name": "commit",
+                        "arguments": {"parameters": {"question": "hello"}},
+                    }
+                },
                 {"answer": "approved action"},
             ]
         },
@@ -471,12 +474,18 @@ async def test_approval_pattern_stays_pending_until_original_protected_control_a
         roles,
         approvals=True,
         tools=[
-            {
-                "name": "commit",
-                "type": "http",
-                "endpoint": "https://patterns.test/commit",
-                "options": {"method": "POST"},
-            }
+            deployed_openapi_tool(
+                "commit",
+                "POST",
+                parameters=[
+                    {
+                        "name": "question",
+                        "in": "query",
+                        "required": True,
+                        "schema": {"type": "string"},
+                    }
+                ],
+            )
         ],
     )
     services = runtime(tmp_path, backend, roles, models, config=config, dispatch=dispatch)

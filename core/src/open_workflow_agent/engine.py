@@ -268,7 +268,7 @@ class WorkflowEngine:
         async with self._own_execution(handle):
             self.services.invocations.refresh(handle)
             await self._preflight_definition(handle, plan, initial=True)
-            self._prepare_workflow_input(plan, handle, input_data)
+            await self._prepare_workflow_input_owned(plan, handle, input_data)
             if plan.uses_timing:
                 executor = getattr(self, "executor", None)
                 self.services.effect_journal.record_value(
@@ -299,7 +299,7 @@ class WorkflowEngine:
             return self._stored_result(handle)
         plan: WorkflowPlan | None = None
         if handle.status in {"running", "waiting"}:
-            plan = self.services.resolve_original_definition(handle)
+            plan = await self.services.recovery_definitions.resolve_owned(handle)
             authorize(handle, plan)
             await self._preflight_definition(handle, plan, initial=True)
             # Reject damaged retained SDK evidence before advancing ownership.
@@ -314,7 +314,7 @@ class WorkflowEngine:
             if binding.status == "settled" or handle.status != "running":
                 self.services.initial_deliveries.settle(handle)
                 return self._stored_result(handle)
-            plan = self.services.resolve_original_definition(handle)
+            plan = await self.services.recovery_definitions.resolve_owned(handle)
             authorize(handle, plan)
             await self._preflight_definition(handle, plan, initial=True)
             if self.services.timers.resumable_for_invocation(
@@ -424,7 +424,7 @@ class WorkflowEngine:
         """Common reference execution has no separately required SDK checkpoint."""
 
     async def _preflight_timer_delivery(self, handle: ExecutionHandle) -> WorkflowPlan:
-        plan = self.services.resolve_original_definition(handle)
+        plan = await self.services.recovery_definitions.resolve_owned(handle)
         await self.services.verify_executable_source_history(handle)
         self.services.verify_protected_approvals(handle)
         self._verify_event_requirements(plan)
@@ -444,14 +444,14 @@ class WorkflowEngine:
             lease = self._execution_leases.get(handle.invocation_id)
             if initial and handle.invocation_id in self._active and lease is not None:
                 self.services.execution_ownership.verify(lease)
-                original = archive.verify_admission(handle)
+                original = await archive.verify_admission_owned(handle)
                 self.services.invocations.verify_fingerprint(handle, original.fingerprint)
                 self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
                 await asyncio.sleep(0)
                 self.services.verify_background_jobs(handle)
                 await asyncio.sleep(0)
                 return
-            archive.verify(handle, plan)
+            await archive.verify_owned(handle, plan)
             await asyncio.sleep(0)
             self.services.verify_background_jobs(handle)
             await asyncio.sleep(0)
@@ -461,7 +461,7 @@ class WorkflowEngine:
     async def _verify_initial_nohistory(self, handle: ExecutionHandle) -> None:
         # Validate installed evidence and any explicit nonsecret deployment
         # declaration before adopting even a first execution lease.
-        self.services.recovery_definitions.profile_provider(handle.engine)
+        await self.services.recovery_definitions.prepare_profile(handle.engine)
         await asyncio.sleep(0)
         # Input-only queued reservations are not executed history. Every actual
         # reentry requires its admitted archive; current source cannot retrofit it.
@@ -493,9 +493,9 @@ class WorkflowEngine:
             parent_lease = self._execution_leases.get(parent.invocation_id)
             if parent.invocation_id in self._active and parent_lease is not None:
                 self.services.execution_ownership.verify(parent_lease)
-                self.services.recovery_definitions.verify_admission(parent)
+                await self.services.recovery_definitions.verify_admission_owned(parent)
             else:
-                self.services.resolve_original_definition(parent)
+                await self.services.recovery_definitions.resolve_owned(parent)
             await asyncio.sleep(0)
         if await self._native_initial_history_exists(handle):
             raise InvocationStateError(
@@ -522,7 +522,9 @@ class WorkflowEngine:
                     return self._stored_result(invocation)
                 await self._preflight_definition(invocation, workflow, initial=True)
                 try:
-                    input_data = self._prepare_workflow_input(workflow, invocation, input_data)
+                    input_data = await self._prepare_workflow_input_owned(
+                        workflow, invocation, input_data
+                    )
                     await asyncio.sleep(0)
                 except UnsupportedWorkflowFeature as error:
                     # A known admission rejection retains the invocation's
@@ -580,14 +582,14 @@ class WorkflowEngine:
                 return self._stored_result(handle)
             await self._preflight_definition(handle, plan, initial=True)
             if not self.services.recovery_definitions.has_binding(handle):
-                self._prepare_workflow_input(plan, handle, input_data)
+                await self._prepare_workflow_input_owned(plan, handle, input_data)
             if await self._scheduled_native_state_exists(handle, plan):
                 await self._verify_resume_state(handle, plan)
                 if not await self._prepare_child_wakes(handle, plan):
                     return self._stored_result(handle)
                 self._prepare_timer_wake(handle, plan, None)
                 return await self._resume_owned(handle, None, plan)
-            original = self._prepare_workflow_input(plan, handle, input_data)
+            original = await self._prepare_workflow_input_owned(plan, handle, input_data)
             return await self._invoke_owned(plan, handle, original)
 
     async def dispatch_child(
@@ -599,7 +601,7 @@ class WorkflowEngine:
         if handle.status in TERMINAL_INVOCATION_STATES:
             return self._stored_result(handle)
         if self.services.recovery_definitions.has_binding(handle):
-            plan = self.services.resolve_original_definition(handle)
+            plan = await self.services.recovery_definitions.resolve_owned(handle)
             await self._preflight_definition(handle, plan)
         else:
             # No dependency resolution happens before initial ownership.
@@ -618,14 +620,14 @@ class WorkflowEngine:
             ) or self.services.child_waits.for_invocation(handle.invocation_id, plan.fingerprint):
                 return self._stored_result(handle)
             if not self.services.recovery_definitions.has_binding(handle):
-                self._prepare_workflow_input(
+                await self._prepare_workflow_input_owned(
                     plan, handle, self.services.invocations.read_input(handle)
                 )
             if await self._scheduled_native_state_exists(handle, plan):
                 await self._verify_resume_state(handle, plan)
                 self._prepare_timer_wake(handle, plan, None)
                 return await self._resume_owned(handle, None, plan)
-            original = self._prepare_workflow_input(
+            original = await self._prepare_workflow_input_owned(
                 plan, handle, self.services.invocations.read_input(handle)
             )
             return await self._invoke_owned(plan, handle, original)
@@ -642,7 +644,7 @@ class WorkflowEngine:
         self.services.invocations.refresh(handle)
         if handle.status in TERMINAL_INVOCATION_STATES:
             return self._stored_result(handle)
-        plan = self.services.resolve_original_definition(handle)
+        plan = await self.services.recovery_definitions.resolve_owned(handle)
         await self._preflight_definition(handle, plan)
         await self._preflight_native_continuation(handle)
         async with self._own_execution(handle):
@@ -697,7 +699,7 @@ class WorkflowEngine:
         self.services.invocations.refresh(handle)
         if handle.status in TERMINAL_INVOCATION_STATES:
             return self._stored_result(handle)
-        plan = self.services.resolve_original_definition(handle)
+        plan = await self.services.recovery_definitions.resolve_owned(handle)
         await self._preflight_definition(handle, plan)
         await self._preflight_native_continuation(handle)
         async with self._own_execution(handle):
@@ -1162,6 +1164,14 @@ class WorkflowEngine:
             "_cancel_child_scopes": self._cancel_child_scopes,
         }
 
+    async def _prepare_workflow_input_owned(
+        self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
+    ) -> Any:
+        async with self.services.recovery_definitions.owned_profile(invocation.engine):
+            # No yield, task creation or SDK mutation may occur in this body.
+            # Existing synchronous admission hooks/transactions retain their ABI.
+            return self._prepare_workflow_input(workflow, invocation, input_data)
+
     def _prepare_workflow_input(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> Any:
@@ -1191,7 +1201,7 @@ class WorkflowEngine:
         return original
 
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
-        self.services.recovery_definitions.verify(handle, plan)
+        await self.services.recovery_definitions.verify_owned(handle, plan)
         await asyncio.sleep(0)
         self.services.verify_protected_approvals(handle)
         self._verify_event_requirements(plan)
@@ -1350,7 +1360,7 @@ class PortableWorkflowEngine(WorkflowEngine):
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
         try:
-            input_data = self._prepare_workflow_input(workflow, invocation, input_data)
+            input_data = await self._prepare_workflow_input_owned(workflow, invocation, input_data)
             output = await self.executor.execute(
                 workflow,
                 input_data,

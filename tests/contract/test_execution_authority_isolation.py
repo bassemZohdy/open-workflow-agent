@@ -457,7 +457,7 @@ async def test_child_retains_original_authority_without_dispatcher_caller_substi
         async with asyncio.timeout(40):
             while not seen:
                 with authority_scope(authority(services, "bob")):
-                    await engine._child_dispatcher.tick()
+                    await engine._timer_dispatcher.children.tick()
                 await asyncio.sleep(0.01)
         children = services.effect_journal.connection.execute(
             "SELECT child_id FROM child_workflow_bindings WHERE parent_id=?",

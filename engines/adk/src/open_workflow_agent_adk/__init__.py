@@ -148,7 +148,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
         try:
-            input_data = self._prepare_workflow_input(workflow, invocation, input_data)
+            input_data = await self._prepare_workflow_input_owned(workflow, invocation, input_data)
             metadata = self._metadata(workflow, invocation, active)
             output = await self.native.invoke(
                 lambda value: self.executor.execute(
@@ -217,7 +217,7 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
         active = self._begin_active(handle)
         result: InvocationResult | None = None
         try:
-            workflow_input = self._prepare_workflow_input(plan, handle, resume_input)
+            workflow_input = await self._prepare_workflow_input_owned(plan, handle, resume_input)
             execution_completed = False
             execution_output: Any = None
             metadata = self._metadata(plan, handle, active)

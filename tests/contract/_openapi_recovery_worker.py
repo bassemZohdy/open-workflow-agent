@@ -23,6 +23,7 @@ from open_workflow_agent.workflow import compile_workflow
 from test_native_checkpoint_fencing import _snapshot as native_snapshot
 
 CA_ENV, CERT_ENV, KEY_ENV = "OPENAPI_STOP_CA", "OPENAPI_STOP_CERT", "OPENAPI_STOP_KEY"
+METADATA_CA_ENV = "OPENAPI_STOP_METADATA_CA"
 
 
 async def run(directory: Path, mode: str):
@@ -51,6 +52,14 @@ async def run(directory: Path, mode: str):
     services = RuntimeServices(
         config, model=FakeModel(), database_root=None if datasource else directory / "runtime"
     )
+    # Public description retrieval uses this independently selected CA-only
+    # transport trust. It must not inherit the named business mTLS identity.
+    metadata_ca = os.environ[METADATA_CA_ENV]
+    assert metadata_ca == os.environ[CA_ENV] and Path(metadata_ca).is_file()
+    services.protocols.http.verify_tls = metadata_ca
+    assert services.protocols.http.client_cert is None
+    assert getattr(services.protocols.http.authentication, "profile_name", None) == "receiver"
+    assert services.protocols._openapi_credential_endpoints == {"receiver": (scenario["endpoint"],)}
     assert services.invocations.connection.kind == scenario["backend"]
     patches = pytest.MonkeyPatch()
 

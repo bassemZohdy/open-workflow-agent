@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import copy
 import csv
 import hashlib
 import importlib.metadata
@@ -15,7 +17,9 @@ import stat
 import sys
 import threading
 import tomllib
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
@@ -874,6 +878,7 @@ class RecoveryDefinitionArchive:
         invocations: InvocationStore,
         *,
         profile_provider: Callable[[str], dict[str, Any]] | None = None,
+        async_profile_provider: Callable[[str], Awaitable[dict[str, Any]]] | None = None,
         trust_verifier: Callable[[WorkflowPlan], None] | None = None,
     ) -> None:
         self.journal, self.invocations = journal, invocations
@@ -881,6 +886,11 @@ class RecoveryDefinitionArchive:
         self.profile_provider = profile_provider or (
             lambda engine: recovery_profile(engine, backend=self.connection.kind)
         )
+        self._async_profile_provider = async_profile_provider
+        self._async_provider_binding = self.profile_provider
+        self._prepared_profile: ContextVar[
+            tuple[asyncio.Task[Any] | None, str, dict[str, Any]] | None
+        ] = ContextVar("definition_admission_profile", default=None)
         self.trust_verifier = trust_verifier
         self.admission_participant: (
             Callable[[WorkflowPlan, ExecutionHandle, Any, ExecutionLease | None, bool], None] | None
@@ -929,6 +939,52 @@ class RecoveryDefinitionArchive:
         except Exception:
             raise _unavailable("binding_invalid") from None
 
+    async def prepare_profile(self, engine: str) -> dict[str, Any]:
+        # Only the explicitly composed provider knows which part is pure filesystem
+        # work. Arbitrary supplied/replaced callbacks always remain on this loop.
+        if (
+            self._async_profile_provider is not None
+            and self.profile_provider is self._async_provider_binding
+        ):
+            provider = self._async_profile_provider
+            binding = self.profile_provider
+            manifest = await provider(engine)
+            if self._async_profile_provider is not provider or self.profile_provider is not binding:
+                raise _unavailable("runtime_profile_changed")
+            return manifest
+        return self.profile_provider(engine)
+
+    @asynccontextmanager
+    async def owned_profile(self, engine: str) -> AsyncIterator[None]:
+        """Reuse fresh physical evidence only within one synchronous DB phase."""
+        manifest = await self.prepare_profile(engine)
+        _encoded(manifest, limit=MAX_PROFILE_BYTES)
+        token = self._prepared_profile.set(
+            (asyncio.current_task(), engine, copy.deepcopy(manifest))
+        )
+        try:
+            yield
+        finally:
+            self._prepared_profile.reset(token)
+
+    def _current_profile(self, engine: str) -> dict[str, Any]:
+        prepared = self._prepared_profile.get()
+        if prepared is not None and prepared[1] == engine and prepared[0] is asyncio.current_task():
+            return copy.deepcopy(prepared[2])
+        return self.profile_provider(engine)
+
+    async def verify_owned(self, handle: ExecutionHandle, plan: WorkflowPlan) -> None:
+        async with self.owned_profile(handle.engine):
+            self.verify(handle, plan)
+
+    async def verify_admission_owned(self, handle: ExecutionHandle) -> WorkflowPlan:
+        async with self.owned_profile(handle.engine):
+            return self.verify_admission(handle)
+
+    async def resolve_owned(self, handle: ExecutionHandle) -> WorkflowPlan:
+        async with self.owned_profile(handle.engine):
+            return self.resolve(handle)
+
     def _read(
         self, handle: ExecutionHandle, *, allow_unqualified: bool = False
     ) -> tuple[WorkflowPlan, dict[str, Any]]:
@@ -939,7 +995,7 @@ class RecoveryDefinitionArchive:
         if row is None:
             raise _unavailable("binding_missing")
         binding = _parsed(row[0], limit=MAX_PROFILE_BYTES)
-        manifest = self.profile_provider(handle.engine)
+        manifest = self._current_profile(handle.engine)
         _encoded(manifest, limit=MAX_PROFILE_BYTES)
         if (
             binding["runtime_profile_digest"] != _digest(binding["runtime_profile"])
@@ -987,7 +1043,7 @@ class RecoveryDefinitionArchive:
             raise InvocationStateConflict("definition admission requires execution ownership")
         self.invocations.verify_fingerprint(handle, plan.fingerprint)
         definition = _definition(plan)
-        manifest = self.profile_provider(handle.engine)
+        manifest = self._current_profile(handle.engine)
         _encoded(manifest, limit=MAX_PROFILE_BYTES)
         restored = _plan(definition, enabled_function_calls=_role_function_calls(manifest))
         if (plan.name, plan.version) != (handle.workflow_name, handle.workflow_version):

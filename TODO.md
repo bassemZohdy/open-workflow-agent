@@ -23,8 +23,12 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 **17 verified / 20 open / 0 deferred.** S2-09 is the earliest unfinished task.
 S2-09 through S3-08 have authored changes awaiting complete qualification.
 The latest hosted checkpoint (`67aa724`) failed; grouped corrections and selected
-adapters are being prepared for one complete validation batch. No pending task is
-marked complete. See [current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-13)
+adapters remain unqualified. At frozen local source `4740732`, optional Agent
+Framework passed its selected profile; LangGraph failed, while common and ADK
+results remain pending. A bounded physical-profile renewal correction and five
+grouped fixture patches are authored; Ruff/format and strict typing pass, but
+their behavioral batch has not run. No pending task is marked complete. See
+[current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-13)
 and [retained validation evidence](docs/validation-history/pending-batch-results.md).
 
 ## Stage 1 — Correct core execution
@@ -154,7 +158,7 @@ and [retained validation evidence](docs/validation-history/pending-batch-results
   Eight finite recipe families and named role bindings are authored; see
   [the acceptance plan](docs/s3-07-agent-pattern-acceptance.md). Required validation remains open.
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
-  Selected finite adapters and fixtures are being authored; see
+  Selected finite adapters and grouped corrections are authored; see
   [the acceptance plan](docs/s3-08-selected-adapter-acceptance.md). Qualification remains pending.
 
 ## Stage 4 — Advanced features and full verification

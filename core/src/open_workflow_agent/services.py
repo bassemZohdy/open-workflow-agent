@@ -102,6 +102,7 @@ class RuntimeServices:
         # This callback declares a nonsecret deployment binding revision only.
         # It cannot replace installed artifact, SDK, backend or trust evidence.
         self._recovery_profile_provider = recovery_profile_provider
+        self._physical_profile_slots = asyncio.Semaphore(2)
         self.config = config
         if type(embedded_event_transport) is not bool or (
             embedded_event_transport
@@ -333,6 +334,7 @@ class RuntimeServices:
             self.effect_journal,
             self.invocations,
             profile_provider=self._recovery_profile,
+            async_profile_provider=self._recovery_profile_async,
             trust_verifier=self._verify_archived_definition_trust,
         )
         self.execution_authorizations = ExecutionAuthorizationStore(
@@ -562,11 +564,55 @@ class RuntimeServices:
             await self._background_dispatcher.stop()
 
     def _recovery_profile(self, engine: str) -> dict[str, Any]:
-        value = copy.deepcopy(
+        return self._compose_recovery_profile(
+            engine,
             recovery_profile(
                 engine, backend=self.effect_journal.connection.kind, config=self.config
-            )
+            ),
         )
+
+    async def _recovery_profile_async(self, engine: str) -> dict[str, Any]:
+        """Keep bounded physical file verification separate from storage/callbacks."""
+        snapshot = copy.deepcopy(self.config)
+        before = self._compose_recovery_profile(engine, {})
+        backend = self.effect_journal.connection.kind
+        try:
+            async with asyncio.timeout(30):
+                await self._physical_profile_slots.acquire()
+                try:
+                    worker = asyncio.create_task(
+                        asyncio.to_thread(
+                            recovery_profile, engine, backend=backend, config=snapshot
+                        )
+                    )
+                except BaseException:
+                    self._physical_profile_slots.release()
+                    raise
+
+                def completed(task: asyncio.Task[dict[str, Any]]) -> None:
+                    self._physical_profile_slots.release()
+                    if not task.cancelled():
+                        task.exception()
+
+                # Cancellation stops admission immediately, but does not make room
+                # for another file worker until this finite read has really ended.
+                worker.add_done_callback(completed)
+                physical = await asyncio.shield(worker)
+        except TimeoutError:
+            raise ConfigurationError("physical recovery verification timed out") from None
+        if (
+            self.config != snapshot
+            or self.effect_journal.connection.kind != backend
+            or self._compose_recovery_profile(engine, {}) != before
+        ):
+            raise ConfigurationError("recovery deployment binding changed during verification")
+        value = self._compose_recovery_profile(engine, physical)
+        if self.config != snapshot or self._compose_recovery_profile(engine, {}) != before:
+            raise ConfigurationError("recovery deployment binding changed during verification")
+        return value
+
+    def _compose_recovery_profile(self, engine: str, physical: dict[str, Any]) -> dict[str, Any]:
+        value = copy.deepcopy(physical)
         # Compilation and dispatch use the composed resolver. Pin that same
         # deployment-owned policy map, including injected resolvers, rather
         # than a potentially different configuration used at construction.

@@ -17,6 +17,7 @@ from test_process_crash_recovery import _environment
 
 WORKER = Path(__file__).with_name("_openapi_recovery_worker.py")
 CA_ENV, CERT_ENV, KEY_ENV = "OPENAPI_STOP_CA", "OPENAPI_STOP_CERT", "OPENAPI_STOP_KEY"
+METADATA_CA_ENV = "OPENAPI_STOP_METADATA_CA"
 CASES = [
     ("before-dispatch", "value", "changed"),
     ("before-dispatch", "value", "deleted"),
@@ -39,6 +40,9 @@ def launch(directory, mode, remote):
     environment = _environment()
     environment.update(
         {
+            # Trust the fixture's server CA for public metadata separately
+            # from the exact named mTLS business certificate/key binding.
+            METADATA_CA_ENV: str(remote.certificate),
             CA_ENV: str(remote.certificate),
             CERT_ENV: str(remote.certificate),
             KEY_ENV: str(remote.key),

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+from dataclasses import asdict
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -109,7 +110,9 @@ def receipts(services, handle):
 
 def known(services, handle):
     return {
-        identity.key: ReceiptDependency.capture(identity, receipt).as_value()
+        identity.key: json.loads(
+            json.dumps(asdict(ReceiptDependency.capture(identity, receipt)), allow_nan=False)
+        )
         for identity, receipt in receipts(services, handle)
         if receipt.status != "pending"
     }
