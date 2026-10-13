@@ -157,3 +157,24 @@ secrets. The existing positive card test now parses the complete response throug
 the official SDK. The stream fixture uses its actual `subscribe` SPI. Counts
 remain unchanged; the complete correction batch and full qualification remain
 pending, with S3-02 and its feature criteria unchecked.
+
+## Retained third correction focus
+
+Frozen source `386b390` remained unchanged throughout the third focused batch.
+Root reported 285 passed / 39 skipped; actual ADK reported 2 failed / 39 passed /
+123 skipped; actual LangGraph reported 3 failed / 38 passed / 123 skipped. Five
+independent wheel/sdist builds passed. Exact logs and source snapshots are retained
+under `tmp/s3-02-third-batch`. These focused results do not qualify skipped profiles
+or substitute for the required full/native/backend/hosted acceptance.
+
+The actual SDK streaming peer exposed a runtime wire defect: JSON-RPC SSE data
+contained bare streamed results instead of correlated `{jsonrpc,id,result}`
+envelopes. The correction wraps every frame before bounded byte accounting and
+forwards the validated original request ID; HTTP+JSON keeps bare streamed results.
+Existing common fixtures now validate the exact envelope fields, version and ID
+type/value before inspecting any result, including live ASGI and disconnect readers.
+The remaining producer fixtures identified a worker receipt-serialization mismatch
+and the selected LangGraph partial-native stop boundary. Their correction retains
+the same required identities, outcomes, native-history and no-repeat-dispatch
+assertions. Fixture counts remain unchanged. S3-02 and its criteria remain unchecked;
+the complete corrected batch and final qualification are pending.

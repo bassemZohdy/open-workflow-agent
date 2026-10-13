@@ -72,6 +72,7 @@ def a2a_sse_stream(
     *,
     limits: StreamLimits | None = None,
     services: Any = None,
+    jsonrpc_id: str | int | None = None,
 ) -> AsyncIterator[bytes]:
     """Create a bounded SSE stream of A2A streamed responses for one task.
 
@@ -96,6 +97,8 @@ def a2a_sse_stream(
 
         def frame_bytes(payload: dict[str, Any], event_id: str) -> bytes | None:
             nonlocal sent_events, sent_bytes
+            if jsonrpc_id is not None:
+                payload = {"jsonrpc": "2.0", "id": jsonrpc_id, "result": payload}
             encoded = _sse_frame(event_id, payload)
             if sent_events >= selected.max_events or sent_bytes + len(encoded) > selected.max_bytes:
                 return None

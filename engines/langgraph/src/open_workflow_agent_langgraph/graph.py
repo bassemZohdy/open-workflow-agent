@@ -7,6 +7,7 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, replace
+from importlib import import_module
 from typing import Any, TypedDict, cast
 
 from langgraph.graph import END, START, StateGraph
@@ -20,7 +21,11 @@ from open_workflow_agent.effects import (
     ReceiptDependency,
 )
 from open_workflow_agent.errors import InvocationStateError, OwaError, WorkflowExecutionError
-from open_workflow_agent.expressions import validate_expression_data
+from open_workflow_agent.expressions import (
+    ExpressionEvaluator,
+    ExpressionMode,
+    validate_expression_data,
+)
 from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.timing import root_clock_identity
 from open_workflow_agent.workflow import (
@@ -280,6 +285,133 @@ class LangGraphScopeExecutor:
         except Exception:
             raise InvocationStateError(
                 "native execution state is unavailable or inconsistent; recovery is required"
+            ) from None
+
+    def validate_initial_projection(self, checkpoint: Any, expected_input: Any) -> None:
+        """Authenticate only the SDK's unexecuted root initializer projection."""
+        try:
+            raw = checkpoint.checkpoint
+            channels = raw["channel_values"]
+            if (
+                checkpoint.metadata.get("source") != "input"
+                or type(checkpoint.metadata.get("step")) is not int
+                or checkpoint.metadata["step"] != -1
+                or checkpoint.metadata.get("parents") != {}
+                or set(channels) != {START}
+                or raw.get("versions_seen") != {"__input__": {}}
+                or set(raw["channel_versions"]) != {START}
+                or type(raw.get("v")) is not int
+                or raw["v"] != 4
+            ):
+                raise ValueError("initial SDK checkpoint structure changed")
+            version = raw["channel_versions"][START]
+            if not isinstance(version, str):
+                raise ValueError("initial SDK channel format changed")
+            sequence, separator, random_suffix = version.partition(".")
+            fraction = float(random_suffix)
+            # Reviewed memory, SQLite and PostgreSQL savers use this exact
+            # random.random() formatting, including small scientific fractions.
+            if not (
+                sequence == f"{1:032}"
+                and separator == "."
+                and 0 <= fraction < 1
+                and random_suffix == f"{fraction:016}"
+            ):
+                raise ValueError("initial SDK channel has already advanced")
+            initial = channels[START]
+            if not isinstance(initial, dict) or set(initial) != set(_GraphState.__annotations__):
+                raise ValueError("initial native fields changed")
+            self._expected_input_json = _json_identity(expected_input)
+            value, counters = self._validate_native(initial, "/do", 1)
+            if (
+                counters != {"/do": 1}
+                or initial["next_node"] != END
+                or value["outputs"]
+                or value["task_visits"]
+                or value["execution_path"]
+                or any(value[key] for key in ("stop", "scope_exit", "transition_selected", "ended"))
+                or any(value[key] is not None for key in ("jump_to", "end_output", "end_context"))
+            ):
+                raise ValueError("initial native task state has already advanced")
+            data = expected_input
+            input_spec = self.plan.execution_source.get("input")
+            if isinstance(input_spec, dict) and "from" in input_spec:
+                data = ExpressionEvaluator(
+                    mode=cast(
+                        ExpressionMode,
+                        self.plan.execution_source.get("evaluate", {}).get("mode", "strict"),
+                    )
+                ).evaluate(
+                    input_spec["from"],
+                    expected_input,
+                    variables={
+                        key: item for key, item in value["variables"].items() if key != "context"
+                    },
+                )
+            if _json_identity(value["data"]) != _json_identity(data) or _json_identity(
+                value["context"]
+            ) != _json_identity(data):
+                raise ValueError("initial native input projection changed")
+            bindings = _native_json(initial["receipt_bindings"])
+            expected_receipts = (
+                {root_clock_identity(self.invocation_id, self.plan.fingerprint).key}
+                if self.plan.uses_timing
+                else set()
+            )
+            if bindings["scopes"] or set(self.receipts) != expected_receipts:
+                raise ValueError("initial native dependencies contain task progress")
+            if self.effect_journal is not None:
+                indexed = self.effect_journal.connection.execute(
+                    "SELECT payload FROM workflow_effect_invocations WHERE invocation_id=? LIMIT 4",
+                    (self.invocation_id,),
+                ).fetchall()
+                if len(indexed) > 3:
+                    raise ValueError("initial invocation already has action evidence")
+                admissions = {
+                    root_clock_identity(self.invocation_id, self.plan.fingerprint),
+                    EffectIdentity(
+                        self.invocation_id,
+                        self.plan.fingerprint,
+                        "/do",
+                        (("/do", 1),),
+                        "policy:definition-admission:v1",
+                    ),
+                    EffectIdentity(
+                        self.invocation_id,
+                        self.plan.fingerprint,
+                        "/",
+                        (("/", 1),),
+                        "policy:initial-delivery:v1",
+                    ),
+                }
+                for row in indexed:
+                    identity = EffectIdentity.from_value(_native_json(row[0]))
+                    if identity not in admissions:
+                        raise ValueError("initial invocation already has action evidence")
+                    receipt = self.effect_journal.get(identity)
+                    if receipt is None or receipt.status != "completed":
+                        raise ValueError("initial invocation proof is incomplete")
+            writes = checkpoint.pending_writes or []
+            if not writes:
+                return
+            root = self.scopes["/do"]
+            if not root.tasks:
+                raise ValueError("initial SDK route has no admitted task")
+            sdk = import_module("langgraph.pregel._algo")
+            starter = sdk._xxhash_str(
+                bytes.fromhex(raw["id"].replace("-", "")), START, "0", START, "__pregel_pull", START
+            )
+            expected = {**initial, "branch:to:" + _node_name(root.tasks[0]): None}
+            observed: dict[str, Any] = {}
+            for task_id, channel, item in writes:
+                if task_id != starter or channel not in expected or channel in observed:
+                    raise ValueError("initial SDK pending write identity changed")
+                observed[channel] = item
+            if _json_identity(observed) != _json_identity(expected):
+                raise ValueError("initial SDK pending projection changed")
+        except Exception:
+            raise InvocationStateError(
+                "native initial projection is unavailable or inconsistent"
             ) from None
 
     async def record_effect_receipt(self, identity: EffectIdentity, receipt: EffectReceipt) -> None:

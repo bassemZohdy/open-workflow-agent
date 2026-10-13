@@ -481,7 +481,7 @@ def mount_a2a(
             raise JsonRpcError(JsonRpcError.TASK_NOT_FOUND, "task not found")
         return handle
 
-    def task_stream(task_id: str) -> StreamingResponse:
+    def task_stream(task_id: str, request_id: Any = None) -> StreamingResponse:
         services = app.state.services
         return StreamingResponse(
             a2a_sse_stream(
@@ -490,6 +490,7 @@ def mount_a2a(
                 task_id,
                 limits=stream_limits,
                 services=services,
+                jsonrpc_id=request_id if config.transport == "jsonrpc" else None,
             ),
             media_type=a2a_stream_media_type(),
             headers={"Cache-Control": "no-store"},
@@ -821,7 +822,7 @@ def mount_a2a(
                 status=500,
                 details={"code": outcome.error_code or "task_not_found"},
             )
-        return task_stream(str(outcome.task["id"]))
+        return task_stream(str(outcome.task["id"]), request_id)
 
     def handle_resubscribe(
         principal: Principal, params: Any, *, request_id: Any = None
@@ -848,7 +849,7 @@ def mount_a2a(
                 status=404,
                 rpc_code=error.code,
             )
-        return task_stream(task_id)
+        return task_stream(task_id, request_id)
 
     def version_supported(request: Request, request_id: Any = None) -> JSONResponse | None:
         requested = _requested_protocol_version(request)

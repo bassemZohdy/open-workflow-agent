@@ -41,7 +41,29 @@ def _make_app(tmp_path, config: RuntimeConfig):
     return app, services
 
 
-async def _drain_sse(response: httpx.Response, timeout: float = 15.0) -> list[dict[str, object]]:
+def _stream_result(value: object, *, request_id: str | int | None) -> dict[str, object]:
+    """Validate binding/correlation before exposing a streamed result."""
+    assert isinstance(value, dict), value
+    if request_id is not None:
+        assert set(value) == {"jsonrpc", "id", "result"}, value
+        assert value["jsonrpc"] == "2.0", value
+        assert type(value["id"]) is type(request_id) and value["id"] == request_id, value
+        value = value["result"]
+        assert isinstance(value, dict), value
+    else:
+        assert not {"jsonrpc", "id", "result"}.intersection(value), value
+    assert len(value) == 1 and set(value) <= {
+        "task",
+        "message",
+        "statusUpdate",
+        "artifactUpdate",
+    }, value
+    return value
+
+
+async def _drain_sse(
+    response: httpx.Response, timeout: float = 15.0, *, request_id: str | int | None = None
+) -> list[dict[str, object]]:
     """Collect SSE data frames until the server closes the stream."""
 
     frames: list[dict[str, object]] = []
@@ -49,7 +71,9 @@ async def _drain_sse(response: httpx.Response, timeout: float = 15.0) -> list[di
     async def collect() -> None:
         async for line in response.aiter_lines():
             if line.startswith("data: "):
-                frames.append(json.loads(line.removeprefix("data: ")))
+                frames.append(
+                    _stream_result(json.loads(line.removeprefix("data: ")), request_id=request_id)
+                )
 
     try:
         await asyncio.wait_for(collect(), timeout)
@@ -69,6 +93,7 @@ async def _stream_asgi(
     path: str,
     body: bytes,
     headers: list[tuple[bytes, bytes]],
+    request_id: str | int | None = None,
 ) -> tuple[asyncio.Task[None], Callable[[], list[dict[str, object]]]]:
     """Run one ASGI request as a live task with incremental body access.
 
@@ -96,7 +121,9 @@ async def _stream_asgi(
         raw = b"".join(received)
         for line in raw.split(b"\n"):
             if line.startswith(b"data: "):
-                frame = json.loads(line.removeprefix(b"data: ").decode("utf-8"))
+                frame = _stream_result(
+                    json.loads(line.removeprefix(b"data: ").decode("utf-8")), request_id=request_id
+                )
                 if frame not in parsed:
                     parsed.append(frame)
         return parsed
@@ -146,7 +173,7 @@ async def test_streaming_message_emits_protocol_frames_until_terminal(tmp_path) 
             ) as response:
                 assert response.status_code == 200
                 assert response.headers["content-type"].startswith("text/event-stream")
-                frames = await _drain_sse(response)
+                frames = await _drain_sse(response, request_id=1)
 
     assert any("task" in frame for frame in frames), frames
     updates = _updates(frames)
@@ -186,7 +213,7 @@ async def test_streaming_message_completes_with_artifact_update(tmp_path) -> Non
                     "params": {"message": _message()},
                 },
             ) as response:
-                frames = await _drain_sse(response)
+                frames = await _drain_sse(response, request_id=1)
 
     artifact_positions = [i for i, frame in enumerate(frames) if "artifactUpdate" in frame]
     terminal_positions = [
@@ -261,7 +288,7 @@ async def test_streaming_message_waits_through_input_required(tmp_path) -> None:
         ).encode()
         headers = [(b"a2a-version", V1.encode()), (b"content-type", b"application/json")]
         app_task, parse = await _stream_asgi(
-            app, method="POST", path="/a2a", body=request, headers=headers
+            app, method="POST", path="/a2a", body=request, headers=headers, request_id=1
         )
 
         try:
@@ -343,7 +370,7 @@ async def test_resubscribe_streams_existing_task_and_rejects_unknown(tmp_path) -
                 },
             ) as response:
                 assert response.status_code == 200
-                frames = await _drain_sse(response)
+                frames = await _drain_sse(response, request_id=2)
             assert len(frames) == 1
             task = frames[0]["task"]
             assert task["id"] == handle.invocation_id
@@ -456,7 +483,9 @@ async def test_stream_disconnect_does_not_cancel_invocation(tmp_path) -> None:
                 ) as response:
                     async for line in response.aiter_lines():
                         if line.startswith("data: "):
-                            payload = json.loads(line.removeprefix("data: "))
+                            payload = _stream_result(
+                                json.loads(line.removeprefix("data: ")), request_id=1
+                            )
                             task_id.append(str(payload["task"]["id"]))
                             break
                     # Abrupt disconnect once the task id is known.

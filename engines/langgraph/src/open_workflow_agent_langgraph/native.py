@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import re
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -318,13 +317,8 @@ class LangGraphFunctionalAdapter:
                 isinstance(channels, dict)
                 and set(channels) == {"__start__"}
                 and checkpoint.metadata.get("step") == -1
-                and not checkpoint.pending_writes
             ):
-                value, _ = scopes._validate_native(channels["__start__"], "/do", 1)
-                if json.dumps(
-                    value["variables"]["workflow"]["input"], sort_keys=True, allow_nan=False
-                ) != json.dumps(workflow_input, sort_keys=True, allow_nan=False):
-                    raise InvocationStateError("native initial workflow input is inconsistent")
+                scopes.validate_initial_projection(checkpoint, workflow_input)
                 return False
             # Malformed state is never mistaken for absence. The normal resume
             # admission validates every scope and immutable receipt before mutation.

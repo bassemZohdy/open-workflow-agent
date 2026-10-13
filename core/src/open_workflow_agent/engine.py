@@ -289,6 +289,10 @@ class WorkflowEngine:
             plan = self.services.resolve_original_definition(handle)
             authorize(handle, plan)
             await self._preflight_definition(handle, plan, initial=True)
+            # Reject damaged retained SDK evidence before advancing ownership.
+            # Recheck under the lease below because another worker may progress
+            # between this read-only admission and acquisition.
+            await self._scheduled_native_state_exists(handle, plan)
         async with self._own_execution(handle):
             self.services.invocations.refresh(handle)
             binding = self.services.initial_deliveries.get(handle)

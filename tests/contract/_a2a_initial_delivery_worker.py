@@ -10,6 +10,7 @@ import os
 import sqlite3
 import sys
 from contextlib import closing
+from dataclasses import asdict
 from pathlib import Path
 
 import httpx
@@ -351,7 +352,7 @@ async def run(directory: Path, mode: str):
                             ).receipt_digest
                             if receipt
                             else None,
-                            "receipt_identity": action_identity.as_value()
+                            "receipt_identity": asdict(action_identity)
                             if action_identity
                             else None,
                             "model_calls": len(model.calls),
