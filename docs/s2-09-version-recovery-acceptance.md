@@ -206,3 +206,19 @@ and149LangGraph, below their unchanged900-second bound. Allfivefreshwheel/
 sdist builds and source-lock/metadata provenance checks pass. Full broad suites
 and exact-source hosted backend/platform/image/security gates still remain;
 S2-09 is not complete and no pending source is published as qualified.
+
+Broad snapshot9582fb2 retains unchanged inputs under `tmp/s2-09-fifth-batch`.
+Three old receipt selectors assume no independent definition-admission receipt;
+they must target their intended HTTP/fork/clock evidence and preserve the new
+admission proof. Nested workflows also repeatedly revalidate identical archived
+public definitions against the official schema. Stack dumps locate the repeated
+`_plan`/`validate_schema` path; nested cases time out and both principal Windows
+processes exit with3221225477 during recursive schema traversal. Optional
+Framework reaches its early failure limit; root is explicitly stopped at820
+seconds. These failures are retained and are not complete full qualification.
+
+The correction caches only bounded successful identical strict-JSON validation
+for the same official validator. First/changed/invalid inputs and custom captured
+registries retain validation. Schema bytes, capability checks, profile matching
+and current trust verification remain unchanged. Corrected fixture selectors
+retain original negative recovery, immutable admission and no-replay assertions.

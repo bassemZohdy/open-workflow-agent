@@ -39,7 +39,11 @@ def _policy_records(services: RuntimeServices, invocation_id: str) -> list[tuple
         (invocation_id,),
     ).fetchall()
     return [
-        (row[0], row[2]) for row in rows if json.loads(row[1])["operation"].startswith("policy:")
+        (row[0], row[2])
+        for row in rows
+        # Count the original timing evidence independently of definition
+        # admission and other policy receipts retained by the same invocation.
+        if json.loads(row[1])["operation"] in {"policy:clock:v1", "policy:task-deadline:v1"}
     ]
 
 

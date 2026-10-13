@@ -13,9 +13,11 @@ import pytest
 from engine_cases import engine_cases
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.effects import EffectIdentity
 from open_workflow_agent.errors import InvocationStateError, OwaError
 from open_workflow_agent.observability import InMemoryEventSink
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
+from open_workflow_agent.recovery_definitions import admission_identity
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import ExecutionState, compile_workflow
 
@@ -227,15 +229,46 @@ async def test_child_invocation_dependency_reconciles_before_parent_recovery(
         )
     elif damage == "leaf-receipt":
         rows = connection.execute(
-            "SELECT identity FROM workflow_effect_invocations WHERE invocation_id = ?", (child_id,)
+            "SELECT identity,payload FROM workflow_effect_invocations "
+            "WHERE invocation_id = ? ORDER BY identity",
+            (child_id,),
         ).fetchall()
-        assert len(rows) == 1
-        connection.execute("DELETE FROM workflow_effects WHERE identity = ?", (rows[0][0],))
+        leaves = [
+            identity
+            for _, payload in rows
+            if (identity := EffectIdentity.from_value(json.loads(payload))).operation == "call:http"
+            and identity.task_reference == "/do/0/action"
+        ]
+        assert len(leaves) == 1
+        admission = admission_identity(child)
+        admission_before = restarted.effect_journal.get(admission)
+        assert admission_before is not None and admission_before.status == "completed"
+        original = restarted.recovery_definitions.resolve(child)
+        assert original.fingerprint == child.workflow_fingerprint
+        definition_sql = (
+            "SELECT b.payload,b.digest,d.payload,d.digest FROM recovery_invocation_definitions b "
+            "JOIN recovery_definitions d ON d.fingerprint=b.fingerprint WHERE b.invocation_id=?"
+        )
+        definition_before = connection.execute(definition_sql, (child_id,)).fetchall()
+        assert len(definition_before) == 1
+        # Corrupt only the business leaf. Independent definition admission,
+        # original source/binding and the missing receipt's index stay intact.
+        connection.execute("DELETE FROM workflow_effects WHERE identity = ?", (leaves[0].key,))
         assert (
             connection.execute(
-                "SELECT payload FROM workflow_effects WHERE identity = ?", (rows[0][0],)
+                "SELECT payload FROM workflow_effects WHERE identity = ?", (leaves[0].key,)
             ).fetchone()
             is None
+        )
+        assert restarted.effect_journal.get(admission) == admission_before
+        assert connection.execute(definition_sql, (child_id,)).fetchall() == definition_before
+        assert (
+            connection.execute(
+                "SELECT identity,payload FROM workflow_effect_invocations "
+                "WHERE invocation_id = ? ORDER BY identity",
+                (child_id,),
+            ).fetchall()
+            == rows
         )
     elif damage == "index":
         connection.execute(

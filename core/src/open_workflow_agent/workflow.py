@@ -11,6 +11,7 @@ import os
 import random
 import re
 import time
+from collections import OrderedDict
 from collections.abc import Awaitable, Callable, Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -18,6 +19,7 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
+from threading import Lock
 from typing import TYPE_CHECKING, Any, NoReturn, Protocol, cast
 from uuid import uuid4
 
@@ -85,6 +87,10 @@ DEFAULT_WORKFLOW: dict[str, Any] = {
 }
 
 OFFICIAL_SCHEMA_RELATIVE_PATH = Path("resources/open-workflow/1.0.3/workflow.yaml")
+_SCHEMA_VALIDATION_CACHE_LIMIT = 32
+_SCHEMA_VALIDATION_CACHE_BYTES = 1_048_576
+_SCHEMA_VALIDATION_SUCCESSES: OrderedDict[tuple[type[Any], str, str], None] = OrderedDict()
+_SCHEMA_VALIDATION_CACHE_LOCK = Lock()
 
 
 @dataclass(slots=True)
@@ -308,17 +314,53 @@ def _official_schema() -> dict[str, Any]:
     )
 
 
+def _schema_validation_cache_key(
+    workflow: Mapping[str, Any], schema: Mapping[str, Any]
+) -> tuple[type[Any], str, str] | None:
+    """Memoize only exact built-in JSON values, never coercible Python data."""
+
+    def strict(value: Any) -> bool:
+        if type(value) is dict:
+            return all(type(key) is str and strict(item) for key, item in value.items())
+        if type(value) is list:
+            return all(strict(item) for item in value)
+        return value is None or type(value) in (str, bool, int, float)
+
+    if not strict(workflow):
+        return None
+    source = json.dumps(workflow, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    if len(source.encode("utf-8")) > _SCHEMA_VALIDATION_CACHE_BYTES:
+        return None
+    official = json.dumps(schema, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return Draft202012Validator, official, source
+
+
 def validate_schema(workflow: Mapping[str, Any]) -> None:
     _validate_json_value(workflow)
-    validator = Draft202012Validator(_official_schema())
-    errors = sorted(validator.iter_errors(workflow), key=lambda error: tuple(map(str, error.path)))
-    if errors:
-        first = errors[0]
-        path = "/".join(str(item) for item in first.path) or "root"
-        raise WorkflowSchemaError(f"schema validation failed at {path}: {first.message}")
+    schema = _official_schema()
+    key = _schema_validation_cache_key(workflow, schema)
+    with _SCHEMA_VALIDATION_CACHE_LOCK:
+        cached = key is not None and key in _SCHEMA_VALIDATION_SUCCESSES
+        if cached and key is not None:
+            _SCHEMA_VALIDATION_SUCCESSES.move_to_end(key)
+    if not cached:
+        validator = Draft202012Validator(schema)
+        errors = sorted(
+            validator.iter_errors(workflow), key=lambda error: tuple(map(str, error.path))
+        )
+        if errors:
+            first = errors[0]
+            path = "/".join(str(item) for item in first.path) or "root"
+            raise WorkflowSchemaError(f"schema validation failed at {path}: {first.message}")
     document = workflow.get("document")
     if not isinstance(document, dict) or document.get("dsl") != WORKFLOW_DSL:
         raise WorkflowSchemaError("only Open Workflow DSL 1.0.3 is supported")
+    if key is not None:
+        with _SCHEMA_VALIDATION_CACHE_LOCK:
+            _SCHEMA_VALIDATION_SUCCESSES[key] = None
+            _SCHEMA_VALIDATION_SUCCESSES.move_to_end(key)
+            while len(_SCHEMA_VALIDATION_SUCCESSES) > _SCHEMA_VALIDATION_CACHE_LIMIT:
+                _SCHEMA_VALIDATION_SUCCESSES.popitem(last=False)
 
 
 def validate_capabilities(

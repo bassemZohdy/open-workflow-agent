@@ -11,6 +11,7 @@ from engine_cases import engine_cases
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import ExpressionError, WorkflowExecutionError
+from open_workflow_agent.recovery_definitions import admission_identity
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
@@ -270,12 +271,17 @@ async def test_restart_without_a_decision_can_choose_a_new_winner(
         with pytest.raises(asyncio.CancelledError):
             await asyncio.wait_for(running, timeout=20)
         assert _decisions(services) == []
-        assert (
-            services.effect_journal.connection.execute(
-                "SELECT identity FROM workflow_effects"
-            ).fetchall()
-            == []
-        )
+        # Definition admission precedes execution. This boundary requires no
+        # branch business intent, while retaining that independent admission.
+        indexed = services.effect_journal.connection.execute(
+            "SELECT payload FROM workflow_effect_invocations WHERE invocation_id=?",
+            (handle.invocation_id,),
+        ).fetchall()
+        assert not any(json.loads(row[0])["operation"] == "call:http" for row in indexed)
+        admission_before = services.effect_journal.get(admission_identity(handle))
+        assert admission_before is not None and admission_before.status == "completed"
+        assert services.recovery_definitions.resolve(handle).fingerprint == plan.fingerprint
+        assert services.invocations.read_input(handle) == {}
     finally:
         running.cancel()
         await asyncio.gather(running, return_exceptions=True)
@@ -287,6 +293,7 @@ async def test_restart_without_a_decision_can_choose_a_new_winner(
     await resumed_engine.initialize(restarted)
     persisted = restarted.invocations.get(handle.invocation_id)
     assert persisted is not None and persisted.status == "running"
+    assert restarted.effect_journal.get(admission_identity(persisted)) == admission_before
     slow_started = asyncio.Event()
     calls = []
 
@@ -307,6 +314,7 @@ async def test_restart_without_a_decision_can_choose_a_new_winner(
         assert sorted(calls) == ["fast", "slow"]
         decision, receipt = _decisions(restarted)[0]
         assert decision["winner"] == 1 and receipt == 1
+        assert restarted.effect_journal.get(admission_identity(persisted)) == admission_before
     finally:
         await resumed_engine.shutdown()
         restarted.close()
