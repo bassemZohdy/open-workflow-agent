@@ -345,6 +345,22 @@ class A2AConfig(StrictModel):
 class ApprovalConfig(StrictModel):
     enabled: bool = False
     operator_security_profile: str | None = None
+    protected: bool = False
+    actor_security_profiles: list[str] = Field(default_factory=list, max_length=32)
+    max_pending: int = Field(default=1000, ge=1, le=10000)
+    max_policy_bytes: int = Field(default=65536, ge=1024, le=65536)
+    poll_interval_seconds: float = Field(default=0.25, gt=0, le=60, allow_inf_nan=False)
+    scan_limit: int = Field(default=100, ge=1, le=1000)
+
+    @model_validator(mode="after")
+    def validate_protected_profile(self) -> ApprovalConfig:
+        if len(set(self.actor_security_profiles)) != len(self.actor_security_profiles) or any(
+            not name or name != name.strip() for name in self.actor_security_profiles
+        ):
+            raise ValueError("approval actor profile references must be unique and nonempty")
+        if self.protected and (not self.enabled or not self.actor_security_profiles):
+            raise ValueError("protected approvals require enabled approvals and actor profiles")
+        return self
 
 
 class DockerSandboxConfig(StrictModel):
@@ -1049,6 +1065,24 @@ class RuntimeConfig(StrictModel):
         require_header_profile(
             "approvals.operator_security_profile", self.approvals.operator_security_profile
         )
+        if self.approvals.actor_security_profiles:
+            from .errors import ApprovalValidationError
+            from .protected_approval_policy import actor_identity
+
+            identities = set()
+            for name in self.approvals.actor_security_profiles:
+                profile = self.security.profiles.get(name)
+                if profile is None or profile.type != "bearer" or not profile.principal:
+                    raise ValueError(
+                        "approval actors require named bearer profiles with principals"
+                    )
+                try:
+                    identity = actor_identity(profile.principal)
+                except ApprovalValidationError:
+                    raise ValueError("approval actor principal is invalid") from None
+                if identity in identities:
+                    raise ValueError("approval actor principals must be unique")
+                identities.add(identity)
         require_header_profile(
             "protocols.security_profile", self.protocols.security_profile, outbound=True
         )

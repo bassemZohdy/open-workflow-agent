@@ -3416,8 +3416,23 @@ class WorkflowExecutor:
                     execution_lease=handle._execution_lease,
                     operation_id=self._operation_id(state),
                 )
-            await self._notify_receipt(state, identity, receipt)
             envelope = self._effect_result(receipt)
+            from .approvals import APPROVAL_REQUEST_EVENT
+
+            approval_data = envelope.get("data")
+            if (
+                envelope.get("type") == APPROVAL_REQUEST_EVENT
+                and isinstance(approval_data, Mapping)
+                and "approvalPolicy" in approval_data
+            ):
+                policy_identity = replace(identity, operation="policy:approval-request:v1")
+                policy_receipt = self.services.effect_journal.get(policy_identity)
+                if policy_receipt is None or policy_receipt.status != "completed":
+                    raise WorkflowExecutionError(
+                        "protected approval admission proof is unavailable"
+                    )
+                await self._notify_receipt(state, policy_identity, policy_receipt)
+            await self._notify_receipt(state, identity, receipt)
         else:
             # Injected process-local transports retain their known publication
             # acknowledgement without claiming durable listener delivery.

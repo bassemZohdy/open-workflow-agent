@@ -22,12 +22,14 @@ from .a2a import (
     mount_a2a,
 )
 from .a2a_tasks import project_a2a_task
-from .approvals import ApprovalEventBus
+from .approvals import APPROVAL_STATES, ApprovalEventBus
 from .config import RuntimeConfig
 from .durable_events import DEFAULT_EVENT_SCOPE, DurableEventBus
 from .engine import InvocationResult, PortableWorkflowEngine, WorkflowEngine
 from .errors import (
+    ApprovalAuthorizationError,
     ApprovalNotFound,
+    ApprovalValidationError,
     EventValidationError,
     InvocationNotFound,
     OwaError,
@@ -105,7 +107,7 @@ def _is_limited_path(path: str) -> bool:
             or path.startswith("/v1/schedules/")
             or path.startswith("/v1/approvals/")
         )
-        and (path.endswith("/resume") or path.endswith("/cancel") or path.endswith("/decision"))
+        and path.endswith(("/resume", "/cancel", "/decision", "/reassign", "/escalate"))
     )
 
 
@@ -283,6 +285,14 @@ class ApprovalDecisionRequest(BaseModel):
 
     decision: Literal["approved", "rejected"]
     value: Any = None
+    revision: int | None = Field(default=None, ge=1, le=129)
+
+
+class ApprovalAssignmentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    assignee: str = Field(min_length=1, max_length=128)
+    revision: int = Field(ge=1, le=128)
 
 
 def create_app(
@@ -608,11 +618,33 @@ def create_app(
         limit: int = Query(default=100, ge=1, le=1000),
         authorization: str | None = Header(default=None, alias="Authorization"),
         operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
+        actor_authorization: str | None = Header(default=None, alias="X-Approval-Authorization"),
     ) -> list[dict[str, Any]]:
+        if actor_authorization is not None:
+            if status is not None and status not in APPROVAL_STATES:
+                raise ApprovalValidationError("unsupported approval status")
+            actor = runtime_services.approvals.authorize_actor(actor_authorization, operator_id)
+            protected = runtime_services.approvals.protected_store
+            assert protected is not None
+            where = " AND a.status=?" if status is not None else ""
+            parameters: tuple[Any, ...] = (
+                (actor.identity, status, limit) if status is not None else (actor.identity, limit)
+            )
+            rows = protected.connection.execute(
+                f"SELECT r.approval_id FROM {protected.requests} r "
+                f"JOIN {runtime_services.approvals.store._table} a ON a.approval_id=r.approval_id "
+                f"WHERE r.assignee=?{where} ORDER BY a.requested_at DESC LIMIT ?",
+                parameters,
+            ).fetchall()
+            return [
+                runtime_services.approvals.visible_record(row[0], actor).as_dict() for row in rows
+            ]
         runtime_services.approvals.authorize(authorization, operator_id)
         return [
             record.as_dict()
             for record in runtime_services.approvals.store.list(status=status, limit=limit)
+            if not isinstance(record.request_event.get("data"), dict)
+            or "approvalPolicy" not in record.request_event["data"]
         ]
 
     @app.get("/v1/approvals/{approval_id}")
@@ -620,11 +652,19 @@ def create_app(
         approval_id: str,
         authorization: str | None = Header(default=None, alias="Authorization"),
         operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
+        actor_authorization: str | None = Header(default=None, alias="X-Approval-Authorization"),
     ) -> dict[str, Any]:
+        if actor_authorization is not None:
+            actor = runtime_services.approvals.authorize_actor(actor_authorization, operator_id)
+            return runtime_services.approvals.visible_record(approval_id, actor).as_dict()
         runtime_services.approvals.authorize(authorization, operator_id)
         record = runtime_services.approvals.store.get(approval_id)
         if record is None:
             raise ApprovalNotFound("approval not found", details={"approval_id": approval_id})
+        if record.assignment_revision is not None:
+            raise ApprovalAuthorizationError(
+                "protected approval requires trusted actor credentials"
+            )
         return record.as_dict()
 
     @app.post("/v1/approvals/{approval_id}/decision")
@@ -634,13 +674,46 @@ def create_app(
         authorization: str | None = Header(default=None, alias="Authorization"),
         operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        actor_authorization: str | None = Header(default=None, alias="X-Approval-Authorization"),
     ) -> dict[str, Any]:
-        authorized_operator = runtime_services.approvals.authorize(authorization, operator_id)
+        actor = (
+            runtime_services.approvals.authorize_actor(actor_authorization, operator_id)
+            if actor_authorization is not None
+            else None
+        )
+        authorized_operator = (
+            actor.identity
+            if actor is not None
+            else runtime_services.approvals.authorize(authorization, operator_id)
+        )
         record = await runtime_services.approvals.decide(
             approval_id,
             decision=request.decision,
             operator_id=authorized_operator,
             value=request.value,
+            operation_key=idempotency_key,
+            revision=request.revision,
+            actor=actor,
+        )
+        return record.as_dict()
+
+    @app.post("/v1/approvals/{approval_id}/reassign")
+    @app.post("/v1/approvals/{approval_id}/escalate")
+    async def change_approval_assignment(
+        approval_id: str,
+        request: ApprovalAssignmentRequest,
+        http_request: Request,
+        actor_authorization: str | None = Header(default=None, alias="X-Approval-Authorization"),
+        operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    ) -> dict[str, Any]:
+        actor = runtime_services.approvals.authorize_actor(actor_authorization, operator_id)
+        record = await runtime_services.approvals.mutate_protected(
+            approval_id,
+            action="escalate" if http_request.url.path.endswith("/escalate") else "reassign",
+            actor=actor,
+            revision=request.revision,
+            assignee=request.assignee,
             operation_key=idempotency_key,
         )
         return record.as_dict()

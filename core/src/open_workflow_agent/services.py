@@ -12,6 +12,7 @@ from typing import Any
 from ._event_triggers import EventTriggerStore
 from .a2a_admission import A2AAgentCardAdmission
 from .a2a_client import A2ACardSelection
+from .approval_dispatcher import ApprovalExpiryDispatcher
 from .approvals import ApprovalEventBus, ApprovalService
 from .catalog import FakeModel, FunctionCatalog, LiteLLMModel, Model
 from .child_waits import ChildWaitStore
@@ -55,6 +56,7 @@ from .sandbox.backends.kubernetes import KubernetesSandboxBackend
 from .sandbox.job_dispatcher import SandboxJobDispatcher
 from .sandbox.jobs import SandboxJobStore
 from .scheduling import ScheduleStore
+from .security import BearerSecurityProfile, static_principal
 from .storage import ensure_storage_namespace, namespaced_datasource, resolve_datasource
 from .timers import TimerStore
 from .tools import AgentToolBinding, ToolRegistry
@@ -224,6 +226,21 @@ class RuntimeServices:
             security=config.security,
             event_bus=raw_event_bus,
             connection=self.effect_journal.connection if self.event_store is not None else None,
+            protected=config.approvals.protected,
+            actor_security_profiles=tuple(config.approvals.actor_security_profiles),
+            invocations=self.invocations,
+            max_pending=config.approvals.max_pending,
+            max_policy_bytes=config.approvals.max_policy_bytes,
+            scan_limit=config.approvals.scan_limit,
+        )
+        self._approval_expiry_dispatcher: ApprovalExpiryDispatcher | None = (
+            ApprovalExpiryDispatcher(
+                self.approvals,
+                poll_seconds=config.approvals.poll_interval_seconds,
+                scan_limit=config.approvals.scan_limit,
+            )
+            if config.approvals.protected
+            else None
         )
         self.event_bus = self.approvals.event_bus
         self.knowledge = KnowledgeService(
@@ -305,6 +322,69 @@ class RuntimeServices:
                 raise ConfigurationError("background invocation admission is absent")
             store._authority(job)
 
+    def verify_protected_approvals(self, handle: ExecutionHandle) -> None:
+        store = self.approvals.protected_store
+        if self.config.approvals.protected and store is None:
+            raise ConfigurationError("protected approval verification is unavailable")
+        if store is not None:
+            store.verify_invocation(handle.invocation_id, handle.workflow_fingerprint)
+        else:
+            from .protected_approval_recovery import protected_approval_invocation_retained
+
+            if protected_approval_invocation_retained(
+                self.effect_journal.connection, handle.invocation_id
+            ):
+                raise ConfigurationError("protected approval deployment is unavailable")
+
+    def verify_protected_approval_plan(self, plan: WorkflowPlan) -> None:
+        from .protected_approval_policy import ProtectedApprovalPolicy, original_expiry
+
+        for scope in plan.scopes:
+            for task in scope.tasks:
+                emit = task.definition.get("emit")
+                if not isinstance(emit, dict):
+                    continue
+                descriptor = emit.get("event")
+                if not isinstance(descriptor, dict):
+                    continue
+                event = descriptor.get("with")
+                if not isinstance(event, dict):
+                    continue
+                data = event.get("data")
+                if (
+                    event.get("type") != "io.openworkflow.agent.approval.requested"
+                    or not isinstance(data, dict)
+                    or "approvalPolicy" not in data
+                ):
+                    continue
+                if not self.config.approvals.protected or self.approvals.protected_store is None:
+                    raise UnsupportedWorkflowFeature(
+                        "protected approval policy is not enabled",
+                        details={"reference": task.reference},
+                    )
+                policy = ProtectedApprovalPolicy.from_value(data["approvalPolicy"])
+                allowed = self.approvals.protected_store.actor_ids
+                if not {
+                    policy.assignee,
+                    *policy.reassignment_targets,
+                    *policy.escalation_targets,
+                }.issubset(allowed):
+                    raise UnsupportedWorkflowFeature(
+                        "protected approval actor is not deployment-bound",
+                        details={"reference": task.reference},
+                    )
+                due = event.get("approvalexpiresat")
+                if not isinstance(due, str) or "${" not in due:
+                    original_expiry(due)
+
+    async def start_protected_approvals(self) -> None:
+        if self._approval_expiry_dispatcher is not None:
+            await self._approval_expiry_dispatcher.start()
+
+    async def stop_protected_approvals(self) -> None:
+        if self._approval_expiry_dispatcher is not None:
+            await self._approval_expiry_dispatcher.stop()
+
     async def start_background_jobs(self) -> None:
         if self._background_dispatcher is not None:
             await self._background_dispatcher.start()
@@ -324,6 +404,24 @@ class RuntimeServices:
         # deployment-owned policy map, including injected resolvers, rather
         # than a potentially different configuration used at construction.
         policy = value.setdefault("policy", {})
+        policy["approvals"] = self.config.approvals.model_dump(mode="json")
+        if self.config.approvals.protected:
+            bindings = []
+            for name in sorted(self.config.approvals.actor_security_profiles):
+                profile = self.approvals.security.profile(name)
+                if not isinstance(profile, BearerSecurityProfile) or not profile.principal:
+                    raise ConfigurationError("protected approval actor binding is unavailable")
+                principal = static_principal(profile)
+                bindings.append(
+                    {
+                        "profile": name,
+                        "principal": principal.identity,
+                        "roles": sorted(principal.roles),
+                        "scopes": sorted(principal.scopes),
+                        "audience": sorted(principal.audience),
+                    }
+                )
+            policy["approvals"]["actorBindings"] = bindings
         policy["catalogs"] = {
             name: ExternalCatalogConfig.model_validate(declaration).model_dump(mode="json")
             for name, declaration in self.external_catalogs.policies.items()
@@ -369,6 +467,7 @@ class RuntimeServices:
         return self.recovery_definitions.resolve(handle)
 
     def _verify_archived_definition_trust(self, plan: WorkflowPlan) -> None:
+        self.verify_protected_approval_plan(plan)
         self.verify_grpc_plan(plan)
         self.external_catalogs.schemas.verify(plan.resources)
         validate_sandbox_capabilities(
@@ -569,6 +668,8 @@ class RuntimeServices:
         )
 
     def close(self) -> None:
+        if self._approval_expiry_dispatcher is not None:
+            self._approval_expiry_dispatcher.close()
         self.knowledge.close()
         self.memory.close()
         self.schedules.close()

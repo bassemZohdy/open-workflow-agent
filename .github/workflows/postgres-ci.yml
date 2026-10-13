@@ -87,6 +87,13 @@ on:
       - "core/src/open_workflow_agent/effects.py"
       - "core/src/open_workflow_agent/config.py"
       - "core/src/open_workflow_agent/approvals.py"
+      - "core/src/open_workflow_agent/approval_dispatcher.py"
+      - "core/src/open_workflow_agent/protected_approval*.py"
+      - "tests/core/test_protected_approval*.py"
+      - "tests/core/test_approval_dispatcher.py"
+      - "tests/contract/test_protected_approval*.py"
+      - "tests/contract/_protected_approval*.py"
+      - "tests/ci/test_protected_approval_ci_selection.py"
       - "core/src/open_workflow_agent/events.py"
       - "core/src/open_workflow_agent/event_store.py"
       - "core/src/open_workflow_agent/durable_events.py"
@@ -252,6 +259,9 @@ jobs:
             tests/core/test_event_store.py \
             tests/core/test_durable_event_api.py \
             tests/core/test_durable_event_approvals.py \
+            tests/core/test_protected_approvals.py \
+            tests/core/test_approval_dispatcher.py \
+            tests/core/test_protected_approval_recovery.py \
             tests/core/test_timer_store.py \
             tests/core/test_child_workflow_budgets.py \
             tests/core/test_child_delivery_guards.py \
@@ -611,7 +621,9 @@ jobs:
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \
             ../../tests/contract/test_openapi_process_recovery.py \
             ../../tests/contract/test_grpc_calls.py \
-            ../../tests/contract/test_grpc_process_recovery.py -vv --durations=20 -k postgresql
+            ../../tests/contract/test_grpc_process_recovery.py \
+            ../../tests/contract/test_protected_approval_workflows.py \
+            ../../tests/contract/test_protected_approval_process_recovery.py -vv --durations=20 -k postgresql
 
   postgres-langgraph-operations:
     name: PostgreSQL LangGraph operation adapter recovery
@@ -652,7 +664,9 @@ jobs:
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \
             ../../tests/contract/test_openapi_process_recovery.py \
             ../../tests/contract/test_grpc_calls.py \
-            ../../tests/contract/test_grpc_process_recovery.py -vv --durations=20 -k postgresql
+            ../../tests/contract/test_grpc_process_recovery.py \
+            ../../tests/contract/test_protected_approval_workflows.py \
+            ../../tests/contract/test_protected_approval_process_recovery.py -vv --durations=20 -k postgresql
 
   postgres-runtime:
     name: PostgreSQL persistence ${{ matrix.engine }} acceptance

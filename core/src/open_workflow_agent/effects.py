@@ -449,6 +449,18 @@ class EffectJournal:
                 verify_definition_admission_receipt(
                     self.connection, self._invocations, identity, receipt
                 )
+            if identity.operation in {"policy:approval-request:v1", "policy:approval-mutation:v1"}:
+                from .protected_approval_store import verify_protected_approval_receipt
+
+                verify_protected_approval_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            if identity.operation in {"emit", "listen", "listen:event:v1"}:
+                from .protected_approval_recovery import verify_protected_approval_business_receipt
+
+                verify_protected_approval_business_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
             if identity.operation == "policy:a2a-agent-card:v1":
                 from .a2a_admission import verify_a2a_card_receipt
 

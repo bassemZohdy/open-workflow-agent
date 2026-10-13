@@ -232,6 +232,7 @@ class WorkflowEngine:
         services._workflow_initial_child_preflight = self._verify_initial_nohistory
         self._initial_delivery_dispatcher = InitialDeliveryDispatcher(services, self)
         await services.start_background_jobs()
+        await services.start_protected_approvals()
 
     async def start_initial_deliveries(
         self, authorize: Callable[[ExecutionHandle, str | None, WorkflowPlan], bool]
@@ -413,6 +414,7 @@ class WorkflowEngine:
 
     async def _preflight_timer_delivery(self, handle: ExecutionHandle) -> WorkflowPlan:
         plan = self.services.resolve_original_definition(handle)
+        self.services.verify_protected_approvals(handle)
         self._verify_event_requirements(plan)
         await self._preflight_native_continuation(handle)
         return plan
@@ -420,6 +422,8 @@ class WorkflowEngine:
     async def _preflight_definition(
         self, handle: ExecutionHandle, plan: WorkflowPlan, *, initial: bool = False
     ) -> None:
+        self.services.verify_protected_approval_plan(plan)
+        self.services.verify_protected_approvals(handle)
         self.services.verify_grpc_plan(plan)
         archive = self.services.recovery_definitions
         if archive.has_binding(handle) or not initial:
@@ -1156,6 +1160,7 @@ class WorkflowEngine:
 
     async def _verify_resume_state(self, handle: ExecutionHandle, plan: WorkflowPlan) -> Any:
         self.services.recovery_definitions.verify(handle, plan)
+        self.services.verify_protected_approvals(handle)
         self._verify_event_requirements(plan)
         self._verify_execution_engine(handle)
         self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
@@ -1251,6 +1256,9 @@ class WorkflowEngine:
         services = getattr(self, "services", None)
         if services is not None:
             await services.stop_background_jobs()
+            stop_approvals = getattr(services, "stop_protected_approvals", None)
+            if stop_approvals is not None:
+                await stop_approvals()
         if self._timer_dispatcher is not None:
             await self._timer_dispatcher.stop()
         if self._initial_delivery_dispatcher is not None:

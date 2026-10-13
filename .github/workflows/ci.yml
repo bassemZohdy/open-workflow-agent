@@ -198,6 +198,11 @@ jobs:
           ../../tests/contract/test_durable_scheduling.py
           ../../tests/contract/test_schedule_event_triggers.py
           ../../tests/contract/test_event_backend_admission.py
+          ../../tests/core/test_protected_approvals.py
+          ../../tests/core/test_approval_dispatcher.py
+          ../../tests/core/test_protected_approval_recovery.py
+          ../../tests/contract/test_protected_approval_workflows.py
+          ../../tests/contract/test_protected_approval_process_recovery.py
 
   windows-native-lifecycle:
     name: Windows native lifecycle and receiver recovery
