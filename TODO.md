@@ -206,6 +206,10 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   No automatic remote rollback or general exactly-once guarantee is claimed;
   migration, full proposed criteria and JavaScript retain S2-09/Stage 4 ownership.
 - [ ] **S2-09** (L) — Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.
+  Original-definition admission, exact profile checks and authenticated bounded
+  recovery diagnostics are authored in an isolated batch. See the
+  [finite policy](docs/s2-09-version-recovery-acceptance.md). Actual native,
+  backend, process-stop, packaging and hosted qualification remain required.
 
 ## Stage 3 — Agents, tools and integrations
 
