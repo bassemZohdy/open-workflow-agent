@@ -23,6 +23,9 @@ Use Open Workflow Agent when you want to:
 
 Every invocation runs as a workflow. If you do not provide one, the runtime generates a default workflow that calls the configured agent.
 
+See the [documentation guide](docs/README.md), [verified project status](PROJECT.md)
+and [remaining backlog](TODO.md) for the supported profiles and work in progress.
+
 ## Published container images
 
 End users can pull the prebuilt runtime images from Docker Hub or GitHub Container Registry (GHCR). Docker Hub is used in end-user examples because it gives the shortest standard Docker image name; GHCR remains the canonical release/provenance registry.

@@ -64882,6 +64882,11 @@
         "status": "Authored; qualification pending",
         "record": "docs/s3-04-executable-source-acceptance.md",
         "scope": "Finite workflow-owned captured Python script sources and awaited internal process controls; imported executable sources unsupported; all native/backend/platform/publication gates pending"
+      },
+      "S3-05": {
+        "status": "Authored; qualification pending",
+        "record": "docs/s3-05-protected-approval-acceptance.md",
+        "scope": "Finite named-principal protected approvals, immutable assignment/terminal proofs, fair original-expiry observer; all native/backend/platform/publication gates pending"
       }
     }
   },
