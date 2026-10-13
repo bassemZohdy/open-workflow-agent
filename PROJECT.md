@@ -35,8 +35,10 @@ failed. Later source and corrections remain local feature work pending validatio
 | `dc71ecb`, 1,034 inputs | Five builds passed; common 46 failures/59 errors; optional framework three failures; principal SDK suites reached the unchanged 75-minute bounds with failures | Failed/incomplete |
 | `3aaaf30`, 1,054 inputs | Static/schema/admission checks and five builds passed; common 8 failures, 2,822 passes, 601 skips and 52 errors; source unchanged | Behavioral gates open |
 
-All profiles have ended. Corrections and selected S3-08 adapters are authored in a
-separate checkout. Full commands, counts, source hashes and actionable causes are
+The preceding profiles have ended. Selected S3-08 adapters and grouped corrections
+are frozen at `7214f46` with 1,067 tracked inputs; all five builds passed. Its common
+profile stopped during collection on a misnamed memory fixture import. Independent
+engine profiles are running; the fixture correction is isolated in a separate checkout. Full commands, counts, source hashes and actionable causes are
 retained in [the batch evidence record](docs/validation-history/pending-batch-results.md).
 Source changes and partial passes qualify no unchecked task, full inventory row,
 JavaScript profile or release.

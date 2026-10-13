@@ -14,7 +14,7 @@ import pytest
 from open_workflow_agent.bounded_memory import BoundedMemoryService
 from open_workflow_agent.errors import InvocationStateConflict, WorkflowExecutionError
 from open_workflow_agent.memory import MemoryService
-from open_workflow_agent.ownership import ExecutionOwnership
+from open_workflow_agent.ownership import ExecutionOwnershipStore
 from open_workflow_agent.persistence import InvocationStore
 
 
@@ -50,7 +50,7 @@ def memory_tree(tmp_path, request):
 
     def make(*, owner=None, bounds=None, seconds=120):
         store = InvocationStore(database)
-        ownership = ExecutionOwnership(database)
+        ownership = ExecutionOwnershipStore(database)
         service = BoundedMemoryService(store, bounds or Bounds())
         assert service._connection is store.connection
         assert service._connection.kind == request.param

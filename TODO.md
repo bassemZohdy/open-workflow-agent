@@ -170,7 +170,7 @@ and [retained validation evidence](docs/validation-history/pending-batch-results
   Windows/native/image checks, one root contract execution, optional Framework
   coverage for common changes, and stale-PR cancellation. Required release
   gates were preserved and all six configured workflows passed at that checkpoint.
-  The later hosted checkpoint failed, as recorded in the delivery status above. Remaining S4-07
+  The later hosted checkpoint failed, as recorded above. Remaining S4-07
   release/rollback and broader capability/version acceptance stay open.
 - [ ] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.
 - [ ] **S4-09** (L) — Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; require its own native acceptance.

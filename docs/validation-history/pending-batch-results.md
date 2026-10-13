@@ -132,3 +132,18 @@ resource-failure cases still require unknown. The original seven-second executio
 deadline and all production controls remain unchanged. Independent native
 supervisor startup still needs diagnostic evidence; no security gate is weakened. Source authoring,
 builds and partial passes qualify no unchecked task.
+
+## Selected S3-08 adapters and corrections — 7214f46
+
+Source `7214f4642280eae28e359423b627cd6265a400b8` freezes 1,067 tracked
+inputs. Lint, formatting (526 files), strict typing (130 source files), all 12
+recipe schemas and the unchanged 20-path public API schema pass. All five fresh
+package builds and provenance checks pass. The full common profile stopped during
+collection: `test_bounded_memory.py` imported nonexistent `ExecutionOwnership`
+instead of the existing `ExecutionOwnershipStore`. Pytest reported one collection
+error in 16.20 seconds; the driver ended with exit 2 after 27.72 seconds, with
+no tracked source changes. No behavioral acceptance follows from collection.
+
+Independent ADK, LangGraph and optional Framework profiles are still running.
+The fixture correction is authored separately; the failed source and exact
+commands, manifests and results remain preserved. No task checkbox changes.
