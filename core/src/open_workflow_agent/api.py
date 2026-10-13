@@ -37,6 +37,7 @@ from .errors import (
 )
 from .event_capabilities import event_capabilities
 from .lifecycle import TERMINAL_INVOCATION_STATES
+from .mcp_capabilities import mcp_capabilities
 from .metrics import MetricsMiddleware
 from .persistence import ExecutionHandle
 from .recovery_diagnostics import recovery_diagnostics
@@ -502,6 +503,7 @@ def create_app(
             runtime_services.external_catalogs.capabilities()
         )
         value.setdefault("features", {})["sandbox"] = runtime_services.sandbox.capabilities()
+        value.setdefault("features", {})["mcp"] = mcp_capabilities(runtime_services.sandbox)
         value.setdefault("features", {})["lifecycleStreaming"] = streaming_capabilities()
         value.setdefault("features", {})["a2a"] = a2a_capabilities(runtime_config.a2a)
         value.setdefault("features", {})["trafficPolicy"] = traffic_policy_capabilities(

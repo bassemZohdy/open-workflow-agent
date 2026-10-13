@@ -10,7 +10,7 @@ from typing import Any
 from ..catalog import FunctionCatalog
 from ..config import SandboxConfig
 from ..definitions import resolve_reusable_components
-from ..errors import UnsupportedWorkflowFeature, WorkflowSemanticError
+from ..errors import SandboxPolicyError, UnsupportedWorkflowFeature, WorkflowSemanticError
 from ..resources import materialize_schema_resources, schema_registry
 from ..workflow import (
     WorkflowPlan,
@@ -25,6 +25,7 @@ from ..workflow import (
     validate_schema,
 )
 from .contract import RESERVED_ENVIRONMENT
+from .stdio_policy import validate_stdio_transport
 
 
 def validate_sandbox_capabilities(
@@ -38,13 +39,44 @@ def validate_sandbox_capabilities(
     effective = resolve_reusable_components(workflow)
     rewritten = copy.deepcopy(effective)
     _rewrite_executable_runs(rewritten, sandbox=sandbox, reference="")
+    _validate_stdio_calls(effective, sandbox=sandbox)
     validate_capabilities(
         rewritten,
         trusted_catalogs=trusted_catalogs,
         _resource_preflight=_resource_preflight,
         _schema_registry=_schema_registry,
+        _mcp_stdio=True,
     )
     validate_expression_profile(effective)
+
+
+def _validate_stdio_calls(workflow: Mapping[str, Any], *, sandbox: SandboxConfig) -> None:
+    """Check every expanded stdio declaration without changing public source."""
+
+    def tasks(items: Any, path: str, indexed: bool = True) -> None:
+        for reference, definition in _walk_tasks(items, prefix=path, indexed=indexed):
+            parameters = definition.get("with")
+            transport = parameters.get("transport") if isinstance(parameters, Mapping) else None
+            if (
+                definition.get("call") == "mcp"
+                and isinstance(transport, Mapping)
+                and "stdio" in transport
+            ):
+                try:
+                    validate_stdio_transport(transport, sandbox)
+                except SandboxPolicyError as error:
+                    raise UnsupportedWorkflowFeature(
+                        error.message, details={"reference": reference}
+                    ) from None
+            for suffix, children in _task_scopes(definition):
+                tasks(children, f"{reference}/{suffix}", not suffix.startswith("fork/branches/"))
+
+    tasks(workflow.get("do", []), "/do")
+    use = workflow.get("use")
+    functions = use.get("functions") if isinstance(use, Mapping) else None
+    if isinstance(functions, Mapping):
+        for name, definition in functions.items():
+            tasks([{name: definition}], "/use/functions", False)
 
 
 def compile_sandbox_workflow(

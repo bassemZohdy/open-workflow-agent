@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 from open_workflow_agent.catalog import FakeModel
@@ -24,6 +26,7 @@ async def test_configured_agent_tool_roundtrip_is_engine_independent(tmp_path, e
                     "type": "mcp",
                     "name": "lookup",
                     "endpoint": "https://service.test/mcp",
+                    "options": {"name": "lookup"},
                 }
             ],
         }
@@ -38,7 +41,19 @@ async def test_configured_agent_tool_roundtrip_is_engine_independent(tmp_path, e
 
     async def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path == "/mcp"
-        return httpx.Response(200, json={"result": {"content": "tool-ok"}})
+        body = json.loads(request.content)
+        assert body["method"] == "tools/call" and body["params"]["name"] == "lookup"
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": body["id"],
+                "result": {
+                    "resultType": "complete",
+                    "content": [{"type": "text", "text": "tool-ok"}],
+                },
+            },
+        )
 
     services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
     services.tools.protocols = services.protocols

@@ -57,6 +57,7 @@ from .errors import (
     WorkflowExecutionError,
     WorkflowSchemaError,
     WorkflowSemanticError,
+    _McpOutcomeUncertain,
 )
 from .event_matching import candidate_matcher, event_projection
 from .events import EventEnvelope, EventProgress, EventRegistration
@@ -68,7 +69,7 @@ from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
 from .ownership import ExecutionLease
 from .persistence import ExecutionHandle
-from .protocols import PROTOCOL_DATA_FIELDS
+from .protocols import MCP_PROTOCOL_VERSION, PROTOCOL_DATA_FIELDS
 from .resources import SchemaResource, materialize_schema_resources
 from .resources import schema_registry as build_schema_registry
 from .retry import RetryPolicy
@@ -371,6 +372,7 @@ def validate_capabilities(
     _indexed: bool = True,
     _resource_preflight: bool = False,
     _schema_registry: Registry[Any] | None = None,
+    _mcp_stdio: bool = False,
 ) -> None:
     _validate_definition_profile(workflow, _resource_preflight, _schema_registry)
     _validate_catalog_capability(workflow, trusted_catalogs=trusted_catalogs)
@@ -429,8 +431,22 @@ def validate_capabilities(
                 _validate_protocol_authentication(definition.get("with"), f"{reference}/with")
             if call == "mcp":
                 with_value = definition.get("with")
+                protocol_version = (
+                    with_value.get("protocolVersion") if isinstance(with_value, Mapping) else None
+                )
+                if (
+                    protocol_version is not None
+                    and protocol_version != MCP_PROTOCOL_VERSION
+                    and not (
+                        isinstance(protocol_version, str)
+                        and protocol_version.strip().startswith("${")
+                    )
+                ):
+                    raise UnsupportedWorkflowFeature(
+                        "MCP protocol version is not enabled", details={"reference": reference}
+                    )
                 transport = with_value.get("transport") if isinstance(with_value, Mapping) else None
-                if isinstance(transport, Mapping) and "stdio" in transport:
+                if isinstance(transport, Mapping) and "stdio" in transport and not _mcp_stdio:
                     raise UnsupportedWorkflowFeature(
                         "mcp stdio transport is not enabled", details={"reference": reference}
                     )
@@ -445,6 +461,7 @@ def validate_capabilities(
                 _indexed=not suffix.startswith("fork/branches/"),
                 _resource_preflight=_resource_preflight,
                 _schema_registry=_schema_registry,
+                _mcp_stdio=_mcp_stdio,
             )
         if "emit" in definition:
             _validate_emit_capability(definition["emit"], reference)
@@ -461,6 +478,7 @@ def validate_capabilities(
                 _indexed=False,
                 _resource_preflight=_resource_preflight,
                 _schema_registry=_schema_registry,
+                _mcp_stdio=_mcp_stdio,
             )
         validate_expression_profile(workflow)
 
@@ -2259,7 +2277,12 @@ class WorkflowExecutor:
         if journal is None:
             if _RECONCILE_EXPIRED_RETRY.get():
                 raise WorkflowExecutionError("retry budget expired before a new action")
-            return await dispatch()
+            try:
+                return await dispatch()
+            except _McpOutcomeUncertain as uncertainty:
+                raise _EffectRecoveryRequired(
+                    uncertainty.message, details=uncertainty.details
+                ) from None
         identity = self._effect_identity(state, operation or "call:" + call)
         operation_id = (
             payload.get("operation_id")
@@ -2372,6 +2395,12 @@ class WorkflowExecutor:
                     details={"instance": reference},
                 ) from None
             raise
+        except _McpOutcomeUncertain as uncertainty:
+            # No correlated known result means the business action may have
+            # committed. Keep its pending intent and bypass catch/retry routing.
+            raise _EffectRecoveryRequired(
+                uncertainty.message, details=uncertainty.details
+            ) from None
         except (InvocationCancelled, InvocationStateConflict):
             # Cancellation or loss of common state authority does not prove
             # an external outcome, even when the invocation itself has an

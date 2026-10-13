@@ -3,15 +3,19 @@ from __future__ import annotations
 import pytest
 from open_workflow_agent.config import RuntimeConfig, ToolConfig
 from open_workflow_agent.errors import ToolError
+from open_workflow_agent.protocols import HttpClient
 from open_workflow_agent.tools import ToolRegistry
 
 
 class ProtocolStub:
     def __init__(self) -> None:
         self.calls: list[tuple[str, object]] = []
+        self.authentication = []
+        self.http = HttpClient()
 
-    async def call(self, protocol: str, payload: object) -> object:
+    async def call(self, protocol: str, payload: object, *, _authentication=None) -> object:
         self.calls.append((protocol, payload))
+        self.authentication.append(_authentication)
         return {"protocol": protocol, "payload": payload}
 
 
@@ -79,16 +83,21 @@ async def test_tool_registry_invokes_configured_mcp_and_openapi_tools(monkeypatc
     assert mcp_payload["timeout"] == 3
     assert mcp_payload["endpoint"] == "https://mcp.test"
     assert mcp_payload["transport"]["http"]["headers"] == {
-        "Authorization": "Bearer tool-secret",
+        "authorization": "Bearer caller-controlled",
         "X-Caller": "yes",
+    }
+    assert protocols.authentication[0].headers("https://mcp.test") == {
+        "Authorization": "Bearer tool-secret"
     }
 
     await registry.invoke("weather", {"headers": {"X-Caller": "yes"}})
     openapi_payload = protocols.calls[1][1]
     assert openapi_payload["endpoint"] == "https://api.test"
     assert openapi_payload["headers"] == {
-        "Authorization": "Bearer tool-secret",
         "X-Caller": "yes",
+    }
+    assert protocols.authentication[1].headers("https://api.test") == {
+        "Authorization": "Bearer tool-secret"
     }
 
     with pytest.raises(ToolError, match="configured tool not found"):

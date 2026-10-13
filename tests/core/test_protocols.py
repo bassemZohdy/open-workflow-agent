@@ -43,13 +43,27 @@ async def test_protocol_services_build_mcp_json_rpc_request():
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.update(json.loads(request.content))
         headers.update(request.headers)
-        return httpx.Response(200, json={"result": {"ok": True}})
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": seen["id"],
+                "result": {
+                    "resultType": "complete",
+                    "content": [],
+                    "structuredContent": {"ok": True},
+                },
+            },
+        )
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
     result = await services.call(
         "mcp", {"endpoint": "https://mcp.test", "name": "lookup", "arguments": {"q": "x"}}
     )
-    assert result["result"]["ok"] is True
+    assert result["structuredContent"]["ok"] is True
+    assert (
+        seen["params"]["_meta"]["io.modelcontextprotocol/protocolVersion"] == MCP_PROTOCOL_VERSION
+    )
     assert seen["method"] == "tools/call"
     assert headers["mcp-protocol-version"] == MCP_PROTOCOL_VERSION
     assert headers["mcp-method"] == "tools/call"
@@ -62,7 +76,19 @@ async def test_official_protocol_shapes_and_operation_headers(monkeypatch):
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
-        return httpx.Response(200, json={"ok": True})
+        body = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": body["id"],
+                "result": {
+                    "resultType": "complete",
+                    "content": [],
+                    "structuredContent": {"ok": True},
+                },
+            },
+        )
 
     security = _bearer_security(monkeypatch)
     from open_workflow_agent.security import ProfileAuthentication
@@ -211,6 +237,21 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
+        if request.url.path == "/mcp":
+            body = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {
+                        "resultType": "complete",
+                        "tools": [],
+                        "ttlMs": 0,
+                        "cacheScope": "public",
+                    },
+                },
+            )
         return httpx.Response(200, json={"path": request.url.path})
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
@@ -224,7 +265,7 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
             "transport": {"http": {"endpoint": "https://service.test/mcp"}},
             "parameters": {},
         },
-    ) == {"path": "/mcp"}
+    ) == {"resultType": "complete", "tools": [], "ttlMs": 0, "cacheScope": "public"}
     assert await services.call(
         "a2a",
         {

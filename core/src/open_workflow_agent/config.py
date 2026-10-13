@@ -445,6 +445,56 @@ class KubernetesSandboxConfig(StrictModel):
         return self
 
 
+class McpStdioServerConfig(StrictModel):
+    """One exact deployment-approved executable binding; no workflow secret values."""
+
+    id: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
+    command: str
+    arguments: list[str] = Field(default_factory=list, max_length=128)
+    environment: dict[str, str] = Field(default_factory=dict, max_length=64)
+    secret_environment: dict[str, str] = Field(default_factory=dict, max_length=64)
+
+    @field_validator("command")
+    @classmethod
+    def validate_command(cls, value: str) -> str:
+        if not Path(value).is_absolute() or "\x00" in value or "${" in value:
+            raise ValueError("MCP stdio command must be an absolute deployment executable")
+        return value
+
+    @model_validator(mode="after")
+    def validate_environment(self) -> McpStdioServerConfig:
+        names = {*self.environment, *self.secret_environment}
+        if any(not _ENVIRONMENT_NAME.fullmatch(name) for name in names):
+            raise ValueError("MCP stdio environment names are invalid")
+        if names & {"PATH", "HOME", "TMPDIR"} or self.environment.keys() & self.secret_environment:
+            raise ValueError("MCP stdio environment overrides a reserved or secret binding")
+        if any(not _ENVIRONMENT_NAME.fullmatch(name) for name in self.secret_environment.values()):
+            raise ValueError("MCP stdio secret bindings must be deployment environment references")
+        if any("\x00" in value or "${" in value for value in self.arguments):
+            raise ValueError("MCP stdio arguments must be fixed deployment strings")
+        if any("\x00" in value or "${" in value for value in self.environment.values()):
+            raise ValueError("MCP stdio environment must be fixed deployment strings")
+        return self
+
+
+class McpStdioConfig(StrictModel):
+    enabled: bool = False
+    servers: list[McpStdioServerConfig] = Field(default_factory=list, max_length=64)
+    max_frame_bytes: int = Field(default=262_144, ge=128, le=4_000_000)
+    max_pending_frames: int = Field(default=4, ge=1, le=32)
+    max_sessions: int = Field(default=16, ge=1, le=256)
+
+    @model_validator(mode="after")
+    def validate_servers(self) -> McpStdioConfig:
+        if self.enabled and not self.servers:
+            raise ValueError("enabled MCP stdio requires registered deployment servers")
+        if len({server.id for server in self.servers}) != len(self.servers) or len(
+            {(server.command, tuple(server.arguments)) for server in self.servers}
+        ) != len(self.servers):
+            raise ValueError("MCP stdio server identities and executable bindings must be unique")
+        return self
+
+
 class SandboxConfig(StrictModel):
     """Deployment policy for the selected framework-neutral sandbox backend."""
 
@@ -466,6 +516,7 @@ class SandboxConfig(StrictModel):
     process_count: int | None = 64
     docker: DockerSandboxConfig = Field(default_factory=DockerSandboxConfig)
     kubernetes: KubernetesSandboxConfig = Field(default_factory=KubernetesSandboxConfig)
+    mcp_stdio: McpStdioConfig = Field(default_factory=McpStdioConfig)
 
     @field_validator("script_runtimes")
     @classmethod
@@ -538,6 +589,12 @@ class SandboxConfig(StrictModel):
             raise ValueError(
                 f"sandbox inherited_environment and secret_environment must not overlap: {overlap}"
             )
+        if any(
+            reference not in self.secret_environment
+            for server in self.mcp_stdio.servers
+            for reference in server.secret_environment.values()
+        ):
+            raise ValueError("MCP stdio secret references must be approved by sandbox policy")
         if self.enabled and self.backend == "docker" and not self.docker.allowed_images:
             raise ValueError(
                 "enabled Docker sandbox requires at least one deployment-approved image"
@@ -769,30 +826,43 @@ class RuntimeConfig(StrictModel):
     def validate_security_profile_references(self) -> RuntimeConfig:
         header_capable = {"bearer", "api_key"}
 
-        def require_header_profile(field: str, name: str | None) -> None:
+        def require_header_profile(field: str, name: str | None, *, outbound: bool = False) -> None:
             if name is None:
                 return
             profile = self.security.profiles.get(name)
             if profile is None:
                 raise ValueError(f"{field} references unknown security profile: {name}")
-            if profile.type not in header_capable:
+            permitted = (
+                header_capable | {"oauth2_client_credentials", "mtls"}
+                if outbound
+                else header_capable
+            )
+            if profile.type not in permitted:
                 raise ValueError(
                     f"{field} must reference a security profile of type "
-                    f"{' or '.join(sorted(header_capable))}"
+                    f"{' or '.join(sorted(permitted))}"
                 )
+            if (
+                outbound
+                and profile.type == "oauth2_client_credentials"
+                and not profile.allowed_resource_endpoints
+            ):
+                raise ValueError(f"{field} requires deployment-approved OAuth resource endpoints")
 
         require_header_profile("server.api_security_profile", self.server.api_security_profile)
         require_header_profile(
             "approvals.operator_security_profile", self.approvals.operator_security_profile
         )
-        require_header_profile("protocols.security_profile", self.protocols.security_profile)
+        require_header_profile(
+            "protocols.security_profile", self.protocols.security_profile, outbound=True
+        )
         for catalog_name, catalog in self.workflow.external_catalogs.items():
             require_header_profile(
                 f"external catalog '{catalog_name}' authentication",
                 catalog.authentication.security_profile,
             )
         for index, tool in enumerate(self.tools):
-            require_header_profile(f"tools[{index}]", tool.security_profile)
+            require_header_profile(f"tools[{index}]", tool.security_profile, outbound=True)
         return self
 
     @classmethod

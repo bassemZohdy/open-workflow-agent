@@ -71,6 +71,10 @@ class WorkflowExecutionError(OwaError):
     code = "workflow_execution_error"
 
 
+class _McpOutcomeUncertain(WorkflowExecutionError):
+    """Private transport outcome that cannot establish a known tool receipt."""
+
+
 class SandboxError(WorkflowExecutionError):
     code = "sandbox_error"
 

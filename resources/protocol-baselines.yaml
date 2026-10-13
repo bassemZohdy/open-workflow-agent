@@ -21,6 +21,10 @@ baselines:
   mcp:
     release: "2026-07-28"
     protocol_version: "2026-07-28"
+    sdk_package: "mcp"
+    sdk_version: "2.3.0"
+    sdk_revision: "2118f14f8a19bc158d8a1cf90af58d85d187f849"
+    sdk_review_date: "2026-10-13"
     implemented: true
     profile: "bounded common client/tool profile"
     conformance_claim: false

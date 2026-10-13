@@ -12,10 +12,16 @@ import os
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Annotated, Literal
+from pathlib import Path
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Annotated, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+if TYPE_CHECKING:
+    from ._authentication import OAuthTokenProvider
+    from .protocols import HttpClient
 
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _HEADER_NAME = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
@@ -86,15 +92,27 @@ class OAuth2ClientCredentialsSecurityProfile(_StrictSecurityModel):
     client_secret: SecretReference
     scopes: list[str] = Field(default_factory=list)
     audience: str | None = None
+    issuer: str | None = None
+    resource: str | None = None
+    allowed_resource_endpoints: list[str] = Field(default_factory=list)
+    token_timeout_seconds: float = Field(default=10.0, gt=0, le=120, allow_inf_nan=False)
+    max_token_response_bytes: int = Field(default=65_536, gt=0, le=1_048_576)
+    ca_bundle: SecretReference | None = None
 
     @field_validator("token_url")
     @classmethod
     def validate_token_url(cls, value: str) -> str:
         selected = value.strip()
         parsed = urlparse(selected)
-        if parsed.scheme != "https" or not parsed.hostname:
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or len(selected) > 4096
+            or any(ord(character) < 33 for character in selected)
+            or (parsed.port is not None and not 1 <= parsed.port <= 65535)
+        ):
             raise ValueError("oauth2_client_credentials token_url must be an absolute HTTPS URL")
-        if parsed.username or parsed.password or parsed.fragment:
+        if parsed.username or parsed.password or parsed.fragment or parsed.query:
             raise ValueError("oauth2_client_credentials token_url cannot contain credentials")
         return selected
 
@@ -102,9 +120,67 @@ class OAuth2ClientCredentialsSecurityProfile(_StrictSecurityModel):
     @classmethod
     def validate_scopes(cls, value: list[str]) -> list[str]:
         selected = [scope.strip() for scope in value]
-        if any(not scope for scope in selected) or len(selected) != len(set(selected)):
+        if (
+            len(selected) > 32
+            or any(
+                not scope
+                or not re.fullmatch(r"[\x21\x23-\x5b\x5d-\x7e]+", scope)
+                or len(scope) > 128
+                for scope in selected
+            )
+            or len(selected) != len(set(selected))
+        ):
             raise ValueError("oauth2_client_credentials scopes must be unique non-empty values")
         return selected
+
+    @field_validator("issuer", "resource")
+    @classmethod
+    def validate_trusted_uri(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        parsed = urlparse(value)
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+            or len(value) > 4096
+            or any(ord(character) < 33 for character in value)
+            or (parsed.port is not None and not 1 <= parsed.port <= 65535)
+        ):
+            raise ValueError("OAuth issuer/resource must be an exact absolute HTTPS URI")
+        return value
+
+    @field_validator("allowed_resource_endpoints")
+    @classmethod
+    def validate_resource_endpoints(cls, values: list[str]) -> list[str]:
+        selected = [cls.validate_trusted_uri(value) for value in values]
+        if (
+            len(values) > 32
+            or any(value is None for value in selected)
+            or len(values) != len(set(values))
+        ):
+            raise ValueError("OAuth resource endpoints must be exact unique HTTPS URIs")
+        return values
+
+    @field_validator("audience")
+    @classmethod
+    def validate_audience(cls, value: str | None) -> str | None:
+        if value is not None and (
+            not value or len(value) > 2048 or any(ord(c) < 32 for c in value)
+        ):
+            raise ValueError("OAuth audience must be a bounded literal value")
+        return value
+
+    @model_validator(mode="after")
+    def validate_issuer_binding(self) -> OAuth2ClientCredentialsSecurityProfile:
+        if self.issuer:
+            issuer, token = urlparse(self.issuer), urlparse(self.token_url)
+            if (issuer.hostname, issuer.port or 443) != (token.hostname, token.port or 443):
+                raise ValueError("OAuth token endpoint must belong to the declared issuer origin")
+        return self
 
 
 class MtlsSecurityProfile(_StrictSecurityModel):
@@ -156,6 +232,21 @@ class Principal:
     audience: frozenset[str] = frozenset()
 
 
+@dataclass(frozen=True, slots=True, repr=False)
+class AuthenticationBinding:
+    """Call-local credentials; never serialized into an ordinary runtime record."""
+
+    headers: Mapping[str, str]
+    client_cert: tuple[str, str] | None = None
+    ca_bundle: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "headers", MappingProxyType(dict(self.headers)))
+
+    def __repr__(self) -> str:
+        return "AuthenticationBinding(<credentials redacted>)"
+
+
 class AuthorizationRule(_StrictSecurityModel):
     actions: list[str]
     resources: list[str] = Field(default_factory=lambda: ["*"])
@@ -204,7 +295,13 @@ class ProfileAuthentication:
     moment and never cached.
     """
 
-    def __init__(self, security: SecurityConfig, profile_name: str) -> None:
+    def __init__(
+        self,
+        security: SecurityConfig,
+        profile_name: str,
+        *,
+        token_http: HttpClient | None = None,
+    ) -> None:
         profile = security.profile(profile_name)
         self._supports_headers = isinstance(profile, (BearerSecurityProfile, ApiKeySecurityProfile))
         self._supports_oauth2 = isinstance(profile, OAuth2ClientCredentialsSecurityProfile)
@@ -213,8 +310,16 @@ class ProfileAuthentication:
             raise ValueError(f"security profile '{profile_name}' does not provide protocol headers")
         self.security = security
         self.profile_name = profile_name
-        self._oauth2_token: str | None = None
-        self._oauth2_token_expiry: float = 0.0
+        self._token_http = token_http
+        self._oauth2_provider: OAuthTokenProvider | None = None
+
+    def bind_transport(self, http: HttpClient) -> None:
+        """Bind the composition client's policy once, before credential preparation."""
+        if self._token_http is http:
+            return
+        if self._token_http is not None or self._oauth2_provider is not None:
+            raise ValueError("authentication transport is already bound or prepared")
+        self._token_http = http
 
     def headers(self, endpoint: str) -> Mapping[str, str]:
         del endpoint
@@ -224,55 +329,48 @@ class ProfileAuthentication:
         if isinstance(profile, ApiKeySecurityProfile):
             return {profile.header: resolve_secret(profile.key)}
         if isinstance(profile, OAuth2ClientCredentialsSecurityProfile):
-            return {"Authorization": f"Bearer {self._resolve_oauth2_token(profile)}"}
+            raise ValueError("OAuth authentication requires bounded asynchronous preparation")
         if isinstance(profile, MtlsSecurityProfile):
             return {}
         raise ValueError(
             f"security profile '{self.profile_name}' does not provide protocol headers"
         )
 
-    def _resolve_oauth2_token(self, profile: OAuth2ClientCredentialsSecurityProfile) -> str:
-        """Resolve OAuth2 client credentials token with caching."""
-        import time
-
-        now = time.time()
-        if self._oauth2_token and now < self._oauth2_token_expiry:
-            return self._oauth2_token
-
-        import urllib.parse
-        import urllib.request
-
-        client_id = resolve_secret(profile.client_id)
-        client_secret = resolve_secret(profile.client_secret)
-
-        data = urllib.parse.urlencode(
-            {
-                "grant_type": "client_credentials",
-                "client_id": client_id,
-                "client_secret": client_secret,
-                **({"scope": " ".join(profile.scopes)} if profile.scopes else {}),
-                **({"audience": profile.audience} if profile.audience else {}),
-            }
-        ).encode()
-
-        req = urllib.request.Request(
-            profile.token_url,
-            data=data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            method="POST",
+    async def prepare(
+        self, endpoint: str, *, remaining_timeout: float | None = None
+    ) -> AuthenticationBinding:
+        """Prepare headers/TLS under the caller's original remaining deadline."""
+        from ._authentication import (
+            OAuthTokenProvider,
+            authentication_failure,
+            validate_header_value,
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                import json
-
-                result = json.loads(resp.read().decode())
-                self._oauth2_token = result["access_token"]
-                expires_in = result.get("expires_in", 3600)
-                self._oauth2_token_expiry = now + float(expires_in) - 60
-                return self._oauth2_token
-        except Exception as exc:
-            raise ValueError(f"OAuth2 token request failed: {exc}") from exc
+            profile = self.security.profile(self.profile_name)
+            if isinstance(profile, OAuth2ClientCredentialsSecurityProfile):
+                if self._oauth2_provider is None:
+                    self._oauth2_provider = OAuthTokenProvider(self._token_http)
+                token = await self._oauth2_provider.token(
+                    profile, endpoint, remaining_timeout=remaining_timeout
+                )
+                return AuthenticationBinding(
+                    {"Authorization": "Bearer " + token},
+                    ca_bundle=resolve_secret(profile.ca_bundle) if profile.ca_bundle else None,
+                )
+            headers = self.headers(endpoint)
+            for value in headers.values():
+                validate_header_value(value)
+            certificate, ca_bundle = self.client_cert(), self.ca_bundle()
+            if isinstance(profile, MtlsSecurityProfile):
+                if certificate is None or not all(
+                    Path(path).is_file()
+                    for path in (*certificate, *((ca_bundle,) if ca_bundle is not None else ()))
+                ):
+                    raise authentication_failure("credential_unavailable")
+            return AuthenticationBinding(headers, certificate, ca_bundle)
+        except ValueError:
+            raise authentication_failure("credential_unavailable") from None
 
     def client_cert(self) -> tuple[str, str] | None:
         """Return (certificate, private_key) for mTLS profiles."""
@@ -326,6 +424,7 @@ def authorize(
 
 __all__ = [
     "ApiKeySecurityProfile",
+    "AuthenticationBinding",
     "AuthorizationPolicy",
     "AuthorizationRule",
     "BearerSecurityProfile",

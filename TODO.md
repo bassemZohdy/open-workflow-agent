@@ -214,6 +214,10 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 ## Stage 3 — Agents, tools and integrations
 
 - [ ] **S3-01** (M) — Complete MCP tools/resources/transports/authentication with pinned official SDKs and integration tests.
+  Common HTTP/SDK, bounded authentication and restricted stdio changes are
+  being authored in a separate batch. See the
+  [finite acceptance gates](docs/s3-01-mcp-acceptance.md). No new transport,
+  authentication or inventory profile is qualified before integrated validation.
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.

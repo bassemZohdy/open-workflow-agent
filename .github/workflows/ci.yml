@@ -184,6 +184,36 @@ jobs:
           ../../tests/contract/test_explicit_compensation.py
           ../../tests/contract/test_workflow_version_recovery.py
           ../../tests/contract/test_workflow_version_process_recovery.py
+          ../../tests/contract/test_mcp_sdk_calls.py
+          ../../tests/contract/test_mcp_stdio_integration.py
+
+  windows-mcp:
+    name: Windows common MCP transport and authentication controls
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked common SDK environment
+        run: uv sync --locked
+      - name: Verify Windows common MCP and process lifetime controls
+        run: >-
+          uv run --locked pytest -vv --durations=20
+          tests/core/test_mcp_sdk_http.py
+          tests/core/test_async_authentication.py
+          tests/core/test_authentication_tls.py
+          tests/core/test_sandbox_stdio.py
+          tests/core/test_mcp_stdio_frames.py
+          tests/core/test_mcp_deployment_admission.py
+          tests/core/test_mcp_capabilities.py
+          tests/contract/test_mcp_stdio_integration.py
 
   manifests:
     name: Validate deployment manifests
@@ -387,7 +417,9 @@ jobs:
             --ignore=../../tests/contract/test_host_drain_child_controls.py \
             --ignore=../../tests/contract/test_explicit_compensation.py \
             --ignore=../../tests/contract/test_workflow_version_recovery.py \
-            --ignore=../../tests/contract/test_workflow_version_process_recovery.py
+            --ignore=../../tests/contract/test_workflow_version_process_recovery.py \
+            --ignore=../../tests/contract/test_mcp_sdk_calls.py \
+            --ignore=../../tests/contract/test_mcp_stdio_integration.py
       - name: Portable Profile CTK subset
         shell: bash
         run: |
@@ -471,7 +503,9 @@ jobs:
             ../../tests/contract/test_host_drain_child_controls.py \
             ../../tests/contract/test_explicit_compensation.py \
             ../../tests/contract/test_workflow_version_recovery.py \
-            ../../tests/contract/test_workflow_version_process_recovery.py -vv --durations=20
+            ../../tests/contract/test_workflow_version_process_recovery.py \
+            ../../tests/contract/test_mcp_sdk_calls.py \
+            ../../tests/contract/test_mcp_stdio_integration.py -vv --durations=20
 
   containers:
     # Principal lifecycle/process fixtures run in the independent job above.

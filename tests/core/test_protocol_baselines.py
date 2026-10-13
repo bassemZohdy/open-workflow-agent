@@ -38,6 +38,10 @@ def test_protocol_baseline_manifest_matches_runtime_wire_versions() -> None:
 
     assert baselines["mcp"]["release"] == MCP_PROTOCOL_VERSION
     assert baselines["mcp"]["protocol_version"] == MCP_PROTOCOL_VERSION
+    from open_workflow_agent.mcp_client import MCP_SDK_VERSION
+
+    assert baselines["mcp"]["sdk_version"] == MCP_SDK_VERSION == "2.3.0"
+    assert baselines["mcp"]["sdk_revision"] == "2118f14f8a19bc158d8a1cf90af58d85d187f849"
 
     assert baselines["cloudevents"]["release"] == "1.0.2"
     assert baselines["cloudevents"]["specversion"] == "1.0"

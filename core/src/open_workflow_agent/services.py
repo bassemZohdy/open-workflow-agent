@@ -115,6 +115,7 @@ class RuntimeServices:
         else:
             sandbox_backend = InternalSandboxBackend(config.sandbox)
         self.sandbox = SandboxManager(sandbox_backend)
+        self.protocols.sandbox = self.sandbox
         self.memory_enabled = config.memory.enabled is not False
         memory_tools = (
             ("add_memory", "search_memory", "delete_memory") if self.memory_enabled else ()

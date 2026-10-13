@@ -7,8 +7,10 @@ import ipaddress
 import os
 import re
 import socket
+import ssl
+import time
 from collections.abc import Awaitable, Callable, Mapping
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -16,6 +18,9 @@ import httpx
 
 from .errors import ToolError
 from .security import ProfileAuthentication, SecurityConfig
+
+if TYPE_CHECKING:
+    from .sandbox import SandboxManager
 
 MCP_PROTOCOL_VERSION = "2026-07-28"
 A2A_PROTOCOL_VERSION = "1.0"
@@ -124,16 +129,39 @@ class HttpClient:
         request_timeout: float | None = None,
         allow_not_modified: bool = False,
         _return_response: bool = False,
+        _authentication: AuthenticationProvider | None = None,
         **kwargs: Any,
     ) -> Any:
         self._check_endpoint(endpoint)
         if output not in OUTPUT_MODES:
             raise ToolError(f"unsupported HTTP output mode: {output}")
         headers = dict(kwargs.pop("headers", {}) or {})
-        if self.authentication:
+        authentication = _authentication if _authentication is not None else self.authentication
+        redirects_enabled = self.follow_redirects if follow_redirects is None else follow_redirects
+        if authentication is not None and redirects_enabled:
+            raise ToolError("authenticated HTTP redirects are not enabled")
+        timeout = self.timeout
+        if request_timeout is not None:
+            timeout = min(timeout, max(0.001, request_timeout))
+        started = time.monotonic()
+        client_cert, verify_tls = self.client_cert, self.verify_tls
+        sensitive_headers: frozenset[str] = frozenset()
+        if authentication:
             # Deployment-owned authentication and operation identity cannot be
             # replaced by workflow-provided headers.
-            headers = _merge_authoritative_headers(headers, self.authentication.headers(endpoint))
+            prepare = getattr(authentication, "prepare", None)
+            if prepare is None:
+                auth_headers = authentication.headers(endpoint)
+            else:
+                async with asyncio.timeout(timeout):
+                    binding = await prepare(endpoint, remaining_timeout=timeout)
+                auth_headers = binding.headers
+                client_cert = binding.client_cert
+                # A selected profile replaces global TLS identity; ordinary
+                # public trust remains enabled when it supplies no custom CA.
+                verify_tls = binding.ca_bundle or True
+            headers = _merge_authoritative_headers(headers, auth_headers)
+            sensitive_headers = frozenset(name.lower() for name in auth_headers)
         if operation_id:
             headers = _merge_authoritative_headers(
                 headers,
@@ -145,31 +173,29 @@ class HttpClient:
         if headers:
             kwargs["headers"] = headers
         try:
-            timeout = self.timeout
-            if request_timeout is not None:
-                timeout = min(timeout, max(0.001, request_timeout))
+            timeout -= time.monotonic() - started
+            if timeout <= 0:
+                raise ToolError("HTTP authentication exhausted the request deadline")
             request_transport = self.transport
             trust_env = self.destination_resolver is None
             if self.destination_resolver is not None and self.transport is None:
                 addresses = await self.destination_resolver(endpoint)
                 request_transport = _pinned_transport(
-                    verify_tls=self.verify_tls,
+                    verify_tls=verify_tls,
                     endpoint=endpoint,
                     addresses=addresses,
+                    client_cert=client_cert,
                 )
                 # Ambient proxy and certificate environment variables must not
                 # change the destination selected by the deployment policy.
                 trust_env = False
-            redirects_enabled = (
-                self.follow_redirects if follow_redirects is None else follow_redirects
-            )
             async with httpx.AsyncClient(
                 timeout=timeout,
-                verify=self.verify_tls,
+                verify=verify_tls,
                 follow_redirects=redirects_enabled,
                 trust_env=trust_env,
                 transport=request_transport,
-                cert=self.client_cert,
+                cert=client_cert,
             ) as client:
                 async with client.stream(method, endpoint, **kwargs) as streamed:
                     chunks: list[bytes] = []
@@ -200,11 +226,17 @@ class HttpClient:
                             "detail": response.text[:1024],
                         },
                     )
-                return response if _return_response else _format_response(response, output)
+                return (
+                    response
+                    if _return_response
+                    else _format_response(response, output, _sensitive_headers=sensitive_headers)
+                )
         except ToolError:
             raise
         except httpx.HTTPError as exc:
             raise ToolError(f"HTTP request failed: {exc}") from exc
+        except (ssl.SSLError, OSError):
+            raise ToolError("HTTP TLS or transport binding failed") from None
 
     def _check_endpoint(self, endpoint: str) -> None:
         try:
@@ -239,12 +271,15 @@ class ProtocolServices:
         authentication: AuthenticationProvider | None = None
         client_cert: tuple[str, str] | None = None
         ca_bundle: str | None = None
+        self._profile_authentication: AuthenticationProvider | None = None
+        self.sandbox: SandboxManager | None = None
         if security_profile:
             if security is None:
                 raise ToolError(
                     "protocol security profile reference requires runtime security configuration"
                 )
             auth = ProfileAuthentication(security, security_profile)
+            self._profile_authentication = auth
             if hasattr(auth, "_supports_oauth2") and auth._supports_oauth2:
                 authentication = auth
             elif hasattr(auth, "_supports_mtls") and auth._supports_mtls:
@@ -263,8 +298,16 @@ class ProtocolServices:
             client_cert=client_cert,
             ca_bundle=ca_bundle,
         )
+        if isinstance(self._profile_authentication, ProfileAuthentication):
+            self._profile_authentication.bind_transport(self.http)
 
-    async def call(self, protocol: str, payload: Any) -> Any:
+    async def call(
+        self,
+        protocol: str,
+        payload: Any,
+        *,
+        _authentication: AuthenticationProvider | None = None,
+    ) -> Any:
         if protocol not in {"http", "mcp", "a2a", "openapi"}:
             raise ToolError(f"unsupported protocol: {protocol}")
         if not isinstance(payload, dict):
@@ -284,60 +327,23 @@ class ProtocolServices:
                 follow_redirects=payload.get("redirect"),
                 output=str(payload.get("output", "content")),
                 request_timeout=_duration_seconds(payload.get("timeout")),
+                _authentication=_authentication,
             )
         if protocol == "mcp":
-            transport = payload.get("transport", {})
-            if not isinstance(transport, dict):
-                raise ToolError("mcp call requires a transport object")
-            if "stdio" in transport:
-                raise ToolError("mcp stdio transport is not enabled")
-            http_transport = transport.get("http", {})
-            if not isinstance(http_transport, dict):
-                raise ToolError("mcp HTTP transport must be an object")
-            endpoint = _endpoint_value(payload.get("endpoint") or http_transport.get("endpoint"))
-            if not endpoint:
-                raise ToolError("mcp call requires transport.http.endpoint")
-            requested_version = payload.get("protocolVersion")
-            if requested_version is not None and str(requested_version) != MCP_PROTOCOL_VERSION:
-                raise ToolError(
-                    f"unsupported MCP protocol version: {requested_version}; "
-                    f"supported version is {MCP_PROTOCOL_VERSION}"
-                )
-            method = payload.get("method", "tools/call")
-            if method not in MCP_METHODS:
-                raise ToolError(f"unsupported MCP method: {method}")
-            parameters = payload.get("parameters")
-            if parameters is None:
-                parameters = {
-                    "name": payload.get("name", payload.get("tool")),
-                    "arguments": payload.get("arguments", payload.get("input", {})),
-                }
-            body = {
-                "jsonrpc": "2.0",
-                "id": payload.get("id", operation_id or str(uuid4())),
-                "method": method,
-                "params": parameters,
-            }
-            headers = dict(http_transport.get("headers", {}) or {})
-            headers["Mcp-Protocol-Version"] = MCP_PROTOCOL_VERSION
-            headers["Mcp-Method"] = str(method)
-            if method == "tools/call" and isinstance(parameters, dict):
-                name = parameters.get("name")
-                if isinstance(name, str) and name:
-                    headers["Mcp-Name"] = name
-            client = payload.get("client")
-            if isinstance(client, dict):
-                if client.get("name"):
-                    headers.setdefault("MCP-Client-Name", str(client["name"]))
-                if client.get("version"):
-                    headers.setdefault("MCP-Client-Version", str(client["version"]))
-            return await self.http.request(
-                "POST",
-                str(endpoint),
-                headers=headers,
-                json=body,
+            from .mcp_client import call_mcp
+
+            return await call_mcp(
+                self.http,
+                payload,
+                timeout=min(
+                    self.http.timeout,
+                    _duration_seconds(payload.get("timeout")) or self.http.timeout,
+                ),
                 operation_id=operation_id,
-                request_timeout=_duration_seconds(payload.get("timeout")),
+                authentication=(
+                    _authentication or self._profile_authentication or self.http.authentication
+                ),
+                sandbox=getattr(self, "sandbox", None),
             )
         if protocol == "a2a":
             agent_card = payload.get("agentCard")
@@ -376,6 +382,7 @@ class ProtocolServices:
                 json=body,
                 operation_id=operation_id,
                 request_timeout=_duration_seconds(payload.get("timeout")),
+                _authentication=_authentication,
             )
         if protocol == "openapi":
             document = payload.get("document")
@@ -402,6 +409,7 @@ class ProtocolServices:
                 follow_redirects=payload.get("redirect"),
                 output=str(payload.get("output", "content")),
                 request_timeout=_duration_seconds(payload.get("timeout")),
+                _authentication=_authentication,
             )
         endpoint = payload.get("endpoint")
         if not endpoint:
@@ -458,7 +466,11 @@ class _PinnedNetworkBackend:
 
 
 def _pinned_transport(
-    *, verify_tls: bool | str, endpoint: str, addresses: tuple[str, ...]
+    *,
+    verify_tls: bool | str,
+    endpoint: str,
+    addresses: tuple[str, ...],
+    client_cert: tuple[str, str] | None = None,
 ) -> httpx.AsyncBaseTransport:
     if not addresses:
         raise ToolError("protocol endpoint has no approved network addresses")
@@ -466,7 +478,7 @@ def _pinned_transport(
     hostname = parsed.hostname
     if hostname is None:
         raise ToolError("protocol endpoint is missing a hostname")
-    transport = httpx.AsyncHTTPTransport(verify=verify_tls, trust_env=False)
+    transport = httpx.AsyncHTTPTransport(verify=verify_tls, cert=client_cert, trust_env=False)
     # httpx 0.28.1 (pinned by this project) does not expose httpcore's network
     # backend in its public transport constructor.  Keep the compatibility
     # check close to the security boundary so a future upgrade fails closed.
@@ -573,7 +585,12 @@ def _endpoint_value(value: Any) -> str | None:
     return str(endpoint) if isinstance(endpoint, str) else None
 
 
-def _format_response(response: httpx.Response, output: str) -> Any:
+def _format_response(
+    response: httpx.Response,
+    output: str,
+    *,
+    _sensitive_headers: frozenset[str] = frozenset(),
+) -> Any:
     if output == "raw":
         return response.text
     try:
@@ -603,6 +620,7 @@ def _format_response(response: httpx.Response, output: str) -> Any:
                     key: value
                     for key, value in request.headers.items()
                     if key.lower() not in {"authorization", "cookie", "proxy-authorization"}
+                    and key.lower() not in _sensitive_headers
                 },
             }
             if request is not None

@@ -131,6 +131,22 @@ The official A2A specification defines ordinary `SendMessage` as blocking by def
 
 The common OWA MCP client is pinned to `2026-07-28` and covered by deterministic method/version/transport tests. OWA claims only the bounded operations implemented by `ProtocolServices`, not complete MCP conformance.
 
+S3-01 authors the pinned official Python SDK `mcp==2.3.0` and matching
+`mcp-types==2.3.0`, reviewed at tag commit
+`2118f14f8a19bc158d8a1cf90af58d85d187f849` on 2026-10-13. Installed versions
+outside that pin fail before transport or credential I/O. All independent
+project locks carry the dependency; invocation never installs packages.
+See the [finite acceptance gates](s3-01-mcp-acceptance.md), which remain pending
+until the integrated source, platform, database and hosted batch is qualified.
+
+The authored common client handles seven typed methods and returns the
+validated JSON-RPC result, preserving explicit nulls. HTTP supports JSON and
+a bounded single correlated SSE response, with no reconnect or hidden replay.
+Stdio requires the approved internal sandbox binding and remains disabled by
+default. Unsupported interactions, legacy negotiation, interactive OAuth and
+delegation are explicit limits. Bound client credentials and static HTTP
+identities do not claim the full MCP discovery/authorization protocol.
+
 Authoritative sources:
 
 ```text

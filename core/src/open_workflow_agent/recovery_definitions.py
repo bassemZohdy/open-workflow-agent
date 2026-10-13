@@ -310,6 +310,9 @@ def recovery_profile(
             "PyYAML",
             "croniter",
             "tzdata",
+            "mcp",
+            "mcp-types",
+            "anyio",
         }
         if engine == "adk":
             relevant.update({"google-adk", "google-genai", "sqlalchemy", "aiosqlite", "asyncpg"})
@@ -347,7 +350,7 @@ def recovery_profile(
                 else "langgraph-checkpoint-sqlite",
             },
             "agent-framework": {"agent-framework-core"},
-        }.get(engine, set())
+        }.get(engine, set()) | {"mcp", "mcp-types"}
         sdk_code = {
             name: _sdk_digest(name)
             for name in sorted(checkpoint_packages)

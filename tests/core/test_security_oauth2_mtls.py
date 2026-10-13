@@ -2,14 +2,30 @@
 
 from __future__ import annotations
 
-import json
-from unittest.mock import MagicMock, patch
-
+import httpx
 import pytest
+from open_workflow_agent.errors import ToolError
+from open_workflow_agent.protocols import HttpClient
 from open_workflow_agent.security import (
     ProfileAuthentication,
     SecurityConfig,
 )
+
+
+def _oauth_security() -> SecurityConfig:
+    return SecurityConfig.model_validate(
+        {
+            "profiles": {
+                "oauth": {
+                    "type": "oauth2_client_credentials",
+                    "token_url": "https://auth.example.com/token",
+                    "client_id": {"from_env": "CLIENT_ID"},
+                    "client_secret": {"from_env": "CLIENT_SECRET"},
+                    "allowed_resource_endpoints": ["https://api.example.com"],
+                }
+            }
+        }
+    )
 
 
 def test_oauth2_profile_accepted_by_profile_authentication() -> None:
@@ -47,82 +63,55 @@ def test_mtls_profile_accepted_by_profile_authentication() -> None:
     assert auth._supports_mtls is True
 
 
-def test_oauth2_headers_returns_bearer_token(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify OAuth2 profile returns Bearer token in headers."""
+@pytest.mark.asyncio
+async def test_oauth2_headers_returns_bearer_token(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLIENT_ID", "test-client")
     monkeypatch.setenv("CLIENT_SECRET", "test-secret")
-
-    security = SecurityConfig.model_validate(
-        {
-            "profiles": {
-                "oauth": {
-                    "type": "oauth2_client_credentials",
-                    "token_url": "https://auth.example.com/token",
-                    "client_id": {"from_env": "CLIENT_ID"},
-                    "client_secret": {"from_env": "CLIENT_SECRET"},
-                }
-            }
-        }
+    security = _oauth_security()
+    auth = ProfileAuthentication(
+        security,
+        "oauth",
+        token_http=HttpClient(
+            transport=httpx.MockTransport(
+                lambda _request: httpx.Response(
+                    200,
+                    json={
+                        "access_token": "test-token-123",
+                        "token_type": "Bearer",
+                        "expires_in": 3600,
+                    },
+                )
+            )
+        ),
     )
-
-    auth = ProfileAuthentication(security, "oauth")
-
-    # Mock the urllib.request.urlopen to return a token response
-    mock_response = MagicMock()
-    mock_response.read.return_value = json.dumps(
-        {"access_token": "test-token-123", "expires_in": 3600}
-    ).encode()
-    mock_response.__enter__ = MagicMock(return_value=mock_response)
-    mock_response.__exit__ = MagicMock(return_value=False)
-
-    with patch("urllib.request.urlopen", return_value=mock_response):
-        headers = auth.headers("https://api.example.com")
-        assert headers == {"Authorization": "Bearer test-token-123"}
+    binding = await auth.prepare("https://api.example.com", remaining_timeout=1)
+    assert binding.headers == {"Authorization": "Bearer test-token-123"}
 
 
-def test_oauth2_token_caching(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify OAuth2 tokens are cached until expiry."""
+@pytest.mark.asyncio
+async def test_oauth2_token_caching(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("CLIENT_ID", "test-client")
     monkeypatch.setenv("CLIENT_SECRET", "test-secret")
+    calls = []
 
-    security = SecurityConfig.model_validate(
-        {
-            "profiles": {
-                "oauth": {
-                    "type": "oauth2_client_credentials",
-                    "token_url": "https://auth.example.com/token",
-                    "client_id": {"from_env": "CLIENT_ID"},
-                    "client_secret": {"from_env": "CLIENT_SECRET"},
-                }
-            }
-        }
+    def issuer(request):
+        calls.append(request)
+        return httpx.Response(
+            200,
+            json={
+                "access_token": f"token-{len(calls)}",
+                "token_type": "Bearer",
+                "expires_in": 3600,
+            },
+        )
+
+    auth = ProfileAuthentication(
+        _oauth_security(), "oauth", token_http=HttpClient(transport=httpx.MockTransport(issuer))
     )
-
-    auth = ProfileAuthentication(security, "oauth")
-
-    call_count = 0
-
-    def mock_urlopen(*args, **kwargs):
-        nonlocal call_count
-        call_count += 1
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps(
-            {"access_token": f"token-{call_count}", "expires_in": 3600}
-        ).encode()
-        mock_response.__enter__ = MagicMock(return_value=mock_response)
-        mock_response.__exit__ = MagicMock(return_value=False)
-        return mock_response
-
-    with patch("urllib.request.urlopen", side_effect=mock_urlopen):
-        # First call should fetch token
-        headers1 = auth.headers("https://api.example.com")
-        assert headers1["Authorization"] == "Bearer token-1"
-        assert call_count == 1
-
-        # Second call should use cached token
-        headers2 = auth.headers("https://api.example.com")
-        assert headers2["Authorization"] == "Bearer token-1"
-        assert call_count == 1  # No additional call
+    first = await auth.prepare("https://api.example.com", remaining_timeout=1)
+    second = await auth.prepare("https://api.example.com", remaining_timeout=1)
+    assert first.headers == second.headers == {"Authorization": "Bearer token-1"}
+    assert len(calls) == 1
 
 
 def test_mtls_client_cert_returns_certificate_and_key(
@@ -203,25 +192,23 @@ def test_mtls_with_ca_bundle(monkeypatch: pytest.MonkeyPatch) -> None:
     assert ca == "/path/to/ca-bundle.crt"
 
 
-def test_oauth2_missing_credentials_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify OAuth2 fails closed when credentials are unavailable."""
-    security = SecurityConfig.model_validate(
-        {
-            "profiles": {
-                "oauth": {
-                    "type": "oauth2_client_credentials",
-                    "token_url": "https://auth.example.com/token",
-                    "client_id": {"from_env": "MISSING_CLIENT_ID"},
-                    "client_secret": {"from_env": "MISSING_CLIENT_SECRET"},
-                }
-            }
-        }
+@pytest.mark.asyncio
+async def test_oauth2_missing_credentials_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CLIENT_ID", raising=False)
+    monkeypatch.delenv("CLIENT_SECRET", raising=False)
+    calls = []
+    auth = ProfileAuthentication(
+        _oauth_security(),
+        "oauth",
+        token_http=HttpClient(
+            transport=httpx.MockTransport(
+                lambda request: calls.append(request) or httpx.Response(500)
+            )
+        ),
     )
-
-    auth = ProfileAuthentication(security, "oauth")
-
-    with pytest.raises(ValueError, match="required deployment secret is unavailable"):
-        auth.headers("https://api.example.com")
+    with pytest.raises(ToolError) as error:
+        await auth.prepare("https://api.example.com", remaining_timeout=1)
+    assert error.value.details["reason"] == "credential_unavailable" and calls == []
 
 
 def test_mtls_missing_credentials_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:

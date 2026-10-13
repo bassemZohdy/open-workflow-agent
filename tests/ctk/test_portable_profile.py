@@ -127,6 +127,39 @@ async def test_upstream_ctk_portable_profile_scenarios(
     )
 
     async def protocol_fixture(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/mcp" or (
+            request.url.path == "/error" and request.headers.get("Mcp-Method") == "tools/call"
+        ):
+            body = json.loads(request.content)
+            assert body["jsonrpc"] == "2.0"
+            assert body["method"] == "tools/call"
+            assert body["params"]["name"] == "lookup"
+            assert body["params"]["arguments"] == {"query": "ctk"}
+            assert (
+                body["params"]["_meta"]["io.modelcontextprotocol/protocolVersion"] == "2026-07-28"
+            )
+            if request.url.path == "/error":
+                return httpx.Response(
+                    200,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": body["id"],
+                        "error": {"code": -32603, "message": "controlled protocol failure"},
+                    },
+                )
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {
+                        "resultType": "complete",
+                        "content": [{"type": "text", "text": "ctk"}],
+                        "isError": False,
+                        "structuredContent": {"path": "/mcp"},
+                    },
+                },
+            )
         if request.url.path == "/error":
             return httpx.Response(503, json={"error": "controlled protocol failure"})
         if request.url.path == "/v2/pet/1":

@@ -121,6 +121,8 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
         "test_explicit_compensation.py",
         "test_workflow_version_recovery.py",
         "test_workflow_version_process_recovery.py",
+        "test_mcp_sdk_calls.py",
+        "test_mcp_stdio_integration.py",
     }
     workflow = _workflow("postgres-ci.yml")
     for engine in ("adk", "langgraph"):
@@ -157,6 +159,25 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     assert all(f"../../tests/contract/{name}" in command for name in fixtures)
     main = _runs(_workflow("ci.yml")["jobs"]["engines"])
     assert all(f"--ignore=../../tests/contract/{name}" in main for name in fixtures)
+
+
+def test_windows_mcp_controls_include_real_transport_and_cleanup_boundaries():
+    job = _workflow("ci.yml")["jobs"]["windows-mcp"]
+    assert job["runs-on"] == "windows-latest" and job["timeout-minutes"] == "15"
+    assert "needs" not in job
+    command = _runs(job)
+    for fixture in (
+        "test_mcp_sdk_http.py",
+        "test_async_authentication.py",
+        "test_authentication_tls.py",
+        "test_sandbox_stdio.py",
+        "test_mcp_stdio_frames.py",
+        "test_mcp_deployment_admission.py",
+        "test_mcp_capabilities.py",
+        "test_mcp_stdio_integration.py",
+    ):
+        assert fixture in command
+    assert "uv run --locked pytest -vv" in command
 
 
 def test_independent_principal_jobs_finish_both_profiles_before_workflow_success():

@@ -56,6 +56,23 @@ class SandboxExecutionResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class SandboxStdioRequest:
+    execution_id: str
+    command: str
+    arguments: tuple[str, ...] = ()
+    environment: tuple[tuple[str, str], ...] | None = None
+    timeout_seconds: float = 30.0
+
+
+class SandboxStdioSession(Protocol):
+    async def send_frame(self, value: bytes) -> None: ...
+
+    async def receive_frame(self) -> bytes: ...
+
+    async def aclose(self) -> None: ...
+
+
 class SandboxBackend(Protocol):
     async def execute(self, request: SandboxExecutionRequest) -> SandboxExecutionResult: ...
 

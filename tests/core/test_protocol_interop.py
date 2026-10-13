@@ -136,7 +136,22 @@ def test_mcp_outbound_request_includes_required_headers() -> None:
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
-        return httpx.Response(200, json={"result": {"ok": True}})
+        import json
+
+        body = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": body["id"],
+                "result": {
+                    "resultType": "complete",
+                    "tools": [],
+                    "ttlMs": 0,
+                    "cacheScope": "public",
+                },
+            },
+        )
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
 

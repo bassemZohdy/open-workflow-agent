@@ -57,7 +57,13 @@ Feature: Protocol Call Tasks
     When the workflow is executed
     Then the workflow should complete with output:
     """yaml
-    path: /mcp
+    resultType: complete
+    content:
+      - type: text
+        text: ctk
+    isError: false
+    structuredContent:
+      path: /mcp
     """
 
   Scenario: A2A Call Uses The Mock Protocol Boundary

@@ -26,6 +26,16 @@ on:
       - "tests/contract/test_workflow_version_recovery.py"
       - "tests/contract/test_workflow_version_process_recovery.py"
       - "tests/contract/_version_recovery_worker.py"
+      - "core/src/open_workflow_agent/protocols.py"
+      - "core/src/open_workflow_agent/security.py"
+      - "core/src/open_workflow_agent/_authentication.py"
+      - "core/src/open_workflow_agent/mcp*.py"
+      - "core/src/open_workflow_agent/sandbox/**"
+      - "core/uv.lock"
+      - "tests/contract/test_mcp_sdk_calls.py"
+      - "tests/contract/test_mcp_stdio_integration.py"
+      - "tests/contract/_mcp_stdio_sdk_server.py"
+      - "tests/_mcp_sdk_fixture.py"
       - "hatch_build.py"
       - "core/hatch_build.py"
       - "engines/adk/hatch_build.py"
@@ -475,7 +485,9 @@ jobs:
             ../../tests/contract/test_host_drain_child_controls.py \
             ../../tests/contract/test_explicit_compensation.py \
             ../../tests/contract/test_workflow_version_recovery.py \
-            ../../tests/contract/test_workflow_version_process_recovery.py -vv --durations=20 -k postgresql
+            ../../tests/contract/test_workflow_version_process_recovery.py \
+            ../../tests/contract/test_mcp_sdk_calls.py \
+            ../../tests/contract/test_mcp_stdio_integration.py -vv --durations=20 -k postgresql
 
   postgres-langgraph-lifecycle:
     name: PostgreSQL LangGraph lifecycle recovery
@@ -519,7 +531,9 @@ jobs:
             ../../tests/contract/test_host_drain_child_controls.py \
             ../../tests/contract/test_explicit_compensation.py \
             ../../tests/contract/test_workflow_version_recovery.py \
-            ../../tests/contract/test_workflow_version_process_recovery.py -vv --durations=20 -k postgresql
+            ../../tests/contract/test_workflow_version_process_recovery.py \
+            ../../tests/contract/test_mcp_sdk_calls.py \
+            ../../tests/contract/test_mcp_stdio_integration.py -vv --durations=20 -k postgresql
 
   postgres-runtime:
     name: PostgreSQL persistence ${{ matrix.engine }} acceptance

@@ -16,6 +16,8 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
 
@@ -32,6 +34,8 @@ from ..contract import (
     SandboxExecutionRequest,
     SandboxExecutionResult,
     SandboxSecretReference,
+    SandboxStdioRequest,
+    SandboxStdioSession,
 )
 
 
@@ -55,10 +59,33 @@ class InternalSandboxBackend:
     def __init__(self, config: SandboxConfig) -> None:
         self.config = config
         self._active: dict[str, asyncio.subprocess.Process] = {}
+        self._stdio_sessions: dict[str, SandboxStdioSession] = {}
+        self._stdio_starting: set[str] = set()
+        self._stdio_starts: dict[str, asyncio.Task[Any]] = {}
+        self._stdio_closing = False
+
+    @asynccontextmanager
+    async def open_stdio(self, request: SandboxStdioRequest) -> AsyncIterator[SandboxStdioSession]:
+        from ..stdio import open_internal_stdio
+
+        async with open_internal_stdio(self, request) as session:
+            yield session
 
     def capabilities(self) -> dict[str, Any]:
         posix = os.name == "posix"
         enabled = self.config.enabled and self.config.backend == "internal"
+        stdio_enabled = enabled and self.config.mcp_stdio.enabled and not self._stdio_closing
+        if stdio_enabled:
+            from ..stdio_policy import validate_stdio_transport
+
+            try:
+                server = self.config.mcp_stdio.servers[0]
+                validate_stdio_transport(
+                    {"stdio": {"command": server.command, "arguments": list(server.arguments)}},
+                    self.config,
+                )
+            except (SandboxPolicyError, IndexError):
+                stdio_enabled = False
         return {
             "enabled": enabled,
             "backend": "internal",
@@ -80,6 +107,21 @@ class InternalSandboxBackend:
             "filesystemIsolation": "workspace_cwd_only",
             "networkIsolation": "none",
             "hardIsolation": False,
+            "mcpStdio": {
+                "enabled": stdio_enabled,
+                "duplex": True,
+                "externalBackends": False,
+                "processTree": "windows_job" if not posix else "posix_process_group",
+                "maxFrameBytes": self.config.mcp_stdio.max_frame_bytes,
+                "resourceControls": {
+                    "windowsJob": not posix,
+                    "posixRlimit": posix,
+                    "fileSize": posix,
+                    "workspaceQuota": "monitored",
+                    "inputOutputBytes": True,
+                    "wholeDeadline": True,
+                },
+            },
         }
 
     async def execute(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
@@ -164,11 +206,30 @@ class InternalSandboxBackend:
             )
 
     async def cancel(self, execution_id: str) -> None:
+        starting = self._stdio_starts.get(execution_id)
+        if starting is not None and starting is not asyncio.current_task():
+            starting.cancel()
+            await asyncio.gather(starting, return_exceptions=True)
+        session = self._stdio_sessions.get(execution_id)
+        if session is not None:
+            await session.aclose()
         process = self._active.get(execution_id)
         if process is not None:
             await self._terminate_process(process)
 
     async def shutdown(self) -> None:
+        self._stdio_closing = True
+        starting = tuple(
+            task for task in self._stdio_starts.values() if task is not asyncio.current_task()
+        )
+        for task in starting:
+            task.cancel()
+        await asyncio.gather(*starting, return_exceptions=True)
+        await asyncio.gather(
+            *(session.aclose() for session in tuple(self._stdio_sessions.values())),
+            return_exceptions=True,
+        )
+        self._stdio_sessions.clear()
         processes = list(self._active.values())
         await asyncio.gather(
             *(self._terminate_process(process) for process in processes),

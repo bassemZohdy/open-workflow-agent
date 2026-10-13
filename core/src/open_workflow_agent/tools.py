@@ -8,7 +8,7 @@ from typing import Any
 
 from .config import ToolConfig
 from .errors import ToolError
-from .protocols import AuthenticationProvider, ProtocolServices, _merge_authoritative_headers
+from .protocols import AuthenticationProvider, ProtocolServices
 from .security import ProfileAuthentication, SecurityConfig
 
 
@@ -52,7 +52,9 @@ class ToolRegistry:
                         f"tool {item.name or index} references a security profile "
                         "but runtime security configuration is absent"
                     )
-                authentication = ProfileAuthentication(security, item.security_profile)
+                authentication = ProfileAuthentication(
+                    security, item.security_profile, token_http=protocols.http
+                )
             tools.append(
                 ToolDefinition(
                     name=item.name or f"{item.type}-{index}",
@@ -89,21 +91,10 @@ class ToolRegistry:
             raise ToolError(f"configured tool not found: {name}")
         if isinstance(payload, dict) and tool.options:
             payload = {**tool.options, **payload}
-        if tool.authentication is not None and isinstance(payload, dict):
-            endpoint = tool.endpoint or "http://localhost"
-            profile_headers = dict(tool.authentication.headers(endpoint))
-            if tool.type == "mcp":
-                transport = dict(payload.get("transport") or {})
-                http_transport = dict(transport.get("http") or {})
-                http_transport["headers"] = _merge_authoritative_headers(
-                    dict(http_transport.get("headers") or {}), profile_headers
-                )
-                transport["http"] = http_transport
-                payload["transport"] = transport
-            else:
-                payload["headers"] = _merge_authoritative_headers(
-                    dict(payload.get("headers") or {}), profile_headers
-                )
         if tool.endpoint and isinstance(payload, dict):
             payload = {**payload, "endpoint": tool.endpoint}
+        if tool.authentication is not None:
+            return await self.protocols.call(
+                tool.type, payload, _authentication=tool.authentication
+            )
         return await self.protocols.call(tool.type, payload)
