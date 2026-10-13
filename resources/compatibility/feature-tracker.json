@@ -41541,12 +41541,25 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-07 finite Python child profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-07",
+            "scope": "Recursive/nested/detached child workflows with pinned identity, durable depth/work budgets and lifetime/cancellation contracts",
+            "tests": [
+              "tests/contract/test_contract_subworkflows.py",
+              "tests/contract/test_synchronous_child_waits.py",
+              "tests/contract/test_child_lifecycle_acceptance.py",
+              "tests/contract/test_detached_child_process_recovery.py"
+            ],
+            "validation": "CH01-CH10 and exact-source configured gates; see PROJECT.md",
+            "commit": "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A034",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -41572,12 +41585,25 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-07 finite Python child profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-07",
+            "scope": "Recursive/nested/detached child workflows with pinned identity, durable depth/work budgets and lifetime/cancellation contracts",
+            "tests": [
+              "tests/contract/test_contract_subworkflows.py",
+              "tests/contract/test_synchronous_child_waits.py",
+              "tests/contract/test_child_lifecycle_acceptance.py",
+              "tests/contract/test_detached_child_process_recovery.py"
+            ],
+            "validation": "CH01-CH10 and exact-source configured gates; see PROJECT.md",
+            "commit": "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A035",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -55445,12 +55471,25 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-07 finite Python child profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-07",
+            "scope": "Recursive/nested/detached child workflows with pinned identity, durable depth/work budgets and lifetime/cancellation contracts",
+            "tests": [
+              "tests/contract/test_contract_subworkflows.py",
+              "tests/contract/test_synchronous_child_waits.py",
+              "tests/contract/test_child_lifecycle_acceptance.py",
+              "tests/contract/test_detached_child_process_recovery.py"
+            ],
+            "validation": "CH01-CH10 and exact-source configured gates; see PROJECT.md",
+            "commit": "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS197",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -55475,12 +55514,25 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-07 finite Python child profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-07",
+            "scope": "Recursive/nested/detached child workflows with pinned identity, durable depth/work budgets and lifetime/cancellation contracts",
+            "tests": [
+              "tests/contract/test_contract_subworkflows.py",
+              "tests/contract/test_synchronous_child_waits.py",
+              "tests/contract/test_child_lifecycle_acceptance.py",
+              "tests/contract/test_detached_child_process_recovery.py"
+            ],
+            "validation": "CH01-CH10 and exact-source configured gates; see PROJECT.md",
+            "commit": "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS198",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -55505,12 +55557,25 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-07 finite Python child profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-07",
+            "scope": "Recursive/nested/detached child workflows with pinned identity, durable depth/work budgets and lifetime/cancellation contracts",
+            "tests": [
+              "tests/contract/test_contract_subworkflows.py",
+              "tests/contract/test_synchronous_child_waits.py",
+              "tests/contract/test_child_lifecycle_acceptance.py",
+              "tests/contract/test_detached_child_process_recovery.py"
+            ],
+            "validation": "CH01-CH10 and exact-source configured gates; see PROJECT.md",
+            "commit": "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS199",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -55535,12 +55600,25 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-07 finite Python child profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-07",
+            "scope": "Recursive/nested/detached child workflows with pinned identity, durable depth/work budgets and lifetime/cancellation contracts",
+            "tests": [
+              "tests/contract/test_contract_subworkflows.py",
+              "tests/contract/test_synchronous_child_waits.py",
+              "tests/contract/test_child_lifecycle_acceptance.py",
+              "tests/contract/test_detached_child_process_recovery.py"
+            ],
+            "validation": "CH01-CH10 and exact-source configured gates; see PROJECT.md",
+            "commit": "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS200",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -55565,12 +55643,25 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-07 finite Python child profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-07",
+            "scope": "Recursive/nested/detached child workflows with pinned identity, durable depth/work budgets and lifetime/cancellation contracts",
+            "tests": [
+              "tests/contract/test_contract_subworkflows.py",
+              "tests/contract/test_synchronous_child_waits.py",
+              "tests/contract/test_child_lifecycle_acceptance.py",
+              "tests/contract/test_detached_child_process_recovery.py"
+            ],
+            "validation": "CH01-CH10 and exact-source configured gates; see PROJECT.md",
+            "commit": "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS201",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -62845,12 +62936,25 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-07 finite Python child profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-07",
+            "scope": "Recursive/nested/detached child workflows with pinned identity, durable depth/work budgets and lifetime/cancellation contracts",
+            "tests": [
+              "tests/contract/test_contract_subworkflows.py",
+              "tests/contract/test_synchronous_child_waits.py",
+              "tests/contract/test_child_lifecycle_acceptance.py",
+              "tests/contract/test_detached_child_process_recovery.py"
+            ],
+            "validation": "CH01-CH10 and exact-source configured gates; see PROJECT.md",
+            "commit": "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B028",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -62876,12 +62980,25 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S2-07 finite Python child profile verified; full proposed/JavaScript and later mapped tasks remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S2-07",
+            "scope": "Recursive/nested/detached child workflows with pinned identity, durable depth/work budgets and lifetime/cancellation contracts",
+            "tests": [
+              "tests/contract/test_contract_subworkflows.py",
+              "tests/contract/test_synchronous_child_waits.py",
+              "tests/contract/test_child_lifecycle_acceptance.py",
+              "tests/contract/test_detached_child_process_recovery.py"
+            ],
+            "validation": "CH01-CH10 and exact-source configured gates; see PROJECT.md",
+            "commit": "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "B029",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -70862,13 +70979,13 @@
         "module": "M03",
         "description": "Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.",
         "effort": "L",
-        "status": "In progress",
+        "status": "Complete",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "evidence": {
-          "status": "Implementation in progress; not qualified",
+          "status": "Finite CH01-CH10 profile and exact-source acceptance verified",
           "finite_acceptance": "docs/s2-07-child-workflow-acceptance.md",
           "scope": "Recursive/nested/detached child workflows with pinned identity, durable depth/work budgets and lifetime/cancellation contracts",
-          "remaining": "Hosted exact-source real PostgreSQL, Windows, runtime images, seven dependency audits, CTK provenance and benchmarks must pass before closure",
+          "remaining": "General host drain/cancellation/compensation and uncertain external-action reconciliation remain S2-08; compatible version migration and broad recovery diagnostics S2-09; full proposed criteria and independent JavaScript remain Stage 4. Optional Framework has no principal native checkpoint or production image claim.",
           "working_implementation": [
             "Atomic child identity/input reservations and immutable root policy/depth/total-child quotas",
             "Pinned definitions, canonical ancestry, distinct sessions and inherited owner/user identity",
@@ -70907,6 +71024,1754 @@
             "standalone_core_audited_dependencies": 74,
             "standalone_core_advisories": 0,
             "remaining": "Hosted qualification is pending; unavailable backend/profile skips do not qualify those backends"
+          },
+          "final_qualification": {
+            "artifact_commit": "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c",
+            "record": "docs/s2-07-child-workflow-acceptance.md",
+            "publication": {
+              "source": "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c",
+              "runs": {
+                "PR_CI": {
+                  "id": 38343010482,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010482",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "Windows native task checkpoints and routing",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked expression environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify Windows native task checkpoints and routing",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Windows native timers events and scheduling",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked expression environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify Windows native timers events and scheduling",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Mutation testing",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync mutation environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stage source-root layout for mutmut",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run focused mutation suite",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Report mutation results",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Validate deployment manifests",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install kubeconform",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Helm",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Lint Helm chart",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Validate deploy manifests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Validate rendered Helm release",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Root quality gates",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked root environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Check root lock",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Validate embedded and optional PostgreSQL Compose profiles",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Format",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Lint",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Check shell acceptance scripts",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Type check",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build root and standalone core artifacts",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify release metadata and lock inputs",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Validate wheel contents",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Docker adk acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build independent runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify image metadata",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Enforce image-size gate",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "External catalog resolver acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Internal sandbox execution acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "One-container embedded defaults without configuration or credentials",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container startup, health, capabilities, invocation, and knowledge",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container stop, restart, and resume acceptance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload container logs",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Windows jq expression and admission tests",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked expression environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify native jq cleanup, data semantics and shared admission",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Docker langgraph acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build independent runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify image metadata",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Enforce image-size gate",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "External catalog resolver acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Internal sandbox execution acceptance inside release image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "One-container embedded defaults without configuration or credentials",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container startup, health, capabilities, invocation, and knowledge",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Container stop, restart, and resume acceptance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload container logs",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "langgraph native and contract tests",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Check engine lock",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Native and shared contract tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Portable Profile CTK subset",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Capture CTK provenance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload CTK results and provenance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Engine-specific benchmark probes",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload engine benchmark evidence",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Windows native ownership and effect recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked expression environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify Windows native ownership and effect recovery",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "adk native and contract tests",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Check engine lock",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Native and shared contract tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Portable Profile CTK subset",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Capture CTK provenance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload CTK results and provenance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Engine-specific benchmark probes",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload engine benchmark evidence",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "External": {
+                  "id": 38343010486,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010486",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "External sandbox contracts",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Sync locked environment",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Format and lint external sandbox slice",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Type check common runtime",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run external sandbox contract tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Docker external sandbox adk acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Reclaim hosted-runner disk",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run restricted Docker controller acceptance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Capture Docker diagnostics",
+                          "conclusion": "skipped"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Docker external sandbox langgraph acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Reclaim hosted-runner disk",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run restricted Docker controller acceptance",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Capture Docker diagnostics",
+                          "conclusion": "skipped"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Kubernetes sandbox controller image",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build restricted controller image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify controller image defaults",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "AF": {
+                  "id": 38343010496,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010496",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "native",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Check committed engine lock",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run native, shared contract, and CTK suites",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build adapter wheel",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "Docs": {
+                  "id": 38343010501,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010501",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "Markdown links",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Validate relative Markdown links",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "Security": {
+                  "id": 38343010508,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010508",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "Audit langgraph dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit root dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit kubernetes-sandbox-controller dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit sandbox-controller dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit standalone-core dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit agent-framework dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "Audit adk dependencies",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Export resolved requirements",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Audit resolved dependencies",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload audit report",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "PG": {
+                  "id": 38343010513,
+                  "url": "https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010513",
+                  "status": "completed",
+                  "conclusion": "success",
+                  "jobs": [
+                    {
+                      "name": "PostgreSQL LangGraph native recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify native LangGraph task checkpoints and interrupted restart",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify competitive fork and invocation recovery on native LangGraph with PostgreSQL",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL ADK native recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify competitive fork and invocation recovery on native ADK with PostgreSQL",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL optional Agent Framework native recovery",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Verify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL common-store integration",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Install Python",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run isolated PostgreSQL store tests",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run astral-sh/setup-uv@v10.1.0",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL persistence langgraph acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build PostgreSQL-enabled runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Start, restart, and invoke against PostgreSQL",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload PostgreSQL container logs",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    },
+                    {
+                      "name": "PostgreSQL persistence adk acceptance",
+                      "status": "completed",
+                      "conclusion": "success",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Initialize containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Build PostgreSQL-enabled runtime image",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Start, restart, and invoke against PostgreSQL",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Upload PostgreSQL container logs",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run docker/setup-buildx-action@v4",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v7",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Stop containers",
+                          "conclusion": "success"
+                        },
+                        {
+                          "name": "Complete job",
+                          "conclusion": "success"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              "security": [
+                {
+                  "path": "tmp\\ci-6b23e5d-security-artifacts\\dependency-audit-adk\\audit.json",
+                  "dependencies": 111,
+                  "advisories": 0,
+                  "sha256": "c112844bd3236cf15fab6ce962b3f19398d9052421be9f39088b5e07c316c8e5"
+                },
+                {
+                  "path": "tmp\\ci-6b23e5d-security-artifacts\\dependency-audit-agent-framework\\audit.json",
+                  "dependencies": 76,
+                  "advisories": 0,
+                  "sha256": "69f5d179ec1d94f6a67e8c11783ff07532a813caf06c00d498d9d2d87a4b1b4c"
+                },
+                {
+                  "path": "tmp\\ci-6b23e5d-security-artifacts\\dependency-audit-kubernetes-sandbox-controller\\audit.json",
+                  "dependencies": 16,
+                  "advisories": 0,
+                  "sha256": "90710e5e2de8f09a1f43a635b8681ce335e7eb6ed64735f9d1cbe7f92d3d2891"
+                },
+                {
+                  "path": "tmp\\ci-6b23e5d-security-artifacts\\dependency-audit-langgraph\\audit.json",
+                  "dependencies": 98,
+                  "advisories": 0,
+                  "sha256": "8263e889f0688fecbb008338b05f91faeeeaaaaed2f0cd749598df82d2f011aa"
+                },
+                {
+                  "path": "tmp\\ci-6b23e5d-security-artifacts\\dependency-audit-root\\audit.json",
+                  "dependencies": 73,
+                  "advisories": 0,
+                  "sha256": "d6b09496e4ffafceec604758da2c9c0b1528e38526635c798f48a95bc27923b1"
+                },
+                {
+                  "path": "tmp\\ci-6b23e5d-security-artifacts\\dependency-audit-sandbox-controller\\audit.json",
+                  "dependencies": 13,
+                  "advisories": 0,
+                  "sha256": "4e3fd2d677e592a52f4d0057efce51d458417f1fc42f12137582433ce951b2c0"
+                },
+                {
+                  "path": "tmp\\ci-6b23e5d-security-artifacts\\dependency-audit-standalone-core\\audit.json",
+                  "dependencies": 72,
+                  "advisories": 0,
+                  "sha256": "0f46cb9b6c7a075ed73846363585211ae29b17d73f63b1d723521b47d7d40ac0"
+                }
+              ],
+              "benchmarks": [
+                {
+                  "path": "tmp\\ci-6b23e5d-pr-artifacts\\engine-benchmark-adk\\engine-benchmark-adk.json",
+                  "engine": "adk",
+                  "checkpoint_delta": 73728,
+                  "sha256": "df1642e82e5299cd9f42995bcb960df60b178026581ed9e23ceabf034f9c9e30"
+                },
+                {
+                  "path": "tmp\\ci-6b23e5d-pr-artifacts\\engine-benchmark-langgraph\\engine-benchmark-langgraph.json",
+                  "engine": "langgraph",
+                  "checkpoint_delta": 200704,
+                  "sha256": "e800b42283968f026f0eb5a55699babb126b7c4d5977f8c0f3e5e424159d5ab4"
+                }
+              ],
+              "ctk": [
+                {
+                  "engine": "adk",
+                  "repository_commit": "941df56407525ac30ecd4a4d3eaa1d3f654cc4e8",
+                  "scenario_sha256": {
+                    "branch.feature": "7a56520784fb5790715a21d92566b973b157a88eafc6cd2184f4d2a4e7d1893c",
+                    "call.feature": "bfaca8d94300d402cb1f7487dfb0e983d543b33064b186a050be5cecd4f31aa2",
+                    "conditional.feature": "a18f403a4dbba48d9bc0c20fb7a54a50117ef51b8ae5b4939053a221120e35c6",
+                    "data-flow.feature": "c9921abc02005a07ccf7867926a22ee12a17ac9a9caf42795fb90d38587ff3fa",
+                    "do.feature": "1204efe4d63494ee50c7904847d225b3caba79e5fd9c45d808bcf2081d13cd33",
+                    "emit.feature": "4ada0664bef77bbea901d488db3671a5e9bb2c884e146f22c0e9008ee85c52d9",
+                    "flow.feature": "912290c6d937bb43e8c1e411369d65e573b4be9d0edbebb71ac901eac60bec42",
+                    "for-output.feature": "dc5375618c5e636b2fcd5971bf7cb324c30f6787db2b12b7d478b7de5392b6ee",
+                    "for.feature": "3d48577af0f109903fe01c2ceca0168ab7c3bef58219f6223c67355baa8ccef6",
+                    "fork.feature": "1a51284ee148f75081ee134943414982490d969294ca41fb45cf59ebfd6c5174",
+                    "input.feature": "90972071789f8a571c3dd4ffae07bf862136ccebfb086843d6540c7df0f8c9d9",
+                    "listen-reads.feature": "17d358be765d6edd62c79a44aa243a22c8dcc16f9c28e0cd2b0427790063148c",
+                    "listen.feature": "7e54cf3b0899b45dcf43ed5d2cd42c6b9ac7857a84ea67683f8f4429bd9ee07a",
+                    "nested.feature": "07add6b19f5a288ba363d4f1ad976514b94e77cf791700b87f1e0331c637989b",
+                    "policy.feature": "91128531653b51c07c8049863f639ed368f5e40e3b88420e64a2037f923d4cc5",
+                    "protocol.feature": "1c66e11b051ff1cb4d3caddb559b1e88522bc9ea114960065631e11142687f20",
+                    "raise.feature": "21dcd985f394c3537981d7b12f1cecfaffcc98e94461b9bc6e827edb987ae7de",
+                    "retry.feature": "1f915fc081794a81f091f69dc2c2dde4d0ff29f687b9e25b6f4059053c270710",
+                    "run.feature": "4118893fa611dfd39a8bf36a7cd958c069307eeabc1b1bf67b981ffb195b2f97",
+                    "sequence.feature": "baecba60e52b6fe2577becc7db5b24d32cfb8d582b0b6a6ce490f4db0c74b71d",
+                    "set.feature": "a4c2e77bee05d8244eab9b0ce1cc430e6d59295a7a9863667ced6ce67a2a5151",
+                    "switch.feature": "4cf127ce1210e5bc66140de94a88091edfd4d9d1fa300869c3e8e406d84e5634",
+                    "task-schemas.feature": "7bccdec46efdcfaac30600fe1a09a9b09b0bea9d24a2137c684aeb3ce397d56c",
+                    "transform.feature": "3d65eeb4aa1f527b9b9d5aac89a8ee9bcb5e17035a7e4d3d32fb2d943ba537d6",
+                    "try.feature": "ab591bd9bb5fb1410d6fca1c89eabf9df4fd81725ec8183d6c288237f8b7edb5",
+                    "wait.feature": "c47d25d4a942e1ccc7771dfb2337db47dc28c3b21eaca0285a5911a97dacfd45"
+                  },
+                  "artifact_sha256": "ad831a3be084f11113416c9e5be12fffc1ee14d0c547c976ada2a476202af131"
+                },
+                {
+                  "engine": "langgraph",
+                  "repository_commit": "941df56407525ac30ecd4a4d3eaa1d3f654cc4e8",
+                  "scenario_sha256": {
+                    "branch.feature": "7a56520784fb5790715a21d92566b973b157a88eafc6cd2184f4d2a4e7d1893c",
+                    "call.feature": "bfaca8d94300d402cb1f7487dfb0e983d543b33064b186a050be5cecd4f31aa2",
+                    "conditional.feature": "a18f403a4dbba48d9bc0c20fb7a54a50117ef51b8ae5b4939053a221120e35c6",
+                    "data-flow.feature": "c9921abc02005a07ccf7867926a22ee12a17ac9a9caf42795fb90d38587ff3fa",
+                    "do.feature": "1204efe4d63494ee50c7904847d225b3caba79e5fd9c45d808bcf2081d13cd33",
+                    "emit.feature": "4ada0664bef77bbea901d488db3671a5e9bb2c884e146f22c0e9008ee85c52d9",
+                    "flow.feature": "912290c6d937bb43e8c1e411369d65e573b4be9d0edbebb71ac901eac60bec42",
+                    "for-output.feature": "dc5375618c5e636b2fcd5971bf7cb324c30f6787db2b12b7d478b7de5392b6ee",
+                    "for.feature": "3d48577af0f109903fe01c2ceca0168ab7c3bef58219f6223c67355baa8ccef6",
+                    "fork.feature": "1a51284ee148f75081ee134943414982490d969294ca41fb45cf59ebfd6c5174",
+                    "input.feature": "90972071789f8a571c3dd4ffae07bf862136ccebfb086843d6540c7df0f8c9d9",
+                    "listen-reads.feature": "17d358be765d6edd62c79a44aa243a22c8dcc16f9c28e0cd2b0427790063148c",
+                    "listen.feature": "7e54cf3b0899b45dcf43ed5d2cd42c6b9ac7857a84ea67683f8f4429bd9ee07a",
+                    "nested.feature": "07add6b19f5a288ba363d4f1ad976514b94e77cf791700b87f1e0331c637989b",
+                    "policy.feature": "91128531653b51c07c8049863f639ed368f5e40e3b88420e64a2037f923d4cc5",
+                    "protocol.feature": "1c66e11b051ff1cb4d3caddb559b1e88522bc9ea114960065631e11142687f20",
+                    "raise.feature": "21dcd985f394c3537981d7b12f1cecfaffcc98e94461b9bc6e827edb987ae7de",
+                    "retry.feature": "1f915fc081794a81f091f69dc2c2dde4d0ff29f687b9e25b6f4059053c270710",
+                    "run.feature": "4118893fa611dfd39a8bf36a7cd958c069307eeabc1b1bf67b981ffb195b2f97",
+                    "sequence.feature": "baecba60e52b6fe2577becc7db5b24d32cfb8d582b0b6a6ce490f4db0c74b71d",
+                    "set.feature": "a4c2e77bee05d8244eab9b0ce1cc430e6d59295a7a9863667ced6ce67a2a5151",
+                    "switch.feature": "4cf127ce1210e5bc66140de94a88091edfd4d9d1fa300869c3e8e406d84e5634",
+                    "task-schemas.feature": "7bccdec46efdcfaac30600fe1a09a9b09b0bea9d24a2137c684aeb3ce397d56c",
+                    "transform.feature": "3d65eeb4aa1f527b9b9d5aac89a8ee9bcb5e17035a7e4d3d32fb2d943ba537d6",
+                    "try.feature": "ab591bd9bb5fb1410d6fca1c89eabf9df4fd81725ec8183d6c288237f8b7edb5",
+                    "wait.feature": "c47d25d4a942e1ccc7771dfb2337db47dc28c3b21eaca0285a5911a97dacfd45"
+                  },
+                  "artifact_sha256": "ad831a3be084f11113416c9e5be12fffc1ee14d0c547c976ada2a476202af131"
+                }
+              ],
+              "actual_pr_merge": {
+                "source": "941df56407525ac30ecd4a4d3eaa1d3f654cc4e8",
+                "parents": [
+                  "975cc5714fcaf6125f2aaf6757c2286eaa4e53a2",
+                  "6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c"
+                ]
+              },
+              "actual_postgresql_nodes": {
+                "adk": {
+                  "test_durable_timers.py": 13,
+                  "test_durable_timer_forks.py": 2,
+                  "test_durable_timer_process_recovery.py": 5,
+                  "test_durable_scheduling.py": 8,
+                  "test_schedule_event_triggers.py": 14,
+                  "test_detached_children.py": 2,
+                  "test_recursive_children.py": 3,
+                  "test_synchronous_child_waits.py": 29,
+                  "test_child_lifecycle_acceptance.py": 4,
+                  "test_detached_child_process_recovery.py": 6
+                },
+                "langgraph": {
+                  "test_durable_timers.py": 13,
+                  "test_durable_timer_forks.py": 2,
+                  "test_durable_timer_process_recovery.py": 5,
+                  "test_durable_scheduling.py": 8,
+                  "test_schedule_event_triggers.py": 14,
+                  "test_detached_children.py": 2,
+                  "test_recursive_children.py": 3,
+                  "test_synchronous_child_waits.py": 29,
+                  "test_child_lifecycle_acceptance.py": 4,
+                  "test_detached_child_process_recovery.py": 6
+                }
+              },
+              "summaries": {
+                "pr": [
+                  "247 passed, 7 skipped in 222.20s (0:03:42)",
+                  "337 passed, 379 skipped in 783.39s (0:13:03)",
+                  "==== 2325 passed, 1220 skipped, 2 xfailed, 2 warnings in 310.03s (0:05:10) =====",
+                  "466 passed, 12 skipped in 205.50s (0:03:25)",
+                  "===== 1243 passed, 852 skipped, 2 xfailed, 1 warning in 363.95s (0:06:03) ======",
+                  "============================== 96 passed in 9.07s ==============================",
+                  "211 passed, 277 skipped in 321.83s (0:05:21)",
+                  "===== 1204 passed, 879 skipped, 2 xfailed, 3 warnings in 403.89s (0:06:43) =====",
+                  "======================== 96 passed, 1 warning in 11.19s ========================"
+                ],
+                "af": [
+                  "==== 1639 passed, 1229 skipped, 2 xfailed, 2 warnings in 306.58s (0:05:06) ====="
+                ],
+                "pg": [
+                  "======================== 10 passed, 8 skipped in 6.15s =========================",
+                  "=============== 387 passed, 1137 deselected in 421.69s (0:07:01) ===============",
+                  "========= 353 passed, 1103 deselected, 1 warning in 627.73s (0:10:27) ==========",
+                  "========= 183 passed, 7 skipped, 1042 deselected in 117.63s (0:01:57) ==========",
+                  "======================= 439 passed, 1 skipped in 29.05s ========================"
+                ],
+                "external": [
+                  "======================== 55 passed, 2 warnings in 3.07s ========================"
+                ]
+              },
+              "runtime_qualified": true,
+              "all_four_image_capabilities_verified": true,
+              "image_capabilities": [
+                "Docker adk acceptance",
+                "Docker langgraph acceptance",
+                "PostgreSQL persistence langgraph acceptance",
+                "PostgreSQL persistence adk acceptance"
+              ]
+            },
+            "finite_requirements": [
+              "CH01",
+              "CH02",
+              "CH03",
+              "CH04",
+              "CH05",
+              "CH06",
+              "CH07",
+              "CH08",
+              "CH09",
+              "CH10"
+            ]
           }
         }
       },

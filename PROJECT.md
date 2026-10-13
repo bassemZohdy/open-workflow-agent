@@ -56,9 +56,12 @@ optional Framework and CTK suites pass the frozen batch, including terminal
 provenance, context/version isolation, competing workers and original deadlines
 after actual process stop. Root coverage is 90.79%. Standalone core passes its
 corrected lock, finite child/schedule checks and complete dependency audit;
-the CI now requires seven audit environments. S2-07 remains unchecked until
-hosted exact-source PostgreSQL/Windows/image/security qualification passes;
-no task is deferred.
+the CI now requires seven audit environments. Final source `6b23e5d` passes
+all six hosted workflows, all four runtime images, seven zero-advisory reports,
+both native benchmarks and canonical CTK provenance. Actual PostgreSQL passes
+all 44 child and 42 scheduling cases per principal. S2-07's finite CH01-CH10
+profile is verified; sixteen of 37 tasks are complete. S2-08 is next and no
+task is deferred. Earlier failure and cancellation evidence remains historical.
 See the [child acceptance record](docs/s2-07-child-workflow-acceptance.md).
 
 ## Current Phase — 2026-09-24

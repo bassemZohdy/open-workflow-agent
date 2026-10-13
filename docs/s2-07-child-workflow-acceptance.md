@@ -1,17 +1,46 @@
 # S2-07 child-workflow acceptance
 
-Status: implementation and local batch validation complete; exact-source GitHub
-qualification remains open. S2-07 is unchecked until the required hosted checks
-pass, including actual PostgreSQL and runtime images.
+Status: finite CH01-CH10 Python profile verified at
+`6b23e5dfcae8bd22b7f5ec7f60c5bbb1bfa8259c`. S2-07 is complete after
+the required exact-source native, PostgreSQL, Windows, image and security gates.
 The current integrated batch adds parent-owned immutable await/wake decisions,
 private ADK/LangGraph suspension and verified fork reentry, original deadline
 delivery, synchronous cancellation cascades and bounded crash reconciliation.
 The common store holds identities and policy receipts; native checkpoints
 remain private. New shared fixtures cover actual process-stop boundaries,
 terminal/null/fault results, nested and mutual recursion, corruption, deadlines
-and fork cancellation. These changes are unqualified until the batch passes.
-S2-06's finite profile is verified separately. Complete CH01-CH10 acceptance
-and S2-07 remain open; this partial record does not complete the child task.
+and fork cancellation. S2-06's finite profile is verified separately.
+General lifecycle/uncertain external actions and version migration retain
+S2-08/S2-09 ownership; full proposed criteria and JavaScript remain Stage 4.
+
+## Final hosted qualification — 2026-10-13
+
+All six configured workflows pass for exact feature source `6b23e5d`:
+[CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010482),
+[PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010513),
+[Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010496),
+[external sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010486),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010508)
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38343010501).
+
+Root passes 2,325 cases and its unchanged 90% coverage gate. Main native suites
+pass 1,204 ADK and 1,243 LangGraph cases, with another 96 CTK checks each.
+Optional Framework passes 1,639. Declared unavailable-profile skips and the two
+tracked protocol expected failures remain explicit. PostgreSQL passes 439
+common-store checks (one skip), 387 LangGraph, 353 ADK and 183 optional Framework
+checks (seven skips), plus ten native saver checks (eight skips). All 44 new
+child cases and 42 scheduling cases pass per principal. The Windows timing job
+passes all 337 selected available cases after command correction; its other
+three platform profiles also pass. Both main and both PostgreSQL images pass.
+
+All seven complete dependency reports contain zero advisories. Both benchmarks
+prove actual native checkpoint growth and one immutable interruption/resume
+action. Each SDK's CTK artifact matches all 26 scenario hashes from the exact
+Git blobs; the recorded PR merge has this feature head as a parent. Local CRLF
+checkout bytes are not substituted for canonical source bytes. The earlier
+inspector mismatch is retained separately, as are failed/cancelled source
+`026969c` checks. Full logs, artifacts and the finite inspection are retained
+under `tmp/ci-6b23e5d-*`; the tracker stores the complete qualification record.
 
 ## Integrated local validation — 2026-10-13
 

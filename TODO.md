@@ -181,19 +181,18 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
   See the [finite acceptance record](docs/s2-06-timer-schedule-acceptance.md).
   Child lifecycle, external transports, full proposed/JavaScript and broader
   deployment scaling remain separately gated.
-- [ ] **S2-07** (L) — Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.
-  In progress: atomic child identity/input reservations and persisted root
-  depth/total-child quotas. Existing finite recursion and child outcome guards
-  are preserved. Durable detached job/return decisions and bounded delivery are
-  wired locally. Parent-owned nonresident waits, private native suspension and
-  fork reentry, original deadlines and synchronous cancellation are implemented
-  locally. Full root, actual ADK/LangGraph, optional Framework and CTK runs pass.
-  Terminal provenance, context/version isolation, competing workers and actual
-  process-stop deadlines are verified locally. Hosted exact-source PostgreSQL,
-  Windows, images and security qualification remain required before closure.
-  Finite recursion and quota rejection pass on both principal SDKs. Damaged
-  queued identities fail closed without starving valid work. These changes
-  require the corrected full/platform/PostgreSQL checkpoint before qualification.
+- [x] **S2-07** (L) — Complete recursive, nested and asynchronous child workflows with budgets, identity and cancellation.
+  Verified finite CH01-CH10 profile at `6b23e5d`: immutable root quotas and
+  pinned child identities/input, finite recursion, detached independent lifetime,
+  parent-owned nonresident waits and private native fork reentry, original
+  deadlines and synchronous cancellation. Actual process stop, corruption,
+  context/version isolation, competing workers and stale common/native fences
+  pass on both principal SDKs and PostgreSQL. All six configured workflows,
+  four images, seven audits, CTK provenance and two native benchmarks pass.
+  Earlier failures remain historical. See the
+  [verified acceptance](docs/s2-07-child-workflow-acceptance.md).
+  General lifecycle/uncertain external actions and compatible migration retain
+  S2-08/S2-09 ownership; full proposed/JavaScript gates remain Stage 4.
 - [ ] **S2-08** (L) — Complete cancellation, termination, compensation and idempotent external-action recovery.
 - [ ] **S2-09** (L) — Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.
 
@@ -235,7 +234,7 @@ Earlier completed release/readiness work and deferred details are preserved in [
 
 ## Deferred tasks
 
-No active backlog tasks are currently deferred. S2-05 is verified; S2-06 is
+No active backlog tasks are currently deferred. S2-07 is verified; S2-08 is
 the next ready task. Scoped acceptance and prior failures are recorded above.
 Move a task's
 entry here when the blocked-task rule applies, keeping its checkbox unchecked
