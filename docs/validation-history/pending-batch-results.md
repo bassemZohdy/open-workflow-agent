@@ -1025,3 +1025,27 @@ tests with 94 skips; the skipped cases require the other native SDK or a real
 PostgreSQL datasource. Documentation links, the implementation/tracker audit
 (6 tests), Ruff lint and formatting, and `git diff --check` passed. These local
 results do not replace the hosted Windows requalification.
+
+### Windows timing suite follow-up at `8183776`
+
+Hosted CI run `38632792174`, Windows native timers/events/scheduling job
+`116088355491`, completed with 715 passed, 769 skipped and 3 failed in
+2,309.41 seconds. The protected-approval `request-row` case that failed at the
+previous checkpoint passed on this source. The remaining failures were two
+`test_retry_clock_and_rng_determine_actual_attempts[duration-sqlite-*]` cases
+(ADK and LangGraph), which expected `model_error` but returned
+`workflow_execution_error`, and
+`test_killed_pattern_producer_retains_original_role_receipts_or_explicit_uncertainty[pipeline-known-sqlite-langgraph]`,
+whose producer lost ownership before publishing its durable receipt barrier
+with a five-second test lease. The retry mismatch also occurs in the completed
+S2-04 selection and remains unexplained at this checkpoint; its new assertion
+includes output, error, model-call count, sleeps, random draws and clock.
+
+The agent-pattern producer test lease is now 15 seconds and the independent
+recovery worker still waits for the recorded lease to expire naturally. At
+source `8183776` plus this local correction, the focused pattern case passed,
+and the full LangGraph/SQLite process matrix passed (10 passed, 30 skipped).
+The complete retry-timing selections also passed locally on both engines (22
+passed, 22 skipped each). These results do not establish a hosted fix; exact
+source requalification is pending. S3-07 remains open, and the S2-04 retry
+diagnostic remains under investigation.

@@ -140,9 +140,11 @@ async def run(directory, mode):
         config.agent.roles[STOP_ROLE[pattern]].instruction += " Different deployment revision."
     services = runtime(directory / "runtime", backend, roles, models, config=config)
     await engine.initialize(services)
-    # A finite original lease, renewed normally by the genuine producer. The
-    # recovery process waits for this exact recorded lease; it never rewrites it.
-    engine._execution_ownership_seconds = 5
+    # A finite original lease, renewed normally by the genuine producer. Allow
+    # multi-node native patterns enough time to reach their durable receipt
+    # barrier on a loaded runner. Recovery waits for this exact recorded lease;
+    # it never rewrites it.
+    engine._execution_ownership_seconds = 15
     await engine._timer_dispatcher.stop()
     if pattern == "team_coordinator":
         register_workers(services)

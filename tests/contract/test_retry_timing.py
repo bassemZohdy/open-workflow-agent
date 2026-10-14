@@ -160,7 +160,14 @@ async def test_retry_clock_and_rng_determine_actual_attempts(
     try:
         result = await asyncio.wait_for(engine.invoke(plan, handle, {"original": True}), timeout=15)
         assert result.status == "completed", result.error
-        assert result.output == expected_output
+        assert result.output == expected_output, {
+            "output": result.output,
+            "error": result.error,
+            "model_calls": len(model.calls),
+            "sleeps": sleeps,
+            "draws": draws,
+            "clock": now,
+        }
         assert len(model.calls) == expected_calls
         assert sleeps == expected_sleeps
         assert draws == ([(0.25, 0.75)] * 3 if "jitter" in retry else [])

@@ -85,6 +85,11 @@ treated as a deferred task or as additional feature completion.
   Accepted finite profile; [retained revisions, validations and exclusions](docs/validation-history/backlog-task-notes.md#s2-03).
 - [x] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
   Accepted finite profile; [retained revisions, validations and exclusions](docs/validation-history/backlog-task-notes.md#s2-04).
+  Current-source requalification note: Windows run `38632792174` failed the
+  duration-bound retry output assertion on both engines. Full local retry
+  selections pass on both engines; the assertion now captures output, error,
+  calls, sleeps, draws and clock for a hosted rerun. See the
+  [exact-source history](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
 - [x] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
   Verified: common storage and matching, native consumption/iterator
   recovery, scope and approval guards are implemented. Focused native and
@@ -171,8 +176,7 @@ treated as a deferred task or as additional feature completion.
   PostgreSQL LangGraph recovery mismatch recurred at run `38624744282`, job
   `116060928966`: the `inbox-before-ack-postgresql-langgraph` selected-adapter
   process case failed with `[None]` at native-execute, stored and result layers
-  (220 passed, 158 skipped, 379 deselected). A prior rerun passed the same case,
-  so this remains active rather than being treated as resolved.
+  (220 passed, 158 skipped, 379 deselected). A prior rerun passed the same case.
   The corrected Windows lease fixture and the raised 10-minute ADK command
   budget passed at `f830fa6`. That main run then reached 98% in the Windows
   operation-adapter lane before its 35-minute job cap; one test used a 0.5-second
@@ -183,8 +187,10 @@ treated as a deferred task or as additional feature completion.
   callback yielded the event loop, allowing LangGraph to advance before the
   parent stopped the producer. The fixture now holds that loop at the intended
   pre-ACK boundary; local Windows ADK/SQLite and LangGraph/SQLite selections
-  pass. Hosted requalification must confirm whether this fully explains the
-  PostgreSQL mismatch. See the
+  pass. The PostgreSQL LangGraph operation-adapter job and Windows operation-
+  adapter recovery lane both pass at `8183776`, confirming this correction for
+  that recurrence. Broader S3-03 adapter, backend and deployment gates remain
+  open. See the
   [PostgreSQL recurrence evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-langgraph-recovery-recurrence-at-f9cb76f) and
   [Windows timeout evidence](docs/validation-history/pending-batch-results.md#hosted-windows-adapter-timeout-at-f830fa6).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
@@ -202,13 +208,22 @@ treated as a deferred task or as additional feature completion.
   recovery fixture that could lose a 0.5-second owner lease before the durable
   approval barrier; the fixture now keeps a five-second renewal window and
   waits for natural database-clock expiry. Local LangGraph/SQLite protected
-  approval suites pass; exact-source hosted requalification remains pending.
+  approval suites pass, and the formerly failing hosted Windows case passed at
+  `8183776`; broader S3-05 qualification remains open.
   See [the finite acceptance plan](docs/s3-05-protected-approval-acceptance.md)
   and [the recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and applicable delegated authorization.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
   Eight finite recipe families and named role bindings are authored; see
-  [the acceptance plan](docs/s3-07-agent-pattern-acceptance.md). Required validation remains open.
+  [the acceptance plan](docs/s3-07-agent-pattern-acceptance.md). The `8183776`
+  Windows timing run lost ownership before the `pipeline-known` receipt barrier
+  under the five-second fixture lease. A 15-second renewed lease now passes the
+  focused case and full LangGraph/SQLite process matrix (10 passed, 30 skipped).
+  The same run exposed two retry-duration output mismatches in completed S2-04
+  coverage; complete local retry suites pass on both engines, and the assertion
+  now preserves output, error, calls, sleeps, draws and clock for hosted
+  diagnosis. Hosted requalification remains pending; S3-07 stays open. See the
+  [timing-run evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
   Selected finite adapters and grouped corrections are authored; see
   [the acceptance plan](docs/s3-08-selected-adapter-acceptance.md). Qualification remains pending.
