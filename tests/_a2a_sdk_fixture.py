@@ -48,6 +48,7 @@ async def sdk_a2a_fixture(
     outcome="task",
     send_handler=None,
     response_mutation=None,
+    response_truncate_after_sse_events=None,
     tls=None,
     require_client_cert=True,
 ):
@@ -199,7 +200,7 @@ async def sdk_a2a_fixture(
                     )
             return frame
 
-        if response_mutation is None:
+        if response_mutation is None and response_truncate_after_sse_events is None:
             await app(scope, recorded_receive, send)
             return
         frames = []
@@ -211,11 +212,20 @@ async def sdk_a2a_fixture(
         content = b"".join(
             frame.get("body", b"") for frame in frames if frame["type"] == "http.response.body"
         )
-        changed = json.dumps(response_mutation(json.loads(content))).encode()
         start = next(frame for frame in frames if frame["type"] == "http.response.start")
         headers = [
             (key, value) for key, value in start["headers"] if key.lower() != b"content-length"
         ]
+        if response_truncate_after_sse_events is not None:
+            assert type(response_truncate_after_sse_events) is int
+            assert response_truncate_after_sse_events > 0
+            separator = b"\r\n\r\n" if b"\r\n\r\n" in content else b"\n\n"
+            events = content.split(separator)
+            changed = separator.join(events[:response_truncate_after_sse_events]) + separator
+            await send({**start, "headers": headers})
+            await send({"type": "http.response.body", "body": changed, "more_body": False})
+            return
+        changed = json.dumps(response_mutation(json.loads(content))).encode()
         await send(
             {**start, "headers": [*headers, (b"content-length", str(len(changed)).encode())]}
         )

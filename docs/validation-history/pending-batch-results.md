@@ -794,12 +794,20 @@ An additional actual-TCP SDK witness stalls the peer only after its streaming
 message handler accepts the business call. The client reports a bounded timeout
 as uncertain and records exactly one network request and one business dispatch;
 the focused Windows run passed. This covers loss before the first stream frame,
-not disconnect/reconnect after a partial stream or durable receipt expiry.
+not reconnect policy or durable receipt expiry.
 
-### A2A07 actual TLS and named mTLS
+The official A2A SDK's actual-TCP `SendStreamingMessage` path also received a
+deliberate connection close after its first SSE event. The client returned the
+uncertain outcome without reconnecting, and the fixture recorded exactly one
+request. This proves partial-response loss handling for that method only;
+reconnect and durable receipt expiry remain open.
+
+### A2A07 actual TLS and named credentials
 
 The official A2A SDK made loopback HTTPS `SendMessage` calls using deployment-
-named bearer, API-key and mTLS profiles. The mTLS peer required a client
+named bearer, API-key, OAuth and mTLS profiles. The OAuth client completed its
+token exchange over HTTPS with the fixture CA and used the issued bearer token
+on the A2A request. The mTLS peer required a client
 certificate trusted by its test CA; the call completed, while a second call
 without a client certificate did not reach business dispatch. The bearer and
 API-key requests carried only their selected credential headers to the TLS
@@ -811,4 +819,11 @@ to credential profiles that do not define one; both parameter cases failed
 profile validation before making a request. The fixture now inherits the CA
 from the configured HTTP client and the named credential from that same
 client. Both actual-TLS cases then passed, along with the required-client-cert
-mTLS case.
+mTLS and TLS OAuth cases.
+
+The grouped Windows-local SDK file passed 97 tests after the partial-stream and
+four TLS credential witnesses were added. The implementation-audit and
+consolidation-tracker checks passed six tests; Markdown link validation, Ruff,
+format checking and `git diff --check` also passed. HTTPX emitted six CA-path
+deprecation warnings from the current path-based TLS configuration; these did
+not fail the tests and do not change the acceptance result.

@@ -12019,7 +12019,7 @@
     },
     "a2a_card": {
       "outcome": "partial",
-      "observed": "The bounded client fetches AgentCard metadata without inheriting business credentials, validates the pinned A2A version and selected interface, and freezes the admission decision for the call budget. Actual HTTPS A2A SDK calls also succeed with named bearer and API-key credentials and a required named mTLS client certificate; business dispatch remains on the selected bounded SDK transport.",
+      "observed": "The bounded client fetches AgentCard metadata without inheriting business credentials, validates the pinned A2A version and selected interface, and freezes the admission decision for the call budget. Actual HTTPS A2A SDK calls also succeed with named bearer, API-key and OAuth credentials and a required named mTLS client certificate; business dispatch remains on the selected bounded SDK transport.",
       "remaining_scope": "This does not establish the complete A2A01-A2A08 peer/native/backend matrix, all deployment authentication and origin policies, or complete interoperability and proposed T32 criteria.",
       "remediation_tasks": [
         "S3-02",
@@ -12067,9 +12067,13 @@
         {
           "path": "tests/core/test_a2a_sdk_http.py",
           "symbol": "test_actual_tls_a2a_call_uses_named_http_credential"
+        },
+        {
+          "path": "tests/core/test_a2a_sdk_http.py",
+          "symbol": "test_actual_tls_a2a_call_uses_named_oauth_credential"
         }
       ],
-      "test_scope": "Exact-source bounded Python card-selection and admission cases pass at af4acd61c200787fb68248b2d180ba69efb8c837. Follow-up Windows loopback HTTPS SDK cases verify named bearer/API-key headers and required named mTLS success with no dispatch without the client certificate. This is partial A2A card/security evidence only; proposed T32 and complete A2A acceptance remain unexecuted."
+      "test_scope": "Exact-source bounded Python card-selection and admission cases pass at af4acd61c200787fb68248b2d180ba69efb8c837. Follow-up Windows loopback HTTPS SDK cases verify named bearer/API-key headers, TLS OAuth token exchange with the issued bearer credential, and required named mTLS success with no dispatch without the client certificate. This is partial A2A card/security evidence only; proposed T32 and complete A2A acceptance remain unexecuted."
     },
     "a2a_stream": {
       "outcome": "partial",
@@ -12112,6 +12116,10 @@
         },
         {
           "path": "tests/core/test_a2a_sdk_http.py",
+          "symbol": "test_actual_tcp_streaming_partial_response_loss_is_uncertain_without_reconnect"
+        },
+        {
+          "path": "tests/core/test_a2a_sdk_http.py",
           "symbol": "test_stream_limits_identity_and_completion_are_checked_without_reconnect"
         },
         {
@@ -12139,7 +12147,7 @@
           "symbol": "test_a2a_stream_of_terminal_task_contains_only_snapshot_and_closes"
         }
       ],
-      "test_scope": "Exact-source bounded Python tests at af4acd61c200787fb68248b2d180ba69efb8c837 exercise actual TCP outbound stream/subscribe SDK calls and bounded inbound stream behavior. A follow-up actual-TCP test verifies one accepted streaming send becomes uncertain on a withheld first response without reconnect. The full A2A08 matrix and proposed T32/T33 remain unqualified."
+      "test_scope": "Exact-source bounded Python tests at af4acd61c200787fb68248b2d180ba69efb8c837 exercise actual TCP outbound stream/subscribe SDK calls and bounded inbound stream behavior. Follow-up actual-TCP tests verify one accepted streaming send becomes uncertain on loss before the first event and on connection close after the first SSE event, without reconnect. The full A2A08 matrix and proposed T32/T33 remain unqualified."
     },
     "a2a_push": {
       "outcome": "rejected",
@@ -50928,8 +50936,8 @@
         "A2A04": "partial",
         "A2A05": "partial",
         "A2A06": "partial",
-        "A2A07": "partial; actual HTTPS named bearer/API-key/mTLS witnesses",
-        "A2A08": "partial; TCP lost-response and bounded timeout, cross-worker and terminal witnesses"
+        "A2A07": "partial; actual HTTPS named bearer/API-key/OAuth/mTLS witnesses",
+        "A2A08": "partial; TCP first/partial-response loss, bounded timeout, cross-worker and terminal witnesses"
       },
       "record": "docs/s3-02-a2a-acceptance.md#current-evidence-checkpoint-not-task-qualification"
     }
