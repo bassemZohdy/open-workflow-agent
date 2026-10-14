@@ -1017,3 +1017,11 @@ workflow or approval deadline. The corrected LangGraph/SQLite protected
 approval selection passed locally (73 passed, 94 skipped), and the formerly
 failing `request-row` case passed in isolation. Exact-source hosted Windows
 requalification remains pending; S3-05 remains open.
+
+At exact source `62953c0`, the corrected Windows LangGraph/SQLite
+`request-row` process-recovery case passed again (1 passed, 23 deselected in
+21.86s). The full protected-approval selection on the same source passed 73
+tests with 94 skips; the skipped cases require the other native SDK or a real
+PostgreSQL datasource. Documentation links, the implementation/tracker audit
+(6 tests), Ruff lint and formatting, and `git diff --check` passed. These local
+results do not replace the hosted Windows requalification.
