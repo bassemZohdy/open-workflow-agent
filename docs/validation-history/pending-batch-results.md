@@ -776,3 +776,14 @@ exact runtime source `af4acd61c200787fb68248b2d180ba69efb8c837`; A2A02 is direct
 evidenced for its bounded Python profile, while A2A01 and A2A03-A2A08 remain
 partial. The A2A record maps each gate and exclusions. The current 401 head adds
 no runtime change and does not upgrade or invalidate that A2A evidence.
+
+### A2A08 witness trace at `fedbdee`
+
+The acceptance record and implementation audit now cite the bounded stream
+timeout, terminal-snapshot close, event/backpressure limits, cross-worker final
+commit observation, outbound SDK stream identity/completion and disconnect
+cases by exact test symbol. The focused selection passed 29 cases locally on
+the Windows checkout; audit/tracker checks passed six tests and Markdown links
+validated. This reconciles individual witnesses only: durable task/receipt
+expiry, lost-response, malformed-event and required backend/binding cross-matrix
+remain open, so S3-02 and A2A08 stay partial.

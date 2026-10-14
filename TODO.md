@@ -148,7 +148,10 @@ treated as a deferred task or as additional feature completion.
   but the A2A01-A2A08 acceptance matrix is not reconciled end to end. S2-09 and
   S3-01 are verified prerequisites. Keep this task open while peer, security,
   recovery, streaming and backend evidence is mapped to each required gate; do
-  not infer full A2A or proposed-test completion from suite totals. See the
+  not infer full A2A or proposed-test completion from suite totals. The A2A08
+  witness list now directly traces bounded timeout, cross-worker terminal and
+  cleanup cases (29 focused test cases pass locally); lost-response, durable
+  expiry and the cross-backend matrix remain open. See the
   [finite acceptance record](docs/s3-02-a2a-acceptance.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected HTTP/OpenAPI/gRPC, awaited outputs, pure AsyncAPI descriptions and
