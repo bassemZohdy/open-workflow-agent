@@ -928,3 +928,20 @@ selection (133 passed, with 63 HTTPX CA-path deprecation warnings), the
 implementation/tracker audit selection (6 passed), Markdown relative-link
 validation, Ruff, formatting and `git diff --check`. Hosted requalification
 remains pending.
+
+### A2A outbound stream retry policy at `4b29f81`
+
+The A2A acceptance record now states the tested bounded policy explicitly:
+outbound calls issue one request, lost or partial `SendStreamingMessage`
+responses remain uncertain without replay, and resubscription is a separate
+caller-requested `SubscribeToTask` operation for a known task ID. This does not
+claim a durable resubscription lease; A2A08 expiry, malformed-event and
+optional-method backend gates remain open. Evidence is retained in the
+actual-TCP no-reconnect tests, the task-resubscription tests and the all-method
+single-dispatch SDK test.
+
+At exact source `4b29f81`, the implementation/tracker audit passed (6 tests),
+Markdown relative-link validation passed, and `git diff --check` passed. The
+associated SDK HTTP implementation selection passed 133 tests at parent source
+`85aeb96`, whose implementation is unchanged here. Hosted requalification
+remains pending.
