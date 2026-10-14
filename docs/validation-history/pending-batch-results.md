@@ -408,3 +408,49 @@ allows the in-flight retry-timeout fixture enough time to reach its durable
 boundary. New A2A rejection and terminal-stream cases add behavioral coverage.
 These changes are being validated as one follow-up batch; no task status or
 acceptance gate advances on this failed source checkpoint.
+
+### Provisional hosted checkpoint — source `a6c2faa`
+
+As of the latest status check, CI run `38528004082` and PostgreSQL run
+`38528003740` were not clean. External-sandbox run `38528003908`, Agent
+Framework run `38528003725`, documentation-link run `38528003873`, and security
+run `38528003816` passed. The PostgreSQL run failed both principal-engine
+operation-adapter jobs. LangGraph job `115733371623` had three failures: the
+losing protected-approval race returned a generic proof error instead of
+`ApprovalConflict`, and the rejected and expired approval-pattern cases each
+consumed an approved action. ADK job `115733371729` failed the rejected and
+expired approval-pattern cases because the model also consumed approved
+actions. A rerun of the LangGraph PostgreSQL job was accepted; the ADK rerun
+request was rejected with HTTP 403 because its parent PostgreSQL workflow was
+still running.
+
+CI job `115733373016` failed a Windows operation-recovery case for a cancelled
+LangGraph parent-stop scenario: the child startup assertion failed, and the
+available report did not include a usable stack trace. At this checkpoint,
+root quality, Windows timer tests, and both ADK and LangGraph contract lanes in
+CI run `38528004082` were still running. These are provisional results, not a
+complete run. No task, feature, or acceptance gate advances on `a6c2faa`; record
+the eventual run completion and any corrective source separately.
+
+### Live status update — 2026-10-14
+
+The original PostgreSQL LangGraph operation-adapter attempt failed, and its
+rerun completed with 3 failures, 218 passes, 158 skips and 379 deselections:
+the approval race and both stale-event pattern cases. The latest PostgreSQL ADK
+operation-adapter attempt failed both stale-event pattern cases. PostgreSQL
+common-store, native recovery and lifecycle jobs passed.
+CI root quality finished 4,453 tests with 2,931 skips but failed the unchanged
+90% core coverage gate at 89.54%. The ADK contract job reached 94% progress
+before its 1,200-second timeout. LangGraph contract tests passed; Windows timer
+tests failed the protected-approval race case. The Windows operation-recovery
+job remains failed on the cancelled-parent child-startup assertion. The
+successful external-sandbox, Agent Framework, documentation-link, and security
+runs are unchanged. Unhosted local changes correct retained approval-event
+matching, isolate approval-race contenders on separate database connections,
+add ownerless authenticated-recovery and native MCP/mTLS regression cases, and
+capture scrubbed Windows worker stack frames. The focused root/MCP/recovery
+diagnostic tests passed (104 passed); both-engine pattern checks passed (2 per
+engine), the isolated LangGraph race passed three consecutive runs, and the
+native empty-MCP-result receipt case passed on each engine. Static checks and
+root/core builds passed after a formatting correction. These results do not
+qualify S2-09, S3-01, or any other task and are not hosted for this source yet.

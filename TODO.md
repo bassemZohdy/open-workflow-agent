@@ -21,21 +21,29 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 ## Delivery status — 2026-10-14
 
 **17 verified / 20 open / 0 deferred.** S2-09 remains the earliest unfinished
-task. The focused correction batch passed 377 tests (176 skipped), static and
-lock checks, Compose validation, Markdown links, and root/core builds; merged
-coverage is 90.0033% with the 90% gate unchanged. Hosted PR #65 then found
-actionable PostgreSQL protected-approval timestamp precision failures, a
-PostgreSQL sandbox-test fixture leak, two timing-sensitive Windows tests, and
-the Linux process-recovery interpreter's missing pidfd API. Root CI also found
-a descendant-process test setup failure and 89.54% coverage against the
-unchanged 90% gate. Focused corrections and behavioral coverage additions are
-assembled; the first combined local regression run passed 323 tests with 153
-environmental skips. Full root and hosted qualification remain outstanding.
-No task or feature advances until fresh exact-source validation passes; no task
-is deferred. The Windows full-root run stopped at 33% after 45 minutes and is
-incomplete. See the [current project
-status](PROJECT.md#current-backlog-delivery-mode--2026-10-14) and [retained
-validation evidence](docs/validation-history/pending-batch-results.md#hosted-validation-of-corrective-batch--pr-65).
+task. Hosted source `a6c2faa` remains unqualified. Its PostgreSQL
+operation-adapter attempts failed in protected-approval cases. The latest
+LangGraph rerun also failed three cases (218 passed, 158 skipped, 379
+deselected): the approval race and both stale-event pattern cases. The latest
+ADK attempt failed both stale-event pattern cases. External-sandbox
+CI, Agent Framework CI, documentation-link validation, and security passed.
+CI reported a Windows operation-recovery child-startup assertion; root quality,
+Windows timer, ADK contract, and LangGraph contract results are now explicit:
+root completed 4,453 tests with 2,931 skips but failed the unchanged 90% core
+coverage gate at 89.54%; the ADK contract job hit its 1,200-second timeout at
+94% progress; the Windows timer job failed its LangGraph protected-approval
+race case; and the LangGraph contract job passed. PostgreSQL common-store and
+native recovery lanes passed; both engine operation-adapter lanes failed.
+Local follow-up changes correct retained approval-event matching, isolate
+approval-race contenders on separate database connections, add ownerless
+authenticated-recovery and native MCP/mTLS regressions, and capture scrubbed
+Windows worker stack frames. Focused local
+checks pass, but these edits are not included in the hosted source. No task or
+feature advances. The earlier 323-test local result is historical, not
+validation of `a6c2faa`; the Windows full-root run stopped
+at 33% after 45 minutes and is incomplete. See the [current project
+status](PROJECT.md#current-backlog-delivery-mode--2026-10-14) and [validation
+history](docs/validation-history/pending-batch-results.md#provisional-hosted-checkpoint-a6c2faa).
 
 ## Stage 1 — Correct core execution
 

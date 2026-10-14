@@ -71,7 +71,7 @@ do:
         one:
           with:
             type: io.openworkflow.agent.approval.decided
-            subject: ${ $workflow.input.requestId }
+            subject: ${ . == $workflow.input.requestId }
       read: data
     timeout:
       after:

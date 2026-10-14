@@ -14,16 +14,24 @@ the earliest unfinished milestone. Failed or incomplete validation advances no
 task checkbox or inventory row. The latest complete local batch at `61844c4`
 failed qualification; the grouped correction selection passed 377 tests (176
 skipped), and merged coverage reached 90.0033% without lowering the 90% gate.
-Hosted PR #65 exposed PostgreSQL protected-approval timestamp precision, a
-PostgreSQL sandbox fixture leak, a Windows timeout fixture that sometimes
-expired before its intended action boundary, and missing pidfd support in the
-Linux process-recovery interpreter. Root CI also found a descendant-process
-setup failure and 89.54% coverage against the unchanged 90% gate. Narrow fixes
-and behavioral coverage additions are assembled; focused local checks passed,
-while full root and hosted qualification remain outstanding. The full local
-root run stopped at 33% after 45 minutes and is incomplete. Current hosted
-evidence is in the [validation
-history](docs/validation-history/pending-batch-results.md#hosted-validation-of-corrective-batch--pr-65).
+Those earlier findings and their corrections remain in the historical record.
+The current hosted checkpoint is source `a6c2faa`: external-sandbox, Agent
+Framework, documentation-link, and security workflows passed. Both PostgreSQL
+operation-adapter lanes failed; the LangGraph rerun had three failures (the
+approval race and two stale-event pattern cases), while the ADK attempt failed
+the two pattern cases. Windows operation recovery reported a child-startup
+assertion. Root quality finished 4,453 tests with 2,931 skips
+but missed the 90% core coverage gate at 89.54%; the ADK contract job timed out
+at 94% progress. The Windows timer lane failed the protected-approval race
+case; LangGraph contract tests passed. PostgreSQL common-store and native
+recovery lanes passed. Unhosted local changes correct retained
+approval-event matching, isolate the approval race contenders on separate
+database connections, add ownerless authenticated-recovery and native MCP/mTLS
+regression cases, and capture scrubbed Windows worker stack frames. Focused
+local checks pass, but these changes have not been qualified by this checkpoint.
+This is provisional and does not qualify a task. The full
+local root run stopped at 33% after 45 minutes and is incomplete. See the
+[validation history](docs/validation-history/pending-batch-results.md#provisional-hosted-checkpoint-a6c2faa).
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |

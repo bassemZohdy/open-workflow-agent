@@ -74,7 +74,7 @@ async def test_original_protected_approval_controls_gate_one_native_business_act
     )
     invocation = handle(services, engine_name, plan)
     task = asyncio.create_task(engine.invoke(plan, invocation, copy.deepcopy(RAW)))
-    duplicate = None
+    contenders = []
     expected, value, reviewer = "approved", {"ticket": "S305"}, actor(services, "reviewer-a")
     try:
         await waiting(services, invocation, task)
@@ -135,21 +135,34 @@ async def test_original_protected_approval_controls_gate_one_native_business_act
             value = None
             await decide(services, subject, reviewer, value=value)
         elif case == "race":
-            duplicate = runtime(tmp_path, backend, business=business)
-            second_actor = actor(duplicate, "reviewer-a")
+            # Keep operator writes on independent DB connections. The engine
+            # continues polling through `services`; sharing that SQLite
+            # connection with a worker thread can interleave statements inside
+            # the engine's transaction and make this race nondeterministic.
+            first_contender = runtime(tmp_path, backend, business=business)
+            contenders.append(first_contender)
+            second_contender = runtime(tmp_path, backend, business=business)
+            contenders.append(second_contender)
+            first_actor = actor(first_contender, "reviewer-a")
+            second_actor = actor(second_contender, "reviewer-a")
             operations = [str(uuid4()), str(uuid4())]
             winners = await asyncio.gather(
                 asyncio.to_thread(
                     lambda: asyncio.run(
                         decide(
-                            services, subject, reviewer, "approved", value=value, key=operations[0]
+                            first_contender,
+                            subject,
+                            first_actor,
+                            "approved",
+                            value=value,
+                            key=operations[0],
                         )
                     )
                 ),
                 asyncio.to_thread(
                     lambda: asyncio.run(
                         decide(
-                            duplicate,
+                            second_contender,
                             subject,
                             second_actor,
                             "rejected",
@@ -220,8 +233,8 @@ async def test_original_protected_approval_controls_gate_one_native_business_act
         await asyncio.gather(task, return_exceptions=True)
         await engine.shutdown()
         services.close()
-        if duplicate is not None:
-            duplicate.close()
+        for contender in contenders:
+            contender.close()
 
 
 @pytest.mark.asyncio

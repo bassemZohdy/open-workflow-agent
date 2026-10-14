@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 from _process_recovery_worker import write_json
+from _recovery_failure_artifact import failure_artifact
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import OwaError
@@ -338,9 +339,6 @@ if __name__ == "__main__":
     except BaseException as error:
         write_json(
             directory / (sys.argv[2] + "-failure.json"),
-            {
-                "exception": type(error).__name__,
-                "error": error.as_dict() if isinstance(error, OwaError) else None,
-            },
+            failure_artifact(error, stage=sys.argv[2], include_traceback=True),
         )
         raise SystemExit(1) from None

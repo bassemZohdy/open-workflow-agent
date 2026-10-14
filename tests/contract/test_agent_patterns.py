@@ -31,7 +31,7 @@ from _agent_pattern_fixtures import (
     runtime,
     scripts,
 )
-from open_workflow_agent.approvals import APPROVAL_DECISION_EVENT
+from open_workflow_agent.approvals import APPROVAL_DECISION_EVENT, APPROVAL_REQUEST_EVENT
 from open_workflow_agent.errors import OwaError
 from open_workflow_agent.execution_authority import authority_scope
 
@@ -494,6 +494,29 @@ async def test_approval_pattern_stays_pending_until_original_protected_control_a
     await engine.initialize(services)
     if case == "expired":
         await services.stop_protected_approvals()
+    if case in {"rejected", "expired"}:
+        # A durable listener scans retained scoped events from its initial
+        # cursor. An earlier approved event for another request must not
+        # authorize this invocation's action role.
+        stale_id = uuid4().hex
+        await services.event_bus.publish_scoped(
+            {
+                "id": stale_id,
+                "source": "urn:pattern:prior-approval",
+                "type": APPROVAL_REQUEST_EVENT,
+                "subject": stale_id,
+                "data": {"question": "prior request"},
+            },
+            default_source="urn:pattern:prior-approval",
+            scope="alice",
+        )
+        await services.approvals.decide(
+            stale_id,
+            decision="approved",
+            operator_id="prior-reviewer",
+            value={"approved": True},
+            operation_key=uuid4().hex,
+        )
     original = approval_input(3 if case == "expired" else 120)
     plan = compiled(services, "approval_gate")
     handle = create(services, engine_name, plan)

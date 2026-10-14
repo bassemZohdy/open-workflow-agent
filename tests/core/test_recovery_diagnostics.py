@@ -161,8 +161,9 @@ def test_diagnostic_sampling_bound_is_explicit_and_does_not_decode_all_effects(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("route", ["resume", "cancel", "recovery"])
+@pytest.mark.parametrize("owner_case", ["foreign", "ownerless"])
 async def test_invocation_routes_hide_other_principals_before_archive_or_native_reads(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, route: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, route: str, owner_case: str
 ) -> None:
     monkeypatch.setenv("OWA_DIAGNOSTIC_TOKEN", "test-api-token")
     config = RuntimeConfig.model_validate(
@@ -184,7 +185,7 @@ async def test_invocation_routes_hide_other_principals_before_archive_or_native_
     app = create_app(config=config, services=services)
     try:
         async with app.router.lifespan_context(app):
-            foreign = _handle(services, owner="other-owner")
+            foreign = _handle(services, owner="other-owner" if owner_case == "foreign" else None)
             before = _dump(services)
             monkeypatch.setattr(
                 services,
