@@ -1,12 +1,38 @@
 # Pending batch results — 2026-10-14
 
 Historical attempts below remain distinct from qualification. S2-09's finite
-VM01-VM08 policy is verified at PR head `9578459`; S3-01 through S3-08 remain
-open. The latest completed exact-source attempt is `17501ee`; five hosted
-workflows passed and CI failed one Windows recovery case. Two later diagnostic
-follow-ups were superseded before all six hosted workflows completed. Passing
-subsets and fresh builds do not replace complete qualification. Local `tmp/`
-evidence is ignored and retained in its originating worktree.
+VM01-VM08 policy and S3-01's finite Python MCP01-MCP08 profile are verified.
+S3-02 through S3-08 remain open. The final S3-01 exact-source result is recorded
+first; earlier attempts remain historical and superseded. Passing subsets and
+fresh builds do not replace complete qualification. Local `tmp/` evidence is
+ignored and retained in its originating worktree.
+
+### Exact-source qualification — `af4acd6`
+
+All six hosted workflows passed at exact source
+`af4acd61c200787fb68248b2d180ba69efb8c837` for PR #65: [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38586728177),
+[PostgreSQL CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38586728590),
+[Agent Framework CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38586728663),
+[External Sandbox CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38586728346),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38586728258), and
+[Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38586728332).
+The root quality suite passed 4,569 tests, skipped 2,950 and reached 90.04%
+coverage. The Windows operation-adapter/supervised-process recovery suite passed
+962 tests and skipped 454; the Windows timer suite passed 718 and skipped 769.
+The Windows common MCP/process-lifetime profile passed 389 tests (43 skipped).
+PostgreSQL passed all ten jobs, including principal-engine MCP lifecycle and
+recovery selections. The two principal-engine lifecycle/recovery selections
+each passed 125 tests (87 skipped, 219 deselected), and their operation-adapter
+selections each passed 221 (158 skipped, 379 deselected). Agent Framework,
+External Sandbox, Security and Docs workflows also passed.
+
+This qualifies S3-01 only for the finite Python MCP01-MCP08 profile. The tracker
+advances only A142-A144 and A146-A152 as `qualified_subset`; A145 remains
+partial. JavaScript is unimplemented, `full_feature_verified` remains false,
+and proposed T29/T30/T31/T67 have not been executed. The six results do not
+claim full MCP protocol conformance or broader feature completion. S3-02 is now
+the next open task. This checkpoint supersedes the incomplete `17501ee` and
+diagnostic follow-ups below for finite S3-01 acceptance.
 
 ### Superseded Windows recovery diagnostic follow-ups
 
@@ -21,9 +47,10 @@ that parent result wait to 150 seconds. Docs and Security passed
 (`38585947979`), Agent Framework (`38585948315`) and External Sandbox
 (`38585947443`) were cancelled while batching the remaining documentation
 cleanup. These runs are partial evidence only and qualify no task or feature.
-The current corrected source still requires a complete six-workflow hosted
-matrix. The local Windows recovery selector could not start its supervisor in
-this environment; hosted Windows CI is the authoritative validation path.
+This diagnostic source was followed by the complete green exact-source matrix
+recorded above. The local Windows recovery selector could not start its
+supervisor in this environment; hosted Windows CI supplied the authoritative
+validation.
 
 ### Exact-source validation attempt — `17501ee`
 
@@ -45,7 +72,7 @@ released background job to become terminal (1 failed, 961 passed, 454 skipped,
 one warning in 24m40s). Its receipt, cancellation and drain LangGraph sibling
 cases passed. The failure artifact contained only the sanitized assertion
 frame, so it did not retain job or supervisor state. This is actionable;
-S3-01 remains open and no task or feature row advances. The follow-up attempts
+At source `17501ee`, S3-01 remained open and no task or feature row advanced. The follow-up attempts
 and next required full matrix are recorded above.
 
 ### Superseded diagnostic pass — `b0bd076`
@@ -76,7 +103,7 @@ and 379 deselected. Recovery completed, but its output differed from the
 expected value; that source's worker did not record a safe description of the
 differing shape. The other PostgreSQL jobs passed; the persistence matrix job
 was skipped by its configured selector. This is not a completed qualification
-checkpoint. S3-01 remains open until the corrected source passes its complete
+checkpoint. At this source, S3-01 remained open until a corrected source passed its complete
 hosted matrix; no capability or task is advanced by this attempt.
 
 ### Hosted checkpoint — PR head `9578459`

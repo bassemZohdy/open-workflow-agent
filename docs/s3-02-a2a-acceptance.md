@@ -1,9 +1,11 @@
 # S3-02 finite A2A invocation and interoperability acceptance
 
-Status: implementation in progress; S3-02 remains unchecked. This record defines
-required evidence and exclusions. No newly authored SDK, delivery or streaming
-profile is qualified before integrated validation. S2-09 and S3-01 qualification
-remain prerequisites for publication of the combined behavior.
+Status: implementation in progress; S3-02 remains unchecked. S2-09's finite
+recovery policy and S3-01's finite Python MCP profile are verified, with S3-01
+published on PR #65 at exact source `af4acd61c200787fb68248b2d180ba69efb8c837`.
+Those results satisfy the prior-task prerequisites only; no A2A SDK, delivery,
+streaming or native/backend profile is qualified until its own integrated gates
+and exact-source matrix pass.
 
 ## Contract and authority
 
@@ -113,11 +115,12 @@ image gates. All six hosted workflows must qualify the final combined source.
 Update TODO/PROJECT and only proven tracker/audit subsets after acceptance;
 proposed inventory tests and independent gaps remain visible and unverified.
 
-Authoring starts in isolated `codex/a2a-integrations` from source
-325458af130cccc8d9d899dc09614f6e55cc48f5 while its predecessor frozen suites run.
-That source is an implementation baseline, not successful S2-09/S3-01 or new
-A2A evidence. There is no established blocker: the identified gaps have concrete
-implementation steps, with publication waiting on the stated dependency gates.
+The S3-02 implementation baseline was authored from
+`325458af130cccc8d9d899dc09614f6e55cc48f5`; that provenance is not A2A
+acceptance. With S2-09 and S3-01 prerequisites now verified, S3-02 is
+actionable. Continue with the grouped peer/native/backend gates, preserve the
+bounded semantics above, then run the frozen focused and full validation
+profiles. No blocker is recorded.
 
 
 ## Retained first combined batch

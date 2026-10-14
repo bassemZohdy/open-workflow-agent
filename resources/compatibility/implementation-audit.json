@@ -1,6 +1,6 @@
 {
   "format_version": 1,
-  "reviewed_implementation_commit": "96ce610924da4554c84f3c5a687743a48b8e9977",
+  "reviewed_implementation_commit": "af4acd61c200787fb68248b2d180ba69efb8c837",
   "acceptance_record_commit": "96ce610924da4554c84f3c5a687743a48b8e9977",
   "purpose": "Exhaustive current implementation audit, not a full conformance certificate or feature completion claim",
   "review_method": "Each semantic construct and schema parent was compared with active admission/execution/native code and existing assertion scope. Missing/inert/mismatched behavior retains explicit owners. Source/API availability and copied material are not runtime proof.",
@@ -12630,6 +12630,154 @@
         }
       ],
       "test_scope": "Exact-source LC01-LC08 hosted acceptance, all 46 mandatory cases on each actual principal/backend, Windows, four images and seven zero-advisory reports; optional Framework remains bounded."
+    },
+    "mcp_finite": {
+      "outcome": "qualified_subset",
+      "observed": "The finite Python MCP profile uses the pinned official SDK and reviewed current wire version for all seven OWS methods over bounded HTTP. Actual ADK and LangGraph workflow calls preserve typed results, receipts, visit keys and deadlines across SQLite/PostgreSQL recovery; authentication, per-tool TLS isolation, response bounds and explicit rejection are exercised.",
+      "remaining_scope": "This evidence does not qualify independent JavaScript, full MCP discovery/MRTR/subscriptions/tasks/callbacks, broader interoperability, or the proposed T29/T30/T31 criteria. A145 remains partial; no full-feature or full-conformance claim is made.",
+      "remediation_tasks": [
+        "S3-02",
+        "S4-03",
+        "S4-04"
+      ],
+      "code": [
+        {
+          "path": "core/src/open_workflow_agent/protocols.py",
+          "symbol": "ProtocolServices.call"
+        },
+        {
+          "path": "core/src/open_workflow_agent/workflow.py",
+          "symbol": "validate_capabilities"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/core/test_protocol_baselines.py",
+          "symbol": "test_protocol_baseline_manifest_keeps_claims_bounded"
+        },
+        {
+          "path": "tests/core/test_protocol_interop.py",
+          "symbol": "test_mcp_method_set_covers_bounded_profile"
+        },
+        {
+          "path": "tests/core/test_protocol_interop.py",
+          "symbol": "test_mcp_protocol_version_matches_baseline"
+        },
+        {
+          "path": "tests/core/test_mcp_sdk_http.py",
+          "symbol": "test_official_sdk_accepts_each_method_metadata_and_result_projection"
+        },
+        {
+          "path": "tests/core/test_mcp_sdk_http.py",
+          "symbol": "test_every_method_rejects_errors_limits_and_uncorrelated_results"
+        },
+        {
+          "path": "tests/core/test_mcp_sdk_http.py",
+          "symbol": "test_actual_mcp_tls_keeps_configured_tool_certificates_isolated"
+        },
+        {
+          "path": "tests/core/test_mcp_sdk_http.py",
+          "symbol": "test_oauth_token_expiring_during_fetch_is_rejected_before_mcp_dispatch"
+        },
+        {
+          "path": "tests/contract/test_mcp_sdk_calls.py",
+          "symbol": "test_each_native_workflow_method_preserves_typed_result_reference_and_one_dispatch"
+        },
+        {
+          "path": "tests/contract/test_mcp_sdk_calls.py",
+          "symbol": "test_native_restart_reuses_known_mcp_receipt_without_discovery_or_replay"
+        },
+        {
+          "path": "tests/contract/test_mcp_sdk_calls.py",
+          "symbol": "test_native_mcp_loop_keys_distinguish_receiver_commits_and_survive_restart_without_replay"
+        },
+        {
+          "path": "tests/contract/test_mcp_sdk_calls.py",
+          "symbol": "test_native_mcp_original_task_deadline_is_retained_after_waiting_restart"
+        }
+      ],
+      "test_scope": "Exact-source hosted qualification at af4acd61c200787fb68248b2d180ba69efb8c837. The six workflows and applicable engine/backend profiles passed. Bounded Python evidence only; inventory proposals remain unexecuted.",
+      "source_commit": "af4acd61c200787fb68248b2d180ba69efb8c837",
+      "hosted_runs": {
+        "CI": 38586728177,
+        "PostgreSQL CI": 38586728590,
+        "Agent Framework CI": 38586728663,
+        "External Sandbox CI": 38586728346,
+        "Security": 38586728258,
+        "Docs": 38586728332
+      }
+    },
+    "mcp_stdio_finite": {
+      "outcome": "qualified_subset",
+      "observed": "Disabled-by-default MCP stdio is admitted only with an exact deployment binding and routed through the common internal SandboxManager. Actual pinned SDK server calls, bounded duplex framing/output/deadlines, descendant ownership, cleanup and known-receipt recovery are exercised on supported platform/engine profiles.",
+      "remaining_scope": "Independent JavaScript and external-sandbox stdio remain unsupported. Windows file-size resource limits reject before launch. This is not a general subprocess or hard-isolation guarantee and does not qualify full MCP conformance or proposed T30.",
+      "remediation_tasks": [
+        "S3-02",
+        "S4-03",
+        "S4-04"
+      ],
+      "code": [
+        {
+          "path": "core/src/open_workflow_agent/workflow.py",
+          "symbol": "validate_capabilities"
+        },
+        {
+          "path": "core/src/open_workflow_agent/mcp_stdio.py",
+          "symbol": "sandbox_stdio_transport"
+        },
+        {
+          "path": "core/src/open_workflow_agent/sandbox/manager.py",
+          "symbol": "SandboxManager.open_stdio"
+        },
+        {
+          "path": "core/src/open_workflow_agent/sandbox/stdio.py",
+          "symbol": "open_internal_stdio"
+        },
+        {
+          "path": "core/src/open_workflow_agent/sandbox/stdio_policy.py",
+          "symbol": "validate_stdio_transport"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/contract/test_mcp_stdio_integration.py",
+          "symbol": "test_actual_sdk_stdio_methods_use_only_common_process_transport"
+        },
+        {
+          "path": "tests/contract/test_mcp_stdio_integration.py",
+          "symbol": "test_actual_native_stdio_known_outcome_replays_without_another_server_call"
+        },
+        {
+          "path": "tests/core/test_mcp_deployment_admission.py",
+          "symbol": "test_stdio_admission_preserves_public_source_and_requires_deployment_binding"
+        },
+        {
+          "path": "tests/core/test_sandbox_stdio.py",
+          "symbol": "test_stdio_bad_streams_are_bounded_and_cleaned"
+        },
+        {
+          "path": "tests/core/test_sandbox_stdio.py",
+          "symbol": "test_stdio_descendants_are_owned_until_cancel_or_shutdown"
+        },
+        {
+          "path": "tests/core/test_sandbox_stdio.py",
+          "symbol": "test_stdio_frame_queue_and_cumulative_output_remain_bounded"
+        },
+        {
+          "path": "tests/core/test_sandbox_stdio.py",
+          "symbol": "test_stdio_send_backpressure_cannot_extend_whole_deadline"
+        }
+      ],
+      "test_scope": "Exact-source hosted qualification at af4acd61c200787fb68248b2d180ba69efb8c837, with actual SDK methods through the common process path and platform/native recovery controls. Bounded Python profile only.",
+      "source_commit": "af4acd61c200787fb68248b2d180ba69efb8c837",
+      "hosted_runs": {
+        "CI": 38586728177,
+        "PostgreSQL CI": 38586728590,
+        "Agent Framework CI": 38586728663,
+        "External Sandbox CI": 38586728346,
+        "Security": 38586728258,
+        "Docs": 38586728332
+      }
     }
   },
   "features": [
@@ -15647,8 +15795,8 @@
       "feature": "MCP protocol selection",
       "construct": "call mcp with.protocolVersion",
       "category": "MCP",
-      "evidence_group": "mcp",
-      "python_outcome": "partial",
+      "evidence_group": "mcp_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A142 (MCP protocol selection) at call mcp with.protocolVersion: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15667,8 +15815,8 @@
       "feature": "MCP HTTP transport",
       "construct": "with.transport.http",
       "category": "MCP",
-      "evidence_group": "mcp",
-      "python_outcome": "partial",
+      "evidence_group": "mcp_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A143 (MCP HTTP transport) at with.transport.http: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15687,8 +15835,8 @@
       "feature": "MCP stdio transport",
       "construct": "with.transport.stdio",
       "category": "MCP",
-      "evidence_group": "mcp_stdio",
-      "python_outcome": "rejected",
+      "evidence_group": "mcp_stdio_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A144 (MCP stdio transport) at with.transport.stdio: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15727,8 +15875,8 @@
       "feature": "MCP tools/list",
       "construct": "call mcp with.method tools/list",
       "category": "MCP",
-      "evidence_group": "mcp",
-      "python_outcome": "partial",
+      "evidence_group": "mcp_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A146 (MCP tools/list) at call mcp with.method tools/list: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15747,8 +15895,8 @@
       "feature": "MCP tools/call",
       "construct": "call mcp with.method tools/call",
       "category": "MCP",
-      "evidence_group": "mcp",
-      "python_outcome": "partial",
+      "evidence_group": "mcp_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A147 (MCP tools/call) at call mcp with.method tools/call: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15767,8 +15915,8 @@
       "feature": "MCP prompts/list",
       "construct": "call mcp with.method prompts/list",
       "category": "MCP",
-      "evidence_group": "mcp",
-      "python_outcome": "partial",
+      "evidence_group": "mcp_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A148 (MCP prompts/list) at call mcp with.method prompts/list: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15787,8 +15935,8 @@
       "feature": "MCP prompts/get",
       "construct": "call mcp with.method prompts/get",
       "category": "MCP",
-      "evidence_group": "mcp",
-      "python_outcome": "partial",
+      "evidence_group": "mcp_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A149 (MCP prompts/get) at call mcp with.method prompts/get: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15807,8 +15955,8 @@
       "feature": "MCP resources/list",
       "construct": "call mcp with.method resources/list",
       "category": "MCP",
-      "evidence_group": "mcp",
-      "python_outcome": "partial",
+      "evidence_group": "mcp_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A150 (MCP resources/list) at call mcp with.method resources/list: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15827,8 +15975,8 @@
       "feature": "MCP resources/read",
       "construct": "call mcp with.method resources/read",
       "category": "MCP",
-      "evidence_group": "mcp",
-      "python_outcome": "partial",
+      "evidence_group": "mcp_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A151 (MCP resources/read) at call mcp with.method resources/read: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -15847,8 +15995,8 @@
       "feature": "MCP resources/templates/list",
       "construct": "call mcp with.method resources/templates/list",
       "category": "MCP",
-      "evidence_group": "mcp",
-      "python_outcome": "partial",
+      "evidence_group": "mcp_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A152 (MCP resources/templates/list) at call mcp with.method resources/templates/list: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -26744,13 +26892,13 @@
     }
   ],
   "outcome_counts": {
+    "qualified_subset": 261,
+    "unimplemented": 61,
+    "rejected": 178,
+    "partial": 98,
     "behavior_mismatch": 32,
     "inert": 19,
-    "internal_only": 9,
-    "partial": 107,
-    "qualified_subset": 251,
-    "rejected": 179,
-    "unimplemented": 61
+    "internal_only": 9
   },
   "gap_probes": {
     "path": "tests/contract/test_implementation_audit_gaps.py",
@@ -26792,7 +26940,7 @@
     "core/src/open_workflow_agent/observability.py": "dcc23fa1bd4e84cb4bcb0f2db5758e483a4d6cf24b7f85c4be80e9f7e434c7c9",
     "core/src/open_workflow_agent/ownership.py": "a67eb678e8512f094147c1e01258137b80959ebaab9314cf516ce874ff0c09d5",
     "core/src/open_workflow_agent/persistence.py": "72e16db2df13efd4dd9f26516f9cf07863a366242831c3bb451a28b6f36487c4",
-    "core/src/open_workflow_agent/protocols.py": "58de0b788c8c057ce4d68fc70e9bd5cd4d0f6e7280be3a55a21e446e5b55a737",
+    "core/src/open_workflow_agent/protocols.py": "9e30bc103d445731179e6132e5311973199514c968295dbdf4c3a8a050b4706d",
     "core/src/open_workflow_agent/resources.py": "289b89bed61db337ccbb337a2d8bf918ac347b25f652a7e76aca791b4a77fefc",
     "core/src/open_workflow_agent/retry.py": "124f7fbe6ea471cf927a5f0003a8e7ac1c4c7c93cadc4f3310659ff10c8f0b60",
     "core/src/open_workflow_agent/sandbox/executor.py": "9e48b15494897c85be5b01a1b86c13646f70f1c9358ba33f45c88f676f09edbe",
@@ -26802,7 +26950,7 @@
     "core/src/open_workflow_agent/services.py": "663660e815ed04c34b1ab8b1c7b1635b88a1d6cbb982291c14b373edf4b29d26",
     "core/src/open_workflow_agent/timing.py": "e234238f397f5217a477ab8cc038f6f5ae409b1579e08b34603f42734978f627",
     "core/src/open_workflow_agent/versions.py": "c1654fcf4326705628b9e2aa4983af5a5d038915afa0e911b63c2dff712e31d5",
-    "core/src/open_workflow_agent/workflow.py": "2d58a1e5cbb76033387ecc7ddcd4af2281fab08f4db3f4ca09a22568d0ec4621",
+    "core/src/open_workflow_agent/workflow.py": "6c25af94576a694a7f6cee3b6ad3e4ebf1446508c036b0fb0f0c62f80b72bf8a",
     "core/src/open_workflow_agent/workflow_catalog.py": "eef1ccfaa2238c25f6c9b5378475b8d105da9373697c09dec58596a192f6321a",
     "engines/adk/src/open_workflow_agent_adk/__init__.py": "f6ba209df4deb65a2403bcf61cfd39fef6bd29cf637a174ea7afc9254a98f068",
     "engines/adk/src/open_workflow_agent_adk/native.py": "f67df11aae12aff6f71644d0f689a8efe9e032faf1dae40a5c16835a4505495f",
@@ -26891,7 +27039,11 @@
     "core/src/open_workflow_agent/child_waits.py": "578e50dfa7db0552f5ec0bf3654e3adce099d2bb39b6b6729730e0a6d5573c2e",
     "core/src/open_workflow_agent/child_wait_dispatcher.py": "e1447ffae0149f114c59ef0948b3d50ca10750187f37b728bc006c67e19c856c",
     "core/src/open_workflow_agent/child_suspension.py": "0c75f5bf63583f1c8888e05bdd1c0c91fcbc513203d45dab5e003ff502f2c9b1",
-    "core/src/open_workflow_agent/external_recovery.py": "5b39a70d2f319822670c00725ca96661ba0c5f2173a1247c9c060ff152ff6777"
+    "core/src/open_workflow_agent/external_recovery.py": "5b39a70d2f319822670c00725ca96661ba0c5f2173a1247c9c060ff152ff6777",
+    "core/src/open_workflow_agent/mcp_stdio.py": "1eac0bc1f7029836c522f545c3498c2cea78bee2bb54b00170f09331627a6ba0",
+    "core/src/open_workflow_agent/sandbox/manager.py": "46497ffcc86c7e5120ec6e7d6ffab8b90aecc62204bcc0aed2b6cb7e9e0c59d6",
+    "core/src/open_workflow_agent/sandbox/stdio.py": "9913ee60fdf6a429a234ab461868f004b382b0533f37694b38b9227d0353658e",
+    "core/src/open_workflow_agent/sandbox/stdio_policy.py": "c557d717825a663087304562b2ab5c65f336bc437765864cea4b1e779977b9d5"
   },
   "audit_integrity_checks": {
     "passed": 4,

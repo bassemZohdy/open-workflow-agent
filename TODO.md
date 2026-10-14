@@ -20,57 +20,21 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 
 ## Delivery status — 2026-10-14
 
-**18 verified / 19 open / 0 deferred.** S3-01 is the earliest unfinished task.
-The finite S2-09 continuation/recovery policy is verified at PR head `9578459`
-(code source `bfd149c`). The latest completed exact-source attempt is `17501ee`:
-five hosted workflows passed, while one Windows independent-job recovery case
-failed. Follow-up diagnostic commits `0d98ee9` and `d45450c` are corrective
-work, but their hosted runs were superseded before the full matrix completed;
-S3-01 remains open. See the [qualification history](docs/validation-history/pending-batch-results.md#superseded-windows-recovery-diagnostic-follow-ups)
-and the [S2-09 checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-pr-head-9578459).
-Preceding source `c68950f` had 15 of 16 CI jobs pass; its
-timer job was cancelled at the former 35-minute limit after reporting 686
-passed and 674 skipped with no assertion failures. The preceding source
-`605a908` failed one Windows
-native lifecycle/recovery test during initial-delivery admission with
-`InvocationStateConflict`; its root quality gate and other CI jobs passed.
-The 605a908 PostgreSQL, Docs, Security, External Sandbox, and Agent Framework
-runs passed. The focused source batch passed 85 tests with 34 PostgreSQL-only
-skips; local static checks, strict typing, documentation checks, implementation
-audit and root/core builds passed. The hosted root quality gate confirmed the
-coverage threshold for both `605a908` and `c68950f`.
+**19 verified / 18 open / 0 deferred.** S3-02 is now the earliest unfinished
+task. S2-09's finite VM01-VM08 continuation/recovery policy remains verified at
+PR head `9578459`. S3-01's finite Python MCP01-MCP08 profile is verified at
+exact source `af4acd61c200787fb68248b2d180ba69efb8c837`; all six hosted
+workflows passed. The root suite passed 4,569 tests, skipped 2,950 and reached
+90.04% coverage; the Windows operation-recovery and timer suites passed 962/454
+and 718/769 tests respectively. PostgreSQL passed all ten jobs. See the [complete
+qualification record](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6)
+and the [S3-01 finite acceptance gates](docs/s3-01-mcp-acceptance.md).
 
-The hosted Windows initial-delivery failure had an actionable fixture
-correction, verified at the latest completed checkpoint. The original logs locate the conflict in
-`prepare_initial_delivery`; a 15-second fixture lease passed
-that stage locally. Recovery diagnostics then identified an intermittent
-`python.architecture` mismatch because the isolated Windows subprocess
-environment omitted the non-secret architecture variables used by
-`platform.machine()`. Commit `c68950f` preserves those
-variables in the restricted child environment, keeps the 15-second fixture
-lease, and records safe stack frames and changed-profile paths. The exact
-Windows selector passed three consecutive local repeats after this correction;
-the related LangGraph process-recovery/A2A selection passed 14 tests with 14
-PostgreSQL-only skips. The subsequent complete hosted checkpoint verified
-S2-09's finite policy. See the [preceding validation
-checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-c68950f).
-Historical checkpoints `4d2e224` and `523522b` failed separate root-quality
-gates; `4d2e224` also exposed an obsolete approval-selection count and the
-former ADK command timeout, while `523522b` exposed a Windows protected-approval
-race. The proof-checked actor-decision route, expanded selector witness and
-longer ADK budget are included in `605a908`. Exact outcomes for these and the
-earlier `dcc16a6` / `a6c2faa` checkpoints remain in the
-[validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-4d2e224).
-
-The preceding source batch `b3d7b61` passed five workflows but had one
-actionable PostgreSQL LangGraph recovery-output failure. Source `17501ee`
-corrected the value-free diagnostics and passed PostgreSQL plus four other
-hosted workflows; its Windows operation-adapter workflow had one
-independent-job completion timeout. Later diagnostic follow-ups are recorded
-without treating partial runs as qualification. S3-01 remains open until a
-corrected source passes the complete hosted matrix. See the
-[Windows recovery diagnostic follow-ups](docs/validation-history/pending-batch-results.md#superseded-windows-recovery-diagnostic-follow-ups)
-and the [preceding `b3d7b61` result](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-b3d7b61).
+JavaScript, full MCP protocol coverage (including A145), proposed T29/T30/T31
+criteria and broader MCP extensions remain independently unqualified. Earlier
+timeouts, superseded attempts and their corrections remain in the
+[validation history](docs/validation-history/pending-batch-results.md); none is
+treated as a deferred task or as additional feature completion.
 
 ## Stage 1 — Correct core execution
 
@@ -172,23 +136,19 @@ and the [preceding `b3d7b61` result](docs/validation-history/pending-batch-resul
 
 ## Stage 3 — Agents, tools and integrations
 
-- [ ] **S3-01** (M) — Complete MCP tools/resources/transports/authentication with pinned official SDKs and integration tests.
-  Common HTTP/SDK, bounded authentication and restricted stdio changes are
-  authored. A local MCP08 correction rejects undefined `transport.options` and
-  unknown `client` fields before authorization or transport I/O. Focused local
-  regressions pass; integrated engine/database/process, build and exact-source
-  hosted gates remain open after the Windows independent-job recovery timeout
-  at `17501ee`. Follow-up diagnostics are authored but their hosted runs did
-  not complete the full matrix. See the [finite acceptance gates](docs/s3-01-mcp-acceptance.md)
-  and [qualification history](docs/validation-history/pending-batch-results.md#superseded-windows-recovery-diagnostic-follow-ups).
-  No new transport, authentication or inventory profile is qualified before
-  integrated validation.
+- [x] **S3-01** (M) — Complete MCP tools/resources/transports/authentication with pinned official SDKs and integration tests.
+  Verified finite Python MCP01-MCP08 profile at exact source
+  `af4acd61c200787fb68248b2d180ba69efb8c837`. CI, PostgreSQL, Agent Framework,
+  External Sandbox, Security and Docs all passed. Full MCP conformance,
+  JavaScript and proposed T29/T30/T31 remain open. See the
+  [acceptance record](docs/s3-01-mcp-acceptance.md) and
+  [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6).
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
   Typed common SDK transport and protected inbound delivery are authored;
   peer/native/backend acceptance requires fresh integrated qualification. See the
-  [finite acceptance gates](docs/s3-02-a2a-acceptance.md). S2-09/S3-01 publication
-  and integrated SDK/backend/platform validation remain prerequisites; no new
-  A2A profile or proposed inventory criterion is complete.
+  [finite acceptance gates](docs/s3-02-a2a-acceptance.md). S2-09 and S3-01 are
+  verified prerequisites; integrated A2A SDK/backend/platform validation remains
+  open. No A2A profile or proposed inventory criterion is complete.
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected HTTP/OpenAPI/gRPC, awaited outputs, pure AsyncAPI descriptions and
   independent jobs are authored; corrections and qualification remain active. See
