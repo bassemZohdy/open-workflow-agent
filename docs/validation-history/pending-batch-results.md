@@ -967,5 +967,26 @@ and stale-owner races remain the explicit gap.
 
 At exact source `1f75bd1`, the implementation/tracker audit passed (6 tests),
 Markdown relative-link validation passed, and `git diff --check` passed. The
-hosted batch at `f9cb76f` is still running and predates these A2A changes; this
-source needs its own hosted run. This record does not mark A2A05 complete.
+hosted batch at `f9cb76f` predates these A2A changes; this source needs its own
+hosted run. This record does not mark A2A05 complete.
+
+### Hosted PostgreSQL LangGraph recovery recurrence at `f9cb76f`
+
+Hosted PostgreSQL CI run `38624744282`, job `116060928966`, failed the
+`inbox-before-ack-postgresql-langgraph` case in
+`tests/contract/test_selected_adapter_process_recovery.py` (220 passed, 158
+skipped, 379 deselected, 1 failed). Its bounded output-shape diagnostics were
+`[None]` at the native-execute, stored and result layers. An earlier PostgreSQL
+attempt at run `38610573562` also failed this case; rerun job `116024883750`
+passed it, so the recurrence is retained as an active qualification gap.
+
+Review of the process-stop fixture found a race at the intended boundary: the
+event was durably admitted before the ACK callback returned, but the callback's
+wait yielded the event loop, allowing LangGraph's awakened listener to advance
+before the parent stopped the producer. The fixture now freezes that loop at
+the pre-ACK boundary. At source `0eee64b`, the focused local Windows
+LangGraph/SQLite and ADK/SQLite selections each passed (one selected engine
+case passed and the other engine was skipped). This evidence supports the
+fixture correction but does not establish that it fully explains the
+PostgreSQL mismatch. The hosted `f9cb76f` run predates the correction; hosted
+requalification is required, and S3-03 remains open.

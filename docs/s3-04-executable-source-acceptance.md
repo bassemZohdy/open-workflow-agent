@@ -40,8 +40,10 @@ Authored inventories are not passing counts: registry 114 cases, compiler/archiv
 29, imported-source rejection 24, independent source admission 114 across SQLite
 and PostgreSQL, awaited process controls 21, shared actual native/source calls 28
 and process-stop/recovery 24 across the two principal engines and both databases.
-Four additional actual-native/backend cases require a late source worker to
-leave its business receipt pending after genuine parent ownership takeover.
+The four actual-native/backend late-worker takeover cases are authored in
+`tests/contract/test_executable_source_calls.py`; each requires the source
+business receipt to remain pending after a successor acquires ownership. Their
+SQLite/PostgreSQL × ADK/LangGraph exact-source qualification remains pending.
 Actual fixtures require no source HTTP fetch, no paid model call, a non-deduplicating
 SQLite business ledger and real separate process IDs. Known receipts must replay
 without another call; a commit without receipt remains pending without resend.

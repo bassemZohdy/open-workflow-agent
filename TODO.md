@@ -179,17 +179,21 @@ treated as a deferred task or as additional feature completion.
   wall-clock deadline that expired during setup. The test now advances a
   controlled store clock, and the lane cap is 40 minutes. Local sandbox-job,
   workflow and docs validation pass; hosted requalification is pending. The
-  repeated PostgreSQL failure traced to the test yielding its event loop after
-  durable inbox commit while the ACK callback was blocked, letting LangGraph
-  advance past the intended stop boundary. The fixture now holds that loop at
-  the pre-ACK boundary; its local Windows LangGraph/SQLite case passes and
-  hosted validation remains pending. See the
-  [validation history](docs/validation-history/pending-batch-results.md#hosted-windows-adapter-timeout-at-f830fa6).
+  Review found a fixture race: after durable inbox commit, the blocked ACK
+  callback yielded the event loop, allowing LangGraph to advance before the
+  parent stopped the producer. The fixture now holds that loop at the intended
+  pre-ACK boundary; local Windows ADK/SQLite and LangGraph/SQLite selections
+  pass. Hosted requalification must confirm whether this fully explains the
+  PostgreSQL mismatch. See the
+  [PostgreSQL recurrence evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-langgraph-recovery-recurrence-at-f9cb76f) and
+  [Windows timeout evidence](docs/validation-history/pending-batch-results.md#hosted-windows-adapter-timeout-at-f830fa6).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Finite captured script sources, independent recovery proofs and awaited internal
   process controls are authored. See [the acceptance plan](docs/s3-04-executable-source-acceptance.md).
-  The coherent source batch and all platform/backend/publication gates remain
-  pending; no new executable or isolation profile is complete.
+  Actual native/backend cases include a late script worker losing parent
+  ownership while its business receipt remains pending. The coherent source
+  batch and all platform/backend/publication gates remain pending; no new
+  executable or isolation profile is complete.
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
   Protected actor identity, atomic assignments/decisions, fair expiry and native
   recovery proofs are authored; see [the finite acceptance plan](docs/s3-05-protected-approval-acceptance.md).

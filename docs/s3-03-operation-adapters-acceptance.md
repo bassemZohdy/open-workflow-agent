@@ -8,12 +8,14 @@ and broader function/sandbox responsibilities remain pending.
 
 Latest hosted checkpoint `f9cb76f` failed the PostgreSQL LangGraph operation
 adapter job on the selected-adapter `inbox-before-ack` recovery case (220
-passed, 158 skipped, 1 failed). The repeatable `[None]` output-shape diagnostic
-was traced to the process-stop fixture yielding its event loop after durable
-inbox commit while its ACK callback was blocked. The fixture now freezes that
-loop until the parent stops the producer; the local Windows LangGraph/SQLite
-case passes. PostgreSQL and the Windows 40-minute operation-adapter lane still
-need hosted requalification; S3-03 remains unqualified.
+passed, 158 skipped, 1 failed). Review found a fixture race: after durable
+inbox commit, the blocked ACK callback yielded the event loop, allowing
+LangGraph to advance before the parent stopped the producer. The fixture now
+holds that loop at the intended pre-ACK boundary; local Windows ADK/SQLite and
+LangGraph/SQLite selections pass. Hosted requalification must confirm whether
+this fully explains the PostgreSQL mismatch. PostgreSQL and the Windows
+40-minute operation-adapter lane still need hosted requalification; S3-03
+remains unqualified.
 
 The public DSL remains the unmodified Open Workflow 1.0.3 schema. Core owns the
 common adapter; ADK and LangGraph use their own existing native checkpoints.
