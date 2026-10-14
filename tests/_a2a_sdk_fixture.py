@@ -170,18 +170,29 @@ async def sdk_a2a_fixture(
             return await app(scope, receive, send)
         body = bytearray()
         original_receive = receive
+        recorded = False
 
         async def recorded_receive():
+            nonlocal recorded
             frame = await original_receive()
             if frame["type"] == "http.request":
                 body.extend(frame.get("body", b""))
+                if not frame.get("more_body", False) and not recorded:
+                    # Record the complete request before a streaming response can
+                    # finish on the client. The ASGI call may still be returning
+                    # response events on another thread at that point.
+                    recorded = True
+                    calls.append(
+                        {
+                            "body": json.loads(body),
+                            "headers": dict(scope["headers"]),
+                            "method": "POST",
+                        }
+                    )
             return frame
 
         if response_mutation is None:
             await app(scope, recorded_receive, send)
-            calls.append(
-                {"body": json.loads(body), "headers": dict(scope["headers"]), "method": "POST"}
-            )
             return
         frames = []
 
@@ -189,9 +200,6 @@ async def sdk_a2a_fixture(
             frames.append(frame)
 
         await app(scope, recorded_receive, recorded_send)
-        calls.append(
-            {"body": json.loads(body), "headers": dict(scope["headers"]), "method": "POST"}
-        )
         content = b"".join(
             frame.get("body", b"") for frame in frames if frame["type"] == "http.response.body"
         )

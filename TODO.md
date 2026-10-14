@@ -21,13 +21,22 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 ## Delivery status — 2026-10-14
 
 **17 verified / 20 open / 0 deferred.** S2-09 remains the earliest unfinished
-task. The full local profile batch at frozen source `0573ce7` ended with root,
-ADK and LangGraph failures; optional Agent Framework passed. Root coverage was
-89.00%, below the required 90%. All observed failures have actionable fixes, so
-no task is deferred and no pending checkbox or feature is complete. A grouped
-correction and coverage batch is underway before the next full validation run.
+task. The full local profile batch at frozen source `61844c4` did not qualify:
+root (12 failures, 4,329 passed, 2,923 skipped; 89.34% coverage), LangGraph
+(6 failures, 1,679 passed, 1,673 skipped), and optional Agent Framework
+(1 failure, 1,698 passed, 2,356 skipped) ended nonzero. ADK reached all test
+cases and emitted five failures, but pytest stalled during final reporting;
+its worker was stopped after 8,963.63 seconds without emitting totals. The
+observed failures remain actionable; no task is deferred and no pending checkbox
+or feature is complete. Grouped corrections and added core coverage are underway
+before the next full validation run. The corrected focused selection passed
+(377 passed, 176 skipped), with formatting/lint, strict typing, all seven lock
+checks, both Compose profiles, documentation links, and root/core builds green.
+The full root command was started locally on Windows and stopped at 33% after
+45 minutes; it is not a qualification result. Exact-source full profiles and
+hosted CI remain pending.
 See [current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-14)
-and the [retained validation evidence](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-0573ce7).
+and the [retained validation evidence](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-61844c4).
 
 ## Stage 1 — Correct core execution
 

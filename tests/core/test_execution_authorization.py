@@ -544,6 +544,51 @@ def test_exact_resource_denial_and_forged_principal_do_not_create_policy_evidenc
     assert _snapshot(authority_tree) == before
 
 
+def test_action_request_and_invocation_reservation_reject_invalid_candidates(authority_tree):
+    _, _, store, _, handle, authority, _ = authority_tree
+    for action, resource in (("", "http:https://peer.test/action"), ("protocol.call", "")):
+        with pytest.raises(OwaError) as invalid:
+            store.authorize_request(authority, action, resource)
+        assert invalid.value.details == {"reason": "action_resource_invalid"}
+
+    with pytest.raises(OwaError) as denied:
+        store.authorize_request(authority, "protocol.call", "http:https://blocked.test")
+    assert denied.value.details == {"reason": "action_not_permitted"}
+
+    with pytest.raises(OwaError) as wrong_owner:
+        store.reserve_invocation(
+            replace(handle, owner_principal="mallory"), authority, input_data={}
+        )
+    assert wrong_owner.value.details == {"reason": "authority_owner_mismatch"}
+
+    store.reserve_invocation(handle, authority, input_data={})
+    with pytest.raises(OwaError) as changed_candidate:
+        store.reserve_invocation(handle, authority, input_data={"changed": True})
+    assert changed_candidate.value.details == {"reason": "authority_candidate_changed"}
+
+    _admit(authority_tree, {})
+    with pytest.raises(OwaError) as after_admission:
+        store.reserve_invocation(handle, authority, input_data={})
+    assert after_admission.value.details == {"reason": "authority_candidate_after_admission"}
+
+
+def test_authorization_rejects_malformed_request_digest_without_writing_evidence(authority_tree):
+    _, _, store, _, handle, _, identity = authority_tree
+    _admit(authority_tree)
+    before = _snapshot(authority_tree)
+    with pytest.raises(OwaError) as malformed:
+        store.authorize(
+            handle,
+            identity,
+            "protocol.call",
+            "http:https://peer.test/action",
+            "not-a-sha256-digest",
+            execution_lease=handle._execution_lease,
+        )
+    assert malformed.value.details == {"reason": "request_digest_invalid"}
+    assert _snapshot(authority_tree) == before
+
+
 @pytest.mark.parametrize(
     "damage",
     [

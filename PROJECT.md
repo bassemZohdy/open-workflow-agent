@@ -12,10 +12,14 @@
 **17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-09 is
 the earliest unfinished milestone. Coherent source authoring continues through
 S3-08 in parallel; failed or incomplete validation advances no task checkbox or
-inventory row. The latest full local batch at `0573ce7` ended with actionable
-failures in root, ADK and LangGraph; optional Agent Framework passed. Root
-coverage was 89.00%, below its required 90%. Grouped corrections and coverage
-work are being prepared for a fresh full batch.
+inventory row. The latest full local batch at `61844c4` failed qualification:
+root had 12 failures and 89.34% coverage; LangGraph had six failures; optional
+Agent Framework had one failure. ADK recorded five failures, then stalled in
+pytest final reporting and was stopped without totals. The correction batch
+passes its focused selection (377 passed, 176 skipped), formatting/lint, strict
+typing, lock, Compose, docs-link, and root/core build checks. A full root run on
+the local Windows host was stopped at 33% after 45 minutes and is not a
+qualification result; exact-source hosted profiles remain pending.
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
@@ -38,14 +42,15 @@ failed. Later source and corrections remain local feature work pending validatio
 | `dc71ecb`, 1,034 inputs | Five builds passed; common 46 failures/59 errors; optional framework three failures; principal SDK suites reached the unchanged 75-minute bounds with failures | Failed/incomplete |
 | `3aaaf30`, 1,054 inputs | Static/schema/admission checks and five builds passed; common 8 failures, 2,822 passes, 601 skips and 52 errors; source unchanged | Behavioral gates open |
 | `4740732`, 1,067 inputs | Optional Framework: 767 passes, 354 skips, 2,934 deselections, exit 0. LangGraph: 73 failures, 1,146 passes, 672 skips, 1,467 deselections, exit 1. Common and ADK each reached the 4,500-second bound at logged 97% progress, exit 124, without final pytest totals. All four end reports retain unchanged source. | Integrated qualification open |
-| `883cd1a`, 1,068 inputs | Five fresh build/provenance checks passed; its four behavioral profiles were superseded by the completed `0573ce7` batch below. | Historical launch only |
-| `0573ce7`, 17-file source/test change | Static checks, lock checks, Compose validation and root/core builds passed. Optional Framework passed; root (11 failures, 89.00% coverage), ADK (3 failures) and LangGraph (3 failures) did not qualify. Exact outcomes and log hashes are retained in the [batch record](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-0573ce7). | Failed local qualification; corrections underway |
+| `883cd1a`, 1,068 inputs | Five fresh build/provenance checks passed; its four behavioral profiles were superseded by later completed batches. | Historical launch only |
+| `0573ce7`, 17-file source/test change | Static checks, lock checks, Compose validation and root/core builds passed. Optional Framework passed; root, ADK and LangGraph did not qualify. | [Historical failed local qualification](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-0573ce7) |
+| `61844c4`, 18-file correction/coverage batch | Static checks, lock checks, Compose validation and root/core builds passed. Root (12 failures, 89.34% coverage), LangGraph (6 failures), optional Framework (1 failure), and ADK (5 observed failures; final totals unavailable after pytest reporting stalled) did not qualify. Exact outcomes and log hashes are retained in the [batch record](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-61844c4). | Failed/incomplete local qualification; corrections underway |
 
 Earlier `7214f46` and `caa32c8` outcomes remain in
 [the batch evidence record](docs/validation-history/pending-batch-results.md).
-Earlier source checkpoints remain historical. The latest complete local profile
-outcome and actionable failures are recorded in the
-[pending-batch evidence](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-0573ce7).
+Earlier source checkpoints remain historical. The latest full local profile
+outcomes and actionable failures are recorded in the
+[pending-batch evidence](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-61844c4).
 Source changes and partial passes qualify no unchecked task, full inventory row,
 JavaScript profile or release.
 
@@ -612,7 +617,9 @@ these readiness foundations.
 
 ## Current Backlog State
 
-The ordered backlog is maintained in [TODO.md](TODO.md): 17 verified tasks and 20 open tasks. Current authoring and failed validation do not advance completion. No task currently satisfies the stuck-task deferral rule.
+See the [current backlog delivery mode](#current-backlog-delivery-mode--2026-10-14)
+and the ordered [TODO.md](TODO.md). Failed validation does not advance completion;
+no task currently satisfies the stuck-task deferral rule.
 
 ## Canonical repository consolidation — 2026-10-11
 
@@ -657,7 +664,7 @@ uv sync --locked --extra knowledge
 uv run ruff format --check core engines tests
 uv run ruff check .
 uv run mypy --package open_workflow_agent --package open_workflow_agent_adk --package open_workflow_agent_langgraph --package open_workflow_agent_agent_framework
-uv run --locked pytest -q --cov=core/src/open_workflow_agent --cov-fail-under=90
+uv run --locked pytest -q --cov=core/src/open_workflow_agent --cov-fail-under=90 --cov-precision=2
 uv build
 uv build --directory core
 uv run --directory engines/adk --locked --extra native --extra knowledge --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract ../../tests/ctk -q

@@ -24,6 +24,8 @@ from .contract import SandboxExecutionRequest, SandboxExecutionResult, SandboxSe
 from .job_backend import SandboxJobLaunch, SandboxJobObservation, SandboxJobOriginalDeadlineProof
 from .jobs import SandboxJobBackendBinding, SandboxJobLease, SandboxJobProfile, SandboxJobStore
 
+SUPERVISOR_STARTUP_TIMEOUT_SECONDS = 15.0
+
 
 def internal_job_profile(config: SandboxConfig) -> SandboxJobProfile:
     return SandboxJobProfile(
@@ -257,7 +259,10 @@ class InternalSandboxJobBackend:
             start_new_session=os.name == "posix",
             creationflags=0x00000008 | 0x00000200 if os.name == "nt" else 0,
         )
-        async with asyncio.timeout(5):
+        # Keep supervisor startup finite, while allowing cold isolated Python
+        # startup under load. The supervisor independently enforces the original
+        # launch deadline once it starts.
+        async with asyncio.timeout(SUPERVISOR_STARTUP_TIMEOUT_SECONDS):
             while not (directory / "observation.json").exists():
                 if process.poll() is not None:
                     return SandboxJobObservation("unknown")

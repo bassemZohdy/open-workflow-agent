@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 from _grpc_recovery_peer import URI, binding, commits
 from _process_recovery_worker import write_json
+from _recovery_failure_artifact import failure_artifact
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.child_dispatcher import ChildDispatcher
 from open_workflow_agent.child_wait_dispatcher import ChildWaitDispatcher
@@ -383,6 +384,6 @@ if __name__ == "__main__":
     except BaseException as error:
         write_json(
             directory / (mode + "-failure.json"),
-            {"stage": mode, "type": type(error).__name__, "code": getattr(error, "code", None)},
+            failure_artifact(error, stage=mode),
         )
         raise

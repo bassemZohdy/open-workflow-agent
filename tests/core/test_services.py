@@ -467,10 +467,23 @@ def test_runtime_services_recovery_profile_composes_enabled_policies_without_sec
     ],
     ids=["not-object", "missing-fields", "invalid-id", "invalid-version", "extra-field"],
 )
-def test_runtime_services_rejects_invalid_recovery_binding_declarations(tmp_path, declaration):
+def test_runtime_services_rejects_invalid_recovery_binding_declarations(
+    tmp_path, monkeypatch, declaration
+):
+    import open_workflow_agent.services as services_module
     from open_workflow_agent.config import RuntimeConfig
     from open_workflow_agent.services import RuntimeServices
 
+    monkeypatch.setattr(
+        services_module,
+        "recovery_profile",
+        lambda engine, **_kwargs: {
+            "profile": "test-only/physical-recovery-evidence",
+            "engine": engine,
+            "continuation_supported": True,
+            "policy": {},
+        },
+    )
     services = RuntimeServices(
         RuntimeConfig(),
         model=FakeModel(),

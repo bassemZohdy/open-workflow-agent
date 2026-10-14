@@ -331,7 +331,7 @@ async def test_actual_resource_failure_is_unknown_without_invented_exit_or_relau
             "time.sleep(60)\n"
         )
     )
-    _, store, lease, backend, _, launch = supervisor(code, output=2048, workspace=2048)
+    _, store, lease, backend, manager, launch = supervisor(code, output=2048, workspace=2048)
     observed = await backend.submit(launch)
     child_pid = None
     if failure == "workspace":
@@ -360,7 +360,7 @@ async def test_actual_resource_failure_is_unknown_without_invented_exit_or_relau
         # only the per-job execution workspace must be removed.
         assert (workspace_root / ".owa-job-supervisors").is_dir()
         assert not any(child.name.startswith("owa-job-") for child in workspace_root.iterdir())
-        assert backend.capabilities()["resourceLimits"]["workspaceQuota"] == "monitored"
+        assert manager.capabilities()["resourceLimits"]["workspaceQuota"] == "monitored"
 
 
 def _process_is_alive(pid: int) -> bool:

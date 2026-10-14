@@ -13,6 +13,7 @@ from pathlib import Path
 
 import httpx
 from _process_recovery_worker import write_json
+from _recovery_failure_artifact import failure_artifact
 from open_workflow_agent.errors import OwaError
 from open_workflow_agent.execution_authority import authority_scope, current_authority
 from open_workflow_agent.workflow import compile_workflow
@@ -215,9 +216,6 @@ if __name__ == "__main__":
     except BaseException as error:
         write_json(
             directory / (mode + "-failure.json"),
-            {
-                "exception": type(error).__name__,
-                "error": error.as_dict() if isinstance(error, OwaError) else None,
-            },
+            failure_artifact(error, stage=mode),
         )
         raise

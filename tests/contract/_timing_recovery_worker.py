@@ -12,6 +12,7 @@ from typing import Any
 from unittest.mock import patch
 
 from _process_recovery_worker import write_json
+from _recovery_failure_artifact import failure_artifact
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import InvocationStateConflict, ModelError
@@ -213,7 +214,5 @@ if __name__ == "__main__":
     try:
         asyncio.run(run(directory, mode))
     except BaseException as exc:
-        write_json(
-            directory / (mode + "-failure.json"), {"type": type(exc).__name__, "message": str(exc)}
-        )
+        write_json(directory / (mode + "-failure.json"), failure_artifact(exc, stage=mode))
         raise

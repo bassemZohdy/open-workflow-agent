@@ -373,7 +373,7 @@ jobs:
           timeout --signal=TERM --kill-after=30s 45m \
             uv run --locked pytest tests -vv --durations=20 \
               --cov=core/src/open_workflow_agent --cov-report=term-missing \
-              --cov-fail-under=90
+              --cov-fail-under=90 --cov-precision=2
       # The full tests/ selection above includes all shared contract fixtures.
       # Native adapters each run that same contract suite in their own locked env.
       - name: Build root and standalone core artifacts

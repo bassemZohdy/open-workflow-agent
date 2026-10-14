@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 from _external_receiver import PRINCIPAL, RECEIVER_ID, TOKEN_ENV
 from _process_recovery_worker import write_json
+from _recovery_failure_artifact import failure_artifact
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity, ReceiptDependency
@@ -249,6 +250,6 @@ if __name__ == "__main__":
     except BaseException as error:
         write_json(
             directory / (mode + "-failure.json"),
-            {"type": type(error).__name__, "message": str(error)},
+            failure_artifact(error, stage=mode),
         )
         raise

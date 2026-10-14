@@ -49,6 +49,7 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
     root_tests = next(step for step in jobs["root"]["steps"] if step.get("name") == "Tests")
     assert "pytest tests -vv" in root_tests["run"]
     assert "--cov-fail-under=90" in root_tests["run"]
+    assert "--cov-precision=2" in root_tests["run"]
     assert "--kill-after=30s 45m" in root_tests["run"]
     assert jobs["root"]["timeout-minutes"] == "60"
     assert jobs["engines"]["timeout-minutes"] == "45"

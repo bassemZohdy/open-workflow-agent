@@ -7,13 +7,13 @@ import json
 import os
 import sys
 import time
-import traceback
 from dataclasses import asdict
 from pathlib import Path
 
 import pytest
 from _grpc_recovery_worker import native_snapshot
 from _process_recovery_worker import write_json
+from _recovery_failure_artifact import failure_artifact
 from engine_cases import engine_cases
 from open_workflow_agent.child_dispatcher import ChildDispatcher
 from open_workflow_agent.child_wait_dispatcher import ChildWaitDispatcher
@@ -250,14 +250,6 @@ if __name__ == "__main__":
     except BaseException as error:
         write_json(
             directory / (mode + "-failure.json"),
-            {
-                "stage": mode,
-                "type": type(error).__name__,
-                "code": getattr(error, "code", None),
-                "frames": [
-                    {"file": Path(item.filename).name, "line": item.lineno, "function": item.name}
-                    for item in traceback.extract_tb(error.__traceback__)[-8:]
-                ],
-            },
+            failure_artifact(error, stage=mode),
         )
         raise SystemExit(1) from None

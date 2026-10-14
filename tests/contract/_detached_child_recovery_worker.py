@@ -15,6 +15,7 @@ from typing import Any
 
 import httpx
 from _process_recovery_worker import write_json
+from _recovery_failure_artifact import failure_artifact
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.child_dispatcher import ChildDispatcher
 from open_workflow_agent.config import RuntimeConfig
@@ -25,8 +26,12 @@ from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.timer_dispatcher import TimerDispatcher
 from open_workflow_agent.workflow import compile_workflow
 
+CURRENT_STAGE = "bootstrap"
+
 
 async def run(directory: Path, mode: str) -> None:
+    global CURRENT_STAGE
+    CURRENT_STAGE = f"{mode}:load-scenario"
     scenario = json.loads((directory / "scenario.json").read_text(encoding="utf-8"))
     engine_name, boundary, lifetime = scenario["engine"], scenario["boundary"], scenario["lifetime"]
     original = scenario["original"]
@@ -180,6 +185,7 @@ async def run(directory: Path, mode: str) -> None:
         write_json(directory / "ready.json", evidence())
 
     try:
+        CURRENT_STAGE = f"{mode}:engine-initialize"
         await engine.initialize(services)
         engine._execution_ownership_seconds = 5
         available = (
@@ -223,6 +229,7 @@ async def run(directory: Path, mode: str) -> None:
 
         engine.executor._notify_receipt, engine.executor._call = notify, call
         if mode == "start":
+            CURRENT_STAGE = "start:invoke-parent"
             parent = services.invocations.create(
                 engine=engine_name,
                 session_id=None,
@@ -239,20 +246,24 @@ async def run(directory: Path, mode: str) -> None:
             if lifetime == "cancel":
                 await engine.cancel(parent)
             if boundary == "parent-terminal":
+                CURRENT_STAGE = "start:wait-parent-terminal"
                 ready()
                 await asyncio.Event().wait()
             assert decision is not None
+            CURRENT_STAGE = "start:dispatch-child"
             await dispatcher.tick(job_key=decision.key)
             async with asyncio.timeout(40):
                 while not (directory / "ready.json").exists():
                     assert not dispatcher._errors, tuple(str(error) for error in dispatcher._errors)
                     await asyncio.sleep(0.01)
             await asyncio.Event().wait()
+        CURRENT_STAGE = "recover:load-parent"
         assert saved is not None
         parent = services.invocations.get(saved["parent_id"])
         assert parent is not None
         decision = EffectIdentity.from_value(saved["decision"])
         if boundary == "admission":
+            CURRENT_STAGE = "recover:wait-parent-terminal"
             async with asyncio.timeout(45):
                 while parent.status == "running":
                     try:
@@ -270,6 +281,7 @@ async def run(directory: Path, mode: str) -> None:
             parent.error
         )
         async with asyncio.timeout(45):
+            CURRENT_STAGE = "recover:wait-child-terminal"
             while True:
                 current = evidence()
                 if current["child_status"] in {"completed", "cancelled", "faulted"}:
@@ -277,6 +289,7 @@ async def run(directory: Path, mode: str) -> None:
                 await dispatcher.tick(job_key=decision.key)
                 await asyncio.sleep(0.05)
         assert current["child_status"] == "completed", list(dispatcher._errors)
+        CURRENT_STAGE = "recover:flush-dispatcher"
         await dispatcher.tick(job_key=decision.key)
         async with asyncio.timeout(5):
             while dispatcher._workers:
@@ -303,10 +316,6 @@ if __name__ == "__main__":
     except BaseException as error:
         write_json(
             task_directory / (task_mode + "-failure.json"),
-            {
-                "pid": os.getpid(),
-                "error": repr(error),
-                "type": type(error).__name__,
-            },
+            {"pid": os.getpid(), **failure_artifact(error, stage=CURRENT_STAGE)},
         )
         raise

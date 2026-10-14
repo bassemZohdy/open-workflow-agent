@@ -278,3 +278,88 @@ task, feature row, backend, JavaScript profile, or release advances from these
 results. The follow-up batch addresses the observed fixture issues and adds
 behavioral coverage without lowering the 90% threshold; a fresh full run is
 required before any acceptance claim.
+
+## Frozen full profile batch — 61844c4
+
+Source `61844c4c71f2eb27cadcec2b206fe557d75b8bce` freezes the grouped
+corrections and added deterministic core coverage. Before launch, repository
+Ruff, formatting, strict mypy, lock checks, Compose validation, and root/core
+package builds passed. Four behavioral profiles ran against this exact source;
+the tracked worktree remained unchanged.
+
+| Profile | Result | Duration | Exit |
+| --- | --- | --- | --- |
+| Root suite and coverage | 12 failed, 4,329 passed, 2,923 skipped, 59 warnings; 89.34% coverage (required 90%) | 6,110.33s (1:41:50) | 1 |
+| ADK and shared/CTK | Five failures observed; pytest reached all cases but stalled after the warnings at the short-summary heading. Exact passed/skipped totals were not emitted. | 8,963.63s (2:29:24) | -1 (runner stopped after idle final-report stall) |
+| LangGraph and shared/CTK | 6 failed, 1,679 passed, 1,673 skipped, 19 warnings | 7,727.37s (2:08:47) | 1 |
+| Optional Agent Framework and shared/CTK | 1 failed, 1,698 passed, 2,356 skipped, 1 warning | 5,744.49s (1:35:44) | 1 |
+
+Root coverage measured 24,288 statements with 2,588 missed. The root failures
+were one A2A streaming SDK fixture, one SQLite corruption expectation, two
+internal-sandbox supervisor expectations, one protected-approval response
+assertion, five recovery-binding fixtures that failed before their intended
+declaration checks, one unsafe-JSON message assertion, and one missing
+transition-target fixture. The failure names and full traces are in the root
+log.
+
+ADK emitted five failures: four process-recovery cases reported unavailable or
+inconsistent original-definition evidence (including executable-source,
+external-receiver, deadline, and OpenAPI recovery), while expired protected
+approval recovery surfaced an `OperationalError`. Its log also ended with a
+gRPC server destructor warning after the event loop had closed and an unawaited
+`AioServer.shutdown` coroutine. The pytest worker remained idle with no log
+updates for more than six minutes after all cases had completed, so it was
+stopped; the final summary totals and a normal pytest exit were unavailable.
+
+LangGraph's five process-recovery failures involved detached-child admission,
+execution authority, external receiver, gRPC, and OpenAPI restart scenarios;
+protected-approval race recovery returned a workflow error instead of the
+expected conflict. The optional Agent Framework profile failed the 5-second
+scoped-fork cancellation case while asynchronous recovery work consumed the
+window. These symptoms require targeted diagnosis and do not establish a
+qualified profile. Root coverage remains below threshold; do not lower it.
+
+The four local logs are ignored artifacts under `tmp/qualification-61844c4/`:
+
+| Log | SHA-256 |
+| --- | --- |
+| `root.log` | `59ff9aa0ef3d6a370bd0429345869cb4c698b3ec4ec396b817d93c5115ee214d` |
+| `adk.log` | `6a6b9f2aec36336bac815b36baeef88582c1e93e1e82f91a4766274e9d611f05` |
+| `langgraph.log` | `85f2b6fc81a6da926f992913d70f7c40ad33997dbf868179f150f4622898398a` |
+| `framework.log` | `c6eef34919ad0229ff380423d74809740e2a78f1fafb396c1096c7e740a638c9` |
+
+This batch failed local qualification and provides no hosted CI evidence. No
+task, feature, backend, JavaScript profile or release advances from these
+results. Correct the fixtures and diagnose the fail-closed recovery errors and
+runner cleanup before the next full batch. The prior `0573ce7` and `883cd1a`
+records remain historical, as do their outcomes.
+
+Subsequent focused diagnostics in the correction worktree passed all six
+previously failing LangGraph recovery cases twice (6 passed, 186 deselected in
+131.01s and 139.33s) and all five observed ADK recovery cases (four subprocess
+cases: 4 passed, 152 deselected in 138.32s; workflow-deadline case: 1 passed,
+67 deselected in 11.07s). The ADK receipt-consistency case implicated by the
+suite cleanup warning also passed alone (1 passed, 95 deselected in 12.55s),
+without that warning. Test-only failure diagnostics passed two secrecy/metadata
+tests. These isolated results make host contention or suite interaction the
+current explanation to investigate; they do not replace full-profile or hosted
+qualification and did not justify changing production recovery checks.
+
+## Corrective source batch — hosted qualification pending
+
+The correction batch based on `61844c4` passed its consolidated focused
+regression selection: 377 passed and 176 skipped in 194.56s. Ruff lint and
+formatting, strict mypy for CI and all runtime packages, all seven lock checks,
+embedded/PostgreSQL Compose validation, Markdown relative links, and root/core
+wheel and source builds passed. The measured merged statement union is
+21,860/24,288 (90.0033%); the CI gate now sets `--cov-precision=2` so rounding
+cannot hide a below-90% result.
+
+The full root command was also started on the local Windows workstation, but
+was deliberately stopped after 45 minutes at 33% while running the contract
+suite. That run produced no pytest summary and is incomplete, not a pass or a
+test failure. Root CI runs this qualification on hosted Ubuntu with a separate
+45-minute command bound. The exact-source hosted PR batch must qualify root
+coverage, ADK, LangGraph, optional Agent Framework, Windows, PostgreSQL,
+container, security, and documentation jobs before any open backlog item is
+advanced. The strict 90% threshold and all acceptance gates remain unchanged.

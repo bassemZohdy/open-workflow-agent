@@ -492,9 +492,9 @@ def test_workflow_loaders_reject_non_json_yaml_and_unsafe_mapping_shapes(tmp_pat
         load_workflow(cyclic)
     with pytest.raises(WorkflowSchemaError, match="keys must be strings"):
         _validate_json_value({1: "invalid key"})
-    with pytest.raises(WorkflowSchemaError, match="finite JSON"):
+    with pytest.raises(WorkflowSchemaError, match="finite.*JSON"):
         _validate_json_value(float("nan"))
-    with pytest.raises(WorkflowSchemaError, match="finite JSON"):
+    with pytest.raises(WorkflowSchemaError, match="finite.*JSON"):
         _validate_json_value(object())
     with pytest.raises(WorkflowSchemaError, match="depth at most 64"):
         _validate_json_value(0, depth=65)
@@ -617,9 +617,8 @@ async def test_task_sequence_rejects_malformed_items_and_missing_transition_targ
             await executor._run_tasks(items, ExecutionState(data={}))
 
     state = ExecutionState(data={})
-    state.jump_to = "absent"
     with pytest.raises(WorkflowExecutionError, match="transition target not found"):
-        await executor._run_tasks([{"task": {"set": {"ok": True}}}], state)
+        await executor._run_tasks([{"jump": {"set": {"ok": True}, "then": "absent"}}], state)
 
 
 @pytest.mark.asyncio

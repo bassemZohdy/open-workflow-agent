@@ -23,6 +23,7 @@ from _protected_approval_fixtures import (
     runtime,
     waiting,
 )
+from _recovery_failure_artifact import failure_artifact
 from _version_recovery_worker import native_snapshot
 from open_workflow_agent.errors import OwaError
 from open_workflow_agent.protected_approval_store import REQUEST_POLICY
@@ -237,9 +238,6 @@ if __name__ == "__main__":
     except BaseException as error:
         write_json(
             directory / (mode + "-failure.json"),
-            {
-                "exception": type(error).__name__,
-                "error": error.as_dict() if isinstance(error, OwaError) else None,
-            },
+            failure_artifact(error, stage=mode, include_traceback=True),
         )
         raise

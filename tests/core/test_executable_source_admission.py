@@ -269,7 +269,9 @@ async def test_startup_source_history_rejects_fixture_damage_without_repair_or_d
     connection.commit()
     before = snapshot(original)
     expected_error = (
-        WorkflowExecutionError if damage == "index-payload-bound" else ConfigurationError
+        WorkflowExecutionError
+        if damage in {"index-identity", "index-payload-bound"}
+        else ConfigurationError
     )
     with pytest.raises(expected_error):
         await services.verify_executable_source_history(handle)

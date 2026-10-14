@@ -545,10 +545,12 @@ async def test_protected_approval_assignment_api_replays_and_fences_changes(appr
         )
         assert escalation.status_code == 200
         assert escalation.json()["revision"] == 2
-        changed, _ = services.approvals.protected_store.inspect(escalated)
-        assert changed["assignee"] == principals["b"]
-        assert changed["audit"][0]["request"]["action"] == "escalate"
-        assert snapshot(services, escalated) != escalated_snapshot
+        changed, assignment = services.approvals.protected_store.inspect(escalated)
+        assert assignment[1] == principals["b"]
+        escalated_state = snapshot(services, escalated)
+        audit = json.loads(escalated_state["audit"][0][3])
+        assert audit["request"]["action"] == "escalate"
+        assert escalated_state != escalated_snapshot
         services.verify_protected_approvals(handle)
 
 
