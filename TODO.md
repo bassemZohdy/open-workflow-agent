@@ -157,8 +157,10 @@ treated as a deferred task or as additional feature completion.
   methods (133 SDK HTTP tests pass locally, with hosted requalification still
   pending). The A2A08 actual-TCP loss witnesses remain separate from
   credential-method coverage.
-  Reconnect policy and durable expiry remain open, as do the remaining
-  card-selected policy cross-products and cross-backend matrix. See the
+  Outbound streaming has an explicit no-automatic-retry policy: a caller may
+  separately subscribe to a known task, while lost or partial send streams
+  stay uncertain. Durable expiry, remaining card-selected policy cross-products
+  and the cross-backend matrix remain open. See the
   [finite acceptance record](docs/s3-02-a2a-acceptance.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected HTTP/OpenAPI/gRPC, awaited outputs, pure AsyncAPI descriptions and
