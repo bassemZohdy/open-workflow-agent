@@ -204,9 +204,8 @@ async def run(directory, mode):
                     directory / "recover-output-diagnostic.json",
                     {
                         "output_type": type(actual_output).__name__,
-                        "output_keys": sorted(str(key) for key in actual_output)
-                        if is_mapping
-                        else [],
+                        "has_events_key": is_mapping and "events" in actual_output,
+                        "has_original_key": is_mapping and "original" in actual_output,
                         "events_type": type(actual_events).__name__,
                         "events_count": len(actual_events)
                         if isinstance(actual_events, (list, tuple))

@@ -5,6 +5,17 @@ VM01-VM08 policy is verified at PR head `9578459`; S3-01 through S3-08 remain
 open. Passing subsets and fresh builds do not replace complete qualification.
 Local `tmp/` evidence is ignored and retained in its originating worktree.
 
+### Superseded diagnostic pass — `b0bd076`
+
+Source `b0bd076762e5ee99265f2aeb96c84c8477a17984` added output-shape diagnostics
+for the `b3d7b61` PostgreSQL recovery failure. During the new source run, review
+found that serializing arbitrary output-map keys could include data in the
+diagnostic. The CI, PostgreSQL, Agent Framework and External Sandbox runs were
+cancelled before completion; Docs and Security completed successfully but do
+not qualify the source. The diagnostic now reports only fixed key-presence
+flags, types, collection length and equality booleans. No task or capability
+advanced from this interrupted pass.
+
 ### Exact-source validation attempt — `b3d7b61`
 
 Source `b3d7b613c723df704e30db18009fcb615a5a4a22` completed the six hosted
@@ -19,9 +30,9 @@ reported 90.05% coverage. The Windows timer suite passed 718 tests and skipped
 769 in 32m50s. PostgreSQL passed seven jobs; its LangGraph operation-adapter
 recovery job failed one case (`inbox-before-ack`) after 220 passed, 158 skipped
 and 379 deselected. Recovery completed, but its output differed from the
-expected value; the worker did not record a safe description of the differing
-shape. The other PostgreSQL jobs passed, and the persistence matrix job was
-skipped by its configured selector. This is not a completed qualification
+expected value; that source's worker did not record a safe description of the
+differing shape. The other PostgreSQL jobs passed; the persistence matrix job
+was skipped by its configured selector. This is not a completed qualification
 checkpoint. S3-01 remains open until the corrected source passes its complete
 hosted matrix; no capability or task is advanced by this attempt.
 
