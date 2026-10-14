@@ -721,7 +721,8 @@ async def test_exact_deployment_credential_grant_reaches_selected_sdk_peer(
 
 
 @pytest.mark.asyncio
-async def test_card_cannot_redirect_protected_tool_credentials_to_another_endpoint():
+@pytest.mark.parametrize("method", METHODS)
+async def test_card_cannot_redirect_protected_tool_credentials_to_another_endpoint(method):
     calls = []
     http = HttpClient(transport=httpx.MockTransport(lambda request: calls.append(request)))
     auth = named_authentication("bearer", http)
@@ -729,7 +730,7 @@ async def test_card_cannot_redirect_protected_tool_credentials_to_another_endpoi
         [ToolDefinition("peer", "a2a", "https://a2a.test/authorized", {}, auth)],
         ProtocolServices(http),
     )
-    value = payload("SendMessage", "https://a2a.test/a2a")
+    value = payload(method, "https://a2a.test/a2a")
     value["agentCard"] = json_format.MessageToDict(peer_card("https://a2a.test/a2a"))
     with pytest.raises(ToolError) as error:
         await tools.invoke("peer", value)
@@ -737,11 +738,12 @@ async def test_card_cannot_redirect_protected_tool_credentials_to_another_endpoi
 
 
 @pytest.mark.asyncio
-async def test_oauth_card_requires_exact_resource_endpoint_before_issuer_dispatch():
+@pytest.mark.parametrize("method", METHODS)
+async def test_oauth_card_requires_exact_resource_endpoint_before_issuer_dispatch(method):
     calls = []
     http = HttpClient(transport=httpx.MockTransport(lambda request: calls.append(request)))
     auth = named_authentication("oauth", http)
-    value = payload("SendMessage", "https://a2a.test/a2a")
+    value = payload(method, "https://a2a.test/a2a")
     value["agentCard"] = json_format.MessageToDict(peer_card("https://a2a.test/a2a"))
     protocols = ProtocolServices(http, a2a_credential_endpoints={"selected": (value["server"],)})
     with pytest.raises(ToolError) as error:

@@ -154,7 +154,7 @@ treated as a deferred task or as additional feature completion.
   also passes real HTTPS calls with named bearer/API-key grants and OAuth for
   the AgentCard-selected peer, plus required named mTLS. The current source
   extends actual-TLS named-credential checks across all seven advertised
-  methods (121 SDK HTTP tests pass locally, with hosted requalification still
+  methods (133 SDK HTTP tests pass locally, with hosted requalification still
   pending). The A2A08 actual-TCP loss witnesses remain separate from
   credential-method coverage.
   Reconnect policy and durable expiry remain open, as do the remaining
