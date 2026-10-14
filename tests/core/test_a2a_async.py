@@ -7,6 +7,7 @@ and resuming sends over the common resume contract (A2A-6).
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -193,6 +194,208 @@ async def test_approval_wait_projects_input_required_and_completes(tmp_path) -> 
 
             final = await _poll_task_state(client, task_id, "TASK_STATE_COMPLETED")
             assert final["artifacts"][0]["parts"][0]["data"] == {"approved": True}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("transport_name", ["jsonrpc", "http_json"])
+async def test_a2a_resume_cannot_bypass_protected_approval_wait(
+    tmp_path, monkeypatch, transport_name
+) -> None:
+    monkeypatch.setenv("OWA_TEST_A2A_APPROVAL_ACTOR", "approval-secret")
+    subject = f"protected-a2a-{transport_name}"
+    expires_at = (datetime.now(UTC) + timedelta(minutes=5)).isoformat().replace("+00:00", "Z")
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "a2a-async",
+            "name": "protected-approval-flow",
+            "version": "1.0.0",
+        },
+        "do": [
+            {
+                "request": {
+                    "emit": {
+                        "event": {
+                            "with": {
+                                "id": subject,
+                                "source": "urn:a2a-async:protected-approval",
+                                "type": APPROVAL_REQUEST_EVENT,
+                                "subject": subject,
+                                "approvalexpiresat": expires_at,
+                                "data": {
+                                    "approvalPolicy": {
+                                        "profile": "owa/protected-approval/v1",
+                                        "assignee": "reviewer-a",
+                                        "reassignmentTargets": [],
+                                        "escalationTargets": [],
+                                    },
+                                    "question": "continue?",
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "decision": {
+                    "listen": {
+                        "to": {
+                            "one": {
+                                "with": {
+                                    "type": APPROVAL_DECISION_EVENT,
+                                    "subject": subject,
+                                }
+                            }
+                        },
+                        "read": "data",
+                    }
+                }
+            },
+            {"finish": {"set": {"approved": True}}},
+        ],
+    }
+    config = RuntimeConfig.model_validate(
+        {
+            "approvals": {
+                "enabled": True,
+                "protected": True,
+                "actor_security_profiles": ["approval-actor"],
+            },
+            "security": {
+                "profiles": {
+                    "approval-actor": {
+                        "type": "bearer",
+                        "token": {"from_env": "OWA_TEST_A2A_APPROVAL_ACTOR"},
+                        "principal": "reviewer-a",
+                    }
+                }
+            },
+            "workflow": {"catalog": [workflow]},
+            "a2a": {
+                "enabled": True,
+                "transport": transport_name,
+                "skills": [{"id": "approve", "workflow": "protected-approval-flow"}],
+            },
+        }
+    )
+    app, services = _make_app(tmp_path, config)
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            if transport_name == "jsonrpc":
+                started = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(
+                        _text_message(metadata={"skillId": "approve"}),
+                        configuration={"returnImmediately": True},
+                    ),
+                )
+            else:
+                started = await client.post(
+                    "/a2a/message:send",
+                    headers=HEADERS,
+                    json={
+                        "message": _text_message(metadata={"skillId": "approve"}),
+                        "configuration": {"returnImmediately": True},
+                    },
+                )
+            assert started.status_code == 200, started.text
+            started_body = started.json()
+            task_id = (
+                started_body["result"]["task"]["id"]
+                if transport_name == "jsonrpc"
+                else started_body["task"]["id"]
+            )
+            await _poll_task_state(
+                client, task_id, "TASK_STATE_INPUT_REQUIRED", transport=transport_name
+            )
+
+            handle = services.invocations.get(task_id)
+            assert handle is not None and handle.status == "waiting"
+            input_before = services.invocations.read_input(handle)
+            payload_before = handle._persisted_payload
+            delivery_before = services.initial_deliveries.get(handle)
+            assert delivery_before is not None
+            approval_before = services.approvals.protected_store.inspect(subject)
+            request_before = services.approvals.store.get(subject)
+            assert request_before is not None and request_before.status == "pending"
+            inputs_before = services.invocations.connection.execute(
+                "SELECT invocation_id,fingerprint,payload FROM invocation_inputs "
+                "WHERE invocation_id=?",
+                (task_id,),
+            ).fetchall()
+            effects_before = services.effect_journal.connection.execute(
+                "SELECT i.identity,i.fingerprint,i.payload,e.owner,e.status,e.payload "
+                "FROM workflow_effect_invocations i LEFT JOIN workflow_effects e "
+                "ON e.identity=i.identity WHERE i.invocation_id=? ORDER BY i.identity",
+                (task_id,),
+            ).fetchall()
+            inbox_before = services.event_store.connection.execute(
+                "SELECT sequence,scope,source,event_id,envelope,digest,submitted_digest "
+                "FROM event_inbox ORDER BY sequence"
+            ).fetchall()
+
+            resume_message = _text_message(
+                "unauthorized approval answer",
+                taskId=task_id,
+                contextId=handle.session_id,
+            )
+            if transport_name == "jsonrpc":
+                resumed = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(resume_message),
+                )
+            else:
+                resumed = await client.post(
+                    "/a2a/message:send",
+                    headers=HEADERS,
+                    json={"message": resume_message},
+                )
+            if transport_name == "jsonrpc":
+                assert resumed.status_code == 200, resumed.text
+                assert resumed.json()["error"]["code"] == -32000
+                assert resumed.json()["error"]["message"] == "task is not accepting input"
+            else:
+                assert resumed.status_code == 409, resumed.text
+                assert resumed.json()["error"]["details"][0]["metadata"]["owaCode"] == (
+                    "task_not_resumeable"
+                )
+
+            current = services.invocations.get(task_id)
+            assert current is not None and current.status == "waiting"
+            assert current._persisted_payload == payload_before
+            assert services.invocations.read_input(current) == input_before
+            assert services.initial_deliveries.get(current) == delivery_before
+            assert services.approvals.protected_store.inspect(subject) == approval_before
+            assert services.approvals.store.get(subject) == request_before
+            assert services.approvals.store.get(subject).status == "pending"
+            assert (
+                services.invocations.connection.execute(
+                    "SELECT invocation_id,fingerprint,payload FROM invocation_inputs "
+                    "WHERE invocation_id=?",
+                    (task_id,),
+                ).fetchall()
+                == inputs_before
+            )
+            assert (
+                services.effect_journal.connection.execute(
+                    "SELECT i.identity,i.fingerprint,i.payload,e.owner,e.status,e.payload "
+                    "FROM workflow_effect_invocations i LEFT JOIN workflow_effects e "
+                    "ON e.identity=i.identity WHERE i.invocation_id=? ORDER BY i.identity",
+                    (task_id,),
+                ).fetchall()
+                == effects_before
+            )
+            assert (
+                services.event_store.connection.execute(
+                    "SELECT sequence,scope,source,event_id,envelope,digest,submitted_digest "
+                    "FROM event_inbox ORDER BY sequence"
+                ).fetchall()
+                == inbox_before
+            )
+            assert services.model.calls == []
 
 
 @pytest.mark.asyncio

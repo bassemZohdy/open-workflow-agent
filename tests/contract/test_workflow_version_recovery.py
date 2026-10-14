@@ -64,7 +64,13 @@ def _definition(version: str) -> dict[str, Any]:
     }
 
 
-def _config(source: dict[str, Any], backend: str, *, skill: bool = False) -> RuntimeConfig:
+def _config(
+    source: dict[str, Any],
+    backend: str,
+    *,
+    skill: bool = False,
+    a2a_transport: str = "jsonrpc",
+) -> RuntimeConfig:
     datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
     if backend == "postgresql" and not datasource:
         pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
@@ -77,6 +83,7 @@ def _config(source: dict[str, Any], backend: str, *, skill: bool = False) -> Run
             "a2a": {
                 "enabled": True,
                 "security_profile": "api",
+                "transport": a2a_transport,
                 **(
                     {
                         "skills": [{"id": "retained", "workflow": "retained-root"}],
@@ -327,6 +334,7 @@ async def test_public_resume_uses_retained_v1_after_v2_deployment_and_reopen(
 @pytest.mark.parametrize(
     "damage", ["archive_missing", "archive_digest", "binding_missing", "binding_digest"]
 )
+@pytest.mark.parametrize("surface", ["rest", "jsonrpc", "http_json"])
 async def test_public_resume_rejects_changed_archive_before_ownership_or_native_mutation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -334,11 +342,16 @@ async def test_public_resume_rejects_changed_archive_before_ownership_or_native_
     engine_type: Any,
     backend: str,
     damage: str,
+    surface: str,
 ) -> None:
     monkeypatch.setenv(TOKEN_ENV, TOKEN)
     _clock(monkeypatch, [1000.0])
     receiver = Receiver(tmp_path / "receiver.sqlite3")
-    config = _config(_definition("1.0.0"), backend)
+    config = _config(
+        _definition("1.0.0"),
+        backend,
+        a2a_transport=surface if surface in {"jsonrpc", "http_json"} else "jsonrpc",
+    )
     services = _services(tmp_path, config, receiver)
     engine = engine_type()
     _actual_native(engine, engine_name)
@@ -389,11 +402,50 @@ async def test_public_resume_rejects_changed_archive_before_ownership_or_native_
                 connection.commit()
                 before = _common_snapshot(services, handle.invocation_id)
                 native_before = _native_snapshot(services, handle, backend)
-                response = await client.post(
-                    f"/v1/invocations/{handle.invocation_id}/resume",
-                    json={"input": {"replacement": True}},
-                )
-                assert response.status_code in {409, 500}, response.text
+                if surface == "rest":
+                    response = await client.post(
+                        f"/v1/invocations/{handle.invocation_id}/resume",
+                        json={"input": {"replacement": True}},
+                    )
+                    assert response.status_code in {409, 500}, response.text
+                else:
+                    message = {
+                        "role": "ROLE_USER",
+                        "messageId": "reject-damaged-archive",
+                        "taskId": handle.invocation_id,
+                        **(
+                            {"contextId": handle.session_id}
+                            if handle.session_id is not None
+                            else {}
+                        ),
+                        "parts": [{"text": "continue damaged archive"}],
+                    }
+                    if surface == "jsonrpc":
+                        response = await client.post(
+                            "/a2a",
+                            headers={"a2a-version": A2A_PROTOCOL_VERSION},
+                            json={
+                                "jsonrpc": "2.0",
+                                "id": "damaged-archive-resume",
+                                "method": "SendMessage",
+                                "params": {"message": message},
+                            },
+                        )
+                        body = response.json()
+                        assert response.status_code == 200, response.text
+                        assert body["error"]["code"] == -32000
+                        assert body["error"]["message"] == "task is not accepting input"
+                    else:
+                        response = await client.post(
+                            "/a2a/message:send",
+                            headers={"a2a-version": A2A_PROTOCOL_VERSION},
+                            json={"message": message},
+                        )
+                        body = response.json()
+                        assert response.status_code == 409, response.text
+                        assert body["error"]["details"][0]["metadata"]["owaCode"] == (
+                            "task_not_resumeable"
+                        )
                 assert "retained-secret" not in response.text and TOKEN not in response.text
                 report = await client.get(f"/v1/invocations/{handle.invocation_id}/recovery")
                 assert report.status_code == 200 and report.json()["continuation"] == "unavailable"

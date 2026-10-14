@@ -1078,7 +1078,9 @@ incomplete S3-03 validation result, not a code pass or a proven runtime defect.
 The ADK operation job's command budget is raised to 25 minutes and its hosted
 job limit to 30 minutes, retaining a finite bound and cleanup margin. The next
 exact-source PostgreSQL run must confirm the remaining case and complete suite;
-S3-03 stays open until that run and its other acceptance gates pass.
+this was still pending at the `f235be4` checkpoint. The exact-source result
+below records the successful `e45115c` rerun; S3-03 remains open for its other
+acceptance gates.
 
 ### A2A acceptance follow-up at `dc45dc6`
 
@@ -1096,3 +1098,35 @@ implementation/tracker checks, Ruff, formatting and `git diff --check` passed.
 No backlog checkbox advanced: A2A01-A2A08 remain open where their stated
 cross-products and hosted evidence are incomplete, and S3-03 remains open until
 the extended PostgreSQL ADK operation job is confirmed on a hosted rerun.
+
+### A2A protected-resume and archive-rejection follow-up based on `e45115c`
+
+The five focused core A2A files passed on Windows (217 passed, 64 warnings in
+170.31 seconds). This includes a protected-approval resume-denial check on
+JSON-RPC and HTTP+JSON, unknown/foreign task-access equality across both
+bindings, and an actual timer wait whose later GetTask projection preserves the
+committed artifact and remains immutable on repeated reads. The first timer
+fixture attempt raced the initial execution lease; it now waits for that lease
+to be released before dispatching the due timer.
+
+The public resume archive/binding damage selection passed on ADK/SQLite
+(12 passed, 36 skipped, 44 deselected in 81.71 seconds) and LangGraph/SQLite
+(12 passed, 36 skipped, 44 deselected in 70.09 seconds). The matrix retains the
+REST cases and now includes JSON-RPC and HTTP+JSON A2A resumes for missing and
+digest-corrupt archive or invocation-binding evidence. Its first assertions
+assumed an A2A local code in the JSON-RPC envelope and HTTP 500; the implementation
+returns the generic JSON-RPC application error and HTTP 409 with the local code
+in HTTP+JSON details, which the corrected assertions now verify.
+
+The protected-resume test initially showed that a generic SendMessage could
+enter and wait indefinitely inside a durable event listener. A2A target
+resolution now rejects waiting invocations with a pending durable event listener
+before native execution; the two protected-approval binding cases and the real
+timer projection case pass individually, and the combined 217-test core suite
+passes. This guard preserves timer/user-resume behavior and protects all durable
+event waits from being resumed through an unrelated text message.
+
+PostgreSQL CI run `38645586498` passed at exact source `e45115c`, including the
+ADK operation-adapter job with a 25-minute test command and 30-minute job cap.
+The remaining main CI jobs on that source are still running. No A2A or S3-03
+backlog checkbox advanced.

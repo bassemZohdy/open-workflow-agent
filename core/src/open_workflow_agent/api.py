@@ -21,7 +21,7 @@ from .a2a import (
     extract_output_text,
     mount_a2a,
 )
-from .a2a_tasks import project_a2a_task
+from .a2a_tasks import has_pending_event_listener, project_a2a_task
 from .approvals import APPROVAL_STATES, ApprovalEventBus
 from .config import RuntimeConfig
 from .durable_events import DEFAULT_EVENT_SCOPE, DurableEventBus
@@ -970,6 +970,10 @@ def create_app(
             return None
         if handle.status in TERMINAL_INVOCATION_STATES:
             return ResumeTarget(status=handle.status, skill_id=None, deployable=True)
+        if handle.status == "waiting" and has_pending_event_listener(handle, runtime_services):
+            # Durable event waits must be settled by their event source. A
+            # SendMessage resume must not turn one into an unbounded engine run.
+            return ResumeTarget(status=handle.status, skill_id=None, deployable=False)
         skill_plans = getattr(app.state, "a2a_skill_plans", {}) or {}
         skill_id: str | None = None
         try:

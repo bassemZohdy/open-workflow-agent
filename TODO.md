@@ -155,8 +155,11 @@ treated as a deferred task or as additional feature completion.
   Outbound calls are not automatically replayed after possible acceptance;
   callers may explicitly resubscribe to a known task. This batch adds card
   interface-selection, HTTP+JSON resume, recovery skill-binding and optional-
-  method rejection witnesses; focused local core and engine recovery selections
-  pass, with exact-source hosted requalification pending. See the
+  method rejection witnesses. Follow-up tests now reject protected-approval
+  resumes, verify a real timer's terminal Task projection, and reject A2A resume
+  when archived workflow or invocation-binding evidence is missing or corrupt.
+  The focused core suite (217 tests) and ADK/LangGraph SQLite recovery selections
+  pass locally; exact-source hosted requalification is pending. See the
   [gate-by-gate acceptance record](docs/s3-02-a2a-acceptance.md) and
   [retained validation history](docs/validation-history/pending-batch-results.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
@@ -164,8 +167,10 @@ treated as a deferred task or as additional feature completion.
   `8183776` PostgreSQL and Windows runs confirm one corrected inbox/ACK
   recurrence only; broader behavior, backend, platform, lifetime, packaging
   and hosted qualification remain open. At `f235be4`, PostgreSQL ADK operation
-  recovery reached 97% before its 20-minute command limit (exit 124); the
-  command/job bounds are now 25/30 minutes pending hosted confirmation. See
+  recovery reached 97% before its 20-minute command limit (exit 124). The
+  extended 25-minute command and 30-minute job completed in PostgreSQL CI run
+  `38645586498` at `e45115c`; broader backend and adapter qualification remains
+  open. See
   the [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and
   [retained run evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.

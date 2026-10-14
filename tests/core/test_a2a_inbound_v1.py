@@ -18,7 +18,7 @@ from open_workflow_agent.engine import PortableWorkflowEngine
 from open_workflow_agent.observability import WorkflowEvent
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.streaming import StreamLimits
-from open_workflow_agent.workflow import compile_workflow
+from open_workflow_agent.workflow import WorkflowExecutor, compile_workflow
 
 
 def message(**values):
@@ -520,6 +520,143 @@ def test_real_retained_timer_is_automatic_work_without_mutating_wait_evidence(tm
     assert services.timers.get(identity) == before == registration
     assert services.invocations.read_input(handle) == {"original": None}
     assert services.invocations.get(handle.invocation_id).status == "waiting"
+    services.close()
+
+
+@pytest.mark.asyncio
+async def test_real_timer_wait_projects_authoritative_terminal_task_after_get_task(
+    tmp_path, monkeypatch
+):
+    current = [1000.0]
+    original_initialize = WorkflowExecutor.__init__
+
+    def initialize(executor, *args, **kwargs):
+        original_initialize(executor, *args, **kwargs)
+        executor._absolute_clock = lambda: current[0]
+
+    monkeypatch.setattr(WorkflowExecutor, "__init__", initialize)
+    config = RuntimeConfig.model_validate(
+        {
+            "workflow": {
+                "catalog": [
+                    {
+                        "document": {
+                            "dsl": "1.0.3",
+                            "namespace": "a2a",
+                            "name": "timed",
+                            "version": "1.0.0",
+                        },
+                        "do": [
+                            {"pause": {"wait": {"seconds": 60}}},
+                            {"finish": {"set": {"timer_fired": True}}},
+                        ],
+                    }
+                ]
+            },
+            "a2a": {
+                "enabled": True,
+                "skills": [{"id": "timer", "workflow": "timed"}],
+            },
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    app = create_app(config=config, services=services, engine=PortableWorkflowEngine())
+
+    async with app.router.lifespan_context(app):
+        dispatcher = app.state.engine._timer_dispatcher
+        # Hold the polling clock before the persisted due time so the test can
+        # drive the actual dispatcher at a deterministic timestamp below.
+        dispatcher.clock = lambda: current[0]
+        dispatcher.poll_seconds = 3600
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            started = await client.post(
+                "/a2a",
+                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "timer-start",
+                    "method": "SendMessage",
+                    "params": {
+                        "message": message(metadata={"skillId": "timer"}),
+                        "configuration": {"returnImmediately": True},
+                    },
+                },
+            )
+            assert started.status_code == 200, started.text
+            task_id = started.json()["result"]["task"]["id"]
+
+            async with asyncio.timeout(5):
+                while True:
+                    handle = services.invocations.get(task_id)
+                    if (
+                        handle is not None
+                        and handle.status == "waiting"
+                        and task_id not in dispatcher.engine._active
+                        and task_id not in dispatcher.engine._ownership_tasks
+                    ):
+                        break
+                    await asyncio.sleep(0.01)
+
+            waiting = await client.post(
+                "/a2a",
+                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "timer-get-waiting",
+                    "method": "GetTask",
+                    "params": {"id": task_id},
+                },
+            )
+            assert waiting.status_code == 200, waiting.text
+            waiting_task = waiting.json()["result"]
+            assert waiting_task["status"]["state"] == "TASK_STATE_WORKING"
+            assert waiting_task["id"] == task_id
+            handle = services.invocations.get(task_id)
+            assert handle is not None
+            registration = services.timers.pending_for_invocation(
+                task_id, handle.workflow_fingerprint
+            )[0]
+            assert registration.due_at == 1060.0
+
+            current[0] = 1060.0
+            assert await dispatcher.tick(now=current[0], invocation_id=task_id) == 1
+            async with asyncio.timeout(5):
+                while task_id in dispatcher._workers:
+                    await asyncio.sleep(0.01)
+
+            completed = await client.post(
+                "/a2a",
+                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "timer-get-completed",
+                    "method": "GetTask",
+                    "params": {"id": task_id},
+                },
+            )
+            assert completed.status_code == 200, completed.text
+            completed_task = completed.json()["result"]
+            assert completed_task["status"]["state"] == "TASK_STATE_COMPLETED"
+            assert completed_task["id"] == task_id
+            assert completed_task["contextId"] == waiting_task["contextId"]
+            assert completed_task["artifacts"][0]["parts"][0]["data"] == {"timer_fired": True}
+
+            # A second due scan cannot revise the first terminal projection.
+            assert await dispatcher.tick(now=current[0], invocation_id=task_id) == 0
+            repeated = await client.post(
+                "/a2a",
+                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "timer-get-repeated",
+                    "method": "GetTask",
+                    "params": {"id": task_id},
+                },
+            )
+            assert repeated.status_code == 200, repeated.text
+            assert repeated.json()["result"] == completed_task
+
     services.close()
 
 
