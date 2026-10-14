@@ -843,6 +843,13 @@ the selected peer; audit/tracker, documentation-link, Ruff, formatting and diff
 checks also passed. The updated path-based TLS tests emitted seven HTTPX CA-path
 deprecation warnings.
 
+At exact source `a60f6db3c551942133fcbed8399a0d1727b6de3f`, the 97-test SDK file
+passed with bearer and API-key credentials also bound to the fetched
+AgentCard-selected HTTPS peer; the discovery request carried neither credential
+header. Fifteen workflow/audit/tracker tests, Markdown link validation, Ruff,
+formatting and diff checks passed. The TLS cases emitted nine HTTPX CA-path
+deprecation warnings.
+
 ### Hosted requalification at `fedbdee`
 
 Docs, Security, External Sandbox, Agent Framework and all but one main CI job
