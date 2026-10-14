@@ -891,4 +891,6 @@ file (107 passed, 107 backend skips), the original-deadline proof selection
 (8 passed, 8 backend skips), and three operation-workflow checks. Ruff and
 format checks, Markdown links and diff validation passed. Hosted
 requalification of the controlled clock and 40-minute lane remains pending;
-S3-03 stays active, with no deferral.
+S3-03 stays active, with no deferral. The implementation is committed at
+`b701685`; at that exact source, audit/tracker validation passed (6 tests),
+Markdown link validation passed, and Ruff, format and diff checks passed.
