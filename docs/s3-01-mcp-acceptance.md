@@ -107,6 +107,19 @@ three existing HTTPX certificate-fixture deprecation warnings. This focused
 result does not qualify MCP08 or the integrated S3-01 gates. The official schema
 remains unchanged.
 
+A further focused regression batch covers
+legacy and unknown version rejection during regular and sandbox compilation;
+exact parameters delivered to the SDK server across all seven methods; streamed
+response-size overflow cleanup without replay; OAuth token expiry before
+business dispatch; malformed UTF-8/JSON through the stdio bridge with sanitized
+errors and cleanup; notification-only business replies as explicit uncertain
+unsupported interactions; and configured-tool delivery of the validated result
+without its JSON-RPC envelope. The combined local batch passed 151 tests, skipped
+68 and reported three existing HTTPX certificate-fixture deprecation warnings.
+It does not complete individual MCP gates; the frozen common,
+principal-engine/database, process, build and exact-source hosted batch remains
+required.
+
 The first frozen local snapshot `f1e6abf` contains 416 fixed validation inputs.
 Common focus reaches 222 passes with eight failures and two errors; both native
 focus profiles reach their ten-failure limit on fixture setup. Five independent

@@ -269,6 +269,16 @@ class _CommonHttpDispatcher:
         except (OwaError, ValueError, UnicodeError):
             raise _uncertain("invalid_response") from None
         if (
+            isinstance(raw, dict)
+            and raw.get("jsonrpc") == "2.0"
+            and isinstance(raw.get("method"), str)
+            and "id" not in raw
+        ):
+            # A server notification is a separate interaction, not the result
+            # of this business request. Do not let the SDK turn it into a
+            # fabricated completion or attempt the request again.
+            raise _uncertain("unsupported_interaction")
+        if (
             not isinstance(raw, dict)
             or raw.get("jsonrpc") != "2.0"
             or type(raw.get("id")) is not type(self.request_id)

@@ -16,6 +16,7 @@ from open_workflow_agent.a2a import (
 from open_workflow_agent.a2a import (
     A2A_SPEC_RELEASE,
 )
+from open_workflow_agent.errors import _McpOutcomeUncertain
 from open_workflow_agent.observability import (
     CLOUD_EVENTS_SPECVERSION,
     CloudEvent,
@@ -200,6 +201,39 @@ def test_mcp_rejects_legacy_protocol_version() -> None:
                 },
             )
         )
+
+
+def test_mcp_server_notification_is_explicitly_unsupported_without_replay() -> None:
+    """A server notification cannot stand in for the correlated business result."""
+    calls: list[dict[str, object]] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={"jsonrpc": "2.0", "method": "notifications/progress", "params": {"progress": 1}},
+        )
+
+    services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
+
+    import asyncio
+
+    with pytest.raises(_McpOutcomeUncertain) as error:
+        asyncio.run(
+            services.call(
+                "mcp",
+                {
+                    "protocolVersion": MCP_PROTOCOL_VERSION,
+                    "method": "tools/call",
+                    "transport": {"http": {"endpoint": "https://mcp.test"}},
+                    "parameters": {"name": "lookup", "arguments": {}},
+                    "id": "business-key",
+                },
+            )
+        )
+
+    assert error.value.details["reason"] == "unsupported_interaction"
+    assert len(calls) == 1 and calls[0]["method"] == "tools/call"
 
 
 # --- A2A Protocol Conformance Tests ---

@@ -1,19 +1,26 @@
 # Pending batch results — 2026-10-14
 
-These attempts do not close S2-09 or S3-01 through S3-08. Passing subsets and fresh
-builds are distinct from complete qualification. Local `tmp/` evidence is ignored
-and retained in its originating worktree; publication still requires reproducible
-source-linked hosted reports.
+Historical attempts below remain distinct from qualification. S2-09's finite
+VM01-VM08 policy is verified at PR head `9578459`; S3-01 through S3-08 remain
+open. Passing subsets and fresh builds do not replace complete qualification.
+Local `tmp/` evidence is ignored and retained in its originating worktree.
+
+### Hosted checkpoint — PR head `9578459`
+
+All six hosted workflows passed for PR #65 at exact head `957845969b39fbaa6698ff1cf150931c7947d2ba` (code correction `bfd149c`): [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559571167), [PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559571023), [Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559570870), [External Sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559570878), [Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559570925), and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559570978). The root suite passed 4,562 tests, skipped 2,950, and reported 90.03% coverage against the 90% threshold. PostgreSQL passed all ten jobs. The Windows timer suite passed 718 tests and skipped 769 in 38m38s, inside the 45-minute job limit. ADK and LangGraph contract, CTK, lifecycle and recovery profiles passed; details are in the source-linked hosted reports. This verifies S2-09's finite VM01-VM08 continuation/recovery policy. It does not claim successful in-place v1→v2 migration, A086/T44, full native history, S3-01 integration, or any broader feature inventory row.
+
+The preceding `bfd149c` workflow set was cancelled when the documentation checkpoint `9578459` was pushed; its result was superseded by the complete run above, not counted as a failure or a pass. The source changes in `bfd149c` reject undefined MCP configuration fields before authorization or I/O, but the focused tests do not qualify S3-01. Changes are now batched before the next hosted run to avoid restarting a running matrix.
 
 ### Hosted checkpoint — source `bfd149c`
 
-Exact-source CI `38559048348` and Agent Framework `38559048460` are in progress;
-PostgreSQL `38559048668` and External Sandbox `38559048598` are queued. Docs
-`38559048361` and Security `38559048345` passed. The timer job uses its raised
-45-minute limit. No S2-09 or S3 feature has advanced pending the required
-integrated results. The local S2-09 recovery subset passed 77 tests with 102
-PostgreSQL/platform-specific skips. The MCP/protocol/tool and workflow-selection
-batch passed 161 tests; this focused local evidence does not qualify S3-01.
+The workflow run set was cancelled when a subsequent documentation checkpoint
+was published before completion. Docs `38559048361` and Security `38559048345`
+had passed; CI `38559048348`, Agent Framework `38559048460`, PostgreSQL
+`38559048668`, and External Sandbox `38559048598` were cancelled or superseded.
+These partial outcomes do not qualify any task. The local S2-09 recovery subset
+passed 77 tests with 102 PostgreSQL/platform-specific skips. The MCP/protocol/tool
+and workflow-selection batch passed 161 tests; this focused local evidence does
+not qualify S3-01.
 
 ### Hosted checkpoint — source `c68950f`
 

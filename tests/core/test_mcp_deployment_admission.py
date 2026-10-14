@@ -97,8 +97,12 @@ def test_nested_stdio_admission_does_not_skip_unapproved_child_declaration():
     assert failure.value.details["reference"] == "/do/0/scope/do/0/query"
 
 
-def test_unsupported_mcp_wire_version_fails_before_workflow_plan_admission():
+@pytest.mark.parametrize("protocol_version", ["2025-06-18", "2025-11-25", "2099-01-01"])
+def test_unsupported_mcp_wire_version_fails_before_workflow_plan_admission(protocol_version):
     source = _workflow()
-    source["do"][0]["query"]["with"]["protocolVersion"] = "2025-06-18"
+    source["do"][0]["query"]["with"]["protocolVersion"] = protocol_version
+    source["do"][0]["query"]["with"]["transport"] = {"http": {"endpoint": "https://mcp.test"}}
+    with pytest.raises(UnsupportedWorkflowFeature, match="protocol version"):
+        compile_workflow(source)
     with pytest.raises(UnsupportedWorkflowFeature, match="protocol version"):
         compile_sandbox_workflow(source, sandbox=_sandbox())

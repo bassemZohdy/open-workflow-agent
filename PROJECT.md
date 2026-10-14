@@ -9,16 +9,17 @@
 
 ## Current backlog delivery mode — 2026-10-14
 
-**17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-09 is
+**18 of 37 tasks are verified; 19 remain open. No task is deferred.** S3-01 is
 the earliest unfinished milestone. Failed or incomplete validation advances no
-task checkbox or inventory row. The latest published source is `bfd149c` and
-is under exact-source hosted validation: CI and Agent Framework are in progress,
-PostgreSQL and External Sandbox are queued, and Docs and Security have passed.
-The Windows timer lane now has a 45-minute budget. On preceding source
-`c68950f`, fifteen of sixteen CI jobs passed; the timer job was cancelled at
-the former 35-minute limit after reporting 686 passed and 674 skipped, with no
-assertion failures. Its PostgreSQL, Agent Framework, Docs, Security, and
-External Sandbox workflows passed. The preceding source
+task checkbox or inventory row. The finite S2-09 policy passed at PR head
+`9578459` (code source `bfd149c`); all six hosted workflows passed. The root
+suite passed 4,562 tests with 90.03% coverage, PostgreSQL passed all 10 jobs,
+and Windows timers passed 718 tests in 39m16s within the corrected 45-minute
+limit. See the [latest validation checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-pr-head-9578459).
+On preceding source `c68950f`, fifteen of sixteen CI jobs passed; the timer job
+was cancelled at the former 35-minute limit after reporting 686 passed and 674
+skipped, with no assertion failures. Its PostgreSQL, Agent Framework, Docs,
+Security, and External Sandbox workflows passed. The preceding source
 `605a908` failed one Windows initial-delivery admission test with
 `InvocationStateConflict`; its root quality gate and all other CI jobs passed.
 PostgreSQL, External Sandbox, Agent Framework, Security, and Docs also passed
@@ -28,8 +29,8 @@ strict typing, docs and implementation audits, and root/core builds passed.
 The hosted root quality gate confirmed required coverage for both `605a908` and
 `c68950f`.
 
-The hosted Windows failure had an actionable fixture correction; S2-09 remains
-open pending exact-source validation. Its log points to
+The hosted Windows failure had an actionable fixture correction, now verified
+at the latest checkpoint. The original log points to
 `prepare_initial_delivery`. A local 15-second fixture lease cleared that
 admission step. Subsequent recovery diagnostics identified an intermittent
 `python.architecture` mismatch because the isolated Windows subprocess
@@ -38,8 +39,8 @@ Commit `c68950f` preserves those variables, keeps
 the 15-second lease, and records safe stack frames and changed-profile paths;
 the exact Windows selector passed three consecutive local repeats, and the
 related LangGraph process-recovery/A2A selection passed 14 tests with 14
-PostgreSQL-only skips. Exact-source hosted validation remains required. No task
-or feature advances. The prior
+PostgreSQL-only skips. The subsequent complete hosted checkpoint verified the
+finite S2-09 policy. The prior
 `4d2e224` coverage, selector and ADK timeout failures remain historical; see
 the [latest validation checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-c68950f)
 and [validation history](docs/validation-history/pending-batch-results.md) for
@@ -48,8 +49,8 @@ the exact source outcomes.
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at `6b23e5d` / `96ce610`. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
-| S2-09 | Original-definition continuation authored; integrated qualification pending. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
-| S3-01 / S3-02 | Pinned MCP/A2A changes remain authored, not qualified. Source `bfd149c` is in hosted validation; it includes the focused MCP08 correction, whose 138 core tests passed locally. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
+| S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head `9578459`; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
+| S3-01 / S3-02 | MCP08's focused correction has 138 passing core tests; the grouped MCP regression batch passes 151 tests with 68 skipped locally. Integrated engine/database/process and hosted MCP gates, and the A2A gates, remain open. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
 | S3-03 | Operation adapters and independent jobs remain authored; lease/recovery corrections and exact-source qualification are pending. | [Operations](docs/s3-03-operation-adapters-acceptance.md) |
 | S3-04 | Captured sources and awaited controls remain authored; behavioral and exact-source qualification are pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored; hosted PostgreSQL exposed timestamp precision loss in common approval storage; precision migration and full qualification pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md) |
@@ -703,10 +704,9 @@ The CI source-integrity gate caught three ignored predecessor reference files mi
 
 ## Current S2-09 and S3-02 implementation notes
 
-S2-09 retains its finite migration and recovery policy in
-[the acceptance record](docs/s2-09-version-recovery-acceptance.md), while S3-02
-retains its protocol scope in [the A2A acceptance record](docs/s3-02-a2a-acceptance.md).
-Both remain unchecked pending their task-specific qualification gates. Current
-batch outcomes are maintained in the status table above and the
-[validation history](docs/validation-history/pending-batch-results.md), avoiding
-repeated dated status narratives here.
+S2-09's finite original-definition continuation and bounded recovery policy is
+verified; successful in-place version mapping and full native history remain
+unsupported. S3-02 remains dependency-gated by S3-01 and its grouped A2A
+acceptance. See the [S2-09 record](docs/s2-09-version-recovery-acceptance.md),
+[A2A record](docs/s3-02-a2a-acceptance.md), status table above and
+[validation history](docs/validation-history/pending-batch-results.md).

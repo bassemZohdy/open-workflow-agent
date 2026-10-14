@@ -20,13 +20,15 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 
 ## Delivery status — 2026-10-14
 
-**17 verified / 20 open / 0 deferred.** S2-09 remains the earliest unfinished
-task. The latest published source is `bfd149c`, under exact-source hosted
-validation: CI and Agent Framework are in progress, PostgreSQL and External
-Sandbox are queued, and Docs and Security have passed. The Windows timer lane
-now has a 45-minute budget. The preceding source `c68950f` had 15 of 16 CI jobs
-pass; its timer job was cancelled at the former 35-minute limit after reporting
-686 passed and 674 skipped with no assertion failures. The preceding source
+**18 verified / 19 open / 0 deferred.** S3-01 is the earliest unfinished task.
+The finite S2-09 continuation/recovery policy is verified at PR head `9578459`
+(code source `bfd149c`); all six hosted workflows passed. The root suite passed
+4,562 tests at 90.03% coverage, PostgreSQL passed all 10 jobs, and the Windows
+timer suite passed 718 tests within its new 45-minute budget. See the [latest
+hosted checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-pr-head-9578459)
+for all job outcomes. Preceding source `c68950f` had 15 of 16 CI jobs pass; its
+timer job was cancelled at the former 35-minute limit after reporting 686
+passed and 674 skipped with no assertion failures. The preceding source
 `605a908` failed one Windows
 native lifecycle/recovery test during initial-delivery admission with
 `InvocationStateConflict`; its root quality gate and other CI jobs passed.
@@ -36,8 +38,8 @@ skips; local static checks, strict typing, documentation checks, implementation
 audit and root/core builds passed. The hosted root quality gate confirmed the
 coverage threshold for both `605a908` and `c68950f`.
 
-The hosted Windows failure had an actionable fixture correction; S2-09 remains
-open pending exact-source validation. Hosted logs locate the conflict in
+The hosted Windows failure had an actionable fixture correction, now verified
+at the latest checkpoint. The original logs locate the conflict in
 `prepare_initial_delivery`; a 15-second fixture lease passed
 that stage locally. Recovery diagnostics then identified an intermittent
 `python.architecture` mismatch because the isolated Windows subprocess
@@ -47,8 +49,8 @@ variables in the restricted child environment, keeps the 15-second fixture
 lease, and records safe stack frames and changed-profile paths. The exact
 Windows selector passed three consecutive local repeats after this correction;
 the related LangGraph process-recovery/A2A selection passed 14 tests with 14
-PostgreSQL-only skips. Exact-source hosted validation is still required. No
-task or feature advances. See the [current validation
+PostgreSQL-only skips. The subsequent complete hosted checkpoint verified
+S2-09's finite policy. See the [preceding validation
 checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-c68950f).
 Historical checkpoints `4d2e224` and `523522b` failed separate root-quality
 gates; `4d2e224` also exposed an obsolete approval-selection count and the
@@ -145,12 +147,16 @@ earlier `dcc16a6` / `a6c2faa` checkpoints remain in the
   and two native benchmarks pass. Earlier failures remain historical. See the
   [verified lifecycle acceptance](docs/s2-08-lifecycle-acceptance.md).
   No automatic remote rollback or general exactly-once guarantee is claimed;
-  migration, full proposed criteria and JavaScript retain S2-09/Stage 4 ownership.
-- [ ] **S2-09** (L) — Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.
-  Original-definition admission, exact profile checks and authenticated bounded
-  recovery diagnostics are authored in an isolated batch. See the
-  [finite policy](docs/s2-09-version-recovery-acceptance.md). Actual native,
-  backend, process-stop, packaging and hosted qualification remain required.
+  S2-09's finite continuation policy is verified, while in-place migration,
+  full proposed criteria and JavaScript remain outside its qualified scope.
+- [x] **S2-09** (L) — Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.
+  Verified finite VM01-VM08 continuation/recovery policy at PR head `9578459`.
+  Retained definitions continue under the original identity; changed profiles
+  and unapproved in-place mappings reject; diagnostics remain bounded and
+  owner-authorized. ADK/LangGraph, SQLite/PostgreSQL, process-stop, packaging,
+  Windows and hosted gates pass. A086/T44 successful in-place mapping and full
+  history remain explicitly unsupported. See the
+  [acceptance record](docs/s2-09-version-recovery-acceptance.md).
 
 ## Stage 3 — Agents, tools and integrations
 
@@ -158,8 +164,9 @@ earlier `dcc16a6` / `a6c2faa` checkpoints remain in the
   Common HTTP/SDK, bounded authentication and restricted stdio changes are
   authored. A local MCP08 correction rejects undefined `transport.options` and
   unknown `client` fields before authorization or transport I/O; its tests and
-  focused core suite pass locally, while integrated qualification and
-  publication remain pending. See the
+  focused core suite and the grouped MCP regression batch pass locally (151
+  passed, 68 skipped). Additional tests do not replace the integrated engine,
+  database, process, build and hosted gates; publication remains pending. See the
   [finite acceptance gates](docs/s3-01-mcp-acceptance.md). No new transport,
   authentication or inventory profile is qualified before integrated validation.
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.

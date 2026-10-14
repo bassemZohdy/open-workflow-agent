@@ -1,15 +1,16 @@
 # S2-09 original-definition continuation and recovery policy
 
-Status: implementation and test authoring complete; batch validation pending.
-S2-09 remains unchecked until its complete finite validation and hosted gates
-pass. This record defines supported decisions and exclusions, not a successful
-in-place migration algorithm or full A086/T44 completion.
+Status: finite VM01-VM08 continuation/recovery policy verified at PR head
+`9578459` (code source `bfd149c`). This record defines the qualified decisions
+and exclusions, not a successful in-place migration algorithm or full A086/T44
+completion.
 
-The latest source checkpoint, `bfd149c`, is under exact-source hosted
-validation. CI `38559048348` and Agent Framework `38559048460` are in progress;
-PostgreSQL `38559048668` and External Sandbox `38559048598` are queued. Docs
-`38559048361` and Security `38559048345` passed. The Windows timer lane has a
-45-minute limit in this source. The preceding checkpoint, `c68950f`, was not
+The historical `bfd149c` workflow set was cancelled when documentation
+checkpoint `9578459` was published before it finished. Docs `38559048361` and
+Security `38559048345` passed; CI `38559048348`, Agent Framework `38559048460`,
+PostgreSQL `38559048668` and External Sandbox `38559048598` were cancelled or
+superseded. The latest checkpoint's Windows timer lane has a 45-minute limit.
+The preceding checkpoint, `c68950f`, was not
 fully qualified: CI `38551999533` was cancelled when its timer lane reached the
 former 35-minute limit after pytest reported 686 passed and 674 skipped with no
 assertion failures. Fifteen of sixteen CI jobs passed. PostgreSQL
@@ -160,8 +161,8 @@ T44 requires suspending v1, deploying incompatible v2, resuming pinned v1 **and*
 explicit migration only with an approved mapping, preserving fingerprint and
 dependency versions without silent reinterpretation. VM01/VM02/VM03 prove the
 pinned-continuation and negative unsupported-mapping portion. A successful
-approved source-to-target mapping remains unverified. T44/A086 must retain that
-remaining scope even if the finite S2-09 **Define** task is later validated.
+approved source-to-target mapping remains unverified. T44/A086 retain that
+scope independently of S2-09's verified finite **Define** policy.
 T45 diagnostic correlation does not activate native history export, earlier
 checkpoint replay, state edits/forks or later-stage capabilities.
 
@@ -240,9 +241,9 @@ late-finalization cancellation cases. LangGraph also passes the five memory
 presence/fork regression cases. Supervisors complete in 33 seconds (root),
 191 seconds (ADK) and 149 seconds (LangGraph), below their unchanged
 900-second bound. All five fresh wheel/sdist builds and source-lock/metadata
-provenance checks pass. Full broad suites
-and exact-source hosted backend/platform/image/security gates still remain;
-S2-09 is not complete and no pending source is published as qualified.
+provenance checks pass. Full broad suites and exact-source hosted backend,
+platform, image and security gates still remained at that historical snapshot;
+none of its partial runs qualified the task.
 
 Broad snapshot 9582fb2 retains unchanged inputs under `tmp/s2-09-fifth-batch`.
 Three old receipt selectors assume no independent definition-admission receipt;
@@ -293,3 +294,12 @@ wait execution for A2A continuation. Existing input, no-dispatch, shutdown and
 task identity assertions are retained. New MCP work is authored separately;
 final combined source qualification must cover this recovery task and the MCP
 batch without relabelling earlier partial failed attempts as successful.
+
+## Final finite qualification status
+
+The preceding paragraphs are chronological records of failed or partial
+snapshots. The finite VM01-VM08 continuation/recovery policy is verified at PR
+head `9578459` (code correction `bfd149c`); all six hosted workflows passed.
+The verification does not claim successful in-place v1→v2 migration (A086/T44),
+full native history, or broader proposed criteria. See the
+[exact hosted checkpoint](validation-history/pending-batch-results.md#hosted-checkpoint-pr-head-9578459).
