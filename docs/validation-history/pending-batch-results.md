@@ -894,3 +894,22 @@ requalification of the controlled clock and 40-minute lane remains pending;
 S3-03 stays active, with no deferral. The implementation is committed at
 `b701685`; at that exact source, audit/tracker validation passed (6 tests),
 Markdown link validation passed, and Ruff, format and diff checks passed.
+
+### A2A TLS credential-method matrix at `ec21cb2`
+
+Expanded the actual-HTTPS official SDK credential tests from the prior
+SendMessage-only examples to all seven advertised methods: SendMessage,
+GetTask, CancelTask, ListTasks, GetExtendedAgentCard, SendStreamingMessage and
+SubscribeToTask. The matrix exercises named bearer, API-key, OAuth client
+credentials and mTLS. Bearer, API-key and OAuth cases fetch the public
+AgentCard without business credentials, then send exactly one authenticated
+business request to its selected endpoint. The mTLS cases require a trusted
+client certificate; repeating each method without that credential fails
+before another SDK dispatch.
+
+At exact source `ec21cb2`, Windows validation passed the full SDK HTTP file
+(121 passed); HTTPX emitted 63 existing CA-path deprecation warnings. The
+implementation/tracker audit selection passed (6 tests), Markdown relative
+links passed, and Ruff, formatting and diff checks passed. S3-02 remains
+active: hosted requalification and the remaining peer-policy, recovery,
+streaming and backend gates are still required.
