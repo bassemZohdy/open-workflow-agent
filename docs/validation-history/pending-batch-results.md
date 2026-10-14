@@ -787,3 +787,11 @@ the Windows checkout; audit/tracker checks passed six tests and Markdown links
 validated. This reconciles individual witnesses only: durable task/receipt
 expiry, lost-response, malformed-event and required backend/binding cross-matrix
 remain open, so S3-02 and A2A08 stay partial.
+
+### A2A08 accepted-send timeout
+
+An additional actual-TCP SDK witness stalls the peer only after its streaming
+message handler accepts the business call. The client reports a bounded timeout
+as uncertain and records exactly one network request and one business dispatch;
+the focused Windows run passed. This covers loss before the first stream frame,
+not disconnect/reconnect after a partial stream or durable receipt expiry.

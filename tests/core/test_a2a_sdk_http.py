@@ -76,6 +76,38 @@ async def test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_busi
 
 
 @pytest.mark.asyncio
+async def test_actual_tcp_streaming_lost_response_is_uncertain_without_reconnect():
+    accepted = asyncio.Event()
+    business_dispatches = []
+
+    async def accept_then_stall(params, context):
+        business_dispatches.append(params.message.message_id)
+        accepted.set()
+        await asyncio.Event().wait()
+
+    async with sdk_a2a_fixture(network=True, send_handler=accept_then_stall) as (
+        transport,
+        calls,
+        endpoint,
+    ):
+        services = ProtocolServices(client(transport, True, timeout=3))
+        running = asyncio.create_task(
+            services.call("a2a", payload("SendStreamingMessage", endpoint))
+        )
+        try:
+            await asyncio.wait_for(accepted.wait(), 5)
+            with pytest.raises(_A2AOutcomeUncertain) as error:
+                await asyncio.wait_for(running, 3)
+            assert error.value.details["reason"] == "timeout"
+        finally:
+            if not running.done():
+                running.cancel()
+            await asyncio.gather(running, return_exceptions=True)
+
+    assert len(calls) == len(business_dispatches) == 1
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("network", [False, True], ids=["asgi-wire", "actual-tcp-sdk"])
 @pytest.mark.parametrize("outcome", ["task", "message"])
 async def test_sdk_task_and_message_results_preserve_explicit_null_parts(network, outcome):
