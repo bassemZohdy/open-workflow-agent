@@ -41,7 +41,13 @@ def stop(process):
 
 def failure(directory, mode):
     path = directory / (mode + "-failure.json")
-    return path.read_text(encoding="utf-8") if path.exists() else "worker exited without evidence"
+    if not path.exists():
+        return "worker exited without evidence"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    diagnostic = directory / "start-admission-error.json"
+    if mode == "start" and diagnostic.exists() and isinstance(payload, dict):
+        payload["admission_error"] = json.loads(diagnostic.read_text(encoding="utf-8"))
+    return json.dumps(payload)
 
 
 def case(directory, engine_name, engine_type, backend, boundary, negative):

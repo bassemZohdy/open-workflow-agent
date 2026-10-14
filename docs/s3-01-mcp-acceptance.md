@@ -71,10 +71,19 @@ full OWS conformance and broader MCP extensions stay independently gated.
 
 ## Evidence
 
-Read-only preparation identified actionable modern metadata/result projection,
-OAuth transport, per-tool TLS and duplex sandbox gaps. Implementation is being
-authored in parallel while the separate S2-09 frozen batch is validated. There
-is no established blocker; missing interfaces are implementation work.
+Initial read-only preparation identified actionable modern metadata/result
+projection, OAuth transport, per-tool TLS and duplex sandbox gaps. Subsequent
+correction batches authored those interfaces and controls; their full
+qualification remains pending. There is no established blocker; missing
+qualification is active work.
+
+The authored MCP04 regression
+`tests/core/test_mcp_sdk_http.py::test_actual_mcp_tls_keeps_configured_tool_certificates_isolated`
+composes configured per-tool TLS profiles with actual SDK calls to two mTLS
+listeners. It verifies that the selected certificates stay isolated and that
+wrong or missing certificates are rejected before a second business dispatch.
+Its focused local check passed on the current hosted source `dcc16a6`; the
+hosted batch remains in progress, so this does not complete MCP04.
 
 The first frozen local snapshot `f1e6abf` contains 416 fixed validation inputs.
 Common focus reaches 222 passes with eight failures and two errors; both native

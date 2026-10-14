@@ -21,29 +21,21 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 ## Delivery status — 2026-10-14
 
 **17 verified / 20 open / 0 deferred.** S2-09 remains the earliest unfinished
-task. Hosted source `a6c2faa` remains unqualified. Its PostgreSQL
-operation-adapter attempts failed in protected-approval cases. The latest
-LangGraph rerun also failed three cases (218 passed, 158 skipped, 379
-deselected): the approval race and both stale-event pattern cases. The latest
-ADK attempt failed both stale-event pattern cases. External-sandbox
-CI, Agent Framework CI, documentation-link validation, and security passed.
-CI reported a Windows operation-recovery child-startup assertion; root quality,
-Windows timer, ADK contract, and LangGraph contract results are now explicit:
-root completed 4,453 tests with 2,931 skips but failed the unchanged 90% core
-coverage gate at 89.54%; the ADK contract job hit its 1,200-second timeout at
-94% progress; the Windows timer job failed its LangGraph protected-approval
-race case; and the LangGraph contract job passed. PostgreSQL common-store and
-native recovery lanes passed; both engine operation-adapter lanes failed.
-Local follow-up changes correct retained approval-event matching, isolate
-approval-race contenders on separate database connections, add ownerless
-authenticated-recovery and native MCP/mTLS regressions, and capture scrubbed
-Windows worker stack frames. Focused local
-checks pass, but these edits are not included in the hosted source. No task or
-feature advances. The earlier 323-test local result is historical, not
-validation of `a6c2faa`; the Windows full-root run stopped
-at 33% after 45 minutes and is incomplete. See the [current project
-status](PROJECT.md#current-backlog-delivery-mode--2026-10-14) and [validation
-history](docs/validation-history/pending-batch-results.md#provisional-hosted-checkpoint-a6c2faa).
+task. The latest hosted source is `dcc16a6`; CI is still running and
+PostgreSQL has completed with one failed LangGraph job, so no complete result
+is available and no task or feature advances. The Windows native lifecycle job
+failed one real A2A delivery case; the PostgreSQL LangGraph adapter job failed
+one process-recovery case. Both failures have active diagnostic follow-ups.
+External-sandbox, security and documentation-link workflows passed; CI's Docker
+acceptance and deployment-manifest jobs also passed. The previous `a6c2faa`
+failures remain historical and are documented separately. The current source
+includes targeted fixes for those failures, authenticated-recovery visibility
+and MCP client-certificate isolation; focused local checks passed, but do not
+replace hosted qualification.
+The earlier 323-test local result is historical, not validation of `dcc16a6`;
+the Windows full-root run stopped at 33% after 45 minutes and is incomplete.
+See the [current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-14)
+and [validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-dcc16a6).
 
 ## Stage 1 — Correct core execution
 

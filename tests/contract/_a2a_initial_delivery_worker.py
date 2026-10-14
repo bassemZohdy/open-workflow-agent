@@ -17,6 +17,7 @@ from pathlib import Path
 import httpx
 import pytest
 from _process_recovery_worker import write_json
+from _recovery_failure_artifact import failure_artifact
 from a2a.client.transports.jsonrpc import JsonRpcTransport
 from a2a.types.a2a_pb2 import AgentCard, GetTaskRequest, SendMessageRequest
 from google.protobuf.json_format import MessageToDict, ParseDict
@@ -220,6 +221,20 @@ async def run(directory: Path, mode: str):
     engine = getattr(importlib.import_module(module), cls)()
     assert engine.native.available if engine_name == "adk" else engine.native.task_nodes_available
     engine._execution_ownership_seconds = 5
+    if mode == "start":
+        prepare_initial_delivery = engine.prepare_initial_delivery
+
+        async def diagnose_admission_error(*args, **kwargs):
+            try:
+                return await prepare_initial_delivery(*args, **kwargs)
+            except OwaError as error:
+                write_json(
+                    directory / "start-admission-error.json",
+                    failure_artifact(error, stage="prepare_initial_delivery"),
+                )
+                raise
+
+        patches.setattr(engine, "prepare_initial_delivery", diagnose_admission_error)
     with closing(sqlite3.connect(directory / "receiver.sqlite3")) as receiver:
         receiver.execute("CREATE TABLE IF NOT EXISTS commits(operation_id TEXT,body TEXT)")
         receiver.commit()

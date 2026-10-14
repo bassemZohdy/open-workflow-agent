@@ -77,11 +77,13 @@ redeliver an initial invocation with its verified original archive/input after
 ownership becomes available; that is a distinct existing initial invocation path,
 not an automatic public resume or migration fallback.
 
-Rollback is supported only to a separately qualified producer/consumer profile
-and retained compatible persistence snapshot. Stop writers before snapshot
-restore, retain reconciliation evidence, and account for remote effects.
-Restoring local bytes cannot undo a committed remote action. No tested cross-SDK,
-cross-database-server or arbitrary platform upgrade matrix is claimed.
+Rollback execution is not implemented or qualified by this task. A deployment
+must not restore a persistence snapshot unless its producer/consumer profile
+and compatibility have been qualified independently. Any operational restore
+must stop writers first, preserve reconciliation evidence, and account for
+remote effects; restoring local bytes cannot undo a committed remote action.
+No cross-SDK, cross-database-server or arbitrary platform upgrade matrix is
+claimed.
 
 ## Public authorization and bounded diagnostics
 

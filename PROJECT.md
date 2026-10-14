@@ -15,29 +15,26 @@ task checkbox or inventory row. The latest complete local batch at `61844c4`
 failed qualification; the grouped correction selection passed 377 tests (176
 skipped), and merged coverage reached 90.0033% without lowering the 90% gate.
 Those earlier findings and their corrections remain in the historical record.
-The current hosted checkpoint is source `a6c2faa`: external-sandbox, Agent
-Framework, documentation-link, and security workflows passed. Both PostgreSQL
-operation-adapter lanes failed; the LangGraph rerun had three failures (the
-approval race and two stale-event pattern cases), while the ADK attempt failed
-the two pattern cases. Windows operation recovery reported a child-startup
-assertion. Root quality finished 4,453 tests with 2,931 skips
-but missed the 90% core coverage gate at 89.54%; the ADK contract job timed out
-at 94% progress. The Windows timer lane failed the protected-approval race
-case; LangGraph contract tests passed. PostgreSQL common-store and native
-recovery lanes passed. Unhosted local changes correct retained
-approval-event matching, isolate the approval race contenders on separate
-database connections, add ownerless authenticated-recovery and native MCP/mTLS
-regression cases, and capture scrubbed Windows worker stack frames. Focused
-local checks pass, but these changes have not been qualified by this checkpoint.
-This is provisional and does not qualify a task. The full
-local root run stopped at 33% after 45 minutes and is incomplete. See the
-[validation history](docs/validation-history/pending-batch-results.md#provisional-hosted-checkpoint-a6c2faa).
+Hosted source `dcc16a6` is being validated by CI run `38533361107`, which is
+still in progress. PostgreSQL run `38533361022` completed with one failed
+LangGraph operation-adapter recovery case; its other applicable jobs passed.
+The Windows native lifecycle job and PostgreSQL LangGraph operation-adapter
+job each have one failure under diagnosis. External-sandbox run
+`38533361035`, security run
+`38533361011`, Agent Framework run `38533360960`, and documentation-link run
+`38533360976` passed. CI's Docker acceptance and deployment-manifest jobs also
+passed. These partial results do not qualify a task.
+The source includes fixes for the prior approval-event and race failures,
+authenticated recovery visibility, MCP client-certificate isolation, and
+scrubbed Windows worker frames for diagnosis. Focused local checks pass. The
+earlier Windows full-root run stopped at 33% after 45 minutes and is incomplete.
+See the [validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-dcc16a6).
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at `6b23e5d` / `96ce610`. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Original-definition continuation authored; integrated qualification pending. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
-| S3-01 / S3-02 | Pinned MCP/A2A integration authored; latest hosted checkpoint failed. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
+| S3-01 / S3-02 | Pinned MCP/A2A integration authored; combined hosted qualification on `dcc16a6` is pending after the previous checkpoint failed. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
 | S3-03 | Operation adapters and independent jobs authored; lease/recovery corrections and acceptance pending. | [Operations](docs/s3-03-operation-adapters-acceptance.md) |
 | S3-04 | Captured sources and awaited controls authored; first common batch failed, corrections pending verification. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored; hosted PostgreSQL exposed timestamp precision loss in common approval storage; precision migration and full qualification pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md) |

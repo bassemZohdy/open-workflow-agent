@@ -432,7 +432,7 @@ CI run `38528004082` were still running. These are provisional results, not a
 complete run. No task, feature, or acceptance gate advances on `a6c2faa`; record
 the eventual run completion and any corrective source separately.
 
-### Live status update — 2026-10-14
+### Final status snapshot for source `a6c2faa` — 2026-10-14
 
 The original PostgreSQL LangGraph operation-adapter attempt failed, and its
 rerun completed with 3 failures, 218 passes, 158 skips and 379 deselections:
@@ -445,12 +445,39 @@ before its 1,200-second timeout. LangGraph contract tests passed; Windows timer
 tests failed the protected-approval race case. The Windows operation-recovery
 job remains failed on the cancelled-parent child-startup assertion. The
 successful external-sandbox, Agent Framework, documentation-link, and security
-runs are unchanged. Unhosted local changes correct retained approval-event
-matching, isolate approval-race contenders on separate database connections,
-add ownerless authenticated-recovery and native MCP/mTLS regression cases, and
-capture scrubbed Windows worker stack frames. The focused root/MCP/recovery
+runs are unchanged. Follow-up changes subsequently committed in `dcc16a6`
+correct retained approval-event matching, isolate approval-race contenders on
+separate database connections, add ownerless authenticated-recovery and native
+MCP/mTLS regression cases, and capture scrubbed Windows worker stack frames.
+The focused root/MCP/recovery
 diagnostic tests passed (104 passed); both-engine pattern checks passed (2 per
 engine), the isolated LangGraph race passed three consecutive runs, and the
 native empty-MCP-result receipt case passed on each engine. Static checks and
-root/core builds passed after a formatting correction. These results do not
-qualify S2-09, S3-01, or any other task and are not hosted for this source yet.
+root/core builds passed after a formatting correction. This snapshot records
+the final known status for `a6c2faa`; its local follow-up changes were later
+committed in `dcc16a6` and require that source's own hosted validation.
+
+### Hosted checkpoint — source `dcc16a6`
+
+CI run `38533361107` and PostgreSQL run `38533361022` are the current
+qualification runs. External-sandbox run `38533361035` (contract, Docker and
+Kubernetes acceptance), security run `38533361011`, Docs run `38533360976`, and
+optional Agent Framework run `38533360960` passed. In CI, both Docker
+acceptance jobs, deployment manifest validation, mutation testing, Windows MCP
+transport/authentication, Windows task checkpoints/routing, Windows ownership
+and effect recovery, Windows operation adapters/process recovery, Windows jq
+admission, LangGraph native/contract tests, and both engines' native
+lifecycle/version recovery passed. Windows native lifecycle/receiver recovery
+failed one A2A initial-delivery case; Windows timers, root quality and the ADK
+native/contract lane were still running at this snapshot. PostgreSQL common
+store, lifecycle, both native recovery jobs, Agent Framework recovery and ADK
+operation-adapter recovery passed. The PostgreSQL LangGraph operation-adapter
+job failed one process-recovery case (220 passed, 158 skipped, 379 deselected);
+the ADK native recovery job subsequently passed. The A2A start failure did not
+reproduce in repeated local runs, and a subsequent local run skipped because
+the native platform prerequisites were unavailable. Safe start-stage and
+traceback-frame diagnostics have been added locally for a rerun; they are not
+part of `dcc16a6`. These failures have actionable diagnostic steps and remain
+active, not deferred. Partial outcomes do not advance any task. Record final
+outcomes and corrective source in a dated follow-up after the remaining CI
+jobs settle.
