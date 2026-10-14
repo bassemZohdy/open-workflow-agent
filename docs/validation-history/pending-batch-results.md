@@ -840,3 +840,25 @@ SDK file passed with OAuth bound through actual HTTPS AgentCard discovery to
 the selected peer; audit/tracker, documentation-link, Ruff, formatting and diff
 checks also passed. The updated path-based TLS tests emitted seven HTTPX CA-path
 deprecation warnings.
+
+### Hosted requalification at `fedbdee`
+
+Docs, Security, External Sandbox, Agent Framework and all but one main CI job
+passed. Main CI run `38610573315` failed ADK native lifecycle job
+`116012542050` when its shell-level eight-minute timeout exited 124 at 94%
+progress while the queue-corruption recovery case was running. No assertion
+failure was reported. The same ADK/SQLite queue-corruption parameter passed
+locally on Windows (one passed, three backend/engine skips; 28.58 seconds).
+The suite's command budget is raised to ten minutes; hosted requalification is
+still required.
+
+PostgreSQL run `38610573562` initially failed the LangGraph operation-adapter
+recovery parameter
+`test_real_stop_between_common_admission_ack_or_native_projection_keeps_original_event[inbox-before-ack-postgresql-langgraph-LangGraphWorkflowEngine]`.
+The bounded result, stored value and native-execute diagnostics each had the
+shape `[None]` instead of the expected event/model mapping. Rerun job
+`116024883750` passed the same parameter; all ten PostgreSQL jobs passed, with
+221 passed, 158 skipped and 379 deselected in the LangGraph adapter-recovery
+job. The output-shape mismatch is still unexplained and remains an actionable
+S3-03 diagnostic, not a deferred task. The corrected Windows lease fixture also
+passed its hosted ownership/effect recovery job on this checkpoint.

@@ -175,7 +175,7 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
         "langgraph",
     }
     command = _runs(native)
-    assert "--kill-after=30s 8m" in command and "--locked --extra knowledge" in command
+    assert "--kill-after=30s 10m" in command and "--locked --extra knowledge" in command
     assert all(f"../../tests/contract/{name}" in command for name in fixtures)
     assert "../../tests/core/test_native_sqlite_inspection.py" in command
     main = _runs(_workflow("ci.yml")["jobs"]["engines"])

@@ -162,15 +162,15 @@ treated as a deferred task or as additional feature completion.
   [the finite acceptance plan](docs/s3-03-operation-adapters-acceptance.md).
   Behavioral/native/backend/platform, physical lifetime, packaging and hosted
   qualification remain outstanding; no new profile or inventory row is complete.
-  PostgreSQL LangGraph run `38595583614` failed one recovery case, which passed
-  on rerun `38602669648` (job `115985570066`; 221 passed, 158 skipped, 379
-  deselected); its output-shape mismatch remains unexplained. The Windows CI
-  checkpoint lane then exposed an ownership-loss failure in an SQLite LangGraph
-  recovery case at `38602669454`. Its five-second test-only lease and fixed
-  expiry wait are corrected to use the production lease and matching bound;
-  both local Windows principal-engine selections pass four cases each, with 12
-  inapplicable skips apiece. Hosted requalification is pending. Details are in the
-  [validation history](docs/validation-history/pending-batch-results.md#follow-up-at-4014874).
+  PostgreSQL LangGraph recovery mismatch recurred at run `38610573562`: bounded
+  diagnostics showed `[None]` at result, stored and native-execute layers, but
+  rerun job `116024883750` passed (221 passed, 158 skipped, 379 deselected).
+  The Windows CI checkpoint exposed an undersized test lease; the corrected
+  production-length fixture passed hosted ownership/effect recovery at
+  `fedbdee`. The remaining CI failure was the ADK lifecycle shell timeout at
+  94% (`timeout` exit 124); the queue-corruption case passed locally in 28.58s.
+  Its command budget is raised from 8 to 10 minutes for requalification. Details
+  are in the [validation history](docs/validation-history/pending-batch-results.md#hosted-requalification-at-fedbdee).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Finite captured script sources, independent recovery proofs and awaited internal
   process controls are authored. See [the acceptance plan](docs/s3-04-executable-source-acceptance.md).
