@@ -469,7 +469,14 @@ async def test_protected_approval_api_scopes_actor_lists_and_filters_status(appr
         assert decision.json()["operator_id"] == principals["b"]
 
         invalid_status = await client.get("/v1/approvals?status=unknown", headers=actor_a)
-        assert invalid_status.status_code == 422
+        assert invalid_status.status_code == 400
+        assert invalid_status.json() == {
+            "error": {
+                "code": "approval_validation_error",
+                "message": "unsupported approval status",
+                "details": {},
+            }
+        }
 
 
 @pytest.mark.asyncio
@@ -506,7 +513,7 @@ async def test_protected_approval_assignment_api_replays_and_fences_changes(appr
         )
         assert first.status_code == 200
         assert first.json()["assignee"] == principals["b"]
-        assert first.json()["assignment_revision"] == 2
+        assert first.json()["revision"] == 2
         after_first = snapshot(services, reassigned)
 
         replay = await client.post(
@@ -537,7 +544,7 @@ async def test_protected_approval_assignment_api_replays_and_fences_changes(appr
             json={"assignee": principals["b"], "revision": 1},
         )
         assert escalation.status_code == 200
-        assert escalation.json()["assignment_revision"] == 2
+        assert escalation.json()["revision"] == 2
         changed, _ = services.approvals.protected_store.inspect(escalated)
         assert changed["assignee"] == principals["b"]
         assert changed["audit"][0]["request"]["action"] == "escalate"

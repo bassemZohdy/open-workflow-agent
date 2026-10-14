@@ -678,7 +678,7 @@ def test_kafka_topic_configuration_and_binding_schemas_are_preserved(version):
     document = source(version)
     document["components"]["schemas"] = {
         "consumerGroup": {"type": "string", "minLength": 2},
-        "partitionKey": {"type": "string", "pattern": "^[A-Z]+$"},
+        "partitionKey": {"type": "string", "minLength": 2},
     }
     channel_binding = document["channels"]["events"]["bindings"]["kafka"]
     channel_binding.update(
@@ -720,7 +720,7 @@ def test_kafka_topic_configuration_and_binding_schemas_are_preserved(version):
     }
     assert messages[0]["bindings"]["kafka"]["key"] == {
         "type": "string",
-        "pattern": "^[A-Z]+$",
+        "minLength": 2,
     }
     assert selection.address == "events"
 

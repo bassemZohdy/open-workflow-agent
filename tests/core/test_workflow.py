@@ -23,16 +23,22 @@ from open_workflow_agent.workflow import (
     _error_details,
     _merge,
     _nested_task_lists,
+    _path_get,
     _resolve_protocol_endpoints,
     _retry_allowed,
     _retry_attempts,
     _retry_delay,
     _task_body,
     _validate_emit_capability,
+    _validate_json_value,
     _validate_listen_capability,
     _validate_run_capability,
+    _validate_transitions,
     _walk_tasks,
     compile_workflow,
+    load_json_value,
+    load_workflow,
+    load_workflow_text,
 )
 from pydantic import ValidationError
 
@@ -461,3 +467,200 @@ def test_derived_scope_plan_is_immutable_and_preserves_nested_task_references():
     decoded["set"]["ok"] = False
     assert plan.scopes[1].tasks[0].definition["set"]["ok"] is True
     assert plan.source == workflow
+
+
+def test_workflow_loaders_reject_non_json_yaml_and_unsafe_mapping_shapes(tmp_path):
+    loaded = load_workflow_text("on: true\noff: false\nname: sample\n")
+    assert loaded == {"on": True, "off": False, "name": "sample"}
+    assert load_json_value("- 1\n- null\n") == [1, None]
+
+    with pytest.raises(WorkflowSchemaError, match="unique strings"):
+        load_workflow_text("name: first\nname: second\n")
+    with pytest.raises(WorkflowSchemaError, match="invalid workflow YAML"):
+        load_json_value("value: [unterminated\n")
+    with pytest.raises(WorkflowSchemaError, match="root must be an object"):
+        load_workflow_text("[1, 2]\n")
+    with pytest.raises(WorkflowSchemaError, match="unable to read workflow"):
+        load_workflow(tmp_path / "missing.yaml")
+    workflow_file = tmp_path / "workflow.yaml"
+    workflow_file.write_text("name: loaded\n", encoding="utf-8")
+    assert load_workflow(workflow_file) == {"name": "loaded"}
+
+    cyclic: dict[str, object] = {}
+    cyclic["child"] = cyclic
+    with pytest.raises(WorkflowSchemaError, match="acyclic JSON"):
+        load_workflow(cyclic)
+    with pytest.raises(WorkflowSchemaError, match="keys must be strings"):
+        _validate_json_value({1: "invalid key"})
+    with pytest.raises(WorkflowSchemaError, match="finite JSON"):
+        _validate_json_value(float("nan"))
+    with pytest.raises(WorkflowSchemaError, match="finite JSON"):
+        _validate_json_value(object())
+    with pytest.raises(WorkflowSchemaError, match="depth at most 64"):
+        _validate_json_value(0, depth=65)
+
+
+def test_path_get_handles_empty_mapping_sequence_and_invalid_indexes():
+    value = {"items": [{"name": "Ada"}], "empty": None}
+    assert _path_get(value, "") is value
+    assert _path_get(value, "items[0].name") == "Ada"
+    assert _path_get(value, "items[not-an-index]") is None
+    assert _path_get(value, "items[4]") is None
+    assert _path_get(value, "empty.name") is None
+    assert _path_get({"items": "text"}, "items[0]") is None
+
+
+def test_transition_controls_set_exit_end_continue_and_jump_state():
+    state = ExecutionState(data={"value": 1})
+
+    WorkflowExecutor._apply_transition("continue", state)
+    assert state.transition_selected is True
+    assert state.scope_exit is False
+    state.transition_selected = False
+
+    WorkflowExecutor._apply_transition("exit", state)
+    assert state.scope_exit is True
+    state.scope_exit = False
+    state.transition_selected = False
+
+    WorkflowExecutor._apply_transition("next", state)
+    assert state.jump_to == "next"
+    state.jump_to = None
+    state.transition_selected = False
+
+    WorkflowExecutor._apply_transition("end", state)
+    assert state.stop is True
+    assert state.flow.ended.is_set()
+    assert state.flow.output == {"value": 1}
+    assert state.flow.context == {}
+    WorkflowExecutor._apply_transition("end", state)
+    assert state.flow.output == {"value": 1}
+    WorkflowExecutor._apply_transition(None, state)
+
+
+def test_transition_validation_rejects_unknown_duplicate_and_multiple_defaults():
+    with pytest.raises(WorkflowSemanticError, match="belong to the current scope"):
+        _validate_transitions({"then": "missing"}, "/do/0/task", {"known"})
+    with pytest.raises(WorkflowSemanticError, match="duplicate switch case"):
+        _validate_transitions(
+            {"switch": [{"same": {"when": "${ true }"}}, {"same": {}}]},
+            "/do/0/task",
+            set(),
+        )
+    with pytest.raises(WorkflowSemanticError, match="at most one default"):
+        _validate_transitions({"switch": [{"first": {}}, {"second": {}}]}, "/do/0/task", set())
+
+
+def test_task_output_and_export_transformations_validate_and_copy_data():
+    executor = WorkflowExecutor(FakeModel())
+    state = ExecutionState(
+        data={"original": True},
+        context={"prior": 1},
+        variables={"task": {"name": "transform"}},
+    )
+    output = executor._apply_task_data(
+        {
+            "output": {"as": "${ { total: .total + 1 } }"},
+            "export": {"as": "${ { saved: .total } }"},
+        },
+        {"total": 4},
+        state,
+    )
+    assert output == {"total": 5}
+    assert state.variables["task"]["output"] == {"total": 4}
+    assert state.variables["output"] == {"total": 5}
+    assert state.context == {"saved": 5}
+    assert state.variables["context"] is state.context
+
+    copied = executor._apply_task_data({}, {"nested": [1]}, state)
+    copied["nested"].append(2)
+    assert state.variables["output"] == {"nested": [1]}
+
+
+@pytest.mark.asyncio
+async def test_transitions_skip_tasks_and_exit_only_the_nested_scope(services):
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "tests",
+            "name": "control-flow",
+            "version": "1.0.0",
+        },
+        "do": [
+            {"jump": {"set": {"step": "jumped"}, "then": "target"}},
+            {"skipped": {"set": {"step": "incorrect"}}},
+            {
+                "target": {
+                    "do": [
+                        {"inside": {"set": {"step": "inside"}, "then": "exit"}},
+                        {"after_exit": {"set": {"step": "incorrect"}}},
+                    ]
+                }
+            },
+            {"after_scope": {"set": {"step": "after"}}},
+        ],
+    }
+    result = await WorkflowExecutor(services.catalog, services=services).execute(
+        compile_workflow(workflow), {}
+    )
+    assert result == {"step": "after"}
+
+
+@pytest.mark.asyncio
+async def test_task_sequence_rejects_malformed_items_and_missing_transition_targets(services):
+    executor = WorkflowExecutor(services.catalog, services=services)
+    for items, message in [
+        (["not-a-task"], "invalid task at sequence index 0"),
+        ([{"task": "not-an-object"}], "definition must be an object"),
+    ]:
+        with pytest.raises(WorkflowExecutionError, match=message):
+            await executor._run_tasks(items, ExecutionState(data={}))
+
+    state = ExecutionState(data={})
+    state.jump_to = "absent"
+    with pytest.raises(WorkflowExecutionError, match="transition target not found"):
+        await executor._run_tasks([{"task": {"set": {"ok": True}}}], state)
+
+
+@pytest.mark.asyncio
+async def test_workflow_output_and_task_export_schemas_reject_invalid_results(services):
+    output_workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "tests",
+            "name": "output-schema",
+            "version": "1.0.0",
+        },
+        "do": [{"set_result": {"set": {"value": "wrong"}}}],
+        "output": {
+            "schema": {"document": {"type": "object", "properties": {"value": {"type": "integer"}}}}
+        },
+    }
+    with pytest.raises(WorkflowSemanticError, match="workflow output schema"):
+        await WorkflowExecutor(services.catalog, services=services).execute(
+            compile_workflow(output_workflow), {}
+        )
+
+    export_workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "tests",
+            "name": "export-schema",
+            "version": "1.0.0",
+        },
+        "do": [
+            {
+                "set_result": {
+                    "set": {"value": "wrong"},
+                    "export": {
+                        "as": "${ . }",
+                        "schema": {"document": {"type": "string"}},
+                    },
+                }
+            }
+        ],
+    }
+    with pytest.raises(WorkflowSemanticError, match="task export schema"):
+        await WorkflowExecutor(services.catalog, services=services).execute(
+            compile_workflow(export_workflow), {}
+        )

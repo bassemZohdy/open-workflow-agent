@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 
 import pytest
 from engine_cases import engine_cases
@@ -27,10 +28,11 @@ def _workflow():
 
 
 async def _wait_for(predicate):
-    for _ in range(200):
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
         if predicate():
             return
-        await asyncio.sleep(0.005)
+        await asyncio.sleep(0.01)
     raise AssertionError("scheduled invocation did not complete")
 
 

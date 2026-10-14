@@ -21,6 +21,7 @@ from open_workflow_agent.sandbox.contract import (
 )
 from open_workflow_agent.sandbox.jobs import (
     SandboxJobBackendBinding,
+    SandboxJobLease,
     SandboxJobProfile,
     SandboxJobStore,
     job_id,
@@ -670,7 +671,7 @@ def test_exact_backend_terminal_inspection_can_resolve_lost_acceptance_without_r
     store.release(recovered)
 
 
-@pytest.mark.parametrize("damage", ["submit", "backend", "terminal"])
+@pytest.mark.parametrize("damage", ["submit", "backend", "control", "control_ack", "terminal"])
 def test_mutable_stage_cannot_disagree_with_its_independent_immutable_receipt(jobs, damage):
     services, store = jobs[:2]
     job = admit(jobs)
@@ -679,6 +680,10 @@ def test_mutable_stage_cannot_disagree_with_its_independent_immutable_receipt(jo
     store.record_accepted(lease, binding(job))
     if damage == "terminal":
         store.record_terminal(lease, binding(job), outcome(job))
+    elif damage in {"control", "control_ack"}:
+        control = store.request_control(lease, reason="cancel", principal="original-owner")
+        if damage == "control_ack":
+            store.acknowledge_control(lease, binding(job), generation=control["generation"])
     store.release(lease)
     column = damage + "_json"
     services.effect_journal.connection.execute(
@@ -942,3 +947,201 @@ def test_original_deadline_proof_rejects_missing_or_unbound_authority(jobs, dama
         store.release(replacement)
     else:
         store.release(lease)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        {"payload": object()},
+        {"payload": float("nan")},
+        {"payload": "x" * 1_048_577},
+    ],
+    ids=["non-json-value", "non-finite-number", "oversized-json"],
+)
+def test_private_job_encoding_rejects_values_without_a_bounded_canonical_form(jobs, value):
+    from open_workflow_agent.sandbox.jobs import _encoded
+
+    with pytest.raises(OwaError):
+        _encoded(value)
+
+
+@pytest.mark.parametrize(
+    "encoded",
+    [
+        '{"state":"ready","state":"terminal"}',
+        "x" * 1_048_577,
+        "{not-json",
+    ],
+    ids=["duplicate-field", "oversized-input", "malformed-json"],
+)
+def test_private_job_decoding_rejects_ambiguous_or_unbounded_evidence(jobs, encoded):
+    from open_workflow_agent.sandbox.jobs import _decode
+
+    with pytest.raises(WorkflowExecutionError, match="sandbox job evidence"):
+        _decode(encoded)
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: SandboxJobProfile("external", "deployment", "1", "a" * 64),
+        lambda: SandboxJobProfile("internal", "bad deployment", "1", "a" * 64),
+        lambda: SandboxJobProfile("internal", "deployment", "bad revision", "a" * 64),
+        lambda: SandboxJobProfile("internal", "deployment", "1", "not-a-digest"),
+        lambda: SandboxJobProfile("internal", "deployment", "1", "a" * 64, True),
+        lambda: SandboxJobProfile("internal", "deployment", "1", "a" * 64, float("inf")),
+        lambda: SandboxJobProfile("internal", "deployment", "1", "a" * 64, 0),
+    ],
+    ids=[
+        "backend",
+        "deployment-id",
+        "revision",
+        "policy-digest",
+        "boolean-timeout",
+        "infinite-timeout",
+        "zero-timeout",
+    ],
+)
+def test_job_profile_rejects_unbounded_or_malformed_deployment_authority(jobs, factory):
+    with pytest.raises(WorkflowExecutionError):
+        factory()
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: SandboxJobLease("foreign", "a" * 64, "b" * 32, 1, 1),
+        lambda: SandboxJobLease("job_" + "a" * 64, "bad-digest", "b" * 32, 1, 1),
+        lambda: SandboxJobLease("job_" + "a" * 64, "a" * 64, "foreign", 1, 1),
+        lambda: SandboxJobLease("job_" + "a" * 64, "a" * 64, "b" * 32, True, 1),
+        lambda: SandboxJobLease("job_" + "a" * 64, "a" * 64, "b" * 32, 0, 1),
+        lambda: SandboxJobLease("job_" + "a" * 64, "a" * 64, "b" * 32, 1, float("nan")),
+        lambda: SandboxJobLease("job_" + "a" * 64, "a" * 64, "b" * 32, 1, 0),
+    ],
+    ids=[
+        "job-id",
+        "admission-digest",
+        "owner",
+        "boolean-generation",
+        "zero-generation",
+        "non-finite-expiry",
+        "zero-expiry",
+    ],
+)
+def test_job_lease_rejects_malformed_or_expired_ownership_evidence(jobs, factory):
+    with pytest.raises(WorkflowExecutionError):
+        factory()
+
+
+@pytest.mark.parametrize(
+    "factory",
+    [
+        lambda: SandboxJobBackendBinding("foreign", "a" * 64, "deployment", "instance"),
+        lambda: SandboxJobBackendBinding("job_" + "a" * 64, "bad-digest", "deployment", "instance"),
+        lambda: SandboxJobBackendBinding("job_" + "a" * 64, "a" * 64, "bad deployment", "instance"),
+        lambda: SandboxJobBackendBinding("job_" + "a" * 64, "a" * 64, "deployment", "bad instance"),
+    ],
+    ids=["job-id", "request-digest", "controller-id", "instance-id"],
+)
+def test_backend_binding_requires_the_exact_bounded_peer_identity(jobs, factory):
+    with pytest.raises(WorkflowExecutionError):
+        factory()
+
+
+@pytest.mark.parametrize(
+    "damage",
+    ["wrong-id", "wrong-kind", "nul-command", "script-shape", "container-shape", "arguments"],
+    ids=[
+        "execution-id",
+        "operation-kind",
+        "nul-byte",
+        "script-fields",
+        "container-fields",
+        "argument-bounds",
+    ],
+)
+def test_executable_request_shape_is_validated_before_it_can_become_durable(jobs, damage):
+    from open_workflow_agent.sandbox.jobs import _request, job_id
+
+    _, _, _, identity, execution, _ = jobs
+    selected_identity = identity
+    candidate = execution
+    if damage == "wrong-id":
+        candidate = replace(execution, execution_id="job_" + "0" * 64)
+    elif damage == "wrong-kind":
+        candidate = replace(execution, kind="container")
+    elif damage == "nul-command":
+        candidate = replace(execution, command="bad\x00command")
+    elif damage == "script-shape":
+        selected_identity = replace(identity, operation="run:script")
+        candidate = replace(
+            execution,
+            execution_id=job_id(selected_identity),
+            kind="script",
+            command=None,
+            script_language=None,
+            script_code="print('ok')",
+            image=None,
+        )
+    elif damage == "container-shape":
+        selected_identity = replace(identity, operation="run:container")
+        candidate = replace(
+            execution,
+            execution_id=job_id(selected_identity),
+            kind="container",
+            command=None,
+            image=None,
+        )
+    else:
+        candidate = replace(execution, arguments=("arg",) * 129)
+    with pytest.raises(WorkflowExecutionError):
+        _request(candidate, selected_identity)
+
+
+def test_job_event_state_guards_reject_illegal_transitions_without_changing_evidence(jobs):
+    store = jobs[1]
+    job = admit(jobs)
+    lease = store.claim(job.job_id)
+
+    with pytest.raises(WorkflowExecutionError):
+        store.mark_uncertain(lease, reason="invented-reason")
+    with pytest.raises(InvocationStateConflict):
+        store.mark_uncertain(lease, reason="controller_lost")
+    with pytest.raises(InvocationStateConflict):
+        store.record_accepted(lease, binding(job))
+    with pytest.raises(WorkflowExecutionError):
+        store.acknowledge_control(lease, binding(job), generation=1)
+    before = snapshot(jobs)
+    assert store.get(job.job_id).status == "ready"
+    assert snapshot(jobs) == before
+
+    store.request_control(lease, reason="cancel", principal="original-owner")
+    terminal = store.settle_unstarted_control(lease)
+    assert terminal.status == "terminal"
+    with pytest.raises(InvocationStateConflict):
+        store.mark_uncertain(lease, reason="controller_lost")
+    store.release(lease)
+
+
+def test_control_acknowledgment_and_first_control_reject_conflicting_generations(jobs, monkeypatch):
+    store, state = jobs[1], jobs[5]
+    job = admit(jobs)
+    lease = store.claim(job.job_id)
+    store.begin_submit(lease)
+    peer = binding(job)
+    store.record_accepted(lease, peer)
+
+    with pytest.raises(WorkflowExecutionError):
+        store.acknowledge_control(lease, peer, generation=1)
+    control = store.request_control(lease, reason="cancel", principal="original-owner")
+    with pytest.raises(WorkflowExecutionError):
+        store.acknowledge_control(lease, peer, generation=2)
+    with pytest.raises(InvocationStateConflict):
+        store.settle_unstarted_control(lease)
+
+    monkeypatch.setattr(store, "_now", lambda: state["deadline"] + 1)
+    with pytest.raises(InvocationStateConflict):
+        store.request_control(lease, reason="deadline")
+    assert store.request_control(lease, reason="cancel", principal="original-owner") == control
+    store.acknowledge_control(lease, peer, generation=control["generation"])
+    store.release(lease)

@@ -65,7 +65,7 @@ async def test_original_protected_approval_controls_gate_one_native_business_act
     engine = engine_type()
     actual_native(engine, engine_name)
     await engine.initialize(services)
-    engine._execution_ownership_seconds = 30.0 if case == "race" else 0.5
+    engine._execution_ownership_seconds = 0.5 if case == "expired" else 30.0
     if case == "expired":
         await services.stop_protected_approvals()
     subject = str(uuid4())

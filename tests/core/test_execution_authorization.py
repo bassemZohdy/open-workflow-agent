@@ -11,7 +11,12 @@ from uuid import uuid4
 import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
-from open_workflow_agent.effects import EffectIdentity, ReceiptDependency, effect_request_digest
+from open_workflow_agent.effects import (
+    EffectIdentity,
+    EffectReceipt,
+    ReceiptDependency,
+    effect_request_digest,
+)
 from open_workflow_agent.errors import InvocationStateConflict, OwaError, WorkflowExecutionError
 from open_workflow_agent.execution_authority import ExecutionAuthority, authority_scope
 from open_workflow_agent.execution_authorization import (
@@ -1187,3 +1192,326 @@ def test_tampered_pending_intent_fails_closed_before_retry_or_dispatch(authority
             first_intent=False,
         )
     assert _snapshot(authority_tree) == before and services.model.calls == []
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("principal", "mallory"),
+        ("decision", "deny"),
+        ("policy_id", "other"),
+        ("policy_version", "2"),
+        ("policy_digest", "0" * 64),
+        ("policy_enforced", False),
+        ("generation", 0),
+        ("request_digest", "not-a-digest"),
+        ("__missing_principal__", None),
+        ("__extra_audit_claim__", None),
+        ("action", ""),
+        ("action", "x" * 129),
+        ("action", "bad\naction"),
+        ("action", 3),
+        ("resource", ""),
+        ("resource", "x" * 4097),
+        ("resource", "bad\rresource"),
+        ("resource", None),
+        ("__rekeyed_pair__", None),
+    ],
+    ids=[
+        "principal",
+        "decision",
+        "policy-id",
+        "policy-version",
+        "policy-digest",
+        "policy-enabled",
+        "generation",
+        "request-digest",
+        "missing-audit-field",
+        "extra-audit-field",
+        "empty-action",
+        "oversize-action",
+        "control-action",
+        "typed-action",
+        "empty-resource",
+        "oversize-resource",
+        "control-resource",
+        "typed-resource",
+        "rekeyed-authorized-pair",
+    ],
+)
+def test_decision_reader_rejects_each_changed_audit_claim(authority_tree, field, value):
+    """Well-formed row digests do not make altered authorization claims valid."""
+    import open_workflow_agent.execution_authorization as module
+
+    services, _, _, _, _, _, _ = authority_tree
+    _admit(authority_tree)
+    decision = _decision(authority_tree)
+    connection = services.effect_journal.connection
+    row = connection.execute(
+        "SELECT payload FROM execution_authorization_decisions WHERE decision_key=?",
+        (decision.identity.key,),
+    ).fetchone()
+    saved = json.loads(row[0])
+    if field == "request_digest":
+        saved[field] = value
+    elif field == "__missing_principal__":
+        saved["audit"].pop("principal")
+    elif field == "__extra_audit_claim__":
+        saved["audit"]["unexpected"] = True
+    elif field == "__rekeyed_pair__":
+        saved["audit"]["action"] = "tool.invoke"
+        saved["audit"]["resource"] = "safe-tool"
+    else:
+        saved["audit"][field] = value
+    encoded = module._encoded(saved)
+    connection.execute(
+        "UPDATE execution_authorization_decisions SET payload=?,digest=? WHERE decision_key=?",
+        (encoded, module._digest(saved), decision.identity.key),
+    )
+    connection.commit()
+    before = _snapshot(authority_tree)
+    with pytest.raises(OwaError):
+        module.verify_execution_authorization_receipt(
+            connection, services.invocations, decision.identity, decision.receipt
+        )
+    assert _snapshot(authority_tree) == before and services.model.calls == []
+
+
+@pytest.mark.parametrize(
+    "dependency_edit", ["omit", "add", "duplicate"], ids=["omitted", "extra", "duplicate"]
+)
+def test_seal_verifier_requires_the_exact_sorted_permission_dependency_set(
+    authority_tree, dependency_edit
+):
+    """A valid seal row digest cannot hide missing, extra, or duplicate decisions."""
+    import open_workflow_agent.execution_authorization as module
+
+    services, _, _, _, _, _, identity = authority_tree
+    _admit(authority_tree)
+    _decision(authority_tree)
+    _decision(authority_tree, action="tool.invoke", resource="safe-tool")
+    receipt = _finish(authority_tree, {"committed": True})
+    connection = services.effect_journal.connection
+    row = connection.execute(
+        "SELECT payload FROM execution_authorization_outcomes WHERE business_key=?",
+        (identity.key,),
+    ).fetchone()
+    value = json.loads(row[0])
+    if dependency_edit == "omit":
+        value["decisions"].pop()
+    elif dependency_edit == "add":
+        value["decisions"].append({"key": "unrecorded-decision", "receipt_digest": "0" * 64})
+    else:
+        value["decisions"].append(dict(value["decisions"][0]))
+    encoded = module._encoded(value)
+    connection.execute(
+        "UPDATE execution_authorization_outcomes SET payload=?,digest=? WHERE business_key=?",
+        (encoded, module._digest(value), identity.key),
+    )
+    connection.commit()
+    before = _snapshot(authority_tree)
+    with pytest.raises(OwaError):
+        module.verify_execution_authorization_business_receipt(
+            connection, services.invocations, identity, receipt
+        )
+    assert _snapshot(authority_tree) == before and services.model.calls == []
+
+
+def test_outcome_seal_rejects_a_new_decision_added_after_business_completion(authority_tree):
+    """The outcome seal freezes the action set as well as each action's receipt."""
+    services, _, _, _, _, _, identity = authority_tree
+    _admit(authority_tree)
+    _decision(authority_tree)
+    receipt = _finish(authority_tree, {"committed": True})
+    _decision(authority_tree, action="tool.invoke", resource="safe-tool")
+    before = _snapshot(authority_tree)
+    with pytest.raises(OwaError):
+        verify_execution_authorization_business_receipt(
+            services.effect_journal.connection, services.invocations, identity, receipt
+        )
+    assert _snapshot(authority_tree) == before and services.model.calls == []
+
+
+def test_lost_owner_cannot_reseal_pending_intent_or_finish_business(authority_tree):
+    """A pending intent remains tied to its original owner fence after takeover."""
+    services, _, store, _, handle, _, identity = authority_tree
+    _admit(authority_tree)
+    _decision(authority_tree)
+    pending = services.effect_journal.begin(
+        identity, "a" * 64, "first", execution_lease=handle._execution_lease
+    )
+    old = handle._execution_lease
+    services.execution_ownership.release(old)
+    takeover = services.execution_ownership.acquire(handle, seconds=300)
+    before = _snapshot(authority_tree)
+    try:
+        with pytest.raises(InvocationStateConflict):
+            store.seal_intent(identity, pending, execution_lease=old, first_intent=False)
+        with pytest.raises(InvocationStateConflict):
+            services.effect_journal.finish_owned(
+                identity, "first", output={"late": True}, execution_lease=old
+            )
+        assert services.effect_journal.get(identity) == pending
+        assert _snapshot(authority_tree) == before and takeover.generation > old.generation
+    finally:
+        services.execution_ownership.release(takeover)
+
+
+def test_current_takeover_can_finish_original_pending_intent_without_reissuing_it(authority_tree):
+    """Recovery may complete a retained intent under its new lease without rewriting it."""
+    services, _, store, _, handle, _, identity = authority_tree
+    _admit(authority_tree)
+    _decision(authority_tree)
+    pending = services.effect_journal.begin(
+        identity, "a" * 64, "first", execution_lease=handle._execution_lease
+    )
+    old = handle._execution_lease
+    intent_before = services.effect_journal.get(store.intent_receipt(identity).identity)
+    services.execution_ownership.release(old)
+    takeover = services.execution_ownership.acquire(handle, seconds=300)
+    handle._execution_lease = takeover
+    try:
+        completed = services.effect_journal.finish_owned(
+            identity, pending.owner, output={"recovered": True}, execution_lease=takeover
+        )
+        assert completed.status == "completed" and completed.output == {"recovered": True}
+        assert services.effect_journal.get(store.intent_receipt(identity).identity) == intent_before
+        verify_execution_authorization_business_receipt(
+            services.effect_journal.connection, services.invocations, identity, completed
+        )
+    finally:
+        services.execution_ownership.release(takeover)
+
+
+def test_snapshot_verification_skips_legacy_business_without_authority_evidence(authority_tree):
+    """Legacy records without any authority marker retain the no-op verification path."""
+    services, _, _, _, _, _, identity = authority_tree
+    legacy = replace(identity, operation="done:set")
+    receipt = EffectReceipt("b" * 64, "legacy", status="completed", output={"ok": True})
+    before = _snapshot(authority_tree)
+    verify_authorized_business_snapshot(services.effect_journal.connection, legacy, receipt)
+    assert _snapshot(authority_tree) == before
+
+
+@pytest.mark.parametrize(
+    "encoded",
+    [
+        '{"claim":1,"claim":2}',
+        "not-json",
+        '"oversize"',
+    ],
+    ids=["duplicate-field", "invalid-json", "oversize-record"],
+)
+def test_authority_record_parser_rejects_ambiguous_or_unbounded_records(encoded):
+    import open_workflow_agent.execution_authorization as module
+
+    limit = 8 if encoded == '"oversize"' else 100
+    with pytest.raises(OwaError):
+        module._parsed(encoded, limit=limit)
+
+
+def test_authority_descriptor_rejects_untrusted_shape():
+    import open_workflow_agent.execution_authorization as module
+
+    with pytest.raises(OwaError):
+        module._authority_descriptor({"principal": "forged"})
+
+
+def test_record_digest_and_known_receipt_shape_are_verified_independently(authority_tree):
+    import open_workflow_agent.execution_authorization as module
+
+    services, _, _, _, handle, _, identity = authority_tree
+    _admit(authority_tree)
+    _decision(authority_tree)
+    receipt = _finish(authority_tree, {"known": True})
+    connection = services.effect_journal.connection
+    authority_key = handle.invocation_id
+    connection.execute(
+        "UPDATE execution_authorities SET digest=? WHERE invocation_id=?",
+        ("0" * 64, authority_key),
+    )
+    connection.commit()
+    before = _snapshot(authority_tree)
+    with pytest.raises(OwaError):
+        module._record(connection, "execution_authorities", "invocation_id", authority_key)
+    assert _snapshot(authority_tree) == before
+
+    connection.execute(
+        "UPDATE workflow_effects SET payload=? WHERE identity=?", ("{}", identity.key)
+    )
+    connection.commit()
+    before = _snapshot(authority_tree)
+    with pytest.raises(OwaError):
+        module._known_receipt(connection, identity)
+    with pytest.raises(OwaError):
+        module.verify_execution_authorization_business_receipt(
+            connection, services.invocations, identity, receipt
+        )
+    assert _snapshot(authority_tree) == before
+
+
+def test_authority_reader_rejects_cycles_and_wrong_receipt_identity(authority_tree):
+    import open_workflow_agent.execution_authorization as module
+
+    services, _, _, _, handle, _, _ = authority_tree
+    _admit(authority_tree)
+    with pytest.raises(OwaError):
+        module._read_authority(
+            services.effect_journal.connection,
+            services.invocations,
+            handle,
+            ancestors=frozenset({handle.invocation_id}),
+        )
+    receipt = services.effect_journal.get(module.authority_identity(handle))
+    assert receipt is not None
+    wrong = replace(module.authority_identity(handle), operation="policy:wrong")
+    with pytest.raises(OwaError):
+        module.verify_execution_authority_receipt(
+            services.effect_journal.connection, services.invocations, wrong, receipt
+        )
+
+
+def test_decision_reader_rejects_index_columns_that_disagree_with_the_signed_record(authority_tree):
+    import open_workflow_agent.execution_authorization as module
+
+    services, _, _, _, handle, _, _ = authority_tree
+    _admit(authority_tree)
+    decision = _decision(authority_tree)
+    connection = services.effect_journal.connection
+    connection.execute(
+        "UPDATE execution_authorization_decisions SET fingerprint=? WHERE decision_key=?",
+        ("0" * 64, decision.identity.key),
+    )
+    connection.commit()
+    before = _snapshot(authority_tree)
+    with pytest.raises(OwaError):
+        module.verify_execution_authorization_receipt(
+            connection, services.invocations, decision.identity, decision.receipt
+        )
+    assert _snapshot(authority_tree) == before and handle.invocation_id
+
+
+@pytest.mark.parametrize(
+    "table", ["invocations", "execution_authorities"], ids=["invocations", "authority"]
+)
+def test_independent_snapshot_requires_its_minimum_storage_tables(
+    authority_tree, monkeypatch, table
+):
+    import open_workflow_agent.execution_authorization as module
+
+    services, _, _, _, handle, _, identity = authority_tree
+    _admit(authority_tree)
+    _decision(authority_tree)
+    receipt = _finish(authority_tree, {"known": True})
+    original = module._table_exists
+
+    def selectively_missing(connection, selected):
+        if selected == table:
+            return False
+        return original(connection, selected)
+
+    monkeypatch.setattr(module, "_table_exists", selectively_missing)
+    before = _snapshot(authority_tree)
+    with pytest.raises(OwaError):
+        verify_authorized_business_snapshot(services.effect_journal.connection, identity, receipt)
+    assert _snapshot(authority_tree) == before and handle.invocation_id

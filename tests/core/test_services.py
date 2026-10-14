@@ -454,3 +454,214 @@ def test_runtime_services_recovery_profile_composes_enabled_policies_without_sec
         assert secret not in serialized
     finally:
         services.close()
+
+
+@pytest.mark.parametrize(
+    "declaration",
+    [
+        None,
+        {},
+        {"id": "bad id", "version": "1"},
+        {"id": "runtime", "version": ""},
+        {"id": "runtime", "version": "1", "secret": "must-not-be-retained"},
+    ],
+    ids=["not-object", "missing-fields", "invalid-id", "invalid-version", "extra-field"],
+)
+def test_runtime_services_rejects_invalid_recovery_binding_declarations(tmp_path, declaration):
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    services = RuntimeServices(
+        RuntimeConfig(),
+        model=FakeModel(),
+        database_root=tmp_path,
+        recovery_profile_provider=lambda _engine: declaration,
+    )
+    try:
+        with pytest.raises(ConfigurationError, match="declaration is invalid"):
+            services._recovery_profile("test")
+    finally:
+        services.close()
+
+
+def test_runtime_services_recovery_profile_records_deployed_approval_actor_identity(
+    tmp_path, monkeypatch
+):
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    monkeypatch.setenv("OWA_TEST_APPROVAL_ACTOR_TOKEN", "never-retain-this-token")
+    config = RuntimeConfig.model_validate(
+        {
+            "security": {
+                "profiles": {
+                    "reviewer": {
+                        "type": "bearer",
+                        "principal": "reviewer-identity",
+                        "roles": ["approver", "auditor"],
+                        "scopes": ["approve"],
+                        "audience": ["workflow"],
+                        "token": {"from_env": "OWA_TEST_APPROVAL_ACTOR_TOKEN"},
+                    }
+                }
+            },
+            "approvals": {
+                "enabled": True,
+                "protected": True,
+                "actor_security_profiles": ["reviewer"],
+            },
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    try:
+        profile = services._compose_recovery_profile("test", {})
+        serialized = json.dumps(profile, sort_keys=True)
+        assert profile["policy"]["approvals"]["actorBindings"] == [
+            {
+                "profile": "reviewer",
+                "principal": "reviewer-identity",
+                "roles": ["approver", "auditor"],
+                "scopes": ["approve"],
+                "audience": ["workflow"],
+            }
+        ]
+        assert "never-retain-this-token" not in serialized
+    finally:
+        services.close()
+
+
+@pytest.mark.asyncio
+async def test_runtime_services_async_recovery_profile_rejects_concurrent_binding_change(
+    tmp_path, monkeypatch
+):
+    import threading
+
+    import open_workflow_agent.services as services_module
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    started = threading.Event()
+    release = threading.Event()
+
+    def slow_profile(_engine, **_kwargs):
+        started.set()
+        assert release.wait(5), "test did not release the bounded profile worker"
+        return {"profile": "test-only/physical"}
+
+    monkeypatch.setattr(services_module, "recovery_profile", slow_profile)
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    pending = asyncio.create_task(services._recovery_profile_async("test"))
+    try:
+        assert await asyncio.to_thread(started.wait, 5)
+        services.config = RuntimeConfig.model_validate({"agent": {"instruction": "changed"}})
+        release.set()
+        with pytest.raises(ConfigurationError, match="binding changed during verification"):
+            await pending
+        await asyncio.sleep(0)
+        assert services._physical_profile_slots._value == 2
+    finally:
+        release.set()
+        if not pending.done():
+            await pending
+        services.close()
+
+
+def test_runtime_services_caches_event_trigger_store_per_engine(tmp_path):
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    services = RuntimeServices(
+        RuntimeConfig.model_validate({"events": {"backend": "embedded"}}),
+        model=FakeModel(),
+        database_root=tmp_path,
+    )
+    try:
+        first = services.event_triggers("adk")
+        assert first is not None
+        assert services.event_triggers("adk") is first
+        assert services.event_triggers("langgraph") is not first
+        assert services.event_triggers("langgraph", clock=lambda: 42.0) is services.event_triggers(
+            "langgraph"
+        )
+        assert services.event_triggers("adk").clock() != 42.0
+    finally:
+        services.close()
+
+
+def test_runtime_services_rejects_protocol_authorization_hook_replacement(tmp_path):
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    services = RuntimeServices(
+        RuntimeConfig.model_validate({"execution_authorization": {"enabled": True}}),
+        model=FakeModel(),
+        database_root=tmp_path,
+    )
+    try:
+        services.protocols.authorize_destination = lambda *_args: None
+        with pytest.raises(ConfigurationError, match="not deployment-bound"):
+            services.verify_protocol_authorization_binding()
+    finally:
+        services.close()
+
+
+def test_runtime_services_tool_validation_rejects_unknown_and_unbounded_shapes(tmp_path):
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    try:
+        with pytest.raises(ConfigurationError, match="not deployment-bound"):
+            services.validate_agent_tool_payload("unregistered", {})
+        with pytest.raises(ConfigurationError, match="requires a bounded object"):
+            services.validate_agent_tool_payload("add_memory", "private")
+        with pytest.raises(ConfigurationError, match="cannot choose its namespace"):
+            services.validate_agent_tool_payload(
+                "search_knowledge", {"query": "policy", "namespace": "another-user"}
+            )
+        with pytest.raises(ConfigurationError, match="input is invalid"):
+            services.validate_agent_tool_payload("add_memory", {"text": True})
+        with pytest.raises(ConfigurationError, match="input is invalid"):
+            services.validate_agent_tool_payload("delete_memory", {"id": True})
+        with pytest.raises(ConfigurationError, match="search tool input is invalid"):
+            services.validate_agent_tool_payload("search_memory", {"query": "policy", "limit": 0})
+    finally:
+        services.close()
+
+
+@pytest.mark.asyncio
+async def test_runtime_services_optional_dispatchers_and_empty_retained_proofs_are_noops(
+    tmp_path,
+):
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    services = RuntimeServices(
+        RuntimeConfig.model_validate({"events": {"backend": "memory"}}),
+        model=FakeModel(),
+        database_root=tmp_path,
+    )
+    plan = compile_workflow()
+    handle = services.invocations.create(
+        engine="test",
+        session_id="services-noop-session",
+        user_id=None,
+        workflow_name=plan.name,
+        workflow_version=plan.version,
+        workflow_fingerprint=plan.fingerprint,
+    )
+    try:
+        assert services.event_triggers("test") is None
+        services.verify_background_jobs(handle)
+        services.verify_protected_approvals(handle)
+        await services.verify_executable_source_history(handle)
+        services.verify_protected_approval_plan(plan)
+        await services.start_protected_approvals()
+        await services.stop_protected_approvals()
+        await services.start_background_jobs()
+        await services.stop_background_jobs()
+        assert services.sandbox_jobs is None
+        assert services._background_dispatcher is None
+        assert services._approval_expiry_dispatcher is None
+    finally:
+        services.close()

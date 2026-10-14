@@ -121,13 +121,29 @@ def test_durable_events_survive_actual_native_process_stop(
     failure = tmp_path / (("legacy-start" if legacy else "start") + "-failure.json")
     try:
         deadline = time.monotonic() + 60
-        while not (tmp_path / "ready.json").exists():
+        ready_path = tmp_path / "ready.json"
+        ready = None
+        while time.monotonic() < deadline:
             assert first.poll() is None, (
                 failure.read_text(encoding="utf-8") if failure.exists() else "worker exited"
             )
-            assert time.monotonic() < deadline
+            try:
+                candidate = json.loads(ready_path.read_text(encoding="utf-8"))
+            except (FileNotFoundError, PermissionError, json.JSONDecodeError):
+                time.sleep(0.02)
+                continue
+            if (
+                isinstance(candidate, dict)
+                and isinstance(candidate.get("pid"), int)
+                and not isinstance(candidate.get("pid"), bool)
+                and candidate["pid"] > 0
+                and isinstance(candidate.get("invocation_id"), str)
+                and candidate["invocation_id"]
+            ):
+                ready = candidate
+                break
             time.sleep(0.02)
-        ready = json.loads((tmp_path / "ready.json").read_text())
+        assert ready is not None, "worker did not publish complete ready evidence"
         assert ready["pid"] == first.pid and first.poll() is None
         if legacy:
             assert ready["legacy_output"] == {"order": "chosen", "value": 1}

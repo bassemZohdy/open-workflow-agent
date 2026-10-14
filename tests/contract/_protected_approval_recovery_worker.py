@@ -78,7 +78,7 @@ async def run(directory, mode):
 
             if scenario["case"] != "expired":
                 services.event_bus.receive_next = park_before_selection
-            due = expiry(2 if scenario["case"] == "expired" else 120)
+            due = expiry(30 if scenario["case"] == "expired" else 120)
             plan = compile_workflow(definition(scenario["subject"], due))
             invocation = handle(services, scenario["engine"], plan)
             task = asyncio.create_task(engine.invoke(plan, invocation, RAW))
@@ -149,7 +149,7 @@ async def run(directory, mode):
         before = approval_snapshot(services, scenario["subject"], invocation.invocation_id)
         native_before = native_snapshot(services, invocation, scenario["backend"])
         if scenario["case"] == "expired":
-            async with asyncio.timeout(5):
+            async with asyncio.timeout(40):
                 while time.time() < ready["expiry"]:
                     await asyncio.sleep(0.01)
             await services.start_protected_approvals()

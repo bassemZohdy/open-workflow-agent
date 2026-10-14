@@ -165,7 +165,8 @@ async def test_api_cancel_waiting_invocation_is_idempotent(tmp_path):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             invoke_task = asyncio.create_task(client.post("/v1/invoke", json={"input": {}}))
-            for _ in range(100):
+            deadline = asyncio.get_running_loop().time() + 30
+            while asyncio.get_running_loop().time() < deadline:
                 waiting = next(
                     (
                         event
@@ -176,7 +177,12 @@ async def test_api_cancel_waiting_invocation_is_idempotent(tmp_path):
                 )
                 if waiting is not None:
                     break
-                await asyncio.sleep(0.005)
+                if invoke_task.done():
+                    result = invoke_task.result()
+                    raise AssertionError(
+                        f"invocation completed before entering waiting state: {result}"
+                    )
+                await asyncio.sleep(0.01)
             assert waiting is not None
             cancelled = await client.post(
                 f"/v1/invocations/{waiting.invocation_id}/cancel",

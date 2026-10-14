@@ -18,20 +18,16 @@ Rules: reuse native LangGraph graphs/tasks/checkpoints; start in one container w
 
 Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, not time estimates.
 
-## Delivery status — 2026-10-13
+## Delivery status — 2026-10-14
 
-**17 verified / 20 open / 0 deferred.** S2-09 is the earliest unfinished task.
-S2-09 through S3-08 have authored changes awaiting complete qualification.
-The latest hosted checkpoint (`67aa724`) failed; grouped corrections and selected
-adapters remain unqualified. At frozen local source `4740732`, optional Agent
-Framework passed its selected profile; LangGraph failed, and common/ADK both
-reached their 4,500-second bounds without final pytest totals. Source remained
-unchanged. The renewal correction and grouped fixture patches are frozen at
-`883cd1a`; five fresh builds pass and all four full profiles have started. This
-launch record has no final behavioral results. No pending task is marked complete.
-See
-[current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-13)
-and [retained validation evidence](docs/validation-history/pending-batch-results.md).
+**17 verified / 20 open / 0 deferred.** S2-09 remains the earliest unfinished
+task. The full local profile batch at frozen source `0573ce7` ended with root,
+ADK and LangGraph failures; optional Agent Framework passed. Root coverage was
+89.00%, below the required 90%. All observed failures have actionable fixes, so
+no task is deferred and no pending checkbox or feature is complete. A grouped
+correction and coverage batch is underway before the next full validation run.
+See [current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-14)
+and the [retained validation evidence](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-0573ce7).
 
 ## Stage 1 — Correct core execution
 

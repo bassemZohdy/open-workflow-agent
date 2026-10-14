@@ -7,12 +7,15 @@
 - `TODO.md` — scoped backlog and intentionally deferred work.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current backlog delivery mode — 2026-10-13
+## Current backlog delivery mode — 2026-10-14
 
 **17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-09 is
 the earliest unfinished milestone. Coherent source authoring continues through
 S3-08 in parallel; failed or incomplete validation advances no task checkbox or
-inventory row.
+inventory row. The latest full local batch at `0573ce7` ended with actionable
+failures in root, ADK and LangGraph; optional Agent Framework passed. Root
+coverage was 89.00%, below its required 90%. Grouped corrections and coverage
+work are being prepared for a fresh full batch.
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
@@ -35,19 +38,14 @@ failed. Later source and corrections remain local feature work pending validatio
 | `dc71ecb`, 1,034 inputs | Five builds passed; common 46 failures/59 errors; optional framework three failures; principal SDK suites reached the unchanged 75-minute bounds with failures | Failed/incomplete |
 | `3aaaf30`, 1,054 inputs | Static/schema/admission checks and five builds passed; common 8 failures, 2,822 passes, 601 skips and 52 errors; source unchanged | Behavioral gates open |
 | `4740732`, 1,067 inputs | Optional Framework: 767 passes, 354 skips, 2,934 deselections, exit 0. LangGraph: 73 failures, 1,146 passes, 672 skips, 1,467 deselections, exit 1. Common and ADK each reached the 4,500-second bound at logged 97% progress, exit 124, without final pytest totals. All four end reports retain unchanged source. | Integrated qualification open |
-| `883cd1a`, 1,068 inputs | Launch snapshot: all five fresh build/provenance checks passed; four full profiles started, with 5,400-second root/ADK and 4,500-second LangGraph/optional Framework batch bounds. No final behavioral results captured in this record. | Qualification pending |
+| `883cd1a`, 1,068 inputs | Five fresh build/provenance checks passed; its four behavioral profiles were superseded by the completed `0573ce7` batch below. | Historical launch only |
+| `0573ce7`, 17-file source/test change | Static checks, lock checks, Compose validation and root/core builds passed. Optional Framework passed; root (11 failures, 89.00% coverage), ADK (3 failures) and LangGraph (3 failures) did not qualify. Exact outcomes and log hashes are retained in the [batch record](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-0573ce7). | Failed local qualification; corrections underway |
 
 Earlier `7214f46` and `caa32c8` outcomes remain in
 [the batch evidence record](docs/validation-history/pending-batch-results.md).
-All four `4740732` profiles have ended. Its optional Framework pass does not
-qualify the failed LangGraph profile or bounded incomplete common/ADK profiles.
-The renewal correction and five grouped fixture patches are frozen at `883cd1a`;
-only bounded physical artifact/SDK verification moves off-loop, retaining original
-leases and synchronous database/trust phases. Ruff and formatting (527 files),
-strict typing (134 source files), and all five fresh build/provenance checks pass.
-The four full profiles have started; final behavioral acceptance remains pending
-at this launch snapshot. Full commands, counts, source hashes and
-actionable causes are retained in the evidence record.
+Earlier source checkpoints remain historical. The latest complete local profile
+outcome and actionable failures are recorded in the
+[pending-batch evidence](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-0573ce7).
 Source changes and partial passes qualify no unchecked task, full inventory row,
 JavaScript profile or release.
 
@@ -669,18 +667,12 @@ uv run --directory engines/agent-framework --locked --extra native --extra knowl
 
 The CI source-integrity gate caught three ignored predecessor reference files missing from the initial PR. Those exact source bytes are now explicitly tracked; the gate remains enforced. MIG-01 transfer/license disposition is complete: both imported sources retain Apache attribution, and unlicensed generic source stays at origin. No active compiler, checkpoint service or unsafe approval implementation is introduced by the frozen reference import.
 
-## S2-09 version recovery work -- 2026-10-13 pending verification
+## Current S2-09 and S3-02 implementation notes
 
-The isolated batch retains immutable original public definition inputs and
-invocation bindings before native projection. New invocations may select a newer
-workflow version; retained invocations require their original definition and
-exact qualified execution profile. Authenticated recovery diagnostics inspect
-bounded common evidence without leases, native mutation or business I/O.
-Explicit mapping, checkpoint transplant and arbitrary SDK upgrade remain
-unsupported. Authoring is complete; finite actual native, backend, process-stop,
-packaging and hosted validation is pending. S2-09 remains unchecked. See
-[the finite policy](docs/s2-09-version-recovery-acceptance.md).
-
-## S3-02 A2A implementation work -- 2026-10-13 pending verification
-
-S2-09/S3-01/S3-02 remain unchecked. Exact-source hosted checkpoint `67aa724` failed root/native/PostgreSQL/optional Framework/Windows timing acceptance, while its standard images and several independent checks passed. Concrete fixture and runtime corrections continue in the combined source batch; full fresh qualification remains mandatory. [The finite A2A record](docs/s3-02-a2a-acceptance.md) preserves scope and exclusions; [the operation record](docs/s3-03-operation-adapters-acceptance.md#first-frozen-batch-and-grouped-corrections) tracks the current grouped failure history. Broader transport, delegated authorization and independent JavaScript work retain their separate backlog owners.
+S2-09 retains its finite migration and recovery policy in
+[the acceptance record](docs/s2-09-version-recovery-acceptance.md), while S3-02
+retains its protocol scope in [the A2A acceptance record](docs/s3-02-a2a-acceptance.md).
+Both remain unchecked pending their task-specific qualification gates. Current
+batch outcomes are maintained in the status table above and the
+[validation history](docs/validation-history/pending-batch-results.md), avoiding
+repeated dated status narratives here.

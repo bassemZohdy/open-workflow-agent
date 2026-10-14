@@ -355,7 +355,11 @@ async def test_actual_resource_failure_is_unknown_without_invented_exit_or_relau
             while _process_is_alive(child_pid):
                 await asyncio.sleep(0.025)
         assert not _process_is_alive(child_pid)
-        assert list(Path(backend.config.workspace_root).iterdir()) == []
+        workspace_root = Path(backend.config.workspace_root)
+        # The persistent supervisor control directory is deployment state;
+        # only the per-job execution workspace must be removed.
+        assert (workspace_root / ".owa-job-supervisors").is_dir()
+        assert not any(child.name.startswith("owa-job-") for child in workspace_root.iterdir())
         assert backend.capabilities()["resourceLimits"]["workspaceQuota"] == "monitored"
 
 

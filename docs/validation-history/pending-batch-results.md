@@ -1,4 +1,4 @@
-# Pending batch results — 2026-10-13
+# Pending batch results — 2026-10-14
 
 These attempts do not close S2-09 or S3-01 through S3-08. Passing subsets and fresh
 builds are distinct from complete qualification. Local `tmp/` evidence is ignored
@@ -229,3 +229,52 @@ end reports after the profiles finish. This launch snapshot claims no behavioral
 backend, native, platform, security, image or hosted qualification and advances no
 task checkbox or feature status. The preceding failed/bounded records remain
 historical evidence, not qualified by the newer source or its passing builds.
+
+## Frozen full profile batch — 0573ce7
+
+Source `0573ce7535021162ef6051b10b52e9137f83aeb7` freezes the OpenAPI security
+AND/OR correction, persisted supervisor-deadline recheck, and grouped A2A,
+AsyncAPI, authorization, approval, executable-source, sandbox and service tests.
+All four local profiles ran to completion at this exact HEAD with unchanged
+tracked source during execution. Prior to launch, formatting, lint, strict typing,
+lock checks, Docker Compose validation, and root/core package builds passed.
+
+| Profile | Result | Duration | Exit |
+| --- | --- | --- | --- |
+| Root suite and coverage | 11 failed, 4,242 passed, 2,858 skipped, 59 warnings; 89.00% coverage (required 90%) | 5,416.30s (1:30:16) | 1 |
+| ADK and shared/CTK | 3 failed, 1,401 passed, 1,404 skipped, 2 warnings | 6,141.70s (1:42:21) | 1 |
+| LangGraph and shared/CTK | 3 failed, 1,455 passed, 1,377 skipped, 1 warning | 5,696.08s (1:34:56) | 1 |
+| Optional Agent Framework and shared/CTK | 1,699 passed, 2,356 skipped, 1 deprecation warning | 5,087.80s (1:24:47) | 0 |
+
+The root coverage denominator was 24,288 statements with 2,671 missed. Root
+failures include short schedule/cancellation polling, a CI selector count made
+stale by the new finite approval cases, an AsyncAPI preservation fixture using
+an unsupported schema keyword, and assertion mismatches for the accepted common
+corruption error, sandbox control directory, and approval API response. The
+SQLite damage cases remain fail-closed and made no dispatch. The remaining root
+failures are traceable to those test expectation/polling corrections and the
+coverage deficit.
+
+ADK and LangGraph both reproduced the one-second schedule polling timeout. ADK
+also timed out waiting for a shared eventing state under full host load and its
+deliberate expired-approval subprocess surfaced an `OperationalError` before
+producing recovery evidence. LangGraph exposed a transient Windows
+`PermissionError` while its test read the atomically published ready marker, and
+an ordinary protected-approval case lost its intentionally short 0.5-second
+test lease. These profiles do not establish engine acceptance.
+
+The four retained logs are local ignored artifacts under
+`tmp/qualification-0573ce7/`:
+
+| Log | SHA-256 |
+| --- | --- |
+| `root.log` | `27f39cf776a0a62151e7b6f6bfa35079c156b6bde7a8a79cf1d64514f90ccf8e` |
+| `adk.log` | `0999ae4b4c0bbfd2af700795510db3cb26f29c42d9e7530ac5458ac7844add87` |
+| `langgraph.log` | `df9eb9ab37dcd2fba10f993bda2365b4d3feda3c7d604e36c192f765509f93c1` |
+| `framework.log` | `3d20334555022e8f722965067ecd77b39abbaef81f050bc66269e71fbed1e2de` |
+
+This is a failed local qualification record, not hosted CI evidence. No pending
+task, feature row, backend, JavaScript profile, or release advances from these
+results. The follow-up batch addresses the observed fixture issues and adds
+behavioral coverage without lowering the 90% threshold; a fresh full run is
+required before any acceptance claim.
