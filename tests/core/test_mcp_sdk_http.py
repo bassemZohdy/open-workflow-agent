@@ -46,6 +46,77 @@ async def test_unreviewed_installed_sdk_rejects_before_transport_or_auth(monkeyp
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("field", "reason"),
+    [("options", "invalid_transport"), ("description", "invalid_client")],
+)
+async def test_undefined_mcp_configuration_rejects_before_authorization_or_transport(field, reason):
+    calls = []
+    authorizations = []
+
+    class Authentication:
+        def headers(self, endpoint):
+            raise AssertionError("unsupported config must reject before credentials")
+
+        async def prepare(self, endpoint, *, remaining_timeout):
+            raise AssertionError("unsupported config must reject before credentials")
+
+    def reject_transport(request):
+        calls.append(request)
+        raise AssertionError("unsupported config must reject before transport I/O")
+
+    async def authorize_destination(protocol, endpoint, request):
+        authorizations.append((protocol, endpoint, request))
+
+    services = ProtocolServices(
+        HttpClient(
+            allowed_hosts={"fixture.test"},
+            transport=httpx.MockTransport(reject_transport),
+        ),
+        authorize_destination=authorize_destination,
+    )
+    request = payload("tools/call")
+    if field == "options":
+        request["transport"]["options"] = {"mode": "unsupported"}
+    else:
+        request["client"]["description"] = "not part of the supported client identity"
+
+    with pytest.raises(ToolError) as error:
+        await services.call("mcp", request, _authentication=Authentication())
+
+    assert error.value.details["reason"] == reason
+    assert calls == [] and authorizations == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("field", "reason"),
+    [("options", "invalid_transport"), ("description", "invalid_client")],
+)
+async def test_undefined_mcp_configuration_rejects_before_prepared_authorization(field, reason):
+    authorized = []
+
+    async def authorize_destination(protocol, endpoint, request):
+        authorized.append((protocol, endpoint, request))
+
+    services = ProtocolServices(
+        HttpClient(allowed_hosts={"fixture.test"}),
+        authorize_destination=authorize_destination,
+    )
+    request = payload("tools/call")
+    if field == "options":
+        request["transport"]["options"] = {"mode": "unsupported"}
+    else:
+        request["client"]["description"] = "not part of the supported client identity"
+
+    with pytest.raises(ToolError) as error:
+        await services.authorize_prepared_call("mcp", request)
+
+    assert error.value.details["reason"] == reason
+    assert authorized == []
+
+
+@pytest.mark.asyncio
 async def test_named_authenticated_redirect_rejects_before_credential_preparation_or_dispatch():
     calls = []
 

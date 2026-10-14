@@ -464,6 +464,10 @@ class ProtocolServices:
         Immutable card/description selection must already exist for discovered
         operations. Metadata fetches use authorization_scope separately.
         """
+        if protocol == "mcp" and isinstance(payload, dict):
+            from .mcp_client import validate_supported_configuration
+
+            validate_supported_configuration(payload)
         if self.authorize_destination is None:
             return
         if not isinstance(payload, dict):
@@ -538,6 +542,11 @@ class ProtocolServices:
             payload, dict
         ):
             return await self._call_dispatch(protocol, payload)
+
+        if protocol == "mcp":
+            from .mcp_client import validate_supported_configuration
+
+            validate_supported_configuration(payload)
 
         with self.authorization_scope(protocol, payload):
             with credential_scope() as guard:

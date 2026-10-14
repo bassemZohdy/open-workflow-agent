@@ -77,6 +77,16 @@ def _uncertain(reason: str) -> _McpOutcomeUncertain:
     return _McpOutcomeUncertain("MCP outcome remains unresolved", details={"reason": reason})
 
 
+def validate_supported_configuration(payload: Mapping[str, Any]) -> None:
+    """Reject MCP configuration fields with no defined runtime semantics."""
+    transport = payload.get("transport")
+    if isinstance(transport, Mapping) and "options" in transport:
+        raise _failure("invalid_transport")
+    client = payload.get("client", {"name": "open-workflow-agent", "version": "0.2.0"})
+    if not isinstance(client, Mapping) or set(client) - {"name", "version"}:
+        raise _failure("invalid_client")
+
+
 def _request(payload: Mapping[str, Any], method: str) -> Any:
     try:
         return methods.MONOLITH_REQUESTS[method].model_validate(
@@ -319,6 +329,7 @@ async def call_mcp(
 ) -> Any:
     """Use the pinned SDK type layer without implicit discovery or replay."""
     _verify_sdk()
+    validate_supported_configuration(payload)
     if not math.isfinite(timeout) or timeout <= 0:
         raise _failure("invalid_timeout")
     version = payload.get("protocolVersion", MCP_VERSION)

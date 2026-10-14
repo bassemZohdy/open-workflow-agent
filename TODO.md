@@ -21,30 +21,34 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 ## Delivery status — 2026-10-14
 
 **17 verified / 20 open / 0 deferred.** S2-09 remains the earliest unfinished
-task. The latest published source, `605a908`, has not qualified. CI run
-`38547670098` completed with one failure: a Windows native lifecycle/recovery
-test failed during initial-delivery admission with `InvocationStateConflict`.
-Root quality, Windows timers and every other CI job passed.
-PostgreSQL run `38547669853` passed. External Sandbox
-`38547670158`, Agent Framework `38547669843`, Security `38547669834`, and Docs
-`38547669859` passed. The focused source batch passed 85 tests with 34
-PostgreSQL-only skips; its local checks, strict typing, documentation checks,
-implementation audit and root/core builds passed. Focused coverage projects to
-90.07%, but only the complete hosted root gate can confirm the threshold.
+task. The latest published source is `c68950f`; its CI run was cancelled when
+the Windows timer lane exceeded its 35-minute limit after reporting 686 passed
+and 674 skipped, with no assertion failures. Fifteen of sixteen CI jobs passed,
+including root quality; PostgreSQL, Agent Framework, Docs, Security, and
+External Sandbox also passed. The timer lane now has a 45-minute budget for the
+next exact-source run. The preceding source `605a908` failed one Windows
+native lifecycle/recovery test during initial-delivery admission with
+`InvocationStateConflict`; its root quality gate and other CI jobs passed.
+The 605a908 PostgreSQL, Docs, Security, External Sandbox, and Agent Framework
+runs passed. The focused source batch passed 85 tests with 34 PostgreSQL-only
+skips; local static checks, strict typing, documentation checks, implementation
+audit and root/core builds passed. The hosted root quality gate confirmed the
+coverage threshold for both `605a908` and `c68950f`.
 
-The Windows failure is actionable and remains with S2-09. Hosted logs locate
-the conflict in `prepare_initial_delivery`; a 15-second fixture lease passed
+The hosted Windows failure had an actionable fixture correction; S2-09 remains
+open pending exact-source validation. Hosted logs locate the conflict in
+`prepare_initial_delivery`; a 15-second fixture lease passed
 that stage locally. Recovery diagnostics then identified an intermittent
 `python.architecture` mismatch because the isolated Windows subprocess
 environment omitted the non-secret architecture variables used by
-`platform.machine()`. The current uncommitted correction preserves those
+`platform.machine()`. Commit `c68950f` preserves those
 variables in the restricted child environment, keeps the 15-second fixture
 lease, and records safe stack frames and changed-profile paths. The exact
 Windows selector passed three consecutive local repeats after this correction;
 the related LangGraph process-recovery/A2A selection passed 14 tests with 14
-PostgreSQL-only skips. Exact-source hosted validation is still required. No task or feature
-advances. See the [current validation
-checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-605a908).
+PostgreSQL-only skips. Exact-source hosted validation is still required. No
+task or feature advances. See the [current validation
+checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-c68950f).
 Historical checkpoints `4d2e224` and `523522b` failed separate root-quality
 gates; `4d2e224` also exposed an obsolete approval-selection count and the
 former ADK command timeout, while `523522b` exposed a Windows protected-approval
@@ -151,7 +155,10 @@ earlier `dcc16a6` / `a6c2faa` checkpoints remain in the
 
 - [ ] **S3-01** (M) — Complete MCP tools/resources/transports/authentication with pinned official SDKs and integration tests.
   Common HTTP/SDK, bounded authentication and restricted stdio changes are
-  authored; integrated qualification and publication remain pending. See the
+  authored. A local MCP08 correction rejects undefined `transport.options` and
+  unknown `client` fields before authorization or transport I/O; its tests and
+  focused core suite pass locally, while integrated qualification and
+  publication remain pending. See the
   [finite acceptance gates](docs/s3-01-mcp-acceptance.md). No new transport,
   authentication or inventory profile is qualified before integrated validation.
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.

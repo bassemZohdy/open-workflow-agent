@@ -1,14 +1,21 @@
 # S2-09 original-definition continuation and recovery policy
 
-Status: implementation and test authoring complete; batch validation pending. S2-09 remains unchecked;
-no new continuation profile is qualified until its complete finite validation
-and hosted gates pass. This record defines supported decisions and exclusions,
-not a successful in-place migration algorithm or full A086/T44 completion.
+Status: implementation and test authoring complete; batch validation pending.
+S2-09 remains unchecked until its complete finite validation and hosted gates
+pass. This record defines supported decisions and exclusions, not a successful
+in-place migration algorithm or full A086/T44 completion.
 
-The latest hosted source checkpoint, `605a908`, remains unqualified. CI
-`38547670098` failed one Windows LangGraph/SQLite initial-delivery recovery
-case during admission; its recovery lane and other hosted lanes are recorded in
-the [batch history](validation-history/pending-batch-results.md#hosted-checkpoint-source-605a908).
+The latest source checkpoint, `c68950f`, is not fully qualified. Its CI run
+`38551999533` was cancelled when the Windows timer lane reached its 35-minute
+job limit after pytest reported 686 passed and 674 skipped with no assertion
+failures. Fifteen of sixteen CI jobs passed. The workflow now gives that lane
+45 minutes; a fresh exact-source hosted run is required. PostgreSQL is
+`38551999491`, Docs is `38551999483`, Security is `38551999498`, External
+Sandbox is `38551999473`,
+and Agent Framework is `38551999501`. The Docs, Security, and External Sandbox
+runs passed; Agent Framework and PostgreSQL also passed. The previous source
+`605a908` failed one Windows LangGraph/SQLite initial-delivery recovery
+case during admission; see the [batch history](validation-history/pending-batch-results.md#hosted-checkpoint-source-c68950f).
 The local fixture uses a 15-second ownership lease to reduce admission timing
 sensitivity. Recovery diagnostics identified an intermittent mismatch in
 `python.architecture`: the restricted subprocess environment omitted the

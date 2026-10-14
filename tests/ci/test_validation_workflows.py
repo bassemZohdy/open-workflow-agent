@@ -79,7 +79,7 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
     assert jobs["windows-expressions"]["timeout-minutes"] == "20"
     assert jobs["windows-native"]["timeout-minutes"] == "20"
     assert jobs["windows-native-recovery"]["timeout-minutes"] == "35"
-    assert jobs["windows-native-timing"]["timeout-minutes"] == "35"
+    assert jobs["windows-native-timing"]["timeout-minutes"] == "45"
 
 
 def test_postgresql_profiles_run_independently_and_gate_both_images():

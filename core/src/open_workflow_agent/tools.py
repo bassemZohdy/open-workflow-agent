@@ -148,6 +148,10 @@ class ToolRegistry:
             payload = {**tool.options, **payload}
         if tool.endpoint and isinstance(payload, dict):
             payload = {**payload, "endpoint": tool.endpoint}
+        if tool.type == "mcp" and isinstance(payload, dict):
+            from .mcp_client import validate_supported_configuration
+
+            validate_supported_configuration(payload)
         if strict:
             if not isinstance(payload, dict):
                 raise ToolError("role protocol tool requires a bounded object")

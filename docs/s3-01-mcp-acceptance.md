@@ -28,6 +28,13 @@ The finite OAuth client-credentials profile requires deployment-owned issuer,
 resource and endpoint bindings. Unsupported discovery, interactive consent and
 delegated grants remain separate capability gates.
 
+The official Open Workflow 1.0.3 schema admits `transport.options` without
+assigning it semantics, and the `client` object defines only `name` and
+`version`. Keep that schema unchanged: reject `transport.options` and unknown
+client fields such as `client.description` before destination authorization,
+credential resolution, or transport I/O until a versioned contract defines
+their behavior. They must not be silently ignored or interpreted by the SDK.
+
 Stdio is disabled by default and requires the deployment-enabled internal
 sandbox plus an exact registered executable, arguments and environment policy.
 The common SandboxManager owns process creation, dedicated workspace, minimal
@@ -82,8 +89,23 @@ The authored MCP04 regression
 composes configured per-tool TLS profiles with actual SDK calls to two mTLS
 listeners. It verifies that the selected certificates stay isolated and that
 wrong or missing certificates are rejected before a second business dispatch.
-Its focused local check passed on the current hosted source `dcc16a6`; the
-hosted batch remains in progress, so this does not complete MCP04.
+Its focused local check passed at historical source `dcc16a6`. That result is
+not evidence for the current source and does not complete MCP04; the current
+integrated hosted batch remains pending.
+
+The MCP08 review found that schema-admitted `transport.options` had no defined
+semantics and was rejected only later in transport handling, while the
+undeclared `client.description` could pass permissive schema handling and be
+dropped by SDK model validation. A local correction now rejects both fields
+during configured-tool validation and prepared-call admission, as well as
+direct common MCP dispatch and the SDK boundary. It rejects before workflow
+effect-intent creation, destination and credential authorization, credential
+preparation, or I/O. Deterministic tests cover direct, prepared-call and
+role-tool paths. The focused MCP HTTP,
+protocol and tool-registry core suites pass locally: 138 tests passed, with
+three existing HTTPX certificate-fixture deprecation warnings. This focused
+result does not qualify MCP08 or the integrated S3-01 gates. The official schema
+remains unchanged.
 
 The first frozen local snapshot `f1e6abf` contains 416 fixed validation inputs.
 Common focus reaches 222 passes with eight failures and two errors; both native

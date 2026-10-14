@@ -35,7 +35,7 @@ def command(job):
 def test_windows_protected_approvals_use_existing_native_timing_job_and_budget():
     job = workflow("ci.yml")["jobs"]["windows-native-timing"]
     assert job["runs-on"] == "windows-latest" and "needs" not in job
-    assert job["timeout-minutes"] == "35"
+    assert job["timeout-minutes"] == "45"
     text = command(job)
     assert "\n" not in text
     assert "--directory engines/langgraph --locked --extra sqlite" in text

@@ -259,6 +259,55 @@ async def test_role_mcp_rejects_invalid_transport_before_authorization_or_io(tra
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    ("field", "reason"),
+    [("options", "invalid_transport"), ("description", "invalid_client")],
+)
+async def test_role_mcp_rejects_undefined_config_before_policy_or_transport(field, reason):
+    requests = []
+    authorized = []
+    credentials = []
+
+    async def authorize_destination(protocol, endpoint, payload):
+        authorized.append((protocol, endpoint))
+
+    async def authorize_credential(profile):
+        credentials.append(profile)
+
+    protocols = ProtocolServices(
+        HttpClient(transport=httpx.MockTransport(lambda request: requests.append(request))),
+        authorize_destination=authorize_destination,
+        authorize_credential=authorize_credential,
+    )
+    security = SecurityConfig.model_validate(
+        {
+            "profiles": {
+                "outbound": {
+                    "type": "bearer",
+                    "token": {"from_env": "OWA_UNUSED_TEST_CREDENTIAL"},
+                }
+            }
+        }
+    )
+    registry = ToolRegistry.from_config(
+        [ToolConfig(type="mcp", name="lookup", security_profile="outbound")],
+        protocols,
+        security=security,
+    )
+    payload = _mcp_tool_payload({"http": {"endpoint": "https://mcp.test/rpc"}})
+    if field == "options":
+        payload["transport"]["options"] = {"mode": "unsupported"}
+    else:
+        payload["client"]["description"] = "not part of the supported client identity"
+
+    with pytest.raises(ToolError) as error:
+        await registry.preflight_policy("lookup", payload)
+
+    assert error.value.details["reason"] == reason
+    assert authorized == [] and credentials == [] and requests == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     ("field", "value"),
     [
         ("method", "prompts/list"),

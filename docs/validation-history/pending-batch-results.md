@@ -5,6 +5,35 @@ builds are distinct from complete qualification. Local `tmp/` evidence is ignore
 and retained in its originating worktree; publication still requires reproducible
 source-linked hosted reports.
 
+### Hosted checkpoint — source `c68950f`
+
+Exact-source CI `38551999533` was cancelled because the Windows native timer
+job reached its 35-minute limit during final pytest reporting. The job reported
+686 passed and 674 skipped with no assertion failures before interruption;
+fifteen of sixteen CI jobs passed, including root quality, ADK and LangGraph
+native contract tests, and both Docker acceptances. The other successful CI
+jobs covered deployment manifest validation, mutation testing, native
+lifecycle/version recovery on both engines, Windows ownership/effect recovery,
+checkpoint/routing, lifecycle/receiver recovery, jq admission, MCP
+transport/auth controls and operation/process recovery. The actionable workflow
+correction raises only the timer job's limit to 45 minutes. A fresh run is
+required to qualify the source. PostgreSQL `38551999491`, Agent Framework
+`38551999501`, Docs `38551999483`, Security `38551999498`, and External Sandbox
+`38551999473` passed. Every PostgreSQL job passed, including common store, both
+principal-engine persistence acceptances, native and lifecycle recovery,
+operation-adapter recovery, and optional Agent Framework native recovery. No
+task or feature is closed because the timer gate remains open.
+
+Commit `c68950f` carries the Windows recovery fixture correction and bounded
+failure diagnostics. The timer suite collected 1,360 cases: 686 passed and 674
+were skipped under platform/feature gates. Its interruption occurred after
+pytest logged those totals, during final reporting; no assertion failure was
+reported. This is an actionable CI time-budget issue, so no task is deferred.
+The exact Windows selector passed three consecutive local
+repeats, and the related LangGraph process-recovery/A2A selection passed 14
+tests with 14 PostgreSQL-only skips. This exact-source hosted run will determine
+whether the correction qualifies; no result is inferred from the earlier run.
+
 ### Hosted checkpoint — source `605a908`
 
 CI run `38547670098` completed with one failure. The Windows native lifecycle and
@@ -28,14 +57,14 @@ five-second lease, while the hosted failure occurred during admission. A local
 15-second fixture lease passed admission. Recovery diagnostics then identified
 an intermittent `python.architecture` difference: the restricted child
 environment omitted the non-secret Windows architecture variables used by
-`platform.machine()`. The pending correction preserves those variables, keeps
+`platform.machine()`. Commit `c68950f` preserves those variables, keeps
 the 15-second lease, and emits only changed runtime-profile paths plus safe
 traceback frames on failure. After this correction the exact Windows selector
 passed three consecutive local repeats, and the related LangGraph
 process-recovery/A2A selection passed 14 tests with 14 PostgreSQL-only skips.
 The new exact-source hosted run is required before the correction or task can
-qualify. No failure is deferred; the environment mismatch and admission timing
-have actionable fixture corrections.
+qualify. No failure was deferred; the environment mismatch and admission timing
+had actionable fixture corrections, published in `c68950f`.
 
 | Frozen source | Profile | Recorded result | Meaning |
 | --- | --- | --- | --- |
@@ -491,9 +520,10 @@ committed in `dcc16a6` and require that source's own hosted validation.
 
 ### Hosted checkpoint — source `dcc16a6`
 
-CI run `38533361107` and PostgreSQL run `38533361022` are the current
-qualification runs. External-sandbox run `38533361035` (contract, Docker and
-Kubernetes acceptance), security run `38533361011`, Docs run `38533360976`, and
+At this historical checkpoint, CI run `38533361107` and PostgreSQL run
+`38533361022` were the active qualification runs. External-sandbox run
+`38533361035` (contract, Docker and Kubernetes acceptance), security run
+`38533361011`, Docs run `38533360976`, and
 optional Agent Framework run `38533360960` passed. In CI, both Docker
 acceptance jobs, deployment manifest validation, mutation testing, Windows MCP
 transport/authentication, Windows task checkpoints/routing, Windows ownership
@@ -521,7 +551,8 @@ run.
 
 ### Hosted checkpoint — source `7405371`
 
-The diagnostic follow-up is being validated by CI run `38536681297` (queued),
+At that checkpoint, the diagnostic follow-up was being validated by CI run
+`38536681297` (queued),
 PostgreSQL run `38536681053` (in progress), External Sandbox run `38536681041`
 (in progress), and Agent Framework run `38536681032` (in progress). Security
 run `38536681078` and Docs run `38536681077` passed. This source adds
