@@ -21,21 +21,21 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 ## Delivery status — 2026-10-14
 
 **17 verified / 20 open / 0 deferred.** S2-09 remains the earliest unfinished
-task. The latest hosted source is `dcc16a6`; CI is still running and
-PostgreSQL has completed with one failed LangGraph job, so no complete result
-is available and no task or feature advances. The Windows native lifecycle job
-failed one real A2A delivery case; the PostgreSQL LangGraph adapter job failed
-one process-recovery case. Both failures have active diagnostic follow-ups.
-External-sandbox, security and documentation-link workflows passed; CI's Docker
-acceptance and deployment-manifest jobs also passed. The previous `a6c2faa`
-failures remain historical and are documented separately. The current source
-includes targeted fixes for those failures, authenticated-recovery visibility
-and MCP client-certificate isolation; focused local checks passed, but do not
-replace hosted qualification.
-The earlier 323-test local result is historical, not validation of `dcc16a6`;
+task. The latest hosted source is `7405371`, with its CI run queued and its
+PostgreSQL, external-sandbox and Agent Framework runs in progress. No complete
+result is available and no task or feature advances. The preceding source
+`dcc16a6` had one Windows native lifecycle failure and one PostgreSQL LangGraph
+adapter recovery failure; its root-quality and Windows timer jobs were canceled
+when the diagnostic follow-up was pushed. The new run adds scrubbed admission
+and recovery-frame evidence for those failures. Security and documentation-link
+checks have passed for `7405371`; focused local checks pass, but do not replace
+hosted qualification. Earlier `a6c2faa` failures remain historical and are
+documented separately. The source retains targeted fixes for those failures,
+authenticated-recovery visibility and MCP client-certificate isolation.
+The earlier 323-test local result is historical, not validation of `7405371`;
 the Windows full-root run stopped at 33% after 45 minutes and is incomplete.
 See the [current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-14)
-and [validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-dcc16a6).
+and [validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-7405371).
 
 ## Stage 1 — Correct core execution
 

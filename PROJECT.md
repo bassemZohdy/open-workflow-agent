@@ -15,20 +15,17 @@ task checkbox or inventory row. The latest complete local batch at `61844c4`
 failed qualification; the grouped correction selection passed 377 tests (176
 skipped), and merged coverage reached 90.0033% without lowering the 90% gate.
 Those earlier findings and their corrections remain in the historical record.
-Hosted source `dcc16a6` is being validated by CI run `38533361107`, which is
-still in progress. PostgreSQL run `38533361022` completed with one failed
-LangGraph operation-adapter recovery case; its other applicable jobs passed.
-The Windows native lifecycle job and PostgreSQL LangGraph operation-adapter
-job each have one failure under diagnosis. External-sandbox run
-`38533361035`, security run
-`38533361011`, Agent Framework run `38533360960`, and documentation-link run
-`38533360976` passed. CI's Docker acceptance and deployment-manifest jobs also
-passed. These partial results do not qualify a task.
-The source includes fixes for the prior approval-event and race failures,
-authenticated recovery visibility, MCP client-certificate isolation, and
-scrubbed Windows worker frames for diagnosis. Focused local checks pass. The
-earlier Windows full-root run stopped at 33% after 45 minutes and is incomplete.
-See the [validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-dcc16a6).
+Hosted source `7405371` is being validated by CI run `38536681297`, which is
+queued, and PostgreSQL run `38536681053`, which is in progress. External
+sandbox run `38536681041` and Agent Framework run `38536681032` are also in
+progress; Security run `38536681078` and Docs run `38536681077` passed. Its
+predecessor, `dcc16a6`, failed one Windows native lifecycle case and one
+PostgreSQL LangGraph operation-adapter recovery case; its remaining root-quality
+and Windows timer jobs were canceled when this diagnostic follow-up was pushed.
+The new source adds scrubbed admission and recovery-frame evidence for those
+failures. No task is qualified by these partial results. Focused local checks
+pass. The earlier Windows full-root run stopped at 33% after 45 minutes and is
+incomplete. See the [validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-7405371).
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |

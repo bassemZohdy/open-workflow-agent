@@ -481,3 +481,19 @@ part of `dcc16a6`. These failures have actionable diagnostic steps and remain
 active, not deferred. Partial outcomes do not advance any task. Record final
 outcomes and corrective source in a dated follow-up after the remaining CI
 jobs settle.
+
+The diagnostic source `7405371` was pushed before the pending CI root-quality
+and Windows timer jobs completed; GitHub canceled those jobs when it
+superseded the `dcc16a6` commit. No completion result is inferred from that
+run.
+
+### Hosted checkpoint — source `7405371`
+
+The diagnostic follow-up is being validated by CI run `38536681297` (queued),
+PostgreSQL run `38536681053` (in progress), External Sandbox run `38536681041`
+(in progress), and Agent Framework run `38536681032` (in progress). Security
+run `38536681078` and Docs run `38536681077` passed. This source adds
+secret-safe start-stage A2A admission details and traceback frames for the
+PostgreSQL selected-adapter recovery worker. These results are partial and do
+not advance any task; record the completed outcomes and any corrective source
+in a dated follow-up after the runs settle.
