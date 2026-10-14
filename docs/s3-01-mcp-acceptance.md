@@ -95,9 +95,10 @@ listeners. It verifies that the selected certificates stay isolated and that
 wrong or missing certificates are rejected before a second business dispatch.
 The regression is present in the `b3d7b61` grouped local batch, which passed
 151 tests with 68 skips. This is local witness evidence only; exact-source
-qualification remains open. The latest `17501ee` matrix passed PostgreSQL and
-four other hosted workflows but had one Windows independent-job recovery
-failure. See the [latest exact-source outcome](validation-history/pending-batch-results.md#exact-source-validation-attempt-17501ee)
+qualification remains open. The latest completed `17501ee` matrix passed
+PostgreSQL and four other hosted workflows but had one Windows independent-job
+recovery failure. Later diagnostic follow-ups and their partial hosted runs are
+recorded separately and do not qualify S3-01. See the [qualification history](validation-history/pending-batch-results.md#superseded-windows-recovery-diagnostic-follow-ups)
 and the [preceding `b3d7b61` attempt](validation-history/pending-batch-results.md#exact-source-validation-attempt-b3d7b61).
 
 The MCP08 review found that schema-admitted `transport.options` had no defined

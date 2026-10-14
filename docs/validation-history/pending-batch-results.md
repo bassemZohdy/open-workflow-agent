@@ -2,10 +2,28 @@
 
 Historical attempts below remain distinct from qualification. S2-09's finite
 VM01-VM08 policy is verified at PR head `9578459`; S3-01 through S3-08 remain
-open. The latest exact-source attempt is `17501ee`; five hosted workflows
-passed and CI failed one Windows recovery case. Passing subsets and fresh builds
-do not replace complete qualification. Local `tmp/` evidence is ignored and
-retained in its originating worktree.
+open. The latest completed exact-source attempt is `17501ee`; five hosted
+workflows passed and CI failed one Windows recovery case. Two later diagnostic
+follow-ups were superseded before all six hosted workflows completed. Passing
+subsets and fresh builds do not replace complete qualification. Local `tmp/`
+evidence is ignored and retained in its originating worktree.
+
+### Superseded Windows recovery diagnostic follow-ups
+
+Source `0d98ee9832499df2ab843ab9d51644b0b36d2267` increased the released-job
+observation wait and added value-free diagnostic context. Docs and Security
+passed (`38585099998`, `38585099909`); CI, PostgreSQL, Agent Framework and
+External Sandbox were cancelled or superseded before completion. Review then
+found that the parent process could time out before the worker wrote its
+diagnostic artifact. Source `d45450cdeffb706e33b4db1bc0789f72e924d649` raised
+that parent result wait to 150 seconds. Docs and Security passed
+(`38585947748`, `38585947568`); CI (`38585948374`), PostgreSQL
+(`38585947979`), Agent Framework (`38585948315`) and External Sandbox
+(`38585947443`) were cancelled while batching the remaining documentation
+cleanup. These runs are partial evidence only and qualify no task or feature.
+The current corrected source still requires a complete six-workflow hosted
+matrix. The local Windows recovery selector could not start its supervisor in
+this environment; hosted Windows CI is the authoritative validation path.
 
 ### Exact-source validation attempt — `17501ee`
 
@@ -27,9 +45,8 @@ released background job to become terminal (1 failed, 961 passed, 454 skipped,
 one warning in 24m40s). Its receipt, cancellation and drain LangGraph sibling
 cases passed. The failure artifact contained only the sanitized assertion
 frame, so it did not retain job or supervisor state. This is actionable;
-S3-01 remains open and no task or feature row advances. The next attempt extends
-the bounded wait and records only allowlisted status, presence flags, an error
-count and supervisor state if the wait still expires.
+S3-01 remains open and no task or feature row advances. The follow-up attempts
+and next required full matrix are recorded above.
 
 ### Superseded diagnostic pass — `b0bd076`
 

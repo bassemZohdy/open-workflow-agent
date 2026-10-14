@@ -22,9 +22,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 
 **18 verified / 19 open / 0 deferred.** S3-01 is the earliest unfinished task.
 The finite S2-09 continuation/recovery policy is verified at PR head `9578459`
-(code source `bfd149c`). The latest exact-source attempt is `17501ee`: five
-hosted workflows passed, while one Windows independent-job recovery case
-failed; S3-01 remains open. See the [latest source result](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-17501ee)
+(code source `bfd149c`). The latest completed exact-source attempt is `17501ee`:
+five hosted workflows passed, while one Windows independent-job recovery case
+failed. Follow-up diagnostic commits `0d98ee9` and `d45450c` are corrective
+work, but their hosted runs were superseded before the full matrix completed;
+S3-01 remains open. See the [qualification history](docs/validation-history/pending-batch-results.md#superseded-windows-recovery-diagnostic-follow-ups)
 and the [S2-09 checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-pr-head-9578459).
 Preceding source `c68950f` had 15 of 16 CI jobs pass; its
 timer job was cancelled at the former 35-minute limit after reporting 686
@@ -38,8 +40,8 @@ skips; local static checks, strict typing, documentation checks, implementation
 audit and root/core builds passed. The hosted root quality gate confirmed the
 coverage threshold for both `605a908` and `c68950f`.
 
-The hosted Windows failure had an actionable fixture correction, now verified
-at the latest checkpoint. The original logs locate the conflict in
+The hosted Windows initial-delivery failure had an actionable fixture
+correction, verified at the latest completed checkpoint. The original logs locate the conflict in
 `prepare_initial_delivery`; a 15-second fixture lease passed
 that stage locally. Recovery diagnostics then identified an intermittent
 `python.architecture` mismatch because the isolated Windows subprocess
@@ -64,9 +66,10 @@ The preceding source batch `b3d7b61` passed five workflows but had one
 actionable PostgreSQL LangGraph recovery-output failure. Source `17501ee`
 corrected the value-free diagnostics and passed PostgreSQL plus four other
 hosted workflows; its Windows operation-adapter workflow had one
-independent-job completion timeout. S3-01 remains open until the corrected
-source passes the complete hosted matrix. See the
-[latest exact-source result](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-17501ee)
+independent-job completion timeout. Later diagnostic follow-ups are recorded
+without treating partial runs as qualification. S3-01 remains open until a
+corrected source passes the complete hosted matrix. See the
+[Windows recovery diagnostic follow-ups](docs/validation-history/pending-batch-results.md#superseded-windows-recovery-diagnostic-follow-ups)
 and the [preceding `b3d7b61` result](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-b3d7b61).
 
 ## Stage 1 — Correct core execution
@@ -175,8 +178,9 @@ and the [preceding `b3d7b61` result](docs/validation-history/pending-batch-resul
   unknown `client` fields before authorization or transport I/O. Focused local
   regressions pass; integrated engine/database/process, build and exact-source
   hosted gates remain open after the Windows independent-job recovery timeout
-  at `17501ee`. See the [finite acceptance gates](docs/s3-01-mcp-acceptance.md)
-  and [latest exact-source outcome](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-17501ee).
+  at `17501ee`. Follow-up diagnostics are authored but their hosted runs did
+  not complete the full matrix. See the [finite acceptance gates](docs/s3-01-mcp-acceptance.md)
+  and [qualification history](docs/validation-history/pending-batch-results.md#superseded-windows-recovery-diagnostic-follow-ups).
   No new transport, authentication or inventory profile is qualified before
   integrated validation.
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
