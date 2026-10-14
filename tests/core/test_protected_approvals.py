@@ -93,36 +93,42 @@ def approval_runtime(tmp_path, monkeypatch, request):
     services.close()
 
 
-def test_postgresql_approval_timestamps_upgrade_legacy_real_columns(approval_runtime):
+def test_postgresql_approval_timestamps_upgrade_legacy_real_columns(approval_runtime, monkeypatch):
     services, _config, _principals = approval_runtime
     connection = services.effect_journal.connection
     if not connection.is_postgresql:
         pytest.skip("legacy REAL precision migration is PostgreSQL-specific")
 
-    for column in ("requested_at", "expires_at", "decided_at"):
-        connection.execute(
-            f"ALTER TABLE owa_approvals.approvals ALTER COLUMN {column} "
-            f"TYPE REAL USING {column}::real"
-        )
-    ApprovalStore(connection=connection)
-
-    approval_id = "precision-migration-" + uuid4().hex
-    timestamp = 1_791_959_249.8879814
-    connection.execute(
-        "INSERT INTO owa_approvals.approvals "
-        "(approval_id,subject,status,request_event,requested_at,expires_at,decided_at) "
-        "VALUES (?,?,?,?,?,?,?)",
-        (
-            approval_id,
-            approval_id,
-            "pending",
-            "{}",
-            timestamp,
-            timestamp,
-            timestamp,
-        ),
-    )
+    # Exercise a legacy schema without persisting the temporary downgrade or
+    # rounding timestamps belonging to other PostgreSQL fixtures in this DB.
+    raw = connection.raw
+    previous_autocommit = raw.autocommit
+    raw.autocommit = False
+    monkeypatch.setattr(type(connection), "commit", lambda _self: None)
     try:
+        for column in ("requested_at", "expires_at", "decided_at"):
+            connection.execute(
+                f"ALTER TABLE owa_approvals.approvals ALTER COLUMN {column} "
+                f"TYPE REAL USING {column}::real"
+            )
+        ApprovalStore(connection=connection)
+
+        approval_id = "precision-migration-" + uuid4().hex
+        timestamp = 1_791_959_249.8879814
+        connection.execute(
+            "INSERT INTO owa_approvals.approvals "
+            "(approval_id,subject,status,request_event,requested_at,expires_at,decided_at) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (
+                approval_id,
+                approval_id,
+                "pending",
+                "{}",
+                timestamp,
+                timestamp,
+                timestamp,
+            ),
+        )
         saved = connection.execute(
             "SELECT requested_at,expires_at,decided_at FROM owa_approvals.approvals "
             "WHERE approval_id=?",
@@ -130,10 +136,10 @@ def test_postgresql_approval_timestamps_upgrade_legacy_real_columns(approval_run
         ).fetchone()
         assert tuple(saved) == (timestamp, timestamp, timestamp)
     finally:
-        connection.execute(
-            "DELETE FROM owa_approvals.approvals WHERE approval_id=?", (approval_id,)
-        )
-        connection.commit()
+        try:
+            raw.rollback()
+        finally:
+            raw.autocommit = previous_autocommit
 
 
 async def seed(runtime, *, expired=False, assignee="a"):
