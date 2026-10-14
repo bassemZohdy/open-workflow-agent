@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
+import ssl
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -42,13 +43,20 @@ def peer_card(endpoint):
 
 @asynccontextmanager
 async def sdk_a2a_fixture(
-    *, network=False, outcome="task", send_handler=None, response_mutation=None
+    *,
+    network=False,
+    outcome="task",
+    send_handler=None,
+    response_mutation=None,
+    tls=None,
+    require_client_cert=True,
 ):
     calls = []
     listener = socket.socket() if network else None
     if listener is not None:
         listener.bind(("127.0.0.1", 0))
-        endpoint = f"http://127.0.0.1:{listener.getsockname()[1]}/a2a"
+        scheme = "https" if tls is not None else "http"
+        endpoint = f"{scheme}://127.0.0.1:{listener.getsockname()[1]}/a2a"
     else:
         endpoint = "https://a2a.test/a2a"
     card = peer_card(endpoint)
@@ -216,9 +224,19 @@ async def sdk_a2a_fixture(
     if not network:
         yield httpx.ASGITransport(app=capture), calls, endpoint
         return
-    server = uvicorn.Server(
-        uvicorn.Config(capture, host="127.0.0.1", log_level="critical", timeout_graceful_shutdown=2)
-    )
+    server_config = {
+        "host": "127.0.0.1",
+        "log_level": "critical",
+        "timeout_graceful_shutdown": 2,
+    }
+    if tls is not None:
+        server_config.update(
+            ssl_certfile=str(tls.certificates["localhost"][0]),
+            ssl_keyfile=str(tls.certificates["localhost"][1]),
+            ssl_ca_certs=str(tls.trusted_clients_bundle),
+            ssl_cert_reqs=ssl.CERT_REQUIRED if require_client_cert else ssl.CERT_NONE,
+        )
+    server = uvicorn.Server(uvicorn.Config(capture, **server_config))
     thread = threading.Thread(target=server.run, kwargs={"sockets": [listener]}, daemon=True)
     thread.start()
     deadline = time.monotonic() + 10

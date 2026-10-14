@@ -795,3 +795,20 @@ message handler accepts the business call. The client reports a bounded timeout
 as uncertain and records exactly one network request and one business dispatch;
 the focused Windows run passed. This covers loss before the first stream frame,
 not disconnect/reconnect after a partial stream or durable receipt expiry.
+
+### A2A07 actual TLS and named mTLS
+
+The official A2A SDK made loopback HTTPS `SendMessage` calls using deployment-
+named bearer, API-key and mTLS profiles. The mTLS peer required a client
+certificate trusted by its test CA; the call completed, while a second call
+without a client certificate did not reach business dispatch. The bearer and
+API-key requests carried only their selected credential headers to the TLS
+peer. The focused Windows tests passed. TLS OAuth, card-selected origin and the
+full backend matrix remain partial.
+
+The first bearer/API-key fixture draft incorrectly attached a CA-bundle field
+to credential profiles that do not define one; both parameter cases failed
+profile validation before making a request. The fixture now inherits the CA
+from the configured HTTP client and the named credential from that same
+client. Both actual-TLS cases then passed, along with the required-client-cert
+mTLS case.

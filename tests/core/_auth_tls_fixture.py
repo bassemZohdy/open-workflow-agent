@@ -66,6 +66,7 @@ class AuthTlsReceiver:
         clients.write_bytes(
             b"\n".join(self.certificates[name][0].read_bytes() for name in ("client-A", "client-B"))
         )
+        self.trusted_clients_bundle = clients
         receiver = self
 
         class Handler(BaseHTTPRequestHandler):

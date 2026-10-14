@@ -75608,7 +75608,7 @@
               "A2A04": "partial",
               "A2A05": "partial",
               "A2A06": "partial",
-              "A2A07": "partial",
+              "A2A07": "partial; actual HTTPS named bearer/API-key/mTLS witnesses",
               "A2A08": "partial; TCP lost-response and bounded timeout, cross-worker and terminal witnesses"
             },
             "record": "docs/s3-02-a2a-acceptance.md#current-evidence-checkpoint-not-task-qualification"

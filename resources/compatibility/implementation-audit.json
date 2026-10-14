@@ -12019,7 +12019,7 @@
     },
     "a2a_card": {
       "outcome": "partial",
-      "observed": "The bounded client fetches AgentCard metadata without inheriting business credentials, validates the pinned A2A version and selected interface, and freezes the admission decision for the call budget. Business dispatch still uses the selected bounded SDK transport.",
+      "observed": "The bounded client fetches AgentCard metadata without inheriting business credentials, validates the pinned A2A version and selected interface, and freezes the admission decision for the call budget. Actual HTTPS A2A SDK calls also succeed with named bearer and API-key credentials and a required named mTLS client certificate; business dispatch remains on the selected bounded SDK transport.",
       "remaining_scope": "This does not establish the complete A2A01-A2A08 peer/native/backend matrix, all deployment authentication and origin policies, or complete interoperability and proposed T32 criteria.",
       "remediation_tasks": [
         "S3-02",
@@ -12059,9 +12059,17 @@
         {
           "path": "tests/core/test_a2a_card_admission.py",
           "symbol": "test_public_card_discovery_retains_only_named_auth_reference"
+        },
+        {
+          "path": "tests/core/test_a2a_sdk_http.py",
+          "symbol": "test_actual_tls_a2a_call_uses_named_mtls_credential"
+        },
+        {
+          "path": "tests/core/test_a2a_sdk_http.py",
+          "symbol": "test_actual_tls_a2a_call_uses_named_http_credential"
         }
       ],
-      "test_scope": "Exact-source bounded Python card-selection and admission cases pass at af4acd61c200787fb68248b2d180ba69efb8c837. This is partial A2A card evidence only; proposed T32 and complete A2A acceptance remain unexecuted."
+      "test_scope": "Exact-source bounded Python card-selection and admission cases pass at af4acd61c200787fb68248b2d180ba69efb8c837. Follow-up Windows loopback HTTPS SDK cases verify named bearer/API-key headers and required named mTLS success with no dispatch without the client certificate. This is partial A2A card/security evidence only; proposed T32 and complete A2A acceptance remain unexecuted."
     },
     "a2a_stream": {
       "outcome": "partial",
@@ -50920,7 +50928,7 @@
         "A2A04": "partial",
         "A2A05": "partial",
         "A2A06": "partial",
-        "A2A07": "partial",
+        "A2A07": "partial; actual HTTPS named bearer/API-key/mTLS witnesses",
         "A2A08": "partial; TCP lost-response and bounded timeout, cross-worker and terminal witnesses"
       },
       "record": "docs/s3-02-a2a-acceptance.md#current-evidence-checkpoint-not-task-qualification"

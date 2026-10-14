@@ -150,9 +150,11 @@ treated as a deferred task or as additional feature completion.
   recovery, streaming and backend evidence is mapped to each required gate; do
   not infer full A2A or proposed-test completion from suite totals. The A2A08
   witness list now directly traces bounded timeout, first-response loss,
-  cross-worker terminal and cleanup cases (29 prior focused cases plus one new
-  actual-TCP case pass locally); partial-stream loss, durable expiry and the
-  cross-backend matrix remain open. See the
+  cross-worker terminal and cleanup cases; the A2A SDK also passes a real HTTPS
+  calls with named bearer/API-key credentials and required named mTLS (30 A2A08
+  focused cases plus the three TLS cases pass locally). Partial-stream loss,
+  durable expiry, TLS OAuth, card-selected origin and the cross-backend matrix
+  remain open. See the
   [finite acceptance record](docs/s3-02-a2a-acceptance.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected HTTP/OpenAPI/gRPC, awaited outputs, pure AsyncAPI descriptions and

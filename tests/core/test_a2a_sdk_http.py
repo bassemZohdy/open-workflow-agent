@@ -12,6 +12,7 @@ from uuid import NAMESPACE_URL, uuid5
 import httpx
 import pytest
 from _a2a_sdk_fixture import peer_card, sdk_a2a_fixture
+from _auth_tls_fixture import auth_tls_receiver
 from a2a.types import a2a_pb2 as a2a_types
 from google.protobuf import json_format
 from open_workflow_agent import _a2a_types
@@ -105,6 +106,51 @@ async def test_actual_tcp_streaming_lost_response_is_uncertain_without_reconnect
             await asyncio.gather(running, return_exceptions=True)
 
     assert len(calls) == len(business_dispatches) == 1
+
+
+@pytest.mark.asyncio
+async def test_actual_tls_a2a_call_uses_named_mtls_credential(monkeypatch, tmp_path):
+    with auth_tls_receiver(tmp_path) as tls:
+        certificate, private_key = tls.certificates["client-A"]
+        monkeypatch.setenv("A2A_TEST_CERT", str(certificate))
+        monkeypatch.setenv("A2A_TEST_KEY", str(private_key))
+        monkeypatch.setenv("A2A_TEST_CA", tls.ca_bundle)
+        async with sdk_a2a_fixture(network=True, tls=tls) as (transport, calls, endpoint):
+            http = client(transport, True, verify_tls=tls.ca_bundle)
+            authentication = named_authentication("mtls", http, ca_bundle_env="A2A_TEST_CA")
+            result = await ProtocolServices(http).call(
+                "a2a", payload("SendMessage", endpoint), _authentication=authentication
+            )
+            assert result["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
+            assert len(calls) == 1 and calls[0]["body"]["method"] == "SendMessage"
+            assert calls[0]["headers"][b"a2a-version"] == b"1.0"
+            with pytest.raises(_A2AOutcomeUncertain):
+                await ProtocolServices(client(transport, True, verify_tls=tls.ca_bundle)).call(
+                    "a2a", payload("SendMessage", endpoint)
+                )
+            assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["bearer", "api_key"])
+async def test_actual_tls_a2a_call_uses_named_http_credential(monkeypatch, tmp_path, kind):
+    monkeypatch.setenv("A2A_TEST_SECRET", "selected-test-value")
+    with auth_tls_receiver(tmp_path) as tls:
+        monkeypatch.setenv("A2A_TEST_CA", tls.ca_bundle)
+        async with sdk_a2a_fixture(network=True, tls=tls, require_client_cert=False) as (
+            transport,
+            calls,
+            endpoint,
+        ):
+            http = client(transport, True, verify_tls=tls.ca_bundle)
+            authentication = named_authentication(kind, http)
+            http.authentication = authentication
+            result = await ProtocolServices(http).call("a2a", payload("SendMessage", endpoint))
+            assert result["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
+            assert len(calls) == 1 and calls[0]["body"]["method"] == "SendMessage"
+            name = b"authorization" if kind == "bearer" else b"x-api-key"
+            expected = b"Bearer selected-test-value" if kind == "bearer" else b"selected-test-value"
+            assert calls[0]["headers"][name] == expected
 
 
 @pytest.mark.asyncio
@@ -509,7 +555,7 @@ async def test_stream_limits_identity_and_completion_are_checked_without_reconne
     assert len(calls) == 1
 
 
-def named_authentication(kind, http):
+def named_authentication(kind, http, *, ca_bundle_env=None):
     profiles = {
         "bearer": {"type": "bearer", "token": {"from_env": "A2A_TEST_SECRET"}},
         "api_key": {"type": "api_key", "key": {"from_env": "A2A_TEST_SECRET"}},
@@ -526,8 +572,11 @@ def named_authentication(kind, http):
             "allowed_resource_endpoints": ["https://a2a.test/authorized"],
         },
     }
+    profile = copy.deepcopy(profiles[kind])
+    if ca_bundle_env is not None:
+        profile["ca_bundle"] = {"from_env": ca_bundle_env}
     return ProfileAuthentication(
-        SecurityConfig.model_validate({"profiles": {"selected": profiles[kind]}}),
+        SecurityConfig.model_validate({"profiles": {"selected": profile}}),
         "selected",
         token_http=http,
     )
