@@ -142,6 +142,96 @@ async def test_correlated_official_task_not_found_is_known_sanitized_protocol_fa
 
 
 @pytest.mark.asyncio
+async def test_valid_rpc_error_is_known_and_does_not_expose_peer_message_or_data():
+    calls = []
+
+    async def receiver(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": body["id"],
+                "error": {
+                    "code": -32042,
+                    "message": "private peer exception",
+                    "data": [{"@type": "https://peer.test/private", "secret": "do-not-copy"}],
+                },
+            },
+        )
+
+    with pytest.raises(ToolError) as error:
+        await ProtocolServices(HttpClient(transport=httpx.MockTransport(receiver))).call(
+            "a2a", payload("GetTask", "https://a2a.test/a2a")
+        )
+
+    assert not isinstance(error.value, _A2AOutcomeUncertain)
+    assert error.value.details == {
+        "reason": "protocol_error",
+        "code": -32042,
+        "type": "https://serverlessworkflow.io/spec/1.0.0/errors/runtime",
+    }
+    assert "private peer exception" not in str(error.value)
+    assert "do-not-copy" not in json.dumps(error.value.as_dict())
+    assert len(calls) == 1 and calls[0]["method"] == "GetTask"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "damage",
+    ["boolean-code", "non-string-message", "non-list-data", "malformed-data", "extra-error-key"],
+)
+async def test_malformed_rpc_error_is_uncertain_and_peer_details_are_sanitized(damage):
+    calls = []
+
+    async def receiver(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        rpc_error = {"code": -32042, "message": "private peer exception"}
+        if damage == "boolean-code":
+            rpc_error["code"] = True
+        elif damage == "non-string-message":
+            rpc_error["message"] = {"secret": "peer-detail"}
+        elif damage == "non-list-data":
+            rpc_error["data"] = {"@type": "https://peer.test/private", "secret": "peer-detail"}
+        elif damage == "malformed-data":
+            rpc_error["data"] = [{"secret": "peer-detail"}]
+        else:
+            rpc_error["private"] = "peer-detail"
+        return httpx.Response(200, json={"jsonrpc": "2.0", "id": body["id"], "error": rpc_error})
+
+    with pytest.raises(_A2AOutcomeUncertain) as error:
+        await ProtocolServices(HttpClient(transport=httpx.MockTransport(receiver))).call(
+            "a2a", payload("GetTask", "https://a2a.test/a2a")
+        )
+
+    assert error.value.details["reason"] == "invalid_response"
+    assert "private peer exception" not in str(error.value)
+    assert "peer-detail" not in json.dumps(error.value.as_dict())
+    assert len(calls) == 1
+
+
+@pytest.mark.asyncio
+async def test_http_error_after_a2a_dispatch_is_uncertain_and_does_not_leak_body():
+    calls = []
+
+    async def receiver(request):
+        calls.append(request)
+        return httpx.Response(503, text="private gateway diagnostics")
+
+    with pytest.raises(_A2AOutcomeUncertain) as error:
+        await ProtocolServices(HttpClient(transport=httpx.MockTransport(receiver))).call(
+            "a2a", payload("SendMessage", "https://a2a.test/a2a")
+        )
+
+    assert error.value.details["reason"] == "transport_failure"
+    assert "private gateway diagnostics" not in str(error.value)
+    assert "private gateway diagnostics" not in json.dumps(error.value.as_dict())
+    assert len(calls) == 1
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "damage",
     [

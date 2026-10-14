@@ -333,17 +333,29 @@ def test_original_expiry_is_retained_and_only_explicit_retention_prunes_due_data
     assert reopened.add("new", **_arguments(later)) > first
 
 
-def test_separate_maintenance_advances_multiple_expired_pages_without_reader_deletion(memory_tree):
+def test_separate_maintenance_advances_multiple_expired_pages_without_reader_deletion(
+    memory_tree, monkeypatch
+):
     service, handle, _ = memory_tree(
         bounds=replace(Bounds(), max_entries=3, retention_seconds=0.04, sweep_limit=1)
     )
+    actual_running = service._running
+    clock = [actual_running(handle)]
+
+    def controlled_clock(current):
+        actual_running(current)
+        return clock[0]
+
+    monkeypatch.setattr(service, "_running", controlled_clock)
     original_ids = [service.add(str(index), **_arguments(handle)) for index in range(3)]
+    assert len(original_ids) == 3
     original_times = service._connection.execute(
         "SELECT memory_id,created,expires_at FROM bounded_memory_entries "
         "WHERE namespace=? ORDER BY memory_id",
         (_namespace(handle.owner_principal),),
     ).fetchall()
-    time.sleep(0.08)
+    assert len(original_times) == 3
+    clock[0] += 0.08
     before = _snapshot(service, handle)
     assert service.search("", **_arguments(handle)) == []
     assert _snapshot(service, handle) == before

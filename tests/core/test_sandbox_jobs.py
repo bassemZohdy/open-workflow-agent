@@ -112,12 +112,21 @@ def jobs(tmp_path, request):
         if datasource:
             # Capacity is global; remove only this fixture's private job rows.
             connection = services.effect_journal.connection
-            identifiers = [
-                row[0]
-                for row in connection.execute(
-                    "SELECT job_id FROM sandbox_jobs WHERE invocation_id=?", (handle.invocation_id,)
-                ).fetchall()
-            ]
+            # Some corruption cases deliberately delete the admission row while
+            # retaining its delivery row. Track the fixture's deterministic job
+            # IDs as well as rows still discoverable through the admission table.
+            second_identity = replace(identity, occurrence=((identity.task_reference, 2),))
+            identifiers = {
+                job_id(identity),
+                job_id(second_identity),
+                *(
+                    row[0]
+                    for row in connection.execute(
+                        "SELECT job_id FROM sandbox_jobs WHERE invocation_id=?",
+                        (handle.invocation_id,),
+                    ).fetchall()
+                ),
+            }
             for identifier in identifiers:
                 for table in ("sandbox_job_delivery", "sandbox_job_ownership", "sandbox_jobs"):
                     connection.execute(f"DELETE FROM {table} WHERE job_id=?", (identifier,))

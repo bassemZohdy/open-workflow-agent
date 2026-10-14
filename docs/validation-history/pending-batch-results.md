@@ -345,7 +345,7 @@ tests. These isolated results make host contention or suite interaction the
 current explanation to investigate; they do not replace full-profile or hosted
 qualification and did not justify changing production recovery checks.
 
-## Corrective source batch — hosted qualification pending
+## Corrective source batch — hosted result and active follow-up
 
 The correction batch based on `61844c4` passed its consolidated focused
 regression selection: 377 passed and 176 skipped in 194.56s. Ruff lint and
@@ -358,8 +358,53 @@ cannot hide a below-90% result.
 The full root command was also started on the local Windows workstation, but
 was deliberately stopped after 45 minutes at 33% while running the contract
 suite. That run produced no pytest summary and is incomplete, not a pass or a
-test failure. Root CI runs this qualification on hosted Ubuntu with a separate
-45-minute command bound. The exact-source hosted PR batch must qualify root
-coverage, ADK, LangGraph, optional Agent Framework, Windows, PostgreSQL,
-container, security, and documentation jobs before any open backlog item is
-advanced. The strict 90% threshold and all acceptance gates remain unchanged.
+test failure.
+
+### Hosted validation of corrective batch — PR 65
+
+The exact-source hosted run for [PR #65](https://github.com/bassemZohdy/open-workflow-agent/pull/65)
+used source `a4aac1b9e0ab9fc4c07a83d7259da818c572b8bb`. Documentation, security,
+deployment manifests, both Docker acceptance jobs, ADK/LangGraph lifecycle
+recovery, and several native recovery jobs passed. PostgreSQL common-store and
+both PostgreSQL operation-adapter jobs failed in protected-approval paths. The
+approval table declared expiry timestamps as PostgreSQL `REAL` (32-bit), while
+the protected record retains the exact timestamp; rounding caused the exact
+consistency proof to fail. PostgreSQL common-store also found a stale sandbox
+delivery row: a corruption fixture deleted its admission row, then teardown
+used that deleted row to discover which delivery row to remove. Narrow fixes
+address both findings.
+
+The Windows jq/admission job found two timing assumptions. A 40 ms memory
+retention window could expire entries during sequential setup, and a one-second
+imported-call timeout could expire before the LangGraph call was dispatched.
+The test fixtures now use a controlled clock and a longer in-flight timeout.
+Root, ADK, LangGraph, and remaining Windows jobs had not all finished when this
+checkpoint was recorded. These results do not qualify S2-09 or any other open
+task. A fresh exact-source hosted run must pass root coverage, both principal
+engines, optional Agent Framework, Windows, PostgreSQL, containers, security,
+and documentation. The strict 90% threshold and acceptance gates remain
+unchanged.
+
+### Completed hosted results for source `a4aac1b`
+
+The remainder of CI run `38522215454` and PostgreSQL run `38522215528` completed
+after the checkpoint above. Root quality ended at 4,436 passed and 2,929
+skipped, but failed the unchanged coverage gate at 89.54% (24,289 statements,
+2,540 missed). Its cancellation/descendant test also failed before cancellation
+because its child-process marker was not written. The ADK and LangGraph native
+and contract lanes failed their real-process tests because the uv-managed
+CPython build did not expose Linux `os.pidfd_open`; the tests correctly require
+a stable OS process handle and fail before making a recovery claim. Windows
+native timer/event/scheduling had one timing-sensitive workflow timeout result
+that arrived before the test observed the intended unresolved action. The
+remaining Windows lanes and the optional Agent Framework lane passed.
+
+PostgreSQL common-store and both operation-adapter jobs failed in the protected
+approval and sandbox-fixture cases described above; native recovery and
+lifecycle jobs passed. The follow-up retains the strict handle checks, raises
+the descendant-only process limit while preserving all other sandbox limits,
+uses the hosted CPython interpreter for Linux pidfd lanes with a preflight, and
+allows the in-flight retry-timeout fixture enough time to reach its durable
+boundary. New A2A rejection and terminal-stream cases add behavioral coverage.
+These changes are being validated as one follow-up batch; no task status or
+acceptance gate advances on this failed source checkpoint.

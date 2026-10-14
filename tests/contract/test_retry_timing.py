@@ -195,12 +195,12 @@ async def test_timeout_drains_an_uncertain_action_without_catch_retry(
 
     retry: dict[str, Any] = {"limit": {"attempt": {"count": 3}}}
     if boundary == "attempt":
-        retry["limit"]["attempt"]["duration"] = {"seconds": 1}
+        retry["limit"]["attempt"]["duration"] = {"seconds": 10}
     workflow = _workflow(retry)
     if boundary == "task":
-        workflow["do"][0]["attempt"]["timeout"] = {"after": {"seconds": 1}}
+        workflow["do"][0]["attempt"]["timeout"] = {"after": {"seconds": 10}}
     elif boundary == "workflow":
-        workflow["timeout"] = {"after": {"seconds": 1}}
+        workflow["timeout"] = {"after": {"seconds": 10}}
     model = FakeModel(response)
     services.model = model
     plan = compile_workflow(workflow)

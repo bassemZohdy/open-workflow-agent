@@ -18,6 +18,7 @@ from open_workflow_agent.api import create_app
 from open_workflow_agent.approvals import APPROVAL_DECISION_EVENT, APPROVAL_REQUEST_EVENT
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.observability import WorkflowEvent
 from open_workflow_agent.services import RuntimeServices
 
 HEADERS = {"a2a-version": V1}
@@ -623,3 +624,92 @@ async def test_stream_disconnect_does_not_cancel_invocation(tmp_path) -> None:
                 await asyncio.sleep(0.05)
             assert result is not None
             assert result["status"]["state"] == "TASK_STATE_COMPLETED"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "event_type", "a2a_state"),
+    [
+        ("faulted", "WorkflowFaulted", "TASK_STATE_FAILED"),
+        ("cancelled", "WorkflowCancelled", "TASK_STATE_CANCELED"),
+    ],
+)
+async def test_subscribed_stream_emits_one_error_or_cancellation_terminal(
+    tmp_path, status: str, event_type: str, a2a_state: str
+) -> None:
+    config = RuntimeConfig.model_validate({"a2a": {"enabled": True}})
+    app, services = _make_app(tmp_path, config)
+    async with app.router.lifespan_context(app):
+        handle = services.invocations.create(
+            engine="adk",
+            session_id="ctx-terminal-stream",
+            user_id=None,
+            workflow_name="flow",
+            workflow_version="1.0.0",
+            workflow_fingerprint="fingerprint",
+        )
+        services.invocations.update(handle, status="running")
+        request = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 9,
+                "method": "SubscribeToTask",
+                "params": {"id": handle.invocation_id},
+            }
+        ).encode()
+        headers = [(b"a2a-version", V1.encode()), (b"content-type", b"application/json")]
+        app_task, parse = await _stream_asgi(
+            app,
+            method="POST",
+            path="/a2a",
+            body=request,
+            headers=headers,
+            request_id=9,
+        )
+
+        try:
+            for _ in range(200):
+                frames = parse()
+                if any("task" in frame for frame in frames):
+                    break
+                await asyncio.sleep(0.01)
+            else:
+                raise AssertionError(f"stream did not publish its task snapshot: {parse()}")
+
+            current = services.invocations.get(handle.invocation_id)
+            assert current is not None
+            changes: dict[str, object] = {"status": status}
+            if status == "faulted":
+                changes["error"] = {
+                    "code": "fixture_failure",
+                    "message": "private implementation detail",
+                }
+            services.invocations.update(current, **changes)
+            services.lifecycle_events.emit(
+                WorkflowEvent(
+                    event_type=event_type,
+                    invocation_id=handle.invocation_id,
+                    session_id=handle.session_id,
+                    workflow_name=handle.workflow_name,
+                    workflow_version=handle.workflow_version,
+                    engine=handle.engine,
+                    status=status,
+                )
+            )
+            await asyncio.wait_for(app_task, timeout=5)
+        finally:
+            if not app_task.done():
+                app_task.cancel()
+                await asyncio.gather(app_task, return_exceptions=True)
+
+    frames = parse()
+    updates = _updates(frames)
+    terminal = [
+        update
+        for update in updates
+        if update["status"]["state"]
+        in {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED"}
+    ]
+    assert [update["status"]["state"] for update in terminal] == [a2a_state]
+    assert not any("artifactUpdate" in frame for frame in frames)
+    assert "private implementation detail" not in repr(frames)

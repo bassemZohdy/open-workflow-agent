@@ -106,12 +106,12 @@ class ApprovalStore:
             subject TEXT NOT NULL,
             status TEXT NOT NULL,
             request_event TEXT NOT NULL,
-            requested_at REAL NOT NULL,
-            expires_at REAL,
+            requested_at DOUBLE PRECISION NOT NULL,
+            expires_at DOUBLE PRECISION,
             decision_event TEXT,
             operator_id TEXT,
             decision_operation_key TEXT UNIQUE,
-            decided_at REAL)"""
+            decided_at DOUBLE PRECISION)"""
         )
         self.connection.commit()
         if self.connection.is_postgresql:
@@ -120,6 +120,24 @@ class ApprovalStore:
                 "WHERE table_schema = 'owa_approvals' AND table_name = 'approvals'"
             ).fetchall()
             names = {row[0] for row in columns}
+            legacy_time_columns = {
+                row[0]
+                for row in self.connection.execute(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'owa_approvals' AND table_name = 'approvals' "
+                    "AND data_type = 'real' AND column_name IN "
+                    "('requested_at', 'expires_at', 'decided_at')"
+                ).fetchall()
+            }
+            for name in ("requested_at", "expires_at", "decided_at"):
+                if name not in legacy_time_columns:
+                    continue
+                # PostgreSQL REAL is float32. Persisted epoch timestamps require
+                # float64 precision to preserve exact protected-approval proofs.
+                self.connection.execute(
+                    f"ALTER TABLE {self._table} ALTER COLUMN {name} "
+                    f"TYPE DOUBLE PRECISION USING {name}::double precision"
+                )
         else:
             names = {
                 row[1] for row in self.connection.execute("PRAGMA table_info(approvals)").fetchall()

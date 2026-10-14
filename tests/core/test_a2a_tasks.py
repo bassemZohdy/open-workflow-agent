@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import pytest
+from open_workflow_agent._a2a_types import validate_v1_result
 from open_workflow_agent.a2a_tasks import (
     A2A_TASK_STATES,
     a2a_task_state,
     project_a2a_task,
 )
+from open_workflow_agent.errors import ToolError
 from open_workflow_agent.persistence import ExecutionHandle
 
 
@@ -132,3 +134,80 @@ def test_non_json_output_fails_closed() -> None:
     task_handle = _handle("completed", output={"bad": object()})
     with pytest.raises(ValueError, match="not JSON serializable"):
         project_a2a_task(task_handle)
+
+
+@pytest.mark.parametrize(
+    ("task", "reason"),
+    [
+        (
+            {"id": "task-1", "contextId": "context-1", "status": {"state": "TASK_STATE_UNKNOWN"}},
+            "invalid_result",
+        ),
+        (
+            {
+                "id": "task-1",
+                "contextId": "context-1",
+                "status": {
+                    "state": "TASK_STATE_WORKING",
+                    "message": {"messageId": "secret"},
+                },
+            },
+            "invalid_role",
+        ),
+        (
+            {
+                "id": ["malformed-task-secret"],
+                "contextId": "context-1",
+                "status": {"state": "TASK_STATE_WORKING"},
+            },
+            "invalid_identity",
+        ),
+    ],
+)
+def test_inbound_task_payload_rejects_malformed_identity_or_status(task: dict, reason: str) -> None:
+    with pytest.raises(ToolError) as error:
+        validate_v1_result("GetTask", task)
+
+    assert error.value.details["reason"] == reason
+    assert "malformed-task-secret" not in str(error.value)
+    assert "secret" not in str(error.value)
+
+
+@pytest.mark.parametrize(
+    ("status_update", "reason"),
+    [
+        (
+            {
+                "taskId": "task-1",
+                "contextId": "context-1",
+                "status": {"state": "TASK_STATE_UNKNOWN"},
+            },
+            "invalid_result",
+        ),
+        (
+            {"taskId": "task-1", "contextId": "context-1", "status": []},
+            "invalid_result",
+        ),
+        (
+            {
+                "taskId": "task-1",
+                "contextId": "context-1",
+                "status": {
+                    "state": "TASK_STATE_WORKING",
+                    "message": {"messageId": "secret"},
+                },
+            },
+            "invalid_role",
+        ),
+        (
+            {"taskId": "task-1", "contextId": 42, "status": {"state": "TASK_STATE_COMPLETED"}},
+            "invalid_identity",
+        ),
+    ],
+)
+def test_inbound_status_update_rejects_malformed_payload(status_update: dict, reason: str) -> None:
+    with pytest.raises(ToolError) as error:
+        validate_v1_result("SendStreamingMessage", {"statusUpdate": status_update})
+
+    assert error.value.details["reason"] == reason
+    assert "secret" not in str(error.value)

@@ -10,16 +10,20 @@
 ## Current backlog delivery mode — 2026-10-14
 
 **17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-09 is
-the earliest unfinished milestone. Coherent source authoring continues through
-S3-08 in parallel; failed or incomplete validation advances no task checkbox or
-inventory row. The latest full local batch at `61844c4` failed qualification:
-root had 12 failures and 89.34% coverage; LangGraph had six failures; optional
-Agent Framework had one failure. ADK recorded five failures, then stalled in
-pytest final reporting and was stopped without totals. The correction batch
-passes its focused selection (377 passed, 176 skipped), formatting/lint, strict
-typing, lock, Compose, docs-link, and root/core build checks. A full root run on
-the local Windows host was stopped at 33% after 45 minutes and is not a
-qualification result; exact-source hosted profiles remain pending.
+the earliest unfinished milestone. Failed or incomplete validation advances no
+task checkbox or inventory row. The latest complete local batch at `61844c4`
+failed qualification; the grouped correction selection passed 377 tests (176
+skipped), and merged coverage reached 90.0033% without lowering the 90% gate.
+Hosted PR #65 exposed PostgreSQL protected-approval timestamp precision, a
+PostgreSQL sandbox fixture leak, a Windows timeout fixture that sometimes
+expired before its intended action boundary, and missing pidfd support in the
+Linux process-recovery interpreter. Root CI also found a descendant-process
+setup failure and 89.54% coverage against the unchanged 90% gate. Narrow fixes
+and behavioral coverage additions are assembled; focused local checks passed,
+while full root and hosted qualification remain outstanding. The full local
+root run stopped at 33% after 45 minutes and is incomplete. Current hosted
+evidence is in the [validation
+history](docs/validation-history/pending-batch-results.md#hosted-validation-of-corrective-batch--pr-65).
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
@@ -28,14 +32,16 @@ qualification result; exact-source hosted profiles remain pending.
 | S3-01 / S3-02 | Pinned MCP/A2A integration authored; latest hosted checkpoint failed. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
 | S3-03 | Operation adapters and independent jobs authored; lease/recovery corrections and acceptance pending. | [Operations](docs/s3-03-operation-adapters-acceptance.md) |
 | S3-04 | Captured sources and awaited controls authored; first common batch failed, corrections pending verification. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
-| S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored; first combined common profile failed; corrections and full qualification pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md) |
+| S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored; hosted PostgreSQL exposed timestamp precision loss in common approval storage; precision migration and full qualification pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md) |
 | S3-06 | Identity, action policy, isolation and credential safeguards are authored; full batch qualification pending. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
 | S3-07 | Eight finite recipe families and named role bindings authored; static/schema checks pass, behavioral qualification pending. | [Pattern scope and gates](docs/s3-07-agent-pattern-acceptance.md) |
 | S3-08 | Selected compiler/provider/memory/embedded event adaptations and grouped corrections are authored; integrated qualification remains open. | [Selected scope and gates](docs/s3-08-selected-adapter-acceptance.md) |
 
-The published feature checkpoint is `67aa724` on draft
-[PR 64](https://github.com/bassemZohdy/open-workflow-agent/pull/64); aggregate CI
-failed. Later source and corrections remain local feature work pending validation.
+The earlier feature checkpoint `67aa724` is on draft
+[PR 64](https://github.com/bassemZohdy/open-workflow-agent/pull/64), whose
+aggregate CI failed. The current correction batch is published on draft
+[PR 65](https://github.com/bassemZohdy/open-workflow-agent/pull/65); its hosted
+failures and active fixes are recorded below and in the [validation history](docs/validation-history/pending-batch-results.md#hosted-validation-of-corrective-batch--pr-65).
 
 | Frozen source | Latest evidence | Qualification |
 | --- | --- | --- |
@@ -44,7 +50,8 @@ failed. Later source and corrections remain local feature work pending validatio
 | `4740732`, 1,067 inputs | Optional Framework: 767 passes, 354 skips, 2,934 deselections, exit 0. LangGraph: 73 failures, 1,146 passes, 672 skips, 1,467 deselections, exit 1. Common and ADK each reached the 4,500-second bound at logged 97% progress, exit 124, without final pytest totals. All four end reports retain unchanged source. | Integrated qualification open |
 | `883cd1a`, 1,068 inputs | Five fresh build/provenance checks passed; its four behavioral profiles were superseded by later completed batches. | Historical launch only |
 | `0573ce7`, 17-file source/test change | Static checks, lock checks, Compose validation and root/core builds passed. Optional Framework passed; root, ADK and LangGraph did not qualify. | [Historical failed local qualification](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-0573ce7) |
-| `61844c4`, 18-file correction/coverage batch | Static checks, lock checks, Compose validation and root/core builds passed. Root (12 failures, 89.34% coverage), LangGraph (6 failures), optional Framework (1 failure), and ADK (5 observed failures; final totals unavailable after pytest reporting stalled) did not qualify. Exact outcomes and log hashes are retained in the [batch record](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-61844c4). | Failed/incomplete local qualification; corrections underway |
+| `61844c4`, 18-file correction/coverage batch | Static checks, lock checks, Compose validation and root/core builds passed; root, LangGraph, Framework and ADK did not qualify. Exact outcomes and log hashes are retained in the [batch record](docs/validation-history/pending-batch-results.md#frozen-full-profile-batch-61844c4). | Failed/incomplete local qualification |
+| `a4aac1b`, PR #65 hosted checkpoint | Docs, security, deployment, Docker acceptance and several native recovery jobs passed. PostgreSQL exposed approval timestamp precision and a stale sandbox delivery fixture; root coverage was 89.54%; Linux recovery lacked pidfd support; Windows found timing-sensitive fixtures. | Hosted qualification failed; no task advances |
 
 Earlier `7214f46` and `caa32c8` outcomes remain in
 [the batch evidence record](docs/validation-history/pending-batch-results.md).
@@ -56,7 +63,7 @@ JavaScript profile or release.
 
 Continue ready work in parallel, complete a coherent source batch before testing it, and push validated feature work. Running checks and failures with an actionable fix remain active. Only a repeated blocker with no next step moves the original unchecked task to the final deferred section, with full evidence and resume conditions. See [TODO.md](TODO.md) for the complete ordered scope, [documentation guide](docs/README.md) for topic navigation, and [earlier delivery checkpoints](docs/validation-history/backlog-delivery-2026-10-13.md) for retained history.
 
-## Current Phase — 2026-09-24
+## Historical project baseline — 2026-09-24
 
 Historical released baseline; current unfinished roadmap work is summarized above.
 

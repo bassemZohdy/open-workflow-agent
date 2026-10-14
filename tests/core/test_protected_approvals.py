@@ -14,6 +14,7 @@ from uuid import uuid4
 import httpx
 import pytest
 from open_workflow_agent.api import create_app
+from open_workflow_agent.approvals import ApprovalStore
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity, effect_request_digest
@@ -90,6 +91,49 @@ def approval_runtime(tmp_path, monkeypatch, request):
     )
     yield services, config, principals
     services.close()
+
+
+def test_postgresql_approval_timestamps_upgrade_legacy_real_columns(approval_runtime):
+    services, _config, _principals = approval_runtime
+    connection = services.effect_journal.connection
+    if not connection.is_postgresql:
+        pytest.skip("legacy REAL precision migration is PostgreSQL-specific")
+
+    for column in ("requested_at", "expires_at", "decided_at"):
+        connection.execute(
+            f"ALTER TABLE owa_approvals.approvals ALTER COLUMN {column} "
+            f"TYPE REAL USING {column}::real"
+        )
+    ApprovalStore(connection=connection)
+
+    approval_id = "precision-migration-" + uuid4().hex
+    timestamp = 1_791_959_249.8879814
+    connection.execute(
+        "INSERT INTO owa_approvals.approvals "
+        "(approval_id,subject,status,request_event,requested_at,expires_at,decided_at) "
+        "VALUES (?,?,?,?,?,?,?)",
+        (
+            approval_id,
+            approval_id,
+            "pending",
+            "{}",
+            timestamp,
+            timestamp,
+            timestamp,
+        ),
+    )
+    try:
+        saved = connection.execute(
+            "SELECT requested_at,expires_at,decided_at FROM owa_approvals.approvals "
+            "WHERE approval_id=?",
+            (approval_id,),
+        ).fetchone()
+        assert tuple(saved) == (timestamp, timestamp, timestamp)
+    finally:
+        connection.execute(
+            "DELETE FROM owa_approvals.approvals WHERE approval_id=?", (approval_id,)
+        )
+        connection.commit()
 
 
 async def seed(runtime, *, expired=False, assignee="a"):

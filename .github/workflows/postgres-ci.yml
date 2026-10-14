@@ -643,6 +643,8 @@ jobs:
   postgres-adk-operations:
     name: PostgreSQL ADK operation adapter recovery
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON_PREFERENCE: only-system
     # Each SDK has a fresh database and bounded independent recovery job.
     timeout-minutes: 25
     services:
@@ -663,10 +665,17 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
           enable-cache: true
+      - name: Pin uv to the hosted Python with pidfd support
+        shell: bash
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
       - name: Verify native PostgreSQL operation adapters and process recovery
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
@@ -674,6 +683,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          uv run --directory engines/adk --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio python -c "import os, signal; assert callable(getattr(os, 'pidfd_open', None)); assert callable(getattr(signal, 'pidfd_send_signal', None)); fd = os.pidfd_open(os.getpid()); os.close(fd)"
           timeout --signal=TERM --kill-after=30s 20m \
             uv run --directory engines/adk --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \
@@ -695,6 +706,8 @@ jobs:
   postgres-langgraph-operations:
     name: PostgreSQL LangGraph operation adapter recovery
     runs-on: ubuntu-latest
+    env:
+      UV_PYTHON_PREFERENCE: only-system
     # Each SDK has a fresh database and bounded independent recovery job.
     timeout-minutes: 25
     services:
@@ -715,10 +728,17 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
           enable-cache: true
+      - name: Pin uv to the hosted Python with pidfd support
+        shell: bash
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
       - name: Verify native PostgreSQL operation adapters and process recovery
         env:
           OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
@@ -726,6 +746,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio python -c "import os, signal; assert callable(getattr(os, 'pidfd_open', None)); assert callable(getattr(signal, 'pidfd_send_signal', None)); fd = os.pidfd_open(os.getpid()); os.close(fd)"
           timeout --signal=TERM --kill-after=30s 20m \
             uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \

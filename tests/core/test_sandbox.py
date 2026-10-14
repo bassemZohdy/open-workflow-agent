@@ -306,7 +306,10 @@ async def test_cancellation_terminates_descendant_process_tree(tmp_path: Path) -
     pid_file = tmp_path / "child.pid"
     backend = InternalSandboxBackend(
         SandboxConfig(
-            **supported_process_limits(), enabled=True, workspace_root=str(root), memory_bytes=None
+            **(supported_process_limits() | {"process_count": 128}),
+            enabled=True,
+            workspace_root=str(root),
+            memory_bytes=None,
         )
     )
     task = asyncio.create_task(
@@ -331,6 +334,8 @@ async def test_cancellation_terminates_descendant_process_tree(tmp_path: Path) -
     for _ in range(100):
         if pid_file.exists():
             break
+        if task.done():
+            await task
         await asyncio.sleep(0.02)
     assert pid_file.exists()
     child_pid = int(pid_file.read_text())
