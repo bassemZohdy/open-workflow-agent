@@ -151,8 +151,9 @@ treated as a deferred task or as additional feature completion.
   not infer full A2A or proposed-test completion from suite totals. The A2A08
   witness list now directly traces bounded timeout, first-response and
   partial-response loss, cross-worker terminal and cleanup cases; the A2A SDK
-  also passes real HTTPS calls with named bearer/API-key/OAuth credentials and
-  required named mTLS (31 A2A08 focused cases plus four TLS cases pass locally).
+  also passes real HTTPS calls with named bearer/API-key grants and OAuth for
+  the AgentCard-selected peer, plus required named mTLS (31 A2A08 focused cases
+  plus four TLS cases pass locally).
   Reconnect policy and durable expiry remain open, as do the remaining
   card-selected policy cross-products and cross-backend matrix. See the
   [finite acceptance record](docs/s3-02-a2a-acceptance.md).

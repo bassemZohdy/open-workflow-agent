@@ -808,7 +808,9 @@ The official A2A SDK made loopback HTTPS `SendMessage` calls using deployment-
 named bearer, API-key, OAuth and mTLS profiles. The OAuth client completed its
 token exchange over HTTPS with the fixture CA, selected the endpoint in the
 fetched AgentCard, and used the issued bearer token on the A2A request without
-inheriting that credential during card discovery. The mTLS peer required a
+inheriting that credential during card discovery. Bearer and API-key profiles
+also reached the HTTPS AgentCard-selected peer through their exact grants; the
+discovery request carried neither business header. The mTLS peer required a
 certificate trusted by its test CA; the call completed, while a second call
 without a client certificate did not reach business dispatch. The bearer and
 API-key requests carried only their selected credential headers to the TLS

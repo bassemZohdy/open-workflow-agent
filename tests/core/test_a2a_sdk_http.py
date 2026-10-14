@@ -159,12 +159,26 @@ async def test_actual_tls_a2a_call_uses_named_http_credential(monkeypatch, tmp_p
             http = client(transport, True, verify_tls=tls.ca_bundle)
             authentication = named_authentication(kind, http)
             http.authentication = authentication
-            result = await ProtocolServices(http).call("a2a", payload("SendMessage", endpoint))
+            origin = endpoint.removesuffix("/a2a")
+            card = await fetch_validate_card(
+                http, {"endpoint": origin + "/.well-known/agent-card.json"}, timeout=2
+            )
+            selection = select_interface(card, explicit_endpoint="https://ignored.test/a2a")
+            assert selection.endpoint == endpoint
+            value = payload("SendMessage", "https://ignored-user-server.test/a2a")
+            value["agentCard"] = card
+            value["endpoint"] = endpoint
+            result = await ProtocolServices(
+                http, a2a_credential_endpoints={"selected": (endpoint,)}
+            ).call("a2a", value)
             assert result["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
-            assert len(calls) == 1 and calls[0]["body"]["method"] == "SendMessage"
+            assert len(calls) == 2 and calls[0]["method"] == "GET"
+            assert b"authorization" not in calls[0]["headers"]
+            assert b"x-api-key" not in calls[0]["headers"]
+            assert calls[1]["body"]["method"] == "SendMessage"
             name = b"authorization" if kind == "bearer" else b"x-api-key"
             expected = b"Bearer selected-test-value" if kind == "bearer" else b"selected-test-value"
-            assert calls[0]["headers"][name] == expected
+            assert calls[1]["headers"][name] == expected
 
 
 @pytest.mark.asyncio
