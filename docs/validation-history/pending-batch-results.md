@@ -821,8 +821,9 @@ from the configured HTTP client and the named credential from that same
 client. Both actual-TLS cases then passed, along with the required-client-cert
 mTLS and TLS OAuth cases.
 
-The grouped Windows-local SDK file passed 97 tests after the partial-stream and
-four TLS credential witnesses were added. The implementation-audit and
+At exact source `b11e2dd979aef8d6486621748066658557e257dd`, the grouped
+Windows-local SDK file passed 97 tests after the partial-stream and four TLS
+credential witnesses were added. The implementation-audit and
 consolidation-tracker checks passed six tests; Markdown link validation, Ruff,
 format checking and `git diff --check` also passed. HTTPX emitted six CA-path
 deprecation warnings from the current path-based TLS configuration; these did
