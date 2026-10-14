@@ -149,50 +149,25 @@ treated as a deferred task or as additional feature completion.
   [acceptance record](docs/s3-01-mcp-acceptance.md) and
   [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6).
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
-  The common A2A profile has broad passing local and exact-source hosted tests,
-  but the A2A01-A2A08 acceptance matrix is not reconciled end to end. S2-09 and
-  S3-01 are verified prerequisites. Keep this task open while peer, security,
-  recovery, streaming and backend evidence is mapped to each required gate; do
-  not infer full A2A or proposed-test completion from suite totals. The A2A08
-  witness list now directly traces bounded timeout, first-response and
-  partial-response loss, cross-worker terminal and cleanup cases; the A2A SDK
-  also passes real HTTPS calls with named bearer/API-key grants and OAuth for
-  the AgentCard-selected peer, plus required named mTLS. The current source
-  extends actual-TLS named-credential checks across all seven advertised
-  methods (133 SDK HTTP tests pass locally, with hosted requalification still
-  pending). The A2A08 actual-TCP loss witnesses remain separate from
-  credential-method coverage.
-  Outbound streaming has an explicit no-automatic-retry policy: a caller may
-  separately subscribe to a known task, while lost or partial send streams
-  stay uncertain. Durable expiry, remaining card-selected policy cross-products
-  and the cross-backend matrix remain open. See the
-  [finite acceptance record](docs/s3-02-a2a-acceptance.md).
+  S2-09 and S3-01 are verified prerequisites. The bounded A2A profile has broad
+  local and hosted evidence, but A2A01-A2A08 remain partial pending direct
+  cross-product, authority, recovery, streaming, expiry and backend evidence.
+  Outbound calls are not automatically replayed after possible acceptance;
+  callers may explicitly resubscribe to a known task. This batch adds card
+  interface-selection, HTTP+JSON resume, recovery skill-binding and optional-
+  method rejection witnesses; focused local core and engine recovery selections
+  pass, with exact-source hosted requalification pending. See the
+  [gate-by-gate acceptance record](docs/s3-02-a2a-acceptance.md) and
+  [retained validation history](docs/validation-history/pending-batch-results.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
-  Selected HTTP/OpenAPI/gRPC, awaited outputs, pure AsyncAPI descriptions and
-  independent jobs are authored; corrections and qualification remain active. See
-  [the finite acceptance plan](docs/s3-03-operation-adapters-acceptance.md).
-  Behavioral/native/backend/platform, physical lifetime, packaging and hosted
-  qualification remain outstanding; no new profile or inventory row is complete.
-  PostgreSQL LangGraph recovery mismatch recurred at run `38624744282`, job
-  `116060928966`: the `inbox-before-ack-postgresql-langgraph` selected-adapter
-  process case failed with `[None]` at native-execute, stored and result layers
-  (220 passed, 158 skipped, 379 deselected). A prior rerun passed the same case.
-  The corrected Windows lease fixture and the raised 10-minute ADK command
-  budget passed at `f830fa6`. That main run then reached 98% in the Windows
-  operation-adapter lane before its 35-minute job cap; one test used a 0.5-second
-  wall-clock deadline that expired during setup. The test now advances a
-  controlled store clock, and the lane cap is 40 minutes. Local sandbox-job,
-  workflow and docs validation pass; hosted requalification is pending. The
-  Review found a fixture race: after durable inbox commit, the blocked ACK
-  callback yielded the event loop, allowing LangGraph to advance before the
-  parent stopped the producer. The fixture now holds that loop at the intended
-  pre-ACK boundary; local Windows ADK/SQLite and LangGraph/SQLite selections
-  pass. The PostgreSQL LangGraph operation-adapter job and Windows operation-
-  adapter recovery lane both pass at `8183776`, confirming this correction for
-  that recurrence. Broader S3-03 adapter, backend and deployment gates remain
-  open. See the
-  [PostgreSQL recurrence evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-langgraph-recovery-recurrence-at-f9cb76f) and
-  [Windows timeout evidence](docs/validation-history/pending-batch-results.md#hosted-windows-adapter-timeout-at-f830fa6).
+  Selected adapters and independent recovery fixtures are authored. The
+  `8183776` PostgreSQL and Windows runs confirm one corrected inbox/ACK
+  recurrence only; broader behavior, backend, platform, lifetime, packaging
+  and hosted qualification remain open. At `f235be4`, PostgreSQL ADK operation
+  recovery reached 97% before its 20-minute command limit (exit 124); the
+  command/job bounds are now 25/30 minutes pending hosted confirmation. See
+  the [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and
+  [retained run evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Finite captured script sources, independent recovery proofs and awaited internal
   process controls are authored. See [the acceptance plan](docs/s3-04-executable-source-acceptance.md).
@@ -201,29 +176,20 @@ treated as a deferred task or as additional feature completion.
   batch and all platform/backend/publication gates remain pending; no new
   executable or isolation profile is complete.
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
-  Protected actor identity, atomic assignments/decisions, fair expiry and native
-  recovery proofs are authored. The PostgreSQL `REAL`-to-`DOUBLE PRECISION`
-  compatibility migration is implemented, and the f9 PostgreSQL protected
-  approval cases passed. Its Windows timer lane exposed a `request-row` process
-  recovery fixture that could lose a 0.5-second owner lease before the durable
-  approval barrier; the fixture now keeps a five-second renewal window and
-  waits for natural database-clock expiry. Local LangGraph/SQLite protected
-  approval suites pass, and the formerly failing hosted Windows case passed at
-  `8183776`; broader S3-05 qualification remains open.
-  See [the finite acceptance plan](docs/s3-05-protected-approval-acceptance.md)
-  and [the recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
+  Protected actor identity, atomic decisions, expiry and native recovery
+  controls are authored. The PostgreSQL timestamp migration and lease-fixture
+  correction have focused passing evidence; the hosted Windows request-row
+  case passed at `8183776`. Cross-engine/backend acceptance remains open. See
+  the [finite acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
+  [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and applicable delegated authorization.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
-  Eight finite recipe families and named role bindings are authored; see
-  [the acceptance plan](docs/s3-07-agent-pattern-acceptance.md). The `8183776`
-  Windows timing run lost ownership before the `pipeline-known` receipt barrier
-  under the five-second fixture lease. A 15-second renewed lease now passes the
-  focused case and full LangGraph/SQLite process matrix (10 passed, 30 skipped).
-  The same run exposed two retry-duration output mismatches in completed S2-04
-  coverage; complete local retry suites pass on both engines, and the assertion
-  now preserves output, error, calls, sleeps, draws and clock for hosted
-  diagnosis. Hosted requalification remains pending; S3-07 stays open. See the
-  [timing-run evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
+  Eight finite recipe families and named role bindings are authored. A 15-second
+  test lease passes the focused case and LangGraph/SQLite recovery matrix
+  locally; the `8183776` Windows timing run exposed that fixture-timing issue
+  and two retry-output mismatches. Hosted requalification remains pending. See
+  the [acceptance plan](docs/s3-07-agent-pattern-acceptance.md) and
+  [timing evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
   Selected finite adapters and grouped corrections are authored; see
   [the acceptance plan](docs/s3-08-selected-adapter-acceptance.md). Qualification remains pending.

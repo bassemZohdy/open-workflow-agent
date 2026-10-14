@@ -1064,3 +1064,18 @@ selection passed on each engine (22 passed, 22 skipped). Markdown links,
 implementation/tracker audit (6 tests), Ruff, formatting and `git diff
 --check` passed. Hosted requalification remains required because the retry
 duration output mismatch is not reproduced locally.
+
+### Hosted PostgreSQL ADK operation-adapter timeout at `f235be4`
+
+PostgreSQL CI run `38641211257`, job `116116878390`, terminated the ADK
+operation-adapter selection with exit 124 at its fixed 20-minute command limit.
+The progress log had reached 97%; the last visible case was
+`test_real_stop_preserves_original_source_and_never_relaunches_uncertain_script[known-none-postgresql-adk-AdkWorkflowEngine]`.
+No assertion failure or final pytest summary was emitted. The sibling
+PostgreSQL LangGraph operation-adapter job `116116878511` passed. This is an
+incomplete S3-03 validation result, not a code pass or a proven runtime defect.
+
+The ADK operation job's command budget is raised to 25 minutes and its hosted
+job limit to 30 minutes, retaining a finite bound and cleanup margin. The next
+exact-source PostgreSQL run must confirm the remaining case and complete suite;
+S3-03 stays open until that run and its other acceptance gates pass.

@@ -209,6 +209,57 @@ async def test_jsonrpc_rejects_legacy_method_and_legacy_part_shape(tmp_path) -> 
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "method",
+    [
+        "ListTasks",
+        "GetExtendedAgentCard",
+        "CreateTaskPushNotificationConfig",
+        "GetTaskPushNotificationConfig",
+        "ListTaskPushNotificationConfigs",
+        "DeleteTaskPushNotificationConfig",
+    ],
+)
+async def test_jsonrpc_rejects_unimplemented_optional_v1_methods_before_work(tmp_path, method):
+    config = _app_config()
+    model = FakeModel({"response": "a2a-reply"})
+    services = RuntimeServices(config, model=model, database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    async with app.router.lifespan_context(app):
+        before = services.invocations.connection.execute(
+            "SELECT COUNT(*) FROM invocations"
+        ).fetchone()[0]
+        request_id = f"unsupported-{method}"
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/a2a",
+                headers=_v1_headers(),
+                json={
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "method": method,
+                    "params": {},
+                },
+            )
+
+        body = response.json()
+        assert response.status_code == 200
+        assert body["jsonrpc"] == "2.0"
+        assert body["id"] == request_id
+        assert body["error"]["code"] == JsonRpcError.METHOD_NOT_FOUND
+        assert body["error"]["message"] == "A2A method is not supported in the bounded profile"
+        assert body["error"]["data"][0]["reason"] == "METHOD_NOT_FOUND"
+        assert (
+            services.invocations.connection.execute("SELECT COUNT(*) FROM invocations").fetchone()[
+                0
+            ]
+            == before
+        )
+        assert model.calls == []
+
+
+@pytest.mark.asyncio
 async def test_http_json_transport_round_trip(tmp_path) -> None:
     app = _make_app(tmp_path, _app_config(transport="http_json"))
     async with app.router.lifespan_context(app):

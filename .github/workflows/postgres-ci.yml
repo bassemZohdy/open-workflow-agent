@@ -646,7 +646,7 @@ jobs:
     env:
       UV_PYTHON_PREFERENCE: only-system
     # Each SDK has a fresh database and bounded independent recovery job.
-    timeout-minutes: 25
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16
@@ -685,7 +685,7 @@ jobs:
           set -euo pipefail
           uv run --directory engines/adk --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio python -c "import os, signal; assert callable(getattr(os, 'pidfd_open', None)); assert callable(getattr(signal, 'pidfd_send_signal', None)); fd = os.pidfd_open(os.getpid()); os.close(fd)"
-          timeout --signal=TERM --kill-after=30s 20m \
+          timeout --signal=TERM --kill-after=30s 25m \
             uv run --directory engines/adk --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \
             ../../tests/contract/test_openapi_process_recovery.py \

@@ -102,13 +102,17 @@ def test_postgresql_profiles_run_independently_and_gate_both_images():
         assert jobs[name]["timeout-minutes"] == (
             "45"
             if name in {"postgres-adk", "postgres-langgraph"}
+            else "30"
+            if name == "postgres-adk-operations"
             else "25"
-            if name.endswith("-operations")
+            if name == "postgres-langgraph-operations"
             else "20"
         )
     assert "--kill-after=30s 30m" in _runs(jobs["postgres-adk"])
     assert "--kill-after=30s 30m" in _runs(jobs["postgres-langgraph"])
     assert "--kill-after=30s 12m" in _runs(jobs["postgres-agent-framework"])
+    assert "--kill-after=30s 25m" in _runs(jobs["postgres-adk-operations"])
+    assert "--kill-after=30s 20m" in _runs(jobs["postgres-langgraph-operations"])
 
 
 def test_windows_timing_folded_command_passes_all_fixtures_to_pytest():

@@ -91,6 +91,7 @@ def case(directory, engine_name, engine_type, backend, boundary, negative):
         assert ready["input"] == {"question": original}
         assert ready["session_id"] == "context-" + subject
         assert ready["owner"] == "initial-owner" and ready["version"] == "1.0.0"
+        assert ready["skill_id"] == "retained"
         assert ready["delivery"] == "ready" and ready["model_calls"] == 0
         assert ready["clock"] == {"profile": "owa/timing/v1", "started_at": 1000.0}
         assert ready["commits"] == (1 if boundary == "known-receipt" else 0)
@@ -112,6 +113,7 @@ def case(directory, engine_name, engine_type, backend, boundary, negative):
         if negative != "none":
             assert result["rejected_unchanged"] and result["commits"] == 0
         else:
+            assert result["skill_id"] == ready["skill_id"] == "retained"
             for field in (
                 "invocation_id",
                 "session_id",

@@ -214,6 +214,9 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
         tmp_path, transport=transport, principal="alice", token_env="OWA_A2A_ALICE"
     )
     handle = _create_handle(alice_services, owner_principal="alice")
+    unknown_id = "unknown-task-id"
+    owner_payload_before = alice_services.invocations.get(handle.invocation_id)._persisted_payload
+    owner_model_calls_before = list(alice_services.model.calls)
 
     alice_headers = {**A2A_HEADERS, "Authorization": "Bearer alice-secret"}
     bob_app, bob_services = _secured_runtime(
@@ -250,6 +253,13 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                         "message": "task not found",
                         "data": [TASK_NOT_FOUND_INFO],
                     }
+                    unknown = bob_client.post(
+                        "/a2a",
+                        headers=bob_headers,
+                        json=_task_request(method, unknown_id, method),
+                    )
+                    assert unknown.status_code == response.status_code
+                    assert unknown.json() == response.json()
                 resume = bob_client.post(
                     "/a2a",
                     headers=bob_headers,
@@ -267,11 +277,30 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                         },
                     },
                 )
+                unknown_resume = bob_client.post(
+                    "/a2a",
+                    headers=bob_headers,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": "resume-1",
+                        "method": "SendMessage",
+                        "params": {
+                            "message": {
+                                "messageId": "foreign-resume",
+                                "role": "ROLE_USER",
+                                "taskId": unknown_id,
+                                "parts": [{"text": "continue"}],
+                            }
+                        },
+                    },
+                )
                 assert resume.json()["error"] == {
                     "code": -32001,
                     "message": "task not found",
                     "data": [TASK_NOT_FOUND_INFO],
                 }
+                assert unknown_resume.status_code == resume.status_code
+                assert unknown_resume.json() == resume.json()
             else:
                 get_response = bob_client.get(
                     f"/a2a/tasks/{handle.invocation_id}", headers=bob_headers
@@ -294,6 +323,25 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                         }
                     },
                 )
+                unknown_get = bob_client.get(f"/a2a/tasks/{unknown_id}", headers=bob_headers)
+                unknown_cancel = bob_client.post(
+                    f"/a2a/tasks/{unknown_id}:cancel", headers=bob_headers
+                )
+                unknown_subscribe = bob_client.post(
+                    f"/a2a/tasks/{unknown_id}:subscribe", headers=bob_headers
+                )
+                unknown_resume = bob_client.post(
+                    "/a2a/message:send",
+                    headers=bob_headers,
+                    json={
+                        "message": {
+                            "messageId": "foreign-resume",
+                            "role": "ROLE_USER",
+                            "taskId": unknown_id,
+                            "parts": [{"text": "continue"}],
+                        }
+                    },
+                )
                 assert get_response.status_code == 404
                 assert cancel_response.status_code == 404
                 assert subscribe_response.status_code == 404
@@ -310,7 +358,21 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                 assert cancel_response.json() == get_response.json()
                 assert subscribe_response.json() == get_response.json()
                 assert resume.json() == get_response.json()
+                assert unknown_get.status_code == get_response.status_code
+                assert unknown_cancel.status_code == cancel_response.status_code
+                assert unknown_subscribe.status_code == subscribe_response.status_code
+                assert unknown_resume.status_code == resume.status_code
+                assert unknown_get.json() == get_response.json()
+                assert unknown_cancel.json() == cancel_response.json()
+                assert unknown_subscribe.json() == subscribe_response.json()
+                assert unknown_resume.json() == resume.json()
             assert bob_services.invocations.get(handle.invocation_id).status == "running"
+            assert (
+                alice_services.invocations.get(handle.invocation_id)._persisted_payload
+                == owner_payload_before
+            )
+            assert alice_services.model.calls == owner_model_calls_before
+            assert bob_services.model.calls == []
     finally:
         # TestClient closes the application services; this also releases the
         # shared SQLite handle for the next test.

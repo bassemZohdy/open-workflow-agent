@@ -242,7 +242,8 @@ async def test_resuming_send_on_terminal_task_is_rejected(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
+@pytest.mark.parametrize("transport_name", ["jsonrpc", "http_json"])
+async def test_resuming_send_restarts_persisted_waiting_task(tmp_path, transport_name) -> None:
     config = RuntimeConfig.model_validate(
         {
             "workflow": {
@@ -263,6 +264,7 @@ async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
             },
             "a2a": {
                 "enabled": True,
+                "transport": transport_name,
                 "skills": [{"id": "echo", "workflow": "echo-flow"}],
             },
         }
@@ -272,7 +274,7 @@ async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
         plan = app.state.a2a_skill_plans["echo"]
         handle = services.invocations.create(
             engine=app.state.engine.engine_name,
-            session_id=None,
+            session_id="original-context",
             user_id=None,
             workflow_name=plan.name,
             workflow_version=plan.version,
@@ -294,19 +296,39 @@ async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
 
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post(
-                "/a2a",
-                headers=HEADERS,
-                json=_send(_text_message("continue", taskId=handle.invocation_id)),
+            message = _text_message(
+                "continue",
+                taskId=handle.invocation_id,
+                contextId=handle.session_id,
             )
+            if transport_name == "jsonrpc":
+                response = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(message),
+                )
+                body = response.json()["result"]
+            else:
+                response = await client.post(
+                    "/a2a/message:send",
+                    headers=HEADERS,
+                    json={"message": message},
+                )
+                body = response.json()
             assert response.status_code == 200
-            body = response.json()["result"]
             assert body["task"]["id"] == handle.invocation_id
+            assert body["task"]["contextId"] == "original-context"
             assert body["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
             assert body["task"]["artifacts"][0]["parts"][0]["data"] == {"resumed": True}
 
-            final = await _poll_task_state(client, handle.invocation_id, "TASK_STATE_COMPLETED")
+            final = await _poll_task_state(
+                client,
+                handle.invocation_id,
+                "TASK_STATE_COMPLETED",
+                transport=transport_name,
+            )
             assert final["id"] == handle.invocation_id
+            assert final["contextId"] == "original-context"
             assert final["artifacts"][0]["parts"][0]["data"] == {"resumed": True}
             assert services.invocations.read_input(handle) == original_input
             events = [

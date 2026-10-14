@@ -365,6 +365,8 @@ async def run(directory: Path, mode: str):
                     receipt = (
                         services.effect_journal.get(action_identity) if action_identity else None
                     )
+                    delivery_binding = services.initial_deliveries.get(handle)
+                    assert delivery_binding is not None
                     write_json(
                         directory / "ready.json",
                         {
@@ -389,7 +391,8 @@ async def run(directory: Path, mode: str):
                             if action_identity
                             else None,
                             "model_calls": len(model.calls),
-                            "delivery": services.initial_deliveries.get(handle).status,
+                            "delivery": delivery_binding.status,
+                            "skill_id": delivery_binding.skill_id,
                             "generation": services.invocations.connection.execute(
                                 "SELECT generation FROM invocation_ownership WHERE invocation_id=?",
                                 (handle.invocation_id,),
@@ -494,7 +497,9 @@ async def run(directory: Path, mode: str):
                         == saved["receipt_digest"]
                     )
                 retained = services.invocations.get(handle.invocation_id)
-                assert services.initial_deliveries.get(retained).status == "settled"
+                retained_delivery = services.initial_deliveries.get(retained)
+                assert retained_delivery.status == "settled"
+                assert retained_delivery.skill_id == saved["skill_id"] == "retained"
                 duplicate = await engine.dispatch_initial_delivery(
                     retained, dispatcher._verify_authority
                 )
@@ -515,7 +520,8 @@ async def run(directory: Path, mode: str):
                         "clock": clock.output,
                         "commits": len(commits()),
                         "model_calls": len(model.calls),
-                        "delivery": services.initial_deliveries.get(retained).status,
+                        "delivery": retained_delivery.status,
+                        "skill_id": retained_delivery.skill_id,
                         "generation": services.invocations.connection.execute(
                             "SELECT generation FROM invocation_ownership WHERE invocation_id=?",
                             (retained.invocation_id,),

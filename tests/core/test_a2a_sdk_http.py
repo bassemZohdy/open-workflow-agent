@@ -130,6 +130,23 @@ async def test_actual_tcp_streaming_partial_response_loss_is_uncertain_without_r
 
 
 @pytest.mark.asyncio
+async def test_actual_tcp_subscribe_partial_response_loss_is_uncertain_without_replay():
+    async with sdk_a2a_fixture(network=True, response_truncate_after_sse_events=1) as (
+        transport,
+        calls,
+        endpoint,
+    ):
+        services = ProtocolServices(client(transport, True, timeout=3))
+        with pytest.raises(_A2AOutcomeUncertain) as error:
+            await services.call("a2a", payload("SubscribeToTask", endpoint))
+
+    assert error.value.details["reason"] == "incomplete_stream"
+    assert len(calls) == 1
+    assert calls[0]["body"]["method"] == "SubscribeToTask"
+    assert calls[0]["body"]["params"]["id"] == "task-id"
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("method", METHODS)
 async def test_actual_tls_a2a_call_uses_named_mtls_credential(monkeypatch, tmp_path, method):
     with auth_tls_receiver(tmp_path) as tls:
@@ -538,6 +555,61 @@ async def test_public_card_fetch_has_no_inherited_business_credentials_and_uses_
         restored = A2ACardSelection.from_value(selection.as_value())
         assert restored == selection and "remaining_timeout" not in selection.as_value()
         assert replace(selection, remaining_timeout=0.01).as_value() == selection.as_value()
+
+
+def test_card_selection_uses_first_supported_interface_and_ignores_server_endpoint():
+    card = json_format.MessageToDict(peer_card("https://ignored.test/a2a"))
+    card["supportedInterfaces"] = [
+        {
+            "url": "https://grpc.test/a2a",
+            "protocolBinding": "GRPC",
+            "protocolVersion": "1.0",
+        },
+        {
+            "url": "https://future.test/a2a",
+            "protocolBinding": "JSONRPC",
+            "protocolVersion": "2.0",
+        },
+        {
+            "url": "https://selected.test/a2a",
+            "protocolBinding": "JSONRPC",
+            "protocolVersion": "1.0",
+        },
+        {
+            "url": "https://later.test/a2a",
+            "protocolBinding": "JSONRPC",
+            "protocolVersion": "1.0",
+        },
+    ]
+
+    selection = select_interface(card, explicit_endpoint="https://server.test/a2a")
+
+    assert selection.endpoint == "https://selected.test/a2a"
+    assert selection.protocol_version == "1.0"
+
+
+@pytest.mark.parametrize(
+    "interface",
+    [
+        {
+            "url": "https://peer.test/a2a",
+            "protocolBinding": "JSONRPC",
+            "protocolVersion": "0.3",
+        },
+        {
+            "url": "https://peer.test/a2a",
+            "protocolBinding": "HTTP+JSON",
+            "protocolVersion": "1.0",
+        },
+    ],
+    ids=["legacy-version", "unimplemented-binding"],
+)
+def test_card_selection_rejects_when_no_interface_matches_finite_profile(interface):
+    card = json_format.MessageToDict(peer_card("https://ignored.test/a2a"))
+    card["supportedInterfaces"] = [interface]
+
+    with pytest.raises(ToolError):
+        select_interface(card, explicit_endpoint="https://server.test/a2a")
 
 
 @pytest.mark.parametrize(

@@ -7,14 +7,15 @@
 - `TODO.md` — scoped backlog and intentionally deferred work.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current backlog delivery mode — 2026-10-14
+## Current backlog delivery mode — 2026-10-15
 
 **19 of 37 backlog tasks are verified; 18 remain open. No task is deferred.**
 S2-09’s finite VM01-VM08 policy and S3-01’s finite Python MCP01-MCP08 profile
 are verified. S3-01 passed all six hosted workflows at exact source
 `af4acd61c200787fb68248b2d180ba69efb8c837`; the root suite passed 4,569 tests
 at 90.04% coverage, Windows operation recovery passed 962, Windows timers
-passed 718, and PostgreSQL passed all ten jobs. S3-02 is the next open task.
+passed 718, and PostgreSQL passed all ten jobs. S3-02 is the active next task;
+its current focused additions pass locally, with hosted qualification pending.
 JavaScript MCP, A145/full protocol coverage, proposed T29/T30/T31 criteria,
 and broader MCP extensions remain unqualified. See the
 [exact-source qualification record](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6),
@@ -27,8 +28,8 @@ partial and superseded runs remain historical in the [validation history](docs/v
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at 6b23e5d / 96ce610. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
 | S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
-| S3-02 | Active task; bounded A2A08 first/partial-response loss and a locally passing real-TLS credential matrix for all seven advertised methods are directly traced (133 SDK HTTP tests pass). Bearer, API-key and OAuth target an AgentCard-selected peer; outbound streaming has no automatic retry, and hosted requalification remains pending. A2A01-A2A08 reconciliation, remaining policy cross-products, recovery, expiry and backend gates remain open. | [A2A acceptance](docs/s3-02-a2a-acceptance.md) |
-| S3-03 | Operation adapters and independent jobs remain authored. The `f9cb76f` PostgreSQL LangGraph recurrence reported `[None]` at native-execute, stored and result layers after an `inbox-before-ack` stop. Freezing that test fixture at the pre-ACK boundary passes local ADK/SQLite and LangGraph/SQLite, and both the PostgreSQL LangGraph operation-adapter job and Windows operation-adapter lane passed at `8183776`. This closes that recurrence only; broader adapter, backend and deployment gates remain open. | [Operations](docs/s3-03-operation-adapters-acceptance.md), [PostgreSQL recurrence and resolution](docs/validation-history/pending-batch-results.md#hosted-postgresql-langgraph-recovery-recurrence-at-f9cb76f), [Windows timeout](docs/validation-history/pending-batch-results.md#hosted-windows-adapter-timeout-at-f830fa6) |
+| S3-02 | Active task; the bounded A2A profile has broad local evidence. New card-selection, HTTP+JSON resume, retained-skill recovery, optional-method, SubscribeToTask partial-loss, and unknown/foreign task-access equivalence cases pass locally. A2A01-A2A08 cross-products, authority, recovery races, expiry and hosted qualification remain open. | [A2A acceptance](docs/s3-02-a2a-acceptance.md) |
+| S3-03 | Operation adapters and independent recovery jobs remain open. The pre-ACK fixture correction passed its PostgreSQL LangGraph and Windows lanes at `8183776`. At `f235be4`, PostgreSQL ADK operation recovery reached 97% then hit its 20-minute command limit (exit 124); the limit is raised to 25 minutes with a 30-minute job cap, pending hosted confirmation. | [Operations](docs/s3-03-operation-adapters-acceptance.md), [retained PostgreSQL and Windows evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4) |
 | S3-04 | Captured sources and awaited controls remain authored. Four late source-worker takeover cases cover the ADK/LangGraph × SQLite/PostgreSQL matrix; exact-source behavioral, platform and publication qualification remain pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored. The PostgreSQL `REAL`-to-`DOUBLE PRECISION` migration is implemented and f9 PostgreSQL protected-approval cases passed. The f9 Windows timer lane exposed a request-row process-recovery fixture race before its durable barrier; a five-second renewal lease plus natural database-clock wait passes the local LangGraph/SQLite suite. The formerly failing hosted Windows case passed at `8183776`; broader S3-05 gates remain open. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |
 | S3-06 | Identity, action policy, isolation and credential safeguards remain authored; full qualification remains open. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
