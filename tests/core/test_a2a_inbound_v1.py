@@ -15,6 +15,7 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity
 from open_workflow_agent.engine import PortableWorkflowEngine
+from open_workflow_agent.observability import WorkflowEvent
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.streaming import StreamLimits
 from open_workflow_agent.workflow import compile_workflow
@@ -163,6 +164,169 @@ async def test_subscription_reads_another_services_terminal_commit_without_local
     assert frames[-1]["statusUpdate"]["status"]["state"] == "TASK_STATE_COMPLETED"
     assert "final" not in frames[-1]["statusUpdate"]
     other.close()
+    services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        ("completed", "TASK_STATE_COMPLETED"),
+        ("faulted", "TASK_STATE_FAILED"),
+        ("cancelled", "TASK_STATE_CANCELED"),
+    ],
+)
+async def test_a2a_stream_of_terminal_task_contains_only_snapshot_and_closes(
+    tmp_path, status, expected
+):
+    _app, services, _model = runtime(tmp_path, "jsonrpc")
+    handle = shell(services, status=status, output={"answer": "done"})
+    stream = a2a_sse_stream(
+        services.lifecycle_events,
+        services.invocations,
+        handle.invocation_id,
+    )
+
+    frame = await anext(stream)
+    payload = json.loads(frame.decode().split("data: ", 1)[1])
+    with pytest.raises(StopAsyncIteration):
+        await anext(stream)
+
+    assert payload["task"]["status"]["state"] == expected
+    assert services.lifecycle_events._subscribers == {}
+    services.close()
+
+
+@pytest.mark.asyncio
+async def test_a2a_stream_event_limit_keeps_initial_snapshot_and_closes(tmp_path):
+    _app, services, _model = runtime(tmp_path, "jsonrpc")
+    handle = shell(services)
+    stream = a2a_sse_stream(
+        services.lifecycle_events,
+        services.invocations,
+        handle.invocation_id,
+        limits=StreamLimits(max_events=1),
+        jsonrpc_id="stream-call-1",
+    )
+    snapshot = await anext(stream)
+    current = services.invocations.get(handle.invocation_id)
+    services.invocations.update(current, status="completed", output={"answer": "done"})
+    services.lifecycle_events.emit(
+        WorkflowEvent(
+            "WorkflowStatusChanged",
+            invocation_id=handle.invocation_id,
+            event_id="terminal-event",
+            status="completed",
+        )
+    )
+
+    with pytest.raises(StopAsyncIteration):
+        await anext(stream)
+
+    payload = json.loads(snapshot.decode().split("data: ", 1)[1])
+    assert payload["jsonrpc"] == "2.0"
+    assert payload["id"] == "stream-call-1"
+    assert payload["result"]["task"]["status"]["state"] == "TASK_STATE_WORKING"
+    assert services.lifecycle_events._subscribers == {}
+    services.close()
+
+
+@pytest.mark.asyncio
+async def test_a2a_stream_event_limit_closes_after_terminal_artifact(tmp_path):
+    _app, services, _model = runtime(tmp_path, "jsonrpc")
+    handle = shell(services)
+    stream = a2a_sse_stream(
+        services.lifecycle_events,
+        services.invocations,
+        handle.invocation_id,
+        limits=StreamLimits(max_events=2),
+    )
+    await anext(stream)
+    current = services.invocations.get(handle.invocation_id)
+    services.invocations.update(current, status="completed", output={"answer": "done"})
+    services.lifecycle_events.emit(
+        WorkflowEvent(
+            "WorkflowStatusChanged",
+            invocation_id=handle.invocation_id,
+            event_id="terminal-event",
+            status="completed",
+        )
+    )
+
+    artifact = json.loads((await anext(stream)).decode().split("data: ", 1)[1])
+    assert artifact["artifactUpdate"]["lastChunk"] is True
+    with pytest.raises(StopAsyncIteration):
+        await anext(stream)
+
+    assert services.lifecycle_events._subscribers == {}
+    services.close()
+
+
+@pytest.mark.asyncio
+async def test_a2a_stream_backpressure_closes_without_leaking_subscription(tmp_path):
+    _app, services, _model = runtime(tmp_path, "jsonrpc")
+    handle = shell(services)
+    stream = a2a_sse_stream(
+        services.lifecycle_events,
+        services.invocations,
+        handle.invocation_id,
+        limits=StreamLimits(timeout_seconds=0.05, queue_size=1),
+    )
+    snapshot = await anext(stream)
+    for event_id in ("queued-event", "overflow-event"):
+        services.lifecycle_events.emit(
+            WorkflowEvent(
+                "WorkflowStatusChanged",
+                invocation_id=handle.invocation_id,
+                event_id=event_id,
+                status="running",
+            )
+        )
+
+    with pytest.raises(StopAsyncIteration):
+        await asyncio.wait_for(anext(stream), timeout=1)
+
+    assert b"TASK_STATE_WORKING" in snapshot
+    assert services.lifecycle_events._subscribers == {}
+    services.close()
+
+
+@pytest.mark.asyncio
+async def test_a2a_stream_timeout_closes_after_snapshot(tmp_path):
+    _app, services, _model = runtime(tmp_path, "jsonrpc")
+    handle = shell(services)
+    stream = a2a_sse_stream(
+        services.lifecycle_events,
+        services.invocations,
+        handle.invocation_id,
+        limits=StreamLimits(timeout_seconds=0.01),
+    )
+    snapshot = await anext(stream)
+
+    with pytest.raises(StopAsyncIteration):
+        await asyncio.wait_for(anext(stream), timeout=1)
+
+    assert b"TASK_STATE_WORKING" in snapshot
+    assert services.lifecycle_events._subscribers == {}
+    services.close()
+
+
+@pytest.mark.asyncio
+async def test_a2a_stream_byte_limit_rejects_oversized_snapshot_and_closes(tmp_path):
+    _app, services, _model = runtime(tmp_path, "jsonrpc")
+    handle = shell(services)
+    stream = a2a_sse_stream(
+        services.lifecycle_events,
+        services.invocations,
+        handle.invocation_id,
+        limits=StreamLimits(max_bytes=256, timeout_seconds=0.01),
+        jsonrpc_id="x" * 512,
+    )
+
+    with pytest.raises(StopAsyncIteration):
+        await asyncio.wait_for(anext(stream), timeout=1)
+
+    assert services.lifecycle_events._subscribers == {}
     services.close()
 
 

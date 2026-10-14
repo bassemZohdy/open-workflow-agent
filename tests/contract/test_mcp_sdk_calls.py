@@ -124,6 +124,10 @@ async def test_each_native_workflow_method_preserves_typed_result_reference_and_
             assert result.status == "completed" and result.output["resultType"] == "complete"
             assert "jsonrpc" not in result.output and "id" not in result.output
             assert len(calls) == 1 and calls[0]["body"]["method"] == method
+            sent_parameters = calls[0]["body"]["params"]
+            assert {key: value for key, value in sent_parameters.items() if key != "_meta"} == (
+                METHOD_PARAMS[method]
+            )
             business = business_identities(services, handle.invocation_id)
             assert len(business) == 1 and business[0].task_reference == "/do/0/mcp"
             receipt = services.effect_journal.get(business[0])
@@ -246,6 +250,10 @@ async def test_configured_agent_tool_uses_same_native_sdk_http_service(
             assert len(calls) == 1 and len(model.calls) == 2
             assert calls[0]["body"]["method"] == "tools/call"
             assert calls[0]["body"]["params"]["arguments"] == {"value": 7}
+            tool_result = model.calls[1]["tool_results"][0]["result"]
+            assert tool_result["resultType"] == "complete"
+            assert tool_result["structuredContent"] == {"value": 7}
+            assert "jsonrpc" not in tool_result and "id" not in tool_result
         finally:
             await engine.shutdown()
             services.close()

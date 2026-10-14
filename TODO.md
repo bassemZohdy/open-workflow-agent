@@ -18,7 +18,7 @@ Rules: reuse native LangGraph graphs/tasks/checkpoints; start in one container w
 
 Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, not time estimates.
 
-## Delivery status — 2026-10-13
+## Recorded delivery snapshot — 2026-10-13
 
 **17 verified / 20 open / 0 deferred.** S2-09 is the earliest unfinished task.
 S2-09 through S3-08 have authored changes awaiting complete qualification.
@@ -30,7 +30,7 @@ unchanged. The renewal correction and grouped fixture patches are frozen at
 `883cd1a`; five fresh builds pass and all four full profiles have started. This
 launch record has no final behavioral results. No pending task is marked complete.
 See
-[current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-13)
+[recorded project status](PROJECT.md#recorded-backlog-status-snapshot-2026-10-13)
 and [retained validation evidence](docs/validation-history/pending-batch-results.md).
 
 ## Stage 1 — Correct core execution

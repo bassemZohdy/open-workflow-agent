@@ -4,15 +4,16 @@
 
 - `Project Definition.md` — architecture/product contract.
 - `PROJECT.md` — verified implementation and release state.
-- `TODO.md` — scoped backlog and intentionally deferred work.
+- `TODO.md` — ordered backlog and any blocked-task deferrals.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current backlog delivery mode — 2026-10-13
+## Recorded backlog status — snapshot 2026-10-13
 
 **17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-09 is
-the earliest unfinished milestone. Coherent source authoring continues through
-S3-08 in parallel; failed or incomplete validation advances no task checkbox or
-inventory row.
+the earliest unfinished milestone. Existing authored batches extend through
+S3-08 in parallel, while qualification and completion remain milestone- and
+dependency-ordered. Failed or incomplete validation advances no task checkbox
+or inventory row.
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
@@ -26,34 +27,16 @@ inventory row.
 | S3-07 | Eight finite recipe families and named role bindings authored; static/schema checks pass, behavioral qualification pending. | [Pattern scope and gates](docs/s3-07-agent-pattern-acceptance.md) |
 | S3-08 | Selected compiler/provider/memory/embedded event adaptations and grouped corrections are authored; integrated qualification remains open. | [Selected scope and gates](docs/s3-08-selected-adapter-acceptance.md) |
 
-The published feature checkpoint is `67aa724` on draft
-[PR 64](https://github.com/bassemZohdy/open-workflow-agent/pull/64); aggregate CI
-failed. Later source and corrections remain local feature work pending validation.
-
-| Frozen source | Latest evidence | Qualification |
-| --- | --- | --- |
-| `dc71ecb`, 1,034 inputs | Five builds passed; common 46 failures/59 errors; optional framework three failures; principal SDK suites reached the unchanged 75-minute bounds with failures | Failed/incomplete |
-| `3aaaf30`, 1,054 inputs | Static/schema/admission checks and five builds passed; common 8 failures, 2,822 passes, 601 skips and 52 errors; source unchanged | Behavioral gates open |
-| `4740732`, 1,067 inputs | Optional Framework: 767 passes, 354 skips, 2,934 deselections, exit 0. LangGraph: 73 failures, 1,146 passes, 672 skips, 1,467 deselections, exit 1. Common and ADK each reached the 4,500-second bound at logged 97% progress, exit 124, without final pytest totals. All four end reports retain unchanged source. | Integrated qualification open |
-| `883cd1a`, 1,068 inputs | Launch snapshot: all five fresh build/provenance checks passed; four full profiles started, with 5,400-second root/ADK and 4,500-second LangGraph/optional Framework batch bounds. No final behavioral results captured in this record. | Qualification pending |
-
-Earlier `7214f46` and `caa32c8` outcomes remain in
-[the batch evidence record](docs/validation-history/pending-batch-results.md).
-All four `4740732` profiles have ended. Its optional Framework pass does not
-qualify the failed LangGraph profile or bounded incomplete common/ADK profiles.
-The renewal correction and five grouped fixture patches are frozen at `883cd1a`;
-only bounded physical artifact/SDK verification moves off-loop, retaining original
-leases and synchronous database/trust phases. Ruff and formatting (527 files),
-strict typing (134 source files), and all five fresh build/provenance checks pass.
-The four full profiles have started; final behavioral acceptance remains pending
-at this launch snapshot. Full commands, counts, source hashes and
-actionable causes are retained in the evidence record.
-Source changes and partial passes qualify no unchecked task, full inventory row,
-JavaScript profile or release.
+The latest recorded hosted checkpoint is `67aa724` on draft
+[PR 64](https://github.com/bassemZohdy/open-workflow-agent/pull/64); its aggregate
+CI failed. Frozen-source results, corrections, commands, hashes and acceptance
+limits are retained in the [batch evidence record](docs/validation-history/pending-batch-results.md).
+This 2026-10-13 snapshot is not a live CI status. No source change or partial
+pass qualifies an unchecked task, full inventory row, JavaScript profile or release.
 
 Continue ready work in parallel, complete a coherent source batch before testing it, and push validated feature work. Running checks and failures with an actionable fix remain active. Only a repeated blocker with no next step moves the original unchecked task to the final deferred section, with full evidence and resume conditions. See [TODO.md](TODO.md) for the complete ordered scope, [documentation guide](docs/README.md) for topic navigation, and [earlier delivery checkpoints](docs/validation-history/backlog-delivery-2026-10-13.md) for retained history.
 
-## Current Phase — 2026-09-24
+## Released baseline — 2026-09-24
 
 Historical released baseline; current unfinished roadmap work is summarized above.
 
@@ -451,7 +434,7 @@ Agent Card now advertises `securitySchemes` and `security` requirements when aut
 
 ## A2A Deferred Scope
 
-The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining deferred work is listed in `TODO.md`.
+The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining backlog and conditional profiles are listed in `TODO.md`.
 
 The official A2A v1 semantics are the guide: ordinary `SendMessage` blocks by default, while `returnImmediately=true` is the protocol-native non-blocking request and returns Task state for later `GetTask`/subscription. OWA will not add a custom async flag.
 
@@ -614,7 +597,9 @@ these readiness foundations.
 
 ## Current Backlog State
 
-The ordered backlog is maintained in [TODO.md](TODO.md): 17 verified tasks and 20 open tasks. Current authoring and failed validation do not advance completion. No task currently satisfies the stuck-task deferral rule.
+The ordered backlog is maintained in [TODO.md](TODO.md). This historical
+snapshot recorded 17 verified tasks, 20 open tasks and no deferred tasks.
+Authoring and failed validation do not advance completion.
 
 ## Canonical repository consolidation — 2026-10-11
 
@@ -636,11 +621,13 @@ formatting, strict mypy and Markdown links passed. These selected fixture runs
 use canonical ADK/LangGraph adapters in the root environment, not proof of new
 native compiler behavior or JS parity. Remote CI remains a publication gate.
 
-## Intentionally Deferred
+## Deferred product scope (not blocked backlog tasks)
 
+These are product-scope exclusions, not tasks deferred under the blocked-task
+rule. Blocked backlog entries, if any, are listed at the end of [TODO.md](TODO.md).
 
 - A2A push notifications.
-- Broad/full A2A conformance claim until async/streaming/interoperability gates are green.
+- Broad/full A2A conformance beyond the separately accepted bounded profiles.
 - Multi-tenancy.
 - Delegated-user identity/token exchange/consent inside OWA.
 
@@ -669,18 +656,9 @@ uv run --directory engines/agent-framework --locked --extra native --extra knowl
 
 The CI source-integrity gate caught three ignored predecessor reference files missing from the initial PR. Those exact source bytes are now explicitly tracked; the gate remains enforced. MIG-01 transfer/license disposition is complete: both imported sources retain Apache attribution, and unlicensed generic source stays at origin. No active compiler, checkpoint service or unsafe approval implementation is introduced by the frozen reference import.
 
-## S2-09 version recovery work -- 2026-10-13 pending verification
+## Open-task acceptance records
 
-The isolated batch retains immutable original public definition inputs and
-invocation bindings before native projection. New invocations may select a newer
-workflow version; retained invocations require their original definition and
-exact qualified execution profile. Authenticated recovery diagnostics inspect
-bounded common evidence without leases, native mutation or business I/O.
-Explicit mapping, checkpoint transplant and arbitrary SDK upgrade remain
-unsupported. Authoring is complete; finite actual native, backend, process-stop,
-packaging and hosted validation is pending. S2-09 remains unchecked. See
-[the finite policy](docs/s2-09-version-recovery-acceptance.md).
-
-## S3-02 A2A implementation work -- 2026-10-13 pending verification
-
-S2-09/S3-01/S3-02 remain unchecked. Exact-source hosted checkpoint `67aa724` failed root/native/PostgreSQL/optional Framework/Windows timing acceptance, while its standard images and several independent checks passed. Concrete fixture and runtime corrections continue in the combined source batch; full fresh qualification remains mandatory. [The finite A2A record](docs/s3-02-a2a-acceptance.md) preserves scope and exclusions; [the operation record](docs/s3-03-operation-adapters-acceptance.md#first-frozen-batch-and-grouped-corrections) tracks the current grouped failure history. Broader transport, delegated authorization and independent JavaScript work retain their separate backlog owners.
+S2-09 remains the earliest unfinished task. Its policy and evidence requirements,
+together with the authored but unqualified S3 profiles, are linked from [TODO.md](TODO.md).
+Historical validation belongs in the [batch evidence record](docs/validation-history/pending-batch-results.md),
+not in a second live-status section here.

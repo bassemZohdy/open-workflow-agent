@@ -1080,6 +1080,12 @@ implement push notifications.
 
 This sequence keeps A2A in core and reuses common invocation/durability semantics rather than implementing engine-specific A2A code.
 
+The completion statement above applies to the previously released bounded
+inbound profile. The ordered backlog tracks additional workflow-to-agent and
+agent-to-workflow integration and fresh peer/native/backend qualification under
+S3-02; those gates remain open until their evidence passes. See
+[`TODO.md`](TODO.md) and the [S3-02 acceptance plan](docs/s3-02-a2a-acceptance.md).
+
 The post-release native-depth decision is settled for the current product
 scope: retain ADK and LangGraph as native execution envelopes around the
 framework-neutral common executor, and keep capability/documentation language

@@ -496,3 +496,38 @@ async def test_actual_sdk_selected_sse_result_is_bounded_and_has_one_business_re
         assert len(calls) == 1 and calls[0]["body"]["id"] == "business-key"
         assert calls[0]["headers"][b"accept"] == b"application/json, text/event-stream"
         assert calls[0]["body"]["method"] == "tools/call"
+
+
+@pytest.mark.asyncio
+async def test_mcp_streamed_response_limit_closes_stream_after_business_dispatch():
+    calls = []
+    closed = asyncio.Event()
+
+    class OversizedResponse(httpx.AsyncByteStream):
+        async def __aiter__(self):
+            yield b'{"jsonrpc":"2.0",'
+            yield b'"id":"business-key","result":{"extra":"too large"}}'
+
+        async def aclose(self):
+            closed.set()
+
+    async def receiver(request):
+        calls.append(request)
+        return httpx.Response(
+            200,
+            headers={"Content-Type": "application/json"},
+            stream=OversizedResponse(),
+        )
+
+    services = ProtocolServices(
+        HttpClient(
+            transport=httpx.MockTransport(receiver),
+            max_response_bytes=24,
+        )
+    )
+    with pytest.raises(_McpOutcomeUncertain) as error:
+        await services.call("mcp", payload("tools/call"))
+
+    assert error.value.details["reason"] == "transport_failure"
+    assert len(calls) == 1 and calls[0].headers["accept"] == "application/json, text/event-stream"
+    assert closed.is_set()
