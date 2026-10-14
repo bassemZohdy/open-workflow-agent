@@ -834,3 +834,9 @@ consolidation-tracker checks passed six tests; Markdown link validation, Ruff,
 format checking and `git diff --check` also passed. HTTPX emitted six CA-path
 deprecation warnings from the current path-based TLS configuration; these did
 not fail the tests and do not change the acceptance result.
+
+At exact source `243b62222968461b2127f653d56f9c216f9c3a67`, the same 97-test
+SDK file passed with OAuth bound through actual HTTPS AgentCard discovery to
+the selected peer; audit/tracker, documentation-link, Ruff, formatting and diff
+checks also passed. The updated path-based TLS tests emitted seven HTTPX CA-path
+deprecation warnings.
