@@ -391,6 +391,117 @@ async def test_resubscribe_streams_existing_task_and_rejects_unknown(tmp_path) -
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("case", "expected_code"),
+    [
+        ("mismatched-context", -32602),
+        ("matching-context-async-resume", -32004),
+        ("unknown-task", -32001),
+        ("foreign-task", -32001),
+    ],
+)
+async def test_stream_resume_rejects_existing_task_references_without_side_effects(
+    tmp_path, monkeypatch, case, expected_code
+) -> None:
+    if case == "foreign-task":
+        monkeypatch.setenv("OWA_TEST_STREAM_OWNER", "stream-token")
+        config = RuntimeConfig.model_validate(
+            {
+                "a2a": {"enabled": True, "security_profile": "partner"},
+                "security": {
+                    "profiles": {
+                        "partner": {
+                            "type": "bearer",
+                            "token": {"from_env": "OWA_TEST_STREAM_OWNER"},
+                            "principal": "requester",
+                        }
+                    }
+                },
+            }
+        )
+    else:
+        config = RuntimeConfig.model_validate({"a2a": {"enabled": True}})
+    app, services = _make_app(tmp_path, config)
+    async with app.router.lifespan_context(app):
+        handle = None
+        if case != "unknown-task":
+            handle = services.invocations.create(
+                engine="adk",
+                session_id="ctx-existing",
+                user_id=None,
+                workflow_name="flow",
+                workflow_version="1.0.0",
+                workflow_fingerprint="fingerprint",
+                owner_principal="someone-else" if case == "foreign-task" else None,
+            )
+            services.invocations.update(handle, status="waiting")
+
+        invocations_created = []
+        original_create = services.invocations.create
+
+        def record_create(**kwargs):
+            invocations_created.append(kwargs)
+            return original_create(**kwargs)
+
+        monkeypatch.setattr(services.invocations, "create", record_create)
+        side_effects = []
+        engine = app.state.engine
+
+        async def unexpected_engine_action(*_args, **_kwargs):
+            side_effects.append("engine")
+            raise AssertionError("stream resume must not invoke or resume a workflow")
+
+        monkeypatch.setattr(engine, "invoke", unexpected_engine_action)
+        monkeypatch.setattr(engine, "resume", unexpected_engine_action)
+
+        def unexpected_subscription(*_args, **_kwargs):
+            side_effects.append("subscription")
+            raise AssertionError("rejected stream resume must not subscribe to task events")
+
+        monkeypatch.setattr(services.lifecycle_events, "subscribe", unexpected_subscription)
+        count_before = services.invocations.connection.execute(
+            "SELECT COUNT(*) FROM invocations"
+        ).fetchone()[0]
+        subscriber_ids_before = set(services.lifecycle_events._subscribers)
+        message = _message(taskId=handle.invocation_id if handle else "missing-task")
+        if case == "mismatched-context":
+            message["contextId"] = "different-context"
+        elif case == "matching-context-async-resume":
+            message["contextId"] = "ctx-existing"
+        params: dict[str, object] = {"message": message}
+        if case == "matching-context-async-resume":
+            params["configuration"] = {"returnImmediately": True}
+        headers = HEADERS
+        if case == "foreign-task":
+            headers = {**HEADERS, "Authorization": "Bearer stream-token"}
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/a2a",
+                headers=headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 7,
+                    "method": "SendStreamingMessage",
+                    "params": params,
+                },
+            )
+
+        assert response.status_code == 200
+        assert response.json()["error"]["code"] == expected_code
+        assert invocations_created == [] and side_effects == []
+        assert (
+            services.invocations.connection.execute("SELECT COUNT(*) FROM invocations").fetchone()[
+                0
+            ]
+            == count_before
+        )
+        assert set(services.lifecycle_events._subscribers) == subscriber_ids_before
+
+
+@pytest.mark.asyncio
 async def test_streaming_requires_authorization(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("OWA_TEST_A2A_BEARER", "stream-token")
     config = RuntimeConfig.model_validate(

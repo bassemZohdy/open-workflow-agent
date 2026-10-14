@@ -20,7 +20,12 @@ from open_workflow_agent.effects import (
     ReceiptDependency,
     effect_request_digest,
 )
-from open_workflow_agent.errors import InvocationStateConflict, OwaError, WorkflowExecutionError
+from open_workflow_agent.errors import (
+    ConfigurationError,
+    InvocationStateConflict,
+    OwaError,
+    WorkflowExecutionError,
+)
 from open_workflow_agent.executable_source_admission import (
     SOURCE_POLICY,
     ExecutableSourceAdmission,
@@ -215,6 +220,67 @@ def test_saved_source_proof_is_readonly_after_execution_lease_release(original):
     with pytest.raises(InvocationStateConflict):
         prepare(original)
     assert snapshot(original) == before
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "source-fingerprint",
+        "index-identity",
+        "receipt-missing",
+        "source-payload-bound",
+        "index-payload-bound",
+    ],
+    ids=["fingerprint", "index", "receipt", "source-bound", "index-bound"],
+)
+@pytest.mark.asyncio
+async def test_startup_source_history_rejects_fixture_damage_without_repair_or_dispatch(
+    original, damage
+):
+    services, _, handle, identity, _, _, _ = original
+    decision = prepare(original)
+    connection = services.effect_journal.connection
+    if damage == "source-fingerprint":
+        connection.execute(
+            "UPDATE executable_source_admissions SET fingerprint=? WHERE business_key=?",
+            ("forged", identity.key),
+        )
+    elif damage == "index-identity":
+        forged = asdict(identity)
+        forged["workflow_fingerprint"] = "forged"
+        connection.execute(
+            "UPDATE workflow_effect_invocations SET payload=? WHERE identity=?",
+            (json.dumps(forged), decision.identity.key),
+        )
+    elif damage == "receipt-missing":
+        connection.execute(
+            "DELETE FROM workflow_effects WHERE identity=?", (decision.identity.key,)
+        )
+    elif damage == "source-payload-bound":
+        connection.execute(
+            "UPDATE executable_source_admissions SET payload=? WHERE business_key=?",
+            ("x" * 524_289, identity.key),
+        )
+    else:
+        connection.execute(
+            "UPDATE workflow_effect_invocations SET payload=? WHERE identity=?",
+            ("x" * 65_537, decision.identity.key),
+        )
+    connection.commit()
+    before = snapshot(original)
+    with pytest.raises(ConfigurationError):
+        await services.verify_executable_source_history(handle)
+    assert snapshot(original) == before
+    assert services.model.calls == []
+
+
+@pytest.mark.asyncio
+async def test_startup_source_history_accepts_intact_prepared_source_without_mutation(original):
+    services, _, handle, _, _, _, _ = original
+    prepare(original)
+    before = snapshot(original)
+    await services.verify_executable_source_history(handle)
+    assert snapshot(original) == before and services.model.calls == []
 
 
 def test_same_original_source_has_distinct_policy_per_loop_visit(original):

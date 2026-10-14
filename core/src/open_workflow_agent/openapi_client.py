@@ -489,7 +489,9 @@ def _security(
     schemes = components.get("securitySchemes", {})
     selected: dict[str, Any] = {}
     for requirement in requirements:
-        if not isinstance(requirement, dict) or len(requirement) > 1:
+        # OpenAPI Security Requirement Objects express AND across their scheme
+        # names; the surrounding array expresses OR. Keep both levels bounded.
+        if not isinstance(requirement, dict) or len(requirement) > 8:
             raise _failure("unsupported_security")
         for name, scopes in requirement.items():
             if (
@@ -797,8 +799,7 @@ def _authorize(
         raise _failure("credential_endpoint_not_granted")
     satisfiable = not requirements
     for requirement in requirements:
-        if not requirement:
-            satisfiable = True
+        requirement_satisfied = True
         for name, scopes in requirement.items():
             scheme = policy["schemes"][name]
             kind = scheme["type"]
@@ -808,23 +809,28 @@ def _authorize(
                 and scheme["scheme"].lower() == "bearer"
                 and not scopes
             ):
-                satisfiable = True
+                continue
             elif (
                 isinstance(profile, ApiKeySecurityProfile)
                 and kind == "apiKey"
                 and scheme["name"].lower() == profile.header.lower()
                 and not scopes
             ):
-                satisfiable = True
+                continue
             elif isinstance(profile, MtlsSecurityProfile) and kind == "mutualTLS" and not scopes:
-                satisfiable = True
+                continue
             elif (
                 isinstance(profile, OAuth2ClientCredentialsSecurityProfile)
                 and kind == "oauth2"
                 and scheme["flows"]["clientCredentials"]["tokenUrl"] == profile.token_url
                 and set(scopes) <= set(profile.scopes)
             ):
-                satisfiable = True
+                continue
+            requirement_satisfied = False
+            break
+        if requirement_satisfied:
+            satisfiable = True
+            break
     if not satisfiable:
         raise _failure("security_requirement_unsatisfied")
     return (

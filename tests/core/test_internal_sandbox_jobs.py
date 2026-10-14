@@ -318,15 +318,27 @@ async def test_invalid_original_authority_rejects_before_any_ipc_or_process(supe
 
 @pytest.mark.parametrize("failure", ["output", "workspace"])
 async def test_actual_resource_failure_is_unknown_without_invented_exit_or_relaunch(
-    supervisor, failure
+    supervisor, failure, tmp_path
 ):
+    child_marker = tmp_path / "workspace-child.pid"
     code = (
         "print('x'*20000,flush=True)\n"
         if failure == "output"
-        else "from pathlib import Path\nPath('large').write_bytes(b'x'*20000)\n"
+        else (
+            "import os,time\nfrom pathlib import Path\n"
+            f"Path({str(child_marker)!r}).write_text(str(os.getpid()))\n"
+            "Path('large').write_bytes(b'x'*20000)\n"
+            "time.sleep(60)\n"
+        )
     )
     _, store, lease, backend, _, launch = supervisor(code, output=2048, workspace=2048)
     observed = await backend.submit(launch)
+    child_pid = None
+    if failure == "workspace":
+        async with asyncio.timeout(5):
+            while not child_marker.exists():
+                await asyncio.sleep(0.025)
+        child_pid = int(child_marker.read_text())
     value = (
         observed
         if observed.state == "unknown"
@@ -337,6 +349,24 @@ async def test_actual_resource_failure_is_unknown_without_invented_exit_or_relau
     assert (await backend.submit(launch)).state == "unknown"
     assert (backend._directory(launch) / "bootstrap.json").read_bytes() == before
     assert store.get(lease.job_id).terminal_json is None
+    if failure == "workspace":
+        assert child_pid is not None
+        async with asyncio.timeout(3):
+            while _process_is_alive(child_pid):
+                await asyncio.sleep(0.025)
+        assert not _process_is_alive(child_pid)
+        assert list(Path(backend.config.workspace_root).iterdir()) == []
+        assert backend.capabilities()["resourceLimits"]["workspaceQuota"] == "monitored"
+
+
+def _process_is_alive(pid: int) -> bool:
+    if os.name == "nt":
+        return not _windows_pid_is_gone(pid)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    return True
 
 
 async def test_actual_supervisor_loss_is_unknown_and_never_relaunches(supervisor, tmp_path):

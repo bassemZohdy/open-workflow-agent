@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import json
 
 import pytest
 from open_workflow_agent.catalog import CatalogContext, FakeModel, ManagedFunctionCapabilities
-from open_workflow_agent.errors import ConfigurationError, ToolError
+from open_workflow_agent.errors import ConfigurationError, ToolError, WorkflowExecutionError
 from open_workflow_agent.knowledge import (
     DeterministicEmbeddingProvider,
     KnowledgeService,
@@ -282,3 +283,174 @@ def test_windows_path_is_treated_as_local_sqlite_datasource():
     datasource = r"C:\owa\runtime.sqlite3"
     assert datasource_kind(datasource) == "sqlite"
     assert resolve_datasource(datasource) == datasource
+
+
+def test_runtime_services_role_memory_preflight_accepts_bounded_payloads(tmp_path):
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    services = RuntimeServices(
+        RuntimeConfig.model_validate(
+            {
+                "memory": {
+                    "bounds": {
+                        "enabled": True,
+                        "max_text_bytes": 32,
+                        "max_query_bytes": 32,
+                        "max_query_terms": 2,
+                        "max_results": 5,
+                    }
+                }
+            }
+        ),
+        model=FakeModel(),
+        database_root=tmp_path,
+    )
+    accepted = {
+        "add_memory": {"text": "approved note", "metadata": {"source": "role"}},
+        "search_memory": {"query": "approved note", "limit": 5},
+        "delete_memory": {"id": 7},
+    }
+    try:
+        for name, payload in accepted.items():
+            services.validate_agent_tool_payload(name, payload)
+        assert (
+            services.memory._connection.execute(
+                "SELECT COUNT(*) FROM bounded_memory_entries"
+            ).fetchone()[0]
+            == 0
+        )
+        assert (
+            services.memory._connection.execute(
+                "SELECT COUNT(*) FROM bounded_memory_namespaces"
+            ).fetchone()[0]
+            == 0
+        )
+    finally:
+        services.close()
+
+
+@pytest.mark.parametrize(
+    ("name", "payload"),
+    [
+        ("add_memory", {"text": "private", "namespace": "another-principal"}),
+        ("add_memory", {"text": True}),
+        ("add_memory", {"text": "x" * 33}),
+        ("add_memory", {"text": "private", "metadata": ["not", "an", "object"]}),
+        ("search_memory", {"query": "one two three"}),
+        ("search_memory", {"query": "x" * 33}),
+        ("search_memory", {"query": "one", "limit": True}),
+        ("search_memory", {"query": "one", "limit": 0}),
+        ("search_memory", {"query": "one", "limit": 6}),
+        ("search_memory", {"query": "one", "principal": "another-principal"}),
+        ("delete_memory", {"id": True}),
+        ("delete_memory", {"id": 0}),
+        ("delete_memory", {"id": 2**63}),
+        ("delete_memory", {"id": 7, "namespace": "another-principal"}),
+    ],
+)
+def test_runtime_services_rejects_invalid_role_memory_payloads_without_mutation(
+    tmp_path, name, payload
+):
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    services = RuntimeServices(
+        RuntimeConfig.model_validate(
+            {
+                "memory": {
+                    "bounds": {
+                        "enabled": True,
+                        "max_text_bytes": 32,
+                        "max_query_bytes": 32,
+                        "max_query_terms": 2,
+                        "max_results": 5,
+                    }
+                }
+            }
+        ),
+        model=FakeModel(),
+        database_root=tmp_path,
+    )
+    connection = services.memory._connection
+    before = (
+        connection.execute(
+            "SELECT * FROM bounded_memory_entries ORDER BY namespace,memory_id"
+        ).fetchall(),
+        connection.execute("SELECT * FROM bounded_memory_namespaces ORDER BY namespace").fetchall(),
+    )
+    try:
+        with pytest.raises(WorkflowExecutionError):
+            services.validate_agent_tool_payload(name, payload)
+        after = (
+            connection.execute(
+                "SELECT * FROM bounded_memory_entries ORDER BY namespace,memory_id"
+            ).fetchall(),
+            connection.execute(
+                "SELECT * FROM bounded_memory_namespaces ORDER BY namespace"
+            ).fetchall(),
+        )
+        assert after == before
+    finally:
+        services.close()
+
+
+def test_runtime_services_recovery_profile_composes_enabled_policies_without_secrets(
+    tmp_path, monkeypatch
+):
+    import open_workflow_agent.services as services_module
+    from open_workflow_agent.config import RuntimeConfig
+    from open_workflow_agent.services import RuntimeServices
+
+    secret = "must-never-appear-in-recovery-profile"
+    monkeypatch.setenv("OWA_TEST_RUNTIME_MODEL_SECRET", secret)
+    monkeypatch.setattr(
+        services_module,
+        "recovery_profile",
+        lambda engine, **_kwargs: {
+            "profile": "test-only/runtime-services-composition",
+            "engine": engine,
+            "continuation_supported": True,
+            "policy": {"physical_marker": "kept"},
+        },
+    )
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {
+                "credentials": {"api_key": {"from_env": "OWA_TEST_RUNTIME_MODEL_SECRET"}},
+                "bounds": {"id": "completion-test", "version": "2"},
+            },
+            "agent": {
+                "roles": {
+                    "drafter": {
+                        "id": "drafter-test",
+                        "model": {"name": "fake/drafter"},
+                        "tools": ["search_memory"],
+                    }
+                }
+            },
+            "memory": {"bounds": {"enabled": True, "id": "memory-test", "version": "3"}},
+        }
+    )
+    services = RuntimeServices(
+        config,
+        model=FakeModel(),
+        database_root=tmp_path,
+        embedded_event_transport=True,
+    )
+    try:
+        profile = services._recovery_profile("reference")
+        policy = profile["policy"]
+        serialized = json.dumps(profile, sort_keys=True)
+        assert policy["physical_marker"] == "kept"
+        assert policy["memory_bounds"]["id"] == "memory-test"
+        assert policy["model"]["bounds"]["id"] == "completion-test"
+        assert policy["model"]["credentials"] == {
+            "api_key": {"from_env": "OWA_TEST_RUNTIME_MODEL_SECRET"}
+        }
+        assert policy["agent_roles"] == services.role_bindings.snapshot()
+        assert policy["event_transport"]["profile"] == "owa/embedded-event-transport/v1"
+        assert "approvals" in policy
+        assert secret not in serialized
+    finally:
+        services.close()

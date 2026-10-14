@@ -62,7 +62,9 @@ async def run(directory, mode):
     services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(business)))
     services.tools.protocols = services.protocols
     await engine.initialize(services)
-    engine._execution_ownership_seconds = 0.5
+    # The killed producer needs a short lease for prompt takeover. Recovery
+    # itself runs through native SDK work and needs a realistic owner window.
+    engine._execution_ownership_seconds = 0.5 if mode == "start" else 30.0
     await services.stop_protected_approvals()
     try:
         if mode == "start":

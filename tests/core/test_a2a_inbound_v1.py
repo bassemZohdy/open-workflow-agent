@@ -49,6 +49,58 @@ def shell(services, *, status="running", output=None):
     return handle
 
 
+async def stream_or_subscribe(client, binding, operation, task_id, *, context_id=None):
+    if binding == "jsonrpc":
+        params = (
+            {"id": task_id}
+            if operation == "subscribe"
+            else {
+                "message": message(
+                    taskId=task_id, **({"contextId": context_id} if context_id else {})
+                )
+            }
+        )
+        return await client.post(
+            "/a2a",
+            headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+            json={
+                "jsonrpc": "2.0",
+                "id": "call-1",
+                "method": "SubscribeToTask" if operation == "subscribe" else "SendStreamingMessage",
+                "params": params,
+            },
+        )
+    if operation == "subscribe":
+        return await client.post(
+            f"/a2a/tasks/{task_id}:subscribe", headers={"A2A-Version": A2A_PROTOCOL_VERSION}
+        )
+    return await client.post(
+        "/a2a/message:stream",
+        headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+        json={
+            "message": message(taskId=task_id, **({"contextId": context_id} if context_id else {}))
+        },
+    )
+
+
+def forbid_a2a_callbacks(monkeypatch, app, services):
+    import open_workflow_agent.a2a as a2a_module
+
+    calls = []
+
+    def fail(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("A2A resume/subscription callback must not run")
+
+    async def fail_async(*args, **kwargs):
+        fail(*args, **kwargs)
+
+    monkeypatch.setattr(app.state.engine, "resume", fail_async)
+    monkeypatch.setattr(services, "resolve_original_definition", fail)
+    monkeypatch.setattr(a2a_module, "a2a_sse_stream", fail)
+    return calls
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
 @pytest.mark.parametrize(
@@ -126,6 +178,106 @@ async def test_resume_context_mismatch_has_no_delivery_or_input_mutation(tmp_pat
             is None
         )
         assert model.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+async def test_stream_resume_mismatched_context_rejects_before_resume_or_subscription(
+    tmp_path, monkeypatch, binding
+):
+    app, services, model = runtime(tmp_path, binding)
+    handle = shell(services, status="waiting")
+    before = services.invocations.get(handle.invocation_id)._persisted_payload
+    async with app.router.lifespan_context(app):
+        callbacks = forbid_a2a_callbacks(monkeypatch, app, services)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await stream_or_subscribe(
+                client,
+                binding,
+                "stream",
+                handle.invocation_id,
+                context_id="foreign-context",
+            )
+        body = response.json()
+        assert "error" in body
+        assert "context" in response.text
+        assert services.invocations.get(handle.invocation_id)._persisted_payload == before
+        assert (
+            services.invocations.connection.execute(
+                "SELECT 1 FROM invocation_inputs WHERE invocation_id=?", (handle.invocation_id,)
+            ).fetchone()
+            is None
+        )
+        assert model.calls == []
+        assert callbacks == []
+    services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+async def test_stream_resume_with_matching_context_is_sanitized_as_unsupported_without_callbacks(
+    tmp_path, monkeypatch, binding
+):
+    app, services, model = runtime(tmp_path, binding)
+    handle = shell(services, status="waiting")
+    before = services.invocations.get(handle.invocation_id)._persisted_payload
+    async with app.router.lifespan_context(app):
+        callbacks = forbid_a2a_callbacks(monkeypatch, app, services)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await stream_or_subscribe(
+                client,
+                binding,
+                "stream",
+                handle.invocation_id,
+                context_id="original-context",
+            )
+        body = response.json()
+        assert "error" in body
+        assert "resume" in response.text.lower() or "unsupported" in response.text.lower()
+        assert services.invocations.get(handle.invocation_id)._persisted_payload == before
+        assert model.calls == []
+        assert callbacks == []
+    services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize("operation", ["stream", "subscribe"])
+async def test_unknown_and_foreign_a2a_tasks_share_sanitized_not_found_without_callbacks(
+    tmp_path, monkeypatch, binding, operation
+):
+    app, services, model = runtime(tmp_path, binding)
+    foreign = services.invocations.create(
+        engine="portable",
+        session_id="foreign-context-secret",
+        user_id=None,
+        workflow_name="foreign-workflow",
+        workflow_version="1.0.0",
+        workflow_fingerprint="foreign-fingerprint",
+        owner_principal="foreign-principal-secret",
+    )
+    unknown_id = "unknown-task-secret"
+    async with app.router.lifespan_context(app):
+        callbacks = forbid_a2a_callbacks(monkeypatch, app, services)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            results = []
+            for task_id in (unknown_id, foreign.invocation_id):
+                response = await stream_or_subscribe(client, binding, operation, task_id)
+                results.append((response.status_code, response.json()))
+                assert task_id not in response.text
+                assert "foreign-principal-secret" not in response.text
+                assert "foreign-context-secret" not in response.text
+            assert results[0] == results[1]
+            assert "not found" in json.dumps(results[0][1]).lower()
+        assert model.calls == []
+        assert callbacks == []
+    services.close()
 
 
 def test_completed_null_is_an_explicit_artifact(tmp_path):

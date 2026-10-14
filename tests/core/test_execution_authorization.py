@@ -12,7 +12,7 @@ import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity, ReceiptDependency, effect_request_digest
-from open_workflow_agent.errors import InvocationStateConflict, OwaError
+from open_workflow_agent.errors import InvocationStateConflict, OwaError, WorkflowExecutionError
 from open_workflow_agent.execution_authority import ExecutionAuthority, authority_scope
 from open_workflow_agent.execution_authorization import (
     AuthorizationOutcomeUnavailable,
@@ -1013,3 +1013,177 @@ def test_removed_original_authority_cannot_be_downgraded_by_disabling_policy(
     for key in own_keys:
         connection.execute("DELETE FROM workflow_effects WHERE identity=?", (key,))
     connection.commit()
+
+
+def test_decision_business_and_seal_receipt_verifiers_accept_original_persisted_evidence(
+    authority_tree,
+):
+    import open_workflow_agent.execution_authorization as module
+
+    services, _, _, _, handle, _, identity = authority_tree
+    _admit(authority_tree)
+    decision = _decision(authority_tree)
+    verify = module.verify_execution_authorization_receipt
+    verify(
+        services.effect_journal.connection,
+        services.invocations,
+        decision.identity,
+        decision.receipt,
+    )
+
+    business = _finish(authority_tree, {"committed": True})
+    module.verify_execution_authorization_business_receipt(
+        services.effect_journal.connection, services.invocations, identity, business
+    )
+    seal_identity = replace(identity, operation=module.SEAL_OPERATION)
+    seal = services.effect_journal.get(seal_identity)
+    assert seal is not None and seal.status == "completed"
+    module.verify_execution_authorization_seal_receipt(
+        services.effect_journal.connection, services.invocations, seal_identity, seal
+    )
+    before = _snapshot(authority_tree)
+    module.verify_execution_authorization_business_receipt(
+        services.effect_journal.connection, services.invocations, identity, business
+    )
+    assert _snapshot(authority_tree) == before and services.model.calls == []
+
+
+@pytest.mark.parametrize("evidence", ["decision", "seal"], ids=["decision", "seal"])
+def test_decision_and_seal_receipt_verifiers_reject_changed_receipt_rows_without_side_effects(
+    authority_tree, evidence
+):
+    import open_workflow_agent.execution_authorization as module
+
+    services, _, _, _, _, _, identity = authority_tree
+    _admit(authority_tree)
+    decision = _decision(authority_tree)
+    if evidence == "decision":
+        selected = decision.identity
+        receipt = decision.receipt
+    else:
+        _finish(authority_tree, {"committed": True})
+        selected = replace(identity, operation=module.SEAL_OPERATION)
+        receipt = services.effect_journal.get(selected)
+        assert receipt is not None
+    connection = services.effect_journal.connection
+    connection.execute(
+        "UPDATE workflow_effects SET payload=? WHERE identity=?",
+        ("{}", selected.key),
+    )
+    connection.commit()
+    before = _snapshot(authority_tree)
+    with pytest.raises(OwaError):
+        if evidence == "decision":
+            module.verify_execution_authorization_receipt(
+                connection, services.invocations, selected, receipt
+            )
+        else:
+            module.verify_execution_authorization_seal_receipt(
+                connection, services.invocations, selected, receipt
+            )
+    assert _snapshot(authority_tree) == before and services.model.calls == []
+
+
+def test_business_snapshot_checks_creator_and_exact_receipt_dependency(authority_tree):
+    services, _, _, _, handle, _, identity = authority_tree
+    _admit(authority_tree)
+    _decision(authority_tree)
+    receipt = _finish(authority_tree, {"committed": True})
+    creator = {
+        name: getattr(handle, name)
+        for name in (
+            "invocation_id",
+            "engine",
+            "engine_execution_reference",
+            "user_id",
+            "session_id",
+            "workflow_name",
+            "workflow_version",
+            "workflow_fingerprint",
+            "owner_principal",
+            "parent_invocation_id",
+            "parent_task_reference",
+        )
+    }
+    before = _snapshot(authority_tree)
+    verify_authorized_business_snapshot(
+        services.effect_journal.connection, identity, receipt, creator=creator
+    )
+    wrong_creator = dict(creator, owner_principal="mallory")
+    with pytest.raises(OwaError):
+        verify_authorized_business_snapshot(
+            services.effect_journal.connection, identity, receipt, creator=wrong_creator
+        )
+    wrong_receipt = replace(receipt, output={"committed": False})
+    with pytest.raises(OwaError):
+        verify_authorized_business_snapshot(
+            services.effect_journal.connection, identity, wrong_receipt, creator=creator
+        )
+    assert _snapshot(authority_tree) == before and services.model.calls == []
+
+
+def test_repeated_pending_intent_is_idempotent_and_keeps_original_owner_and_snapshot(
+    authority_tree,
+):
+    import open_workflow_agent.execution_authorization as module
+
+    services, _, store, _, handle, _, identity = authority_tree
+    _admit(authority_tree)
+    _decision(authority_tree)
+    original = services.effect_journal.begin(
+        identity, "a" * 64, "first", execution_lease=handle._execution_lease
+    )
+    before = _snapshot(authority_tree)
+    repeated = services.effect_journal.begin(
+        identity, "a" * 64, "retry", execution_lease=handle._execution_lease
+    )
+    assert repeated == original and repeated.owner == "first" and repeated.status == "pending"
+    intent = store.seal_intent(
+        identity,
+        repeated,
+        execution_lease=handle._execution_lease,
+        first_intent=False,
+    )
+    assert intent is not None
+    module.verify_execution_authorization_intent_receipt(
+        services.effect_journal.connection, services.invocations, intent.identity, intent.receipt
+    )
+    assert _snapshot(authority_tree) == before and services.model.calls == []
+
+
+def test_tampered_pending_intent_fails_closed_before_retry_or_dispatch(authority_tree):
+    import open_workflow_agent.execution_authorization as module
+
+    services, archive, store, _, handle, _, identity = authority_tree
+    _admit(authority_tree)
+    _decision(authority_tree)
+    original = services.effect_journal.begin(
+        identity, "a" * 64, "first", execution_lease=handle._execution_lease
+    )
+    connection = services.effect_journal.connection
+    row = connection.execute(
+        "SELECT payload FROM execution_authorization_intents WHERE business_key=?",
+        (identity.key,),
+    ).fetchone()
+    value = json.loads(row[0])
+    value["pending_receipt"]["request_digest"] = "b" * 64
+    connection.execute(
+        "UPDATE execution_authorization_intents SET payload=?,digest=? WHERE business_key=?",
+        (module._encoded(value), module._digest(value), identity.key),
+    )
+    connection.commit()
+    before = _snapshot(authority_tree)
+    with pytest.raises(OwaError):
+        archive.resolve(handle)
+    with pytest.raises(WorkflowExecutionError):
+        services.effect_journal.begin(
+            identity, original.request_digest, "retry", execution_lease=handle._execution_lease
+        )
+    with pytest.raises(OwaError):
+        store.seal_intent(
+            identity,
+            original,
+            execution_lease=handle._execution_lease,
+            first_intent=False,
+        )
+    assert _snapshot(authority_tree) == before and services.model.calls == []

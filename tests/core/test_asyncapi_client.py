@@ -671,3 +671,98 @@ def test_oauth_description_and_kafka_group_schema_are_preserved_without_resolvin
     assert (
         "issuer.test" in selection.security_json and "client_secret" not in selection.security_json
     )
+
+
+@pytest.mark.parametrize("version", VERSIONS)
+def test_kafka_topic_configuration_and_binding_schemas_are_preserved(version):
+    document = source(version)
+    document["components"]["schemas"] = {
+        "consumerGroup": {"type": "string", "minLength": 2},
+        "partitionKey": {"type": "string", "pattern": "^[A-Z]+$"},
+    }
+    channel_binding = document["channels"]["events"]["bindings"]["kafka"]
+    channel_binding.update(
+        {
+            "topic": "orders.v1",
+            "partitions": 6,
+            "replicas": 3,
+            "topicConfiguration": {
+                "cleanup.policy": ["compact", "delete"],
+                "retention.ms": -1,
+                "max.message.bytes": 1_048_576,
+            },
+        }
+    )
+    operation(document)["bindings"] = {
+        "kafka": {"groupId": {"$ref": "#/components/schemas/consumerGroup"}}
+    }
+    document["components"]["messages"]["event"]["bindings"] = {
+        "kafka": {"key": {"$ref": "#/components/schemas/partitionKey"}}
+    }
+
+    selection = selected(document)
+    bindings = json.loads(selection.bindings_json)
+    messages = json.loads(selection.messages_json)
+    assert bindings["channel"]["kafka"] == {
+        "bindingVersion": "0.5.0",
+        "topic": "orders.v1",
+        "partitions": 6,
+        "replicas": 3,
+        "topicConfiguration": {
+            "cleanup.policy": ["compact", "delete"],
+            "retention.ms": -1,
+            "max.message.bytes": 1_048_576,
+        },
+    }
+    assert bindings["operation"]["kafka"]["groupId"] == {
+        "type": "string",
+        "minLength": 2,
+    }
+    assert messages[0]["bindings"]["kafka"]["key"] == {
+        "type": "string",
+        "pattern": "^[A-Z]+$",
+    }
+    assert selection.address == "events"
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "zero-partitions",
+        "boolean-replicas",
+        "invalid-topic",
+        "reserved-topic",
+        "unknown-configuration",
+        "invalid-cleanup-policy",
+        "boolean-retention",
+        "unsupported-binding-version",
+    ],
+)
+def test_invalid_kafka_topic_declarations_reject_before_selection_descriptor(monkeypatch, mutation):
+    import open_workflow_agent.asyncapi_client as asyncapi_module
+
+    document = source()
+    binding = document["channels"]["events"]["bindings"]["kafka"]
+    if mutation == "zero-partitions":
+        binding["partitions"] = 0
+    elif mutation == "boolean-replicas":
+        binding["replicas"] = True
+    elif mutation == "invalid-topic":
+        binding["topic"] = "orders/private"
+    elif mutation == "reserved-topic":
+        binding["topic"] = ".."
+    elif mutation == "unknown-configuration":
+        binding["topicConfiguration"] = {"auto.create.topics.enable": True}
+    elif mutation == "invalid-cleanup-policy":
+        binding["topicConfiguration"] = {"cleanup.policy": ["compact", "delete", "archive"]}
+    elif mutation == "boolean-retention":
+        binding["topicConfiguration"] = {"retention.ms": True}
+    else:
+        binding["bindingVersion"] = "0.6.0"
+
+    def fail_descriptor(*_args, **_kwargs):
+        pytest.fail("invalid Kafka declaration reached selection descriptor construction")
+
+    monkeypatch.setattr(asyncapi_module, "AsyncApiOperationSelection", fail_descriptor)
+    with pytest.raises(ToolError):
+        selected(document)

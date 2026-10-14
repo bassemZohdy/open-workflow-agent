@@ -115,9 +115,14 @@ async def supervise(directory: Path) -> None:
         )
 
     async def deadline(running: asyncio.Task[Any]) -> None:
-        await asyncio.sleep(max(0, launch.deadline_at - time.time()))
-        if not running.done():
-            expire()
+        while not running.done():
+            remaining = launch.deadline_at - time.time()
+            if remaining <= 0:
+                expire()
+                return
+            # Windows timers can wake a few milliseconds early. Recheck the
+            # persisted wall-clock deadline before authorizing termination.
+            await asyncio.sleep(remaining)
 
     async def controls(running: asyncio.Task[Any]) -> None:
         nonlocal pending_control

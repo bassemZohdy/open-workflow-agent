@@ -9,6 +9,7 @@ import json
 import os
 import sqlite3
 import sys
+import traceback
 from contextlib import closing
 from dataclasses import asdict
 from pathlib import Path
@@ -488,8 +489,31 @@ if __name__ == "__main__":
     try:
         asyncio.run(run(directory, mode))
     except BaseException as error:
+        secrets = [TOKEN]
+        try:
+            scenario = json.loads((directory / "scenario.json").read_text(encoding="utf-8"))
+            if isinstance(scenario, dict):
+                secrets.extend((scenario.get("subject"), scenario.get("original")))
+        except (OSError, ValueError, TypeError):
+            pass
+        detail = str(error)
+        trace = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+        for secret in secrets:
+            if isinstance(secret, str) and secret:
+                # Redact before truncating so a secret cut by the bound cannot
+                # leave a credential prefix in the diagnostic artifact.
+                detail = detail.replace(secret, "[redacted]")
+                trace = trace.replace(secret, "[redacted]")
+        detail = detail[:2048]
+        trace = trace[:8192]
         write_json(
             directory / (mode + "-failure.json"),
-            {"stage": mode, "type": type(error).__name__, "code": getattr(error, "code", None)},
+            {
+                "stage": mode,
+                "type": type(error).__name__,
+                "code": getattr(error, "code", None),
+                "message": detail,
+                "traceback": trace,
+            },
         )
         raise

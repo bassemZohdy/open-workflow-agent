@@ -332,6 +332,26 @@ def test_corrupted_original_evidence_rejects_before_claim_or_generation_mutation
     assert snapshot(jobs) == before
 
 
+@pytest.mark.parametrize("damage", ["definition-receipt", "definition-index"])
+def test_lost_original_definition_authority_rejects_before_job_claim(jobs, damage):
+    from open_workflow_agent.recovery_definitions import admission_identity
+
+    services, store, handle, _, _, _ = jobs
+    job = admit(jobs)
+    definition = admission_identity(handle)
+    table = "workflow_effects" if damage == "definition-receipt" else "workflow_effect_invocations"
+    services.effect_journal.connection.execute(
+        f"DELETE FROM {table} WHERE identity=?", (definition.key,)
+    )
+    services.effect_journal.connection.commit()
+    before = snapshot(jobs)
+
+    with pytest.raises(OwaError):
+        store.claim(job.job_id)
+
+    assert snapshot(jobs) == before
+
+
 @pytest.mark.parametrize(
     "authority", ["missing-lease", "stale-parent", "foreign-job", "foreign-invocation"]
 )
@@ -536,6 +556,23 @@ def test_original_deadline_never_rebases_and_requires_due_control(jobs, monkeypa
     store.request_control(lease, reason="deadline")
     terminal = store.settle_unstarted_control(lease)
     assert json.loads(terminal.admission_json)["deadline_at"] == state["deadline"]
+    store.release(lease)
+
+
+def test_deadline_terminal_cause_requires_original_deadline_proof_or_control_ack(jobs):
+    store = jobs[1]
+    job = admit(jobs)
+    lease = store.claim(job.job_id)
+    store.begin_submit(lease)
+    peer = binding(job)
+    store.record_accepted(lease, peer)
+    before = snapshot(jobs)
+
+    with pytest.raises(OwaError):
+        store.record_terminal(lease, peer, outcome(job), reason="deadline")
+
+    assert snapshot(jobs) == before
+    assert store.get(job.job_id).status == "accepted"
     store.release(lease)
 
 

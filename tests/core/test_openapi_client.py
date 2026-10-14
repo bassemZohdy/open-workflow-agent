@@ -10,6 +10,7 @@ import ssl
 from dataclasses import replace
 
 import httpx
+import open_workflow_agent.security as security_module
 import pytest
 import yaml
 from _auth_tls_fixture import auth_tls_receiver
@@ -441,6 +442,97 @@ async def test_credential_authority_is_checked_before_secret_resolution(damage, 
             credential_endpoints={} if damage == "grant" else {"named": (TARGET,)},
         )
     assert calls == [] and "OPENAPI_CLIENT_TOKEN" not in str(error.value)
+
+
+def _combined_security_document(requirements):
+    document = source()
+    document["components"] = {
+        "securitySchemes": {
+            "bearer": {"type": "http", "scheme": "bearer"},
+            "key": {"type": "apiKey", "in": "header", "name": "X-Required-Key"},
+        }
+    }
+    operation(document)["security"] = requirements
+    return document
+
+
+@pytest.mark.asyncio
+async def test_openapi_security_requirement_uses_and_within_each_or_alternative(
+    monkeypatch,
+):
+    monkeypatch.delenv("OPENAPI_AND_BEARER", raising=False)
+    security = SecurityConfig.model_validate(
+        {
+            "profiles": {
+                "named": {
+                    "type": "bearer",
+                    "token": {"from_env": "OPENAPI_AND_BEARER"},
+                }
+            }
+        }
+    )
+    authentication = ProfileAuthentication(security, "named")
+    calls = []
+    resolutions = []
+
+    def track_secret_resolution(reference):
+        resolutions.append(reference)
+        return "must-not-be-resolved-for-unsatisfied-requirement"
+
+    monkeypatch.setattr(security_module, "resolve_secret", track_secret_resolution)
+    selected = selection(_combined_security_document([{"bearer": [], "key": []}]), "named")
+
+    with pytest.raises(ToolError) as rejected:
+        await call_openapi(
+            HttpClient(transport=httpx.MockTransport(lambda request: calls.append(request))),
+            payload(),
+            selection=selected,
+            timeout=1,
+            authentication=authentication,
+            credential_endpoints={"named": (TARGET,)},
+        )
+
+    assert rejected.value.details["reason"] == "security_requirement_unsatisfied"
+    assert resolutions == [] and calls == []
+
+
+@pytest.mark.asyncio
+async def test_openapi_fully_satisfied_security_alternative_passes_with_and_alternative_present(
+    monkeypatch,
+):
+    monkeypatch.setenv("OPENAPI_OR_BEARER", "selected-deployment-token")
+    security = SecurityConfig.model_validate(
+        {
+            "profiles": {
+                "named": {
+                    "type": "bearer",
+                    "token": {"from_env": "OPENAPI_OR_BEARER"},
+                }
+            }
+        }
+    )
+    authentication = ProfileAuthentication(security, "named")
+    calls = []
+
+    def receiver(request):
+        calls.append(request)
+        assert request.headers["Authorization"] == "Bearer selected-deployment-token"
+        return httpx.Response(200, json={"id": "42"})
+
+    selected = selection(
+        _combined_security_document([{"bearer": [], "key": []}, {"bearer": []}]),
+        "named",
+    )
+    result = await call_openapi(
+        HttpClient(transport=httpx.MockTransport(receiver)),
+        payload(),
+        selection=selected,
+        timeout=1,
+        authentication=authentication,
+        credential_endpoints={"named": (TARGET,)},
+    )
+
+    assert result == {"id": "42"} and len(calls) == 1
 
 
 @pytest.mark.asyncio

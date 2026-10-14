@@ -433,6 +433,119 @@ async def test_protected_api_requires_real_actor_beside_global_server_authentica
 
 
 @pytest.mark.asyncio
+async def test_protected_approval_api_scopes_actor_lists_and_filters_status(approval_runtime):
+    services, config, principals = approval_runtime
+    assigned_a, _, _ = await seed(approval_runtime, assignee="a")
+    assigned_b, _, _ = await seed(approval_runtime, assignee="b")
+    app = create_app(config=config, services=services, engine=PortableWorkflowEngine())
+    base = {"Authorization": "Bearer api-controlled-token"}
+    actor_a = {**base, "X-Approval-Authorization": "Bearer a-controlled-token"}
+    actor_b = {**base, "X-Approval-Authorization": "Bearer b-controlled-token"}
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        listed_a = await client.get("/v1/approvals", headers=actor_a)
+        listed_b = await client.get("/v1/approvals", headers=actor_b)
+        assert listed_a.status_code == listed_b.status_code == 200
+        assert {item["approval_id"] for item in listed_a.json()} == {assigned_a}
+        assert {item["approval_id"] for item in listed_b.json()} == {assigned_b}
+
+        pending_a = await client.get("/v1/approvals?status=pending", headers=actor_a)
+        approved_a = await client.get("/v1/approvals?status=approved", headers=actor_a)
+        assert {item["approval_id"] for item in pending_a.json()} == {assigned_a}
+        assert approved_a.json() == []
+
+        decision = await client.post(
+            f"/v1/approvals/{assigned_b}/decision",
+            headers={**actor_b, "Idempotency-Key": str(uuid4())},
+            json={"decision": "approved", "value": None, "revision": 1},
+        )
+        assert decision.status_code == 200
+        pending_b = await client.get("/v1/approvals?status=pending", headers=actor_b)
+        approved_b = await client.get("/v1/approvals?status=approved", headers=actor_b)
+        assert pending_b.json() == []
+        assert [item["approval_id"] for item in approved_b.json()] == [assigned_b]
+        assert decision.json()["operator_id"] == principals["b"]
+
+        invalid_status = await client.get("/v1/approvals?status=unknown", headers=actor_a)
+        assert invalid_status.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_protected_approval_assignment_api_replays_and_fences_changes(approval_runtime):
+    services, config, principals = approval_runtime
+    reassigned, _, _ = await seed(approval_runtime, assignee="a")
+    escalated, handle, _ = await seed(approval_runtime, assignee="a")
+    app = create_app(config=config, services=services, engine=PortableWorkflowEngine())
+    base = {"Authorization": "Bearer api-controlled-token"}
+    actor_a = {**base, "X-Approval-Authorization": "Bearer a-controlled-token"}
+    actor_b = {**base, "X-Approval-Authorization": "Bearer b-controlled-token"}
+    key = str(uuid4())
+    reassignment = {
+        "assignee": principals["b"],
+        "revision": 1,
+    }
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        before_denied = snapshot(services, reassigned)
+        denied = await client.post(
+            f"/v1/approvals/{reassigned}/reassign",
+            headers={**actor_b, "Idempotency-Key": str(uuid4())},
+            json=reassignment,
+        )
+        assert denied.status_code == 403
+        assert snapshot(services, reassigned) == before_denied
+
+        first = await client.post(
+            f"/v1/approvals/{reassigned}/reassign",
+            headers={**actor_a, "Idempotency-Key": key},
+            json=reassignment,
+        )
+        assert first.status_code == 200
+        assert first.json()["assignee"] == principals["b"]
+        assert first.json()["assignment_revision"] == 2
+        after_first = snapshot(services, reassigned)
+
+        replay = await client.post(
+            f"/v1/approvals/{reassigned}/reassign",
+            headers={**actor_a, "Idempotency-Key": key},
+            json=reassignment,
+        )
+        assert replay.status_code == 200 and replay.json() == first.json()
+        assert snapshot(services, reassigned) == after_first
+
+        stale = await client.post(
+            f"/v1/approvals/{reassigned}/reassign",
+            headers={**actor_b, "Idempotency-Key": str(uuid4())},
+            json=reassignment,
+        )
+        assert stale.status_code == 409
+        assert snapshot(services, reassigned) == after_first
+
+        visible_a = await client.get("/v1/approvals?status=pending", headers=actor_a)
+        visible_b = await client.get("/v1/approvals?status=pending", headers=actor_b)
+        assert reassigned not in {item["approval_id"] for item in visible_a.json()}
+        assert reassigned in {item["approval_id"] for item in visible_b.json()}
+
+        escalated_snapshot = snapshot(services, escalated)
+        escalation = await client.post(
+            f"/v1/approvals/{escalated}/escalate",
+            headers={**actor_a, "Idempotency-Key": str(uuid4())},
+            json={"assignee": principals["b"], "revision": 1},
+        )
+        assert escalation.status_code == 200
+        assert escalation.json()["assignment_revision"] == 2
+        changed, _ = services.approvals.protected_store.inspect(escalated)
+        assert changed["assignee"] == principals["b"]
+        assert changed["audit"][0]["request"]["action"] == "escalate"
+        assert snapshot(services, escalated) != escalated_snapshot
+        services.verify_protected_approvals(handle)
+
+
+@pytest.mark.asyncio
 async def test_independent_policy_or_index_damage_cannot_be_bypassed_by_request_event(
     approval_runtime,
 ):
