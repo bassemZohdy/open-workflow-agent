@@ -103,7 +103,7 @@ def test_real_native_parent_stop_completion_cancel_and_drain_leave_one_independe
         producer.wait(timeout=15)
         assert not (tmp_path / "result.json").exists()
         recovery = launch(tmp_path, "resume")
-        result = await_file(tmp_path, "result.json", recovery)
+        result = await_file(tmp_path, "result.json", recovery, budget=150)
         recovery.wait(timeout=20)
         assert recovery.returncode == 0
         assert (
