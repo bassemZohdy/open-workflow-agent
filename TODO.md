@@ -166,12 +166,13 @@ treated as a deferred task or as additional feature completion.
   PostgreSQL LangGraph recovery mismatch recurred at run `38610573562`: bounded
   diagnostics showed `[None]` at result, stored and native-execute layers, but
   rerun job `116024883750` passed (221 passed, 158 skipped, 379 deselected).
-  The Windows CI checkpoint exposed an undersized test lease; the corrected
-  production-length fixture passed hosted ownership/effect recovery at
-  `fedbdee`. The remaining CI failure was the ADK lifecycle shell timeout at
-  94% (`timeout` exit 124); the queue-corruption case passed locally in 28.58s.
-  Its command budget is raised from 8 to 10 minutes for requalification. Details
-  are in the [validation history](docs/validation-history/pending-batch-results.md#hosted-requalification-at-fedbdee).
+  The corrected Windows lease fixture and the raised 10-minute ADK command
+  budget passed at `f830fa6`. That main run then reached 98% in the Windows
+  operation-adapter lane before its 35-minute job cap; one test used a 0.5-second
+  wall-clock deadline that expired during setup. The test now advances a
+  controlled store clock, and the lane cap is 40 minutes. Local sandbox-job,
+  workflow and docs validation pass; hosted requalification is pending. See the
+  [validation history](docs/validation-history/pending-batch-results.md#hosted-windows-adapter-timeout-at-f830fa6).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Finite captured script sources, independent recovery proofs and awaited internal
   process controls are authored. See [the acceptance plan](docs/s3-04-executable-source-acceptance.md).

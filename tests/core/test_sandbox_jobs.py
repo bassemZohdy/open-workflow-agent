@@ -893,11 +893,15 @@ def test_supervisor_control_requires_exact_persisted_generation_and_never_submit
 
 
 @pytest.mark.parametrize("control", [None, "cancel"])
-def test_original_deadline_proof_keeps_first_control_and_truthful_terminal_cause(jobs, control):
+def test_original_deadline_proof_keeps_first_control_and_truthful_terminal_cause(
+    jobs, control, monkeypatch
+):
     from open_workflow_agent.sandbox.job_backend import SandboxJobOriginalDeadlineProof
 
     services, store, _, _, _, state = jobs
-    state["deadline"] = time.time() + 0.5
+    state["now"] = store._now()
+    state["deadline"] = state["now"] + 2
+    monkeypatch.setattr(store, "_now", lambda: state["now"])
     job = admit(jobs)
     lease = store.claim(job.job_id)
     store.begin_submit(lease)
@@ -906,7 +910,7 @@ def test_original_deadline_proof_keeps_first_control_and_truthful_terminal_cause
     original_control = None
     if control is not None:
         original_control = store.request_control(lease, reason=control, principal="original-owner")
-    time.sleep(max(0, state["deadline"] - time.time()) + 0.02)
+    state["now"] = state["deadline"] + 0.02
     proof = SandboxJobOriginalDeadlineProof(job.admission_digest, state["deadline"], "e" * 64)
     result = outcome(job, exit_code=-15)
     store.record_original_deadline(lease, peer, result, proof=proof)
@@ -924,18 +928,20 @@ def test_original_deadline_proof_keeps_first_control_and_truthful_terminal_cause
 
 
 @pytest.mark.parametrize("damage", ["missing", "admission", "deadline", "stale", "early"])
-def test_original_deadline_proof_rejects_missing_or_unbound_authority(jobs, damage):
+def test_original_deadline_proof_rejects_missing_or_unbound_authority(jobs, damage, monkeypatch):
     from open_workflow_agent.sandbox.job_backend import SandboxJobOriginalDeadlineProof
 
     _, store, _, _, _, state = jobs
-    state["deadline"] = time.time() + 0.5
+    state["now"] = store._now()
+    state["deadline"] = state["now"] + 2
+    monkeypatch.setattr(store, "_now", lambda: state["now"])
     job = admit(jobs)
     lease = store.claim(job.job_id)
     store.begin_submit(lease)
     peer = binding(job)
     store.record_accepted(lease, peer)
     if damage != "early":
-        time.sleep(max(0, state["deadline"] - time.time()) + 0.02)
+        state["now"] = state["deadline"] + 0.02
     proof = (
         None
         if damage == "missing"

@@ -74,7 +74,7 @@ def test_windows_requires_real_native_operations_and_supervisor_mutation_control
             "test_engine_shutdown_initialization.py",
         )
     )
-    assert job["timeout-minutes"] == "35"
+    assert job["timeout-minutes"] == "40"
 
 
 def test_source_changes_trigger_required_postgresql_qualification():

@@ -871,3 +871,24 @@ shape `[None]` instead of the expected event/model mapping. Rerun job
 job. The output-shape mismatch is still unexplained and remains an actionable
 S3-03 diagnostic, not a deferred task. The corrected Windows lease fixture also
 passed its hosted ownership/effect recovery job on this checkpoint.
+
+### Hosted Windows adapter timeout at `f830fa6`
+
+The f830fa6 main CI run `38617277541` completed every job except
+`Windows operation adapters and supervised process recovery`
+(`116035485480`), which was cancelled at its 35-minute job limit. Its pytest
+summary at 98% was 952 passed, 446 skipped and one failure after 34:34. The
+failure was
+`tests/core/test_sandbox_jobs.py::test_original_deadline_proof_keeps_first_control_and_truthful_terminal_cause[sqlite-None]`:
+the test admitted a job with a 0.5-second deadline and real setup elapsed past
+that deadline before `begin_submit`. This was a test-clock race under the long
+Windows suite, not a job-store behavior change. The proof now uses a controlled
+store clock to advance beyond the admitted deadline after submission, and the
+Windows operation-adapter job cap is 40 minutes.
+
+Local Windows validation after the correction passed the complete sandbox-job
+file (107 passed, 107 backend skips), the original-deadline proof selection
+(8 passed, 8 backend skips), and three operation-workflow checks. Ruff and
+format checks, Markdown links and diff validation passed. Hosted
+requalification of the controlled clock and 40-minute lane remains pending;
+S3-03 stays active, with no deferral.

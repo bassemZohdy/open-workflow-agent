@@ -97,7 +97,7 @@ jobs:
   windows-operation-adapters:
     name: Windows operation adapters and supervised process recovery
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
         with:
