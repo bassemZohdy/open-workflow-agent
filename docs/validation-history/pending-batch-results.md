@@ -1049,3 +1049,18 @@ The complete retry-timing selections also passed locally on both engines (22
 passed, 22 skipped each). These results do not establish a hosted fix; exact
 source requalification is pending. S3-07 remains open, and the S2-04 retry
 diagnostic remains under investigation.
+
+All other hosted workflows at `8183776` passed: PostgreSQL, External Sandbox,
+Agent Framework, Security and Docs. The remaining main-CI jobs, including root
+quality and Windows operation-adapter recovery, passed; only this Windows timer
+job failed.
+
+At exact source `2143367`, the focused `pipeline-known` Windows
+LangGraph/SQLite process-recovery case passed (1 passed, 39 deselected in
+28.95s). The two hosted retry-duration cases passed locally on their respective
+engines (2 passed, 42 deselected each). The full LangGraph/SQLite pattern
+process matrix passed (10 passed, 30 skipped), and the complete retry-timing
+selection passed on each engine (22 passed, 22 skipped). Markdown links,
+implementation/tracker audit (6 tests), Ruff, formatting and `git diff
+--check` passed. Hosted requalification remains required because the retry
+duration output mismatch is not reproduced locally.
