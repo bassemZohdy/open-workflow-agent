@@ -11,12 +11,14 @@
 
 **17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-09 is
 the earliest unfinished milestone. Failed or incomplete validation advances no
-task checkbox or inventory row. The latest published source is `c68950f`; its
-CI run was cancelled when the Windows timer lane exceeded its 35-minute limit
-after reporting 686 passed and 674 skipped, with no assertion failures. Fifteen
-of sixteen CI jobs passed, including root quality; PostgreSQL, Agent Framework,
-Docs, Security, and External Sandbox also passed. The timer lane now has a
-45-minute budget for the next exact-source run. The preceding source
+task checkbox or inventory row. The latest published source is `bfd149c` and
+is under exact-source hosted validation: CI and Agent Framework are in progress,
+PostgreSQL and External Sandbox are queued, and Docs and Security have passed.
+The Windows timer lane now has a 45-minute budget. On preceding source
+`c68950f`, fifteen of sixteen CI jobs passed; the timer job was cancelled at
+the former 35-minute limit after reporting 686 passed and 674 skipped, with no
+assertion failures. Its PostgreSQL, Agent Framework, Docs, Security, and
+External Sandbox workflows passed. The preceding source
 `605a908` failed one Windows initial-delivery admission test with
 `InvocationStateConflict`; its root quality gate and all other CI jobs passed.
 PostgreSQL, External Sandbox, Agent Framework, Security, and Docs also passed
@@ -47,7 +49,7 @@ the exact source outcomes.
 | --- | --- | --- |
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at `6b23e5d` / `96ce610`. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Original-definition continuation authored; integrated qualification pending. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
-| S3-01 / S3-02 | Pinned MCP/A2A changes remain authored, not qualified. Source `c68950f` passed all CI jobs except the Windows timer lane, cancelled at its 35-minute limit; see the latest checkpoint. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
+| S3-01 / S3-02 | Pinned MCP/A2A changes remain authored, not qualified. Source `bfd149c` is in hosted validation; it includes the focused MCP08 correction, whose 138 core tests passed locally. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
 | S3-03 | Operation adapters and independent jobs remain authored; lease/recovery corrections and exact-source qualification are pending. | [Operations](docs/s3-03-operation-adapters-acceptance.md) |
 | S3-04 | Captured sources and awaited controls remain authored; behavioral and exact-source qualification are pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored; hosted PostgreSQL exposed timestamp precision loss in common approval storage; precision migration and full qualification pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md) |

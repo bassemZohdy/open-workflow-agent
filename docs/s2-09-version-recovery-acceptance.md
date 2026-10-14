@@ -5,15 +5,16 @@ S2-09 remains unchecked until its complete finite validation and hosted gates
 pass. This record defines supported decisions and exclusions, not a successful
 in-place migration algorithm or full A086/T44 completion.
 
-The latest source checkpoint, `c68950f`, is not fully qualified. Its CI run
-`38551999533` was cancelled when the Windows timer lane reached its 35-minute
-job limit after pytest reported 686 passed and 674 skipped with no assertion
-failures. Fifteen of sixteen CI jobs passed. The workflow now gives that lane
-45 minutes; a fresh exact-source hosted run is required. PostgreSQL is
-`38551999491`, Docs is `38551999483`, Security is `38551999498`, External
-Sandbox is `38551999473`,
-and Agent Framework is `38551999501`. The Docs, Security, and External Sandbox
-runs passed; Agent Framework and PostgreSQL also passed. The previous source
+The latest source checkpoint, `bfd149c`, is under exact-source hosted
+validation. CI `38559048348` and Agent Framework `38559048460` are in progress;
+PostgreSQL `38559048668` and External Sandbox `38559048598` are queued. Docs
+`38559048361` and Security `38559048345` passed. The Windows timer lane has a
+45-minute limit in this source. The preceding checkpoint, `c68950f`, was not
+fully qualified: CI `38551999533` was cancelled when its timer lane reached the
+former 35-minute limit after pytest reported 686 passed and 674 skipped with no
+assertion failures. Fifteen of sixteen CI jobs passed. PostgreSQL
+`38551999491`, Docs `38551999483`, Security `38551999498`, External Sandbox
+`38551999473`, and Agent Framework `38551999501` passed. The previous source
 `605a908` failed one Windows LangGraph/SQLite initial-delivery recovery
 case during admission; see the [batch history](validation-history/pending-batch-results.md#hosted-checkpoint-source-c68950f).
 The local fixture uses a 15-second ownership lease to reduce admission timing

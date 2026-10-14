@@ -21,12 +21,13 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 ## Delivery status — 2026-10-14
 
 **17 verified / 20 open / 0 deferred.** S2-09 remains the earliest unfinished
-task. The latest published source is `c68950f`; its CI run was cancelled when
-the Windows timer lane exceeded its 35-minute limit after reporting 686 passed
-and 674 skipped, with no assertion failures. Fifteen of sixteen CI jobs passed,
-including root quality; PostgreSQL, Agent Framework, Docs, Security, and
-External Sandbox also passed. The timer lane now has a 45-minute budget for the
-next exact-source run. The preceding source `605a908` failed one Windows
+task. The latest published source is `bfd149c`, under exact-source hosted
+validation: CI and Agent Framework are in progress, PostgreSQL and External
+Sandbox are queued, and Docs and Security have passed. The Windows timer lane
+now has a 45-minute budget. The preceding source `c68950f` had 15 of 16 CI jobs
+pass; its timer job was cancelled at the former 35-minute limit after reporting
+686 passed and 674 skipped with no assertion failures. The preceding source
+`605a908` failed one Windows
 native lifecycle/recovery test during initial-delivery admission with
 `InvocationStateConflict`; its root quality gate and other CI jobs passed.
 The 605a908 PostgreSQL, Docs, Security, External Sandbox, and Agent Framework

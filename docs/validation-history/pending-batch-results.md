@@ -5,6 +5,16 @@ builds are distinct from complete qualification. Local `tmp/` evidence is ignore
 and retained in its originating worktree; publication still requires reproducible
 source-linked hosted reports.
 
+### Hosted checkpoint — source `bfd149c`
+
+Exact-source CI `38559048348` and Agent Framework `38559048460` are in progress;
+PostgreSQL `38559048668` and External Sandbox `38559048598` are queued. Docs
+`38559048361` and Security `38559048345` passed. The timer job uses its raised
+45-minute limit. No S2-09 or S3 feature has advanced pending the required
+integrated results. The local S2-09 recovery subset passed 77 tests with 102
+PostgreSQL/platform-specific skips. The MCP/protocol/tool and workflow-selection
+batch passed 161 tests; this focused local evidence does not qualify S3-01.
+
 ### Hosted checkpoint — source `c68950f`
 
 Exact-source CI `38551999533` was cancelled because the Windows native timer
