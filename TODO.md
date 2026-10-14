@@ -153,8 +153,8 @@ treated as a deferred task or as additional feature completion.
   partial-response loss, cross-worker terminal and cleanup cases; the A2A SDK
   also passes real HTTPS calls with named bearer/API-key/OAuth credentials and
   required named mTLS (31 A2A08 focused cases plus four TLS cases pass locally).
-  Reconnect policy, durable expiry, card-selected origin and the cross-backend
-  matrix remain open. See the
+  Reconnect policy and durable expiry remain open, as do the remaining
+  card-selected policy cross-products and cross-backend matrix. See the
   [finite acceptance record](docs/s3-02-a2a-acceptance.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected HTTP/OpenAPI/gRPC, awaited outputs, pure AsyncAPI descriptions and

@@ -168,7 +168,9 @@ async def test_actual_tls_a2a_call_uses_named_http_credential(monkeypatch, tmp_p
 
 
 @pytest.mark.asyncio
-async def test_actual_tls_a2a_call_uses_named_oauth_credential(monkeypatch, tmp_path):
+async def test_actual_tls_a2a_call_uses_named_oauth_credential_for_card_endpoint(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("A2A_TEST_ID", "local-client")
     monkeypatch.setenv("A2A_TEST_SECRET", "private-local-secret")
     with auth_tls_receiver(tmp_path) as tls:
@@ -179,6 +181,12 @@ async def test_actual_tls_a2a_call_uses_named_oauth_credential(monkeypatch, tmp_
             endpoint,
         ):
             http = client(transport, True, verify_tls=tls.ca_bundle)
+            origin = endpoint.removesuffix("/a2a")
+            card = await fetch_validate_card(
+                http, {"endpoint": origin + "/.well-known/agent-card.json"}, timeout=2
+            )
+            selection = select_interface(card, explicit_endpoint="https://ignored.test/a2a")
+            assert selection.endpoint == endpoint
             authentication = named_authentication(
                 "oauth",
                 http,
@@ -187,13 +195,18 @@ async def test_actual_tls_a2a_call_uses_named_oauth_credential(monkeypatch, tmp_
                 oauth_resource_endpoints=[endpoint],
                 oauth_resource=tls.origin + "/resource",
             )
-            result = await ProtocolServices(http).call(
-                "a2a", payload("SendMessage", endpoint), _authentication=authentication
-            )
+            value = payload("SendMessage", "https://ignored-user-server.test/a2a")
+            value["agentCard"] = card
+            value["endpoint"] = endpoint
+            result = await ProtocolServices(
+                http, a2a_credential_endpoints={"selected": (endpoint,)}
+            ).call("a2a", value, _authentication=authentication)
             assert result["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
             assert len(tls.requests) == 1 and tls.requests[0][0] == "/token"
-            assert len(calls) == 1 and calls[0]["body"]["method"] == "SendMessage"
-            assert calls[0]["headers"][b"authorization"] == b"Bearer real-issued-token"
+            assert len(calls) == 2 and calls[0]["method"] == "GET"
+            assert b"authorization" not in calls[0]["headers"]
+            assert calls[1]["body"]["method"] == "SendMessage"
+            assert calls[1]["headers"][b"authorization"] == b"Bearer real-issued-token"
 
 
 @pytest.mark.asyncio

@@ -806,13 +806,14 @@ reconnect and durable receipt expiry remain open.
 
 The official A2A SDK made loopback HTTPS `SendMessage` calls using deployment-
 named bearer, API-key, OAuth and mTLS profiles. The OAuth client completed its
-token exchange over HTTPS with the fixture CA and used the issued bearer token
-on the A2A request. The mTLS peer required a client
+token exchange over HTTPS with the fixture CA, selected the endpoint in the
+fetched AgentCard, and used the issued bearer token on the A2A request without
+inheriting that credential during card discovery. The mTLS peer required a
 certificate trusted by its test CA; the call completed, while a second call
 without a client certificate did not reach business dispatch. The bearer and
 API-key requests carried only their selected credential headers to the TLS
-peer. The focused Windows tests passed. TLS OAuth, card-selected origin and the
-full backend matrix remain partial.
+peer. The focused Windows tests passed. The full card-selected origin/resource
+policy and backend matrix remain partial.
 
 The first bearer/API-key fixture draft incorrectly attached a CA-bundle field
 to credential profiles that do not define one; both parameter cases failed
@@ -820,6 +821,11 @@ profile validation before making a request. The fixture now inherits the CA
 from the configured HTTP client and the named credential from that same
 client. Both actual-TLS cases then passed, along with the required-client-cert
 mTLS and TLS OAuth cases.
+
+The first AgentCard-linked case draft passed the already-normalized card mapping
+to the protobuf JSON converter and failed before business dispatch. Passing the
+validated mapping directly into the call then passed the actual-TLS OAuth,
+card-selection and credential-isolation case.
 
 At exact source `b11e2dd979aef8d6486621748066658557e257dd`, the grouped
 Windows-local SDK file passed 97 tests after the partial-stream and four TLS
