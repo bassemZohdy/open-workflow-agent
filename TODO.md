@@ -22,11 +22,11 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 
 **18 verified / 19 open / 0 deferred.** S3-01 is the earliest unfinished task.
 The finite S2-09 continuation/recovery policy is verified at PR head `9578459`
-(code source `bfd149c`); all six hosted workflows passed. The root suite passed
-4,562 tests at 90.03% coverage, PostgreSQL passed all 10 jobs, and the Windows
-timer suite passed 718 tests within its new 45-minute budget. See the [latest
-hosted checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-pr-head-9578459)
-for all job outcomes. Preceding source `c68950f` had 15 of 16 CI jobs pass; its
+(code source `bfd149c`). The latest exact-source attempt is `17501ee`: five
+hosted workflows passed, while one Windows independent-job recovery case
+failed; S3-01 remains open. See the [latest source result](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-17501ee)
+and the [S2-09 checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-pr-head-9578459).
+Preceding source `c68950f` had 15 of 16 CI jobs pass; its
 timer job was cancelled at the former 35-minute limit after reporting 686
 passed and 674 skipped with no assertion failures. The preceding source
 `605a908` failed one Windows
@@ -60,11 +60,14 @@ longer ADK budget are included in `605a908`. Exact outcomes for these and the
 earlier `dcc16a6` / `a6c2faa` checkpoints remain in the
 [validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-4d2e224).
 
-The newer source batch `b3d7b61` has passed the root, engine, Windows and
-deployment checks, but its PostgreSQL matrix has one actionable LangGraph
-recovery-output failure. This is a validation attempt, not a completed task
-checkpoint; S3-01 remains open until the corrected source passes its complete
-hosted matrix. See the [b3d7b61 results](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-b3d7b61).
+The preceding source batch `b3d7b61` passed five workflows but had one
+actionable PostgreSQL LangGraph recovery-output failure. Source `17501ee`
+corrected the value-free diagnostics and passed PostgreSQL plus four other
+hosted workflows; its Windows operation-adapter workflow had one
+independent-job completion timeout. S3-01 remains open until the corrected
+source passes the complete hosted matrix. See the
+[latest exact-source result](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-17501ee)
+and the [preceding `b3d7b61` result](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-b3d7b61).
 
 ## Stage 1 — Correct core execution
 
@@ -171,10 +174,11 @@ hosted matrix. See the [b3d7b61 results](docs/validation-history/pending-batch-r
   authored. A local MCP08 correction rejects undefined `transport.options` and
   unknown `client` fields before authorization or transport I/O. Focused local
   regressions pass; integrated engine/database/process, build and exact-source
-  hosted gates remain open after the actionable PostgreSQL recovery failure.
-  See the [finite acceptance gates](docs/s3-01-mcp-acceptance.md). No new
-  transport, authentication or inventory profile is qualified before integrated
-  validation.
+  hosted gates remain open after the Windows independent-job recovery timeout
+  at `17501ee`. See the [finite acceptance gates](docs/s3-01-mcp-acceptance.md)
+  and [latest exact-source outcome](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-17501ee).
+  No new transport, authentication or inventory profile is qualified before
+  integrated validation.
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
   Typed common SDK transport and protected inbound delivery are authored;
   peer/native/backend acceptance requires fresh integrated qualification. See the

@@ -94,9 +94,11 @@ composes configured per-tool TLS profiles with actual SDK calls to two mTLS
 listeners. It verifies that the selected certificates stay isolated and that
 wrong or missing certificates are rejected before a second business dispatch.
 The regression is present in the `b3d7b61` grouped local batch, which passed
-151 tests with 68 skips. This is local witness evidence only; the integrated
-hosted batch has not yet qualified MCP04 or S3-01. Exact-source hosted outcomes
-are recorded in the [validation history](validation-history/pending-batch-results.md#exact-source-validation-attempt-b3d7b61).
+151 tests with 68 skips. This is local witness evidence only; exact-source
+qualification remains open. The latest `17501ee` matrix passed PostgreSQL and
+four other hosted workflows but had one Windows independent-job recovery
+failure. See the [latest exact-source outcome](validation-history/pending-batch-results.md#exact-source-validation-attempt-17501ee)
+and the [preceding `b3d7b61` attempt](validation-history/pending-batch-results.md#exact-source-validation-attempt-b3d7b61).
 
 The MCP08 review found that schema-admitted `transport.options` had no defined
 semantics and was rejected only later in transport handling, while the

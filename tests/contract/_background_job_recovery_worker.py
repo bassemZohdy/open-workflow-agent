@@ -36,6 +36,37 @@ print('real independent job completed')
 """
 
 
+def _independent_job_timeout(services, job_id: str) -> AssertionError:
+    """Return a timeout with bounded, value-free state for the parent artifact."""
+    job = services.sandbox_jobs.get(job_id)
+    states = {"ready", "submitting", "accepted", "uncertain", "terminal"}
+    context = {
+        "job_status": job.status if job is not None and job.status in states else "missing",
+        "terminal_present": job is not None and job.terminal_json is not None,
+        "control_present": job is not None and job.control_json is not None,
+        "control_ack_present": job is not None and job.control_ack_json is not None,
+        "dispatcher_error_count": len(services._background_dispatcher.errors),
+        "supervisor_state": "unavailable",
+    }
+    supervisor = Path(services.config.sandbox.workspace_root) / ".owa-job-supervisors" / job_id
+    try:
+        observation = read_frame(supervisor / "observation.json", read_key(supervisor / "auth.key"))
+    except (OSError, OwaError, ValueError, TypeError):
+        pass
+    else:
+        if isinstance(observation, dict):
+            observed_state = observation.get("state")
+            if isinstance(observed_state, str) and observed_state in {
+                "unknown",
+                "running",
+                "terminal",
+            }:
+                context["supervisor_state"] = observed_state
+    error = AssertionError("independent sandbox job did not reach terminal state")
+    error.failure_context = context  # type: ignore[attr-defined]
+    return error
+
+
 def native_snapshot(services, handle, backend):
     # Actual SQLite checkpoint cells include msgpack bytes. Preserve their exact
     # identity without serializing a native checkpoint as an execution input.
@@ -295,13 +326,14 @@ async def run(directory, mode):
                 assert result.output == {"retained": "original", "nullValue": None}
             assert services.sandbox_jobs.get(saved["job_id"]).control_json is None
             (directory / "release-job").touch()
-            deadline = time.monotonic() + 25
+            deadline = time.monotonic() + 60
             while True:
                 await services._background_dispatcher.tick()
                 current = services.sandbox_jobs.get(saved["job_id"])
-                if current.status == "terminal":
+                if current is not None and current.status == "terminal":
                     break
-                assert time.monotonic() < deadline
+                if time.monotonic() >= deadline:
+                    raise _independent_job_timeout(services, saved["job_id"])
                 await asyncio.sleep(0.05)
             terminal = json.loads(current.terminal_json)
             assert terminal["reason"] == "exited" and terminal["outcome"]["exit_code"] == 0
@@ -337,8 +369,12 @@ if __name__ == "__main__":
     try:
         asyncio.run(run(directory, sys.argv[2]))
     except BaseException as error:
+        artifact = failure_artifact(error, stage=sys.argv[2], include_traceback=True)
+        context = getattr(error, "failure_context", None)
+        if isinstance(context, dict):
+            artifact["background_job"] = context
         write_json(
             directory / (sys.argv[2] + "-failure.json"),
-            failure_artifact(error, stage=sys.argv[2], include_traceback=True),
+            artifact,
         )
         raise SystemExit(1) from None

@@ -2,8 +2,34 @@
 
 Historical attempts below remain distinct from qualification. S2-09's finite
 VM01-VM08 policy is verified at PR head `9578459`; S3-01 through S3-08 remain
-open. Passing subsets and fresh builds do not replace complete qualification.
-Local `tmp/` evidence is ignored and retained in its originating worktree.
+open. The latest exact-source attempt is `17501ee`; five hosted workflows
+passed and CI failed one Windows recovery case. Passing subsets and fresh builds
+do not replace complete qualification. Local `tmp/` evidence is ignored and
+retained in its originating worktree.
+
+### Exact-source validation attempt — `17501ee`
+
+Source `17501ee3b09c7d3ff9c954cc19125497f3c15130` completed all six hosted
+workflows for PR #65: [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38574392068),
+[PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38574392069),
+[Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38574392078),
+[External Sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38574392061),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38574392054), and
+[Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38574392122).
+PostgreSQL, Agent Framework, External Sandbox, Security and Docs passed. CI's
+root quality gate, engine suites, deployment checks, Docker acceptances and
+other Windows jobs passed. The root suite passed 4,569 tests, skipped 2,950 and
+reported 90.04% coverage. PostgreSQL passed all ten jobs. The Windows timer
+suite passed 718 tests and skipped 769 in 38m33s. The Windows operation-adapter
+job had one failure among 962 executed cases: the completed LangGraph
+independent-job recovery boundary timed out after 25 seconds waiting for its
+released background job to become terminal (1 failed, 961 passed, 454 skipped,
+one warning in 24m40s). Its receipt, cancellation and drain LangGraph sibling
+cases passed. The failure artifact contained only the sanitized assertion
+frame, so it did not retain job or supervisor state. This is actionable;
+S3-01 remains open and no task or feature row advances. The next attempt extends
+the bounded wait and records only allowlisted status, presence flags, an error
+count and supervisor state if the wait still expires.
 
 ### Superseded diagnostic pass — `b0bd076`
 
