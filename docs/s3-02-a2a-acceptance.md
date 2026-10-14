@@ -90,8 +90,9 @@ The core A2A-focused local selection reported 332 passed and 39 skipped. The
 isolated SQLite A2A contract profile reported 26 passed for each principal
 engine. These establish substantial test execution on the stated source, not
 completion of A2A01-A2A08: the gates also require controls to be tied to exact
-witnesses, and unsupported streaming, push, delegated identity, transport and
-cross-language scope remains excluded. Exact-source run IDs and limits are in
+witnesses, and unsupported durable input resume, push, delegated identity,
+transport and cross-language scope remains excluded. Exact-source run IDs and
+limits are in
 the [validation history](validation-history/pending-batch-results.md#exact-source-qualification-af4acd6).
 
 The documentation-only follow-up at `4014874629cf1200cadb0e0dc8b474d8002a16c0`
@@ -110,12 +111,25 @@ or against the A2A gates; both are recorded in the [validation history](validati
 | A2A05 | Partial: initial-delivery process-stop and known-receipt recovery tests pass in the finite suite. | Map all three required stop phases, both actual backends, competing workers/stale generations and one-task/model/action counts. |
 | A2A06 | Partial: immutable card decisions, archived authority checks, terminal projection and known-receipt recovery have witnesses. | Demonstrate the complete archived-v1-under-v2 and missing/corrupt-evidence rejection matrix before unsafe writes. |
 | A2A07 | Partial: bounded card-fetch credential isolation, named grants, OAuth resource checks, TLS policy and secret-safety cases are tested. | Trace the requested actual TLS and bearer/API-key/OAuth/mTLS controls and every secret-leak surface; delegated identity stays excluded. |
-| A2A08 | Partial: bounded stream identity, resubscription, cross-worker completion, disconnect, limits and cleanup have witnesses. | Reconcile lost-response, expiry, malformed-event and optional-method rejection cases; outbound stream, push and delegated grants remain outside the advertised profile. |
+| A2A08 | Partial: inbound and outbound streaming have bounded identity, resubscription, cross-worker completion, disconnect, limits and cleanup witnesses. | Reconcile lost-response, expiry, malformed-event and optional-method rejection across required bindings/backends; push and delegated grants remain outside the advertised profile. |
 
 The A2A02 result is finite Python evidence, not closure of S3-02. The other
 rows remain partial until each listed evidence gap is directly traced and the
 combined validation source passes. Gate names, test symbols and exclusions are
 kept explicit so the large suite totals do not imply broader protocol support.
+
+Representative executed witnesses for the partial gates include:
+
+- **A2A03:** `tests/core/test_a2a_async.py::test_return_immediately_returns_task_and_completes` and `::test_resuming_send_restarts_persisted_waiting_task`; `tests/core/test_a2a_task_routes.py::test_authenticated_a2a_task_access_is_bound_to_creator`; `tests/core/test_a2a_inbound_v1.py::test_invalid_v1_send_rejects_before_invocation_or_model`, `::test_resume_context_mismatch_has_no_delivery_or_input_mutation`, `::test_unknown_and_foreign_a2a_tasks_share_sanitized_not_found_without_callbacks` and `::test_completed_null_is_an_explicit_artifact`.
+- **A2A04:** `tests/core/test_a2a_async.py::test_approval_wait_projects_input_required_and_completes`; `tests/core/test_a2a_inbound_v1.py::test_real_retained_timer_is_automatic_work_without_mutating_wait_evidence` and `::test_subscription_reads_another_services_terminal_commit_without_local_event`; `tests/core/test_a2a_streaming.py::test_stream_disconnect_does_not_cancel_invocation`; `tests/contract/test_a2a_workflow_calls.py::test_accepted_remote_task_with_lost_correlation_stays_pending_without_catch_replay`.
+- **A2A05:** `tests/contract/test_a2a_initial_delivery.py::test_sdk_async_ack_survives_real_stop_with_original_definition_and_clock` and `::test_stopped_delivery_invalid_authority_or_evidence_rejects_before_lease_or_native_mutation`; `tests/contract/test_a2a_workflow_calls.py::test_original_known_a2a_receipt_survives_native_restart_without_second_task`.
+- **A2A06:** `tests/contract/test_workflow_version_recovery.py::test_a2a_cannot_grant_an_unadvertised_archived_workflow_default_skill_authority`; `tests/contract/test_a2a_workflow_calls.py::test_known_receipt_recovery_never_refetches_mutable_agent_card`; `tests/core/test_a2a_card_admission.py::test_changed_request_or_deployment_binding_cannot_replace_original_decision`.
+- **A2A07:** `tests/core/test_a2a_sdk_http.py::test_public_card_fetch_has_no_inherited_business_credentials_and_uses_pinned_selection`, `::test_exact_deployment_credential_grant_reaches_selected_sdk_peer`, `::test_card_cannot_redirect_protected_tool_credentials_to_another_endpoint` and `::test_oauth_card_requires_exact_resource_endpoint_before_issuer_dispatch`; `tests/core/test_secret_safety.py::test_a2a_surfaces_never_expose_the_resolved_secret`.
+- **A2A08:** `tests/core/test_a2a_streaming.py::test_resubscribe_streams_existing_task_and_rejects_unknown` and `::test_stream_disconnect_does_not_cancel_invocation`; `tests/core/test_a2a_inbound_v1.py::test_a2a_stream_event_limit_keeps_initial_snapshot_and_closes`, `::test_a2a_stream_backpressure_closes_without_leaking_subscription` and `::test_subscription_reads_another_services_terminal_commit_without_local_event`; `tests/core/test_a2a_sdk_http.py::test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_business_dispatch`, `::test_stream_limits_identity_and_completion_are_checked_without_reconnect` and `::test_subscribe_rejects_foreign_first_task_even_when_later_events_match_it`.
+
+These named tests demonstrate individual branches. The acceptance table's
+cross-product, backend, process-stop and failure-interaction requirements still
+need their own explicit trace before any of the partial gate states advance.
 
 The authored inventory currently includes common initial-delivery controls
 (26 SQLite/PostgreSQL nodes), actual native workflow/tool calls (64), official

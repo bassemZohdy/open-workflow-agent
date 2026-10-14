@@ -746,11 +746,19 @@ The local Windows reproduction used PostgreSQL 16 and the same selected
 LangGraph case. It did not reach recovery: the producer failed to reach the
 expected `waiting` state within its 40-second start bound. The failure artifact
 contains only the sanitized worker frames, so this attempt neither explains nor
-reproduces the hosted output-shape mismatch. The recovery worker now records
+reproduces the hosted output-shape mismatch. The recovery worker records
 value-free shapes at native execution return and common result/persistence
-readback. Next action: rerun the single parameter on the hosted Linux/PostgreSQL
-profile and compare those shapes, then fix the first layer where the expected
-mapping becomes a list. No task is deferred.
+readback. No task is deferred.
+
+### Hosted recovery rerun at `bbe9625`
+
+PostgreSQL CI run `38602669648` passed all ten jobs. In particular, LangGraph
+operation adapter recovery job `115985570066` passed 221 tests, skipped 158 and
+deselected 379; the previously failing
+`test_real_stop_between_common_admission_ack_or_native_projection_keeps_original_event[inbox-before-ack-postgresql-langgraph-LangGraphWorkflowEngine]`
+parameter passed. The hosted mismatch did not recur, so these results do not
+explain or resolve its cause. Keep S3-03 open and retain the bounded diagnostics
+to identify the first layer where the event mapping changes if it recurs.
 
 The same documentation follow-up records finite A2A test evidence at the prior
 exact runtime source `af4acd61c200787fb68248b2d180ba69efb8c837`; A2A02 is directly
