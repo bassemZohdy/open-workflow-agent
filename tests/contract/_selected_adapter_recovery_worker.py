@@ -85,7 +85,7 @@ async def run(directory, mode):
     admission = None
     handle = None
 
-    async def park():
+    async def park(*, freeze_event_loop=False):
         assert handle is not None
         lease = handle._execution_lease
         assert lease is not None
@@ -119,9 +119,20 @@ async def run(directory, mode):
             },
         )
         while not (directory / "ack.json").exists():
-            await asyncio.sleep(0.01)
+            if freeze_event_loop:
+                # This boundary is specifically after durable inbox commit but
+                # before producer ACK. Admission wakes local listeners, so do
+                # not yield to the workflow event loop before the parent kills
+                # the producer; otherwise the test stops at an arbitrary
+                # mid-scope checkpoint instead of the declared ACK boundary.
+                time.sleep(0.01)
+            else:
+                await asyncio.sleep(0.01)
         assert json.loads((directory / "ack.json").read_text())["pid"] == os.getpid()
         write_json(directory / "acknowledged.json", {"pid": os.getpid()})
+        if freeze_event_loop:
+            while True:
+                time.sleep(0.01)
         await asyncio.Event().wait()
 
     try:
@@ -183,7 +194,7 @@ async def run(directory, mode):
                     admission = committed
                     # ACK is intentionally NOT completed before the OS stop.
                     assert len(ledger(directory)) == 0
-                    await park()
+                    await park(freeze_event_loop=boundary == "inbox-before-ack")
 
                 with authority_scope(authority(services, "alice")):
                     await services.event_transport.admit_and_ack(

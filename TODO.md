@@ -168,15 +168,22 @@ treated as a deferred task or as additional feature completion.
   [the finite acceptance plan](docs/s3-03-operation-adapters-acceptance.md).
   Behavioral/native/backend/platform, physical lifetime, packaging and hosted
   qualification remain outstanding; no new profile or inventory row is complete.
-  PostgreSQL LangGraph recovery mismatch recurred at run `38610573562`: bounded
-  diagnostics showed `[None]` at result, stored and native-execute layers, but
-  rerun job `116024883750` passed (221 passed, 158 skipped, 379 deselected).
+  PostgreSQL LangGraph recovery mismatch recurred at run `38624744282`, job
+  `116060928966`: the `inbox-before-ack-postgresql-langgraph` selected-adapter
+  process case failed with `[None]` at native-execute, stored and result layers
+  (220 passed, 158 skipped, 379 deselected). A prior rerun passed the same case,
+  so this remains active rather than being treated as resolved.
   The corrected Windows lease fixture and the raised 10-minute ADK command
   budget passed at `f830fa6`. That main run then reached 98% in the Windows
   operation-adapter lane before its 35-minute job cap; one test used a 0.5-second
   wall-clock deadline that expired during setup. The test now advances a
   controlled store clock, and the lane cap is 40 minutes. Local sandbox-job,
-  workflow and docs validation pass; hosted requalification is pending. See the
+  workflow and docs validation pass; hosted requalification is pending. The
+  repeated PostgreSQL failure traced to the test yielding its event loop after
+  durable inbox commit while the ACK callback was blocked, letting LangGraph
+  advance past the intended stop boundary. The fixture now holds that loop at
+  the pre-ACK boundary; its local Windows LangGraph/SQLite case passes and
+  hosted validation remains pending. See the
   [validation history](docs/validation-history/pending-batch-results.md#hosted-windows-adapter-timeout-at-f830fa6).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Finite captured script sources, independent recovery proofs and awaited internal
