@@ -5,6 +5,26 @@ VM01-VM08 policy is verified at PR head `9578459`; S3-01 through S3-08 remain
 open. Passing subsets and fresh builds do not replace complete qualification.
 Local `tmp/` evidence is ignored and retained in its originating worktree.
 
+### Exact-source validation attempt — `b3d7b61`
+
+Source `b3d7b613c723df704e30db18009fcb615a5a4a22` completed the six hosted
+workflows for PR #65: [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38566833826),
+[PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38566833665),
+[Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38566833871),
+[External Sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38566833600),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38566833673), and
+[Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38566833802).
+Five workflows passed. The root suite passed 4,569 tests, skipped 2,950, and
+reported 90.05% coverage. The Windows timer suite passed 718 tests and skipped
+769 in 32m50s. PostgreSQL passed seven jobs; its LangGraph operation-adapter
+recovery job failed one case (`inbox-before-ack`) after 220 passed, 158 skipped
+and 379 deselected. Recovery completed, but its output differed from the
+expected value; the worker did not record a safe description of the differing
+shape. The other PostgreSQL jobs passed, and the persistence matrix job was
+skipped by its configured selector. This is not a completed qualification
+checkpoint. S3-01 remains open until the corrected source passes its complete
+hosted matrix; no capability or task is advanced by this attempt.
+
 ### Hosted checkpoint — PR head `9578459`
 
 All six hosted workflows passed for PR #65 at exact head `957845969b39fbaa6698ff1cf150931c7947d2ba` (code correction `bfd149c`): [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559571167), [PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559571023), [Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559570870), [External Sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559570878), [Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559570925), and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38559570978). The root suite passed 4,562 tests, skipped 2,950, and reported 90.03% coverage against the 90% threshold. PostgreSQL passed all ten jobs. The Windows timer suite passed 718 tests and skipped 769 in 38m38s, inside the 45-minute job limit. ADK and LangGraph contract, CTK, lifecycle and recovery profiles passed; details are in the source-linked hosted reports. This verifies S2-09's finite VM01-VM08 continuation/recovery policy. It does not claim successful in-place v1→v2 migration, A086/T44, full native history, S3-01 integration, or any broader feature inventory row.

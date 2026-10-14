@@ -195,7 +195,29 @@ async def run(directory, mode):
                 await asyncio.sleep(0.02)
             result = await engine.resume(handle, {"replace": "untrusted"}, plan)
             assert result.status == "completed", result.error
-            assert result.output == {"events": [None], "original": RAW}
+            expected_output = {"events": [None], "original": RAW}
+            if result.output != expected_output:
+                actual_output = result.output
+                is_mapping = isinstance(actual_output, dict)
+                actual_events = actual_output.get("events") if is_mapping else None
+                write_json(
+                    directory / "recover-output-diagnostic.json",
+                    {
+                        "output_type": type(actual_output).__name__,
+                        "output_keys": sorted(str(key) for key in actual_output)
+                        if is_mapping
+                        else [],
+                        "events_type": type(actual_events).__name__,
+                        "events_count": len(actual_events)
+                        if isinstance(actual_events, (list, tuple))
+                        else None,
+                        "events_match": is_mapping
+                        and actual_output.get("events") == expected_output["events"],
+                        "original_match": is_mapping
+                        and actual_output.get("original") == expected_output["original"],
+                    },
+                )
+            assert result.output == expected_output
             assert services.invocations.read_input(handle) == ready["original_input"] == RAW
             assert (
                 services.execution_authorizations.verify_invocation(handle).as_value()

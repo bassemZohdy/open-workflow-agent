@@ -1,7 +1,8 @@
 # S3-01 common MCP integration acceptance
 
-Status: implementation in progress; S3-01 remains unchecked. This record defines
-the finite acceptance gates before capability or feature completion. It is not
+Status: implementation and fixtures are authored; S3-01 remains unchecked until
+the exact-source hosted qualification matrix passes. This record defines the
+finite acceptance gates before capability or feature completion. It is not
 evidence of successful official SDK interoperability or full MCP conformance.
 
 ## Contract and boundaries
@@ -13,12 +14,15 @@ interactions fail explicitly. The official Python SDK must be reviewed, pinned
 and installed from each independent build lock, never during invocation or
 sandbox startup. An SDK dependency alone does not qualify any transport.
 
-Successful workflow MCP output is the validated JSON-RPC result, with absent
-fields distinct from explicit nulls. Method-specific parameters, reserved
-metadata, routing, response identity and result models are checked before a
-result becomes a known business receipt. Protocol errors and tool errors use
-the common error contract. Input-required interactions cannot be completed by
-fabricating a response or automatically replaying a business call.
+For workflow operations that invoke an MCP method, successful workflow output
+retains the validated JSON-RPC result, with absent fields distinct from
+explicit nulls. For MCP calls used as configured agent tools, the SDK result is
+projected to model content without JSON-RPC envelope fields. Method-specific
+parameters, reserved metadata, routing, response identity and result models are
+checked before a result becomes a known business receipt. Protocol errors and
+tool errors use the common error contract. Input-required interactions cannot
+be completed by fabricating a response or automatically replaying a business
+call.
 
 HTTP dispatch retains the common timeout, TLS, authentication, response-size,
 host and redirect controls. Credential preparation and response consumption
@@ -89,9 +93,10 @@ The authored MCP04 regression
 composes configured per-tool TLS profiles with actual SDK calls to two mTLS
 listeners. It verifies that the selected certificates stay isolated and that
 wrong or missing certificates are rejected before a second business dispatch.
-Its focused local check passed at historical source `dcc16a6`. That result is
-not evidence for the current source and does not complete MCP04; the current
-integrated hosted batch remains pending.
+The regression is present in the `b3d7b61` grouped local batch, which passed
+151 tests with 68 skips. This is local witness evidence only; the integrated
+hosted batch has not yet qualified MCP04 or S3-01. Exact-source hosted outcomes
+are recorded in the [validation history](validation-history/pending-batch-results.md#exact-source-validation-attempt-b3d7b61).
 
 The MCP08 review found that schema-admitted `transport.options` had no defined
 semantics and was rejected only later in transport handling, while the

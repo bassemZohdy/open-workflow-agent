@@ -36,6 +36,14 @@ def launch(directory, mode):
     )
 
 
+def recovery_failure(directory):
+    diagnostic = directory / "recover-output-diagnostic.json"
+    if diagnostic.exists():
+        detail = diagnostic.read_text(encoding="utf-8")
+        return f"{failure(directory, 'recover')}; safe output diagnostic: {detail}"
+    return failure(directory, "recover")
+
+
 @pytest.mark.parametrize("engine_name,engine_type", ENGINES)
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("boundary", ["inbox-before-ack", "listen-known", "model-known", "outbox"])
@@ -67,7 +75,7 @@ def test_real_stop_between_common_admission_ack_or_native_projection_keeps_origi
         identity.kill()
         assert producer.wait(timeout=15) != 0 and not (tmp_path / "start-cleaned.json").exists()
         recovery = launch(tmp_path, "recover")
-        assert recovery.wait(timeout=100) == 0, failure(tmp_path, "recover")
+        assert recovery.wait(timeout=100) == 0, recovery_failure(tmp_path)
         after = json.loads((tmp_path / "result.json").read_text(encoding="utf-8"))
         assert after["pid"] != before["pid"] and after["producer_pid"] == before["pid"]
         assert after["status"] == "completed" and after["provider_count"] == 1

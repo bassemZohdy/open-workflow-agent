@@ -60,6 +60,12 @@ longer ADK budget are included in `605a908`. Exact outcomes for these and the
 earlier `dcc16a6` / `a6c2faa` checkpoints remain in the
 [validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-4d2e224).
 
+The newer source batch `b3d7b61` has passed the root, engine, Windows and
+deployment checks, but its PostgreSQL matrix has one actionable LangGraph
+recovery-output failure. This is a validation attempt, not a completed task
+checkpoint; S3-01 remains open until the corrected source passes its complete
+hosted matrix. See the [b3d7b61 results](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-b3d7b61).
+
 ## Stage 1 — Correct core execution
 
 - [x] **S1-01** (M) — Pin the supported OWS schema, release status and semantic profile; reject unsupported definitions clearly.
@@ -163,12 +169,12 @@ earlier `dcc16a6` / `a6c2faa` checkpoints remain in the
 - [ ] **S3-01** (M) — Complete MCP tools/resources/transports/authentication with pinned official SDKs and integration tests.
   Common HTTP/SDK, bounded authentication and restricted stdio changes are
   authored. A local MCP08 correction rejects undefined `transport.options` and
-  unknown `client` fields before authorization or transport I/O; its tests and
-  focused core suite and the grouped MCP regression batch pass locally (151
-  passed, 68 skipped). Additional tests do not replace the integrated engine,
-  database, process, build and hosted gates; publication remains pending. See the
-  [finite acceptance gates](docs/s3-01-mcp-acceptance.md). No new transport,
-  authentication or inventory profile is qualified before integrated validation.
+  unknown `client` fields before authorization or transport I/O. Focused local
+  regressions pass; integrated engine/database/process, build and exact-source
+  hosted gates remain open after the actionable PostgreSQL recovery failure.
+  See the [finite acceptance gates](docs/s3-01-mcp-acceptance.md). No new
+  transport, authentication or inventory profile is qualified before integrated
+  validation.
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
   Typed common SDK transport and protected inbound delivery are authored;
   peer/native/backend acceptance requires fresh integrated qualification. See the

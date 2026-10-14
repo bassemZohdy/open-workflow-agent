@@ -50,7 +50,8 @@ the exact source outcomes.
 | --- | --- | --- |
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at `6b23e5d` / `96ce610`. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head `9578459`; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
-| S3-01 / S3-02 | MCP08's focused correction has 138 passing core tests; the grouped MCP regression batch passes 151 tests with 68 skipped locally. Integrated engine/database/process and hosted MCP gates, and the A2A gates, remain open. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
+| S3-01 | MCP implementation and regression fixtures are authored; exact-source qualification remains open after one PostgreSQL LangGraph recovery-output failure. | [MCP](docs/s3-01-mcp-acceptance.md), [latest validation](docs/validation-history/pending-batch-results.md#exact-source-validation-attempt-b3d7b61) |
+| S3-02 | A2A implementation is authored and remains gated on S3-01 publication and its grouped peer/native/backend qualification. | [A2A](docs/s3-02-a2a-acceptance.md) |
 | S3-03 | Operation adapters and independent jobs remain authored; lease/recovery corrections and exact-source qualification are pending. | [Operations](docs/s3-03-operation-adapters-acceptance.md) |
 | S3-04 | Captured sources and awaited controls remain authored; behavioral and exact-source qualification are pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored; hosted PostgreSQL exposed timestamp precision loss in common approval storage; precision migration and full qualification pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md) |
