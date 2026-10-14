@@ -63,9 +63,11 @@ async def run(directory, mode):
     services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(business)))
     services.tools.protocols = services.protocols
     await engine.initialize(services)
-    # The killed producer needs a short lease for prompt takeover. Recovery
-    # itself runs through native SDK work and needs a realistic owner window.
-    engine._execution_ownership_seconds = 0.5 if mode == "start" else 30.0
+    # Keep a useful renewal window while the producer reaches its durable
+    # approval barrier. Recovery waits for this original lease to expire after
+    # the real process stop instead of assuming the subsecond lease survived
+    # arbitrary native SDK and hosted-runner scheduling delays.
+    engine._execution_ownership_seconds = 5.0 if mode == "start" else 30.0
     await services.stop_protected_approvals()
     try:
         if mode == "start":
@@ -149,6 +151,13 @@ async def run(directory, mode):
         connection.commit()
         before = approval_snapshot(services, scenario["subject"], invocation.invocation_id)
         native_before = native_snapshot(services, invocation, scenario["backend"])
+        async with asyncio.timeout(45):
+            while services.execution_ownership.connection.execute(
+                "SELECT 1 FROM invocation_ownership WHERE invocation_id=? AND expires_at>"
+                + services.execution_ownership._clock,
+                (invocation.invocation_id,),
+            ).fetchone():
+                await asyncio.sleep(0.02)
         if scenario["case"] == "expired":
             async with asyncio.timeout(40):
                 while time.time() < ready["expiry"]:

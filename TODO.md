@@ -196,8 +196,15 @@ treated as a deferred task or as additional feature completion.
   executable or isolation profile is complete.
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
   Protected actor identity, atomic assignments/decisions, fair expiry and native
-  recovery proofs are authored; see [the finite acceptance plan](docs/s3-05-protected-approval-acceptance.md).
-  No behavioral or publication gate is complete.
+  recovery proofs are authored. The PostgreSQL `REAL`-to-`DOUBLE PRECISION`
+  compatibility migration is implemented, and the f9 PostgreSQL protected
+  approval cases passed. Its Windows timer lane exposed a `request-row` process
+  recovery fixture that could lose a 0.5-second owner lease before the durable
+  approval barrier; the fixture now keeps a five-second renewal window and
+  waits for natural database-clock expiry. Local LangGraph/SQLite protected
+  approval suites pass; exact-source hosted requalification remains pending.
+  See [the finite acceptance plan](docs/s3-05-protected-approval-acceptance.md)
+  and [the recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and applicable delegated authorization.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
   Eight finite recipe families and named role bindings are authored; see

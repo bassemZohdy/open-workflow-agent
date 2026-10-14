@@ -990,3 +990,30 @@ case passed and the other engine was skipped). This evidence supports the
 fixture correction but does not establish that it fully explains the
 PostgreSQL mismatch. The hosted `f9cb76f` run predates the correction; hosted
 requalification is required, and S3-03 remains open.
+
+### Protected-approval recovery lease boundary at `f9cb76f`
+
+CI run `38624744515`, Windows native timers/events/scheduling job
+`116060931034`, failed one protected-approval process-recovery case after 717
+passed and 769 skipped. The failing case was
+`request-row-sqlite-langgraph`; the producer raised `InvocationStateConflict`
+before it published the durable approval barrier. Its test-only start lease was
+0.5 seconds, short enough to expire while the native producer was still being
+scheduled. The 42-minute job otherwise reached completion within its 45-minute
+limit.
+
+At the same hosted checkpoint, both PostgreSQL operation-adapter jobs exercised
+the protected-approval workflow and process-recovery selections. ADK's job
+`116060928885` passed, and LangGraph's job `116060928966` passed those protected
+approval cases but failed a separate S3-03 selected-adapter recovery case; see
+the PostgreSQL recurrence above. The approval store's legacy PostgreSQL `REAL`
+to `DOUBLE PRECISION` migration is present in the implementation.
+
+The active correction increases the producer test lease to five seconds and
+makes the recovery worker wait for natural expiry using the selected database's
+clock before resuming. This keeps the producer renewable through its approval
+barrier and preserves real post-stop lease expiry; it does not shorten the
+workflow or approval deadline. The corrected LangGraph/SQLite protected
+approval selection passed locally (73 passed, 94 skipped), and the formerly
+failing `request-row` case passed in isolation. Exact-source hosted Windows
+requalification remains pending; S3-05 remains open.
