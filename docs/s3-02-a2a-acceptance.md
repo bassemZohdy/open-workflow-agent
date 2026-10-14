@@ -1,11 +1,12 @@
 # S3-02 finite A2A invocation and interoperability acceptance
 
 Status: implementation in progress; S3-02 remains unchecked. S2-09's finite
-recovery policy and S3-01's finite Python MCP profile are verified, with S3-01
-published on PR #65 at exact source `af4acd61c200787fb68248b2d180ba69efb8c837`.
-Those results satisfy the prior-task prerequisites only; no A2A SDK, delivery,
-streaming or native/backend profile is qualified until its own integrated gates
-and exact-source matrix pass.
+recovery policy and S3-01's finite Python MCP profile are verified. The A2A
+implementation has broad passing local and exact-source hosted test selections,
+but the eight acceptance gates below still require evidence-by-evidence
+reconciliation; suite totals alone do not complete those gates. A2A01-A2A08
+remain open wherever their cross-method, authority, failure, backend or recovery
+controls have not been directly evidenced.
 
 ## Contract and authority
 
@@ -79,6 +80,43 @@ supplying `{}`. The shared native grid retains seven inline methods and one
 configured-tool call; neither internal normalization nor the SDK expands the
 public schema or enables its separately gated push operations.
 
+## Current evidence checkpoint (not task qualification)
+
+At source `af4acd61c200787fb68248b2d180ba69efb8c837`, all six hosted workflows
+passed. The Windows common A2A selection reported 156 passed; the Windows native
+lifecycle selection reported 26 A2A contract cases passed; PostgreSQL ADK and
+LangGraph selections each reported 26 passed and 26 backend-inapplicable skips.
+The core A2A-focused local selection reported 332 passed and 39 skipped. The
+isolated SQLite A2A contract profile reported 26 passed for each principal
+engine. These establish substantial test execution on the stated source, not
+completion of A2A01-A2A08: the gates also require controls to be tied to exact
+witnesses, and unsupported streaming, push, delegated identity, transport and
+cross-language scope remains excluded. Exact-source run IDs and limits are in
+the [validation history](validation-history/pending-batch-results.md#exact-source-qualification-af4acd6).
+
+The documentation-only follow-up at `4014874629cf1200cadb0e0dc8b474d8002a16c0`
+passed Docs, Security, External Sandbox and Agent Framework. Fifteen CI jobs
+passed, but the Windows timer lane was canceled at its 45-minute job limit, so
+the aggregate CI workflow did not pass. PostgreSQL LangGraph also failed one
+unrelated S3-03 selected-adapter recovery case. Neither outcome is evidence for
+or against the A2A gates; both are recorded in the [validation history](validation-history/pending-batch-results.md#follow-up-at-4014874).
+
+| Gate | Current evidence state | Remaining proof before this gate closes |
+| --- | --- | --- |
+| A2A01 | Partial: `test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_business_dispatch` and `test_official_sdk_client_discovers_sends_and_reads_native_task` cover the bounded method and socket paths. | Tie every advertised binding/method pair to the card/interface precedence, typed error/result and legacy-rejection matrix. |
+| A2A02 | Finite Python profile directly evidenced by `test_native_workflow_operations_return_only_typed_sdk_results` and `test_native_configured_agent_tool_calls_the_same_official_peer`; both principal SQLite selections passed 26 cases each. | Keep the claim to these tested engines, methods, deterministic tools and generated default workflow. |
+| A2A03 | Partial: async completion, protected resume, task access, null artifacts, malformed input and skill policy have direct tests. | Reconcile binding/method cross-products and matching context/owner/error behavior to the full gate. |
+| A2A04 | Partial: timer, approval, disconnect, cross-worker terminal observation and uncertainty/replay controls have separate witnesses. | Add a gate trace tying real timer/child/approval, cancellation/deadline/END, late native result and host drain outcomes together. |
+| A2A05 | Partial: initial-delivery process-stop and known-receipt recovery tests pass in the finite suite. | Map all three required stop phases, both actual backends, competing workers/stale generations and one-task/model/action counts. |
+| A2A06 | Partial: immutable card decisions, archived authority checks, terminal projection and known-receipt recovery have witnesses. | Demonstrate the complete archived-v1-under-v2 and missing/corrupt-evidence rejection matrix before unsafe writes. |
+| A2A07 | Partial: bounded card-fetch credential isolation, named grants, OAuth resource checks, TLS policy and secret-safety cases are tested. | Trace the requested actual TLS and bearer/API-key/OAuth/mTLS controls and every secret-leak surface; delegated identity stays excluded. |
+| A2A08 | Partial: bounded stream identity, resubscription, cross-worker completion, disconnect, limits and cleanup have witnesses. | Reconcile lost-response, expiry, malformed-event and optional-method rejection cases; outbound stream, push and delegated grants remain outside the advertised profile. |
+
+The A2A02 result is finite Python evidence, not closure of S3-02. The other
+rows remain partial until each listed evidence gap is directly traced and the
+combined validation source passes. Gate names, test symbols and exclusions are
+kept explicit so the large suite totals do not imply broader protocol support.
+
 The authored inventory currently includes common initial-delivery controls
 (26 SQLite/PostgreSQL nodes), actual native workflow/tool calls (64), official
 SDK inbound socket cases (16), actual process-stop initial delivery (24), and
@@ -91,14 +129,14 @@ projection, and known business receipt before native commit, plus revoked
 skill/archive/queue corruption rejection. The initial delivery preserves v1
 source/input/identity/clock under v2 and has no paid model calls.
 
-Exact source provenance and passing counts require the completed validation
-batch. SDK version 1.2.2 is required before enabled inbound exposure; sanitized
-capabilities retain configured enabled separately from effective SDK availability
-and do not claim full conformance. Finish the batch before behavioral tests; then run focused
-actual SDK/common/native/database cases and existing A2A/protocol/security/CTK
-regressions before complete independent suites, builds and hosted gates.
-Mandatory actual principal/backend cases cannot qualify through foreign SDK or
-database skips. Retain failed attempts and finite supervisor/source hashes.
+The current exact-source checkpoint and its passing counts are recorded below.
+SDK version 1.2.2 is required before enabled inbound exposure; sanitized
+capabilities retain configured enabled separately from effective SDK
+availability and do not claim full conformance. S3-02 stays open until the
+remaining gate gaps are directly evidenced and the grouped change batch passes
+its focused regressions, independent suites, builds and hosted gates. Mandatory
+actual principal/backend cases cannot qualify through foreign SDK or database
+skips. Retain failed attempts and finite supervisor/source hashes.
 
 ## Independent gates and publication
 

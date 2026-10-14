@@ -12018,14 +12018,26 @@
       "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
     },
     "a2a_card": {
-      "outcome": "behavior_mismatch",
-      "observed": "agentCard.endpoint is treated directly as the RPC endpoint; no AgentCard description is fetched/resolved to service interfaces.",
-      "remaining_scope": "Implement bounded authenticated discovery and endpoint/version resolution; a card URL is not automatically an RPC URL.",
+      "outcome": "partial",
+      "observed": "The bounded client fetches AgentCard metadata without inheriting business credentials, validates the pinned A2A version and selected interface, and freezes the admission decision for the call budget. Business dispatch still uses the selected bounded SDK transport.",
+      "remaining_scope": "This does not establish the complete A2A01-A2A08 peer/native/backend matrix, all deployment authentication and origin policies, or complete interoperability and proposed T32 criteria.",
       "remediation_tasks": [
         "S3-02",
         "S4-04"
       ],
       "code": [
+        {
+          "path": "core/src/open_workflow_agent/a2a_client.py",
+          "symbol": "fetch_validate_card"
+        },
+        {
+          "path": "core/src/open_workflow_agent/a2a_client.py",
+          "symbol": "select_interface"
+        },
+        {
+          "path": "core/src/open_workflow_agent/a2a_admission.py",
+          "symbol": "A2AAgentCardAdmission.prepare"
+        },
         {
           "path": "core/src/open_workflow_agent/protocols.py",
           "symbol": "ProtocolServices.call"
@@ -12033,11 +12045,23 @@
       ],
       "tests": [
         {
-          "path": "tests/core/test_protocols.py",
-          "symbol": "test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi"
+          "path": "tests/core/test_a2a_sdk_http.py",
+          "symbol": "test_public_card_fetch_has_no_inherited_business_credentials_and_uses_pinned_selection"
+        },
+        {
+          "path": "tests/core/test_a2a_sdk_http.py",
+          "symbol": "test_card_fetch_is_bounded_and_sanitized_without_business_dispatch"
+        },
+        {
+          "path": "tests/core/test_a2a_card_admission.py",
+          "symbol": "test_card_decision_is_immutable_and_preserves_original_budget_without_refetch"
+        },
+        {
+          "path": "tests/core/test_a2a_card_admission.py",
+          "symbol": "test_public_card_discovery_retains_only_named_auth_reference"
         }
       ],
-      "test_scope": "Existing bounded Python fixtures; proposed full criteria remain unexecuted"
+      "test_scope": "Exact-source bounded Python card-selection and admission cases pass at af4acd61c200787fb68248b2d180ba69efb8c837. This is partial A2A card evidence only; proposed T32 and complete A2A acceptance remain unexecuted."
     },
     "a2a_stream": {
       "outcome": "partial",
@@ -16016,9 +16040,9 @@
       "construct": "with.agentCard",
       "category": "A2A",
       "evidence_group": "a2a_card",
-      "python_outcome": "behavior_mismatch",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
-      "review": "Review of A153 (A2A AgentCard resolution) at with.agentCard: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Review of A153 (A2A AgentCard resolution) at with.agentCard: bounded Python AgentCard fetch, pinned interface selection and immutable admission are covered; full protocol/security/backend qualification remains open.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -19189,9 +19213,9 @@
       "construct": "/$defs/callTask/oneOf/4/allOf/1/properties/with/properties/agentCard",
       "category": "Integration",
       "evidence_group": "a2a_card",
-      "python_outcome": "behavior_mismatch",
+      "python_outcome": "partial",
       "javascript_outcome": "unimplemented",
-      "review": "Review of AS099 (agentCard) at /$defs/callTask/oneOf/4/allOf/1/properties/with/properties/agentCard: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
+      "review": "Review of AS099 (agentCard) at /$defs/callTask/oneOf/4/allOf/1/properties/with/properties/agentCard: bounded Python AgentCard fetch, pinned interface selection and immutable admission are covered; full protocol/security/backend qualification remains open.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
       "full_feature_verified": false,
       "full_proposed_criteria_executed": false,
@@ -26895,8 +26919,8 @@
     "qualified_subset": 261,
     "unimplemented": 61,
     "rejected": 178,
-    "partial": 98,
-    "behavior_mismatch": 32,
+    "partial": 100,
+    "behavior_mismatch": 30,
     "inert": 19,
     "internal_only": 9
   },
@@ -27043,7 +27067,9 @@
     "core/src/open_workflow_agent/mcp_stdio.py": "1eac0bc1f7029836c522f545c3498c2cea78bee2bb54b00170f09331627a6ba0",
     "core/src/open_workflow_agent/sandbox/manager.py": "46497ffcc86c7e5120ec6e7d6ffab8b90aecc62204bcc0aed2b6cb7e9e0c59d6",
     "core/src/open_workflow_agent/sandbox/stdio.py": "9913ee60fdf6a429a234ab461868f004b382b0533f37694b38b9227d0353658e",
-    "core/src/open_workflow_agent/sandbox/stdio_policy.py": "c557d717825a663087304562b2ab5c65f336bc437765864cea4b1e779977b9d5"
+    "core/src/open_workflow_agent/sandbox/stdio_policy.py": "c557d717825a663087304562b2ab5c65f336bc437765864cea4b1e779977b9d5",
+    "core/src/open_workflow_agent/a2a_client.py": "c4d246b5647c3cf3216b10e22d59b3cfd676116df82607ef58caeb8d555ea1b9",
+    "core/src/open_workflow_agent/a2a_admission.py": "6cf64338b93ca1cf80de4f64c6098a66e4f99b6965dbecf4226039d6c296c43b"
   },
   "audit_integrity_checks": {
     "passed": 4,
@@ -50791,7 +50817,7 @@
   },
   "s3_02_unqualified_progress": {
     "task": "S3-02",
-    "status": "Unqualified authoring; no completed acceptance",
+    "status": "Partial finite Python evidence recorded; A2A01-A2A08 are not fully accepted",
     "baseline_source": "325458af130cccc8d9d899dc09614f6e55cc48f5",
     "acceptance_record": "docs/s3-02-a2a-acceptance.md",
     "scope": "Typed common SDK/card transport, protected durable initial delivery and blocking resume, native workflow/tool parity and bounded lifecycle/interoperability",
@@ -50815,7 +50841,7 @@
       "official_sdk_inbound": 16,
       "process_stop_initial_delivery": 24,
       "inbound_controls": 22,
-      "status": "Final authored inventory only; no executed or hosted qualification",
+      "status": "Declared inventory counts; not per-gate execution totals",
       "outbound_sdk_http": 84,
       "card_admission": 53,
       "native_sqlite_inspection": 14,
@@ -50835,6 +50861,33 @@
       "Existing-task returnImmediately resume and streaming input resume until durable wait-revision consumption qualifies",
       "Push notifications, delegated grants, gRPC and independent JavaScript/full interoperability remain separate gates"
     ],
-    "runtime_qualified": false
+    "runtime_qualified": false,
+    "evidence_checkpoint": {
+      "source_commit": "af4acd61c200787fb68248b2d180ba69efb8c837",
+      "hosted_runs": {
+        "CI": 38586728177,
+        "PostgreSQL CI": 38586728590,
+        "Agent Framework CI": 38586728663,
+        "External Sandbox CI": 38586728346,
+        "Security": 38586728258,
+        "Docs": 38586728332
+      },
+      "local_profiles": {
+        "core_a2a_tests": "332 passed, 39 skipped",
+        "adk_sqlite_a2a_contract": "26 passed",
+        "langgraph_sqlite_a2a_contract": "26 passed"
+      },
+      "gate_states": {
+        "A2A01": "partial",
+        "A2A02": "finite Python profile directly evidenced",
+        "A2A03": "partial",
+        "A2A04": "partial",
+        "A2A05": "partial",
+        "A2A06": "partial",
+        "A2A07": "partial",
+        "A2A08": "partial"
+      },
+      "record": "docs/s3-02-a2a-acceptance.md#current-evidence-checkpoint-not-task-qualification"
+    }
   }
 }

@@ -10,6 +10,7 @@ import sqlite3
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 from _process_recovery_worker import write_json
 from _recovery_failure_artifact import failure_artifact
@@ -31,6 +32,23 @@ from open_workflow_agent.event_transport import CommittedEventAdmission
 from open_workflow_agent.execution_authority import authority_scope, current_authority
 from open_workflow_agent.timing import root_clock_identity
 from open_workflow_agent.workflow import compile_workflow
+
+
+def _output_shape(value: Any) -> dict[str, Any]:
+    is_mapping = isinstance(value, dict)
+    is_sequence = isinstance(value, (list, tuple))
+    events = value.get("events") if is_mapping else None
+    return {
+        "type": type(value).__name__,
+        "length": len(value) if is_sequence else None,
+        "first_item_type": type(value[0]).__name__ if is_sequence and value else None,
+        "has_events_key": is_mapping and "events" in value,
+        "has_original_key": is_mapping and "original" in value,
+        "events_type": type(events).__name__,
+        "events_count": len(events) if isinstance(events, (list, tuple)) else None,
+        "events_match": is_mapping and events == [None],
+        "original_match": is_mapping and value.get("original") == RAW,
+    }
 
 
 def ledger(directory):
@@ -193,27 +211,32 @@ async def run(directory, mode):
             ).fetchone():
                 assert time.monotonic() < expires
                 await asyncio.sleep(0.02)
+            if name == "langgraph":
+                native_execute = engine.native.execute_plan
+
+                async def capture_native_output(*args: Any, **kwargs: Any) -> Any:
+                    output = await native_execute(*args, **kwargs)
+                    write_json(
+                        directory / "native-execute-output-diagnostic.json",
+                        _output_shape(output),
+                    )
+                    return output
+
+                engine.native.execute_plan = capture_native_output
             result = await engine.resume(handle, {"replace": "untrusted"}, plan)
             assert result.status == "completed", result.error
             expected_output = {"events": [None], "original": RAW}
             if result.output != expected_output:
-                actual_output = result.output
-                is_mapping = isinstance(actual_output, dict)
-                actual_events = actual_output.get("events") if is_mapping else None
+                stored = services.invocations.get(handle.invocation_id).output
+                native_output_path = directory / "native-execute-output-diagnostic.json"
                 write_json(
                     directory / "recover-output-diagnostic.json",
                     {
-                        "output_type": type(actual_output).__name__,
-                        "has_events_key": is_mapping and "events" in actual_output,
-                        "has_original_key": is_mapping and "original" in actual_output,
-                        "events_type": type(actual_events).__name__,
-                        "events_count": len(actual_events)
-                        if isinstance(actual_events, (list, tuple))
+                        "result": _output_shape(result.output),
+                        "stored": _output_shape(stored),
+                        "native_execute": json.loads(native_output_path.read_text())
+                        if native_output_path.exists()
                         else None,
-                        "events_match": is_mapping
-                        and actual_output.get("events") == expected_output["events"],
-                        "original_match": is_mapping
-                        and actual_output.get("original") == expected_output["original"],
                     },
                 )
             assert result.output == expected_output

@@ -725,3 +725,35 @@ statements; the projected root coverage is about 90.07%, subject to confirmation
 by the full hosted gate. Ruff, format, strict mypy, docs-link and
 implementation-audit checks, and root/core builds passed. The incomplete hosted
 outcome is recorded above. S2-09 and all feature rows stay open.
+
+### Follow-up at `4014874`
+
+The documentation-only source `4014874629cf1200cadb0e0dc8b474d8002a16c0`
+passed Security (`38595583530`), External Sandbox (`38595583533`), Agent
+Framework (`38595583607`) and Docs (`38595583540`). Fifteen of the sixteen CI
+jobs passed; the Windows native timer/events/scheduling job (`115961332862`)
+was canceled at its 45-minute job limit, so CI run `38595583529` is incomplete.
+PostgreSQL CI run `38595583614` failed one test in the LangGraph operation
+adapter recovery job:
+`test_real_stop_between_common_admission_ack_or_native_projection_keeps_original_event[inbox-before-ack-postgresql-langgraph-LangGraphWorkflowEngine]`
+(220 passed, 158 skipped, 379 deselected). The bounded diagnostic on that
+source reported that the completed workflow result was a list rather than the
+expected event/model mapping, without exposing its contents. ADK and all other
+PostgreSQL jobs passed. This is an actionable S3-03 recovery discrepancy, not
+a reason to defer it or to advance S3-02.
+
+The local Windows reproduction used PostgreSQL 16 and the same selected
+LangGraph case. It did not reach recovery: the producer failed to reach the
+expected `waiting` state within its 40-second start bound. The failure artifact
+contains only the sanitized worker frames, so this attempt neither explains nor
+reproduces the hosted output-shape mismatch. The recovery worker now records
+value-free shapes at native execution return and common result/persistence
+readback. Next action: rerun the single parameter on the hosted Linux/PostgreSQL
+profile and compare those shapes, then fix the first layer where the expected
+mapping becomes a list. No task is deferred.
+
+The same documentation follow-up records finite A2A test evidence at the prior
+exact runtime source `af4acd61c200787fb68248b2d180ba69efb8c837`; A2A02 is directly
+evidenced for its bounded Python profile, while A2A01 and A2A03-A2A08 remain
+partial. The A2A record maps each gate and exclusions. The current 401 head adds
+no runtime change and does not upgrade or invalidate that A2A evidence.

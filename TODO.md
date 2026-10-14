@@ -144,17 +144,22 @@ treated as a deferred task or as additional feature completion.
   [acceptance record](docs/s3-01-mcp-acceptance.md) and
   [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6).
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
-  Typed common SDK transport and protected inbound delivery are authored;
-  peer/native/backend acceptance requires fresh integrated qualification. See the
-  [finite acceptance gates](docs/s3-02-a2a-acceptance.md). S2-09 and S3-01 are
-  verified prerequisites; integrated A2A SDK/backend/platform validation remains
-  open. No A2A profile or proposed inventory criterion is complete.
+  The common A2A profile has broad passing local and exact-source hosted tests,
+  but the A2A01-A2A08 acceptance matrix is not reconciled end to end. S2-09 and
+  S3-01 are verified prerequisites. Keep this task open while peer, security,
+  recovery, streaming and backend evidence is mapped to each required gate; do
+  not infer full A2A or proposed-test completion from suite totals. See the
+  [finite acceptance record](docs/s3-02-a2a-acceptance.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected HTTP/OpenAPI/gRPC, awaited outputs, pure AsyncAPI descriptions and
   independent jobs are authored; corrections and qualification remain active. See
   [the finite acceptance plan](docs/s3-03-operation-adapters-acceptance.md).
   Behavioral/native/backend/platform, physical lifetime, packaging and hosted
   qualification remain outstanding; no new profile or inventory row is complete.
+  PostgreSQL LangGraph run `38595583614` failed one selected-adapter recovery
+  case; compare native execution output with persisted output on the next isolated
+  hosted rerun. The diagnostic and earlier attempts are in the
+  [validation history](docs/validation-history/pending-batch-results.md#follow-up-at-4014874).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Finite captured script sources, independent recovery proofs and awaited internal
   process controls are authored. See [the acceptance plan](docs/s3-04-executable-source-acceptance.md).

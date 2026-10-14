@@ -46263,8 +46263,9 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A153",
-          "python_outcome": "behavior_mismatch",
-          "full_feature_verified": false
+          "python_outcome": "partial",
+          "full_feature_verified": false,
+          "review": "Bounded Python AgentCard fetch, pinned interface selection and immutable admission are covered; full protocol/security/backend qualification remains open."
         }
       },
       {
@@ -52286,8 +52287,9 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS099",
-          "python_outcome": "behavior_mismatch",
-          "full_feature_verified": false
+          "python_outcome": "partial",
+          "full_feature_verified": false,
+          "review": "Bounded Python AgentCard fetch, pinned interface selection and immutable admission are covered; full protocol/security/backend qualification remains open."
         }
       },
       {
@@ -75539,7 +75541,7 @@
         "status": "Pending",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "unqualified_progress": {
-          "status": "Unqualified authoring; no completed acceptance",
+          "status": "Partial finite Python evidence recorded; A2A01-A2A08 are not fully accepted",
           "baseline_source": "325458af130cccc8d9d899dc09614f6e55cc48f5",
           "acceptance_record": "docs/s3-02-a2a-acceptance.md",
           "scope": "Typed common SDK/card transport, protected durable initial delivery and blocking resume, native workflow/tool parity and bounded lifecycle/interoperability",
@@ -75563,7 +75565,7 @@
             "official_sdk_inbound": 16,
             "process_stop_initial_delivery": 24,
             "inbound_controls": 22,
-            "status": "Final authored inventory only; no executed or hosted qualification",
+            "status": "Declared inventory counts; not per-gate execution totals",
             "outbound_sdk_http": 84,
             "card_admission": 53,
             "native_sqlite_inspection": 14,
@@ -75583,7 +75585,34 @@
             "Existing-task returnImmediately resume and streaming input resume until durable wait-revision consumption qualifies",
             "Push notifications, delegated grants, gRPC and independent JavaScript/full interoperability remain separate gates"
           ],
-          "runtime_qualified": false
+          "runtime_qualified": false,
+          "executed_evidence_checkpoint": {
+            "source_commit": "af4acd61c200787fb68248b2d180ba69efb8c837",
+            "hosted_runs": {
+              "CI": 38586728177,
+              "PostgreSQL CI": 38586728590,
+              "Agent Framework CI": 38586728663,
+              "External Sandbox CI": 38586728346,
+              "Security": 38586728258,
+              "Docs": 38586728332
+            },
+            "local_profiles": {
+              "core_a2a_tests": "332 passed, 39 skipped",
+              "adk_sqlite_a2a_contract": "26 passed",
+              "langgraph_sqlite_a2a_contract": "26 passed"
+            },
+            "gate_states": {
+              "A2A01": "partial",
+              "A2A02": "finite Python profile directly evidenced",
+              "A2A03": "partial",
+              "A2A04": "partial",
+              "A2A05": "partial",
+              "A2A06": "partial",
+              "A2A07": "partial",
+              "A2A08": "partial"
+            },
+            "record": "docs/s3-02-a2a-acceptance.md#current-evidence-checkpoint-not-task-qualification"
+          }
         }
       },
       {
