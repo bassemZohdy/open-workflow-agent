@@ -913,3 +913,18 @@ implementation/tracker audit selection passed (6 tests), Markdown relative
 links passed, and Ruff, formatting and diff checks passed. S3-02 remains
 active: hosted requalification and the remaining peer-policy, recovery,
 streaming and backend gates are still required.
+
+### A2A card-policy rejection cross-products at `85aeb96`
+
+Extended two negative card-authority witnesses across all seven advertised
+methods. A configured protected-tool endpoint that differs from the endpoint
+selected by the AgentCard, and an OAuth profile without an exact resource
+endpoint grant, both reject before peer or token-issuer dispatch. This closes
+those two method-level negative cross-products only; remaining policy and
+backend combinations stay open.
+
+At exact source `85aeb96`, Windows validation passed the full A2A SDK HTTP
+selection (133 passed, with 63 HTTPX CA-path deprecation warnings), the
+implementation/tracker audit selection (6 passed), Markdown relative-link
+validation, Ruff, formatting and `git diff --check`. Hosted requalification
+remains pending.
