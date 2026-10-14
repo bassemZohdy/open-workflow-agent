@@ -6,6 +6,7 @@ import asyncio
 import copy
 import json
 import os
+import sqlite3
 import threading
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -24,17 +25,25 @@ from open_workflow_agent.errors import (
     ApprovalConflict,
     ApprovalValidationError,
     OwaError,
+    WorkflowExecutionError,
 )
+from open_workflow_agent.events import EventEnvelope
 from open_workflow_agent.protected_approval_policy import (
     PROTECTED_APPROVAL_PROFILE,
     ProtectedApprovalPolicy,
     original_expiry,
+)
+from open_workflow_agent.protected_approval_recovery import (
+    protected_approval_event_retained,
+    protected_approval_invocation_retained,
+    verify_protected_approval_business_receipt,
 )
 from open_workflow_agent.protected_approval_service import mutate_protected
 from open_workflow_agent.protected_approval_store import REQUEST_POLICY
 from open_workflow_agent.recovery_definitions import RecoveryDefinitionArchive
 from open_workflow_agent.security import Principal
 from open_workflow_agent.services import RuntimeServices
+from open_workflow_agent.storage import StorageConnection
 from open_workflow_agent.workflow import compile_workflow
 
 
@@ -963,3 +972,143 @@ async def test_private_history_limits_reject_before_proof_traversal_or_state_wri
         "indexPayloadBytes": 65_536,
     }
     services.verify_protected_approvals(handle)
+
+
+@pytest.mark.asyncio
+async def test_protected_business_receipt_is_verified_before_reuse(approval_runtime):
+    services, _, _ = approval_runtime
+    subject, handle, identity = await seed(approval_runtime)
+    receipt = services.effect_journal.get(identity)
+    assert receipt is not None and receipt.output["subject"] == subject
+
+    verify_protected_approval_business_receipt(
+        services.effect_journal.connection, services.invocations, identity, receipt
+    )
+
+    # A source rewrite keeps the shape of an event but breaks the independent
+    # protected request's origin proof. It must fail closed before reuse.
+    tampered = copy.deepcopy(receipt.output)
+    tampered["source"] = "urn:attacker:forged"
+    with pytest.raises(WorkflowExecutionError, match="protected approval business evidence"):
+        verify_protected_approval_business_receipt(
+            services.effect_journal.connection,
+            services.invocations,
+            identity,
+            replace(receipt, output=tampered),
+        )
+
+    # The stored invocation binding also prevents replay under another workflow.
+    with pytest.raises(WorkflowExecutionError, match="protected approval business evidence"):
+        verify_protected_approval_business_receipt(
+            services.effect_journal.connection,
+            services.invocations,
+            replace(identity, workflow_fingerprint="0" * 64),
+            receipt,
+        )
+    assert services.invocations.get(handle.invocation_id) is not None
+
+
+@pytest.mark.asyncio
+async def test_actor_decision_uses_atomic_protected_path_without_preflight_read(
+    approval_runtime, monkeypatch
+):
+    services, _, _ = approval_runtime
+    subject, _, _ = await seed(approval_runtime)
+    principal = services.approvals.authorize_actor("Bearer a-controlled-token")
+    original_get = services.approvals.store.get
+    observed_statuses: list[str] = []
+
+    def track_status(approval_id: str, *, commit: bool = True):
+        record = original_get(approval_id, commit=commit)
+        if record is not None:
+            observed_statuses.append(record.status)
+        return record
+
+    monkeypatch.setattr(services.approvals.store, "get", track_status)
+    await services.approvals.decide(
+        subject,
+        decision="approved",
+        operator_id=principal.identity,
+        actor=principal,
+        revision=1,
+        operation_key="atomic-protected-decision",
+        value={"allowed": True},
+    )
+
+    # The only common projection read occurs after the proof-checked transaction
+    # commits; there is no multi-query preflight that can observe a mixed race.
+    assert observed_statuses == ["approved"]
+
+
+@pytest.mark.asyncio
+async def test_actor_decision_rejects_legacy_and_unknown_approval_ids(approval_runtime):
+    services, _, _ = approval_runtime
+    legacy_id = "legacy-actor-denied"
+    services.approvals.store.create_request(
+        EventEnvelope(
+            id=legacy_id,
+            source="urn:test",
+            type="io.openworkflow.agent.approval.requested",
+            time=datetime.now(UTC).isoformat(),
+            subject=legacy_id,
+        )
+    )
+    actor = Principal("reviewer-a")
+
+    for approval_id in (legacy_id, "unknown-actor-denied"):
+        with pytest.raises(ApprovalAuthorizationError):
+            await services.approvals.decide(
+                approval_id,
+                decision="approved",
+                operator_id=actor.identity,
+                actor=actor,
+                revision=1,
+                operation_key="actor-denied-" + approval_id,
+                value={"approved": True},
+            )
+
+
+@pytest.mark.asyncio
+async def test_approval_event_retention_keeps_independent_request_evidence(approval_runtime):
+    services, _, _ = approval_runtime
+    subject, handle, identity = await seed(approval_runtime)
+    receipt = services.effect_journal.get(identity)
+    assert receipt is not None
+    original = receipt.output
+    protected = EventEnvelope(
+        id=original["id"],
+        source=original["source"],
+        type=original["type"],
+        time=original["time"],
+        subject=subject,
+        data=original["data"],
+        data_present=True,
+    )
+    connection = services.effect_journal.connection
+    assert protected_approval_event_retained(connection, protected)
+
+    # Even if an event loses the embedded policy hint, cleanup must preserve it
+    # while the private request proof remains. Otherwise corruption could make
+    # a control event appear to be ordinary, prunable history.
+    stripped = replace(protected, data={"question": "continue?"})
+    assert protected_approval_event_retained(connection, stripped)
+    assert protected_approval_invocation_retained(connection, handle.invocation_id)
+    assert not protected_approval_event_retained(
+        connection, replace(protected, type="io.example.message")
+    )
+
+
+def test_approval_retention_is_false_when_private_schema_is_absent():
+    connection = StorageConnection(sqlite3.connect(":memory:"), "sqlite")
+    try:
+        event = EventEnvelope(
+            id="orphan",
+            source="urn:test",
+            type="io.openworkflow.agent.approval.requested",
+            time="2026-01-01T00:00:00Z",
+            subject="missing",
+        )
+        assert not protected_approval_event_retained(connection, event)
+        assert not protected_approval_invocation_retained(connection, "missing")
+    finally:
+        connection.close()

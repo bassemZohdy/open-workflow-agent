@@ -711,11 +711,14 @@ class ApprovalService:
         actor: Principal | None = None,
     ) -> ApprovalRecord:
         self.ensure_enabled()
-        record = self.store.get(approval_id)
-        if record is not None and record.assignment_revision is not None:
-            if actor is None or actor.identity != operator_id:
+        if actor is not None:
+            if actor.identity != operator_id:
                 raise ApprovalAuthorizationError(
                     "protected approval requires trusted actor credentials"
+                )
+            if self.store.protected is None or not self.store.protected.contains(approval_id):
+                raise ApprovalAuthorizationError(
+                    "legacy approval requires its original operator authority"
                 )
             return await self.mutate_protected(
                 approval_id,
@@ -725,9 +728,10 @@ class ApprovalService:
                 operation_key=operation_key,
                 value=value,
             )
-        if actor is not None:
+        record = self.store.get(approval_id)
+        if record is not None and record.assignment_revision is not None:
             raise ApprovalAuthorizationError(
-                "legacy approval requires its original operator authority"
+                "protected approval requires trusted actor credentials"
             )
         event_bus = self.event_bus
         if isinstance(event_bus, ApprovalEventBus) and isinstance(

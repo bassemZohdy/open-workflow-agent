@@ -487,6 +487,15 @@ class ProtectedApprovalStore:
         )
         self.connection.commit()
 
+    def contains(self, approval_id: str) -> bool:
+        """Identify protected rows without running multi-query proof inspection."""
+        return (
+            self.connection.execute(
+                f"SELECT 1 FROM {self.requests} WHERE approval_id=?", (approval_id,)
+            ).fetchone()
+            is not None
+        )
+
     def admit(
         self,
         record: ApprovalRecord,
