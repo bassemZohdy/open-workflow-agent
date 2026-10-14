@@ -5,6 +5,20 @@ no new continuation profile is qualified until its complete finite validation
 and hosted gates pass. This record defines supported decisions and exclusions,
 not a successful in-place migration algorithm or full A086/T44 completion.
 
+The latest hosted source checkpoint, `605a908`, remains unqualified. CI
+`38547670098` failed one Windows LangGraph/SQLite initial-delivery recovery
+case during admission; its recovery lane and other hosted lanes are recorded in
+the [batch history](validation-history/pending-batch-results.md#hosted-checkpoint-source-605a908).
+The local fixture uses a 15-second ownership lease to reduce admission timing
+sensitivity. Recovery diagnostics identified an intermittent mismatch in
+`python.architecture`: the restricted subprocess environment omitted the
+non-secret Windows architecture variables used by `platform.machine()`. The
+fixture now preserves those variables and records changed-profile paths for
+diagnosis. After this correction the exact Windows selector passed three
+consecutive local repeats, and the related LangGraph process-recovery/A2A
+selection passed 14 tests with 14 PostgreSQL-only skips. Exact-source hosted
+qualification is still required; recovery profile verification remains strict.
+
 The combined `325458a` full local batch is retained as a failed unchanged-source
 attempt in `tmp/s3-01-third-batch`, including actual ADK process-stop failure
 with a hot attached SQLite rollback journal. The authored correction preserves
@@ -198,35 +212,38 @@ and outcome/identity/cancellation assertions remain. The versioned API snapshot
 is regenerated and included in subsequent fixed-input manifests.
 
 Correction focus 01d13a6 passes 85 root cases with 31 unavailable PostgreSQL
-skips; actual ADK passes16/17 selected version cases, LangGraph15/17. The
+skips; actual ADK passes 16 of 17 selected version cases, and LangGraph passes
+15 of 17. The
 remaining nested-child fixture serializes unset Linux path defaults before
 Windows validation, and one process fixture observes transient Windows file
 sharing on its already atomic readiness publication. Both are fixture-only
 corrections: retain explicit config fields and retry only missing/sharing reads
-within the unchanged live-producer100-second bound. Malformed JSON still fails.
+within the unchanged live-producer 100-second bound. Malformed JSON still
+fails.
 Original source hashes/logs remain in `tmp/s2-09-fourth-batch`. Synthetic late
 finalization and memory corrections follow in the same supervised bundle; no
 partial failed bundle is qualified as complete.
 
-Corrected bundle 5ef4170 is green with396unchanged fixed inputs. Root passes
-85 checks with31 unavailable PostgreSQL skips. Both actual principal SDKs pass
-all17 selected version/process-stop cases (including nested archived child
+Corrected bundle 5ef4170 is green with 396 unchanged fixed inputs. Root passes
+85 checks with 31 unavailable PostgreSQL skips. Both actual principal SDKs pass
+all 17 selected version/process-stop cases (including nested archived child
 continuation under a v2-only catalog) without skips. Each passes both synthetic
 late-finalization cancellation cases. LangGraph also passes the five memory
-presence/fork regression cases. Supervisors complete in33seconds root,191ADK
-and149LangGraph, below their unchanged900-second bound. Allfivefreshwheel/
-sdist builds and source-lock/metadata provenance checks pass. Full broad suites
+presence/fork regression cases. Supervisors complete in 33 seconds (root),
+191 seconds (ADK) and 149 seconds (LangGraph), below their unchanged
+900-second bound. All five fresh wheel/sdist builds and source-lock/metadata
+provenance checks pass. Full broad suites
 and exact-source hosted backend/platform/image/security gates still remain;
 S2-09 is not complete and no pending source is published as qualified.
 
-Broad snapshot9582fb2 retains unchanged inputs under `tmp/s2-09-fifth-batch`.
+Broad snapshot 9582fb2 retains unchanged inputs under `tmp/s2-09-fifth-batch`.
 Three old receipt selectors assume no independent definition-admission receipt;
 they must target their intended HTTP/fork/clock evidence and preserve the new
 admission proof. Nested workflows also repeatedly revalidate identical archived
 public definitions against the official schema. Stack dumps locate the repeated
 `_plan`/`validate_schema` path; nested cases time out and both principal Windows
-processes exit with3221225477 during recursive schema traversal. Optional
-Framework reaches its early failure limit; root is explicitly stopped at820
+processes exit with code 3221225477 during recursive schema traversal. Optional
+Framework reaches its early failure limit; root is explicitly stopped at 820
 seconds. These failures are retained and are not complete full qualification.
 
 The correction caches only bounded successful identical strict-JSON validation

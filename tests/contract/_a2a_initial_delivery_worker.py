@@ -41,6 +41,19 @@ from test_workflow_version_recovery import _common_snapshot
 TOKEN = "deterministic-initial-delivery-token"
 
 
+def profile_difference_paths(expected, actual, prefix=""):
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        paths = []
+        for key in sorted(set(expected) | set(actual)):
+            child = f"{prefix}.{key}" if prefix else key
+            if key not in expected or key not in actual:
+                paths.append(child)
+            else:
+                paths.extend(profile_difference_paths(expected[key], actual[key], child))
+        return paths
+    return [] if expected == actual else [prefix]
+
+
 def native_snapshot(services, handle, backend):
     """Pure existing-schema reads scoped to this invocation's native identity."""
     path = services.engine_database_path(handle.engine, create_namespace=False)
@@ -220,7 +233,9 @@ async def run(directory: Path, mode: str):
     }[engine_name]
     engine = getattr(importlib.import_module(module), cls)()
     assert engine.native.available if engine_name == "adk" else engine.native.task_nodes_available
-    engine._execution_ownership_seconds = 5
+    # Admission performs synchronous profile and SQLite work before the
+    # producer can heartbeat; use a longer fixture lease on hosted Windows.
+    engine._execution_ownership_seconds = 15
     if mode == "start":
         prepare_initial_delivery = engine.prepare_initial_delivery
 
@@ -230,7 +245,9 @@ async def run(directory: Path, mode: str):
             except OwaError as error:
                 write_json(
                     directory / "start-admission-error.json",
-                    failure_artifact(error, stage="prepare_initial_delivery"),
+                    failure_artifact(
+                        error, stage="prepare_initial_delivery", include_traceback=True
+                    ),
                 )
                 raise
 
@@ -382,6 +399,19 @@ async def run(directory: Path, mode: str):
                     await asyncio.Event().wait()
                 handle = services.invocations.get(saved["invocation_id"])
                 assert services.invocations.read_input(handle) == saved["input"]
+                row = services.effect_journal.connection.execute(
+                    "SELECT payload FROM recovery_invocation_definitions WHERE invocation_id=?",
+                    (handle.invocation_id,),
+                ).fetchone()
+                assert row is not None
+                archived_profile = json.loads(row[0])["runtime_profile"]
+                current_profile = await services.recovery_definitions.prepare_profile(handle.engine)
+                profile_differences = profile_difference_paths(archived_profile, current_profile)
+                if profile_differences:
+                    write_json(
+                        directory / "runtime-profile-diff.json",
+                        {"changed_paths": profile_differences},
+                    )
                 dispatcher = engine._initial_delivery_dispatcher
                 negative = scenario["negative"]
                 if negative == "revoked":

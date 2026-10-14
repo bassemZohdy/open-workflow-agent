@@ -47,6 +47,9 @@ def failure(directory, mode):
     diagnostic = directory / "start-admission-error.json"
     if mode == "start" and diagnostic.exists() and isinstance(payload, dict):
         payload["admission_error"] = json.loads(diagnostic.read_text(encoding="utf-8"))
+    profile_diff = directory / "runtime-profile-diff.json"
+    if mode == "recover" and profile_diff.exists() and isinstance(payload, dict):
+        payload["runtime_profile_diff"] = json.loads(profile_diff.read_text(encoding="utf-8"))
     return json.dumps(payload)
 
 

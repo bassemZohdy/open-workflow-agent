@@ -11,41 +11,43 @@
 
 **17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-09 is
 the earliest unfinished milestone. Failed or incomplete validation advances no
-task checkbox or inventory row. Hosted source `4d2e224` did not qualify in CI
-run `38542590245`: root coverage was 89.90%, the approval finite-grid witness
-expected 36 instead of 45 nodes, and the ADK native/shared contract step timed
-out at 30 minutes after reaching 95%. The Windows native-timer job was
-cancelled when the run failed. All other CI jobs passed. PostgreSQL run
-`38542590348`, Agent Framework run `38542590274`, External Sandbox run
-`38542590247`, Security run `38542590300`, and Docs run `38542590324` passed.
-The local correction now expects 67 approval nodes, raises the ADK test-command
-budget to 40 minutes within its existing 45-minute job, and adds edge coverage.
-Its combined focused run passed 85 tests with 34 PostgreSQL-only skips. Ruff,
-formatting, strict typing, docs and implementation audits, and root/core builds
-passed. Focused coverage projects to 90.07%; only hosted root validation can
-confirm the gate. The corrected source still needs complete hosted validation.
+task checkbox or inventory row. The latest published source, `605a908`, has
+not qualified. CI run `38547670098` completed with one failure: a Windows
+initial-delivery admission test failed with `InvocationStateConflict`. Root
+quality, Windows timers and every other CI job passed.
+PostgreSQL run `38547669853` passed. External Sandbox run
+`38547670158`, Agent Framework run `38547669843`, Security run `38547669834`,
+and Docs run `38547669859` passed. The combined focused source batch passed 85
+tests with 34 PostgreSQL-only skips; Ruff, formatting, strict typing, docs and
+implementation audits, and root/core builds passed. The hosted root quality gate
+has now confirmed required coverage for `605a908`.
 
-The preceding source `523522b` passed PostgreSQL, External Sandbox, Agent
-Framework, Security and Docs. CI failed root coverage at 89.54% against the 90%
-gate and one Windows protected-approval race assertion. The current correction
-routes trusted protected decisions into the atomic proof-checked transaction
-before multi-query inspection. A follow-up updates the finite-grid witness,
-adds fail-closed coverage, and raises the ADK contract command budget from 30
-to 40 minutes within its 45-minute job. Earlier `dcc16a6` and `a6c2faa` failures
-remain historical; see the
-[validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-4d2e224)
-for exact source and workflow outcomes.
+The Windows failure is actionable and remains with S2-09. Its hosted log points
+to `prepare_initial_delivery`. A local 15-second fixture lease cleared that
+admission step. Subsequent recovery diagnostics identified an intermittent
+`python.architecture` mismatch because the isolated Windows subprocess
+environment omitted the non-secret variables used by `platform.machine()`.
+The current uncommitted fixture correction preserves those variables, keeps
+the 15-second lease, and records safe stack frames and changed-profile paths;
+the exact Windows selector passed three consecutive local repeats, and the
+related LangGraph process-recovery/A2A selection passed 14 tests with 14
+PostgreSQL-only skips. Exact-source hosted validation remains required. No task
+or feature advances. The prior
+`4d2e224` coverage, selector and ADK timeout failures remain historical; see
+the [latest validation checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-605a908)
+and [validation history](docs/validation-history/pending-batch-results.md) for
+the exact source outcomes.
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at `6b23e5d` / `96ce610`. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Original-definition continuation authored; integrated qualification pending. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
-| S3-01 / S3-02 | Pinned MCP/A2A integration authored; combined hosted qualification on `dcc16a6` is pending after the previous checkpoint failed. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
-| S3-03 | Operation adapters and independent jobs authored; lease/recovery corrections and acceptance pending. | [Operations](docs/s3-03-operation-adapters-acceptance.md) |
-| S3-04 | Captured sources and awaited controls authored; first common batch failed, corrections pending verification. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
+| S3-01 / S3-02 | Pinned MCP/A2A changes remain authored, not qualified. Source `605a908` is in hosted validation; a Windows A2A initial-delivery fixture failure is under actionable correction. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
+| S3-03 | Operation adapters and independent jobs remain authored; lease/recovery corrections and exact-source qualification are pending. | [Operations](docs/s3-03-operation-adapters-acceptance.md) |
+| S3-04 | Captured sources and awaited controls remain authored; behavioral and exact-source qualification are pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored; hosted PostgreSQL exposed timestamp precision loss in common approval storage; precision migration and full qualification pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md) |
-| S3-06 | Identity, action policy, isolation and credential safeguards are authored; full batch qualification pending. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
-| S3-07 | Eight finite recipe families and named role bindings authored; static/schema checks pass, behavioral qualification pending. | [Pattern scope and gates](docs/s3-07-agent-pattern-acceptance.md) |
+| S3-06 | Identity, action policy, isolation and credential safeguards remain authored; full qualification remains open. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
+| S3-07 | Eight finite recipe families and named role bindings remain authored; behavioral qualification remains open. | [Pattern scope and gates](docs/s3-07-agent-pattern-acceptance.md) |
 | S3-08 | Selected compiler/provider/memory/embedded event adaptations and grouped corrections are authored; integrated qualification remains open. | [Selected scope and gates](docs/s3-08-selected-adapter-acceptance.md) |
 
 The earlier feature checkpoint `67aa724` is on draft

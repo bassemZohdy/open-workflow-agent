@@ -32,6 +32,10 @@ def _environment() -> dict[str, str]:
         "USERPROFILE",
         "LOCALAPPDATA",
         "HOME",
+        # Runtime recovery profiles include platform.machine(); preserve the
+        # non-secret Windows architecture declarations in isolated workers.
+        "PROCESSOR_ARCHITECTURE",
+        "PROCESSOR_ARCHITEW6432",
         "OWA_TEST_POSTGRES_URL",
     }
     environment = {key: value for key, value in os.environ.items() if key.upper() in allowed}

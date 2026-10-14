@@ -5,6 +5,38 @@ builds are distinct from complete qualification. Local `tmp/` evidence is ignore
 and retained in its originating worktree; publication still requires reproducible
 source-linked hosted reports.
 
+### Hosted checkpoint — source `605a908`
+
+CI run `38547670098` completed with one failure. The Windows native lifecycle and
+receiver-recovery job failed the LangGraph/SQLite partial-native
+`test_sdk_async_ack_survives_real_stop_with_original_definition_and_clock`
+case during `prepare_initial_delivery` with `InvocationStateConflict`. The
+separate LangGraph native lifecycle/version-recovery job passed, as did the
+root quality gate, Windows native timers, and ADK/LangGraph shared-contract
+gates. All other CI jobs also passed. PostgreSQL run
+`38547669853` passed.
+External Sandbox `38547670158`, Agent Framework `38547669843`, Security
+`38547669834`, and Docs `38547669859` also passed. The current source is not
+qualified, and S2-09 and all feature rows remain open.
+
+The focused batch on this source passed 85 tests with 34 PostgreSQL-only skips.
+Ruff, format, strict typing, documentation links, implementation audit and
+root/core builds passed. Its added cases cover 42 previously missed statements;
+the hosted root quality gate has now confirmed the required coverage.
+Repeated local runs of the exact Windows case passed admission with the
+five-second lease, while the hosted failure occurred during admission. A local
+15-second fixture lease passed admission. Recovery diagnostics then identified
+an intermittent `python.architecture` difference: the restricted child
+environment omitted the non-secret Windows architecture variables used by
+`platform.machine()`. The pending correction preserves those variables, keeps
+the 15-second lease, and emits only changed runtime-profile paths plus safe
+traceback frames on failure. After this correction the exact Windows selector
+passed three consecutive local repeats, and the related LangGraph
+process-recovery/A2A selection passed 14 tests with 14 PostgreSQL-only skips.
+The new exact-source hosted run is required before the correction or task can
+qualify. No failure is deferred; the environment mismatch and admission timing
+have actionable fixture corrections.
+
 | Frozen source | Profile | Recorded result | Meaning |
 | --- | --- | --- | --- |
 | `67aa724964edadb661f809bdde6949ce5af69b0f` | Hosted checkpoint | Aggregate failure; individual image/security/platform/database checks passed. | Draft PR checkpoint remains unqualified. |
@@ -534,13 +566,13 @@ native-timer job was cancelled after CI failed. Every other CI job passed. A
 prior hosted checkpoint ran the same 2,810-item ADK selection successfully in
 1,423.97 seconds. No task or feature advances on this source.
 
-The uncommitted correction updates the protected-approval selector to 67 nodes,
-raises the ADK test-command budget from 30 to 40 minutes within the existing
-45-minute job, and adds focused fail-closed coverage for approval request
-proofs, immutable recovery definitions, A2A streams and initial delivery
-dispatch. The combined focused selection passed 85 tests with 34
-PostgreSQL-only skips. Added cases cover 42 previously missed statements; the
-projected root coverage is about 90.07%, subject to confirmation by the full
-hosted gate. Ruff, format, strict mypy, docs-link and implementation-audit
-checks, and root/core builds passed. The new source still needs complete hosted
-validation. S2-09 and all feature rows stay open.
+The corrective batch was published as `605a908`. It updates the protected-
+approval selector to 67 nodes, raises the ADK test-command budget from 30 to 40
+minutes within the existing 45-minute job, and adds focused fail-closed coverage
+for approval request proofs, immutable recovery definitions, A2A streams and
+initial delivery dispatch. Its local combined focused selection passed 85 tests
+with 34 PostgreSQL-only skips. Added cases cover 42 previously missed
+statements; the projected root coverage is about 90.07%, subject to confirmation
+by the full hosted gate. Ruff, format, strict mypy, docs-link and
+implementation-audit checks, and root/core builds passed. The incomplete hosted
+outcome is recorded above. S2-09 and all feature rows stay open.

@@ -21,30 +21,37 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 ## Delivery status — 2026-10-14
 
 **17 verified / 20 open / 0 deferred.** S2-09 remains the earliest unfinished
-task. Hosted source `4d2e224` did not qualify: root coverage was 89.90% against
-the 90% gate, its approval-selection assertion expected 36 nodes instead of
-45, and the ADK shared-contract step reached 95% before its 30-minute timeout
-(exit 124). The Windows native-timer job was cancelled when CI failed. The
-other hosted CI jobs passed, as did PostgreSQL, Agent Framework, External
-Sandbox, Security and Docs. The current local correction updates the selector
-to the 67 nodes in the expanded approval suite, raises the ADK test-command
-budget to 40 minutes within its existing 45-minute job, and adds fail-closed
-coverage for recovery definitions, approval proofs, A2A streams and initial
-delivery. Its focused combined run passed 85 tests with 34 PostgreSQL-only
-skips; lint, formatting, strict typing, documentation checks, implementation
-audit and root/core builds passed. Focused coverage projects to 90.07%, but
-only the full hosted root gate can confirm the threshold. Exact-source hosted
-validation is required; no task or feature advances yet.
-The preceding source `523522b` passed PostgreSQL, external-sandbox, Agent
-Framework, security and documentation runs, but CI failed root coverage at
-89.54% against the 90% gate and one Windows protected-approval race assertion.
-The current correction routes trusted protected decisions into the
-proof-checked transaction before multi-query inspection. A follow-up updates
-the finite-grid witness, adds behavior-based coverage, and raises the ADK
-contract command budget from 30 to 40 minutes within its 45-minute job. Earlier `dcc16a6` and
-`a6c2faa` failures remain historical. See the
-[current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-14)
-and [validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-4d2e224).
+task. The latest published source, `605a908`, has not qualified. CI run
+`38547670098` completed with one failure: a Windows native lifecycle/recovery
+test failed during initial-delivery admission with `InvocationStateConflict`.
+Root quality, Windows timers and every other CI job passed.
+PostgreSQL run `38547669853` passed. External Sandbox
+`38547670158`, Agent Framework `38547669843`, Security `38547669834`, and Docs
+`38547669859` passed. The focused source batch passed 85 tests with 34
+PostgreSQL-only skips; its local checks, strict typing, documentation checks,
+implementation audit and root/core builds passed. Focused coverage projects to
+90.07%, but only the complete hosted root gate can confirm the threshold.
+
+The Windows failure is actionable and remains with S2-09. Hosted logs locate
+the conflict in `prepare_initial_delivery`; a 15-second fixture lease passed
+that stage locally. Recovery diagnostics then identified an intermittent
+`python.architecture` mismatch because the isolated Windows subprocess
+environment omitted the non-secret architecture variables used by
+`platform.machine()`. The current uncommitted correction preserves those
+variables in the restricted child environment, keeps the 15-second fixture
+lease, and records safe stack frames and changed-profile paths. The exact
+Windows selector passed three consecutive local repeats after this correction;
+the related LangGraph process-recovery/A2A selection passed 14 tests with 14
+PostgreSQL-only skips. Exact-source hosted validation is still required. No task or feature
+advances. See the [current validation
+checkpoint](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-605a908).
+Historical checkpoints `4d2e224` and `523522b` failed separate root-quality
+gates; `4d2e224` also exposed an obsolete approval-selection count and the
+former ADK command timeout, while `523522b` exposed a Windows protected-approval
+race. The proof-checked actor-decision route, expanded selector witness and
+longer ADK budget are included in `605a908`. Exact outcomes for these and the
+earlier `dcc16a6` / `a6c2faa` checkpoints remain in the
+[validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-4d2e224).
 
 ## Stage 1 — Correct core execution
 
