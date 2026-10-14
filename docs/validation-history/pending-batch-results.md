@@ -953,3 +953,19 @@ separately from durable Task/receipt expiry, which remains unqualified. This
 prevents bounded stream cleanup tests from implying a durable task-retention
 policy. At exact source `323696e`, the implementation/tracker audit passed (6
 tests), Markdown relative-link validation passed, and `git diff --check` passed.
+
+### A2A initial-delivery phase mapping at `1f75bd1`
+
+The A2A05 table now ties its three process-stop phases to the actual-SDK
+producer/recovery fixture: post-ACK before native entry, after initial claim at
+a partial native projection before the business action, and after the remote
+receipt before native completion. Its positive matrix spans ADK/LangGraph and
+SQLite/PostgreSQL and asserts preserved invocation identity/clock, generation
+advance, one receiver commit and zero model calls; revoked skill, deleted
+archive and damaged queue controls compare pre/post state. Competing dispatcher
+and stale-owner races remain the explicit gap.
+
+At exact source `1f75bd1`, the implementation/tracker audit passed (6 tests),
+Markdown relative-link validation passed, and `git diff --check` passed. The
+hosted batch at `f9cb76f` is still running and predates these A2A changes; this
+source needs its own hosted run. This record does not mark A2A05 complete.
