@@ -78,7 +78,9 @@ async def run(directory, mode):
     services = runtime(directory / "runtime", backend, FakeModel(response))
     await engine.initialize(services)
     await engine._timer_dispatcher.stop()
-    engine._execution_ownership_seconds = 5
+    # Preserve the production lease during recovery. The five-second test-only
+    # override could expire while Windows LangGraph checkpoint I/O blocked its
+    # heartbeat, turning a valid recovery into an ownership-loss cancellation.
     wire = None
     admission = None
     handle = None
@@ -203,7 +205,7 @@ async def run(directory, mode):
                 services.event_transport.verify(admission)
                 with authority_scope(authority(services, "alice")):
                     assert services.event_transport.admit(wire.encoded, scope="alice") == admission
-            expires = time.monotonic() + 15
+            expires = time.monotonic() + engine._execution_ownership_seconds + 10
             while services.execution_ownership.connection.execute(
                 "SELECT 1 FROM invocation_ownership WHERE invocation_id=? AND expires_at>"
                 + services.execution_ownership._clock,

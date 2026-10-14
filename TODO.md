@@ -156,11 +156,14 @@ treated as a deferred task or as additional feature completion.
   [the finite acceptance plan](docs/s3-03-operation-adapters-acceptance.md).
   Behavioral/native/backend/platform, physical lifetime, packaging and hosted
   qualification remain outstanding; no new profile or inventory row is complete.
-  PostgreSQL LangGraph run `38595583614` failed one selected-adapter recovery
-  case. The same parameter passed on rerun `38602669648` (LangGraph recovery job
-  `115985570066`; 221 passed, 158 skipped, 379 deselected), so the output-shape
-  mismatch remains intermittent and unexplained. Keep the bounded diagnostic for
-  a recurrence; the correction and run history are in the
+  PostgreSQL LangGraph run `38595583614` failed one recovery case, which passed
+  on rerun `38602669648` (job `115985570066`; 221 passed, 158 skipped, 379
+  deselected); its output-shape mismatch remains unexplained. The Windows CI
+  checkpoint lane then exposed an ownership-loss failure in an SQLite LangGraph
+  recovery case at `38602669454`. Its five-second test-only lease and fixed
+  expiry wait are corrected to use the production lease and matching bound;
+  both local Windows principal-engine selections pass four cases each, with 12
+  inapplicable skips apiece. Hosted requalification is pending. Details are in the
   [validation history](docs/validation-history/pending-batch-results.md#follow-up-at-4014874).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Finite captured script sources, independent recovery proofs and awaited internal

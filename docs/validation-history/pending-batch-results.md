@@ -760,6 +760,17 @@ parameter passed. The hosted mismatch did not recur, so these results do not
 explain or resolve its cause. Keep S3-03 open and retain the bounded diagnostics
 to identify the first layer where the event mapping changes if it recurs.
 
+The same CI run's Windows native task-checkpoint job (`115985569940`) failed
+`test_real_stop_between_common_admission_ack_or_native_projection_keeps_original_event[outbox-sqlite-langgraph-LangGraphWorkflowEngine]`
+with `InvocationStateConflict` during recovery. The test worker had shortened
+the production 30-second execution lease to five seconds and waited a fixed
+15 seconds for expiry. The fixture now leaves the production lease unchanged
+and derives its expiry wait from that lease plus ten seconds. The local Windows
+LangGraph and ADK SQLite selections then each passed four cases and skipped
+twelve backend/engine-inapplicable cases. Hosted requalification on the
+corrected fixture remains pending; this does not change runtime ownership
+semantics.
+
 The same documentation follow-up records finite A2A test evidence at the prior
 exact runtime source `af4acd61c200787fb68248b2d180ba69efb8c837`; A2A02 is directly
 evidenced for its bounded Python profile, while A2A01 and A2A03-A2A08 remain
