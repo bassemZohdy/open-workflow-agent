@@ -89,3 +89,110 @@ async def test_empty_page_resets_poll_cursor_and_terminal_delivery_cleans_worker
     await dispatcher.stop()
     assert dispatcher._task is None
     assert dispatcher._authorize is None
+
+
+@pytest.mark.asyncio
+async def test_tick_fails_closed_for_absent_binding_or_invocation() -> None:
+    handle = SimpleNamespace(invocation_id="inv-missing", status="running")
+    deliveries = _PendingDeliveries(["inv-missing"])
+    deliveries.binding = None
+    services = SimpleNamespace(
+        initial_deliveries=deliveries,
+        invocations=SimpleNamespace(get=lambda _id: handle),
+        resolve_original_definition=lambda _handle: object(),
+        config=SimpleNamespace(execution_timing=SimpleNamespace(max_concurrency=1)),
+    )
+
+    class Engine:
+        engine_name = "langgraph"
+        _ownership_tasks: dict[str, object] = {}
+
+        async def dispatch_initial_delivery(self, *_args: object) -> None:
+            raise AssertionError("missing binding must prevent delivery")
+
+    dispatcher = InitialDeliveryDispatcher(services, Engine())
+    dispatcher._authorize = lambda *_args: True
+    await dispatcher.tick()
+    assert len(dispatcher._errors) == 1
+    assert "binding is absent" in str(dispatcher._errors[0])
+
+    deliveries = _PendingDeliveries(["inv-missing"])
+    services.initial_deliveries = deliveries
+    services.invocations.get = lambda _id: None
+    dispatcher = InitialDeliveryDispatcher(services, Engine())
+    await dispatcher.tick()
+    assert len(dispatcher._errors) == 1
+    assert "invocation is absent" in str(dispatcher._errors[0])
+
+
+@pytest.mark.asyncio
+async def test_dispatch_worker_records_vanished_invocation_and_engine_failure() -> None:
+    handle = SimpleNamespace(invocation_id="inv-dispatch", status="completed")
+    lookups: list[object | None] = [handle, None]
+    services = SimpleNamespace(
+        initial_deliveries=_PendingDeliveries(["inv-dispatch"]),
+        invocations=SimpleNamespace(get=lambda _id: lookups.pop(0)),
+        config=SimpleNamespace(execution_timing=SimpleNamespace(max_concurrency=1)),
+    )
+
+    class Engine:
+        engine_name = "langgraph"
+        _ownership_tasks: dict[str, object] = {}
+
+        async def dispatch_initial_delivery(self, *_args: object) -> None:
+            raise WorkflowExecutionError("engine delivery failed")
+
+    dispatcher = InitialDeliveryDispatcher(services, Engine())
+    await dispatcher.tick()
+    await asyncio.gather(*tuple(dispatcher._workers.values()))
+    assert dispatcher._workers == {}
+    assert len(dispatcher._errors) == 1
+    assert "invocation is absent" in str(dispatcher._errors[0])
+
+    lookups[:] = [handle, handle]
+    dispatcher._cursor = None
+    await dispatcher.tick()
+    await asyncio.gather(*tuple(dispatcher._workers.values()))
+    assert dispatcher._workers == {}
+    assert len(dispatcher._errors) == 2
+    assert "engine delivery failed" in str(dispatcher._errors[-1])
+
+
+@pytest.mark.asyncio
+async def test_tick_respects_capacity_and_poll_loop_records_errors() -> None:
+    handle = SimpleNamespace(invocation_id="inv-waiting", status="completed")
+    deliveries = _PendingDeliveries(["inv-waiting"])
+    services = SimpleNamespace(
+        initial_deliveries=deliveries,
+        invocations=SimpleNamespace(get=lambda _id: handle),
+        config=SimpleNamespace(
+            execution_timing=SimpleNamespace(max_concurrency=1, poll_interval_seconds=0.001)
+        ),
+    )
+
+    class Engine:
+        engine_name = "langgraph"
+        _ownership_tasks: dict[str, object] = {}
+
+        async def dispatch_initial_delivery(self, *_args: object) -> None:
+            raise AssertionError("at-capacity polling must not dispatch another worker")
+
+    dispatcher = InitialDeliveryDispatcher(services, Engine())
+    blocker = asyncio.create_task(asyncio.Event().wait())
+    dispatcher._workers["already-running"] = blocker
+    await dispatcher.tick()
+    assert dispatcher._cursor is None
+    await dispatcher.stop()
+
+    async def fail_poll() -> None:
+        raise RuntimeError("temporary poll failure")
+
+    dispatcher.tick = fail_poll
+    await dispatcher.start(lambda *_args: True)
+    for _ in range(20):
+        if dispatcher._errors:
+            break
+        await asyncio.sleep(0.001)
+    await dispatcher.stop()
+    assert dispatcher._errors
+    assert isinstance(dispatcher._errors[0], RuntimeError)

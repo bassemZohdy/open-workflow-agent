@@ -497,3 +497,50 @@ secret-safe start-stage A2A admission details and traceback frames for the
 PostgreSQL selected-adapter recovery worker. These results are partial and do
 not advance any task; record the completed outcomes and any corrective source
 in a dated follow-up after the runs settle.
+
+### Hosted checkpoint — source `523522b`
+
+CI run `38536987531` failed two gates. Root quality completed 4,457 tests with
+2,935 skips and 62 warnings; coverage measured 89.54% against the required
+90%. The
+Windows native timers/events/scheduling lane passed 701 tests, skipped 754 and
+failed the protected-approval race case: the losing decision raised
+`WorkflowExecutionError` instead of `ApprovalConflict`. All other CI jobs passed.
+PostgreSQL run `38536987632`, External Sandbox run `38536987569`, Agent Framework
+run `38536987509`, Security run `38536987580`, and Docs run `38536987493` passed.
+This source remains unqualified; no task or feature advances.
+
+Source `4d2e224` routes actor-bearing protected decisions through a single-row
+request lookup into the existing proof-checked transaction, avoiding a
+multi-query preflight that could observe mixed SQLite state. Focused tests cover
+that route and its authorization fallbacks, recovery evidence, event retention,
+A2A stream edge cases and previously uncovered core branches. Locally, the
+combined focused selection passed 133 tests with 23 PostgreSQL-only skips;
+lint, format, strict typing, documentation links, the implementation audit,
+and root/core builds passed. Hosted qualification is in progress; partial
+results do not advance any task.
+
+### Hosted checkpoint: source 4d2e224
+
+PostgreSQL run `38542590348`, Agent Framework run `38542590274`, External
+Sandbox run `38542590247`, Security run `38542590300`, and Docs run `38542590324`
+passed. CI run `38542590245` failed. Root quality completed 4,527 tests with
+2,939 skips and 62 warnings, but coverage was 89.90% against the 90% gate and
+the finite approval test-grid witness expected 36 nodes instead of 45. The ADK
+native/shared contract step reached 95% but hit its 30-minute command limit
+(exit 124); pytest printed the next synchronous-child case at the same
+timestamp, so the evidence does not identify a hanging test. The Windows
+native-timer job was cancelled after CI failed. Every other CI job passed. A
+prior hosted checkpoint ran the same 2,810-item ADK selection successfully in
+1,423.97 seconds. No task or feature advances on this source.
+
+The uncommitted correction updates the protected-approval selector to 67 nodes,
+raises the ADK test-command budget from 30 to 40 minutes within the existing
+45-minute job, and adds focused fail-closed coverage for approval request
+proofs, immutable recovery definitions, A2A streams and initial delivery
+dispatch. The combined focused selection passed 85 tests with 34
+PostgreSQL-only skips. Added cases cover 42 previously missed statements; the
+projected root coverage is about 90.07%, subject to confirmation by the full
+hosted gate. Ruff, format, strict mypy, docs-link and implementation-audit
+checks, and root/core builds passed. The new source still needs complete hosted
+validation. S2-09 and all feature rows stay open.

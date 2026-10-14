@@ -53,7 +53,7 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
     assert "--kill-after=30s 45m" in root_tests["run"]
     assert jobs["root"]["timeout-minutes"] == "60"
     assert jobs["engines"]["timeout-minutes"] == "45"
-    assert "--kill-after=30s 30m" in _runs(jobs["engines"])
+    assert "--kill-after=30s 40m" in _runs(jobs["engines"])
     engines = jobs["engines"]
     assert {entry["engine"] for entry in engines["strategy"]["matrix"]["include"]} == {
         "adk",

@@ -500,7 +500,9 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 30m \
+          # The hosted ADK profile reached 95% at the 30-minute cap; leave room
+          # for the remaining native/shared cases within the 45-minute job.
+          timeout --signal=TERM --kill-after=30s 40m \
             uv run --locked --extra knowledge --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
             pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract -vv --durations=20 \
             --ignore=../../tests/contract/test_external_operation_keys.py \

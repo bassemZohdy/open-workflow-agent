@@ -975,6 +975,132 @@ async def test_private_history_limits_reject_before_proof_traversal_or_state_wri
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "corruption",
+    (
+        "wrong_profile",
+        "wrong_history_limits",
+        "malformed_origin",
+        "wrong_origin_operation",
+        "wrong_event_scope",
+        "wrong_input_digest",
+        "wrong_definition_receipt",
+        "wrong_request_subject",
+        "wrong_expiry",
+    ),
+)
+async def test_private_request_proof_corruption_fails_closed_without_changing_approval(
+    approval_runtime, corruption
+):
+    """Private request metadata remains bound to the original workflow evidence."""
+    services, _, _ = approval_runtime
+    subject, handle, _ = await seed(approval_runtime)
+    protected = services.approvals.protected_store
+    connection = protected.connection
+    before = snapshot(services, subject)
+    row = connection.execute(
+        f"SELECT payload FROM {protected.requests} WHERE approval_id=?", (subject,)
+    ).fetchone()
+    original = row[0]
+    value = json.loads(original)
+    if corruption == "wrong_profile":
+        value["profile"] = "attacker/profile"
+    elif corruption == "wrong_history_limits":
+        value["history_limits"]["rows"] += 1
+    elif corruption == "malformed_origin":
+        value["origin"] = {"unexpected": "shape"}
+    elif corruption == "wrong_origin_operation":
+        value["origin"]["operation"] = "decide"
+    elif corruption == "wrong_event_scope":
+        value["event_scope"] = "urn:attacker:scope"
+    elif corruption == "wrong_input_digest":
+        value["input_digest"] = "0" * 64
+    elif corruption == "wrong_definition_receipt":
+        value["definition_receipt"]["receipt_digest"] = "0" * 64
+    elif corruption == "wrong_request_subject":
+        value["request_event"]["subject"] = "urn:attacker:subject"
+    else:
+        value["expires_at"] += 1
+    connection.execute(
+        f"UPDATE {protected.requests} SET payload=? WHERE approval_id=?",
+        (json.dumps(value, separators=(",", ":")), subject),
+    )
+    connection.commit()
+    try:
+        with pytest.raises(WorkflowExecutionError, match="protected approval evidence"):
+            protected.inspect(subject)
+        after = snapshot(services, subject, original=json.loads(original))
+        assert {key: rows for key, rows in after.items() if key != "request"} == {
+            key: rows for key, rows in before.items() if key != "request"
+        }
+    finally:
+        connection.execute(
+            f"UPDATE {protected.requests} SET payload=? WHERE approval_id=?",
+            (original, subject),
+        )
+        connection.commit()
+    assert protected.inspect(subject)[0] == json.loads(original)
+    services.verify_protected_approvals(handle)
+
+
+@pytest.mark.asyncio
+async def test_protected_request_event_verification_checks_original_scope_and_envelope(
+    approval_runtime,
+):
+    from open_workflow_agent.approvals import _envelope
+    from open_workflow_agent.protected_approval_store import verify_protected_approval_event
+
+    services, _, principals = approval_runtime
+    subject, _, _ = await seed(approval_runtime)
+    value, _ = services.approvals.protected_store.inspect(subject)
+    event = _envelope(value["request_event"])
+    connection = services.effect_journal.connection
+
+    verify_protected_approval_event(
+        connection, services.invocations, event, principals["requester"]
+    )
+    with pytest.raises(WorkflowExecutionError, match="protected approval evidence"):
+        verify_protected_approval_event(connection, services.invocations, event, "other-scope")
+    with pytest.raises(WorkflowExecutionError, match="protected approval evidence"):
+        verify_protected_approval_event(
+            connection,
+            services.invocations,
+            replace(event, data={**event.data, "question": "tampered"}),
+            principals["requester"],
+        )
+
+
+@pytest.mark.asyncio
+async def test_invocation_verification_rejects_corrupt_identity_index(approval_runtime):
+    services, _, _ = approval_runtime
+    subject, handle, _ = await seed(approval_runtime)
+    connection = services.effect_journal.connection
+    row = connection.execute(
+        "SELECT identity,payload FROM workflow_effect_invocations WHERE invocation_id=? LIMIT 1",
+        (handle.invocation_id,),
+    ).fetchone()
+    identity, original = row[0], row[1]
+    corrupted = json.loads(original)
+    corrupted["workflow_fingerprint"] = "0" * 64
+    connection.execute(
+        "UPDATE workflow_effect_invocations SET payload=? WHERE identity=?",
+        (json.dumps(corrupted, separators=(",", ":")), identity),
+    )
+    connection.commit()
+    try:
+        with pytest.raises(WorkflowExecutionError, match="protected approval evidence"):
+            services.verify_protected_approvals(handle)
+    finally:
+        connection.execute(
+            "UPDATE workflow_effect_invocations SET payload=? WHERE identity=?",
+            (original, identity),
+        )
+        connection.commit()
+    assert services.approvals.protected_store.inspect(subject)[0]["approval_id"] == subject
+    services.verify_protected_approvals(handle)
+
+
+@pytest.mark.asyncio
 async def test_protected_business_receipt_is_verified_before_reuse(approval_runtime):
     services, _, _ = approval_runtime
     subject, handle, identity = await seed(approval_runtime)

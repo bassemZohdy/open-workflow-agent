@@ -21,21 +21,30 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 ## Delivery status — 2026-10-14
 
 **17 verified / 20 open / 0 deferred.** S2-09 remains the earliest unfinished
-task. The latest hosted source is `7405371`, with its CI run queued and its
-PostgreSQL, external-sandbox and Agent Framework runs in progress. No complete
-result is available and no task or feature advances. The preceding source
-`dcc16a6` had one Windows native lifecycle failure and one PostgreSQL LangGraph
-adapter recovery failure; its root-quality and Windows timer jobs were canceled
-when the diagnostic follow-up was pushed. The new run adds scrubbed admission
-and recovery-frame evidence for those failures. Security and documentation-link
-checks have passed for `7405371`; focused local checks pass, but do not replace
-hosted qualification. Earlier `a6c2faa` failures remain historical and are
-documented separately. The source retains targeted fixes for those failures,
-authenticated-recovery visibility and MCP client-certificate isolation.
-The earlier 323-test local result is historical, not validation of `7405371`;
-the Windows full-root run stopped at 33% after 45 minutes and is incomplete.
-See the [current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-14)
-and [validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-7405371).
+task. Hosted source `4d2e224` did not qualify: root coverage was 89.90% against
+the 90% gate, its approval-selection assertion expected 36 nodes instead of
+45, and the ADK shared-contract step reached 95% before its 30-minute timeout
+(exit 124). The Windows native-timer job was cancelled when CI failed. The
+other hosted CI jobs passed, as did PostgreSQL, Agent Framework, External
+Sandbox, Security and Docs. The current local correction updates the selector
+to the 67 nodes in the expanded approval suite, raises the ADK test-command
+budget to 40 minutes within its existing 45-minute job, and adds fail-closed
+coverage for recovery definitions, approval proofs, A2A streams and initial
+delivery. Its focused combined run passed 85 tests with 34 PostgreSQL-only
+skips; lint, formatting, strict typing, documentation checks, implementation
+audit and root/core builds passed. Focused coverage projects to 90.07%, but
+only the full hosted root gate can confirm the threshold. Exact-source hosted
+validation is required; no task or feature advances yet.
+The preceding source `523522b` passed PostgreSQL, external-sandbox, Agent
+Framework, security and documentation runs, but CI failed root coverage at
+89.54% against the 90% gate and one Windows protected-approval race assertion.
+The current correction routes trusted protected decisions into the
+proof-checked transaction before multi-query inspection. A follow-up updates
+the finite-grid witness, adds behavior-based coverage, and raises the ADK
+contract command budget from 30 to 40 minutes within its 45-minute job. Earlier `dcc16a6` and
+`a6c2faa` failures remain historical. See the
+[current project status](PROJECT.md#current-backlog-delivery-mode--2026-10-14)
+and [validation history](docs/validation-history/pending-batch-results.md#hosted-checkpoint-source-4d2e224).
 
 ## Stage 1 — Correct core execution
 

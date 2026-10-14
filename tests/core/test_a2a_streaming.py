@@ -10,15 +10,18 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Callable
+from types import SimpleNamespace
 
 import httpx
 import pytest
 from open_workflow_agent.a2a import A2A_PROTOCOL_VERSION as V1
+from open_workflow_agent.a2a_streaming import a2a_sse_stream
 from open_workflow_agent.api import create_app
 from open_workflow_agent.approvals import APPROVAL_DECISION_EVENT, APPROVAL_REQUEST_EVENT
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.observability import WorkflowEvent
+from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.services import RuntimeServices
 
 HEADERS = {"a2a-version": V1}
@@ -713,3 +716,82 @@ async def test_subscribed_stream_emits_one_error_or_cancellation_terminal(
     assert [update["status"]["state"] for update in terminal] == [a2a_state]
     assert not any("artifactUpdate" in frame for frame in frames)
     assert "private implementation detail" not in repr(frames)
+
+
+class _BacklogSink:
+    def __init__(self, backlog: list[object]) -> None:
+        self.backlog = backlog
+        self.subscription = _ClosableSubscription()
+
+    def subscribe(self, *, last_event_id: str | None, queue_size: int):
+        assert last_event_id is None
+        assert queue_size > 0
+        return self.backlog, self.subscription
+
+
+class _ClosableSubscription:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
+
+    async def receive(self, *, timeout: float):
+        raise TimeoutError
+
+
+def _stream_handle(*, status: str = "running", session_id: str = "ctx-stream"):
+    return ExecutionHandle(
+        invocation_id="stream-task",
+        engine="langgraph",
+        engine_execution_reference="native-ref",
+        user_id=None,
+        session_id=session_id,
+        workflow_name="stream-flow",
+        workflow_version="1.0.0",
+        workflow_fingerprint="fixture-fingerprint",
+        status=status,
+        output={"answer": "done"} if status == "completed" else None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_stream_handles_missing_task_and_disappearing_resubscription() -> None:
+    missing_sink = _BacklogSink([])
+    no_invocation = a2a_sse_stream(missing_sink, SimpleNamespace(get=lambda _id: None), "missing")
+    assert [frame async for frame in no_invocation] == []
+    assert missing_sink.subscription.closed
+
+    backlog = [
+        SimpleNamespace(id="other-event", data={"invocation_id": "other-task"}),
+        SimpleNamespace(id="task-event", data={"invocation_id": "stream-task"}),
+    ]
+    sink = _BacklogSink(backlog)
+    lookups = iter((_stream_handle(), None))
+    invocations = SimpleNamespace(get=lambda _id: next(lookups))
+    frames = [frame async for frame in a2a_sse_stream(sink, invocations, "stream-task")]
+
+    # Keep the snapshot while ignoring unrelated events and vanished updates.
+    assert len(frames) == 1
+    assert b"stream-task:snapshot" in frames[0]
+    assert sink.subscription.closed
+
+
+@pytest.mark.asyncio
+async def test_completed_stream_uses_task_id_when_session_context_is_unavailable() -> None:
+    event = SimpleNamespace(id="completed-event", data={"invocation_id": "stream-task"})
+    sink = _BacklogSink([event])
+    completed = _stream_handle(status="completed", session_id="")
+    lookups = iter((_stream_handle(), completed, completed, completed))
+    invocations = SimpleNamespace(get=lambda _id: next(lookups))
+
+    frames = [frame async for frame in a2a_sse_stream(sink, invocations, "stream-task")]
+    payloads = [json.loads(frame.split(b"data: ", 1)[1]) for frame in frames]
+
+    artifact = next(
+        payload["artifactUpdate"] for payload in payloads if "artifactUpdate" in payload
+    )
+    status = next(payload["statusUpdate"] for payload in payloads if "statusUpdate" in payload)
+    assert artifact["contextId"] == "stream-task"
+    assert status["contextId"] == "stream-task"
+    assert sink.subscription.closed
