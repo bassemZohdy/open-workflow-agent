@@ -48,6 +48,13 @@ def client(transport, network, **kwargs):
     )
 
 
+def assert_method_result(method, result):
+    if method in {"SendStreamingMessage", "SubscribeToTask"}:
+        assert result[-1]["statusUpdate"]["status"]["state"] == "TASK_STATE_COMPLETED"
+    else:
+        assert isinstance(result, dict)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("network", [False, True], ids=["asgi-wire", "actual-tcp-sdk"])
 @pytest.mark.parametrize("method", METHODS)
@@ -123,7 +130,8 @@ async def test_actual_tcp_streaming_partial_response_loss_is_uncertain_without_r
 
 
 @pytest.mark.asyncio
-async def test_actual_tls_a2a_call_uses_named_mtls_credential(monkeypatch, tmp_path):
+@pytest.mark.parametrize("method", METHODS)
+async def test_actual_tls_a2a_call_uses_named_mtls_credential(monkeypatch, tmp_path, method):
     with auth_tls_receiver(tmp_path) as tls:
         certificate, private_key = tls.certificates["client-A"]
         monkeypatch.setenv("A2A_TEST_CERT", str(certificate))
@@ -133,21 +141,22 @@ async def test_actual_tls_a2a_call_uses_named_mtls_credential(monkeypatch, tmp_p
             http = client(transport, True, verify_tls=tls.ca_bundle)
             authentication = named_authentication("mtls", http, ca_bundle_env="A2A_TEST_CA")
             result = await ProtocolServices(http).call(
-                "a2a", payload("SendMessage", endpoint), _authentication=authentication
+                "a2a", payload(method, endpoint), _authentication=authentication
             )
-            assert result["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
-            assert len(calls) == 1 and calls[0]["body"]["method"] == "SendMessage"
+            assert_method_result(method, result)
+            assert len(calls) == 1 and calls[0]["body"]["method"] == method
             assert calls[0]["headers"][b"a2a-version"] == b"1.0"
             with pytest.raises(_A2AOutcomeUncertain):
                 await ProtocolServices(client(transport, True, verify_tls=tls.ca_bundle)).call(
-                    "a2a", payload("SendMessage", endpoint)
+                    "a2a", payload(method, endpoint)
                 )
             assert len(calls) == 1
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["bearer", "api_key"])
-async def test_actual_tls_a2a_call_uses_named_http_credential(monkeypatch, tmp_path, kind):
+@pytest.mark.parametrize("method", METHODS)
+async def test_actual_tls_a2a_call_uses_named_http_credential(monkeypatch, tmp_path, kind, method):
     monkeypatch.setenv("A2A_TEST_SECRET", "selected-test-value")
     with auth_tls_receiver(tmp_path) as tls:
         monkeypatch.setenv("A2A_TEST_CA", tls.ca_bundle)
@@ -165,25 +174,26 @@ async def test_actual_tls_a2a_call_uses_named_http_credential(monkeypatch, tmp_p
             )
             selection = select_interface(card, explicit_endpoint="https://ignored.test/a2a")
             assert selection.endpoint == endpoint
-            value = payload("SendMessage", "https://ignored-user-server.test/a2a")
+            value = payload(method, "https://ignored-user-server.test/a2a")
             value["agentCard"] = card
             value["endpoint"] = endpoint
             result = await ProtocolServices(
                 http, a2a_credential_endpoints={"selected": (endpoint,)}
             ).call("a2a", value)
-            assert result["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
+            assert_method_result(method, result)
             assert len(calls) == 2 and calls[0]["method"] == "GET"
             assert b"authorization" not in calls[0]["headers"]
             assert b"x-api-key" not in calls[0]["headers"]
-            assert calls[1]["body"]["method"] == "SendMessage"
+            assert calls[1]["body"]["method"] == method
             name = b"authorization" if kind == "bearer" else b"x-api-key"
             expected = b"Bearer selected-test-value" if kind == "bearer" else b"selected-test-value"
             assert calls[1]["headers"][name] == expected
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method", METHODS)
 async def test_actual_tls_a2a_call_uses_named_oauth_credential_for_card_endpoint(
-    monkeypatch, tmp_path
+    monkeypatch, tmp_path, method
 ):
     monkeypatch.setenv("A2A_TEST_ID", "local-client")
     monkeypatch.setenv("A2A_TEST_SECRET", "private-local-secret")
@@ -209,17 +219,17 @@ async def test_actual_tls_a2a_call_uses_named_oauth_credential_for_card_endpoint
                 oauth_resource_endpoints=[endpoint],
                 oauth_resource=tls.origin + "/resource",
             )
-            value = payload("SendMessage", "https://ignored-user-server.test/a2a")
+            value = payload(method, "https://ignored-user-server.test/a2a")
             value["agentCard"] = card
             value["endpoint"] = endpoint
             result = await ProtocolServices(
                 http, a2a_credential_endpoints={"selected": (endpoint,)}
             ).call("a2a", value, _authentication=authentication)
-            assert result["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
+            assert_method_result(method, result)
             assert len(tls.requests) == 1 and tls.requests[0][0] == "/token"
             assert len(calls) == 2 and calls[0]["method"] == "GET"
             assert b"authorization" not in calls[0]["headers"]
-            assert calls[1]["body"]["method"] == "SendMessage"
+            assert calls[1]["body"]["method"] == method
             assert calls[1]["headers"][b"authorization"] == b"Bearer real-issued-token"
 
 
