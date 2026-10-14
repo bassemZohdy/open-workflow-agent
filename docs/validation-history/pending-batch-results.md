@@ -1079,3 +1079,20 @@ The ADK operation job's command budget is raised to 25 minutes and its hosted
 job limit to 30 minutes, retaining a finite bound and cleanup margin. The next
 exact-source PostgreSQL run must confirm the remaining case and complete suite;
 S3-03 stays open until that run and its other acceptance gates pass.
+
+### A2A acceptance follow-up at `dc45dc6`
+
+The focused core A2A suite passed on Windows (176 passed, 64 deprecation
+warnings in 123.68 seconds), including the card-selection, cross-binding
+waiting-task resume, unknown/foreign task access, optional-method rejection and
+partial TCP SubscribeToTask response-loss witnesses. The ADK/SQLite and
+LangGraph/SQLite initial-delivery process-recovery selections passed 6 cases
+each, with 6 cases skipped and 12 deselected per engine; those selections also
+assert that the retained skill identity survives the process stop. The CI and
+consolidation tracking selections passed 64 tests, including the new finite
+PostgreSQL ADK operation timeout assertions. Markdown link validation,
+implementation/tracker checks, Ruff, formatting and `git diff --check` passed.
+
+No backlog checkbox advanced: A2A01-A2A08 remain open where their stated
+cross-products and hosted evidence are incomplete, and S3-03 remains open until
+the extended PostgreSQL ADK operation job is confirmed on a hosted rerun.
