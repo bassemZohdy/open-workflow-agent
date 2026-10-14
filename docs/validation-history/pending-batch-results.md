@@ -945,3 +945,11 @@ Markdown relative-link validation passed, and `git diff --check` passed. The
 associated SDK HTTP implementation selection passed 133 tests at parent source
 `85aeb96`, whose implementation is unchanged here. Hosted requalification
 remains pending.
+
+### A2A stream expiry wording at `323696e`
+
+The A2A08 evidence table now names the proven server-side stream timeout
+separately from durable Task/receipt expiry, which remains unqualified. This
+prevents bounded stream cleanup tests from implying a durable task-retention
+policy. At exact source `323696e`, the implementation/tracker audit passed (6
+tests), Markdown relative-link validation passed, and `git diff --check` passed.
