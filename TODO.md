@@ -160,18 +160,26 @@ treated as a deferred task or as additional feature completion.
   resumes, verify a real timer's terminal Task projection, and reject A2A resume
   when archived workflow or invocation-binding evidence is missing or corrupt.
   A real nested-child timer now has a passing JSON-RPC terminal-value projection
-  witness with immutable repeated GetTask reads; HTTP+JSON child setup and child
-  fault projection remain open.
+  witness with immutable repeated GetTask reads. HTTP+JSON SendMessage creates
+  both parent and child rows and their effect records, but after five seconds
+  both invocations remain running without the parent's child-wait registration;
+  trace its dispatch/scheduling path against JSON-RPC before changing runtime
+  code. Child-fault projection remains open.
   The earlier 217-case core A2A profile is verified at `e45115c`; the malformed-
   Part/data resume and in-process stale-generation tests pass locally. This
   follow-up adds HTTP+JSON rejection for all six optional v1 operations and a
-  LangGraph native-checkpoint corruption witness; the latter requires isolated
-  engine SDK and PostgreSQL qualification. The owner-authority resume matrix
+  LangGraph native-checkpoint and missing/corrupt receiver-receipt witnesses;
+  these actual-native cases require isolated engine SDK and PostgreSQL
+  qualification. The owner-authority resume matrix
   likewise requires independent engine SDK environments, and the ADK
   expired-approval lease fixture awaits hosted requalification. A hosted
   fail-closed owner-authority assertion mismatch is corrected to the existing
   `task_not_resumeable` response contract. Exact-source
-  hosted results remain pending. See the
+  hosted results remain pending. A2A08 expiry semantics are not currently
+  defined: the existing 24-hour EventStore retention applies only to eligible
+  inbox arrivals, not durable Tasks or receipts. The acceptance record captures
+  the policy decision and recovery-evidence requirements before an expiry test
+  can be written. See the
   [gate-by-gate acceptance record](docs/s3-02-a2a-acceptance.md) and
   [retained validation history](docs/validation-history/pending-batch-results.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
