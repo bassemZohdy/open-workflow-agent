@@ -541,17 +541,17 @@ async def test_a2a_resume_rejects_changed_owner_authority_before_mutation(
                         },
                     )
                     assert response.status_code == 200, response.text
-                    assert response.json()["error"]["message"] == "workflow execution failed"
-                    assert response.json()["error"]["data"]["code"] == ("invalid_invocation_state")
+                    assert response.json()["error"]["code"] == -32000
+                    assert response.json()["error"]["message"] == "task is not accepting input"
                 else:
                     response = await client.post(
                         "/a2a/message:send",
                         headers={"a2a-version": A2A_PROTOCOL_VERSION},
                         json={"message": message},
                     )
-                    assert response.status_code == 500, response.text
-                    assert response.json()["error"]["details"][0]["metadata"]["code"] == (
-                        "invalid_invocation_state"
+                    assert response.status_code == 409, response.text
+                    assert response.json()["error"]["details"][0]["metadata"]["owaCode"] == (
+                        "task_not_resumeable"
                     )
 
                 assert "owner-evidence-secret" not in response.text and TOKEN not in response.text

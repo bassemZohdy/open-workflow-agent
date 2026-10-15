@@ -1130,3 +1130,38 @@ PostgreSQL CI run `38645586498` passed at exact source `e45115c`, including the
 ADK operation-adapter job with a 25-minute test command and 30-minute job cap.
 The remaining main CI jobs on that source are still running. No A2A or S3-03
 backlog checkbox advanced.
+
+### Integrated qualification batch at `bf7d507` — hosted gates pending
+
+The full Windows root command collected the repository suite and completed in
+7,343.91 seconds: 4,621 passed, 2,986 skipped and 13 failed; coverage was
+90.49%. Four failures were CI-selector assertions that expected the same
+PostgreSQL command budget for both engines. The workflow uses a 25-minute shell
+and 30-minute job for ADK, and a 20-minute shell and 25-minute job for
+LangGraph. The four selectors now assert those actual values; all four CI
+selection files pass (20 tests).
+
+The remaining nine failures were timeouts during this two-hour local run:
+checkpoint wait-resume and completion recovery (ADK/SQLite), late invocation
+ownership (ADK/SQLite), retry drain (LangGraph/SQLite), A2A timer projection,
+and four bounded MCP stdio rejection cases. Replaying those affected test
+functions together passed 95 cases with 88 environment skips in 355.98 seconds.
+The suite therefore has no remaining reproducible failure from that local run;
+the full root command should still be judged by the hosted CI run on the exact
+source.
+
+New malformed A2A Part/data resume rejection passed on both bindings, and the
+in-process SQLite stale-generation fence passed. Owner-authority A2A resume
+cases and the ADK expired-approval case require independent native SDK
+environments and were skipped in the root environment; their hosted gates are
+still required. The expired-approval fixture now leaves its normal 30-second
+invocation lease independent from the approval's 0.5-second deadline, so slow
+native setup cannot expire invocation ownership before the approval-expiry
+observer is tested.
+
+Ruff format/lint, strict mypy across 134 source files, Markdown link validation,
+implementation-audit tests (4), root/core builds and `git diff --check` passed.
+The feature branch and existing draft PR head both contain `bf7d507`; the CI,
+PostgreSQL, External Sandbox, Security, Agent Framework and Docs workflows were
+queued at the time this entry was written. No task or feature gate is advanced
+by this local batch alone.
