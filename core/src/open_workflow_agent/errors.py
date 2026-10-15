@@ -15,6 +15,8 @@ class OwaError(Exception):
         super().__init__(message)
         self.message = message
         self.details = details or {}
+        # Private task routing identity; public diagnostics retain source pointers.
+        self._operation_id: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {"code": self.code, "message": self.message, "details": self.details}
@@ -49,6 +51,10 @@ class ModelError(OwaError):
     code = "model_error"
 
 
+class _ModelOutcomeUncertain(ModelError):
+    """A provider attempt has no known reply; ordinary retry must not resend it."""
+
+
 class AgentError(OwaError):
     code = "agent_error"
 
@@ -67,6 +73,14 @@ class ToolError(OwaError):
 
 class WorkflowExecutionError(OwaError):
     code = "workflow_execution_error"
+
+
+class _McpOutcomeUncertain(WorkflowExecutionError):
+    """Private transport outcome that cannot establish a known tool receipt."""
+
+
+class _A2AOutcomeUncertain(WorkflowExecutionError):
+    """Private sent A2A request without a validated correlated outcome."""
 
 
 class SandboxError(WorkflowExecutionError):
@@ -107,6 +121,10 @@ class InvocationNotFound(OwaError):
 class InvocationStateError(OwaError):
     code = "invalid_invocation_state"
     status_code = 409
+
+
+class InvocationStateConflict(InvocationStateError):
+    """A newer durable invocation record invalidated this writer's snapshot."""
 
 
 class InvocationCancelled(OwaError):

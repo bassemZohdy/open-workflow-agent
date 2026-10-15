@@ -24,26 +24,14 @@ versions; and the catalog alias is the name under `use.catalogs`.
 
 ## Function definition
 
-The descriptive fields make a function discoverable and document its contract.
-The executable fields are `call` and `with`:
+The function file contains the pinned OWS protocol task body. Its executable
+body selects `call` and `with` and may use standard task input/condition,
+timeout, output/export, metadata and transitions. These rules use the common
+task executor on both engines. Descriptive name/version/namespace fields and
+unsupported features fail validation instead of being ignored. Name and version come from
+the exact catalog reference and resource path:
 
 ```yaml
-name: summarize
-version: 1.0.0
-namespace: partner
-description: Summarize a supplied document.
-input:
-  type: object
-  required: [text]
-  properties:
-    text:
-      type: string
-output:
-  type: object
-  properties:
-    summary:
-      type: string
-
 call: http
 with:
   method: post
@@ -133,3 +121,10 @@ uv run pytest tests/core/test_external_catalog.py \
 For rollback, remove the workflow's `use.catalogs` reference and the corresponding
 deployment policy. Local built-in functions (`agent:1.0.0@default` and
 `llm:1.0.0@default`) remain available without an external catalog.
+
+The asynchronous compilers now freeze resolved external function content and
+include its digest in workflow identity. Application text is not an import;
+captured task controls run through the portable pipeline. Unsupported remote
+features fail admission. See
+[reusable definitions and catalog identity](reusable-definitions.md) for exact
+resolution, serialization and version-selection boundaries.

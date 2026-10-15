@@ -2,9 +2,11 @@
 
 from typing import Any
 
+from open_workflow_agent.child_suspension import ChildSuspension
 from open_workflow_agent.engine import EngineCapabilities, InvocationResult, PortableWorkflowEngine
 from open_workflow_agent.errors import InvocationCancelled
 from open_workflow_agent.persistence import ExecutionHandle
+from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.workflow import WorkflowPlan
 
 from .native import AgentFrameworkNativeAdapter
@@ -25,12 +27,18 @@ class AgentFrameworkWorkflowEngine(PortableWorkflowEngine):
     async def invoke(
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> InvocationResult:
+        return await super().invoke(workflow, invocation, input_data)
+
+    async def _invoke_owned(
+        self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
+    ) -> InvocationResult:
         if not self.native.available:
-            return await super().invoke(workflow, invocation, input_data)
+            return await super()._invoke_owned(workflow, invocation, input_data)
 
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
         try:
+            input_data = await self._prepare_workflow_input_owned(workflow, invocation, input_data)
             output = await self.native.invoke(
                 lambda value: self.executor.execute(
                     workflow,
@@ -44,7 +52,13 @@ class AgentFrameworkWorkflowEngine(PortableWorkflowEngine):
             else:
                 result = self._record_result(invocation, status="completed", output=output)
             return result
+        except (TimerSuspension, ChildSuspension):
+            if invocation.status == "running":
+                self.services.invocations.update(invocation, status="waiting")
+            result = self._stored_result(invocation)
+            return result
         except InvocationCancelled as exc:
+            self._raise_if_execution_interrupted(active)
             result = self._record_result(invocation, status="cancelled", error=exc.as_dict())
             return result
         except Exception as exc:
@@ -63,7 +77,7 @@ class AgentFrameworkWorkflowEngine(PortableWorkflowEngine):
             if result is not None:
                 self._finish_active(invocation, result)
             else:
-                self._active.pop(invocation.invocation_id, None)
+                self._abandon_active(invocation)
 
 
 __all__ = ["AgentFrameworkWorkflowEngine"]

@@ -1,0 +1,68 @@
+document:
+  dsl: 1.0.3
+  namespace: patterns
+  name: team-coordinator
+  version: 1.0.0
+  title: Team Coordinator
+  summary: Bounded canonical OWS recipe. Named roles are immutable deployment bindings;
+    model output never grants authority.
+input:
+  schema:
+    format: json
+    document:
+      type: object
+      required:
+      - question
+      properties:
+        question:
+          type: string
+          maxLength: 65536
+      additionalProperties: false
+timeout:
+  after:
+    seconds: 120
+do:
+- workers:
+    fork:
+      branches:
+      - researcher:
+          run:
+            workflow:
+              namespace: patterns
+              name: researcher-worker
+              version: 1.0.0
+              input:
+                question: ${ .question }
+          timeout:
+            after:
+              seconds: 40
+      - finance:
+          run:
+            workflow:
+              namespace: patterns
+              name: finance-worker
+              version: 1.0.0
+              input:
+                question: ${ .question }
+          timeout:
+            after:
+              seconds: 40
+- synthesize:
+    call: agent-synthesizer:1.0.0@default
+    with:
+      input: ${ {question:$workflow.input.question,workers:.} }
+    timeout:
+      after:
+        seconds: 30
+    output:
+      schema:
+        format: json
+        document:
+          type: object
+          required:
+          - answer
+          properties:
+            answer:
+              type: string
+              maxLength: 65536
+          additionalProperties: false

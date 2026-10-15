@@ -13,7 +13,7 @@ Feature: Conditional Tasks
       version: '1.0.0'
     do:
       - markEnabled:
-          if: .enabled
+          if: '${ .enabled }'
           set: '${ . + { branch: "enabled" } }'
       - finish:
           set: '${ . + { completed: true } }'
@@ -40,7 +40,7 @@ Feature: Conditional Tasks
       version: '1.0.0'
     do:
       - markEnabled:
-          if: .enabled
+          if: '${ .enabled }'
           set: '${ . + { branch: "must-not-run" } }'
       - finish:
           set: '${ . + { completed: true } }'

@@ -984,6 +984,12 @@ The detailed verified record lives in `docs/protocol-baselines.md`.
 
 Current reviewed baselines:
 
+Open Workflow 1.0.3 is an explicit exception to the stable-release policy:
+upstream marks its tag as prerelease. OWA preserves the existing public DSL
+and the unmodified reviewed schema snapshot, whose commit and SHA-256 are
+recorded in `resources/protocol-baselines.yaml`. The snapshot differs from
+the release tag; no full conformance claim follows from either pin.
+
 ```text
 Open Workflow Specification  1.0.3
 A2A Protocol                 1.0.1
@@ -1073,6 +1079,12 @@ streaming/resubscription. It does not claim broad/full A2A conformance or
 implement push notifications.
 
 This sequence keeps A2A in core and reuses common invocation/durability semantics rather than implementing engine-specific A2A code.
+
+The completion statement above applies to the previously released bounded
+inbound profile. The ordered backlog tracks additional workflow-to-agent and
+agent-to-workflow integration and fresh peer/native/backend qualification under
+S3-02; those gates remain open until their evidence passes. See
+[`TODO.md`](TODO.md) and the [S3-02 acceptance plan](docs/s3-02-a2a-acceptance.md).
 
 The post-release native-depth decision is settled for the current product
 scope: retain ADK and LangGraph as native execution envelopes around the

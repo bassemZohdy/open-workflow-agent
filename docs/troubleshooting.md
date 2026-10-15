@@ -32,7 +32,7 @@ Catalog references with integrity pins must match the configured SHA-256 digest 
 ### PostgreSQL connectivity
 
 - Use `postgresql://user:password@host:5432/db` in `persistence.datasource` (engine extras `postgres` provide the driver; the published images include it).
-- In Compose, the datasource is injected as `postgresql://...@postgres:5432/...`; the service must be healthy first (`docker compose ps`).
+- Compose uses embedded SQLite by default. Add `compose.postgres.yaml` to inject `postgresql://...@postgres:5432/...` with database health ordering. Existing PostgreSQL deployments must retain that override and their original volumes.
 - Common stores live in an isolated schema namespace; ADK/LangGraph checkpoints use their own namespaces. Resetting state means deleting the namespace/tables — not just the container.
 
 ### Approvals API returns authorization errors

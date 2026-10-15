@@ -1,0 +1,84 @@
+document:
+  dsl: 1.0.3
+  namespace: patterns
+  name: multi-perspective
+  version: 1.0.0
+  title: Multi Perspective
+  summary: Bounded canonical OWS recipe. Named roles are immutable deployment bindings;
+    model output never grants authority.
+input:
+  schema:
+    format: json
+    document:
+      type: object
+      required:
+      - question
+      properties:
+        question:
+          type: string
+          maxLength: 65536
+      additionalProperties: false
+timeout:
+  after:
+    seconds: 120
+do:
+- perspectives:
+    fork:
+      branches:
+      - research:
+          call: agent-researcher:1.0.0@default
+          with:
+            input: ${ .question }
+          timeout:
+            after:
+              seconds: 30
+          output:
+            schema:
+              format: json
+              document:
+                type: object
+                required:
+                - answer
+                properties:
+                  answer:
+                    type: string
+                    maxLength: 65536
+                additionalProperties: false
+      - risk:
+          call: agent-risk:1.0.0@default
+          with:
+            input: ${ .question }
+          timeout:
+            after:
+              seconds: 30
+          output:
+            schema:
+              format: json
+              document:
+                type: object
+                required:
+                - answer
+                properties:
+                  answer:
+                    type: string
+                    maxLength: 65536
+                additionalProperties: false
+- synthesize:
+    call: agent-synthesizer:1.0.0@default
+    with:
+      input: ${ {question:$workflow.input.question,perspectives:.} }
+    timeout:
+      after:
+        seconds: 30
+    output:
+      schema:
+        format: json
+        document:
+          type: object
+          required:
+          - answer
+          properties:
+            answer:
+              type: string
+              maxLength: 65536
+          additionalProperties: false

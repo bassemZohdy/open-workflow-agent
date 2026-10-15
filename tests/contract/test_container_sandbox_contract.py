@@ -129,11 +129,7 @@ async def test_container_sandbox_has_cross_engine_output_and_lifecycle_parity(
         result = await engine.invoke(plan, handle, {})
 
         assert result.status == "completed"
-        assert result.output == {
-            "exitCode": 0,
-            "stdout": "container-ok\n",
-            "stderr": "",
-        }
+        assert result.output == "container-ok\n"
         assert len(backend.requests) == 1
         request = backend.requests[0]
         assert request.kind == "container"

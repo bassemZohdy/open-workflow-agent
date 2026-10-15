@@ -2,38 +2,229 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import json
+import math
 import os
 import re
 from pathlib import Path
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from ._version import __version__
-from .errors import ConfigurationError
-from .security import AuthorizationPolicy, SecurityConfig
+from .errors import ConfigurationError, ToolError
+from .security import (
+    AuthorizationPolicy,
+    ExecutionAuthorizationConfig,
+    SecretReference,
+    SecurityConfig,
+)
+
+if TYPE_CHECKING:
+    from .grpc_client import GrpcBinding
+
 
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _IMAGE_DIGEST = re.compile(r"^.+@sha256:[0-9a-fA-F]{64}$")
+MODEL_CREDENTIAL_OPTIONS = frozenset(
+    {
+        "api_key",
+        "azure_ad_token",
+        "aws_access_key_id",
+        "aws_secret_access_key",
+        "aws_session_token",
+        "vertex_credentials",
+    }
+)
+ROLE_MODEL_OPTIONS = frozenset(
+    {
+        "max_tokens",
+        "max_completion_tokens",
+        "top_p",
+        "seed",
+        "presence_penalty",
+        "frequency_penalty",
+        "stop",
+        "timeout",
+    }
+)
 
 
 class StrictModel(BaseModel):
-    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+    model_config = ConfigDict(extra="forbid", validate_assignment=True, hide_input_in_errors=True)
+
+
+class ProviderBoundsConfig(StrictModel):
+    """Optional finite provider adapter policy; it grants no new provider authority."""
+
+    id: str = "completion"
+    version: str = "1"
+    timeout_seconds: float = Field(default=30, gt=0, le=120, allow_inf_nan=False, strict=True)
+    max_input_bytes: int = Field(default=1_048_576, ge=1, le=16_777_216, strict=True)
+    max_output_bytes: int = Field(default=1_048_576, ge=1, le=16_777_216, strict=True)
+    max_tool_calls: int = Field(default=16, ge=0, le=64, strict=True)
+    max_argument_bytes: int = Field(default=65_536, ge=1, le=1_048_576, strict=True)
+
+    @field_validator("id", "version")
+    @classmethod
+    def bounded_reference(cls, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}", value):
+            raise ValueError("provider bound reference is malformed")
+        return value
 
 
 class ModelConfig(StrictModel):
-    provider: str = "litellm"
+    provider: Literal["fake", "litellm"] = "fake"
     name: str = "fake/default"
     temperature: float = 0.0
     options: dict[str, Any] = Field(default_factory=dict)
+    credentials: dict[str, SecretReference] = Field(default_factory=dict)
+    bounds: ProviderBoundsConfig | None = None
+
+    @model_serializer(mode="wrap")
+    def serialized_model(self, handler: SerializerFunctionWrapHandler) -> Any:
+        value = handler(self)
+        if self.bounds is None:
+            value.pop("bounds", None)
+        return value
+
+    @model_validator(mode="after")
+    def validate_credential_references(self) -> ModelConfig:
+        if (
+            set(self.options) & MODEL_CREDENTIAL_OPTIONS
+            or set(self.credentials) - MODEL_CREDENTIAL_OPTIONS
+        ):
+            raise ValueError("model credentials require explicit supported deployment references")
+        return self
+
+    @model_validator(mode="before")
+    @classmethod
+    def infer_default_provider(cls, value: Any) -> Any:
+        # Preserve the model-only configuration contract for real providers;
+        # the packaged fake namespace is usable without external credentials.
+        if isinstance(value, dict) and "provider" not in value:
+            name = value.get("name", "fake/default")
+            provider = "fake" if isinstance(name, str) and name.startswith("fake/") else "litellm"
+            return {**value, "provider": provider}
+        return value
+
+
+class AgentRoleConfig(StrictModel):
+    id: str
+    version: str = "1.0.0"
+    model: ModelConfig = Field(default_factory=ModelConfig)
+    instruction: str = ""
+    tools: list[str] = Field(default_factory=list)
+    max_rounds: int = Field(default=8, ge=1, le=32, strict=True)
+    max_model_calls: int = Field(default=8, ge=1, le=32, strict=True)
+    max_tool_calls: int = Field(default=16, ge=0, le=64, strict=True)
+    max_child_invocations: int = Field(default=0, ge=0, le=0, strict=True)
+    max_output_bytes: int = Field(default=1_048_576, ge=1, le=4_194_304, strict=True)
+    policy: AuthorizationPolicy | None = None
+    output_schema: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def validate_finite_role(self) -> AgentRoleConfig:
+        if (
+            not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,127}", self.id)
+            or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?", self.version)
+            or len(self.version) > 64
+        ):
+            raise ValueError("agent role binding requires bounded explicit identity/version")
+        if (
+            len(self.instruction.encode("utf-8")) > 16_384
+            or len(self.tools) > 64
+            or len(self.tools) != len(set(self.tools))
+            or any(not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,127}", name) for name in self.tools)
+        ):
+            raise ValueError("agent role instruction/tool declaration exceeds its finite profile")
+        if (
+            self.model.provider not in {"fake", "litellm"}
+            or not self.model.name
+            or len(self.model.name.encode()) > 256
+            or not math.isfinite(self.model.temperature)
+            or not 0 <= self.model.temperature <= 2
+            or set(self.model.options) - ROLE_MODEL_OPTIONS
+        ):
+            raise ValueError("agent role model descriptor is unqualified")
+        for key, value in self.model.options.items():
+            if key in {"max_tokens", "max_completion_tokens"}:
+                valid = type(value) is int and 1 <= value <= 32_768
+            elif key == "seed":
+                valid = type(value) is int and -(2**31) <= value < 2**31
+            elif key == "stop":
+                items = [value] if type(value) is str else value
+                valid = (
+                    type(items) is list
+                    and len(items) <= 8
+                    and all(type(item) is str and 0 < len(item.encode()) <= 256 for item in items)
+                )
+            else:
+                valid = (
+                    type(value) in {int, float}
+                    and math.isfinite(value)
+                    and {
+                        "top_p": (0, 1),
+                        "timeout": (0.001, 120),
+                        "presence_penalty": (-2, 2),
+                        "frequency_penalty": (-2, 2),
+                    }[key][0]
+                    <= value
+                    <= {
+                        "top_p": (0, 1),
+                        "timeout": (0.001, 120),
+                        "presence_penalty": (-2, 2),
+                        "frequency_penalty": (-2, 2),
+                    }[key][1]
+                )
+            if not valid:
+                raise ValueError("agent role model option is outside its finite profile")
+        from .agent_roles import validate_role_schema
+
+        validate_role_schema(self.output_schema)
+        if self.policy is not None and (
+            len(self.policy.rules) > 256
+            or any(
+                len(values) > 128 or any(len(item.encode()) > 4096 for item in values)
+                for rule in self.policy.rules
+                for values in (rule.actions, rule.resources, rule.roles, rule.scopes, rule.audience)
+            )
+        ):
+            raise ValueError("agent role policy exceeds its finite profile")
+        if len(json.dumps(self.model_dump(mode="json"), allow_nan=False).encode()) > 262_144:
+            raise ValueError("agent role descriptor exceeds its finite profile")
+        return self
 
 
 class AgentConfig(StrictModel):
     name: str = "default"
     instruction: str = "You are a helpful assistant."
     tools: list[str] = Field(default_factory=list)
+    roles: dict[str, AgentRoleConfig] = Field(default_factory=dict)
+
+    @field_validator("roles")
+    @classmethod
+    def validate_role_names(cls, value: dict[str, AgentRoleConfig]) -> dict[str, AgentRoleConfig]:
+        if len(value) > 32 or any(
+            not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", name) for name in value
+        ):
+            raise ValueError("agent roles require bounded lowercase catalog names")
+        return value
 
 
 class CatalogAuthenticationConfig(StrictModel):
@@ -146,11 +337,37 @@ class ExternalCatalogConfig(StrictModel):
         return self
 
 
+class ExternalResourceConfig(ExternalCatalogConfig):
+    """Exact schema URLs and mandatory digest pins; independent catalog trust."""
+
+    require_integrity_pin: Literal[True] = True
+
+    @field_validator("allowed_endpoints")
+    @classmethod
+    def validate_allowed_endpoints(cls, value: list[str]) -> list[str]:
+        endpoints = [endpoint.strip() for endpoint in value]
+        if len(set(endpoints)) != len(endpoints):
+            raise ValueError("schema resource endpoints must be unique")
+        for endpoint in endpoints:
+            parsed = urlparse(endpoint)
+            if (
+                parsed.scheme != "https"
+                or not parsed.hostname
+                or parsed.username
+                or parsed.password
+                or parsed.fragment
+                or any(char.isspace() for char in endpoint)
+            ):
+                raise ValueError("schema resource endpoints must be exact HTTPS document URLs")
+        return endpoints
+
+
 class WorkflowConfig(StrictModel):
     path: str | None = None
     definition: dict[str, Any] | None = None
     catalog: list[dict[str, Any]] = Field(default_factory=list)
     external_catalogs: dict[str, ExternalCatalogConfig] = Field(default_factory=dict)
+    external_resources: dict[str, ExternalResourceConfig] = Field(default_factory=dict)
 
 
 class ReloadConfig(StrictModel):
@@ -174,9 +391,48 @@ class EmbeddingConfig(StrictModel):
     revision: str = "ea78891063587eb050ed4166b20062eaf978037c"
 
 
+class MemoryBoundsConfig(StrictModel):
+    enabled: bool = False
+    id: str = "principal-memory"
+    version: str = "1"
+    max_text_bytes: int = Field(default=65_536, ge=1, le=1_048_576, strict=True)
+    max_metadata_bytes: int = Field(default=16_384, ge=1, le=262_144, strict=True)
+    max_query_bytes: int = Field(default=4096, ge=1, le=65_536, strict=True)
+    max_query_terms: int = Field(default=32, ge=1, le=128, strict=True)
+    max_results: int = Field(default=100, ge=1, le=1000, strict=True)
+    max_entries: int = Field(default=1000, ge=1, le=10_000, strict=True)
+    max_namespace_bytes: int = Field(default=16_777_216, ge=1, le=67_108_864, strict=True)
+    max_scan_rows: int = Field(default=1000, ge=1, le=10_000, strict=True)
+    retention_seconds: float | None = Field(
+        default=None, gt=0, le=31_536_000, allow_inf_nan=False, strict=True
+    )
+    sweep_limit: int = Field(default=100, ge=1, le=1000, strict=True)
+
+    @field_validator("id", "version")
+    @classmethod
+    def bounded_reference(cls, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}", value):
+            raise ValueError("memory bound reference is malformed")
+        return value
+
+    @model_validator(mode="after")
+    def finite_scan(self) -> MemoryBoundsConfig:
+        if self.max_entries > self.max_scan_rows:
+            raise ValueError("memory entries must fit the finite scan")
+        return self
+
+
 class MemoryConfig(StrictModel):
     enabled: bool | Literal["auto"] = "auto"
     database: str = "/data/memory.sqlite3"
+    bounds: MemoryBoundsConfig | None = None
+
+    @model_serializer(mode="wrap")
+    def serialized_memory(self, handler: SerializerFunctionWrapHandler) -> Any:
+        value = handler(self)
+        if self.bounds is None:
+            value.pop("bounds", None)
+        return value
 
 
 class PersistenceConfig(StrictModel):
@@ -246,6 +502,7 @@ class A2AConfig(StrictModel):
     authorization: AuthorizationPolicy | None = None
     skills: tuple[A2ASkillConfig, ...] = Field(default_factory=tuple)
     max_message_chars: int = Field(default=100_000, gt=0)
+    max_pending_tasks: int = Field(default=1000, ge=1, le=100_000)
 
     @field_validator("path")
     @classmethod
@@ -292,6 +549,22 @@ class A2AConfig(StrictModel):
 class ApprovalConfig(StrictModel):
     enabled: bool = False
     operator_security_profile: str | None = None
+    protected: bool = False
+    actor_security_profiles: list[str] = Field(default_factory=list, max_length=32)
+    max_pending: int = Field(default=1000, ge=1, le=10000)
+    max_policy_bytes: int = Field(default=65536, ge=1024, le=65536)
+    poll_interval_seconds: float = Field(default=0.25, gt=0, le=60, allow_inf_nan=False)
+    scan_limit: int = Field(default=100, ge=1, le=1000)
+
+    @model_validator(mode="after")
+    def validate_protected_profile(self) -> ApprovalConfig:
+        if len(set(self.actor_security_profiles)) != len(self.actor_security_profiles) or any(
+            not name or name != name.strip() for name in self.actor_security_profiles
+        ):
+            raise ValueError("approval actor profile references must be unique and nonempty")
+        if self.protected and (not self.enabled or not self.actor_security_profiles):
+            raise ValueError("protected approvals require enabled approvals and actor profiles")
+        return self
 
 
 class DockerSandboxConfig(StrictModel):
@@ -407,6 +680,97 @@ class KubernetesSandboxConfig(StrictModel):
         return self
 
 
+class McpStdioServerConfig(StrictModel):
+    """One exact deployment-approved executable binding; no workflow secret values."""
+
+    id: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9_.-]{0,63}$")
+    command: str
+    arguments: list[str] = Field(default_factory=list, max_length=128)
+    environment: dict[str, str] = Field(default_factory=dict, max_length=64)
+    secret_environment: dict[str, str] = Field(default_factory=dict, max_length=64)
+
+    @field_validator("command")
+    @classmethod
+    def validate_command(cls, value: str) -> str:
+        if not Path(value).is_absolute() or "\x00" in value or "${" in value:
+            raise ValueError("MCP stdio command must be an absolute deployment executable")
+        return value
+
+    @model_validator(mode="after")
+    def validate_environment(self) -> McpStdioServerConfig:
+        names = {*self.environment, *self.secret_environment}
+        if any(not _ENVIRONMENT_NAME.fullmatch(name) for name in names):
+            raise ValueError("MCP stdio environment names are invalid")
+        if names & {"PATH", "HOME", "TMPDIR"} or self.environment.keys() & self.secret_environment:
+            raise ValueError("MCP stdio environment overrides a reserved or secret binding")
+        if any(not _ENVIRONMENT_NAME.fullmatch(name) for name in self.secret_environment.values()):
+            raise ValueError("MCP stdio secret bindings must be deployment environment references")
+        if any("\x00" in value or "${" in value for value in self.arguments):
+            raise ValueError("MCP stdio arguments must be fixed deployment strings")
+        if any("\x00" in value or "${" in value for value in self.environment.values()):
+            raise ValueError("MCP stdio environment must be fixed deployment strings")
+        return self
+
+
+class McpStdioConfig(StrictModel):
+    enabled: bool = False
+    servers: list[McpStdioServerConfig] = Field(default_factory=list, max_length=64)
+    max_frame_bytes: int = Field(default=262_144, ge=128, le=4_000_000)
+    max_pending_frames: int = Field(default=4, ge=1, le=32)
+    max_sessions: int = Field(default=16, ge=1, le=256)
+
+    @model_validator(mode="after")
+    def validate_servers(self) -> McpStdioConfig:
+        if self.enabled and not self.servers:
+            raise ValueError("enabled MCP stdio requires registered deployment servers")
+        if len({server.id for server in self.servers}) != len(self.servers) or len(
+            {(server.command, tuple(server.arguments)) for server in self.servers}
+        ) != len(self.servers):
+            raise ValueError("MCP stdio server identities and executable bindings must be unique")
+        return self
+
+
+class SandboxBackgroundConfig(StrictModel):
+    """Explicit deployment opt-in for independently supervised internal jobs."""
+
+    model_config = ConfigDict(extra="forbid", validate_assignment=True, allow_inf_nan=False)
+
+    enabled: bool = False
+    max_pending: int = Field(default=1000, ge=1, le=10_000)
+    lease_seconds: float = Field(default=30, gt=0, le=3600)
+    io_timeout: float = Field(default=10, gt=0, le=1800)
+    poll_seconds: float = Field(default=0.25, gt=0, le=60)
+    scan_limit: int = Field(default=100, ge=1, le=1000)
+
+    @model_validator(mode="after")
+    def validate_delivery_bounds(self) -> SandboxBackgroundConfig:
+        if self.io_timeout > self.lease_seconds / 2:
+            raise ValueError("background io_timeout must not exceed half the job lease")
+        return self
+
+
+class ExecutableSourceConfig(StrictModel):
+    """Deployment-owned exact script bytes; not a workflow credential or fetch rule."""
+
+    profile: Literal["owa/executable-source/v1"] = "owa/executable-source/v1"
+    id: str
+    version: str
+    uri: str
+    language: Literal["python"] = "python"
+    code: str = Field(repr=False)
+    digest: str
+
+    @model_validator(mode="after")
+    def validate_capture(self) -> ExecutableSourceConfig:
+        from .executable_sources import ExecutableSource
+
+        try:
+            ExecutableSource.from_value(self.model_dump(mode="json"))
+        except Exception:
+            raise ValueError("executable source binding is invalid") from None
+        return self
+
+
 class SandboxConfig(StrictModel):
     """Deployment policy for the selected framework-neutral sandbox backend."""
 
@@ -414,6 +778,7 @@ class SandboxConfig(StrictModel):
     backend: Literal["internal", "docker", "kubernetes"] = "internal"
     allow_shell: bool = False
     script_runtimes: list[str] = Field(default_factory=lambda: ["python"])
+    script_sources: list[ExecutableSourceConfig] = Field(default_factory=list, max_length=32)
     timeout_seconds: float = 30.0
     max_input_bytes: int = 1_048_576
     max_output_bytes: int = 1_048_576
@@ -428,6 +793,8 @@ class SandboxConfig(StrictModel):
     process_count: int | None = 64
     docker: DockerSandboxConfig = Field(default_factory=DockerSandboxConfig)
     kubernetes: KubernetesSandboxConfig = Field(default_factory=KubernetesSandboxConfig)
+    mcp_stdio: McpStdioConfig = Field(default_factory=McpStdioConfig)
+    background: SandboxBackgroundConfig = Field(default_factory=SandboxBackgroundConfig)
 
     @field_validator("script_runtimes")
     @classmethod
@@ -500,6 +867,12 @@ class SandboxConfig(StrictModel):
             raise ValueError(
                 f"sandbox inherited_environment and secret_environment must not overlap: {overlap}"
             )
+        if any(
+            reference not in self.secret_environment
+            for server in self.mcp_stdio.servers
+            for reference in server.secret_environment.values()
+        ):
+            raise ValueError("MCP stdio secret references must be approved by sandbox policy")
         if self.enabled and self.backend == "docker" and not self.docker.allowed_images:
             raise ValueError(
                 "enabled Docker sandbox requires at least one deployment-approved image"
@@ -522,18 +895,179 @@ class SandboxConfig(StrictModel):
         return self
 
 
+class OpenApiToolBindingConfig(StrictModel):
+    """Deployment-owned immutable description for a configured agent tool."""
+
+    id: str = Field(min_length=1, max_length=256)
+    version: str = Field(min_length=1, max_length=256)
+    document_uri: str = Field(min_length=1, max_length=4096)
+    document: dict[str, Any]
+    digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+    @model_validator(mode="after")
+    def verify_description(self) -> OpenApiToolBindingConfig:
+        from .openapi_client import OpenApiDescription
+
+        captured = OpenApiDescription.capture(self.document_uri, self.document)
+        if captured.digest != self.digest:
+            raise ValueError("OpenAPI tool description digest differs from its deployment binding")
+        return self
+
+
 class ToolConfig(StrictModel):
     type: Literal["mcp", "openapi", "a2a"]
     name: str | None = None
     endpoint: str | None = None
     security_profile: str | None = None
     options: dict[str, Any] = Field(default_factory=dict)
+    openapi_binding: OpenApiToolBindingConfig | None = None
+
+    @model_validator(mode="after")
+    def validate_openapi_binding(self) -> ToolConfig:
+        if self.openapi_binding is not None and self.type != "openapi":
+            raise ValueError("OpenAPI operation bindings apply only to OpenAPI tools")
+        return self
+
+
+class GrpcBindingConfig(StrictModel):
+    """Immutable, deployment-owned original proto and compiled descriptor pair."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    proto_uri: str = Field(min_length=1, max_length=2048)
+    proto_filename: str = Field(min_length=1, max_length=1024)
+    proto_source: str = Field(min_length=1, max_length=1_048_576)
+    proto_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    descriptor_set_base64: str = Field(min_length=1, max_length=1_398_104)
+    descriptor_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    endpoint: str = Field(min_length=1, max_length=2048)
+    service: str = Field(min_length=1, max_length=256)
+    method: str = Field(min_length=1, max_length=128)
+    allow_insecure_loopback: bool = Field(default=False, strict=True)
+    application_status_profile: bool = Field(default=False, strict=True)
+    max_request_bytes: int = Field(default=4_000_000, gt=0, le=4_000_000, strict=True)
+    max_response_bytes: int = Field(default=4_000_000, gt=0, le=4_000_000, strict=True)
+
+    def to_binding(self, profile_id: str) -> GrpcBinding:
+        from .grpc_client import GrpcBinding
+
+        source = self.proto_source.encode("utf-8")
+        descriptor = base64.b64decode(self.descriptor_set_base64, validate=True)
+        if not 0 < len(source) <= 1_048_576 or not 0 < len(descriptor) <= 1_048_576:
+            raise ValueError("gRPC source and descriptor must fit the finite byte limits")
+        return GrpcBinding(
+            id=profile_id,
+            proto_uri=self.proto_uri,
+            proto_filename=self.proto_filename,
+            proto_source=source,
+            proto_sha256=self.proto_sha256,
+            descriptor_set=descriptor,
+            descriptor_sha256=self.descriptor_sha256,
+            endpoint=self.endpoint,
+            service=self.service,
+            method=self.method,
+            allow_insecure_loopback=self.allow_insecure_loopback,
+            application_status_profile=self.application_status_profile,
+            max_request_bytes=self.max_request_bytes,
+            max_response_bytes=self.max_response_bytes,
+        )
+
+    def recovery_snapshot(self, profile_id: str) -> dict[str, Any]:
+        """Compact fresh byte pins; readonly recovery imports no protocol SDK."""
+        source = self.proto_source.encode("utf-8")
+        descriptor = base64.b64decode(self.descriptor_set_base64, validate=True)
+        if (
+            not 0 < len(source) <= 1_048_576
+            or not 0 < len(descriptor) <= 1_048_576
+            or hashlib.sha256(source).hexdigest() != self.proto_sha256
+            or hashlib.sha256(descriptor).hexdigest() != self.descriptor_sha256
+        ):
+            raise ValueError("gRPC source and descriptor integrity is inconsistent")
+        return {
+            "profile": "owa/grpc-binding/v1",
+            "id": profile_id,
+            **self.model_dump(mode="json", exclude={"proto_source", "descriptor_set_base64"}),
+        }
+
+    @model_validator(mode="after")
+    def verify_descriptor(self) -> GrpcBindingConfig:
+        from .grpc_client import GrpcRegistry
+
+        try:
+            GrpcRegistry([self.to_binding("configuration-validation")])
+        except (ToolError, ValueError, UnicodeError):
+            raise ValueError("invalid or inconsistent gRPC deployment binding") from None
+        return self
 
 
 class ProtocolConfig(StrictModel):
     """Deployment policy for workflow-initiated outbound protocol calls."""
 
     security_profile: str | None = None
+    a2a_credential_endpoints: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    openapi_credential_endpoints: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    grpc_credential_endpoints: dict[str, tuple[str, ...]] = Field(default_factory=dict)
+    grpc_bindings: dict[str, GrpcBindingConfig] = Field(default_factory=dict)
+
+    @field_validator(
+        "a2a_credential_endpoints", "openapi_credential_endpoints", "grpc_credential_endpoints"
+    )
+    @classmethod
+    def validate_a2a_credential_endpoints(
+        cls,
+        value: dict[str, tuple[str, ...]],
+        info: ValidationInfo,
+    ) -> dict[str, tuple[str, ...]]:
+        protocol = {
+            "openapi_credential_endpoints": "OpenAPI",
+            "grpc_credential_endpoints": "gRPC",
+        }.get(info.field_name or "", "A2A")
+        if len(value) > 64:
+            raise ValueError(f"{protocol} credential bindings exceed the finite limit")
+        for profile, endpoints in value.items():
+            if not profile or len(profile) > 256 or not 1 <= len(endpoints) <= 64:
+                raise ValueError(f"{protocol} credential bindings require bounded named endpoints")
+            if len(set(endpoints)) != len(endpoints):
+                raise ValueError(f"{protocol} credential endpoints must be unique")
+            for endpoint in endpoints:
+                try:
+                    parsed = urlparse(endpoint)
+                    _ = parsed.port
+                except ValueError as error:
+                    raise ValueError(f"{protocol} credential endpoint is invalid") from error
+                if (
+                    len(endpoint) > 4096
+                    or parsed.scheme != "https"
+                    or not parsed.hostname
+                    or parsed.username is not None
+                    or parsed.password is not None
+                    or parsed.fragment
+                    or any(ord(character) < 33 for character in endpoint)
+                ):
+                    raise ValueError(
+                        f"{protocol} credential endpoints must be exact absolute HTTPS URLs"
+                    )
+                if info.field_name == "grpc_credential_endpoints" and (
+                    parsed.path not in {"", "/"} or parsed.query
+                ):
+                    raise ValueError("gRPC credentials must bind an exact channel origin")
+        return value
+
+    @field_validator("grpc_bindings")
+    @classmethod
+    def validate_grpc_bindings(
+        cls, value: dict[str, GrpcBindingConfig]
+    ) -> dict[str, GrpcBindingConfig]:
+        from .grpc_client import GrpcRegistry
+
+        if len(value) > 128 or any(
+            not re.fullmatch(r"[A-Za-z0-9_.-]{1,128}", name) for name in value
+        ):
+            raise ValueError("gRPC bindings require at most 128 bounded deployment names")
+        try:
+            GrpcRegistry([binding.to_binding(name) for name, binding in value.items()])
+        except (ToolError, ValueError):
+            raise ValueError("gRPC deployment bindings must be valid and unambiguous") from None
+        return value
 
 
 class RateLimitConfig(StrictModel):
@@ -647,6 +1181,47 @@ class ObservabilityConfig(StrictModel):
     log_format: str = "json"  # "json" or "text"
 
 
+class EventConfig(StrictModel):
+    """Deployment-owned bounds for embedded generic event delivery."""
+
+    backend: Literal["embedded", "memory"] = "embedded"
+    max_event_bytes: int = Field(default=1_048_576, ge=1, le=16_777_216)
+    max_retained_events: int = Field(default=10_000, ge=1, le=1_000_000)
+    max_retained_bytes: int = Field(default=67_108_864, ge=1, le=1_073_741_824)
+    max_subscriptions: int = Field(default=1000, ge=1, le=100_000)
+    max_outbox: int = Field(default=10_000, ge=1, le=1_000_000)
+    scan_batch: int = Field(default=128, ge=1, le=1000)
+    retention_seconds: float = Field(default=86_400, ge=1, le=31_536_000)
+    poll_interval_seconds: float = Field(default=0.05, ge=0.01, le=5)
+
+
+class ExecutionTimingConfig(StrictModel):
+    """Deployment calendar and bounded embedded dispatch controls."""
+
+    timezone: str = "UTC"
+    max_pending_timers: int = Field(default=1000, ge=1, le=100_000)
+    max_concurrency: int = Field(default=16, ge=1, le=1000)
+    schedule_batch_size: int = Field(default=128, ge=1, le=1000)
+    poll_interval_seconds: float = Field(default=0.05, ge=0.01, le=5)
+
+    @field_validator("timezone")
+    @classmethod
+    def validate_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError("timezone must be an available IANA timezone") from exc
+        return value
+
+
+class ChildWorkflowConfig(StrictModel):
+    """Deployment limits for one root invocation's child execution tree."""
+
+    max_depth: int = Field(default=32, ge=1, le=64)
+    max_children: int = Field(default=1000, ge=1, le=100_000)
+    max_concurrency: int = Field(default=16, ge=1, le=1000)
+
+
 class RuntimeConfig(StrictModel):
     agent: AgentConfig = Field(default_factory=AgentConfig)
     model: ModelConfig = Field(default_factory=ModelConfig)
@@ -659,11 +1234,17 @@ class RuntimeConfig(StrictModel):
     a2a: A2AConfig = Field(default_factory=A2AConfig)
     protocols: ProtocolConfig = Field(default_factory=ProtocolConfig)
     security: SecurityConfig = Field(default_factory=SecurityConfig)
+    execution_authorization: ExecutionAuthorizationConfig = Field(
+        default_factory=ExecutionAuthorizationConfig
+    )
     traffic_policy: TrafficPolicyConfig = Field(default_factory=TrafficPolicyConfig)
     sandbox: SandboxConfig = Field(default_factory=SandboxConfig)
     tools: list[ToolConfig] = Field(default_factory=list)
     server: ServerConfig = Field(default_factory=ServerConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
+    events: EventConfig = Field(default_factory=EventConfig)
+    execution_timing: ExecutionTimingConfig = Field(default_factory=ExecutionTimingConfig)
+    child_workflows: ChildWorkflowConfig = Field(default_factory=ChildWorkflowConfig)
 
     @model_validator(mode="after")
     def validate_a2a_security_profile(self) -> RuntimeConfig:
@@ -687,30 +1268,73 @@ class RuntimeConfig(StrictModel):
     def validate_security_profile_references(self) -> RuntimeConfig:
         header_capable = {"bearer", "api_key"}
 
-        def require_header_profile(field: str, name: str | None) -> None:
+        def require_header_profile(field: str, name: str | None, *, outbound: bool = False) -> None:
             if name is None:
                 return
             profile = self.security.profiles.get(name)
             if profile is None:
                 raise ValueError(f"{field} references unknown security profile: {name}")
-            if profile.type not in header_capable:
+            permitted = (
+                header_capable | {"oauth2_client_credentials", "mtls"}
+                if outbound
+                else header_capable
+            )
+            if profile.type not in permitted:
                 raise ValueError(
                     f"{field} must reference a security profile of type "
-                    f"{' or '.join(sorted(header_capable))}"
+                    f"{' or '.join(sorted(permitted))}"
                 )
+            if (
+                outbound
+                and profile.type == "oauth2_client_credentials"
+                and not profile.allowed_resource_endpoints
+            ):
+                raise ValueError(f"{field} requires deployment-approved OAuth resource endpoints")
 
         require_header_profile("server.api_security_profile", self.server.api_security_profile)
         require_header_profile(
             "approvals.operator_security_profile", self.approvals.operator_security_profile
         )
-        require_header_profile("protocols.security_profile", self.protocols.security_profile)
+        if self.approvals.actor_security_profiles:
+            from .errors import ApprovalValidationError
+            from .protected_approval_policy import actor_identity
+
+            identities = set()
+            for name in self.approvals.actor_security_profiles:
+                profile = self.security.profiles.get(name)
+                if profile is None or profile.type != "bearer" or not profile.principal:
+                    raise ValueError(
+                        "approval actors require named bearer profiles with principals"
+                    )
+                try:
+                    identity = actor_identity(profile.principal)
+                except ApprovalValidationError:
+                    raise ValueError("approval actor principal is invalid") from None
+                if identity in identities:
+                    raise ValueError("approval actor principals must be unique")
+                identities.add(identity)
+        require_header_profile(
+            "protocols.security_profile", self.protocols.security_profile, outbound=True
+        )
+        for profile_name in self.protocols.a2a_credential_endpoints:
+            require_header_profile(
+                "protocols.a2a_credential_endpoints", profile_name, outbound=True
+            )
+        for profile_name in self.protocols.openapi_credential_endpoints:
+            require_header_profile(
+                "protocols.openapi_credential_endpoints", profile_name, outbound=True
+            )
+        for profile_name in self.protocols.grpc_credential_endpoints:
+            require_header_profile(
+                "protocols.grpc_credential_endpoints", profile_name, outbound=True
+            )
         for catalog_name, catalog in self.workflow.external_catalogs.items():
             require_header_profile(
                 f"external catalog '{catalog_name}' authentication",
                 catalog.authentication.security_profile,
             )
         for index, tool in enumerate(self.tools):
-            require_header_profile(f"tools[{index}]", tool.security_profile)
+            require_header_profile(f"tools[{index}]", tool.security_profile, outbound=True)
         return self
 
     @classmethod
@@ -727,15 +1351,20 @@ class RuntimeConfig(StrictModel):
                 if not isinstance(loaded, dict):
                     raise ConfigurationError("configuration root must be an object")
                 raw = loaded
-            except yaml.YAMLError as exc:
-                raise ConfigurationError(f"invalid YAML configuration: {exc}") from exc
+            except yaml.YAMLError:
+                raise ConfigurationError("invalid YAML configuration") from None
         _apply_environment(raw)
         try:
             return cls.model_validate(raw)
         except ValidationError as exc:
             raise ConfigurationError(
-                "invalid runtime configuration", details={"errors": exc.errors()}
-            ) from exc
+                "invalid runtime configuration",
+                details={
+                    "errors": exc.errors(
+                        include_input=False, include_context=False, include_url=False
+                    )
+                },
+            ) from None
 
 
 def _apply_environment(target: dict[str, Any]) -> None:

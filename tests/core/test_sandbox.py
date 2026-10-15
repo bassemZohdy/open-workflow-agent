@@ -22,6 +22,7 @@ from open_workflow_agent.sandbox import (
     validate_sandbox_capabilities,
 )
 from pydantic import ValidationError
+from sandbox_fixture_policy import supported_process_limits
 
 
 def _workflow(run: dict[str, object]) -> dict[str, object]:
@@ -47,7 +48,7 @@ def test_sandbox_policy_is_strict_and_disabled_by_default() -> None:
 
 
 def test_container_and_external_script_stay_fail_closed() -> None:
-    config = SandboxConfig(enabled=True)
+    config = SandboxConfig(**supported_process_limits(), enabled=True)
     with pytest.raises(UnsupportedWorkflowFeature):
         validate_sandbox_capabilities(
             _workflow({"container": {"image": "example.invalid/image:latest"}}),
@@ -74,7 +75,9 @@ async def test_internal_script_uses_private_workspace_and_filtered_environment(
     monkeypatch.setenv("OWA_SANDBOX_SHOULD_NOT_LEAK", "secret")
     root = tmp_path / "sandbox"
     backend = InternalSandboxBackend(
-        SandboxConfig(enabled=True, workspace_root=str(root), memory_bytes=None)
+        SandboxConfig(
+            **supported_process_limits(), enabled=True, workspace_root=str(root), memory_bytes=None
+        )
     )
     result = await backend.execute(
         SandboxExecutionRequest(
@@ -104,6 +107,7 @@ async def test_internal_script_resolves_only_approved_secret_reference(
     monkeypatch.setenv("SANDBOX_TEST_SECRET", "expected")
     backend = InternalSandboxBackend(
         SandboxConfig(
+            **supported_process_limits(),
             enabled=True,
             workspace_root=str(tmp_path / "sandbox"),
             secret_environment=["SANDBOX_TEST_SECRET"],
@@ -130,6 +134,7 @@ async def test_runtime_generated_errors_do_not_echo_approved_secret(
     monkeypatch.setenv("SANDBOX_TEST_SECRET", secret)
     backend = InternalSandboxBackend(
         SandboxConfig(
+            **supported_process_limits(),
             enabled=True,
             allow_shell=True,
             workspace_root=str(tmp_path / "sandbox"),
@@ -155,6 +160,7 @@ async def test_runtime_generated_errors_do_not_echo_approved_secret(
 async def test_internal_sandbox_enforces_timeout_output_and_exit_status(tmp_path: Path) -> None:
     timeout_backend = InternalSandboxBackend(
         SandboxConfig(
+            **supported_process_limits(),
             enabled=True,
             workspace_root=str(tmp_path / "timeout"),
             timeout_seconds=0.1,
@@ -173,6 +179,7 @@ async def test_internal_sandbox_enforces_timeout_output_and_exit_status(tmp_path
 
     output_backend = InternalSandboxBackend(
         SandboxConfig(
+            **supported_process_limits(),
             enabled=True,
             workspace_root=str(tmp_path / "output"),
             max_output_bytes=128,
@@ -190,7 +197,12 @@ async def test_internal_sandbox_enforces_timeout_output_and_exit_status(tmp_path
         )
 
     exit_backend = InternalSandboxBackend(
-        SandboxConfig(enabled=True, workspace_root=str(tmp_path / "exit"), memory_bytes=None)
+        SandboxConfig(
+            **supported_process_limits(),
+            enabled=True,
+            workspace_root=str(tmp_path / "exit"),
+            memory_bytes=None,
+        )
     )
     with pytest.raises(SandboxProcessError) as error:
         await exit_backend.execute(
@@ -208,6 +220,7 @@ async def test_internal_sandbox_enforces_timeout_output_and_exit_status(tmp_path
 async def test_internal_sandbox_rejects_invalid_runtime_and_executable(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
         SandboxConfig(
+            **supported_process_limits(),
             enabled=True,
             allow_shell=True,
             workspace_root=str(tmp_path / "sandbox"),
@@ -237,6 +250,7 @@ async def test_internal_sandbox_rejects_invalid_runtime_and_executable(tmp_path:
 async def test_internal_sandbox_enforces_workspace_limit(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
         SandboxConfig(
+            **supported_process_limits(),
             enabled=True,
             workspace_root=str(tmp_path / "workspace"),
             max_workspace_bytes=1024,
@@ -263,7 +277,9 @@ async def test_internal_sandbox_enforces_workspace_limit(tmp_path: Path) -> None
 async def test_cancelling_execution_terminates_and_cleans_workspace(tmp_path: Path) -> None:
     root = tmp_path / "cancel"
     backend = InternalSandboxBackend(
-        SandboxConfig(enabled=True, workspace_root=str(root), memory_bytes=None)
+        SandboxConfig(
+            **supported_process_limits(), enabled=True, workspace_root=str(root), memory_bytes=None
+        )
     )
     task = asyncio.create_task(
         backend.execute(
@@ -289,7 +305,12 @@ async def test_cancellation_terminates_descendant_process_tree(tmp_path: Path) -
     root = tmp_path / "tree"
     pid_file = tmp_path / "child.pid"
     backend = InternalSandboxBackend(
-        SandboxConfig(enabled=True, workspace_root=str(root), memory_bytes=None)
+        SandboxConfig(
+            **(supported_process_limits() | {"process_count": 128}),
+            enabled=True,
+            workspace_root=str(root),
+            memory_bytes=None,
+        )
     )
     task = asyncio.create_task(
         backend.execute(
@@ -313,6 +334,8 @@ async def test_cancellation_terminates_descendant_process_tree(tmp_path: Path) -
     for _ in range(100):
         if pid_file.exists():
             break
+        if task.done():
+            await task
         await asyncio.sleep(0.02)
     assert pid_file.exists()
     child_pid = int(pid_file.read_text())
@@ -344,6 +367,7 @@ async def test_child_does_not_inherit_parent_file_descriptors(tmp_path: Path) ->
         os.set_inheritable(handle.fileno(), True)
         backend = InternalSandboxBackend(
             SandboxConfig(
+                **supported_process_limits(),
                 enabled=True,
                 workspace_root=str(tmp_path / "sandbox"),
                 memory_bytes=None,
@@ -373,7 +397,9 @@ async def test_child_does_not_inherit_parent_file_descriptors(tmp_path: Path) ->
 async def test_concurrent_success_and_failure_cleanup(tmp_path: Path) -> None:
     root = tmp_path / "concurrent"
     backend = InternalSandboxBackend(
-        SandboxConfig(enabled=True, workspace_root=str(root), memory_bytes=None)
+        SandboxConfig(
+            **supported_process_limits(), enabled=True, workspace_root=str(root), memory_bytes=None
+        )
     )
     results = await asyncio.gather(
         backend.execute(
@@ -404,6 +430,7 @@ async def test_concurrent_success_and_failure_cleanup(tmp_path: Path) -> None:
 async def test_posix_cpu_limit_terminates_runaway_process(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
         SandboxConfig(
+            **supported_process_limits(),
             enabled=True,
             workspace_root=str(tmp_path / "sandbox"),
             timeout_seconds=5,
@@ -425,7 +452,9 @@ async def test_posix_cpu_limit_terminates_runaway_process(tmp_path: Path) -> Non
 @pytest.mark.skipif(os.name != "posix", reason="POSIX resource limits are Linux/Unix specific")
 def test_posix_capabilities_advertise_resource_limits(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
-        SandboxConfig(enabled=True, workspace_root=str(tmp_path / "sandbox"))
+        SandboxConfig(
+            **supported_process_limits(), enabled=True, workspace_root=str(tmp_path / "sandbox")
+        )
     )
     capabilities = backend.capabilities()
     assert capabilities["resourceLimits"]["posixRlimit"] is True

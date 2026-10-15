@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 import httpx
 import pytest
@@ -9,6 +10,7 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.workflow import compile_workflow
+from test_durable_timers import _use_clock
 
 ENGINE_CASES = engine_cases()
 
@@ -31,6 +33,16 @@ async def _until(predicate):
             return
         await asyncio.sleep(0.005)
     raise AssertionError("lifecycle condition was not reached")
+
+
+async def _acknowledged_wait(engine: Any, handle: Any, invocation: asyncio.Task[Any]) -> Any:
+    waiting = await asyncio.wait_for(invocation, timeout=30)
+    assert waiting.status == "waiting", waiting.error
+    assert handle.status == "waiting"
+    assert handle.invocation_id not in engine._active
+    assert handle.invocation_id not in engine._ownership_tasks
+    assert handle._execution_lease is None
+    return waiting
 
 
 def _handle(services, engine_name, plan):
@@ -61,7 +73,21 @@ async def test_operator_matrix_terminal_outcomes(tmp_path, engine_name, engine_t
     await engine.initialize(services)
     workflows = {
         "success": _workflow([{"finish": {"set": {"done": True}}}]),
-        "controlled_fault": _workflow([{"fail": {"raise": {"error": "controlled"}}}]),
+        "controlled_fault": _workflow(
+            [
+                {
+                    "fail": {
+                        "raise": {
+                            "error": {
+                                "type": "urn:test:controlled",
+                                "status": 500,
+                                "detail": "controlled",
+                            }
+                        }
+                    }
+                }
+            ]
+        ),
         "retry": _workflow(
             [
                 {
@@ -112,20 +138,20 @@ async def test_operator_matrix_wait_resume_and_cancellation(tmp_path, engine_nam
     )
     handle = _handle(services, engine_name, plan)
     running = asyncio.create_task(engine.invoke(plan, handle, {}))
-    await _until(lambda: handle.status == "waiting")
+    await _acknowledged_wait(engine, handle, running)
     resumed = await engine.resume(handle, {"continue": True}, plan)
     assert resumed.status == "completed"
-    assert (await running).status == "completed"
+    assert resumed.output == {"done": True}
     assert [event.event_type for event in services.events.events].count("WorkflowWaiting") == 1
     assert [event.event_type for event in services.events.events].count("WorkflowResumed") == 1
 
     cancel_plan = compile_workflow(_workflow([{"pause": {"wait": {"seconds": 5}}}]))
     cancel_handle = _handle(services, engine_name, cancel_plan)
     cancelled_run = asyncio.create_task(engine.invoke(cancel_plan, cancel_handle, {}))
-    await _until(lambda: cancel_handle.status == "waiting")
+    await _acknowledged_wait(engine, cancel_handle, cancelled_run)
     cancelled = await engine.cancel(cancel_handle, operation_id="operator-cancel")
     assert cancelled.status == "cancelled"
-    assert (await cancelled_run).status == "cancelled"
+    assert cancel_handle.status == "cancelled"
     duplicate = await engine.cancel(cancel_handle, operation_id="operator-cancel")
     assert duplicate.status == "cancelled"
     services.close()
@@ -208,10 +234,8 @@ async def test_operator_matrix_restart_resume_reuses_side_effect_operation(
     plan = compile_workflow(workflow)
     handle = _handle(first_services, engine_name, plan)
     running = asyncio.create_task(first_engine.invoke(plan, handle, {}))
-    await _until(lambda: handle.status == "waiting")
-    running.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await running
+    await _acknowledged_wait(first_engine, handle, running)
+    await first_engine.shutdown()
     first_services.close()
 
     restarted_services = RuntimeServices(config, model=FakeModel(), database_root=root)
@@ -225,11 +249,12 @@ async def test_operator_matrix_restart_resume_reuses_side_effect_operation(
     assert persisted is not None
     resumed = await restarted_engine.resume(persisted, {"continue": True}, plan)
     assert resumed.status == "completed"
-    assert len(calls) == 2
-    assert calls[0] == calls[1]
+    # A native checkpoint or the common action receipt reuses the outcome.
+    assert len(calls) == 1
+    assert len(set(calls)) == 1
     duplicate_resume = await restarted_engine.resume(persisted, {"duplicate": True}, plan)
     assert duplicate_resume.status == "completed"
-    assert len(calls) == 2
+    assert len(calls) == 1
     restarted_services.close()
 
 
@@ -322,7 +347,9 @@ async def test_operator_matrix_timeout_and_cancellation_preserve_side_effect_key
                 {
                     "timed_side_effect": {
                         "call": "http",
-                        "timeout": {"after": {"milliseconds": 1}},
+                        # Reach the in-flight boundary after durable clock/native
+                        # writes; the fake response remains stalled for 30 seconds.
+                        "timeout": {"after": {"seconds": 1}},
                         "with": {
                             "method": "POST",
                             "endpoint": "https://service.test/timeout",
@@ -391,9 +418,10 @@ async def test_operator_matrix_timeout_and_cancellation_preserve_side_effect_key
 
 
 @pytest.mark.asyncio
-async def test_operator_matrix_shared_events_are_equivalent(tmp_path):
+async def test_operator_matrix_shared_events_are_equivalent(tmp_path, monkeypatch):
     from open_workflow_agent.services import RuntimeServices
 
+    _use_clock(monkeypatch, lambda: 1000.0)
     signatures = []
     for engine_name, engine_type in ENGINE_CASES:
         services = RuntimeServices(
@@ -411,9 +439,9 @@ async def test_operator_matrix_shared_events_are_equivalent(tmp_path):
         )
         handle = _handle(services, engine_name, plan)
         invocation = asyncio.create_task(engine.invoke(plan, handle, {}))
-        await _until(lambda handle=handle: handle.status == "waiting")
+        await _acknowledged_wait(engine, handle, invocation)
         result = await engine.resume(handle, {"continue": True}, plan)
-        assert (await invocation).status == "completed"
+        assert result.status == "completed" and result.output == {"done": True}
         signatures.append(
             (
                 result.status,

@@ -9,6 +9,12 @@ from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
 A2A_HEADERS = {"A2A-Version": "1.0"}
+TASK_NOT_FOUND_INFO = {
+    "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+    "reason": "TASK_NOT_FOUND",
+    "domain": "open-workflow-agent",
+    "metadata": {},
+}
 
 
 def _runtime(tmp_path, *, transport: str):
@@ -113,7 +119,7 @@ def test_jsonrpc_task_not_found_uses_official_error_code_and_request_id(tmp_path
     assert response.json() == {
         "jsonrpc": "2.0",
         "id": "missing-1",
-        "error": {"code": -32001, "message": "task not found"},
+        "error": {"code": -32001, "message": "task not found", "data": [TASK_NOT_FOUND_INFO]},
     }
 
 
@@ -181,7 +187,7 @@ def test_http_json_get_and_cancel_task_use_official_paths(tmp_path) -> None:
     assert cancel_response.status_code == 200
     assert cancel_response.json()["status"]["state"] == "TASK_STATE_CANCELED"
     assert missing_response.status_code == 404
-    assert missing_response.json()["error"]["code"] == "task_not_found"
+    assert missing_response.json()["error"]["details"][0]["metadata"]["owaCode"] == "task_not_found"
 
 
 def test_capabilities_advertise_only_implemented_task_operations(tmp_path) -> None:
@@ -208,6 +214,9 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
         tmp_path, transport=transport, principal="alice", token_env="OWA_A2A_ALICE"
     )
     handle = _create_handle(alice_services, owner_principal="alice")
+    unknown_id = "unknown-task-id"
+    owner_payload_before = alice_services.invocations.get(handle.invocation_id)._persisted_payload
+    owner_model_calls_before = list(alice_services.model.calls)
 
     alice_headers = {**A2A_HEADERS, "Authorization": "Bearer alice-secret"}
     bob_app, bob_services = _secured_runtime(
@@ -242,7 +251,15 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                     assert response.json()["error"] == {
                         "code": -32001,
                         "message": "task not found",
+                        "data": [TASK_NOT_FOUND_INFO],
                     }
+                    unknown = bob_client.post(
+                        "/a2a",
+                        headers=bob_headers,
+                        json=_task_request(method, unknown_id, method),
+                    )
+                    assert unknown.status_code == response.status_code
+                    assert unknown.json() == response.json()
                 resume = bob_client.post(
                     "/a2a",
                     headers=bob_headers,
@@ -252,7 +269,26 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                         "method": "SendMessage",
                         "params": {
                             "message": {
+                                "messageId": "foreign-resume",
+                                "role": "ROLE_USER",
                                 "taskId": handle.invocation_id,
+                                "parts": [{"text": "continue"}],
+                            }
+                        },
+                    },
+                )
+                unknown_resume = bob_client.post(
+                    "/a2a",
+                    headers=bob_headers,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": "resume-1",
+                        "method": "SendMessage",
+                        "params": {
+                            "message": {
+                                "messageId": "foreign-resume",
+                                "role": "ROLE_USER",
+                                "taskId": unknown_id,
                                 "parts": [{"text": "continue"}],
                             }
                         },
@@ -261,7 +297,10 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                 assert resume.json()["error"] == {
                     "code": -32001,
                     "message": "task not found",
+                    "data": [TASK_NOT_FOUND_INFO],
                 }
+                assert unknown_resume.status_code == resume.status_code
+                assert unknown_resume.json() == resume.json()
             else:
                 get_response = bob_client.get(
                     f"/a2a/tasks/{handle.invocation_id}", headers=bob_headers
@@ -277,7 +316,28 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                     headers=bob_headers,
                     json={
                         "message": {
+                            "messageId": "foreign-resume",
+                            "role": "ROLE_USER",
                             "taskId": handle.invocation_id,
+                            "parts": [{"text": "continue"}],
+                        }
+                    },
+                )
+                unknown_get = bob_client.get(f"/a2a/tasks/{unknown_id}", headers=bob_headers)
+                unknown_cancel = bob_client.post(
+                    f"/a2a/tasks/{unknown_id}:cancel", headers=bob_headers
+                )
+                unknown_subscribe = bob_client.post(
+                    f"/a2a/tasks/{unknown_id}:subscribe", headers=bob_headers
+                )
+                unknown_resume = bob_client.post(
+                    "/a2a/message:send",
+                    headers=bob_headers,
+                    json={
+                        "message": {
+                            "messageId": "foreign-resume",
+                            "role": "ROLE_USER",
+                            "taskId": unknown_id,
                             "parts": [{"text": "continue"}],
                         }
                     },
@@ -287,12 +347,32 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
                 assert subscribe_response.status_code == 404
                 assert resume.status_code == 404
                 assert get_response.json() == {
-                    "error": {"code": "task_not_found", "message": "task not found"}
+                    "error": {
+                        "code": 5,
+                        "message": "task not found",
+                        "details": [
+                            {**TASK_NOT_FOUND_INFO, "metadata": {"owaCode": "task_not_found"}}
+                        ],
+                    }
                 }
                 assert cancel_response.json() == get_response.json()
                 assert subscribe_response.json() == get_response.json()
                 assert resume.json() == get_response.json()
+                assert unknown_get.status_code == get_response.status_code
+                assert unknown_cancel.status_code == cancel_response.status_code
+                assert unknown_subscribe.status_code == subscribe_response.status_code
+                assert unknown_resume.status_code == resume.status_code
+                assert unknown_get.json() == get_response.json()
+                assert unknown_cancel.json() == cancel_response.json()
+                assert unknown_subscribe.json() == subscribe_response.json()
+                assert unknown_resume.json() == resume.json()
             assert bob_services.invocations.get(handle.invocation_id).status == "running"
+            assert (
+                alice_services.invocations.get(handle.invocation_id)._persisted_payload
+                == owner_payload_before
+            )
+            assert alice_services.model.calls == owner_model_calls_before
+            assert bob_services.model.calls == []
     finally:
         # TestClient closes the application services; this also releases the
         # shared SQLite handle for the next test.
@@ -315,7 +395,11 @@ def test_authenticated_a2a_start_persists_creator_identity(tmp_path, monkeypatch
                     "id": "start-1",
                     "method": "SendMessage",
                     "params": {
-                        "message": {"parts": [{"text": "hello"}]},
+                        "message": {
+                            "messageId": "start-message",
+                            "role": "ROLE_USER",
+                            "parts": [{"text": "hello"}],
+                        },
                         "configuration": {"returnImmediately": True},
                     },
                 },

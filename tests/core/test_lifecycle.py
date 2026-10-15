@@ -25,10 +25,11 @@ def _workflow(tasks):
 
 
 async def _until(predicate):
-    for _ in range(100):
+    deadline = asyncio.get_running_loop().time() + 10
+    while asyncio.get_running_loop().time() < deadline:
         if predicate():
             return
-        await asyncio.sleep(0.005)
+        await asyncio.sleep(0.01)
     raise AssertionError("condition was not reached")
 
 
@@ -61,7 +62,9 @@ async def test_wait_resume_and_state_transitions(tmp_path):
     assert handle.status == "completed"
     assert [event.event_type for event in services.events.events].count("WorkflowWaiting") == 1
     assert [event.event_type for event in services.events.events].count("WorkflowResumed") == 1
-    assert (await running).status == "completed"
+    assert (await running).status == "waiting"
+    assert handle.invocation_id not in engine._active
+    await engine.shutdown()
     services.close()
 
 

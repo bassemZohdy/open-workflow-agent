@@ -1,0 +1,101 @@
+document:
+  dsl: 1.0.3
+  namespace: patterns
+  name: expert-dispatch
+  version: 1.0.0
+  title: Expert Dispatch
+  summary: Bounded canonical OWS recipe. Named roles are immutable deployment bindings;
+    model output never grants authority.
+input:
+  schema:
+    format: json
+    document:
+      type: object
+      required:
+      - question
+      properties:
+        question:
+          type: string
+          maxLength: 65536
+      additionalProperties: false
+timeout:
+  after:
+    seconds: 120
+do:
+- classify:
+    call: agent-router:1.0.0@default
+    with:
+      input: ${ .question }
+    timeout:
+      after:
+        seconds: 30
+    output:
+      schema:
+        format: json
+        document:
+          type: object
+          required:
+          - route
+          properties:
+            route:
+              type: string
+              enum:
+              - research
+              - finance
+          additionalProperties: false
+- route:
+    switch:
+    - research:
+        when: ${ .route == "research" }
+        then: research
+    - finance:
+        when: ${ .route == "finance" }
+        then: finance
+    - unknown:
+        then: reject
+- reject:
+    raise:
+      error:
+        type: https://open-workflow-specification.org/spec/1.0.0/errors/validation
+        status: 422
+        title: Unknown expert route
+- research:
+    call: agent-researcher:1.0.0@default
+    with:
+      input: ${ $workflow.input.question }
+    timeout:
+      after:
+        seconds: 30
+    output:
+      schema:
+        format: json
+        document:
+          type: object
+          required:
+          - answer
+          properties:
+            answer:
+              type: string
+              maxLength: 65536
+          additionalProperties: false
+    then: end
+- finance:
+    call: agent-finance:1.0.0@default
+    with:
+      input: ${ $workflow.input.question }
+    timeout:
+      after:
+        seconds: 30
+    output:
+      schema:
+        format: json
+        document:
+          type: object
+          required:
+          - answer
+          properties:
+            answer:
+              type: string
+              maxLength: 65536
+          additionalProperties: false
+    then: end

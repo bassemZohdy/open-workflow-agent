@@ -340,6 +340,8 @@ docker compose --profile adk up --build
 docker compose --profile langgraph up --build
 ```
 
+Repository Compose builds use embedded SQLite and start only the selected engine by default. Optional local PostgreSQL uses `-f compose.yaml -f compose.postgres.yaml`; existing PostgreSQL deployments must keep that override and their original volumes. See [bootstrap/default boundaries](embedded-bootstrap.md).
+
 The repository Compose file passes `.env` through to the selected runtime container, so LiteLLM can read provider-specific environment variables. `.env` is ignored by git; production deployments should use a proper secret manager.
 
 For any other LiteLLM provider, set `MODEL_NAME=<provider-prefix>/<model>` and add the credential/environment variables required by that provider. For custom/OpenAI-compatible endpoints you can also use `OWA__MODEL__OPTIONS__API_KEY`, `OWA__MODEL__OPTIONS__API_BASE`, and `OWA__MODEL__OPTIONS__API_VERSION`.

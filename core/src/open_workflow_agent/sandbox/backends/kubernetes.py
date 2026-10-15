@@ -5,18 +5,21 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Mapping
+from dataclasses import replace
 from typing import Any
 
 import httpx
 
 from ...config import SandboxConfig
+from ...credential_guard import capture_authentication_headers, credential_scope
 from ...errors import (
+    OwaError,
     SandboxPolicyError,
     SandboxProcessError,
     SandboxTimeoutError,
 )
 from ..contract import SandboxExecutionRequest, SandboxExecutionResult, SandboxSecretReference
-from .controller import cancel_controller_execution, controller_error
+from .controller import ERROR_TYPES, cancel_controller_execution, controller_error
 
 
 class KubernetesSandboxBackend:
@@ -61,6 +64,7 @@ class KubernetesSandboxBackend:
                 "ports": False,
                 "volumes": False,
                 "stdin": False,
+                "secretEnvironmentOutput": "suppressed",
             },
             "cancellation": True,
             "resourceLimits": {
@@ -83,6 +87,25 @@ class KubernetesSandboxBackend:
         }
 
     async def execute(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
+        with credential_scope() as guard:
+            capture_authentication_headers(self._client.headers)
+            try:
+                result = await self._execute(request)
+                pod_secret = any(
+                    isinstance(value, SandboxSecretReference) for _, value in request.environment
+                )
+                # Pod Secret values are never fetched into this runtime. Retain
+                # actual completion truth while refusing their opaque log data.
+                return replace(
+                    result,
+                    stdout="" if pod_secret else guard.text(result.stdout),
+                    stderr="" if pod_secret else guard.text(result.stderr),
+                )
+            except OwaError as error:
+                guard.error(error)
+                raise error from None
+
+    async def _execute(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
         selected = self.config.kubernetes
         if not self.config.enabled or self.config.backend != "kubernetes":
             raise SandboxPolicyError("Kubernetes sandbox execution is disabled")
@@ -220,7 +243,10 @@ class KubernetesSandboxBackend:
 
     @staticmethod
     def _controller_error(response: httpx.Response) -> Exception:
-        return controller_error(response, backend_label="Kubernetes")
+        error = controller_error(response, backend_label="Kubernetes")
+        if isinstance(error, OwaError) and error.details.get("controller_code") not in ERROR_TYPES:
+            error.details["controller_code"] = "sandbox_process_error"
+        return error
 
 
 __all__ = ["KubernetesSandboxBackend"]

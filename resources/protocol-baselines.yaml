@@ -3,18 +3,32 @@ policy: latest-stable-reviewed
 baselines:
   open_workflow:
     release: "1.0.3"
+    release_status: prerelease
+    release_revision: "9b5b1da29e9d4fff2358580241e11aab22704a16"
+    schema_revision: "2dd2c84170d5f3e05d58e913e9ca298dcf8d543a"
+    schema_sha256: "704ef5e91c5d823167dd8751794edb1dd1a6f9a3bdf9bfd389bf9c6b23ae3816"
+    review_date: "2026-10-11"
+    policy_exception: "Existing public DSL pin; reviewed upstream schema snapshot differs from the prerelease tag"
     implemented: true
     profile: "OWA Portable Profile v1"
     conformance_claim: false
   a2a:
     release: "1.0.1"
     protocol_version: "1.0"
+    sdk_package: "a2a-sdk"
+    sdk_version: "1.2.2"
+    sdk_revision: "2f9e44af243df5c7c7a3da361c8d095324bcd5e3"
+    sdk_review_date: "2026-10-13"
     implemented: true
     profile: "bounded inbound/outbound profile"
     conformance_claim: false
   mcp:
     release: "2026-07-28"
     protocol_version: "2026-07-28"
+    sdk_package: "mcp"
+    sdk_version: "2.3.0"
+    sdk_revision: "2118f14f8a19bc158d8a1cf90af58d85d187f849"
+    sdk_review_date: "2026-10-13"
     implemented: true
     profile: "bounded common client/tool profile"
     conformance_claim: false
@@ -32,4 +46,14 @@ baselines:
   asyncapi:
     release: "3.1.0"
     implemented: false
+    conformance_claim: false
+  grpc:
+    release: "1.84.0"
+    sdk_package: "grpcio"
+    sdk_version: "1.84.0"
+    sdk_revision: "3252a89f10d8e92997862167ca7d095ecda85973"
+    protobuf_version: "7.36.1"
+    sdk_review_date: "2026-10-13"
+    implemented: false
+    profile: "authored deployment-bound unary profile; qualification pending"
     conformance_claim: false

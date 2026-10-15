@@ -25,3 +25,22 @@ def test_langgraph_factory_binds_real_structured_tools():
     )
     assert tools
     assert tools[0].name == "configured"
+
+
+def test_native_backend_availability_does_not_require_sqlite_for_postgres(monkeypatch):
+    import open_workflow_agent_langgraph.native as native
+
+    monkeypatch.setattr(native, "LANGGRAPH_AVAILABLE", True)
+    monkeypatch.setattr(native, "AsyncSqliteSaver", None)
+    monkeypatch.setattr(native, "AsyncPostgresSaver", object())
+    adapter = LangGraphFunctionalAdapter()
+    assert adapter.task_nodes_available
+    adapter.database_path = "postgresql://example.test/runtime"
+    assert adapter.task_nodes_available
+    adapter.database_path = "local.sqlite"
+    assert not adapter.task_nodes_available
+    monkeypatch.setattr(native, "AsyncSqliteSaver", object())
+    assert adapter.task_nodes_available
+    adapter.database_path = "postgresql://example.test/runtime"
+    monkeypatch.setattr(native, "AsyncPostgresSaver", None)
+    assert not adapter.task_nodes_available

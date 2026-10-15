@@ -1,5 +1,5 @@
 # open-workflow-agent-langgraph
 
-LangGraph engine adapter for the Open Workflow Agent. Wraps the shared immutable workflow plan in a LangGraph Functional API execution envelope with engine-native checkpointing and resume while keeping public identity, capability reporting, and observable behavior identical to the common contract. Task-level plan-to-LangGraph compilation is not yet claimed.
+LangGraph engine adapter for the Open Workflow Agent. Lowers immutable task scopes into native StateGraph nodes and conditional routing while reusing common task semantics, identity, services and errors. Native memory/SQLite/PostgreSQL checkpoints remain private. See [task execution and recovery limits](../../docs/native-task-execution.md).
 
 See the [repository root](https://github.com/BassemZohdy/open-workflow-agent) for documentation.
