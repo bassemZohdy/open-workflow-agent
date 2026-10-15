@@ -11,6 +11,8 @@ from ..catalog import FunctionCatalog
 from ..config import SandboxConfig
 from ..definitions import resolve_reusable_components
 from ..errors import SandboxPolicyError, UnsupportedWorkflowFeature, WorkflowSemanticError
+from ..executable_source_plan import capture_script_resources, materialize_script_resources
+from ..executable_sources import ExecutableSource, ExecutableSourceRegistry
 from ..resources import materialize_schema_resources, schema_registry
 from ..workflow import (
     WorkflowPlan,
@@ -35,8 +37,29 @@ def validate_sandbox_capabilities(
     trusted_catalogs: Mapping[str, Any] | None = None,
     _resource_preflight: bool = False,
     _schema_registry: Any = None,
+    grpc_enabled: bool = False,
+    enabled_function_calls: frozenset[str] = frozenset(),
+    executable_sources: ExecutableSourceRegistry | None = None,
 ) -> None:
     effective = resolve_reusable_components(workflow)
+    registry = executable_sources or ExecutableSourceRegistry(
+        tuple(
+            ExecutableSource.from_value(item.model_dump(mode="json"))
+            for item in sandbox.script_sources
+        )
+    )
+    bindings = capture_script_resources(workflow, registry)
+    if bindings:
+        from ..executable_source_admission import source_business_receipt_limit
+
+        try:
+            source_business_receipt_limit(sandbox.max_output_bytes)
+        except Exception:
+            raise UnsupportedWorkflowFeature(
+                "executable source output profile is unsupported",
+                details={"reason": "executable_source_output_profile_unsupported"},
+            ) from None
+        effective = materialize_script_resources(effective, bindings)
     rewritten = copy.deepcopy(effective)
     _rewrite_executable_runs(rewritten, sandbox=sandbox, reference="")
     _validate_stdio_calls(effective, sandbox=sandbox)
@@ -46,6 +69,8 @@ def validate_sandbox_capabilities(
         _resource_preflight=_resource_preflight,
         _schema_registry=_schema_registry,
         _mcp_stdio=True,
+        grpc_enabled=grpc_enabled,
+        enabled_function_calls=enabled_function_calls,
     )
     validate_expression_profile(effective)
 
@@ -84,11 +109,29 @@ def compile_sandbox_workflow(
     *,
     sandbox: SandboxConfig,
     trusted_catalogs: Mapping[str, Any] | None = None,
+    grpc_enabled: bool = False,
+    enabled_function_calls: frozenset[str] = frozenset(),
+    executable_sources: ExecutableSourceRegistry | None = None,
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
-    validate_sandbox_capabilities(workflow, sandbox=sandbox, trusted_catalogs=trusted_catalogs)
-    return normalize_workflow(workflow)
+    validate_sandbox_capabilities(
+        workflow,
+        sandbox=sandbox,
+        trusted_catalogs=trusted_catalogs,
+        grpc_enabled=grpc_enabled,
+        enabled_function_calls=enabled_function_calls,
+        executable_sources=executable_sources,
+    )
+    registry = executable_sources or ExecutableSourceRegistry(
+        tuple(
+            ExecutableSource.from_value(item.model_dump(mode="json"))
+            for item in sandbox.script_sources
+        )
+    )
+    return normalize_workflow(
+        workflow, script_resources=capture_script_resources(workflow, registry)
+    )
 
 
 async def resolve_and_compile_sandbox_workflow(
@@ -98,12 +141,21 @@ async def resolve_and_compile_sandbox_workflow(
     trusted_catalogs: Mapping[str, Any] | None = None,
     resolver: Any,
     catalog: FunctionCatalog,
+    grpc_enabled: bool = False,
+    enabled_function_calls: frozenset[str] = frozenset(),
+    executable_sources: ExecutableSourceRegistry | None = None,
 ) -> WorkflowPlan:
     workflow = generate_default_workflow() if source is None else load_workflow(source)
     validate_schema(workflow)
     enabled = bool(getattr(getattr(resolver, "schemas", None), "enabled", False))
     validate_sandbox_capabilities(
-        workflow, sandbox=sandbox, trusted_catalogs=trusted_catalogs, _resource_preflight=enabled
+        workflow,
+        sandbox=sandbox,
+        trusted_catalogs=trusted_catalogs,
+        _resource_preflight=enabled,
+        grpc_enabled=grpc_enabled,
+        enabled_function_calls=enabled_function_calls,
+        executable_sources=executable_sources,
     )
     imports, resources = await resolve_workflow_dependencies(workflow, resolver, catalog)
     effective = materialize_schema_resources(workflow) if resources else workflow
@@ -112,8 +164,22 @@ async def resolve_and_compile_sandbox_workflow(
         sandbox=sandbox,
         trusted_catalogs=trusted_catalogs,
         _schema_registry=schema_registry(resources),
+        grpc_enabled=grpc_enabled,
+        enabled_function_calls=enabled_function_calls,
+        executable_sources=executable_sources,
     )
-    return normalize_workflow(workflow, imports=imports, resources=resources)
+    registry = executable_sources or ExecutableSourceRegistry(
+        tuple(
+            ExecutableSource.from_value(item.model_dump(mode="json"))
+            for item in sandbox.script_sources
+        )
+    )
+    return normalize_workflow(
+        workflow,
+        imports=imports,
+        resources=resources,
+        script_resources=capture_script_resources(workflow, registry),
+    )
 
 
 def _rewrite_executable_runs(value: Any, *, sandbox: SandboxConfig, reference: str) -> None:
@@ -146,11 +212,33 @@ def _validate_executable_run(
         # Workflow child lifetime and return modes belong to the common
         # workflow contract; executable-process restrictions do not apply.
         return None
-    if run.get("await", True) is not True or "return" in run:
-        raise UnsupportedWorkflowFeature(
-            "background execution and run return selection are not enabled",
-            details={"reference": reference},
-        )
+    if run.get("await", True) is not True:
+        if not sandbox.background.enabled or not sandbox.enabled or sandbox.backend != "internal":
+            raise UnsupportedWorkflowFeature(
+                "background execution requires the deployment-enabled internal SQLite profile",
+                details={"reference": reference},
+            )
+        if "container" in run:
+            raise UnsupportedWorkflowFeature(
+                "background container execution is not qualified",
+                details={"reference": reference},
+            )
+        for kind in ("script", "shell"):
+            configuration = run.get(kind)
+            environment = (
+                configuration.get("environment", {}) if isinstance(configuration, Mapping) else {}
+            )
+            if not isinstance(environment, Mapping) or any(
+                not isinstance(value, Mapping) or set(value) != {"fromEnv"}
+                for value in environment.values()
+            ):
+                raise UnsupportedWorkflowFeature(
+                    "background environments require approved secret references",
+                    details={"reference": reference},
+                )
+    mode = run.get("return", "stdout")
+    if not isinstance(mode, str) or mode not in {"stdout", "stderr", "code", "all", "none"}:
+        raise WorkflowSemanticError(f"invalid executable run return mode at {reference}")
     if "container" in run:
         if not sandbox.enabled or sandbox.backend not in {"docker", "kubernetes"}:
             raise UnsupportedWorkflowFeature(
@@ -160,6 +248,22 @@ def _validate_executable_run(
         container = run["container"]
         if not isinstance(container, Mapping):
             raise WorkflowSemanticError(f"run.container must be an object at {reference}")
+        if "lifetime" in container:
+            raise UnsupportedWorkflowFeature(
+                "run.container lifetime configuration is not enabled",
+                details={"reference": reference},
+            )
+        if sandbox.backend == "kubernetes" and "stdin" in container:
+            raise UnsupportedWorkflowFeature(
+                "selected Kubernetes sandbox does not support container stdin",
+                details={"reference": reference},
+            )
+        pull_policy = "ifNotPresent" if sandbox.backend == "kubernetes" else "never"
+        if "pullPolicy" in container and container["pullPolicy"] != pull_policy:
+            raise UnsupportedWorkflowFeature(
+                "run.container pull policy is not supported by the selected controller",
+                details={"reference": reference},
+            )
         image = container.get("image")
         if not isinstance(image, str) or not image.strip():
             raise WorkflowSemanticError(f"run.container requires image at {reference}")

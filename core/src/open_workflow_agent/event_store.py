@@ -13,7 +13,13 @@ from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 from ._effect_storage import insert_completed_receipt
-from .effects import EffectIdentity, EffectJournal, EffectReceipt, effect_request_digest
+from .effects import (
+    EffectIdentity,
+    EffectJournal,
+    EffectReceipt,
+    OutcomeParticipant,
+    effect_request_digest,
+)
 from .errors import EventValidationError, InvocationStateConflict, OwaError, WorkflowExecutionError
 from .events import EventDecision, EventEnvelope, EventProgress, EventRegistration, _make_envelope
 from .expressions import validate_expression_data
@@ -103,6 +109,7 @@ class EventStore:
 
     def __init__(self, journal: EffectJournal, *, limits: EventStoreLimits | None = None) -> None:
         self.journal = journal
+        self.outcome_participant: OutcomeParticipant | None = None
         self.connection = journal.connection
         self.limits = limits or EventStoreLimits()
         self._lock = threading.RLock()
@@ -448,6 +455,16 @@ class EventStore:
                 "durable event evidence is unavailable or inconsistent"
             ) from None
 
+    def _verify_approval_event(self, envelope: EventEnvelope, scope: str) -> None:
+        if envelope.type not in {
+            "io.openworkflow.agent.approval.requested",
+            "io.openworkflow.agent.approval.decided",
+        }:
+            return
+        from .protected_approval_store import verify_protected_approval_event
+
+        verify_protected_approval_event(self.connection, self.journal._invocations, envelope, scope)
+
     def _capacity(self, envelope: EventEnvelope, scope: str, *, outbox: bool = False) -> None:
         """Reserve future inbox space before acknowledging a queued publication."""
         count, inbox_bytes = self.connection.execute(
@@ -646,6 +663,8 @@ class EventStore:
                 output=envelope.as_dict(),
                 operation_id=operation_id,
             )
+            if self.outcome_participant is not None:
+                self.outcome_participant(identity, receipt, execution_lease=execution_lease)
             insert_completed_receipt(self.connection, identity, receipt)
             return receipt
 
@@ -884,6 +903,7 @@ class EventStore:
                 ):
                     raise WorkflowExecutionError("durable selected event evidence is inconsistent")
                 envelope = self._decode_envelope(event_row[0], digest)
+                self._verify_approval_event(envelope, registration.scope)
                 identity = event_selection_identity(registration, ordinal)
                 receipt = self.journal.get(identity)
                 if (
@@ -1007,6 +1027,7 @@ class EventStore:
                     continue
                 if not isinstance(decision, EventDecision):
                     raise WorkflowExecutionError("event matcher returned an invalid decision")
+                self._verify_approval_event(envelope, registration.scope)
                 if (
                     any(type(i) is not int or i < 0 for i in decision.filter_indices)
                     or type(decision.terminal) is not bool
@@ -1071,6 +1092,10 @@ class EventStore:
                     final = EffectReceipt(
                         registration.request_digest, "event", status="completed", output=outputs
                     )
+                    if self.outcome_participant is not None:
+                        self.outcome_participant(
+                            registration.identity, final, execution_lease=execution_lease
+                        )
                     insert_completed_receipt(self.connection, registration.identity, final)
                 result = self.state(registration)
                 return replace(
@@ -1101,6 +1126,10 @@ class EventStore:
                 status="completed",
                 output=[event.as_dict() for event in current.events],
             )
+            if self.outcome_participant is not None:
+                self.outcome_participant(
+                    registration.identity, receipt, execution_lease=execution_lease
+                )
             insert_completed_receipt(self.connection, registration.identity, receipt)
             self._save_progress(registration, payload, "completed")
             return self.state(registration)
@@ -1163,6 +1192,7 @@ class EventStore:
                 "durable publication evidence is unavailable or inconsistent"
             )
         envelope = self._decode_envelope(row[2], row[3])
+        self._verify_approval_event(envelope, row[6])
         if _json(receipt.output) != _json(envelope.as_dict()):
             raise WorkflowExecutionError("durable publication receipt differs from its envelope")
         if row[5] == 1:
@@ -1320,7 +1350,8 @@ class EventStore:
             raise ValueError("event retention sweep is invalid")
         with self.transaction():
             rows = self.connection.execute(
-                "SELECT sequence, scope, source, event_id FROM event_inbox WHERE created_at < ? "
+                "SELECT sequence, scope, source, event_id, envelope, digest "
+                "FROM event_inbox WHERE created_at < ? "
                 "AND NOT EXISTS (SELECT 1 FROM event_selections s "
                 "WHERE s.inbox_sequence = event_inbox.sequence) "
                 "AND NOT EXISTS (SELECT 1 FROM event_consumer_selections s "
@@ -1329,7 +1360,13 @@ class EventStore:
                 (cutoff, limit),
             ).fetchall()
             removed = 0
-            for sequence, scope, source, event_id in rows:
+            for sequence, scope, source, event_id, encoded, digest in rows:
+                from .protected_approval_recovery import protected_approval_event_retained
+
+                if protected_approval_event_retained(
+                    self.connection, self._decode_envelope(encoded, digest)
+                ):
+                    continue
                 # A matching scope's paused listener pins its unscanned arrivals.
                 # Other scopes and already-scanned rows do not prevent cleanup.
                 subscriptions = self.connection.execute(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import socket
 
@@ -22,6 +23,7 @@ from open_workflow_agent.protocols import (
 )
 from open_workflow_agent.security import SecurityConfig
 from open_workflow_agent.workflow import compile_workflow
+from openapi_fixtures import operation_document
 
 
 def _bearer_security(monkeypatch: pytest.MonkeyPatch, *, token: str = "secret") -> SecurityConfig:
@@ -237,6 +239,14 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
+        if request.url.path == "/openapi" and request.url.params.get("query") is None:
+            assert request.method == "GET"
+            return httpx.Response(
+                200,
+                json=operation_document(
+                    "https://service.test", parameters=(("query", "query", "string"),)
+                ),
+            )
         if request.url.path == "/mcp":
             body = json.loads(request.content)
             return httpx.Response(
@@ -304,7 +314,14 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
             "parameters": {"query": "hello"},
         },
     ) == {"path": "/openapi"}
-    assert [request.url.path for request in seen] == ["/http", "/mcp", "/a2a", "/openapi"]
+    assert [request.url.path for request in seen] == [
+        "/http",
+        "/mcp",
+        "/a2a",
+        "/openapi",
+        "/openapi",
+    ]
+    assert seen[3].method == seen[4].method == "GET" and seen[4].url.params["query"] == "hello"
 
     mcp_request = seen[1]
     assert mcp_request.headers["Mcp-Protocol-Version"] == MCP_PROTOCOL_VERSION
@@ -324,7 +341,7 @@ async def test_http_contract_exposes_bounded_output_modes():
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
     assert await services.call("http", {"endpoint": "https://service.test", "output": "raw"}) == (
-        '{"created":true}'
+        base64.b64encode(b'{"created":true}').decode("ascii")
     )
     response = await services.call(
         "http", {"endpoint": "https://service.test", "output": "response"}
@@ -477,7 +494,7 @@ def test_protocol_response_formatting_and_pinned_transport_validation():
     assert _format_response(json_response, "response")["headers"]["x-test"] == "yes"
     text_response = httpx.Response(200, text="plain")
     assert _format_response(text_response, "content") == "plain"
-    assert _format_response(text_response, "raw") == "plain"
+    assert _format_response(text_response, "raw") == base64.b64encode(b"plain").decode("ascii")
 
     with pytest.raises(ToolError, match="no approved"):
         _pinned_transport(verify_tls=True, endpoint="https://service.test", addresses=())

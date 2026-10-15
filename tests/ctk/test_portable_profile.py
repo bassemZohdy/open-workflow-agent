@@ -16,6 +16,7 @@ from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
+from openapi_fixtures import operation_document
 
 FEATURE_ROOT = Path(__file__).parent / "features"
 
@@ -127,6 +128,27 @@ async def test_upstream_ctk_portable_profile_scenarios(
     )
 
     async def protocol_fixture(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/openapi" and request.headers.get("X-OWA-Operation-ID") is None:
+            assert request.method == "GET"
+            return httpx.Response(
+                200,
+                json=operation_document(
+                    "https://service.test", parameters=(("query", "query", "string"),)
+                ),
+            )
+        if (
+            request.url.path == "/error"
+            and request.method == "GET"
+            and request.headers.get("X-OWA-Operation-ID") is None
+        ):
+            return httpx.Response(
+                200,
+                json=operation_document(
+                    "https://service.test",
+                    path="/error",
+                    parameters=(("query", "query", "string"),),
+                ),
+            )
         if request.url.path == "/mcp" or (
             request.url.path == "/error" and request.headers.get("Mcp-Method") == "tools/call"
         ):
@@ -160,6 +182,25 @@ async def test_upstream_ctk_portable_profile_scenarios(
                     },
                 },
             )
+        if request.url.path == "/a2a":
+            body = json.loads(request.content)
+            assert body["method"] == "SendMessage" and body["jsonrpc"] == "2.0"
+            assert request.headers["A2A-Version"] == "1.0"
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {
+                        "task": {
+                            "id": "ctk-task",
+                            "contextId": "ctk-context",
+                            "status": {"state": "TASK_STATE_COMPLETED"},
+                            "metadata": {"path": "/a2a"},
+                        }
+                    },
+                },
+            )
         if request.url.path == "/error":
             return httpx.Response(503, json={"error": "controlled protocol failure"})
         if request.url.path == "/v2/pet/1":
@@ -177,16 +218,22 @@ async def test_upstream_ctk_portable_profile_scenarios(
                 json=[{"id": 1, "name": "ctk-pet", "status": "available"}],
             )
         if request.url.path == "/v2/swagger.json":
-            request_body = request.content
-            if b"petId" in request_body:
-                return httpx.Response(
-                    200,
-                    json={"id": 1, "name": "ctk-pet", "status": "available"},
-                )
-            return httpx.Response(
-                200,
-                json=[{"id": 1, "name": "ctk-pet", "status": "available"}],
+            assert request.method == "GET" and not request.content
+            document = operation_document(
+                "https://petstore.swagger.io",
+                operation_id="findPetsByStatus",
+                path="/v2/pet/findByStatus",
+                parameters=(("status", "query", "string"),),
             )
+            document["paths"].update(
+                operation_document(
+                    "https://petstore.swagger.io",
+                    operation_id="getPetById",
+                    path="/v2/pet/{petId}",
+                    parameters=(("petId", "path", "integer"),),
+                )["paths"]
+            )
+            return httpx.Response(200, json=document)
         return httpx.Response(200, json={"path": request.url.path})
 
     services.protocols = ProtocolServices(

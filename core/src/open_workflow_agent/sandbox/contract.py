@@ -51,7 +51,7 @@ class SandboxExecutionResult:
 
     def as_output(self) -> dict[str, Any]:
         return {
-            "exitCode": self.exit_code,
+            "code": self.exit_code,
             "stdout": self.stdout,
             "stderr": self.stderr,
         }

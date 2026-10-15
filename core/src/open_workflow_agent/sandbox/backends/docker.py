@@ -5,17 +5,21 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+from dataclasses import replace
 from typing import Any
 
 import httpx
 
 from ...config import SandboxConfig
+from ...credential_guard import capture_authentication_headers, credential_scope
 from ...errors import (
+    OwaError,
     SandboxPolicyError,
     SandboxProcessError,
     SandboxTimeoutError,
 )
 from ..contract import SandboxExecutionRequest, SandboxExecutionResult, SandboxSecretReference
+from ..credential_guard import process_credential_guard
 from .controller import cancel_controller_execution, controller_error
 
 
@@ -80,6 +84,17 @@ class DockerSandboxBackend:
         }
 
     async def execute(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
+        with credential_scope() as guard:
+            try:
+                result = await self._execute(request)
+                return replace(
+                    result, stdout=guard.text(result.stdout), stderr=guard.text(result.stderr)
+                )
+            except OwaError as error:
+                guard.error(error)
+                raise error from None
+
+    async def _execute(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
         if not self.config.enabled or self.config.backend != "docker":
             raise SandboxPolicyError("Docker sandbox execution is disabled")
         if request.kind != "container":
@@ -92,6 +107,11 @@ class DockerSandboxBackend:
             raise SandboxPolicyError("container image is not deployment-approved")
 
         environment = self._resolve_environment(request)
+        process_credential_guard(request, environment)
+        # The local controller currently has no separate deployment credential
+        # resolver. Capture any actually applied request-local auth headers,
+        # without resolving a secret again after execution.
+        capture_authentication_headers(self._client.headers)
         payload = {
             "execution_id": request.execution_id,
             "image": image,

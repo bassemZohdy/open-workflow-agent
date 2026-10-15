@@ -20,6 +20,7 @@ from open_workflow_agent.sandbox import (
     compile_sandbox_workflow,
 )
 from open_workflow_agent.services import RuntimeServices
+from test_native_checkpoint_fencing import _snapshot as native_snapshot
 
 _IMAGE = "registry.example/worker@sha256:" + "a" * 64
 
@@ -67,6 +68,8 @@ async def test_sandbox_outcome_or_uncertain_intent_prevents_replay_dispatch(
     kind: str,
     outcome: str,
     changed_request: bool,
+    return_mode: str | None = None,
+    require_native: bool = False,
 ) -> None:
     datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
     if backend == "postgresql" and not datasource:
@@ -102,6 +105,9 @@ async def test_sandbox_outcome_or_uncertain_intent_prevents_replay_dispatch(
         operation["command"] = "unused"
     else:
         operation.update(image=_IMAGE, command="unused")
+    run = {kind: operation}
+    if return_mode is not None:
+        run["return"] = return_mode
     plan = compile_sandbox_workflow(
         {
             "document": {
@@ -110,12 +116,17 @@ async def test_sandbox_outcome_or_uncertain_intent_prevents_replay_dispatch(
                 "name": "sandbox-recovery",
                 "version": "1.0.0",
             },
-            "do": [{"action": {"run": {kind: operation}}}],
+            "do": [{"action": {"run": run}}],
         },
         sandbox=sandbox,
     )
     first = services()
     engine = engine_type()
+    if require_native and not (
+        engine.native.available if engine_name == "adk" else engine.native.task_nodes_available
+    ):
+        first.close()
+        pytest.skip("actual engine SDK is unavailable in this independent environment")
     await engine.initialize(first)
     handle = first.invocations.create(
         engine=engine_name,
@@ -188,13 +199,36 @@ async def test_sandbox_outcome_or_uncertain_intent_prevents_replay_dispatch(
                 "details": {**expected_error["details"], "instance": "/do/0/action"},
             }
         else:
-            assert result.status == "completed" and result.output == {
-                "exitCode": 0,
-                "stdout": "known output",
-                "stderr": "",
-            }
+            expected = {"code": 0, "stdout": "known output", "stderr": ""}
+            projection = (
+                expected
+                if return_mode == "all"
+                else None
+                if return_mode == "none"
+                else expected[return_mode or "stdout"]
+            )
+            assert result.status == "completed" and result.output == projection
+            assert type(result.output) is type(projection)
             duplicate = await recovered.resume(loaded, {}, plan)
             assert duplicate.output == result.output and len(executor.requests) == 1
+            if require_native:
+                assert restarted.invocations.connection.kind == backend
+                assert restarted.effect_journal.connection.kind == backend
+                assert any(native_snapshot(restarted, loaded, backend).values())
     finally:
         await recovered.shutdown()
         restarted.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "engine_name,engine_type", [case for case in engine_cases() if case[0] in {"adk", "langgraph"}]
+)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("return_mode", ["stdout", "stderr", "code", "all", "none"])
+async def test_actual_native_sandbox_return_projection_reopens_known_receipt_without_dispatch(
+    tmp_path: Path, engine_name: str, engine_type: Any, backend: str, return_mode: str
+) -> None:
+    await test_sandbox_outcome_or_uncertain_intent_prevents_replay_dispatch(
+        tmp_path, engine_name, engine_type, backend, "script", "value", False, return_mode, True
+    )

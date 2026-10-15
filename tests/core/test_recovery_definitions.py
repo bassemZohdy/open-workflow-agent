@@ -37,6 +37,7 @@ from open_workflow_agent.workflow import (
     normalize_workflow,
     resolve_and_compile_workflow,
 )
+from pydantic import ValidationError
 
 
 @pytest.fixture(params=["sqlite", "postgresql"])
@@ -432,7 +433,15 @@ def test_default_profile_never_hashes_or_retains_unclassified_secret_options(mon
 
     monkeypatch.setattr(module, "_artifact", lambda *args: {"code_sha256": "d" * 64})
     secret = "test-secret-value-that-must-not-enter-a-manifest"
-    config = RuntimeConfig.model_validate({"model": {"options": {"api_key": secret}}})
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {
+                "options": {"opaque_vendor_option": {"value": secret}},
+                "credentials": {"api_key": {"from_env": "OWA_TEST_MODEL_API_KEY"}},
+            }
+        }
+    )
+    assert config.model.credentials["api_key"].from_env == "OWA_TEST_MODEL_API_KEY"
     value = module.recovery_profile("reference", backend="sqlite", config=config)
     encoded = json.dumps(value)
     assert not value["continuation_supported"]
@@ -442,6 +451,15 @@ def test_default_profile_never_hashes_or_retains_unclassified_secret_options(mon
         {"workflow": {"definition": {"deployment": "v2"}}, "observability": {"log_level": "DEBUG"}}
     )
     assert module.recovery_profile("reference", backend="sqlite", config=config) == old
+
+
+@pytest.mark.parametrize("field", ["options", "credentials"])
+def test_model_known_credentials_reject_raw_values_without_exposing_them(field):
+    secret = "raw-model-credential-canary-that-must-not-enter-errors"
+    with pytest.raises(ValidationError) as caught:
+        RuntimeConfig.model_validate({"model": {field: {"api_key": secret}}})
+    assert secret not in str(caught.value)
+    assert "model" in str(caught.value)
 
 
 def test_installed_wheel_provenance_has_no_checkout_or_sdk_import_requirement(
@@ -748,6 +766,123 @@ def test_source_adapter_provenance_cannot_be_inferred_for_production_or_native_e
     with pytest.raises(InvocationStateError) as caught:
         module.recovery_profile(engine, backend="sqlite")
     assert caught.value.details["reason"] == "runtime_profile_unavailable"
+
+
+@pytest.fixture(params=["sqlite", "postgresql"])
+def role_archive_tree(tmp_path, request):
+    """Actual leased common admission; the manifest is explicitly a unit profile."""
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if request.param == "postgresql" else None
+    if request.param == "postgresql" and not datasource:
+        pytest.skip("actual PostgreSQL datasource required")
+    config = RuntimeConfig.model_validate(
+        {
+            "persistence": {"datasource": datasource},
+            "agent": {"roles": {"assistant": {"id": "assistant", "version": "1.0.0"}}},
+        }
+    )
+    services = RuntimeServices(
+        config, model=FakeModel(), database_root=None if datasource else tmp_path
+    )
+    assert (
+        services.invocations.connection.kind
+        == services.effect_journal.connection.kind
+        == request.param
+    )
+    manifest = {
+        "profile": PROFILE,
+        "backend": request.param,
+        "artifact": "a" * 64,
+        "sdk": "test-only/common-role-admission",
+        "continuation_supported": True,
+        "policy": {"agent_roles": services.role_bindings.snapshot()},
+    }
+    archive = RecoveryDefinitionArchive(
+        services.effect_journal,
+        services.invocations,
+        profile_provider=lambda engine: {**copy.deepcopy(manifest), "engine": engine},
+        trust_verifier=services._verify_archived_definition_trust,
+    )
+    lease = None
+
+    def prepare(reference):
+        nonlocal lease
+        plan = compile_workflow(
+            {
+                "document": {
+                    "dsl": "1.0.3",
+                    "namespace": "role-archive",
+                    "name": uuid4().hex,
+                    "version": "1.0.0",
+                },
+                "do": [{"respond": {"call": reference, "with": {"input": "${ . }"}}}],
+            },
+            enabled_function_calls=services.role_function_calls | {reference},
+        )
+        handle = services.invocations.create(
+            engine="reference",
+            session_id=None,
+            user_id="correlation",
+            owner_principal=None,
+            workflow_name=plan.name,
+            workflow_version=plan.version,
+            workflow_fingerprint=plan.fingerprint,
+        )
+        lease = services.execution_ownership.acquire(handle, seconds=60)
+        handle._execution_lease = lease
+        return plan, handle
+
+    try:
+        yield services, archive, manifest, prepare
+    finally:
+        if lease is not None:
+            services.execution_ownership.release(lease)
+        services.close()
+
+
+@pytest.mark.parametrize("kind", ["agent", "llm"])
+def test_initial_named_role_archive_roundtrip_uses_exact_current_manifest_bindings(
+    role_archive_tree, kind
+):
+    services, archive, _, prepare = role_archive_tree
+    reference = kind + "-assistant:1.0.0@default"
+    plan, handle = prepare(reference)
+    original = {"original": None, "value": False}
+    archive.admit(plan, handle, original, execution_lease=handle._execution_lease)
+    restored = archive.resolve(handle)
+    assert restored == plan and restored.source == plan.source
+    assert restored.tasks[0].reference == "/do/0/respond"
+    assert services.invocations.read_input(handle) == original
+    assert archive.has_binding(handle)
+    receipt = services.effect_journal.get(admission_identity(handle))
+    assert receipt is not None and receipt.status == "completed"
+    assert services.model.calls == []
+    assert all(
+        getattr(model, "calls", []) == [] for model in services.role_bindings._models.values()
+    )
+
+
+@pytest.mark.parametrize("damage", ["missing", "version", "name", "shape", "prefix"])
+def test_initial_role_archive_cannot_grant_a_missing_or_foreign_binding(role_archive_tree, damage):
+    services, archive, manifest, prepare = role_archive_tree
+    reference = "agent-assistant:1.0.0@default"
+    if damage == "prefix":
+        reference = "agent-assistant-extra:1.0.0@default"
+    plan, handle = prepare(reference)
+    if damage == "missing":
+        manifest["policy"].pop("agent_roles")
+    elif damage == "version":
+        manifest["policy"]["agent_roles"]["bindings"][0]["version"] = "2.0.0"
+    elif damage == "name":
+        manifest["policy"]["agent_roles"]["bindings"][0]["name"] = "different"
+    elif damage == "shape":
+        manifest["policy"]["agent_roles"].pop("effective_tool_bindings")
+    tree = (services, archive, handle, plan, manifest)
+    before = _rows(tree)
+    with pytest.raises(InvocationStateError):
+        archive.admit(plan, handle, {"original": None}, execution_lease=handle._execution_lease)
+    assert _rows(tree) == before
+    assert not archive.has_binding(handle)
+    assert services.model.calls == []
 
 
 @pytest.mark.parametrize("changed_policy", ["catalog", "schema"])

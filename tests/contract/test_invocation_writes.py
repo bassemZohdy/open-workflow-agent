@@ -10,10 +10,77 @@ import pytest
 from engine_cases import engine_cases
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
-from open_workflow_agent.errors import InvocationStateError, ModelError
+from open_workflow_agent.errors import InvocationStateError, ModelError, OwaError
 from open_workflow_agent.persistence import InvocationStore
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
+
+pytestmark = pytest.mark.usefixtures("explicit_workflow_delivery")
+
+_SAFE_CODES = {
+    "invalid_invocation_state",
+    "workflow_execution_error",
+    "invocation_cancelled",
+    "unsupported_workflow_feature",
+    "configuration_error",
+    "model_error",
+}
+_SAFE_REASONS = {
+    "runtime_profile_changed",
+    "deployment_trust_changed",
+    "binding_missing",
+    "binding_invalid",
+    "archive_missing",
+    "archive_invalid",
+    "input_missing",
+    "input_changed",
+    "definition_changed",
+    "deployment_profile_unqualified",
+    "native_history_missing",
+    "runtime_profile_unavailable",
+}
+
+
+async def _wait_for_execution_gate(predicate, running):
+    """Keep the original 10s gate, exposing only safe premature terminal categories."""
+    async with asyncio.timeout(10):
+        while not predicate():
+            if running.done():
+                if running.cancelled():
+                    pytest.fail("execution was cancelled before its fixture gate")
+                try:
+                    result = running.result()
+                except OwaError as error:
+                    code = error.code if error.code in _SAFE_CODES else "unclassified"
+                    reason = error.details.get("reason")
+                    reason = reason if reason in _SAFE_REASONS else "unclassified"
+                    pytest.fail(
+                        f"execution failed before its fixture gate: code={code}, reason={reason}"
+                    )
+                except Exception as error:
+                    pytest.fail(f"execution failed before its fixture gate: {type(error).__name__}")
+                else:
+                    error = result.error or {}
+                    code = error.get("code")
+                    code = code if code in _SAFE_CODES else "unclassified"
+                    reason = error.get("details", {}).get("reason")
+                    reason = reason if reason in _SAFE_REASONS else "unclassified"
+                    status = (
+                        result.status
+                        if result.status
+                        in {
+                            "waiting",
+                            "completed",
+                            "faulted",
+                            "cancelled",
+                        }
+                        else "unclassified"
+                    )
+                    pytest.fail(
+                        f"execution ended before its fixture gate: status={status}, "
+                        f"code={code}, reason={reason}"
+                    )
+            await asyncio.sleep(0.005)
 
 
 def _services(root, backend, model):
@@ -81,7 +148,7 @@ async def test_other_workers_terminal_outcome_survives_late_native_execution(
     handle = _handle(first, engine_name, plan)
     running = asyncio.create_task(engine.invoke(plan, handle, {"original": True}))
     try:
-        await asyncio.wait_for(started.wait(), 10)
+        await _wait_for_execution_gate(started.is_set, running)
         fresh = other.invocations.get(handle.invocation_id)
         assert fresh is not None
         if winner == "cancelled":
@@ -132,9 +199,7 @@ async def test_operator_loaded_handle_controls_the_existing_active_invocation(
     original = _handle(services, engine_name, plan)
     running = asyncio.create_task(engine.invoke(plan, original, {}))
     try:
-        async with asyncio.timeout(10):
-            while original.status != "waiting":
-                await asyncio.sleep(0.005)
+        await _wait_for_execution_gate(lambda: original.status == "waiting", running)
         waiting = await asyncio.wait_for(asyncio.shield(running), 10)
         assert waiting.status == "waiting" and original._execution_lease is None
         assert original.invocation_id not in engine._active
@@ -232,7 +297,7 @@ async def test_changed_active_state_stops_stale_execution_without_retry_or_termi
     original = _handle(first, engine_name, plan)
     running = asyncio.create_task(engine.invoke(plan, original, {}))
     try:
-        await asyncio.wait_for(started.wait(), 10)
+        await _wait_for_execution_gate(started.is_set, running)
         fresh = other.invocations.get(original.invocation_id)
         other.invocations.update(fresh, status="running")
         # The status is unchanged; a distinct committed write still invalidates
@@ -339,9 +404,7 @@ async def test_terminal_commit_during_operator_refresh_wins_without_another_tran
     original = _handle(services, engine_name, plan)
     running = asyncio.create_task(engine.invoke(plan, original, {}))
     try:
-        async with asyncio.timeout(10):
-            while original.status != "waiting":
-                await asyncio.sleep(0.005)
+        await _wait_for_execution_gate(lambda: original.status == "waiting", running)
         waiting = await asyncio.wait_for(asyncio.shield(running), 10)
         assert waiting.status == "waiting" and original._execution_lease is None
         assert original.invocation_id not in engine._active

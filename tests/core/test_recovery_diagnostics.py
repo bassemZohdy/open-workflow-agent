@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
@@ -159,10 +160,151 @@ def test_diagnostic_sampling_bound_is_explicit_and_does_not_decode_all_effects(
         services.close()
 
 
+def test_missing_original_input_stops_before_action_or_ownership_inspection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    try:
+        handle = _handle(services)
+        _compatible(services, monkeypatch)
+        monkeypatch.setattr(
+            services.invocations,
+            "read_input",
+            lambda _handle: (_ for _ in ()).throw(ValueError(SECRET)),
+        )
+        execute = StorageConnection.execute
+
+        def track_reads(
+            connection: StorageConnection, statement: str, parameters: tuple[Any, ...] = ()
+        ) -> Any:
+            assert "workflow_effect_invocations" not in statement
+            assert "invocation_ownership" not in statement
+            return execute(connection, statement, parameters)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(StorageConnection, "execute", track_reads)
+            report = recovery_diagnostics(services, handle)
+
+        assert report["continuation"] == "unavailable"
+        assert report["actions"] == {"known": 0, "pending": 0, "complete": False}
+        assert [check["reason"] for check in report["checks"]] == [
+            "original_definition_retained",
+            "original_input_unavailable",
+        ]
+        assert SECRET not in json.dumps(report)
+    finally:
+        services.close()
+
+
+@pytest.mark.parametrize("damage", ["mismatched_identity", "missing_receipt"])
+def test_inconsistent_action_evidence_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, damage: str
+) -> None:
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    try:
+        handle = _handle(services)
+        _compatible(services, monkeypatch)
+        identity = EffectIdentity(
+            handle.invocation_id,
+            handle.workflow_fingerprint,
+            "/do/0/action",
+            (("/do/0/action", 1),),
+            "call:http",
+        )
+        if damage == "mismatched_identity":
+            mismatched = EffectIdentity(
+                handle.invocation_id,
+                "different-definition",
+                identity.task_reference,
+                identity.occurrence,
+                identity.operation,
+            )
+            rows = [
+                (
+                    json.dumps(
+                        {
+                            "invocation_id": mismatched.invocation_id,
+                            "workflow_fingerprint": mismatched.workflow_fingerprint,
+                            "task_reference": mismatched.task_reference,
+                            "occurrence": [list(item) for item in mismatched.occurrence],
+                            "operation": mismatched.operation,
+                        }
+                    ),
+                    "{}",
+                )
+            ]
+        else:
+            services.effect_journal.begin(
+                identity, effect_request_digest("http", {}), "owner-token"
+            )
+            monkeypatch.setattr(services.effect_journal, "get", lambda _identity: None)
+            rows = None
+
+        if rows is not None:
+            execute = StorageConnection.execute
+
+            def return_inconsistent_rows(
+                connection: StorageConnection,
+                statement: str,
+                parameters: tuple[Any, ...] = (),
+            ) -> Any:
+                if "FROM workflow_effect_invocations" in statement:
+                    return SimpleNamespace(fetchall=lambda: rows)
+                return execute(connection, statement, parameters)
+
+            monkeypatch.setattr(StorageConnection, "execute", return_inconsistent_rows)
+
+        report = recovery_diagnostics(services, handle)
+        action_check = next(check for check in report["checks"] if check["stage"] == "actions")
+        assert action_check["outcome"] == "unavailable"
+        assert action_check["reason"] == "action_evidence_invalid"
+        assert report["continuation"] == "unavailable"
+        assert report["ownership"] == "not_inspected"
+        assert SECRET not in json.dumps(report)
+    finally:
+        services.close()
+
+
+@pytest.mark.parametrize("damage", ["identity_mismatch", "inspection_error"])
+def test_ownership_inspection_reports_uncertainty_without_claiming_availability(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, damage: str
+) -> None:
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    try:
+        handle = _handle(services)
+        _compatible(services, monkeypatch)
+        execute = StorageConnection.execute
+
+        def ownership_evidence(
+            connection: StorageConnection, statement: str, parameters: tuple[Any, ...] = ()
+        ) -> Any:
+            if "FROM invocation_ownership" not in statement:
+                return execute(connection, statement, parameters)
+            if damage == "inspection_error":
+                raise RuntimeError(SECRET)
+            return SimpleNamespace(
+                fetchone=lambda: ("different-engine", handle.workflow_fingerprint, 1, 0)
+            )
+
+        monkeypatch.setattr(StorageConnection, "execute", ownership_evidence)
+        report = recovery_diagnostics(services, handle)
+
+        ownership_check = next(check for check in report["checks"] if check["stage"] == "ownership")
+        assert ownership_check["outcome"] == "unavailable"
+        assert ownership_check["reason"] == "ownership_evidence_unavailable"
+        assert report["ownership"] == "unavailable"
+        assert report["continuation"] == "common_checked"
+        assert report["native"] == "not_inspected"
+        assert SECRET not in json.dumps(report)
+    finally:
+        services.close()
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("route", ["resume", "cancel", "recovery"])
+@pytest.mark.parametrize("owner_case", ["foreign", "ownerless"])
 async def test_invocation_routes_hide_other_principals_before_archive_or_native_reads(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, route: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, route: str, owner_case: str
 ) -> None:
     monkeypatch.setenv("OWA_DIAGNOSTIC_TOKEN", "test-api-token")
     config = RuntimeConfig.model_validate(
@@ -184,7 +326,7 @@ async def test_invocation_routes_hide_other_principals_before_archive_or_native_
     app = create_app(config=config, services=services)
     try:
         async with app.router.lifespan_context(app):
-            foreign = _handle(services, owner="other-owner")
+            foreign = _handle(services, owner="other-owner" if owner_case == "foreign" else None)
             before = _dump(services)
             monkeypatch.setattr(
                 services,

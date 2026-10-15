@@ -51,6 +51,10 @@ class ModelError(OwaError):
     code = "model_error"
 
 
+class _ModelOutcomeUncertain(ModelError):
+    """A provider attempt has no known reply; ordinary retry must not resend it."""
+
+
 class AgentError(OwaError):
     code = "agent_error"
 

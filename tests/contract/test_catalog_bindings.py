@@ -387,7 +387,7 @@ async def test_imported_task_controls_share_inline_semantics(
         definition["then"] = case
     elif case == "timeout":
         # Test an in-flight imported call after durable policy/native writes.
-        definition["timeout"] = {"after": {"seconds": 1}}
+        definition["timeout"] = {"after": {"seconds": 10}}
 
     async def handler(request):
         if request.url.host == "catalog.test":

@@ -38,7 +38,7 @@ class AgentFrameworkWorkflowEngine(PortableWorkflowEngine):
         active = self._begin_active(invocation)
         result: InvocationResult | None = None
         try:
-            input_data = self._prepare_workflow_input(workflow, invocation, input_data)
+            input_data = await self._prepare_workflow_input_owned(workflow, invocation, input_data)
             output = await self.native.invoke(
                 lambda value: self.executor.execute(
                     workflow,

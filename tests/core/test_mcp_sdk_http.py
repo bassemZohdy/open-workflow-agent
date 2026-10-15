@@ -5,14 +5,18 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+from contextlib import AsyncExitStack
 
 import httpx
 import pytest
+from _auth_tls_fixture import AuthTlsReceiver
 from _mcp_sdk_fixture import METHOD_PARAMS, sdk_http_fixture
 from open_workflow_agent import mcp_client
+from open_workflow_agent.config import ToolConfig
 from open_workflow_agent.errors import ToolError, _McpOutcomeUncertain
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.security import ProfileAuthentication, SecurityConfig
+from open_workflow_agent.tools import ToolRegistry
 
 
 def payload(method):
@@ -39,6 +43,77 @@ async def test_unreviewed_installed_sdk_rejects_before_transport_or_auth(monkeyp
     with pytest.raises(ToolError, match="unsupported MCP SDK installation") as error:
         await services.call("mcp", payload("tools/call"))
     assert error.value.details["available"][package] == "2.4.0" and calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("field", "reason"),
+    [("options", "invalid_transport"), ("description", "invalid_client")],
+)
+async def test_undefined_mcp_configuration_rejects_before_authorization_or_transport(field, reason):
+    calls = []
+    authorizations = []
+
+    class Authentication:
+        def headers(self, endpoint):
+            raise AssertionError("unsupported config must reject before credentials")
+
+        async def prepare(self, endpoint, *, remaining_timeout):
+            raise AssertionError("unsupported config must reject before credentials")
+
+    def reject_transport(request):
+        calls.append(request)
+        raise AssertionError("unsupported config must reject before transport I/O")
+
+    async def authorize_destination(protocol, endpoint, request):
+        authorizations.append((protocol, endpoint, request))
+
+    services = ProtocolServices(
+        HttpClient(
+            allowed_hosts={"fixture.test"},
+            transport=httpx.MockTransport(reject_transport),
+        ),
+        authorize_destination=authorize_destination,
+    )
+    request = payload("tools/call")
+    if field == "options":
+        request["transport"]["options"] = {"mode": "unsupported"}
+    else:
+        request["client"]["description"] = "not part of the supported client identity"
+
+    with pytest.raises(ToolError) as error:
+        await services.call("mcp", request, _authentication=Authentication())
+
+    assert error.value.details["reason"] == reason
+    assert calls == [] and authorizations == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("field", "reason"),
+    [("options", "invalid_transport"), ("description", "invalid_client")],
+)
+async def test_undefined_mcp_configuration_rejects_before_prepared_authorization(field, reason):
+    authorized = []
+
+    async def authorize_destination(protocol, endpoint, request):
+        authorized.append((protocol, endpoint, request))
+
+    services = ProtocolServices(
+        HttpClient(allowed_hosts={"fixture.test"}),
+        authorize_destination=authorize_destination,
+    )
+    request = payload("tools/call")
+    if field == "options":
+        request["transport"]["options"] = {"mode": "unsupported"}
+    else:
+        request["client"]["description"] = "not part of the supported client identity"
+
+    with pytest.raises(ToolError) as error:
+        await services.authorize_prepared_call("mcp", request)
+
+    assert error.value.details["reason"] == reason
+    assert authorized == []
 
 
 @pytest.mark.asyncio
@@ -300,6 +375,178 @@ async def test_authentication_failure_is_known_before_mcp_business_dispatch():
         await services.call("mcp", payload("tools/call"))
     assert not isinstance(error.value, _McpOutcomeUncertain)
     assert error.value.details == {"stage": "authentication"} and calls == []
+
+
+@pytest.mark.asyncio
+async def test_oauth_token_expiring_during_fetch_is_rejected_before_mcp_dispatch(monkeypatch):
+    monkeypatch.setenv("OWA_MCP_CLIENT_ID", "fixture-client")
+    monkeypatch.setenv("OWA_MCP_CLIENT_SECRET", "fixture-secret")
+    calls = []
+
+    async def receiver(request):
+        calls.append(request.url.path)
+        if request.url.path == "/token":
+            # The returned token's lifetime elapses before credential
+            # preparation can hand it to the business request.
+            await asyncio.sleep(0.03)
+            return httpx.Response(
+                200,
+                json={"access_token": "short-lived", "token_type": "Bearer", "expires_in": 0.01},
+            )
+        raise AssertionError("an expired OAuth token must never dispatch the MCP operation")
+
+    security = SecurityConfig.model_validate(
+        {
+            "profiles": {
+                "mcp-oauth": {
+                    "type": "oauth2_client_credentials",
+                    "token_url": "https://fixture.test/token",
+                    "client_id": {"from_env": "OWA_MCP_CLIENT_ID"},
+                    "client_secret": {"from_env": "OWA_MCP_CLIENT_SECRET"},
+                    "allowed_resource_endpoints": ["https://fixture.test/mcp"],
+                }
+            }
+        }
+    )
+    services = ProtocolServices(
+        HttpClient(
+            timeout=2,
+            allowed_hosts={"fixture.test"},
+            transport=httpx.MockTransport(receiver),
+        ),
+        security=security,
+        security_profile="mcp-oauth",
+    )
+
+    with pytest.raises(ToolError) as error:
+        await services.call("mcp", payload("tools/call"))
+
+    assert error.value.details == {"stage": "authentication", "reason": "token_expired"}
+    assert calls == ["/token"]
+
+
+@pytest.mark.asyncio
+async def test_actual_mcp_tls_keeps_configured_tool_certificates_isolated(tmp_path, monkeypatch):
+    certificates = AuthTlsReceiver(tmp_path)
+
+    security_value = {"profiles": {}}
+    for name, identity in (("client-a", "client-A"), ("client-b", "client-B")):
+        certificate, private_key = certificates.certificates[identity]
+        cert_env = f"OWA_MCP_{identity.upper().replace('-', '_')}_CERT"
+        key_env = f"OWA_MCP_{identity.upper().replace('-', '_')}_KEY"
+        ca_env = f"OWA_MCP_{identity.upper().replace('-', '_')}_CA"
+        monkeypatch.setenv(cert_env, str(certificate))
+        monkeypatch.setenv(key_env, str(private_key))
+        monkeypatch.setenv(ca_env, certificates.ca_bundle)
+        security_value["profiles"][name] = {
+            "type": "mtls",
+            "certificate": {"from_env": cert_env},
+            "private_key": {"from_env": key_env},
+            "ca_bundle": {"from_env": ca_env},
+        }
+
+    security = SecurityConfig.model_validate(security_value)
+    protocols = ProtocolServices(
+        HttpClient(timeout=3, allowed_hosts={"127.0.0.1"}), security=security
+    )
+    try:
+        async with AsyncExitStack() as stack:
+            _, calls_a, endpoint_a = await stack.enter_async_context(
+                sdk_http_fixture(
+                    network=True,
+                    tls=(
+                        (
+                            str(certificates.certificates["localhost"][0]),
+                            str(certificates.certificates["localhost"][1]),
+                        ),
+                        str(certificates.certificates["client-A"][0]),
+                    ),
+                )
+            )
+            _, calls_b, endpoint_b = await stack.enter_async_context(
+                sdk_http_fixture(
+                    network=True,
+                    tls=(
+                        (
+                            str(certificates.certificates["localhost"][0]),
+                            str(certificates.certificates["localhost"][1]),
+                        ),
+                        str(certificates.certificates["client-B"][0]),
+                    ),
+                )
+            )
+            tools = ToolRegistry.from_config(
+                [
+                    ToolConfig(
+                        type="mcp",
+                        name="alpha",
+                        endpoint=endpoint_a,
+                        security_profile="client-a",
+                        options={
+                            "protocolVersion": "2026-07-28",
+                            "method": "tools/call",
+                            "transport": {"http": {"endpoint": endpoint_a}},
+                        },
+                    ),
+                    ToolConfig(
+                        type="mcp",
+                        name="beta",
+                        endpoint=endpoint_b,
+                        security_profile="client-b",
+                        options={
+                            "protocolVersion": "2026-07-28",
+                            "method": "tools/call",
+                            "transport": {"http": {"endpoint": endpoint_b}},
+                        },
+                    ),
+                    ToolConfig(
+                        type="mcp",
+                        name="alpha-wrong-identity",
+                        endpoint=endpoint_a,
+                        security_profile="client-b",
+                        options={
+                            "protocolVersion": "2026-07-28",
+                            "method": "tools/call",
+                            "transport": {"http": {"endpoint": endpoint_a}},
+                        },
+                    ),
+                    ToolConfig(
+                        type="mcp",
+                        name="alpha-missing-identity",
+                        endpoint=endpoint_a,
+                        options={
+                            "protocolVersion": "2026-07-28",
+                            "method": "tools/call",
+                            "transport": {"http": {"endpoint": endpoint_a}},
+                        },
+                    ),
+                ],
+                protocols,
+                security=security,
+            )
+            payload = {"parameters": {"name": "lookup", "arguments": {"value": 7}}}
+
+            result_a = await tools.invoke("alpha", payload)
+            result_b = await tools.invoke("beta", payload)
+            assert result_a["structuredContent"] == {"value": 7}
+            assert result_b["structuredContent"] == {"value": 7}
+            assert len(calls_a) == len(calls_b) == 1
+            assert calls_a[0]["body"]["method"] == calls_b[0]["body"]["method"] == "tools/call"
+
+            for name in ("alpha-wrong-identity", "alpha-missing-identity"):
+                with pytest.raises((ToolError, _McpOutcomeUncertain)) as failure:
+                    await tools.invoke(name, payload)
+                text = str(failure.value)
+                assert "-----BEGIN" not in text
+                assert "private key" not in text.lower()
+                for identity in ("client-A", "client-B"):
+                    assert certificates.certificates[identity][1].read_text() not in text
+
+            # The endpoint requiring client-A must reject both B and no
+            # certificate during TLS negotiation, before MCP receives a call.
+            assert len(calls_a) == len(calls_b) == 1
+    finally:
+        certificates.close()
 
 
 @pytest.mark.asyncio

@@ -18,20 +18,24 @@ Rules: reuse native LangGraph graphs/tasks/checkpoints; start in one container w
 
 Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, not time estimates.
 
-## Recorded delivery snapshot — 2026-10-13
+## Accepted prerequisite snapshot — 2026-10-14
 
-**17 verified / 20 open / 0 deferred.** S2-09 is the earliest unfinished task.
-S2-09 through S3-08 have authored changes awaiting complete qualification.
-The latest hosted checkpoint (`67aa724`) failed; grouped corrections and selected
-adapters remain unqualified. At frozen local source `4740732`, optional Agent
-Framework passed its selected profile; LangGraph failed, and common/ADK both
-reached their 4,500-second bounds without final pytest totals. Source remained
-unchanged. The renewal correction and grouped fixture patches are frozen at
-`883cd1a`; five fresh builds pass and all four full profiles have started. This
-launch record has no final behavioral results. No pending task is marked complete.
-See
-[recorded project status](PROJECT.md#recorded-backlog-status-snapshot-2026-10-13)
-and [retained validation evidence](docs/validation-history/pending-batch-results.md).
+This dated snapshot records the accepted prerequisites for the active S3-02
+work; [PROJECT.md](PROJECT.md) is the current source for backlog counts and
+delivery status. S2-09's finite VM01-VM08 continuation/recovery policy remains
+verified at PR head `9578459`. S3-01's finite Python MCP01-MCP08 profile is verified at
+exact source `af4acd61c200787fb68248b2d180ba69efb8c837`; all six hosted
+workflows passed. The root suite passed 4,569 tests, skipped 2,950 and reached
+90.04% coverage; the Windows operation-recovery and timer suites passed 962/454
+and 718/769 tests respectively. PostgreSQL passed all ten jobs. See the [complete
+qualification record](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6)
+and the [S3-01 finite acceptance gates](docs/s3-01-mcp-acceptance.md).
+
+JavaScript, full MCP protocol coverage (including A145), proposed T29/T30/T31
+criteria and broader MCP extensions remain independently unqualified. Earlier
+timeouts, superseded attempts and their corrections remain in the
+[validation history](docs/validation-history/pending-batch-results.md); none is
+treated as a deferred task or as additional feature completion.
 
 ## Stage 1 — Correct core execution
 
@@ -82,6 +86,11 @@ and [retained validation evidence](docs/validation-history/pending-batch-results
   Accepted finite profile; [retained revisions, validations and exclusions](docs/validation-history/backlog-task-notes.md#s2-03).
 - [x] **S2-04** (M) — Complete retry predicates/backoff/jitter, task/workflow timeouts, deadlines and exception handling.
   Accepted finite profile; [retained revisions, validations and exclusions](docs/validation-history/backlog-task-notes.md#s2-04).
+  Current-source requalification note: Windows run `38632792174` failed the
+  duration-bound retry output assertion on both engines. Full local retry
+  selections pass on both engines; the assertion now captures output, error,
+  calls, sleeps, draws and clock for a hosted rerun. See the
+  [exact-source history](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
 - [x] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
   Verified: common storage and matching, native consumption/iterator
   recovery, scope and approval guards are implemented. Focused native and
@@ -120,45 +129,76 @@ and [retained validation evidence](docs/validation-history/pending-batch-results
   and two native benchmarks pass. Earlier failures remain historical. See the
   [verified lifecycle acceptance](docs/s2-08-lifecycle-acceptance.md).
   No automatic remote rollback or general exactly-once guarantee is claimed;
-  migration, full proposed criteria and JavaScript retain S2-09/Stage 4 ownership.
-- [ ] **S2-09** (L) — Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.
-  Original-definition admission, exact profile checks and authenticated bounded
-  recovery diagnostics are authored in an isolated batch. See the
-  [finite policy](docs/s2-09-version-recovery-acceptance.md). Actual native,
-  backend, process-stop, packaging and hosted qualification remain required.
+  S2-09's finite continuation policy is verified, while in-place migration,
+  full proposed criteria and JavaScript remain outside its qualified scope.
+- [x] **S2-09** (L) — Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.
+  Verified finite VM01-VM08 continuation/recovery policy at PR head `9578459`.
+  Retained definitions continue under the original identity; changed profiles
+  and unapproved in-place mappings reject; diagnostics remain bounded and
+  owner-authorized. ADK/LangGraph, SQLite/PostgreSQL, process-stop, packaging,
+  Windows and hosted gates pass. A086/T44 successful in-place mapping and full
+  history remain explicitly unsupported. See the
+  [acceptance record](docs/s2-09-version-recovery-acceptance.md).
 
 ## Stage 3 — Agents, tools and integrations
 
-- [ ] **S3-01** (M) — Complete MCP tools/resources/transports/authentication with pinned official SDKs and integration tests.
-  Common HTTP/SDK, bounded authentication and restricted stdio changes are
-  authored; integrated qualification and publication remain pending. See the
-  [finite acceptance gates](docs/s3-01-mcp-acceptance.md). No new transport,
-  authentication or inventory profile is qualified before integrated validation.
+- [x] **S3-01** (M) — Complete MCP tools/resources/transports/authentication with pinned official SDKs and integration tests.
+  Verified finite Python MCP01-MCP08 profile at exact source
+  `af4acd61c200787fb68248b2d180ba69efb8c837`. CI, PostgreSQL, Agent Framework,
+  External Sandbox, Security and Docs all passed. Full MCP conformance,
+  JavaScript and proposed T29/T30/T31 remain open. See the
+  [acceptance record](docs/s3-01-mcp-acceptance.md) and
+  [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6).
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
-  Typed common SDK transport and protected inbound delivery are authored;
-  peer/native/backend acceptance requires fresh integrated qualification. See the
-  [finite acceptance gates](docs/s3-02-a2a-acceptance.md). S2-09/S3-01 publication
-  and integrated SDK/backend/platform validation remain prerequisites; no new
-  A2A profile or proposed inventory criterion is complete.
+  S2-09 and S3-01 are verified prerequisites. The bounded A2A profile has broad
+  local and hosted evidence, but A2A01-A2A08 remain partial pending direct
+  cross-product, authority, recovery, streaming, expiry and backend evidence.
+  Outbound calls are not automatically replayed after possible acceptance;
+  callers may explicitly resubscribe to a known task. This batch adds card
+  interface-selection, HTTP+JSON resume, recovery skill-binding and optional-
+  method rejection witnesses. Follow-up tests now reject protected-approval
+  resumes, verify a real timer's terminal Task projection, and reject A2A resume
+  when archived workflow or invocation-binding evidence is missing or corrupt.
+  The earlier 217-case core A2A profile is verified at `e45115c`; this batch's
+  malformed-Part/data and in-process stale-generation tests pass locally. The
+  owner-authority resume matrix requires independent engine SDK environments,
+  and the ADK expired-approval lease fixture awaits hosted requalification.
+  Exact-source hosted results remain pending. See the
+  [gate-by-gate acceptance record](docs/s3-02-a2a-acceptance.md) and
+  [retained validation history](docs/validation-history/pending-batch-results.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
-  Selected HTTP/OpenAPI/gRPC, awaited outputs, pure AsyncAPI descriptions and
-  independent jobs are authored; corrections and qualification remain active. See
-  [the finite acceptance plan](docs/s3-03-operation-adapters-acceptance.md).
-  Behavioral/native/backend/platform, physical lifetime, packaging and hosted
-  qualification remain outstanding; no new profile or inventory row is complete.
+  Selected adapters and independent recovery fixtures are authored. The
+  `8183776` PostgreSQL and Windows runs confirm one corrected inbox/ACK
+  recurrence only; broader behavior, backend, platform, lifetime, packaging
+  and hosted qualification remain open. At `f235be4`, PostgreSQL ADK operation
+  recovery reached 97% before its 20-minute command limit (exit 124). The
+  extended 25-minute command and 30-minute job completed in PostgreSQL CI run
+  `38645586498` at `e45115c`; broader backend and adapter qualification remains
+  open. See
+  the [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and
+  [retained run evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Finite captured script sources, independent recovery proofs and awaited internal
   process controls are authored. See [the acceptance plan](docs/s3-04-executable-source-acceptance.md).
-  The coherent source batch and all platform/backend/publication gates remain
-  pending; no new executable or isolation profile is complete.
+  Actual native/backend cases include a late script worker losing parent
+  ownership while its business receipt remains pending. The coherent source
+  batch and all platform/backend/publication gates remain pending; no new
+  executable or isolation profile is complete.
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
-  Protected actor identity, atomic assignments/decisions, fair expiry and native
-  recovery proofs are authored; see [the finite acceptance plan](docs/s3-05-protected-approval-acceptance.md).
-  No behavioral or publication gate is complete.
+  Protected actor identity, atomic decisions, expiry and native recovery
+  controls are authored. The PostgreSQL timestamp migration and lease-fixture
+  correction have focused passing evidence; the hosted Windows request-row
+  case passed at `8183776`. Cross-engine/backend acceptance remains open. See
+  the [finite acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
+  [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and applicable delegated authorization.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
-  Eight finite recipe families and named role bindings are authored; see
-  [the acceptance plan](docs/s3-07-agent-pattern-acceptance.md). Required validation remains open.
+  Eight finite recipe families and named role bindings are authored. A 15-second
+  test lease passes the focused case and LangGraph/SQLite recovery matrix
+  locally; the `8183776` Windows timing run exposed that fixture-timing issue
+  and two retry-output mismatches. Hosted requalification remains pending. See
+  the [acceptance plan](docs/s3-07-agent-pattern-acceptance.md) and
+  [timing evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
   Selected finite adapters and grouped corrections are authored; see
   [the acceptance plan](docs/s3-08-selected-adapter-acceptance.md). Qualification remains pending.

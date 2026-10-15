@@ -49,10 +49,11 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
     root_tests = next(step for step in jobs["root"]["steps"] if step.get("name") == "Tests")
     assert "pytest tests -vv" in root_tests["run"]
     assert "--cov-fail-under=90" in root_tests["run"]
+    assert "--cov-precision=2" in root_tests["run"]
     assert "--kill-after=30s 45m" in root_tests["run"]
     assert jobs["root"]["timeout-minutes"] == "60"
     assert jobs["engines"]["timeout-minutes"] == "45"
-    assert "--kill-after=30s 30m" in _runs(jobs["engines"])
+    assert "--kill-after=30s 40m" in _runs(jobs["engines"])
     engines = jobs["engines"]
     assert {entry["engine"] for entry in engines["strategy"]["matrix"]["include"]} == {
         "adk",
@@ -78,7 +79,7 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
     assert jobs["windows-expressions"]["timeout-minutes"] == "20"
     assert jobs["windows-native"]["timeout-minutes"] == "20"
     assert jobs["windows-native-recovery"]["timeout-minutes"] == "35"
-    assert jobs["windows-native-timing"]["timeout-minutes"] == "35"
+    assert jobs["windows-native-timing"]["timeout-minutes"] == "45"
 
 
 def test_postgresql_profiles_run_independently_and_gate_both_images():
@@ -90,6 +91,8 @@ def test_postgresql_profiles_run_independently_and_gate_both_images():
         "postgres-agent-framework",
         "postgres-adk-lifecycle",
         "postgres-langgraph-lifecycle",
+        "postgres-adk-operations",
+        "postgres-langgraph-operations",
     }
     assert set(jobs["postgres-runtime"]["needs"]) == profiles
     assert jobs["postgres-runtime"]["strategy"]["fail-fast"] == "false"
@@ -97,11 +100,19 @@ def test_postgresql_profiles_run_independently_and_gate_both_images():
         assert "needs" not in jobs[name]
         assert jobs[name]["services"]["postgres"]["image"] == "postgres:16"
         assert jobs[name]["timeout-minutes"] == (
-            "45" if name in {"postgres-adk", "postgres-langgraph"} else "20"
+            "45"
+            if name in {"postgres-adk", "postgres-langgraph"}
+            else "30"
+            if name == "postgres-adk-operations"
+            else "25"
+            if name == "postgres-langgraph-operations"
+            else "20"
         )
     assert "--kill-after=30s 30m" in _runs(jobs["postgres-adk"])
     assert "--kill-after=30s 30m" in _runs(jobs["postgres-langgraph"])
     assert "--kill-after=30s 12m" in _runs(jobs["postgres-agent-framework"])
+    assert "--kill-after=30s 25m" in _runs(jobs["postgres-adk-operations"])
+    assert "--kill-after=30s 20m" in _runs(jobs["postgres-langgraph-operations"])
 
 
 def test_windows_timing_folded_command_passes_all_fixtures_to_pytest():
@@ -168,7 +179,7 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
         "langgraph",
     }
     command = _runs(native)
-    assert "--kill-after=30s 8m" in command and "--locked --extra knowledge" in command
+    assert "--kill-after=30s 10m" in command and "--locked --extra knowledge" in command
     assert all(f"../../tests/contract/{name}" in command for name in fixtures)
     assert "../../tests/core/test_native_sqlite_inspection.py" in command
     main = _runs(_workflow("ci.yml")["jobs"]["engines"])

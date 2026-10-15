@@ -14,10 +14,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urljoin, urlparse
 
-import yaml
+import httpx
 
 from .catalog import CatalogContext, FunctionCatalog
 from .config import CatalogAuthenticationConfig, ExternalCatalogConfig
+from .credential_guard import LiteralCredentialGuard, credential_scope
 from .errors import OwaError, ToolError, UnsupportedWorkflowFeature, WorkflowSchemaError
 from .expressions import ExpressionEvaluator, ExpressionMode
 from .observability import EventSink, WorkflowEvent
@@ -34,6 +35,8 @@ from .security import ProfileAuthentication, SecurityConfig
 from .versions import version_precedence
 
 if TYPE_CHECKING:
+    from .grpc_client import GrpcRegistry
+    from .openapi_client import OpenApiOperationSelection
     from .workflow import ExecutionState
 
 CATALOG_FUNCTION_REFERENCE = re.compile(
@@ -109,11 +112,15 @@ class ExternalCatalogResolver:
         event_sink: EventSink | None = None,
         security: SecurityConfig | None = None,
         resource_policies: Mapping[str, ExternalCatalogConfig] | None = None,
+        grpc_registry: GrpcRegistry | None = None,
+        grpc_credential_endpoints: Mapping[str, tuple[str, ...]] | None = None,
     ) -> None:
         self.policies = dict(policies or {})
         self.http = http
         self.event_sink = event_sink
         self.security = security
+        self.grpc_registry = grpc_registry
+        self.grpc_credential_endpoints = dict(grpc_credential_endpoints or {})
         self.schemas = SchemaResourceResolver(
             resource_policies or {},
             self._schema_client,
@@ -197,6 +204,7 @@ class ExternalCatalogResolver:
                 evaluation=evaluation,
                 components=components,
                 _resource_preflight=_resource_preflight,
+                grpc_enabled=self.grpc_registry is not None,
             )
             binding = ResolvedCatalogFunction(
                 reference.value,
@@ -233,6 +241,11 @@ class ExternalCatalogResolver:
                     variables={"context": context.metadata},
                     metadata=context.metadata,
                     mode=mode,
+                    **(
+                        {"_runtime_services": context.services}
+                        if captured.execution_definition.get("call") in {"grpc", "openapi"}
+                        else {}
+                    ),
                 )
 
             catalog.register(reference.value, invoke)
@@ -254,6 +267,7 @@ class ExternalCatalogResolver:
         mode: ExpressionMode = "strict",
         metadata: Mapping[str, Any] | None = None,
         parent_state: ExecutionState | None = None,
+        _runtime_services: Any = None,
     ) -> Any:
         """Compatibility invocation through the same portable task pipeline."""
         from .workflow import ExecutionState, WorkflowExecutor
@@ -266,7 +280,12 @@ class ExternalCatalogResolver:
             task_metadata["_catalog_operation_id"] = operation_id
         task_metadata["_catalog_tasks"] = {execution_reference: binding}
         task_metadata["_external_catalog_resolver"] = self
-        executor = WorkflowExecutor(FunctionCatalog())
+        executor = WorkflowExecutor(
+            FunctionCatalog(),
+            services=_runtime_services
+            if binding.execution_definition.get("call") in {"grpc", "openapi"}
+            else None,
+        )
         if parent_state is not None:
             state = executor._copy_state(parent_state)
             state.data = payload
@@ -303,6 +322,7 @@ class ExternalCatalogResolver:
         *,
         mode: ExpressionMode = "strict",
         registry: Any = None,
+        _openapi_selection: OpenApiOperationSelection | None = None,
     ) -> Any:
         """Dispatch an evaluated protocol payload under current deployment trust."""
         reference = parse_catalog_function_reference(binding.reference)
@@ -324,6 +344,7 @@ class ExternalCatalogResolver:
             reference,
             evaluation={"mode": mode},
             _schema_registry=registry,
+            grpc_enabled=self.grpc_registry is not None,
         )
         if call != expected_call:
             raise UnsupportedWorkflowFeature("captured catalog protocol does not match dispatch")
@@ -338,9 +359,15 @@ class ExternalCatalogResolver:
         client = self._client(policy, auth_host=urlparse(binding.resource_uri).hostname)
         if client.transport is not None:
             await _validate_invocation_destinations(invocation_payload, policy, client)
-        return await ProtocolServices(client).call(
-            call, workflow_protocol_payload(call, invocation_payload)
+        protocols = ProtocolServices(
+            client,
+            grpc_registry=self.grpc_registry,
+            grpc_credential_endpoints=self.grpc_credential_endpoints,
         )
+        prepared = workflow_protocol_payload(call, invocation_payload)
+        if _openapi_selection is not None:
+            return await protocols.call(call, prepared, _openapi_selection=_openapi_selection)
+        return await protocols.call(call, prepared)
 
     def capabilities(self) -> dict[str, Any]:
         configured = sorted(self.policies)
@@ -422,6 +449,19 @@ class ExternalCatalogResolver:
     async def _fetch(
         self, resource_uri: str, policy: ExternalCatalogConfig, reference: str
     ) -> _CachedResource:
+        with credential_scope() as guard:
+            return await self._fetch_checked(
+                resource_uri, policy, reference, credential_guard=guard
+            )
+
+    async def _fetch_checked(
+        self,
+        resource_uri: str,
+        policy: ExternalCatalogConfig,
+        reference: str,
+        *,
+        credential_guard: LiteralCredentialGuard,
+    ) -> _CachedResource:
         now = time.monotonic()
         cached = self._cache.get(resource_uri)
         if cached is not None and now - cached.fetched_at > policy.max_cache_age_seconds:
@@ -450,6 +490,7 @@ class ExternalCatalogResolver:
                 output="response",
                 request_timeout=policy.timeout_seconds,
                 allow_not_modified=True,
+                _return_response=True,
             )
         except OwaError as exc:
             safe_code = exc.code
@@ -476,30 +517,34 @@ class ExternalCatalogResolver:
                 "external catalog resolution failed",
                 details={"function": reference, "code": "catalog_resolution_failed"},
             ) from exc
-        if not isinstance(response, Mapping):
+        if not isinstance(response, httpx.Response):
             raise ToolError("external catalog returned an invalid HTTP response")
-        status = response.get("status")
+        if credential_guard.contains_literal(response.content) or any(
+            credential_guard.contains_literal(value) for value in response.headers.values()
+        ):
+            raise UnsupportedWorkflowFeature(
+                "external catalog metadata contains private credentials"
+            )
+        status = response.status_code
         if status == 304 and cached is not None:
             self._verify_pin(cached.digest, policy, reference, resource_uri)
             cached.fetched_at = now
             self._emit("CatalogRevalidated", reference, status="revalidated")
             return cached
-        if not isinstance(status, int) or status < 200 or status >= 300:
+        if not 200 <= status < 300:
             raise ToolError(
                 "external catalog returned an invalid status",
                 details={"function": reference, "status": status},
             )
-        body = response.get("body")
+        raw = response.content
+        try:
+            body = response.json()
+        except ValueError:
+            body = raw
         from .workflow import _validate_json_value, load_workflow_text
 
         if not isinstance(body, (bytes, str)):
             _validate_json_value(body)
-        if isinstance(body, bytes):
-            raw = body
-        elif isinstance(body, str):
-            raw = body.encode("utf-8")
-        else:
-            raw = yaml.safe_dump(body, sort_keys=True).encode("utf-8")
         if len(raw) > policy.max_response_bytes:
             raise ToolError("external catalog response exceeds configured maximum size")
         digest = hashlib.sha256(raw).hexdigest()
@@ -515,8 +560,11 @@ class ExternalCatalogResolver:
             ) from None
         if not isinstance(definition, Mapping):
             raise WorkflowSchemaError(f"external catalog function {reference} must be an object")
-        headers_value = response.get("headers")
-        response_headers = dict(headers_value) if isinstance(headers_value, Mapping) else {}
+        if credential_guard.project(dict(definition)) != dict(definition):
+            raise UnsupportedWorkflowFeature(
+                "external catalog metadata contains private credentials"
+            )
+        response_headers = dict(response.headers)
         resource = _CachedResource(
             resource_uri=resource_uri,
             reference=reference,
@@ -659,6 +707,7 @@ def _validate_function_definition(
     components: Mapping[str, Any] | None = None,
     _resource_preflight: bool = False,
     _schema_registry: Any = None,
+    grpc_enabled: bool = False,
 ) -> tuple[str, Any]:
     arguments = definition.get("with")
     if isinstance(arguments, Mapping) and "$ref" in arguments:
@@ -672,7 +721,7 @@ def _validate_function_definition(
             details={"function": reference.value},
         )
     call = definition.get("call")
-    if call not in SUPPORTED_FUNCTION_PROTOCOLS:
+    if call not in SUPPORTED_FUNCTION_PROTOCOLS and not (call == "grpc" and grpc_enabled):
         raise UnsupportedWorkflowFeature(
             "external catalog function must use a supported protocol call",
             details={"function": reference.value},
@@ -701,7 +750,10 @@ def _validate_function_definition(
             }
         ]
         validate_capabilities(
-            workflow, _resource_preflight=_resource_preflight, _schema_registry=_schema_registry
+            workflow,
+            _resource_preflight=_resource_preflight,
+            _schema_registry=_schema_registry,
+            grpc_enabled=grpc_enabled,
         )
     except WorkflowSchemaError:
         raise WorkflowSchemaError(
@@ -878,6 +930,7 @@ def _contains_sensitive_header(value: Any) -> bool:
 class _HostBoundAuthentication:
     def __init__(self, provider: AuthenticationProvider, host: str) -> None:
         self.provider = provider
+        self.profile_name = getattr(provider, "profile_name", None)
         self.host = host.lower()
 
     def headers(self, endpoint: str) -> Mapping[str, str]:

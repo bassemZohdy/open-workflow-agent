@@ -31,6 +31,20 @@ def a2a_task_state(status: str) -> str:
         raise ValueError(f"unsupported invocation state for A2A Task: {status}") from exc
 
 
+def has_pending_event_listener(handle: ExecutionHandle, services: Any = None) -> bool:
+    """Return whether a waiting invocation is suspended on durable event input."""
+
+    events = getattr(services, "event_store", None)
+    return bool(
+        events is not None
+        and events.connection.execute(
+            "SELECT 1 FROM event_subscriptions WHERE invocation_id=? AND fingerprint=? "
+            "AND status='pending' LIMIT 1",
+            (handle.invocation_id, handle.workflow_fingerprint),
+        ).fetchone()
+    )
+
+
 def project_a2a_task(handle: ExecutionHandle, *, services: Any = None) -> dict[str, Any]:
     """Return a sanitized A2A v1 Task view for a common invocation handle."""
 
@@ -38,17 +52,7 @@ def project_a2a_task(handle: ExecutionHandle, *, services: Any = None) -> dict[s
     if handle.status == "waiting" and services is not None:
         # Pending human/event listeners take precedence in mixed forks. Read
         # existing common evidence without native setup or approval expiry.
-        events = getattr(services, "event_store", None)
-        listener = (
-            events is not None
-            and events.connection.execute(
-                "SELECT 1 FROM event_subscriptions WHERE invocation_id=? AND fingerprint=? "
-                "AND status='pending' LIMIT 1",
-                (handle.invocation_id, handle.workflow_fingerprint),
-            ).fetchone()
-            is not None
-        )
-        if not listener and (
+        if not has_pending_event_listener(handle, services) and (
             services.child_waits.for_invocation(handle.invocation_id, handle.workflow_fingerprint)
             or services.timers.resumable_for_invocation(
                 handle.invocation_id, handle.workflow_fingerprint

@@ -144,6 +144,55 @@ async def test_each_native_workflow_method_preserves_typed_result_reference_and_
     "engine_name,engine_type", [case for case in engine_cases() if case[0] in {"adk", "langgraph"}]
 )
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_native_sdk_empty_tool_content_omits_null_and_persists_one_receipt(
+    tmp_path, engine_name, engine_type, backend
+):
+    engine = engine_type()
+    native(engine, engine_name)
+
+    async def empty_content(context, params):
+        return types.CallToolResult(content=[], structured_content=None)
+
+    services = runtime(tmp_path, backend, engine_name)
+    try:
+        async with sdk_http_fixture(tool_handler=empty_content) as (transport, calls, endpoint):
+            services.protocols = ProtocolServices(HttpClient(transport=transport))
+            await engine.initialize(services)
+            plan = compile_workflow(definition("tools/call", endpoint))
+            handle = services.invocations.create(
+                engine=engine_name,
+                session_id=None,
+                user_id="mcp-user",
+                owner_principal="mcp-owner",
+                workflow_name=plan.name,
+                workflow_version=plan.version,
+                workflow_fingerprint=plan.fingerprint,
+            )
+            result = await engine.invoke(await engine.compile(plan), handle, {})
+
+            assert result.status == "completed"
+            assert result.output["resultType"] == "complete"
+            assert result.output["content"] == []
+            # The pinned SDK's server serializes optional None fields with
+            # exclude_none=True, so this typed None is absent on the wire and
+            # stays absent in the common result projection.
+            assert "structuredContent" not in result.output
+            assert len(calls) == 1 and calls[0]["body"]["method"] == "tools/call"
+            business = business_identities(services, handle.invocation_id)
+            assert len(business) == 1
+            receipt = services.effect_journal.get(business[0])
+            assert receipt.status == "completed" and receipt.output == result.output
+            assert services.model.calls == []
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "engine_name,engine_type", [case for case in engine_cases() if case[0] in {"adk", "langgraph"}]
+)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_receiver_commit_lost_mcp_response_retains_pending_without_retry_or_model(
     tmp_path, engine_name, engine_type, backend
 ):

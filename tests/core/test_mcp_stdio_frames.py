@@ -11,7 +11,7 @@ import pytest
 from mcp.shared.message import SessionMessage
 from mcp_types import JSONRPCRequest
 from open_workflow_agent.config import SandboxConfig
-from open_workflow_agent.errors import ToolError, _McpOutcomeUncertain
+from open_workflow_agent.errors import SandboxProcessError, ToolError, _McpOutcomeUncertain
 from open_workflow_agent.mcp_client import call_mcp
 from open_workflow_agent.mcp_stdio import _strict_frame, sandbox_stdio_transport
 from open_workflow_agent.protocols import HttpClient
@@ -34,6 +34,59 @@ def test_invalid_frame_details_never_include_wire_payload(frame):
         _strict_frame(frame)
     assert str(failure.value) == "MCP stdio response frame is invalid"
     assert not failure.value.details
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("frame", "error_type", "message"),
+    [
+        (b"\xff\n", SandboxProcessError, "MCP stdio frame is not valid UTF-8"),
+        (b"{\n", ToolError, "MCP stdio response frame is invalid"),
+    ],
+)
+async def test_sdk_transport_rejects_malformed_wire_frames_without_echoing_them(
+    tmp_path, frame, error_type, message
+):
+    script = (
+        "import sys; sys.stdin.buffer.readline(); "
+        f"sys.stdout.buffer.write(bytes.fromhex('{frame.hex()}')); "
+        "sys.stdout.buffer.flush()"
+    )
+    config = SandboxConfig.model_validate(
+        {
+            "enabled": True,
+            "workspace_root": str(tmp_path / "workspace"),
+            "file_size_bytes": None if os.name == "nt" else 33_554_432,
+            "mcp_stdio": {
+                "enabled": True,
+                "servers": [
+                    {
+                        "id": "malformed",
+                        "command": sys.executable,
+                        "arguments": ["-u", "-c", script],
+                    }
+                ],
+            },
+        }
+    )
+    backend = InternalSandboxBackend(config)
+    manager = SandboxManager(backend)
+    async with sandbox_stdio_transport(
+        manager,
+        {"stdio": {"command": sys.executable, "arguments": ["-u", "-c", script]}},
+        timeout_seconds=3,
+    ) as (read, write):
+        await write.send(
+            SessionMessage(
+                JSONRPCRequest(jsonrpc="2.0", id="request", method="tools/list", params={})
+            )
+        )
+        result = await asyncio.wait_for(read.receive(), timeout=3)
+        assert type(result) is error_type
+        assert str(result) == message
+        assert not result.details
+        assert frame.decode("latin-1") not in str(result)
+    assert not backend._stdio_sessions
 
 
 @pytest.mark.asyncio

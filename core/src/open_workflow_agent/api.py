@@ -21,13 +21,15 @@ from .a2a import (
     extract_output_text,
     mount_a2a,
 )
-from .a2a_tasks import project_a2a_task
-from .approvals import ApprovalEventBus
+from .a2a_tasks import has_pending_event_listener, project_a2a_task
+from .approvals import APPROVAL_STATES, ApprovalEventBus
 from .config import RuntimeConfig
 from .durable_events import DEFAULT_EVENT_SCOPE, DurableEventBus
 from .engine import InvocationResult, PortableWorkflowEngine, WorkflowEngine
 from .errors import (
+    ApprovalAuthorizationError,
     ApprovalNotFound,
+    ApprovalValidationError,
     EventValidationError,
     InvocationNotFound,
     OwaError,
@@ -35,6 +37,8 @@ from .errors import (
     ScheduleValidationError,
 )
 from .event_capabilities import event_capabilities
+from .execution_authority import ExecutionAuthority, authority_scope, current_authority
+from .grpc_capabilities import grpc_capabilities
 from .lifecycle import TERMINAL_INVOCATION_STATES
 from .mcp_capabilities import mcp_capabilities
 from .metrics import MetricsMiddleware
@@ -42,8 +46,15 @@ from .persistence import ExecutionHandle
 from .recovery_diagnostics import recovery_diagnostics
 from .sandbox import compile_sandbox_workflow, resolve_and_compile_sandbox_workflow
 from .schedule_profile import parse_schedule
-from .scheduling import WorkflowScheduler
-from .security import BearerSecurityProfile, Principal, authorize, static_principal
+from .scheduling import ScheduleRecord, WorkflowScheduler
+from .security import (
+    ApiKeySecurityProfile,
+    BearerSecurityProfile,
+    Principal,
+    authenticate_static,
+    authorize,
+    static_principal,
+)
 from .security_headers import SecurityHeadersMiddleware
 from .services import RuntimeServices
 from .streaming import StreamLimits, lifecycle_sse_stream, streaming_capabilities
@@ -104,7 +115,7 @@ def _is_limited_path(path: str) -> bool:
             or path.startswith("/v1/schedules/")
             or path.startswith("/v1/approvals/")
         )
-        and (path.endswith("/resume") or path.endswith("/cancel") or path.endswith("/decision"))
+        and path.endswith(("/resume", "/cancel", "/decision", "/reassign", "/escalate"))
     )
 
 
@@ -147,108 +158,41 @@ class ApiAuthenticationMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # Extract headers
-        headers = dict(scope.get("headers", []))
-
-        # Determine which header to check based on profile type
-        if self.profile.type == "bearer":
-            auth_header = headers.get(b"authorization", b"").decode()
-            if not auth_header:
-                response = JSONResponse(
-                    status_code=401,
-                    content={
-                        "error": {
-                            "code": "authentication_required",
-                            "message": "API authentication is required",
-                            "details": {},
-                        }
-                    },
-                )
-
-                async def receive() -> dict[str, Any]:
-                    return {"type": "http.disconnect"}
-
-                await response(scope, receive, send)
-                return
-
-            # Validate bearer token
-            try:
-                from .security import ProfileAuthentication
-
-                auth = ProfileAuthentication(self.security, self.profile_name)
-                expected_token = auth.headers("").get("Authorization", "").replace("Bearer ", "")
-                provided_token = auth_header.replace("Bearer ", "")
-                if provided_token != expected_token:
-                    raise ValueError("Invalid bearer token")
-            except Exception:
-                response = JSONResponse(
-                    status_code=403,
-                    content={
-                        "error": {
-                            "code": "authentication_failed",
-                            "message": "Invalid authentication credentials",
-                            "details": {},
-                        }
-                    },
-                )
-
-                async def receive() -> dict[str, Any]:
-                    return {"type": "http.disconnect"}
-
-                await response(scope, receive, send)
-                return
-
-        elif self.profile.type == "api_key":
-            # API key uses a custom header
-            header_name = self.profile.header.lower().encode()
-            api_key = headers.get(header_name, b"").decode()
-
-            if not api_key:
-                response = JSONResponse(
-                    status_code=401,
-                    content={
-                        "error": {
-                            "code": "authentication_required",
-                            "message": "API authentication is required",
-                            "details": {},
-                        }
-                    },
-                )
-
-                async def receive() -> dict[str, Any]:
-                    return {"type": "http.disconnect"}
-
-                await response(scope, receive, send)
-                return
-
-            # Validate API key
-            try:
-                from .security import ProfileAuthentication
-
-                auth = ProfileAuthentication(self.security, self.profile_name)
-                expected_key = list(auth.headers("").values())[0] if auth.headers("") else ""
-                if api_key != expected_key:
-                    raise ValueError("Invalid API key")
-            except Exception:
-                response = JSONResponse(
-                    status_code=403,
-                    content={
-                        "error": {
-                            "code": "authentication_failed",
-                            "message": "Invalid authentication credentials",
-                            "details": {},
-                        }
-                    },
-                )
-
-                async def receive() -> dict[str, Any]:
-                    return {"type": "http.disconnect"}
-
-                await response(scope, receive, send)
-                return
-
-        scope["owa.principal"] = static_principal(self.profile).identity
-        await self.app(scope, receive, send)
+        raw_headers = list(scope.get("headers", []))
+        selected_header = (
+            self.profile.header.lower().encode("ascii")
+            if isinstance(self.profile, ApiKeySecurityProfile)
+            else b"authorization"
+        )
+        present = any(
+            isinstance(item, tuple)
+            and len(item) == 2
+            and isinstance(item[0], bytes)
+            and item[0].lower() == selected_header
+            for item in raw_headers
+        )
+        try:
+            principal = authenticate_static(raw_headers, self.profile)
+            authority = ExecutionAuthority.capture(principal, security_profile=self.profile_name)
+        except (OwaError, ValueError, TypeError, UnicodeError):
+            response = JSONResponse(
+                status_code=403 if present else 401,
+                content={
+                    "error": {
+                        "code": "authentication_failed" if present else "authentication_required",
+                        "message": "API authentication failed"
+                        if present
+                        else "API authentication is required",
+                        "details": {},
+                    }
+                },
+            )
+            await response(scope, receive, send)
+            return
+        scope["owa.principal"] = principal.identity
+        scope["owa.execution_authority"] = authority
+        with authority_scope(authority):
+            await self.app(scope, receive, send)
 
 
 class InvokeRequest(BaseModel):
@@ -282,6 +226,14 @@ class ApprovalDecisionRequest(BaseModel):
 
     decision: Literal["approved", "rejected"]
     value: Any = None
+    revision: int | None = Field(default=None, ge=1, le=129)
+
+
+class ApprovalAssignmentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    assignee: str = Field(min_length=1, max_length=128)
+    revision: int = Field(ge=1, le=128)
 
 
 def create_app(
@@ -319,7 +271,10 @@ def create_app(
                 trusted_catalogs=runtime_config.workflow.external_catalogs,
                 resolver=runtime_services.external_catalogs,
                 catalog=runtime_services.catalog,
+                grpc_enabled=runtime_services.grpc_enabled,
+                enabled_function_calls=runtime_services.role_function_calls,
             )
+            runtime_services.verify_grpc_plan(app.state.plan)
             runtime_services.workflow_catalog.register(app.state.plan)
             for child_workflow in runtime_config.workflow.catalog:
                 child_plan = await resolve_and_compile_sandbox_workflow(
@@ -328,7 +283,10 @@ def create_app(
                     trusted_catalogs=runtime_config.workflow.external_catalogs,
                     resolver=runtime_services.external_catalogs,
                     catalog=runtime_services.catalog,
+                    grpc_enabled=runtime_services.grpc_enabled,
+                    enabled_function_calls=runtime_services.role_function_calls,
                 )
+                runtime_services.verify_grpc_plan(child_plan)
                 runtime_services.workflow_catalog.register(child_plan)
             if runtime_config.a2a.enabled:
                 skill_plans: dict[str, WorkflowPlan] = {}
@@ -509,6 +467,10 @@ def create_app(
         )
         value.setdefault("features", {})["sandbox"] = runtime_services.sandbox.capabilities()
         value.setdefault("features", {})["mcp"] = mcp_capabilities(runtime_services.sandbox)
+        grpc = grpc_capabilities(enabled=runtime_services.grpc_enabled)
+        value.setdefault("features", {})["grpc"] = grpc
+        if grpc["enabled"] and "grpc" not in value["protocols"]:
+            value["protocols"].append("grpc")
         value.setdefault("features", {})["lifecycleStreaming"] = streaming_capabilities()
         value.setdefault("features", {})["a2a"] = a2a_capabilities(runtime_config.a2a)
         value.setdefault("features", {})["trafficPolicy"] = traffic_policy_capabilities(
@@ -595,46 +557,131 @@ def create_app(
 
     @app.get("/v1/approvals")
     async def list_approvals(
+        http_request: Request,
         status: str | None = Query(default=None),
         limit: int = Query(default=100, ge=1, le=1000),
         authorization: str | None = Header(default=None, alias="Authorization"),
         operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
+        actor_authorization: str | None = Header(default=None, alias="X-Approval-Authorization"),
     ) -> list[dict[str, Any]]:
+        _validate_approval_header(http_request)
+        _authorize_request("approvals.list", "approvals")
+        if actor_authorization is not None:
+            if status is not None and status not in APPROVAL_STATES:
+                raise ApprovalValidationError("unsupported approval status")
+            actor = runtime_services.approvals.authorize_actor(actor_authorization, operator_id)
+            protected = runtime_services.approvals.protected_store
+            assert protected is not None
+            where = " AND a.status=?" if status is not None else ""
+            parameters: tuple[Any, ...] = (
+                (actor.identity, status, limit) if status is not None else (actor.identity, limit)
+            )
+            rows = protected.connection.execute(
+                f"SELECT r.approval_id FROM {protected.requests} r "
+                f"JOIN {runtime_services.approvals.store._table} a ON a.approval_id=r.approval_id "
+                f"WHERE r.assignee=?{where} ORDER BY a.requested_at DESC LIMIT ?",
+                parameters,
+            ).fetchall()
+            return [
+                runtime_services.approvals.visible_record(row[0], actor).as_dict() for row in rows
+            ]
         runtime_services.approvals.authorize(authorization, operator_id)
         return [
             record.as_dict()
             for record in runtime_services.approvals.store.list(status=status, limit=limit)
+            if not isinstance(record.request_event.get("data"), dict)
+            or "approvalPolicy" not in record.request_event["data"]
         ]
 
     @app.get("/v1/approvals/{approval_id}")
     async def get_approval(
         approval_id: str,
+        http_request: Request,
         authorization: str | None = Header(default=None, alias="Authorization"),
         operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
+        actor_authorization: str | None = Header(default=None, alias="X-Approval-Authorization"),
     ) -> dict[str, Any]:
+        _validate_approval_header(http_request)
+        _authorize_request("approvals.get", "approval:" + approval_id)
+        if actor_authorization is not None:
+            actor = runtime_services.approvals.authorize_actor(actor_authorization, operator_id)
+            return runtime_services.approvals.visible_record(approval_id, actor).as_dict()
         runtime_services.approvals.authorize(authorization, operator_id)
         record = runtime_services.approvals.store.get(approval_id)
         if record is None:
             raise ApprovalNotFound("approval not found", details={"approval_id": approval_id})
+        if record.assignment_revision is not None:
+            raise ApprovalAuthorizationError(
+                "protected approval requires trusted actor credentials"
+            )
         return record.as_dict()
 
     @app.post("/v1/approvals/{approval_id}/decision")
     async def decide_approval(
         approval_id: str,
         request: ApprovalDecisionRequest,
+        http_request: Request,
         authorization: str | None = Header(default=None, alias="Authorization"),
         operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+        actor_authorization: str | None = Header(default=None, alias="X-Approval-Authorization"),
     ) -> dict[str, Any]:
-        authorized_operator = runtime_services.approvals.authorize(authorization, operator_id)
+        _validate_approval_header(http_request)
+        _authorize_request("approvals.decide", "approval:" + approval_id)
+        actor = (
+            runtime_services.approvals.authorize_actor(actor_authorization, operator_id)
+            if actor_authorization is not None
+            else None
+        )
+        authorized_operator = (
+            actor.identity
+            if actor is not None
+            else runtime_services.approvals.authorize(authorization, operator_id)
+        )
         record = await runtime_services.approvals.decide(
             approval_id,
             decision=request.decision,
             operator_id=authorized_operator,
             value=request.value,
             operation_key=idempotency_key,
+            revision=request.revision,
+            actor=actor,
         )
         return record.as_dict()
+
+    @app.post("/v1/approvals/{approval_id}/reassign")
+    @app.post("/v1/approvals/{approval_id}/escalate")
+    async def change_approval_assignment(
+        approval_id: str,
+        request: ApprovalAssignmentRequest,
+        http_request: Request,
+        actor_authorization: str | None = Header(default=None, alias="X-Approval-Authorization"),
+        operator_id: str | None = Header(default=None, alias="X-Operator-Id"),
+        idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    ) -> dict[str, Any]:
+        _validate_approval_header(http_request)
+        action = "escalate" if http_request.url.path.endswith("/escalate") else "reassign"
+        _authorize_request("approvals." + action, "approval:" + approval_id)
+        actor = runtime_services.approvals.authorize_actor(actor_authorization, operator_id)
+        record = await runtime_services.approvals.mutate_protected(
+            approval_id,
+            action=action,
+            actor=actor,
+            revision=request.revision,
+            assignee=request.assignee,
+            operation_key=idempotency_key,
+        )
+        return record.as_dict()
+
+    def _validate_approval_header(request: Request) -> None:
+        for selected in (b"authorization", b"x-approval-authorization"):
+            if sum(name.lower() == selected for name, _ in request.scope.get("headers", [])) > 1:
+                raise ApprovalAuthorizationError("approval authentication failed")
+
+    def _authorize_request(action: str, resource: str) -> None:
+        runtime_services.execution_authorizations.authorize_request(
+            current_authority(), action, resource
+        )
 
     @app.post("/v1/schedules")
     async def create_schedule(
@@ -645,13 +692,20 @@ def create_app(
         plan = getattr(
             app.state,
             "plan",
-            compile_sandbox_workflow(sandbox=runtime_config.sandbox),
+            compile_sandbox_workflow(
+                sandbox=runtime_config.sandbox,
+                grpc_enabled=runtime_services.grpc_enabled,
+                enabled_function_calls=runtime_services.role_function_calls,
+            ),
         )
         if (
             parse_schedule(plan.source.get("schedule")).kind == "on"
             and runtime_services.event_store is None
         ):
             raise ScheduleValidationError("event schedules require the embedded event store")
+        _authorize_request(
+            "schedules.create", f"workflow:{plan.namespace}/{plan.name}@{plan.version}"
+        )
         record = runtime_services.schedules.create(
             plan,
             request.input,
@@ -662,18 +716,33 @@ def create_app(
         )
         return record.as_dict()
 
-    @app.get("/v1/schedules/{schedule_id}")
-    async def get_schedule(schedule_id: str) -> dict[str, Any]:
+    def authorized_schedule(schedule_id: str, request: Request) -> ScheduleRecord:
         record = runtime_services.schedules.get(schedule_id)
-        if record is None:
+        principal = _trusted_event_scope(request)
+        ownerless_anonymous = (
+            not runtime_config.server.api_security_profile
+            and principal == DEFAULT_EVENT_SCOPE
+            and record is not None
+            and record.owner_principal is None
+        )
+        if record is None or (record.owner_principal != principal and not ownerless_anonymous):
             raise ScheduleNotFound("schedule not found", details={"schedule_id": schedule_id})
+        return record
+
+    @app.get("/v1/schedules/{schedule_id}")
+    async def get_schedule(schedule_id: str, http_request: Request) -> dict[str, Any]:
+        record = authorized_schedule(schedule_id, http_request)
+        _authorize_request("schedules.get", "schedule:" + schedule_id)
         return record.as_dict()
 
     @app.post("/v1/schedules/{schedule_id}/cancel")
     async def cancel_schedule(
         schedule_id: str,
+        http_request: Request,
         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     ) -> dict[str, Any]:
+        authorized_schedule(schedule_id, http_request)
+        _authorize_request("schedules.cancel", "schedule:" + schedule_id)
         try:
             record = await scheduler.cancel(schedule_id, operation_id=idempotency_key)
         except KeyError as exc:
@@ -687,7 +756,14 @@ def create_app(
         plan = getattr(
             app.state,
             "plan",
-            compile_sandbox_workflow(sandbox=runtime_config.sandbox),
+            compile_sandbox_workflow(
+                sandbox=runtime_config.sandbox,
+                grpc_enabled=runtime_services.grpc_enabled,
+                enabled_function_calls=runtime_services.role_function_calls,
+            ),
+        )
+        _authorize_request(
+            "invocations.create", f"workflow:{plan.namespace}/{plan.name}@{plan.version}"
         )
         handle = runtime_services.invocations.create(
             engine=runtime_engine.engine_name,
@@ -697,6 +773,9 @@ def create_app(
             workflow_version=plan.version,
             workflow_fingerprint=plan.fingerprint,
             owner_principal=_trusted_event_scope(http_request),
+        )
+        runtime_services.execution_authorizations.reserve_invocation(
+            handle, current_authority(), input_data=request.input
         )
         result = await runtime_engine.invoke(plan, handle, request.input)
         if result.status == "faulted":
@@ -715,6 +794,7 @@ def create_app(
         http_request: Request,
     ) -> Any:
         handle = authorized_invocation(invocation_id, http_request)
+        _authorize_request("invocations.resume", "invocation:" + invocation_id)
         if handle.status in TERMINAL_INVOCATION_STATES:
             return runtime_engine._stored_result(handle).as_dict()
         try:
@@ -731,6 +811,7 @@ def create_app(
         idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     ) -> Any:
         handle = authorized_invocation(invocation_id, http_request)
+        _authorize_request("invocations.cancel", "invocation:" + invocation_id)
         result = await runtime_engine.cancel(handle, operation_id=idempotency_key)
         return result.as_dict()
 
@@ -752,10 +833,12 @@ def create_app(
     @app.get("/v1/invocations/{invocation_id}/recovery")
     async def inspect_recovery(invocation_id: str, http_request: Request) -> dict[str, Any]:
         handle = authorized_invocation(invocation_id, http_request)
+        _authorize_request("invocations.inspect", "invocation:" + invocation_id)
         return recovery_diagnostics(runtime_services, handle)
 
     @app.post("/v1/admin/knowledge/reload")
     async def reload_knowledge() -> dict[str, Any]:
+        _authorize_request("knowledge.reload", "knowledge")
         return runtime_services.knowledge.reload()
 
     def _a2a_plan_for_skill(skill_id: str | None) -> WorkflowPlan | None:
@@ -764,7 +847,11 @@ def create_app(
             return skill_plans.get(skill_id)
         fallback: WorkflowPlan | None = getattr(app.state, "plan", None)
         if fallback is None:
-            return compile_sandbox_workflow(sandbox=runtime_config.sandbox)
+            return compile_sandbox_workflow(
+                sandbox=runtime_config.sandbox,
+                grpc_enabled=runtime_services.grpc_enabled,
+                enabled_function_calls=runtime_services.role_function_calls,
+            )
         return fallback
 
     def _a2a_delivery_authorized(
@@ -847,6 +934,7 @@ def create_app(
         plan = _a2a_plan_for_skill(skill_id)
         if plan is None:
             return A2ASendOutcome(error_code="skill_not_found")
+        _authorize_request("message.send", f"workflow:{plan.namespace}/{plan.name}@{plan.version}")
         handle = runtime_services.invocations.create(
             engine=runtime_engine.engine_name,
             session_id=context_id or str(uuid4()),
@@ -855,6 +943,9 @@ def create_app(
             workflow_version=plan.version,
             workflow_fingerprint=plan.fingerprint,
             owner_principal=owner_principal,
+        )
+        runtime_services.execution_authorizations.reserve_invocation(
+            handle, current_authority(), input_data={"question": text}
         )
         if return_immediately:
             try:
@@ -879,6 +970,10 @@ def create_app(
             return None
         if handle.status in TERMINAL_INVOCATION_STATES:
             return ResumeTarget(status=handle.status, skill_id=None, deployable=True)
+        if handle.status == "waiting" and has_pending_event_listener(handle, runtime_services):
+            # Durable event waits must be settled by their event source. A
+            # SendMessage resume must not turn one into an unbounded engine run.
+            return ResumeTarget(status=handle.status, skill_id=None, deployable=False)
         skill_plans = getattr(app.state, "a2a_skill_plans", {}) or {}
         skill_id: str | None = None
         try:

@@ -8,11 +8,11 @@ import re
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from .errors import InvocationStateConflict, WorkflowExecutionError
 from .expressions import validate_expression_data
-from .ownership import ExecutionLease, owned_write_transaction
+from .ownership import ExecutionLease, execution_write_guard, owned_write_transaction
 from .persistence import InvocationStore
 from .storage import StorageConnection, open_storage
 
@@ -370,6 +370,27 @@ class ReceiptDependency:
             )
 
 
+class OutcomeParticipant(Protocol):
+    def __call__(
+        self,
+        identity: EffectIdentity,
+        receipt: EffectReceipt,
+        *,
+        execution_lease: ExecutionLease | None,
+    ) -> None: ...
+
+
+class IntentParticipant(Protocol):
+    def __call__(
+        self,
+        identity: EffectIdentity,
+        receipt: EffectReceipt,
+        *,
+        execution_lease: ExecutionLease | None,
+        first_intent: bool,
+    ) -> Any: ...
+
+
 class EffectJournal:
     """First-owner intent and immutable outcome receipts on the common datasource.
 
@@ -382,6 +403,9 @@ class EffectJournal:
         self, database: str | Path = ":memory:", *, invocations: InvocationStore | None = None
     ) -> None:
         self._invocations = invocations
+        self._sandbox_job_verifier: Callable[[EffectIdentity, EffectReceipt], None] | None = None
+        self._execution_authorization_seal: OutcomeParticipant | None = None
+        self._execution_authorization_intent: IntentParticipant | None = None
         self.connection: StorageConnection = open_storage(database, "owa_runtime")
         self.connection.execute(
             """CREATE TABLE IF NOT EXISTS workflow_effects (
@@ -448,10 +472,100 @@ class EffectJournal:
                 verify_definition_admission_receipt(
                     self.connection, self._invocations, identity, receipt
                 )
+            if identity.operation in {
+                "policy:execution-authority:v1",
+                "policy:execution-authority-origin:v1",
+            }:
+                if self._invocations is None:
+                    raise ValueError("execution authority verification is unavailable")
+                from .execution_authorization import verify_execution_authority_receipt
+
+                verify_execution_authority_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            if identity.operation == "policy:execution-authorization-seal:v1":
+                if self._invocations is None:
+                    raise ValueError("execution authorization verification is unavailable")
+                from .execution_authorization import verify_execution_authorization_seal_receipt
+
+                verify_execution_authorization_seal_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            elif identity.operation.startswith("policy:execution-authorization:v1:"):
+                if self._invocations is None:
+                    raise ValueError("execution authorization verification is unavailable")
+                from .execution_authorization import verify_execution_authorization_receipt
+
+                verify_execution_authorization_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            elif identity.operation.startswith("policy:execution-authorization-intent:v1:"):
+                if self._invocations is None:
+                    raise ValueError("execution authorization verification is unavailable")
+                from .execution_authorization import verify_execution_authorization_intent_receipt
+
+                verify_execution_authorization_intent_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            if identity.operation.startswith(("call:", "run:")) or identity.operation in {
+                "emit",
+                "listen",
+            }:
+                from .execution_authorization import verify_execution_authorization_business_receipt
+
+                if self._invocations is not None:
+                    verify_execution_authorization_business_receipt(
+                        self.connection, self._invocations, identity, receipt
+                    )
+                else:
+                    from .execution_authorization import verify_authorized_business_snapshot
+
+                    verify_authorized_business_snapshot(self.connection, identity, receipt)
+            if identity.operation in {"policy:approval-request:v1", "policy:approval-mutation:v1"}:
+                from .protected_approval_store import verify_protected_approval_receipt
+
+                verify_protected_approval_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            if identity.operation in {"emit", "listen", "listen:event:v1"}:
+                from .protected_approval_recovery import verify_protected_approval_business_receipt
+
+                verify_protected_approval_business_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
             if identity.operation == "policy:a2a-agent-card:v1":
                 from .a2a_admission import verify_a2a_card_receipt
 
                 verify_a2a_card_receipt(self.connection, self._invocations, identity, receipt)
+            if identity.operation == "policy:openapi-operation:v1":
+                from .openapi_admission import verify_openapi_operation_receipt
+
+                verify_openapi_operation_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            if identity.operation == "policy:executable-source:v1":
+                from .executable_source_admission import verify_executable_source_receipt
+
+                verify_executable_source_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            if identity.operation == "run:script":
+                from .executable_source_admission import verify_executable_source_business_receipt
+
+                verify_executable_source_business_receipt(
+                    self.connection, self._invocations, identity, receipt
+                )
+            if identity.operation.startswith("policy:sandbox-job-") or identity.operation in {
+                "run:script",
+                "run:shell",
+                "run:container",
+            }:
+                if self._sandbox_job_verifier is not None:
+                    self._sandbox_job_verifier(identity, receipt)
+                elif identity.operation.startswith(
+                    "policy:sandbox-job-"
+                ) or receipt.owner.startswith("sandbox-job:"):
+                    raise ValueError("sandbox job deployment is unavailable")
             if identity.operation == "run:workflow" and receipt.status != "pending":
                 if receipt.child_invocation is None:
                     raise ValueError("child invocation binding is absent")
@@ -496,6 +610,10 @@ class EffectJournal:
                 )
             )
             with transaction:
+                existing = self.get(identity)
+                original_index = self.connection.execute(
+                    "SELECT 1 FROM workflow_effect_invocations WHERE identity=?", (identity.key,)
+                ).fetchone()
                 self.connection.execute(
                     """INSERT INTO workflow_effect_invocations(
                     identity, invocation_id, fingerprint, payload)
@@ -512,6 +630,15 @@ class EffectJournal:
                     VALUES (?, ?, ?, ?) ON CONFLICT(identity) DO NOTHING""",
                     (identity.key, owner, proposed.status, encoded),
                 )
+                if self._execution_authorization_intent is not None:
+                    pending = existing or proposed
+                    if pending.status == "pending":
+                        self._execution_authorization_intent(
+                            identity,
+                            pending,
+                            execution_lease=execution_lease,
+                            first_intent=existing is None and original_index is None,
+                        )
         except InvocationStateConflict:
             self._rollback()
             raise
@@ -674,6 +801,110 @@ class EffectJournal:
             raise WorkflowExecutionError("workflow effect outcome was not recorded")
         return completed
 
+    def finish_grpc(
+        self,
+        identity: EffectIdentity,
+        owner: str,
+        *,
+        execution_lease: ExecutionLease | None,
+        output: Any = None,
+        error: dict[str, Any] | None = None,
+        error_status_code: int | None = None,
+        operation_id: str | None = None,
+    ) -> EffectReceipt:
+        """Commit one live gRPC owner's known reply under its execution fence.
+
+        The generic first-dispatch finish contract is unchanged. This narrow
+        adapter profile cannot let a late reply cross a generation takeover.
+        """
+        if identity.operation != "call:grpc" or execution_lease is None:
+            raise InvocationStateConflict("gRPC completion requires current execution ownership")
+        return self.finish_owned(
+            identity,
+            owner,
+            execution_lease=execution_lease,
+            output=output,
+            error=error,
+            error_status_code=error_status_code,
+            operation_id=operation_id,
+        )
+
+    def finish_owned(
+        self,
+        identity: EffectIdentity,
+        owner: str,
+        *,
+        execution_lease: ExecutionLease | None,
+        output: Any = None,
+        error: dict[str, Any] | None = None,
+        error_status_code: int | None = None,
+        operation_id: str | None = None,
+        child_invocation: ChildInvocationDependency | None = None,
+    ) -> EffectReceipt:
+        """Atomic outcome primitive for explicitly qualified owned action profiles.
+
+        Callers establish their independent profile admission before choosing
+        this path; ordinary first-owner receipts retain ``finish`` semantics.
+        """
+        if execution_lease is None:
+            raise InvocationStateConflict("action completion requires current execution ownership")
+        try:
+            with owned_write_transaction(
+                self.connection,
+                execution_lease,
+                invocation_id=identity.invocation_id,
+                workflow_fingerprint=identity.workflow_fingerprint,
+            ):
+                recorded = self.get(identity)
+                if recorded is None or recorded.owner != owner:
+                    raise WorkflowExecutionError(
+                        "action completion does not own the original intent"
+                    )
+                if recorded.status != "pending":
+                    return recorded
+                proposed = replace(
+                    recorded,
+                    status="faulted" if error is not None else "completed",
+                    output=output,
+                    error=error,
+                    error_status_code=error_status_code,
+                    operation_id=operation_id
+                    if operation_id is not None
+                    else recorded.operation_id,
+                    child_invocation=child_invocation
+                    if child_invocation is not None
+                    else recorded.child_invocation,
+                )
+                if self._execution_authorization_seal is not None:
+                    self._execution_authorization_seal(
+                        identity, proposed, execution_lease=execution_lease
+                    )
+                self.connection.execute(
+                    "UPDATE workflow_effects SET status=?,payload=? "
+                    "WHERE identity=? AND owner=? AND status='pending'",
+                    (
+                        proposed.status,
+                        json.dumps(_receipt_payload(proposed), ensure_ascii=False, allow_nan=False),
+                        identity.key,
+                        owner,
+                    ),
+                )
+                completed = self.get(identity)
+                if completed != proposed:
+                    raise WorkflowExecutionError("action outcome was not atomically retained")
+                guard, parameters = execution_write_guard(self.connection, execution_lease)
+                if self.connection.execute(guard, parameters).fetchone() is None:
+                    raise InvocationStateConflict("action completion ownership expired")
+                return completed
+        except InvocationStateConflict:
+            raise
+        except Exception as error:
+            from .execution_authorization import AuthorizationOutcomeUnavailable
+
+            if isinstance(error, AuthorizationOutcomeUnavailable):
+                raise
+            raise WorkflowExecutionError("owned action outcome could not be stored") from None
+
     def finish_child(
         self,
         identity: EffectIdentity,
@@ -718,6 +949,10 @@ class EffectJournal:
                 error_status_code=error_status_code,
                 child_invocation=dependency,
             )
+            if self._execution_authorization_seal is not None:
+                self._execution_authorization_seal(
+                    identity, proposed, execution_lease=execution_lease
+                )
             self.connection.execute(
                 "UPDATE workflow_effects SET status=?,payload=? "
                 "WHERE identity=? AND owner=? AND status='pending'",

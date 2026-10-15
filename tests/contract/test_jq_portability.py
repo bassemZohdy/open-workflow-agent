@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -104,7 +105,10 @@ async def test_jq_sandbox_inputs_use_json_and_script_code_stays_literal(
 ):
     config = RuntimeConfig(
         sandbox=SandboxConfig(
-            enabled=True, memory_bytes=None, workspace_root=str(tmp_path / "sandbox")
+            enabled=True,
+            memory_bytes=None,
+            file_size_bytes=None if os.name == "nt" else 67_108_864,
+            workspace_root=str(tmp_path / "sandbox"),
         )
     )
     services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
@@ -115,6 +119,7 @@ async def test_jq_sandbox_inputs_use_json_and_script_code_stays_literal(
         {
             "execute": {
                 "run": {
+                    "return": "all",
                     "script": {
                         "language": "python",
                         "code": (
@@ -126,7 +131,7 @@ async def test_jq_sandbox_inputs_use_json_and_script_code_stays_literal(
                         "arguments": ["${ true }", "${ .value }"],
                         "stdin": "${ [true,null] }",
                         "environment": {"VALUE": "${ {value: .value} }"},
-                    }
+                    },
                 }
             }
         }

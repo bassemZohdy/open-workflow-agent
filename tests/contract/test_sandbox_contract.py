@@ -10,9 +10,12 @@ from open_workflow_agent.sandbox import compile_sandbox_workflow
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent_adk import AdkWorkflowEngine
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
+from sandbox_fixture_policy import supported_process_limits
+from test_native_checkpoint_fencing import _snapshot as native_snapshot
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("return_mode", [None, "stdout", "stderr", "code", "all", "none"])
 @pytest.mark.parametrize("reusable", [False, True])
 @pytest.mark.parametrize(
     ("engine_name", "engine_type"),
@@ -23,11 +26,11 @@ from open_workflow_agent_langgraph import LangGraphWorkflowEngine
     [
         (
             "run-script",
-            {"exitCode": 0, "stdout": "script-ok\n", "stderr": ""},
+            {"code": 0, "stdout": "script-ok\n", "stderr": ""},
         ),
         (
             "run-shell",
-            {"exitCode": 0, "stdout": "shell-ok", "stderr": ""},
+            {"code": 0, "stdout": "shell-ok", "stderr": ""},
         ),
     ],
 )
@@ -38,14 +41,26 @@ async def test_internal_sandbox_run_tasks_have_cross_engine_parity(
     fixture_name: str,
     expected: dict[str, object],
     reusable: bool,
+    return_mode: str | None,
 ) -> None:
     fixture = Path(__file__).parent / "fixtures" / f"{fixture_name}.yaml"
     workflow = yaml.safe_load(fixture.read_text(encoding="utf-8"))
+    definition = next(iter(workflow["do"][0].values()))
+    expected = {**expected, "stderr": "diagnostic"}
+    if fixture_name == "run-script":
+        definition["run"]["script"]["code"] += "import sys\nsys.stderr.write('diagnostic')\n"
+    else:
+        definition["run"]["shell"]["arguments"][-1] += (
+            "; import sys; sys.stderr.write('diagnostic')"
+        )
+    if return_mode is not None:
+        definition["run"]["return"] = return_mode
     if reusable:
         definition = next(iter(workflow["do"][0].values()))
         workflow["use"] = {"functions": {"execute": definition}}
         workflow["do"] = [{"runReusable": {"call": "execute"}}]
     sandbox = SandboxConfig(
+        **supported_process_limits(),
         enabled=True,
         allow_shell=True,
         workspace_root=str(tmp_path / engine_name / "sandbox"),
@@ -60,6 +75,10 @@ async def test_internal_sandbox_run_tasks_have_cross_engine_parity(
     engine = engine_type()
     await engine.initialize(services)
     try:
+        if not (
+            engine.native.available if engine_name == "adk" else engine.native.task_nodes_available
+        ):
+            pytest.skip("actual engine SDK is unavailable in this independent environment")
         plan = compile_sandbox_workflow(workflow, sandbox=sandbox)
         handle = services.invocations.create(
             engine=engine_name,
@@ -71,7 +90,17 @@ async def test_internal_sandbox_run_tasks_have_cross_engine_parity(
         )
         result = await engine.invoke(plan, handle, {})
         assert result.status == "completed"
-        assert result.output == expected
+        projection = (
+            expected
+            if return_mode == "all"
+            else None
+            if return_mode == "none"
+            else expected[return_mode or "stdout"]
+        )
+        assert result.output == projection
+        assert type(result.output) is type(projection)
+        assert services.invocations.connection.kind == "sqlite"
+        assert any(native_snapshot(services, handle, "sqlite").values())
         phases = [
             event.progress.get("phase")
             for event in services.events.events
@@ -160,6 +189,7 @@ async def test_sandbox_retry_reexecutes_with_new_identity_and_at_least_once_side
         ],
     }
     sandbox = SandboxConfig(
+        **supported_process_limits(),
         enabled=True,
         workspace_root=str(tmp_path / engine_name / "sandbox"),
         memory_bytes=None,
@@ -183,7 +213,7 @@ async def test_sandbox_retry_reexecutes_with_new_identity_and_at_least_once_side
         )
         result = await engine.invoke(plan, handle, {})
         assert result.status == "completed"
-        assert result.output == {"exitCode": 0, "stdout": "retry-ok\n", "stderr": ""}
+        assert result.output == "retry-ok\n"
         assert marker.read_text() == "first-attempt"
 
         sandbox_events = [

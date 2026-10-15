@@ -52,6 +52,10 @@ jobs:
           tests/core/test_action_progress_ownership.py
           tests/core/test_native_write_fence_storage.py
           tests/core/test_native_sqlite_inspection.py
+          tests/core/test_bounded_memory.py
+          tests/core/test_provider_model_spi.py
+          tests/core/test_provider_service_composition.py
+          tests/core/test_event_transport.py
           tests/contract/test_jq_portability.py
           tests/contract/test_data_pipeline.py
           tests/contract/test_scoped_flow.py
@@ -87,6 +91,57 @@ jobs:
           ../../tests/contract/test_reusable_definitions.py
           ../../tests/contract/test_catalog_bindings.py
           ../../tests/contract/test_schema_resources.py
+          ../../tests/contract/test_selected_adapter_contracts.py
+          ../../tests/contract/test_selected_adapter_process_recovery.py
+
+  windows-operation-adapters:
+    name: Windows operation adapters and supervised process recovery
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify Windows operation adapters and supervised process recovery
+        run: >-
+          uv run --directory engines/langgraph --locked --extra sqlite
+          --with pytest --with pytest-asyncio pytest -vv --durations=20
+          ../../tests/core/test_openapi_client.py
+          ../../tests/core/test_openapi_admission.py
+          ../../tests/core/test_openapi_protocol_bindings.py
+          ../../tests/core/test_grpc_client.py
+          ../../tests/core/test_grpc_capabilities.py
+          ../../tests/core/test_asyncapi_client.py
+          ../../tests/core/test_http_outputs.py
+          ../../tests/core/test_sandbox_jobs.py
+          ../../tests/core/test_sandbox_job_dispatcher.py
+          ../../tests/core/test_background_job_runtime.py
+          ../../tests/core/test_background_request_admission.py
+          ../../tests/core/test_internal_sandbox_jobs.py
+          ../../tests/core/test_job_supervisor.py
+          ../../tests/core/test_sandbox_job_mutation_fence.py
+          ../../tests/core/test_container_operation_admission.py
+          ../../tests/core/test_executable_sources.py
+          ../../tests/core/test_executable_source_plan.py
+          ../../tests/core/test_executable_source_imports.py
+          ../../tests/core/test_executable_source_admission.py
+          ../../tests/core/test_internal_awaited_process_controls.py
+          ../../tests/core/test_engine_shutdown_initialization.py
+          ../../tests/contract/test_executable_source_calls.py
+          ../../tests/contract/test_executable_source_process_recovery.py
+          ../../tests/contract/test_openapi_calls.py
+          ../../tests/contract/test_openapi_process_recovery.py
+          ../../tests/contract/test_grpc_calls.py
+          ../../tests/contract/test_grpc_process_recovery.py
+          ../../tests/contract/test_background_job_recovery.py
 
   windows-native-recovery:
     name: Windows native ownership and effect recovery
@@ -123,7 +178,7 @@ jobs:
   windows-native-timing:
     name: Windows native timers events and scheduling
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
         with:
@@ -158,6 +213,11 @@ jobs:
           ../../tests/contract/test_durable_scheduling.py
           ../../tests/contract/test_schedule_event_triggers.py
           ../../tests/contract/test_event_backend_admission.py
+          ../../tests/core/test_protected_approvals.py
+          ../../tests/core/test_approval_dispatcher.py
+          ../../tests/core/test_protected_approval_recovery.py
+          ../../tests/contract/test_protected_approval_workflows.py
+          ../../tests/contract/test_protected_approval_process_recovery.py ../../tests/contract/test_execution_authority_isolation.py ../../tests/contract/test_execution_authority_process_recovery.py ../../tests/core/test_execution_authority.py ../../tests/core/test_execution_authorization.py ../../tests/core/test_execution_context_isolation.py ../../tests/core/test_memory_namespaces.py ../../tests/core/test_credential_projection.py ../../tests/core/test_api_execution_authority.py ../../tests/core/test_authenticated_catalog_metadata.py ../../tests/core/test_agent_role_boundaries.py ../../tests/core/test_agent_roles.py ../../tests/contract/test_agent_patterns.py ../../tests/contract/test_agent_pattern_process_recovery.py
 
   windows-native-lifecycle:
     name: Windows native lifecycle and receiver recovery
@@ -269,16 +329,25 @@ jobs:
     name: Root quality gates
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      UV_PYTHON_PREFERENCE: only-system
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
           enable-cache: true
-      - name: Install Python
-        run: uv python install "$PYTHON_VERSION"
+      - name: Pin uv to the hosted Python with pidfd support
+        shell: bash
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
       - name: Sync locked root environment
         run: uv sync --locked --extra knowledge
+      - name: Verify stable Linux process-handle support
+        run: uv run --locked python -c "import os, signal; assert callable(getattr(os, 'pidfd_open', None)); assert callable(getattr(signal, 'pidfd_send_signal', None)); fd = os.pidfd_open(os.getpid()); os.close(fd)"
       - name: Check root lock
         run: uv lock --check
       - name: Validate embedded and optional PostgreSQL Compose profiles
@@ -313,7 +382,7 @@ jobs:
           timeout --signal=TERM --kill-after=30s 45m \
             uv run --locked pytest tests -vv --durations=20 \
               --cov=core/src/open_workflow_agent --cov-report=term-missing \
-              --cov-fail-under=90
+              --cov-fail-under=90 --cov-precision=2
       # The full tests/ selection above includes all shared contract fixtures.
       # Native adapters each run that same contract suite in their own locked env.
       - name: Build root and standalone core artifacts
@@ -391,6 +460,8 @@ jobs:
     name: ${{ matrix.engine }} native and contract tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      UV_PYTHON_PREFERENCE: only-system
     strategy:
       fail-fast: false
       matrix:
@@ -408,21 +479,30 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
           enable-cache: true
-      - name: Install Python
-        run: uv python install "$PYTHON_VERSION"
+      - name: Pin uv to the hosted Python with pidfd support
+        shell: bash
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
       - name: Check engine lock
         run: uv lock --check
+      - name: Verify stable Linux process-handle support
+        run: uv run --locked --extra knowledge --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio python -c "import os, signal; assert callable(getattr(os, 'pidfd_open', None)); assert callable(getattr(signal, 'pidfd_send_signal', None)); fd = os.pidfd_open(os.getpid()); os.close(fd)"
       - name: Native and shared contract tests
         shell: bash
         env:
           PYTHONUNBUFFERED: "1"
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 30m \
+          # The hosted ADK profile reached 95% at the 30-minute cap; leave room
+          # for the remaining native/shared cases within the 45-minute job.
+          timeout --signal=TERM --kill-after=30s 40m \
             uv run --locked --extra knowledge --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
             pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract -vv --durations=20 \
             --ignore=../../tests/contract/test_external_operation_keys.py \
@@ -511,7 +591,7 @@ jobs:
           PYTHONUNBUFFERED: "1"
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 8m \
+          timeout --signal=TERM --kill-after=30s 10m \
             uv run --locked --extra knowledge --extra ${{ matrix.extra }} \
             --with pytest --with pytest-asyncio pytest \
             ../../tests/contract/test_external_operation_keys.py \

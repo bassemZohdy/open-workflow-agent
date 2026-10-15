@@ -7,36 +7,49 @@
 - `TODO.md` — ordered backlog and any blocked-task deferrals.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Recorded backlog status — snapshot 2026-10-13
+## Current backlog delivery mode — 2026-10-15
 
-**17 of 37 tasks are verified; 20 remain open. No task is deferred.** S2-09 is
-the earliest unfinished milestone. Existing authored batches extend through
-S3-08 in parallel, while qualification and completion remain milestone- and
-dependency-ordered. Failed or incomplete validation advances no task checkbox
-or inventory row.
+**19 of 37 backlog tasks are verified; 18 remain open. No task is deferred.**
+S2-09’s finite VM01-VM08 policy and S3-01’s finite Python MCP01-MCP08 profile
+are verified. S3-01 passed all six hosted workflows at exact source
+`af4acd61c200787fb68248b2d180ba69efb8c837`; the root suite passed 4,569 tests
+at 90.04% coverage, Windows operation recovery passed 962, Windows timers
+passed 718, and PostgreSQL passed all ten jobs. S3-02 is the active next task;
+its latest focused A2A suites pass locally, with hosted qualification pending.
+JavaScript MCP, A145/full protocol coverage, proposed T29/T30/T31 criteria,
+and broader MCP extensions remain unqualified. See the
+[exact-source qualification record](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6),
+[S3-01 acceptance](docs/s3-01-mcp-acceptance.md), and
+[S2-09 acceptance](docs/s2-09-version-recovery-acceptance.md). Earlier failed,
+partial and superseded runs remain historical in the [validation history](docs/validation-history/pending-batch-results.md).
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
-| S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at `6b23e5d` / `96ce610`. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
-| S2-09 | Original-definition continuation authored; integrated qualification pending. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
-| S3-01 / S3-02 | Pinned MCP/A2A integration authored; latest hosted checkpoint failed. | [MCP](docs/s3-01-mcp-acceptance.md), [A2A](docs/s3-02-a2a-acceptance.md) |
-| S3-03 | Operation adapters and independent jobs authored; lease/recovery corrections and acceptance pending. | [Operations](docs/s3-03-operation-adapters-acceptance.md) |
-| S3-04 | Captured sources and awaited controls authored; first common batch failed, corrections pending verification. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
-| S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored; first combined common profile failed; corrections and full qualification pending. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md) |
-| S3-06 | Identity, action policy, isolation and credential safeguards are authored; full batch qualification pending. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
-| S3-07 | Eight finite recipe families and named role bindings authored; static/schema checks pass, behavioral qualification pending. | [Pattern scope and gates](docs/s3-07-agent-pattern-acceptance.md) |
+| S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at 6b23e5d / 96ce610. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
+| S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
+| S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
+| S3-02 | Active task; the bounded A2A profile has broad local evidence. New card-selection, HTTP+JSON resume, retained-skill recovery, optional-method, SubscribeToTask partial-loss, unknown/foreign task-access equivalence, malformed-resume no-mutation, in-process stale-generation, protected-approval resume denial, timer Task projection and damaged-archive A2A rejection cases pass locally. Owner-authority resume requires independent SDK environments; A2A01-A2A08 cross-products, authority, recovery races, expiry and hosted qualification remain open. | [A2A acceptance](docs/s3-02-a2a-acceptance.md) |
+| S3-03 | Operation adapters and independent recovery jobs remain open. The pre-ACK fixture correction passed its PostgreSQL LangGraph and Windows lanes at `8183776`. The PostgreSQL ADK operation job's 25-minute command/30-minute job limits passed at source `e45115c` in run `38645586498`; broader adapter, backend and deployment gates remain open. | [Operations](docs/s3-03-operation-adapters-acceptance.md), [timeout history and successful rerun](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4) |
+| S3-04 | Captured sources and awaited controls remain authored. Four late source-worker takeover cases cover the ADK/LangGraph × SQLite/PostgreSQL matrix; exact-source behavioral, platform and publication qualification remain pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
+| S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored. The PostgreSQL `REAL`-to-`DOUBLE PRECISION` migration is implemented and f9 PostgreSQL protected-approval cases passed. The f9 Windows timer lane exposed a request-row process-recovery fixture race before its durable barrier; a five-second renewal lease plus natural database-clock wait passes the local LangGraph/SQLite suite. The formerly failing hosted Windows case passed at `8183776`; the expired-approval fixture now keeps invocation ownership independent from the short approval deadline and awaits independent-SDK/hosted requalification. Broader S3-05 gates remain open. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |
+| S3-06 | Identity, action policy, isolation and credential safeguards remain authored; full qualification remains open. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
+| S3-07 | Eight finite recipe families and named role bindings remain authored. The `8183776` Windows timer run lost ownership before one LangGraph pattern receipt barrier with its five-second test lease. A 15-second lease passes the focused case and full LangGraph/SQLite process matrix locally (10 passed, 30 skipped). Hosted requalification remains pending. | [Pattern scope and gates](docs/s3-07-agent-pattern-acceptance.md), [timing-run evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776) |
 | S3-08 | Selected compiler/provider/memory/embedded event adaptations and grouped corrections are authored; integrated qualification remains open. | [Selected scope and gates](docs/s3-08-selected-adapter-acceptance.md) |
 
-The latest recorded hosted checkpoint is `67aa724` on draft
-[PR 64](https://github.com/bassemZohdy/open-workflow-agent/pull/64); its aggregate
-CI failed. Frozen-source results, corrections, commands, hashes and acceptance
-limits are retained in the [batch evidence record](docs/validation-history/pending-batch-results.md).
-This 2026-10-13 snapshot is not a live CI status. No source change or partial
-pass qualifies an unchecked task, full inventory row, JavaScript profile or release.
+The earlier feature checkpoint `67aa724` is on draft
+[PR 64](https://github.com/bassemZohdy/open-workflow-agent/pull/64), whose
+aggregate CI failed. The current correction batch is published on draft
+[PR 65](https://github.com/bassemZohdy/open-workflow-agent/pull/65). Earlier
+hosted failures and their fixes are detailed in the
+[validation history](docs/validation-history/pending-batch-results.md#hosted-validation-of-corrective-batch--pr-65).
+
+Historical source outcomes, full commands, hashes and correction details are
+retained in the [validation history](docs/validation-history/pending-batch-results.md).
+Partial results never close an unchecked task or inventory row.
 
 Continue ready work in parallel, complete a coherent source batch before testing it, and push validated feature work. Running checks and failures with an actionable fix remain active. Only a repeated blocker with no next step moves the original unchecked task to the final deferred section, with full evidence and resume conditions. See [TODO.md](TODO.md) for the complete ordered scope, [documentation guide](docs/README.md) for topic navigation, and [earlier delivery checkpoints](docs/validation-history/backlog-delivery-2026-10-13.md) for retained history.
 
-## Released baseline — 2026-09-24
+## Historical project baseline — 2026-09-24
 
 Historical released baseline; current unfinished roadmap work is summarized above.
 
@@ -62,6 +75,10 @@ Core owns the public OWS 1.0.3 contract and common services; principal adapters 
 ### S2-04 retry, timeout and exception work — 2026-10-12 (verified)
 
 [Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-04-retry-timeout-and-exception-work--2026-10-12-verified).
+Current-source note: Windows timer run `38632792174` failed the duration-bound
+retry assertion on both engines (`workflow_execution_error` instead of
+`model_error`). Complete local retry selections passed on both engines; the
+assertion now captures the error and timing evidence for hosted requalification.
 
 ### S2-06 durable timer and schedule work — 2026-10-13 (verified)
 
@@ -434,7 +451,10 @@ Agent Card now advertises `securitySchemes` and `security` requirements when aut
 
 ## A2A Deferred Scope
 
-The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining backlog and conditional profiles are listed in `TODO.md`.
+The released bounded inbound profile covers Task state, authorization, skills,
+async semantics and streaming/resubscription. S3-02 adds workflow-to-agent and
+agent-to-workflow work plus fresh peer/native/backend qualification; it remains
+open until those gates pass. See the acceptance record in [TODO.md](TODO.md).
 
 The official A2A v1 semantics are the guide: ordinary `SendMessage` blocks by default, while `returnImmediately=true` is the protocol-native non-blocking request and returns Task state for later `GetTask`/subscription. OWA will not add a custom async flag.
 
@@ -597,9 +617,9 @@ these readiness foundations.
 
 ## Current Backlog State
 
-The ordered backlog is maintained in [TODO.md](TODO.md). This historical
-snapshot recorded 17 verified tasks, 20 open tasks and no deferred tasks.
-Authoring and failed validation do not advance completion.
+See the [current backlog delivery mode](#current-backlog-delivery-mode--2026-10-15)
+and the ordered [TODO.md](TODO.md). Failed validation does not advance completion;
+no task currently satisfies the stuck-task deferral rule.
 
 ## Canonical repository consolidation — 2026-10-11
 
@@ -646,7 +666,7 @@ uv sync --locked --extra knowledge
 uv run ruff format --check core engines tests
 uv run ruff check .
 uv run mypy --package open_workflow_agent --package open_workflow_agent_adk --package open_workflow_agent_langgraph --package open_workflow_agent_agent_framework
-uv run --locked pytest -q --cov=core/src/open_workflow_agent --cov-fail-under=90
+uv run --locked pytest -q --cov=core/src/open_workflow_agent --cov-fail-under=90 --cov-precision=2
 uv build
 uv build --directory core
 uv run --directory engines/adk --locked --extra native --extra knowledge --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract ../../tests/ctk -q
@@ -656,9 +676,11 @@ uv run --directory engines/agent-framework --locked --extra native --extra knowl
 
 The CI source-integrity gate caught three ignored predecessor reference files missing from the initial PR. Those exact source bytes are now explicitly tracked; the gate remains enforced. MIG-01 transfer/license disposition is complete: both imported sources retain Apache attribution, and unlicensed generic source stays at origin. No active compiler, checkpoint service or unsafe approval implementation is introduced by the frozen reference import.
 
-## Open-task acceptance records
+## Current S2-09 and S3-02 implementation notes
 
-S2-09 remains the earliest unfinished task. Its policy and evidence requirements,
-together with the authored but unqualified S3 profiles, are linked from [TODO.md](TODO.md).
-Historical validation belongs in the [batch evidence record](docs/validation-history/pending-batch-results.md),
-not in a second live-status section here.
+S2-09's finite original-definition continuation and bounded recovery policy is
+verified; successful in-place version mapping and full native history remain
+unsupported. Its S2-09/S3-01 prerequisites are satisfied; S3-02's own grouped
+peer/native/backend A2A acceptance remains open. See the [S2-09 record](docs/s2-09-version-recovery-acceptance.md),
+[A2A record](docs/s3-02-a2a-acceptance.md), status table above and
+[validation history](docs/validation-history/pending-batch-results.md).

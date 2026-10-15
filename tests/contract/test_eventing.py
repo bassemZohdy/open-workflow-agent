@@ -35,11 +35,15 @@ def _handle(services, engine_name, plan):
     )
 
 
-async def _until(predicate):
-    for _ in range(200):
+async def _until(predicate, task=None):
+    deadline = asyncio.get_running_loop().time() + 30
+    while asyncio.get_running_loop().time() < deadline:
         if predicate():
             return
-        await asyncio.sleep(0.005)
+        if task is not None and task.done():
+            await task
+            raise AssertionError("eventing invocation completed before reaching the expected state")
+        await asyncio.sleep(0.01)
     raise AssertionError("eventing condition was not reached")
 
 
@@ -74,7 +78,7 @@ async def test_emit_and_listen_have_equivalent_common_results(tmp_path, engine_n
         )
         handle = _handle(services, engine_name, listen_plan)
         invocation = asyncio.create_task(engine.invoke(listen_plan, handle, {}))
-        await _until(lambda: handle.status == "waiting")
+        await _until(lambda: handle.status == "waiting", invocation)
         published = await services.event_bus.publish(
             {
                 "id": "approval-1",

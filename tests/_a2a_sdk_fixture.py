@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
+import ssl
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -42,13 +43,21 @@ def peer_card(endpoint):
 
 @asynccontextmanager
 async def sdk_a2a_fixture(
-    *, network=False, outcome="task", send_handler=None, response_mutation=None
+    *,
+    network=False,
+    outcome="task",
+    send_handler=None,
+    response_mutation=None,
+    response_truncate_after_sse_events=None,
+    tls=None,
+    require_client_cert=True,
 ):
     calls = []
     listener = socket.socket() if network else None
     if listener is not None:
         listener.bind(("127.0.0.1", 0))
-        endpoint = f"http://127.0.0.1:{listener.getsockname()[1]}/a2a"
+        scheme = "https" if tls is not None else "http"
+        endpoint = f"{scheme}://127.0.0.1:{listener.getsockname()[1]}/a2a"
     else:
         endpoint = "https://a2a.test/a2a"
     card = peer_card(endpoint)
@@ -170,18 +179,29 @@ async def sdk_a2a_fixture(
             return await app(scope, receive, send)
         body = bytearray()
         original_receive = receive
+        recorded = False
 
         async def recorded_receive():
+            nonlocal recorded
             frame = await original_receive()
             if frame["type"] == "http.request":
                 body.extend(frame.get("body", b""))
+                if not frame.get("more_body", False) and not recorded:
+                    # Record the complete request before a streaming response can
+                    # finish on the client. The ASGI call may still be returning
+                    # response events on another thread at that point.
+                    recorded = True
+                    calls.append(
+                        {
+                            "body": json.loads(body),
+                            "headers": dict(scope["headers"]),
+                            "method": "POST",
+                        }
+                    )
             return frame
 
-        if response_mutation is None:
+        if response_mutation is None and response_truncate_after_sse_events is None:
             await app(scope, recorded_receive, send)
-            calls.append(
-                {"body": json.loads(body), "headers": dict(scope["headers"]), "method": "POST"}
-            )
             return
         frames = []
 
@@ -189,17 +209,23 @@ async def sdk_a2a_fixture(
             frames.append(frame)
 
         await app(scope, recorded_receive, recorded_send)
-        calls.append(
-            {"body": json.loads(body), "headers": dict(scope["headers"]), "method": "POST"}
-        )
         content = b"".join(
             frame.get("body", b"") for frame in frames if frame["type"] == "http.response.body"
         )
-        changed = json.dumps(response_mutation(json.loads(content))).encode()
         start = next(frame for frame in frames if frame["type"] == "http.response.start")
         headers = [
             (key, value) for key, value in start["headers"] if key.lower() != b"content-length"
         ]
+        if response_truncate_after_sse_events is not None:
+            assert type(response_truncate_after_sse_events) is int
+            assert response_truncate_after_sse_events > 0
+            separator = b"\r\n\r\n" if b"\r\n\r\n" in content else b"\n\n"
+            events = content.split(separator)
+            changed = separator.join(events[:response_truncate_after_sse_events]) + separator
+            await send({**start, "headers": headers})
+            await send({"type": "http.response.body", "body": changed, "more_body": False})
+            return
+        changed = json.dumps(response_mutation(json.loads(content))).encode()
         await send(
             {**start, "headers": [*headers, (b"content-length", str(len(changed)).encode())]}
         )
@@ -208,9 +234,19 @@ async def sdk_a2a_fixture(
     if not network:
         yield httpx.ASGITransport(app=capture), calls, endpoint
         return
-    server = uvicorn.Server(
-        uvicorn.Config(capture, host="127.0.0.1", log_level="critical", timeout_graceful_shutdown=2)
-    )
+    server_config = {
+        "host": "127.0.0.1",
+        "log_level": "critical",
+        "timeout_graceful_shutdown": 2,
+    }
+    if tls is not None:
+        server_config.update(
+            ssl_certfile=str(tls.certificates["localhost"][0]),
+            ssl_keyfile=str(tls.certificates["localhost"][1]),
+            ssl_ca_certs=str(tls.trusted_clients_bundle),
+            ssl_cert_reqs=ssl.CERT_REQUIRED if require_client_cert else ssl.CERT_NONE,
+        )
+    server = uvicorn.Server(uvicorn.Config(capture, **server_config))
     thread = threading.Thread(target=server.run, kwargs={"sockets": [listener]}, daemon=True)
     thread.start()
     deadline = time.monotonic() + 10

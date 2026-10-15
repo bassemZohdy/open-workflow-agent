@@ -6,57 +6,64 @@
       "name": "assistant",
       "representation": "Standard one-task agent call",
       "workflow": "resources/patterns/assistant.yaml",
-      "status": "Canonical recipe; test evidence required",
-      "todo_id": "S3-07"
+      "status": "Authored; full shared and process validation pending",
+      "todo_id": "S3-07",
+      "role_workflow": "resources/patterns/assistant-roles.yaml"
     },
     {
       "name": "pipeline",
       "representation": "Ordered agent calls",
       "workflow": "resources/patterns/pipeline.yaml",
-      "status": "Canonical recipe; legacy per-role API compatibility pending",
-      "todo_id": "S3-07"
+      "status": "Authored; full shared and process validation pending",
+      "todo_id": "S3-07",
+      "role_workflow": "resources/patterns/pipeline-roles.yaml"
     },
     {
       "name": "multi_perspective",
       "representation": "Isolated fork results followed by synthesis",
-      "workflow": null,
-      "status": "Pending ordered fork outputs and per-role bindings",
+      "workflow": "resources/patterns/multi-perspective.yaml",
+      "status": "Authored; full shared and process validation pending",
       "todo_id": "S3-07"
     },
     {
       "name": "refine_until_good",
       "representation": "Bounded loop with explicit quality predicate",
-      "workflow": null,
-      "status": "Pending budgets, predicate and refinement semantics",
+      "workflow": "resources/patterns/refine-until-good.yaml",
+      "status": "Authored; full shared and process validation pending",
       "todo_id": "S3-07"
     },
     {
       "name": "expert_dispatch",
       "representation": "Switch over a validated route",
-      "workflow": null,
-      "status": "Pending unknown/default route and role restrictions",
+      "workflow": "resources/patterns/expert-dispatch.yaml",
+      "status": "Authored; full shared and process validation pending",
       "todo_id": "S3-07"
     },
     {
       "name": "team_coordinator",
       "representation": "Bounded worker subworkflows or declared native extension",
-      "workflow": null,
-      "status": "Pending dynamic delegation, ownership and cancellation",
-      "todo_id": "S3-07"
+      "workflow": "resources/patterns/team-coordinator.yaml",
+      "status": "Authored; full shared and process validation pending",
+      "todo_id": "S3-07",
+      "worker_workflows": [
+        "resources/patterns/researcher-worker.yaml",
+        "resources/patterns/finance-worker.yaml"
+      ]
     },
     {
       "name": "plan_and_execute",
       "representation": "Validated plan plus bounded execution",
-      "workflow": null,
-      "status": "Pending plan schema, allowed actions and recursive budgets",
+      "workflow": "resources/patterns/plan-and-execute.yaml",
+      "status": "Authored; full shared and process validation pending",
       "todo_id": "S3-07"
     },
     {
       "name": "approval_gate",
       "representation": "Existing protected durable approval service",
-      "workflow": null,
-      "status": "Unsafe legacy approval excluded; reassignment/escalation parity pending",
+      "workflow": "resources/patterns/approval-gate.yaml",
+      "status": "Authored; full shared and process validation pending",
       "todo_id": "S3-07"
     }
-  ]
+  ],
+  "qualification": "Source recipes and named role bindings are staged; no legacy SDK API parity or task completion claimed."
 }

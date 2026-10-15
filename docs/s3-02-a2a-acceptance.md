@@ -1,9 +1,12 @@
 # S3-02 finite A2A invocation and interoperability acceptance
 
-Status: implementation in progress; S3-02 remains unchecked. This record defines
-required evidence and exclusions. No newly authored SDK, delivery or streaming
-profile is qualified before integrated validation. S2-09 and S3-01 qualification
-remain prerequisites for publication of the combined behavior.
+Status: implementation in progress; S3-02 remains unchecked. S2-09's finite
+recovery policy and S3-01's finite Python MCP profile are verified. The A2A
+implementation has broad passing local and exact-source hosted test selections,
+but the eight acceptance gates below still require evidence-by-evidence
+reconciliation; suite totals alone do not complete those gates. A2A01-A2A08
+remain open wherever their cross-method, authority, failure, backend or recovery
+controls have not been directly evidenced.
 
 ## Contract and authority
 
@@ -49,6 +52,12 @@ do not establish universal peer deduplication. No automatic resend of a possibly
 accepted SendMessage, hidden page fetch, indefinite reconnect or remote rollback
 is authorized.
 
+Outbound SDK calls issue one business request and never automatically retry.
+After dispatch, a lost initial or partial stream response is uncertain and is
+not replayed. Reconnection is an explicit caller action using
+`SubscribeToTask`/`tasks/resubscribe` with a known task ID; it does not repeat
+`SendStreamingMessage` or imply durable resubscription leases.
+
 Streaming, when advertised, is a bounded protocol projection with exact event
 alternatives, task/context correlation, total deadline, byte/event/queue limits
 and cleanup. Cross-worker completion must observe authoritative common state;
@@ -77,6 +86,58 @@ supplying `{}`. The shared native grid retains seven inline methods and one
 configured-tool call; neither internal normalization nor the SDK expands the
 public schema or enables its separately gated push operations.
 
+## Current evidence checkpoint (not task qualification)
+
+At source `af4acd61c200787fb68248b2d180ba69efb8c837`, all six hosted workflows
+passed. The Windows common A2A selection reported 156 passed; the Windows native
+lifecycle selection reported 26 A2A contract cases passed; PostgreSQL ADK and
+LangGraph selections each reported 26 passed and 26 backend-inapplicable skips.
+The core A2A-focused local selection reported 332 passed and 39 skipped. The
+isolated SQLite A2A contract profile reported 26 passed for each principal
+engine. These establish substantial test execution on the stated source, not
+completion of A2A01-A2A08: the gates also require controls to be tied to exact
+witnesses, and unsupported durable input resume, push, delegated identity,
+transport and cross-language scope remains excluded. Exact-source run IDs and
+limits are in
+the [validation history](validation-history/pending-batch-results.md#exact-source-qualification-af4acd6).
+
+The documentation-only follow-up at `4014874629cf1200cadb0e0dc8b474d8002a16c0`
+passed Docs, Security, External Sandbox and Agent Framework. Fifteen CI jobs
+passed, but the Windows timer lane was canceled at its 45-minute job limit, so
+the aggregate CI workflow did not pass. PostgreSQL LangGraph also failed one
+unrelated S3-03 selected-adapter recovery case. Neither outcome is evidence for
+or against the A2A gates; both are recorded in the [validation history](validation-history/pending-batch-results.md#follow-up-at-4014874).
+
+| Gate | Current evidence state | Remaining proof before this gate closes |
+| --- | --- | --- |
+| A2A01 | Partial: `test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_business_dispatch` and `test_official_sdk_client_discovers_sends_and_reads_native_task` cover the bounded method and socket paths. Locally, `test_card_selection_uses_first_supported_interface_and_ignores_server_endpoint` and `test_card_selection_rejects_when_no_interface_matches_finite_profile` pass. | Tie every advertised binding/method pair to the typed error/result and legacy-rejection matrix. |
+| A2A02 | Finite Python profile directly evidenced by `test_native_workflow_operations_return_only_typed_sdk_results` and `test_native_configured_agent_tool_calls_the_same_official_peer`; both principal SQLite selections passed 26 cases each. | Keep the claim to these tested engines, methods, deterministic tools and generated default workflow. |
+| A2A03 | Partial: async completion, task access, null artifacts, malformed input and skill policy have direct tests. `test_resuming_send_restarts_persisted_waiting_task` passes locally on JSON-RPC and HTTP+JSON, preserving Task/context identity, original input and exactly one resume. `test_authenticated_a2a_task_access_is_bound_to_creator` confirms unknown and foreign-owner errors match for Get, Cancel, Subscribe and resume on both bindings, without owner-state mutation or model work. `test_a2a_resume_cannot_bypass_protected_approval_wait` rejects ordinary resume during a protected approval wait on both bindings and preserves delivery, input, approval, effect and inbox evidence. `test_malformed_resume_rejects_before_invocation_or_delivery_mutation` now passes locally for both bindings. | Close the remaining completion, ownership and backend cross-products with exact-source evidence. |
+| A2A04 | Partial: `test_real_timer_wait_projects_authoritative_terminal_task_after_get_task` passes locally through an actual timer registration and dispatcher; later GetTask returns the committed artifact with stable identity, and repeated reads remain unchanged. Approval, disconnect, cross-worker terminal observation and uncertainty/replay controls also have separate witnesses. | Project real child waits and prove late value/fault, cancellation/deadline/END and host-drain outcomes remain authoritative in later A2A Task reads/streams. Include protected approval expiry/decision recovery. |
+| A2A05 | Partial: `test_sdk_async_ack_survives_real_stop_with_original_definition_and_clock` covers both engines, SQLite/PostgreSQL and three process-stop phases; recovery checks original identity/clock, one receiver commit and zero model calls. The local ADK/LangGraph SQLite selections each pass 6 cases, including retained skill identity. Invalid skill/archive/queue evidence rejects without writes. The two-engine in-process SQLite stale-generation race passes locally; it is narrower than the required process-level/backend matrix. | Add separate-process competing dispatch and stale-owner write attempts at initial-delivery recovery boundaries; record exact-source hosted no-skip results for both backends. Async resume remains unsupported. |
+| A2A06 | Partial: `test_public_resume_rejects_changed_archive_before_ownership_or_native_mutation` covers missing/digest-corrupt archive and invocation binding through JSON-RPC and HTTP+JSON, preserving common/native/receiver/model snapshots. ADK/SQLite and LangGraph/SQLite each pass 12 selected cases locally. The owner-authority corruption witness is authored for both bindings, but its actual-native cases skip in the root environment because independent engine SDK environments are required; PostgreSQL is also locally skipped. Archived workflow authority, immutable card decisions, terminal projection and known-receipt recovery have adjacent witnesses. | Run the owner-authority witness in independent ADK/LangGraph environments and PostgreSQL CI. Add missing/corrupt native-checkpoint and receipt-evidence rejection before lease/native/receiver writes; verify repeated terminal reads are immutable and network-free. |
+| A2A07 | Partial: local validation passed the actual-HTTPS SDK matrix for all seven advertised methods with named bearer/API-key, OAuth and mTLS credentials. Bearer, API-key and OAuth calls use the endpoint selected from the fetched AgentCard, and discovery carries no business credential. Card/tool endpoint mismatch and unbound OAuth resource policy also reject all seven methods before dispatch. Hosted requalification is pending. | Complete the remaining card-selected origin/resource-policy and secret-surface cross-products across the required backend matrix; delegated identity stays excluded. |
+| A2A08 | Partial: inbound and outbound streaming have bounded identity, explicit resubscription, cross-worker completion, first/partial TCP-loss, disconnect, timeout, limits and terminal-cleanup witnesses. `test_actual_tcp_subscribe_partial_response_loss_is_uncertain_without_replay` and `test_jsonrpc_rejects_unimplemented_optional_v1_methods_before_work` now pass locally. | Define and test Task/receipt expiry; bind malformed-event/optional-method rejection to the applicable binding/backend matrix. Push and delegated grants remain excluded. |
+
+The A2A02 result is finite Python evidence, not closure of S3-02. The other
+rows remain partial until each listed evidence gap is directly traced and the
+combined validation source passes. Gate names, test symbols and exclusions are
+kept explicit so the large suite totals do not imply broader protocol support.
+
+Representative executed witnesses for the partial gates include:
+
+- **A2A01:** `tests/core/test_a2a_sdk_http.py::test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_business_dispatch`, `::test_card_selection_uses_first_supported_interface_and_ignores_server_endpoint` and `::test_card_selection_rejects_when_no_interface_matches_finite_profile`; `tests/contract/test_a2a_sdk_inbound.py::test_official_sdk_client_discovers_sends_and_reads_native_task` covers the independent SDK client on both inbound bindings.
+- **A2A03:** `tests/core/test_a2a_async.py::test_return_immediately_returns_task_and_completes`, `::test_resuming_send_restarts_persisted_waiting_task` and `::test_a2a_resume_cannot_bypass_protected_approval_wait`; `tests/core/test_a2a_task_routes.py::test_authenticated_a2a_task_access_is_bound_to_creator` checks unknown/foreign response equality across Get, Cancel, Subscribe and resume on JSON-RPC and HTTP+JSON; `tests/core/test_a2a_inbound_v1.py::test_invalid_v1_send_rejects_before_invocation_or_model`, `::test_resume_context_mismatch_has_no_delivery_or_input_mutation`, `::test_malformed_resume_rejects_before_invocation_or_delivery_mutation` (both bindings passed locally), `::test_unknown_and_foreign_a2a_tasks_share_sanitized_not_found_without_callbacks` and `::test_completed_null_is_an_explicit_artifact`.
+- **A2A04:** `tests/core/test_a2a_inbound_v1.py::test_real_timer_wait_projects_authoritative_terminal_task_after_get_task` and `::test_real_retained_timer_is_automatic_work_without_mutating_wait_evidence`; `::test_subscription_reads_another_services_terminal_commit_without_local_event`; `tests/core/test_a2a_async.py::test_approval_wait_projects_input_required_and_completes`; `tests/core/test_a2a_streaming.py::test_stream_disconnect_does_not_cancel_invocation`; `tests/contract/test_a2a_workflow_calls.py::test_accepted_remote_task_with_lost_correlation_stays_pending_without_catch_replay`.
+- **A2A05:** `tests/contract/test_a2a_initial_delivery.py::test_sdk_async_ack_survives_real_stop_with_original_definition_and_clock` and `::test_stopped_delivery_invalid_authority_or_evidence_rejects_before_lease_or_native_mutation`; the recovery worker asserts the persisted delivery retains the original skill ID. `::test_stale_initial_delivery_generation_cannot_write_after_takeover` passes locally against the in-process SQLite lease-generation fence; it does not close the separate-process or PostgreSQL gaps. `tests/contract/test_a2a_workflow_calls.py::test_original_known_a2a_receipt_survives_native_restart_without_second_task`.
+- **A2A06:** `tests/contract/test_workflow_version_recovery.py::test_public_resume_rejects_changed_archive_before_ownership_or_native_mutation` covers REST plus JSON-RPC and HTTP+JSON A2A resume for missing/digest-corrupt archive and invocation-binding evidence; the two principal engines each pass 12 SQLite selections locally. `::test_a2a_resume_rejects_changed_owner_authority_before_mutation` adds owner-evidence rejection across engines, backends and bindings, pending validation. `::test_a2a_cannot_grant_an_unadvertised_archived_workflow_default_skill_authority`, `tests/contract/test_a2a_workflow_calls.py::test_known_receipt_recovery_never_refetches_mutable_agent_card` and `tests/core/test_a2a_card_admission.py::test_changed_request_or_deployment_binding_cannot_replace_original_decision` cover adjacent authority and receipt controls.
+- **A2A07:** `tests/core/test_a2a_sdk_http.py::test_actual_tls_a2a_call_uses_named_mtls_credential[method]`, `::test_actual_tls_a2a_call_uses_named_http_credential[kind-method]` and `::test_actual_tls_a2a_call_uses_named_oauth_credential_for_card_endpoint[method]` passed locally across the seven advertised methods and four named TLS credential profiles. Bearer, API-key and OAuth cases use the fetched AgentCard-selected endpoint and assert public discovery has no business credential. `::test_card_cannot_redirect_protected_tool_credentials_to_another_endpoint[method]` and `::test_oauth_card_requires_exact_resource_endpoint_before_issuer_dispatch[method]` reject all seven methods before network or issuer dispatch when endpoint/resource authority is missing. The complete SDK HTTP test file passed 133 cases locally; hosted requalification remains pending. `::test_public_card_fetch_has_no_inherited_business_credentials_and_uses_pinned_selection`, `::test_exact_deployment_credential_grant_reaches_selected_sdk_peer` and `tests/core/test_secret_safety.py::test_a2a_surfaces_never_expose_the_resolved_secret` cover adjacent policy and secret surfaces.
+- **A2A08:** `tests/core/test_a2a_streaming.py::test_resubscribe_streams_existing_task_and_rejects_unknown` and `::test_stream_disconnect_does_not_cancel_invocation`; `tests/core/test_a2a_inbound_v1.py::test_a2a_stream_event_limit_keeps_initial_snapshot_and_closes`, `::test_a2a_stream_backpressure_closes_without_leaking_subscription`, `::test_a2a_stream_timeout_closes_after_snapshot`, `::test_a2a_stream_of_terminal_task_contains_only_snapshot_and_closes` and `::test_subscription_reads_another_services_terminal_commit_without_local_event`; `tests/core/test_a2a_sdk_http.py::test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_business_dispatch`, `::test_actual_tcp_streaming_lost_response_is_uncertain_without_reconnect`, `::test_actual_tcp_streaming_partial_response_loss_is_uncertain_without_reconnect`, `::test_actual_tcp_subscribe_partial_response_loss_is_uncertain_without_replay`, `::test_stream_limits_identity_and_completion_are_checked_without_reconnect` and `::test_subscribe_rejects_foreign_first_task_even_when_later_events_match_it` witness one-shot dispatch, uncertain loss and explicit resubscription; `tests/core/test_a2a.py::test_jsonrpc_rejects_unimplemented_optional_v1_methods_before_work` witnesses precise optional-method rejection. Durable expiry and binding/backend matrices remain open.
+
+These named tests demonstrate individual branches. The remaining table entries
+identify the cross-products, backend, process-stop and failure interactions that
+still need direct evidence before any partial gate advances.
+
 The authored inventory currently includes common initial-delivery controls
 (26 SQLite/PostgreSQL nodes), actual native workflow/tool calls (64), official
 SDK inbound socket cases (16), actual process-stop initial delivery (24), and
@@ -89,14 +150,14 @@ projection, and known business receipt before native commit, plus revoked
 skill/archive/queue corruption rejection. The initial delivery preserves v1
 source/input/identity/clock under v2 and has no paid model calls.
 
-Exact source provenance and passing counts require the completed validation
-batch. SDK version 1.2.2 is required before enabled inbound exposure; sanitized
-capabilities retain configured enabled separately from effective SDK availability
-and do not claim full conformance. Finish the batch before behavioral tests; then run focused
-actual SDK/common/native/database cases and existing A2A/protocol/security/CTK
-regressions before complete independent suites, builds and hosted gates.
-Mandatory actual principal/backend cases cannot qualify through foreign SDK or
-database skips. Retain failed attempts and finite supervisor/source hashes.
+The current exact-source checkpoint and its passing counts are recorded below.
+SDK version 1.2.2 is required before enabled inbound exposure; sanitized
+capabilities retain configured enabled separately from effective SDK
+availability and do not claim full conformance. S3-02 stays open until the
+remaining gate gaps are directly evidenced and the grouped change batch passes
+its focused regressions, independent suites, builds and hosted gates. Mandatory
+actual principal/backend cases cannot qualify through foreign SDK or database
+skips. Retain failed attempts and finite supervisor/source hashes.
 
 ## Independent gates and publication
 
@@ -113,11 +174,12 @@ image gates. All six hosted workflows must qualify the final combined source.
 Update TODO/PROJECT and only proven tracker/audit subsets after acceptance;
 proposed inventory tests and independent gaps remain visible and unverified.
 
-Authoring starts in isolated `codex/a2a-integrations` from source
-325458af130cccc8d9d899dc09614f6e55cc48f5 while its predecessor frozen suites run.
-That source is an implementation baseline, not successful S2-09/S3-01 or new
-A2A evidence. There is no established blocker: the identified gaps have concrete
-implementation steps, with publication waiting on the stated dependency gates.
+The S3-02 implementation baseline was authored from
+`325458af130cccc8d9d899dc09614f6e55cc48f5`; that provenance is not A2A
+acceptance. With S2-09 and S3-01 prerequisites now verified, S3-02 is
+actionable. Continue with the grouped peer/native/backend gates, preserve the
+bounded semantics above, then run the frozen focused and full validation
+profiles. No blocker is recorded.
 
 
 ## Retained first combined batch

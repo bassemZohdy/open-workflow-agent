@@ -6,6 +6,18 @@ hosted CI or inventory-completion claim is made. Authored finite gRPC and embedd
 profiles still require their independent S3-03 gates. AsyncAPI network activation
 and broader function/sandbox responsibilities remain pending.
 
+Earlier hosted checkpoint `f9cb76f` failed the PostgreSQL LangGraph operation
+adapter job on the selected-adapter `inbox-before-ack` recovery case (220
+passed, 158 skipped, 1 failed). Review found a fixture race: after durable
+inbox commit, the blocked ACK callback yielded the event loop, allowing
+LangGraph to advance before the parent stopped the producer. The fixture now
+holds that loop at the intended pre-ACK boundary; local Windows ADK/SQLite and
+LangGraph/SQLite selections pass. At `8183776`, both the PostgreSQL
+LangGraph operation-adapter job and Windows operation-adapter recovery lane
+passed with the fixture correction. This resolves that recorded recurrence,
+while the wider S3-03 adapter, backend, platform and deployment gates remain
+open.
+
 The public DSL remains the unmodified Open Workflow 1.0.3 schema. Core owns the
 common adapter; ADK and LangGraph use their own existing native checkpoints.
 

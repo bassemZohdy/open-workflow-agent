@@ -1,8 +1,11 @@
 # S3-01 common MCP integration acceptance
 
-Status: implementation in progress; S3-01 remains unchecked. This record defines
-the finite acceptance gates before capability or feature completion. It is not
-evidence of successful official SDK interoperability or full MCP conformance.
+Status: **S3-01 is verified for the finite Python MCP01-MCP08 profile** at exact
+source `af4acd61c200787fb68248b2d180ba69efb8c837`. All six hosted workflows
+passed. This does not establish full MCP conformance, full inventory-row
+completion, JavaScript support, or the separately proposed T29/T30/T31 tests.
+The acceptance boundary and exact-source results are recorded below and in the
+[validation history](validation-history/pending-batch-results.md#exact-source-qualification-af4acd6).
 
 ## Contract and boundaries
 
@@ -13,12 +16,15 @@ interactions fail explicitly. The official Python SDK must be reviewed, pinned
 and installed from each independent build lock, never during invocation or
 sandbox startup. An SDK dependency alone does not qualify any transport.
 
-Successful workflow MCP output is the validated JSON-RPC result, with absent
-fields distinct from explicit nulls. Method-specific parameters, reserved
-metadata, routing, response identity and result models are checked before a
-result becomes a known business receipt. Protocol errors and tool errors use
-the common error contract. Input-required interactions cannot be completed by
-fabricating a response or automatically replaying a business call.
+For workflow operations that invoke an MCP method, successful workflow output
+retains the validated JSON-RPC result, with absent fields distinct from
+explicit nulls. For MCP calls used as configured agent tools, the SDK result is
+projected to model content without JSON-RPC envelope fields. Method-specific
+parameters, reserved metadata, routing, response identity and result models are
+checked before a result becomes a known business receipt. Protocol errors and
+tool errors use the common error contract. Input-required interactions cannot
+be completed by fabricating a response or automatically replaying a business
+call.
 
 HTTP dispatch retains the common timeout, TLS, authentication, response-size,
 host and redirect controls. Credential preparation and response consumption
@@ -27,6 +33,13 @@ TLS certificate and CA; it cannot silently inherit another tool's identity.
 The finite OAuth client-credentials profile requires deployment-owned issuer,
 resource and endpoint bindings. Unsupported discovery, interactive consent and
 delegated grants remain separate capability gates.
+
+The official Open Workflow 1.0.3 schema admits `transport.options` without
+assigning it semantics, and the `client` object defines only `name` and
+`version`. Keep that schema unchanged: reject `transport.options` and unknown
+client fields such as `client.description` before destination authorization,
+credential resolution, or transport I/O until a versioned contract defines
+their behavior. They must not be silently ignored or interpreted by the SDK.
 
 Stdio is disabled by default and requires the deployment-enabled internal
 sandbox plus an exact registered executable, arguments and environment policy.
@@ -61,20 +74,64 @@ continue through the established common contracts.
 | MCP07 | Actual ADK/LangGraph workflow and configured tool parity; SQLite/actual PostgreSQL known receipt replay, interrupted uncertain action, distinct visit keys and retained deadlines/identities across recovery. |
 | MCP08 | Official schema unchanged; effective or explicitly rejected configuration fields, expression resolution, immutable fingerprint and approved endpoint/credential policies. |
 
-After all changes and fixtures are authored, freeze sources for common security,
-protocol and sandbox tests; both actual principal SDKs and relevant database
-contracts; Windows/POSIX process controls; selected CTK; independent builds,
-runtime images and complete security audits. Record source hashes, node counts,
-skips, failures and exact hosted run identities. Optional Framework evidence
-remains separate. Update only proven feature rows; proposed tests, JavaScript,
-full OWS conformance and broader MCP extensions stay independently gated.
+The accepted finite profile passed common security, protocol and sandbox
+tests; both actual principal SDKs and relevant database contracts; Windows/POSIX
+process controls; selected CTK; independent builds, runtime images and complete
+security audits. Exact outcomes, source hashes, skips and hosted run identities
+are recorded in the linked result. Optional Framework evidence remains
+separate. Only bounded Python subsets A142-A144 and A146-A152 advance; A145,
+proposed tests, JavaScript, full OWS conformance and broader MCP extensions stay
+independently gated.
 
 ## Evidence
 
-Read-only preparation identified actionable modern metadata/result projection,
-OAuth transport, per-tool TLS and duplex sandbox gaps. Implementation is being
-authored in parallel while the separate S2-09 frozen batch is validated. There
-is no established blocker; missing interfaces are implementation work.
+Initial read-only preparation identified actionable modern metadata/result
+projection, OAuth transport, per-tool TLS and duplex sandbox gaps. Subsequent
+correction batches authored those interfaces and controls; their historical
+partial and failed results do not qualify the task. The final exact-source
+qualification supersedes those attempts for the finite profile.
+
+The authored MCP04 regression
+`tests/core/test_mcp_sdk_http.py::test_actual_mcp_tls_keeps_configured_tool_certificates_isolated`
+composes configured per-tool TLS profiles with actual SDK calls to two mTLS
+listeners. It verifies that the selected certificates stay isolated and that
+wrong or missing certificates are rejected before a second business dispatch.
+The regression is present in the `b3d7b61` grouped local batch, which passed
+151 tests with 68 skips. This is local witness evidence only; exact-source
+qualification remains open at those historical sources. The completed
+`17501ee` attempt had one Windows independent-job recovery failure, and later
+diagnostic follow-ups were partial. These results are superseded for finite
+acceptance by the green exact-source matrix. See the
+[qualification result](validation-history/pending-batch-results.md#exact-source-qualification-af4acd6),
+[Windows diagnostic follow-ups](validation-history/pending-batch-results.md#superseded-windows-recovery-diagnostic-follow-ups),
+and [preceding `b3d7b61` attempt](validation-history/pending-batch-results.md#exact-source-validation-attempt-b3d7b61).
+
+The MCP08 review found that schema-admitted `transport.options` had no defined
+semantics and was rejected only later in transport handling, while the
+undeclared `client.description` could pass permissive schema handling and be
+dropped by SDK model validation. A local correction now rejects both fields
+during configured-tool validation and prepared-call admission, as well as
+direct common MCP dispatch and the SDK boundary. It rejects before workflow
+effect-intent creation, destination and credential authorization, credential
+preparation, or I/O. Deterministic tests cover direct, prepared-call and
+role-tool paths. The focused MCP HTTP,
+protocol and tool-registry core suites pass locally: 138 tests passed, with
+three existing HTTPX certificate-fixture deprecation warnings. This focused
+result does not qualify MCP08 or the integrated S3-01 gates. The official schema
+remains unchanged.
+
+A further focused regression batch covers
+legacy and unknown version rejection during regular and sandbox compilation;
+exact parameters delivered to the SDK server across all seven methods; streamed
+response-size overflow cleanup without replay; OAuth token expiry before
+business dispatch; malformed UTF-8/JSON through the stdio bridge with sanitized
+errors and cleanup; notification-only business replies as explicit uncertain
+unsupported interactions; and configured-tool delivery of the validated result
+without its JSON-RPC envelope. The combined local batch passed 151 tests, skipped
+68 and reported three existing HTTPX certificate-fixture deprecation warnings.
+It does not complete individual MCP gates; the frozen common,
+principal-engine/database, process, build and exact-source hosted batch remains
+required.
 
 The first frozen local snapshot `f1e6abf` contains 416 fixed validation inputs.
 Common focus reaches 222 passes with eight failures and two errors; both native
@@ -129,8 +186,8 @@ pending receipt. Logs, bounds, hashes and five fresh passing builds remain in
 `tmp/s3-01-fourth-batch` and `tmp/s3-01-fifth-batch` respectively.
 
 The final authored helper rejects forged master/member paths lexically before
-filesystem access, including UNC references. Its additional control brings the
-inspection grid to 14; this hardening awaits the combined final validation.
-S2-09, S3-01 and the separately authored S3-02 will share one final frozen source,
-full validation and hosted publication checkpoint. No task is complete from
-these partial or failed attempts.
+filesystem access, including UNC references. Its additional control brought the
+inspection grid to 14; at that historical point the change awaited combined
+validation. S3-01's finite profile is now verified at source `af4acd6`; it does not close
+the independent protocol, JavaScript or proposed-test gates. S3-02 is the next
+active task and has a separate acceptance profile and validation batch.

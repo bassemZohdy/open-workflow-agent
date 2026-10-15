@@ -18,7 +18,7 @@ from open_workflow_agent.engine import PortableWorkflowEngine
 from open_workflow_agent.observability import WorkflowEvent
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.streaming import StreamLimits
-from open_workflow_agent.workflow import compile_workflow
+from open_workflow_agent.workflow import WorkflowExecutor, compile_workflow
 
 
 def message(**values):
@@ -48,6 +48,58 @@ def shell(services, *, status="running", output=None):
     if status != "running":
         services.invocations.update(handle, status=status, output=output)
     return handle
+
+
+async def stream_or_subscribe(client, binding, operation, task_id, *, context_id=None):
+    if binding == "jsonrpc":
+        params = (
+            {"id": task_id}
+            if operation == "subscribe"
+            else {
+                "message": message(
+                    taskId=task_id, **({"contextId": context_id} if context_id else {})
+                )
+            }
+        )
+        return await client.post(
+            "/a2a",
+            headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+            json={
+                "jsonrpc": "2.0",
+                "id": "call-1",
+                "method": "SubscribeToTask" if operation == "subscribe" else "SendStreamingMessage",
+                "params": params,
+            },
+        )
+    if operation == "subscribe":
+        return await client.post(
+            f"/a2a/tasks/{task_id}:subscribe", headers={"A2A-Version": A2A_PROTOCOL_VERSION}
+        )
+    return await client.post(
+        "/a2a/message:stream",
+        headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+        json={
+            "message": message(taskId=task_id, **({"contextId": context_id} if context_id else {}))
+        },
+    )
+
+
+def forbid_a2a_callbacks(monkeypatch, app, services):
+    import open_workflow_agent.a2a as a2a_module
+
+    calls = []
+
+    def fail(*args, **kwargs):
+        calls.append((args, kwargs))
+        raise AssertionError("A2A resume/subscription callback must not run")
+
+    async def fail_async(*args, **kwargs):
+        fail(*args, **kwargs)
+
+    monkeypatch.setattr(app.state.engine, "resume", fail_async)
+    monkeypatch.setattr(services, "resolve_original_definition", fail)
+    monkeypatch.setattr(a2a_module, "a2a_sse_stream", fail)
+    return calls
 
 
 @pytest.mark.asyncio
@@ -127,6 +179,181 @@ async def test_resume_context_mismatch_has_no_delivery_or_input_mutation(tmp_pat
             is None
         )
         assert model.calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+async def test_malformed_resume_rejects_before_invocation_or_delivery_mutation(
+    tmp_path, monkeypatch, binding
+):
+    app, services, model = runtime(tmp_path, binding)
+    handle = shell(services, status="waiting")
+    before = services.invocations.get(handle.invocation_id)._persisted_payload
+    invocation_count_before = services.invocations.connection.execute(
+        "SELECT COUNT(*) FROM invocations"
+    ).fetchone()[0]
+    delivery_before = services.initial_deliveries.get(handle)
+    inputs_before = services.invocations.connection.execute(
+        "SELECT invocation_id,fingerprint,payload FROM invocation_inputs WHERE invocation_id=?",
+        (handle.invocation_id,),
+    ).fetchall()
+    inbox_before = services.event_store.connection.execute(
+        "SELECT sequence,scope,source,event_id,envelope,digest,submitted_digest "
+        "FROM event_inbox ORDER BY sequence"
+    ).fetchall()
+    async with app.router.lifespan_context(app):
+        callbacks = forbid_a2a_callbacks(monkeypatch, app, services)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            invalid_message = message(
+                taskId=handle.invocation_id,
+                contextId="original-context",
+                parts=[{"text": "hello", "data": {"secret": "must-not-be-admitted"}}],
+            )
+            params = {"message": invalid_message}
+            response = await client.post(
+                "/a2a" if binding == "jsonrpc" else "/a2a/message:send",
+                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "call-1",
+                    "method": "SendMessage",
+                    "params": params,
+                }
+                if binding == "jsonrpc"
+                else params,
+            )
+        assert "error" in response.json()
+        assert "must-not-be-admitted" not in response.text
+        current = services.invocations.get(handle.invocation_id)
+        assert current is not None and current.status == "waiting"
+        assert current._persisted_payload == before
+        assert (
+            services.invocations.connection.execute("SELECT COUNT(*) FROM invocations").fetchone()[
+                0
+            ]
+            == invocation_count_before
+        )
+        assert services.initial_deliveries.get(current) == delivery_before
+        assert (
+            services.invocations.connection.execute(
+                "SELECT invocation_id,fingerprint,payload FROM invocation_inputs "
+                "WHERE invocation_id=?",
+                (handle.invocation_id,),
+            ).fetchall()
+            == inputs_before
+        )
+        assert (
+            services.event_store.connection.execute(
+                "SELECT sequence,scope,source,event_id,envelope,digest,submitted_digest "
+                "FROM event_inbox ORDER BY sequence"
+            ).fetchall()
+            == inbox_before
+        )
+        assert model.calls == []
+        assert callbacks == []
+    services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+async def test_stream_resume_mismatched_context_rejects_before_resume_or_subscription(
+    tmp_path, monkeypatch, binding
+):
+    app, services, model = runtime(tmp_path, binding)
+    handle = shell(services, status="waiting")
+    before = services.invocations.get(handle.invocation_id)._persisted_payload
+    async with app.router.lifespan_context(app):
+        callbacks = forbid_a2a_callbacks(monkeypatch, app, services)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await stream_or_subscribe(
+                client,
+                binding,
+                "stream",
+                handle.invocation_id,
+                context_id="foreign-context",
+            )
+        body = response.json()
+        assert "error" in body
+        assert "context" in response.text
+        assert services.invocations.get(handle.invocation_id)._persisted_payload == before
+        assert (
+            services.invocations.connection.execute(
+                "SELECT 1 FROM invocation_inputs WHERE invocation_id=?", (handle.invocation_id,)
+            ).fetchone()
+            is None
+        )
+        assert model.calls == []
+        assert callbacks == []
+    services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+async def test_stream_resume_with_matching_context_is_sanitized_as_unsupported_without_callbacks(
+    tmp_path, monkeypatch, binding
+):
+    app, services, model = runtime(tmp_path, binding)
+    handle = shell(services, status="waiting")
+    before = services.invocations.get(handle.invocation_id)._persisted_payload
+    async with app.router.lifespan_context(app):
+        callbacks = forbid_a2a_callbacks(monkeypatch, app, services)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await stream_or_subscribe(
+                client,
+                binding,
+                "stream",
+                handle.invocation_id,
+                context_id="original-context",
+            )
+        body = response.json()
+        assert "error" in body
+        assert "resume" in response.text.lower() or "unsupported" in response.text.lower()
+        assert services.invocations.get(handle.invocation_id)._persisted_payload == before
+        assert model.calls == []
+        assert callbacks == []
+    services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize("operation", ["stream", "subscribe"])
+async def test_unknown_and_foreign_a2a_tasks_share_sanitized_not_found_without_callbacks(
+    tmp_path, monkeypatch, binding, operation
+):
+    app, services, model = runtime(tmp_path, binding)
+    foreign = services.invocations.create(
+        engine="portable",
+        session_id="foreign-context-secret",
+        user_id=None,
+        workflow_name="foreign-workflow",
+        workflow_version="1.0.0",
+        workflow_fingerprint="foreign-fingerprint",
+        owner_principal="foreign-principal-secret",
+    )
+    unknown_id = "unknown-task-secret"
+    async with app.router.lifespan_context(app):
+        callbacks = forbid_a2a_callbacks(monkeypatch, app, services)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            results = []
+            for task_id in (unknown_id, foreign.invocation_id):
+                response = await stream_or_subscribe(client, binding, operation, task_id)
+                results.append((response.status_code, response.json()))
+                assert task_id not in response.text
+                assert "foreign-principal-secret" not in response.text
+                assert "foreign-context-secret" not in response.text
+            assert results[0] == results[1]
+            assert "not found" in json.dumps(results[0][1]).lower()
+        assert model.calls == []
+        assert callbacks == []
+    services.close()
 
 
 def test_completed_null_is_an_explicit_artifact(tmp_path):
@@ -368,6 +595,143 @@ def test_real_retained_timer_is_automatic_work_without_mutating_wait_evidence(tm
     assert services.timers.get(identity) == before == registration
     assert services.invocations.read_input(handle) == {"original": None}
     assert services.invocations.get(handle.invocation_id).status == "waiting"
+    services.close()
+
+
+@pytest.mark.asyncio
+async def test_real_timer_wait_projects_authoritative_terminal_task_after_get_task(
+    tmp_path, monkeypatch
+):
+    current = [1000.0]
+    original_initialize = WorkflowExecutor.__init__
+
+    def initialize(executor, *args, **kwargs):
+        original_initialize(executor, *args, **kwargs)
+        executor._absolute_clock = lambda: current[0]
+
+    monkeypatch.setattr(WorkflowExecutor, "__init__", initialize)
+    config = RuntimeConfig.model_validate(
+        {
+            "workflow": {
+                "catalog": [
+                    {
+                        "document": {
+                            "dsl": "1.0.3",
+                            "namespace": "a2a",
+                            "name": "timed",
+                            "version": "1.0.0",
+                        },
+                        "do": [
+                            {"pause": {"wait": {"seconds": 60}}},
+                            {"finish": {"set": {"timer_fired": True}}},
+                        ],
+                    }
+                ]
+            },
+            "a2a": {
+                "enabled": True,
+                "skills": [{"id": "timer", "workflow": "timed"}],
+            },
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    app = create_app(config=config, services=services, engine=PortableWorkflowEngine())
+
+    async with app.router.lifespan_context(app):
+        dispatcher = app.state.engine._timer_dispatcher
+        # Hold the polling clock before the persisted due time so the test can
+        # drive the actual dispatcher at a deterministic timestamp below.
+        dispatcher.clock = lambda: current[0]
+        dispatcher.poll_seconds = 3600
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            started = await client.post(
+                "/a2a",
+                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "timer-start",
+                    "method": "SendMessage",
+                    "params": {
+                        "message": message(metadata={"skillId": "timer"}),
+                        "configuration": {"returnImmediately": True},
+                    },
+                },
+            )
+            assert started.status_code == 200, started.text
+            task_id = started.json()["result"]["task"]["id"]
+
+            async with asyncio.timeout(5):
+                while True:
+                    handle = services.invocations.get(task_id)
+                    if (
+                        handle is not None
+                        and handle.status == "waiting"
+                        and task_id not in dispatcher.engine._active
+                        and task_id not in dispatcher.engine._ownership_tasks
+                    ):
+                        break
+                    await asyncio.sleep(0.01)
+
+            waiting = await client.post(
+                "/a2a",
+                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "timer-get-waiting",
+                    "method": "GetTask",
+                    "params": {"id": task_id},
+                },
+            )
+            assert waiting.status_code == 200, waiting.text
+            waiting_task = waiting.json()["result"]
+            assert waiting_task["status"]["state"] == "TASK_STATE_WORKING"
+            assert waiting_task["id"] == task_id
+            handle = services.invocations.get(task_id)
+            assert handle is not None
+            registration = services.timers.pending_for_invocation(
+                task_id, handle.workflow_fingerprint
+            )[0]
+            assert registration.due_at == 1060.0
+
+            current[0] = 1060.0
+            assert await dispatcher.tick(now=current[0], invocation_id=task_id) == 1
+            async with asyncio.timeout(5):
+                while task_id in dispatcher._workers:
+                    await asyncio.sleep(0.01)
+
+            completed = await client.post(
+                "/a2a",
+                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "timer-get-completed",
+                    "method": "GetTask",
+                    "params": {"id": task_id},
+                },
+            )
+            assert completed.status_code == 200, completed.text
+            completed_task = completed.json()["result"]
+            assert completed_task["status"]["state"] == "TASK_STATE_COMPLETED"
+            assert completed_task["id"] == task_id
+            assert completed_task["contextId"] == waiting_task["contextId"]
+            assert completed_task["artifacts"][0]["parts"][0]["data"] == {"timer_fired": True}
+
+            # A second due scan cannot revise the first terminal projection.
+            assert await dispatcher.tick(now=current[0], invocation_id=task_id) == 0
+            repeated = await client.post(
+                "/a2a",
+                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "timer-get-repeated",
+                    "method": "GetTask",
+                    "params": {"id": task_id},
+                },
+            )
+            assert repeated.status_code == 200, repeated.text
+            assert repeated.json()["result"] == completed_task
+
     services.close()
 
 

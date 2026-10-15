@@ -66,11 +66,6 @@ async def test_noncompetitive_fork_preserves_ordered_object_results(
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="S3-03: OpenAPI must resolve operation from its description",
-)
 async def test_openapi_resolves_operation_server_path_and_parameters():
     requests: list[tuple[str, str]] = []
 
@@ -120,11 +115,6 @@ async def test_openapi_resolves_operation_server_path_and_parameters():
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="S3-03: OWS HTTP raw output must preserve binary as base64",
-)
 async def test_http_raw_output_preserves_binary_as_base64():
     content = b"\x00\xffbinary"
     client = HttpClient(

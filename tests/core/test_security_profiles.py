@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 from open_workflow_agent.config import RuntimeConfig, ToolConfig
+from open_workflow_agent.openapi_client import OpenApiDescription
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.security import (
     ProfileAuthentication,
@@ -110,6 +111,7 @@ async def test_tool_security_profile_injects_bearer_header() -> None:
     captured: dict[str, str] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET" and request.url.path == "/call"
         captured["authorization"] = request.headers.get("authorization", "")
         return httpx.Response(200, json={"ok": True})
 
@@ -120,6 +122,22 @@ async def test_tool_security_profile_injects_bearer_header() -> None:
             allowed_hosts={"example.test"},
         )
     )
+    document = {
+        "openapi": "3.0.3",
+        "info": {"title": "Partner", "version": "1.0.0"},
+        "servers": [{"url": "https://example.test"}],
+        "components": {"securitySchemes": {"partnerBearer": {"type": "http", "scheme": "bearer"}}},
+        "security": [{"partnerBearer": []}],
+        "paths": {
+            "/call": {
+                "get": {
+                    "operationId": "get-status",
+                    "responses": {"200": {"description": "Known value"}},
+                }
+            }
+        },
+    }
+    description = OpenApiDescription.capture("https://example.test/openapi.json", document)
     registry = ToolRegistry.from_config(
         [
             ToolConfig.model_validate(
@@ -128,6 +146,14 @@ async def test_tool_security_profile_injects_bearer_header() -> None:
                     "name": "partner-api",
                     "endpoint": "https://example.test/call",
                     "security_profile": "partner",
+                    "options": {"operationId": "get-status"},
+                    "openapi_binding": {
+                        "id": "partner-api",
+                        "version": "1.0.0",
+                        "document_uri": description.uri,
+                        "document": document,
+                        "digest": description.digest,
+                    },
                 }
             )
         ],
@@ -136,7 +162,7 @@ async def test_tool_security_profile_injects_bearer_header() -> None:
     )
     await registry.invoke(
         "partner-api",
-        {"method": "GET", "operationId": "get-status", "parameters": {}},
+        {"parameters": {}},
     )
     assert captured["authorization"] == "Bearer profile-secret"
 

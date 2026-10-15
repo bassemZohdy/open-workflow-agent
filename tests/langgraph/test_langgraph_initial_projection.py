@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import copy
 import hashlib
 import json
@@ -20,8 +21,11 @@ from langgraph.pregel._algo import _xxhash_str
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity, effect_request_digest
-from open_workflow_agent.errors import InvocationStateError, WorkflowExecutionError
+from open_workflow_agent.errors import InvocationStateError
+from open_workflow_agent.execution_authority import ExecutionAuthority, authority_scope
+from open_workflow_agent.execution_authorization import authority_identity
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
+from open_workflow_agent.security import static_principal
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
@@ -42,6 +46,8 @@ def snapshot(services: RuntimeServices, native_path: str) -> tuple[Any, Any]:
             "recovery_definitions",
             "recovery_invocation_definitions",
             "initial_invocation_deliveries",
+            "execution_authorities",
+            "execution_authority_candidates",
         )
     )
     with closing(
@@ -70,12 +76,37 @@ def snapshot(services: RuntimeServices, native_path: str) -> tuple[Any, Any]:
         "zero-channel-fraction",
         "channel-format",
         "channel-advanced",
+        "original-authority",
+        "authority-row",
+        "authority-receipt",
+        "authority-index",
+        "authority-missing-native",
+        "authority-foreign-scope-policy",
     ],
 )
 async def test_initializer_pending_writes_require_original_scope_and_sdk_identity(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, corruption: str | None
 ) -> None:
-    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    authenticated = corruption == "original-authority" or str(corruption).startswith("authority-")
+    config = RuntimeConfig.model_validate(
+        {
+            "security": {
+                "profiles": {
+                    "initial": {
+                        "type": "bearer",
+                        "principal": "initial-owner",
+                        "roles": ["worker"],
+                        "scopes": ["execute"],
+                        "audience": ["runtime"],
+                        "token": {"from_env": "OWA_INITIALIZER_UNUSED_TOKEN"},
+                    }
+                }
+            }
+        }
+        if authenticated
+        else {}
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
     engine = LangGraphWorkflowEngine()
     business_calls: list[Any] = []
 
@@ -119,21 +150,75 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
     )
     original_input = {"original": True}
     try:
-        await engine.prepare_initial_delivery(plan, handle, original_input, skill_id="initial")
+        with authority_scope(
+            ExecutionAuthority.capture(
+                static_principal(config.security.profile("initial")), security_profile="initial"
+            )
+            if authenticated
+            else None
+        ):
+            await engine.prepare_initial_delivery(plan, handle, original_input, skill_id="initial")
+        if authenticated:
+            assert services.execution_authorizations.authority_receipt(handle) is not None
+
+        initializer_reached = asyncio.Event()
 
         async def before_any_task(*args: Any, **kwargs: Any) -> None:
-            raise WorkflowExecutionError("capture the actual SDK initializer")
+            initializer_reached.set()
+            await asyncio.Event().wait()
 
         with monkeypatch.context() as capture:
             capture.setattr(engine.executor, "_run_task_item", before_any_task)
-            with pytest.raises(WorkflowExecutionError):
-                await engine.native.execute_plan(
+            execution = asyncio.create_task(
+                engine.native.execute_plan(
                     engine.executor,
                     plan,
                     original_input,
-                    metadata={"invocation_id": handle.invocation_id},
+                    metadata={
+                        "invocation_id": handle.invocation_id,
+                        **({"_invocation_handle": handle} if authenticated else {}),
+                    },
                     invocation_id=handle.invocation_id,
                 )
+            )
+            reached = asyncio.create_task(initializer_reached.wait())
+            try:
+                completed, _ = await asyncio.wait(
+                    {execution, reached}, timeout=10, return_when=asyncio.FIRST_COMPLETED
+                )
+                if execution in completed:
+                    # Preserve a genuine earlier failure rather than treating it
+                    # as the intended host interruption boundary.
+                    await execution
+                    pytest.fail("native execution passed the parked initializer")
+                assert reached in completed and reached.result()
+                assert not execution.done()
+                execution.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await execution
+            finally:
+                for pending in (execution, reached):
+                    if not pending.done():
+                        pending.cancel()
+                await asyncio.gather(execution, reached, return_exceptions=True)
+
+        # An initializer interrupted before any business task is still an
+        # admitted, nonterminal delivery. An ordinary workflow fault would
+        # legitimately take the terminal fast path and miss the native checks.
+        current = services.invocations.get(handle.invocation_id)
+        assert current is not None and current.status == "running"
+        delivery = services.initial_deliveries.get(handle)
+        assert delivery is not None and delivery.status == "ready"
+        assert services.invocations.read_input(current) == original_input
+        assert business_calls == [] and services.model.calls == []
+        indexed = services.effect_journal.connection.execute(
+            "SELECT payload FROM workflow_effect_invocations WHERE invocation_id=?",
+            (handle.invocation_id,),
+        ).fetchall()
+        assert all(
+            EffectIdentity.from_value(json.loads(row[0])).operation != "call:http"
+            for row in indexed
+        )
 
         async def publish_initial(saver: Any) -> None:
             driver = LangGraphScopeExecutor(plan, saver, handle.invocation_id)
@@ -141,6 +226,10 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
             initial = await anext(
                 item async for item in saver.alist(config) if item.metadata["step"] == -1
             )
+            assert initial.metadata == {"source": "input", "step": -1, "parents": {}}
+            assert initial.checkpoint["v"] == 4
+            assert set(initial.checkpoint["channel_values"]) == {"__start__"}
+            assert len(initial.pending_writes) == 5
             checkpoint = copy.deepcopy(initial.checkpoint)
             checkpoint["id"] = empty_checkpoint()["id"]
             metadata = copy.deepcopy(initial.metadata)
@@ -193,6 +282,17 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
                 checkpoint["channel_versions"]["__start__"] = f"{1:032}.0.10"
             elif corruption == "channel-advanced":
                 checkpoint["channel_versions"]["__start__"] = f"{2:032}.{0.5:016}"
+            elif corruption == "authority-missing-native":
+                bindings = json.loads(state["receipt_bindings"])
+                bindings["receipts"] = [
+                    value
+                    for value in bindings["receipts"]
+                    if value["identity"]["operation"] != authority_identity(handle).operation
+                ]
+                state["receipt_bindings"] = json.dumps(bindings)
+                bindings["state_digest"] = driver._state_digest(state)
+                state["receipt_bindings"] = json.dumps(bindings)
+                writes = [(name, state[name] if name in state else value) for name, value in writes]
             stored = await saver.aput(config, checkpoint, metadata, checkpoint["channel_versions"])
             await saver.aput_writes(stored, writes, starter)
 
@@ -200,6 +300,41 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
         # then applies a deliberate saved-evidence mutation. The independent
         # process-stop acceptance fixture remains the positive crash witness.
         await engine.native._with_saver(publish_initial)
+        if corruption in {"authority-row", "authority-receipt", "authority-index"}:
+            table, column, value = {
+                "authority-row": ("execution_authorities", "invocation_id", handle.invocation_id),
+                "authority-receipt": (
+                    "workflow_effects",
+                    "identity",
+                    authority_identity(handle).key,
+                ),
+                "authority-index": (
+                    "workflow_effect_invocations",
+                    "identity",
+                    authority_identity(handle).key,
+                ),
+            }[corruption]
+            services.effect_journal.connection.execute(
+                f"DELETE FROM {table} WHERE {column}=?", (value,)
+            )
+            services.effect_journal.connection.commit()
+        elif corruption == "authority-foreign-scope-policy":
+            lease = services.execution_ownership.acquire(handle, seconds=60)
+            try:
+                identity = EffectIdentity(
+                    handle.invocation_id,
+                    plan.fingerprint,
+                    "/do",
+                    (("/do", 1),),
+                    "policy:foreign-initial-admission:v1",
+                )
+                digest = effect_request_digest("foreign", {})
+                services.effect_journal.begin(
+                    identity, digest, "foreign-policy", execution_lease=lease
+                )
+                services.effect_journal.finish(identity, "foreign-policy", output={})
+            finally:
+                services.execution_ownership.release(lease)
         if corruption == "common-pending":
             lease = services.execution_ownership.acquire(handle, seconds=60)
             try:
@@ -221,7 +356,12 @@ async def test_initializer_pending_writes_require_original_scope_and_sdk_identit
         native_path = engine.native.database_path
         assert isinstance(native_path, str)
         before = snapshot(services, native_path)
-        if corruption in {None, "small-channel-fraction", "zero-channel-fraction"}:
+        if corruption in {
+            None,
+            "small-channel-fraction",
+            "zero-channel-fraction",
+            "original-authority",
+        }:
             assert not await engine._scheduled_native_state_exists(handle, plan)
         else:
             with pytest.raises(InvocationStateError):

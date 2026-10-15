@@ -5,8 +5,14 @@ named deployment role bindings are staged source. Repository Ruff and formatting
 passed across 513 files; strict typing passed across 132 source files. All 12
 recipe files passed the unmodified bundled official schema (zero schema/lint
 errors) and canonical admission with exactly configured role references. These
-static checks do not qualify behavioral, native, database or publication gates. The original assistant and
-pipeline recipes retain their 1.0.0 contracts; separate named-role recipes add
+static checks do not qualify behavioral, native, database or publication gates.
+The `8183776` Windows timer run found one `pipeline-known` producer ownership
+loss before its durable receipt barrier with a five-second test lease. A
+15-second renewed lease passes the focused case and full LangGraph/SQLite
+process-recovery matrix locally; hosted requalification remains pending. The
+run also found retry-duration output mismatches tracked against S2-04. See the
+[timing-run evidence](validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
+The original assistant and pipeline recipes retain their 1.0.0 contracts; separate named-role recipes add
 provider/model, instruction, tool and budget separation. No unlicensed
 predecessor implementation or old SDK API is a conformance oracle.
 

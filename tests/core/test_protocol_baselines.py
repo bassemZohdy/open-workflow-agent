@@ -52,6 +52,11 @@ def test_protocol_baseline_manifest_matches_runtime_wire_versions() -> None:
     assert baselines["cloudevents"]["specversion"] == "1.0"
     assert baselines["openapi"]["release"] == "3.2.0"
     assert baselines["asyncapi"]["release"] == "3.1.0"
+    from open_workflow_agent.grpc_client import GRPC_SDK_VERSION, PROTOBUF_VERSION
+
+    assert baselines["grpc"]["sdk_version"] == GRPC_SDK_VERSION == "1.84.0"
+    assert baselines["grpc"]["protobuf_version"] == PROTOBUF_VERSION == "7.36.1"
+    assert baselines["grpc"]["sdk_revision"] == "3252a89f10d8e92997862167ca7d095ecda85973"
 
 
 def test_protocol_baseline_manifest_keeps_claims_bounded() -> None:
@@ -118,6 +123,7 @@ def test_protocol_documentation_cannot_drift_from_the_pinned_manifest() -> None:
         "OpenAPI Specification": "openapi",
         "CloudEvents": "cloudevents",
         "AsyncAPI Specification": "asyncapi",
+        "gRPC Python SDK": "grpc",
     }
     for label, key in expected_labels.items():
         entry = baselines[key]

@@ -45824,7 +45824,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T30",
         "effort": "L",
@@ -45837,12 +45837,24 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-01 bounded Python scope qualified at af4acd61; JavaScript and full-feature criteria remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-01",
+            "scope": "Python wire-version selection and rejection for the bounded MCP profile; JavaScript and full criteria remain open.",
+            "tests": [
+              "tests/core/test_protocol_baselines.py",
+              "tests/core/test_protocol_interop.py",
+              "tests/core/test_mcp_sdk_http.py"
+            ],
+            "validation": "Exact-source hosted qualification passed all six workflows at af4acd61c200787fb68248b2d180ba69efb8c837; CI root 4569 passed/2950 skipped at 90.04% coverage. See docs/validation-history/pending-batch-results.md for run links and profile counts.",
+            "commit": "af4acd61c200787fb68248b2d180ba69efb8c837"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A142",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -45852,7 +45864,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T30",
         "effort": "L",
@@ -45865,12 +45877,24 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-01 bounded Python scope qualified at af4acd61; JavaScript and full-feature criteria remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-01",
+            "scope": "Python bounded HTTP SDK transport, authentication, TLS isolation, timeouts and response controls; JavaScript and broader session conformance remain open.",
+            "tests": [
+              "tests/core/test_mcp_sdk_http.py",
+              "tests/core/test_authentication_tls.py",
+              "tests/core/test_protocols.py"
+            ],
+            "validation": "Exact-source hosted qualification passed all six workflows at af4acd61c200787fb68248b2d180ba69efb8c837; CI root 4569 passed/2950 skipped at 90.04% coverage. See docs/validation-history/pending-batch-results.md for run links and profile counts.",
+            "commit": "af4acd61c200787fb68248b2d180ba69efb8c837"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A143",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -45880,7 +45904,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: rejected; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T30",
         "effort": "L",
@@ -45893,12 +45917,24 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-01 bounded Python scope qualified at af4acd61; JavaScript and full-feature criteria remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-01",
+            "scope": "Python disabled-default stdio through the common internal sandbox with actual SDK calls, bounds, cleanup and recovery; external stdio and JavaScript remain unsupported.",
+            "tests": [
+              "tests/contract/test_mcp_stdio_integration.py",
+              "tests/core/test_sandbox_stdio.py",
+              "tests/core/test_mcp_deployment_admission.py"
+            ],
+            "validation": "Exact-source hosted qualification passed all six workflows at af4acd61c200787fb68248b2d180ba69efb8c837; CI root 4569 passed/2950 skipped at 90.04% coverage. See docs/validation-history/pending-batch-results.md for run links and profile counts.",
+            "commit": "af4acd61c200787fb68248b2d180ba69efb8c837"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A144",
-          "python_outcome": "rejected",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -45936,7 +45972,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T29",
         "effort": "L",
@@ -45949,12 +45985,23 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-01 bounded Python scope qualified at af4acd61; JavaScript and full-feature criteria remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-01",
+            "scope": "Python actual SDK tools/list method and correlated typed-result behavior in the bounded seven-method profile.",
+            "tests": [
+              "tests/core/test_mcp_sdk_http.py",
+              "tests/contract/test_mcp_sdk_calls.py"
+            ],
+            "validation": "Exact-source hosted qualification passed all six workflows at af4acd61c200787fb68248b2d180ba69efb8c837; CI root 4569 passed/2950 skipped at 90.04% coverage. See docs/validation-history/pending-batch-results.md for run links and profile counts.",
+            "commit": "af4acd61c200787fb68248b2d180ba69efb8c837"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A146",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -45964,7 +46011,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T29",
         "effort": "L",
@@ -45977,12 +46024,23 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-01 bounded Python scope qualified at af4acd61; JavaScript and full-feature criteria remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-01",
+            "scope": "Python actual SDK tools/call method, dispatch and receipt/recovery behavior in the bounded profile.",
+            "tests": [
+              "tests/core/test_mcp_sdk_http.py",
+              "tests/contract/test_mcp_sdk_calls.py"
+            ],
+            "validation": "Exact-source hosted qualification passed all six workflows at af4acd61c200787fb68248b2d180ba69efb8c837; CI root 4569 passed/2950 skipped at 90.04% coverage. See docs/validation-history/pending-batch-results.md for run links and profile counts.",
+            "commit": "af4acd61c200787fb68248b2d180ba69efb8c837"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A147",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -45992,7 +46050,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T29",
         "effort": "L",
@@ -46005,12 +46063,23 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-01 bounded Python scope qualified at af4acd61; JavaScript and full-feature criteria remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-01",
+            "scope": "Python actual SDK prompts/list method and correlated typed-result behavior in the bounded profile.",
+            "tests": [
+              "tests/core/test_mcp_sdk_http.py",
+              "tests/contract/test_mcp_sdk_calls.py"
+            ],
+            "validation": "Exact-source hosted qualification passed all six workflows at af4acd61c200787fb68248b2d180ba69efb8c837; CI root 4569 passed/2950 skipped at 90.04% coverage. See docs/validation-history/pending-batch-results.md for run links and profile counts.",
+            "commit": "af4acd61c200787fb68248b2d180ba69efb8c837"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A148",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46020,7 +46089,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T29",
         "effort": "L",
@@ -46033,12 +46102,23 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-01 bounded Python scope qualified at af4acd61; JavaScript and full-feature criteria remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-01",
+            "scope": "Python actual SDK prompts/get method and correlated typed-result behavior in the bounded profile.",
+            "tests": [
+              "tests/core/test_mcp_sdk_http.py",
+              "tests/contract/test_mcp_sdk_calls.py"
+            ],
+            "validation": "Exact-source hosted qualification passed all six workflows at af4acd61c200787fb68248b2d180ba69efb8c837; CI root 4569 passed/2950 skipped at 90.04% coverage. See docs/validation-history/pending-batch-results.md for run links and profile counts.",
+            "commit": "af4acd61c200787fb68248b2d180ba69efb8c837"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A149",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46048,7 +46128,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T29",
         "effort": "L",
@@ -46061,12 +46141,23 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-01 bounded Python scope qualified at af4acd61; JavaScript and full-feature criteria remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-01",
+            "scope": "Python actual SDK resources/list method and correlated typed-result behavior in the bounded profile.",
+            "tests": [
+              "tests/core/test_mcp_sdk_http.py",
+              "tests/contract/test_mcp_sdk_calls.py"
+            ],
+            "validation": "Exact-source hosted qualification passed all six workflows at af4acd61c200787fb68248b2d180ba69efb8c837; CI root 4569 passed/2950 skipped at 90.04% coverage. See docs/validation-history/pending-batch-results.md for run links and profile counts.",
+            "commit": "af4acd61c200787fb68248b2d180ba69efb8c837"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A150",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46076,7 +46167,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T29",
         "effort": "L",
@@ -46089,12 +46180,23 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-01 bounded Python scope qualified at af4acd61; JavaScript and full-feature criteria remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-01",
+            "scope": "Python actual SDK resources/read method and correlated typed-result behavior in the bounded profile.",
+            "tests": [
+              "tests/core/test_mcp_sdk_http.py",
+              "tests/contract/test_mcp_sdk_calls.py"
+            ],
+            "validation": "Exact-source hosted qualification passed all six workflows at af4acd61c200787fb68248b2d180ba69efb8c837; CI root 4569 passed/2950 skipped at 90.04% coverage. See docs/validation-history/pending-batch-results.md for run links and profile counts.",
+            "commit": "af4acd61c200787fb68248b2d180ba69efb8c837"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A151",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46104,7 +46206,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "Current audit: qualified_subset; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T29",
         "effort": "L",
@@ -46117,12 +46219,23 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-01 bounded Python scope qualified at af4acd61; JavaScript and full-feature criteria remain open",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-01",
+            "scope": "Python actual SDK resources/templates/list method and correlated typed-result behavior in the bounded profile.",
+            "tests": [
+              "tests/core/test_mcp_sdk_http.py",
+              "tests/contract/test_mcp_sdk_calls.py"
+            ],
+            "validation": "Exact-source hosted qualification passed all six workflows at af4acd61c200787fb68248b2d180ba69efb8c837; CI root 4569 passed/2950 skipped at 90.04% coverage. See docs/validation-history/pending-batch-results.md for run links and profile counts.",
+            "commit": "af4acd61c200787fb68248b2d180ba69efb8c837"
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A152",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46150,8 +46263,9 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A153",
-          "python_outcome": "behavior_mismatch",
-          "full_feature_verified": false
+          "python_outcome": "partial",
+          "full_feature_verified": false,
+          "review": "Bounded Python AgentCard fetch, pinned interface selection and immutable admission are covered; full protocol/security/backend qualification remains open."
         }
       },
       {
@@ -52173,8 +52287,9 @@
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "AS099",
-          "python_outcome": "behavior_mismatch",
-          "full_feature_verified": false
+          "python_outcome": "partial",
+          "full_feature_verified": false,
+          "review": "Bounded Python AgentCard fetch, pinned interface selection and immutable admission are covered; full protocol/security/backend qualification remains open."
         }
       },
       {
@@ -64876,7 +64991,34 @@
       "3": 261
     },
     "baseline_inventory_sha256": "df2c203de28783604b489e6fd0468117a37d01dddd61a4bd3b76ca12b6dfb9c4",
-    "status_note": "Stage assignments are initial planning groups. All implementation statuses await repository/backend verification; no new engine implementation or tests executed."
+    "status_note": "S3-01 bounded Python MCP profile is qualified at the exact hosted source recorded in its task evidence. All other delivery statuses remain individually evidence-gated; the 658-feature inventory, 443 proposed tests, 774 schema constraints, JavaScript and full conformance are not implied complete.",
+    "authoring_notes": {
+      "S3-04": {
+        "status": "Authored; qualification pending",
+        "record": "docs/s3-04-executable-source-acceptance.md",
+        "scope": "Finite workflow-owned captured Python script sources and awaited internal process controls; imported executable sources unsupported; all native/backend/platform/publication gates pending"
+      },
+      "S3-05": {
+        "status": "Authored; qualification pending",
+        "record": "docs/s3-05-protected-approval-acceptance.md",
+        "scope": "Finite named-principal protected approvals, immutable assignment/terminal proofs, fair original-expiry observer; all native/backend/platform/publication gates pending"
+      },
+      "S3-06": {
+        "status": "Authored; qualification pending",
+        "record": "docs/s3-06-identity-security-acceptance.md",
+        "scope": "Original authenticated principal propagation, default-disabled action/resource policy, independent bounded audit, scoped context/memory and literal credential echo boundaries; original native/backend/platform/publication gates pending; federation and delegated consent remain conditional S4-11"
+      },
+      "S3-07": {
+        "status": "Authored; static/schema checks passed; behavioral qualification pending",
+        "record": "docs/s3-07-agent-pattern-acceptance.md",
+        "scope": "Eight finite independently authored OWS recipe families, original default recipes plus separate named role bindings, fixed child workflows, strict routes/plan/refinement budgets and protected approval; no native API parity or row completion claimed; shared/process/platform/backend/publication gates pending"
+      },
+      "S3-08": {
+        "status": "Authoring; qualification pending",
+        "record": "docs/s3-08-selected-adapter-acceptance.md",
+        "scope": "Selected independently adapted Apache compiler/provider/common bounded memory and embedded event codec/atomic ACK seams; real providers/remote brokers/native metadata and stronger transport selection proof remain gated; no inventory row completion claimed"
+      }
+    }
   },
   "repository_tracking": {
     "version": 1,
@@ -75353,8 +75495,42 @@
         "module": "M08",
         "description": "Complete MCP tools/resources/transports/authentication with pinned official SDKs and integration tests.",
         "effort": "M",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "af4acd61c200787fb68248b2d180ba69efb8c837",
+          "pull_request": "https://github.com/bassemZohdy/open-workflow-agent/pull/65",
+          "scope": "Finite Python MCP01-MCP08 profile with pinned official SDK, actual seven-method HTTP and restricted stdio behavior, common security/process boundaries, and ADK/LangGraph SQLite/PostgreSQL recovery. JavaScript, A145 full protocol coverage, and proposed T29/T30/T31 criteria remain unqualified.",
+          "runs": {
+            "CI": 38586728177,
+            "PostgreSQL CI": 38586728590,
+            "Agent Framework CI": 38586728663,
+            "External Sandbox CI": 38586728346,
+            "Security": 38586728258,
+            "Docs": 38586728332
+          },
+          "ci_root": {
+            "passed": 4569,
+            "skipped": 2950,
+            "coverage_percent": 90.04
+          },
+          "windows_mcp_process": {
+            "passed": 389,
+            "skipped": 43
+          },
+          "windows_operation_recovery": {
+            "passed": 962,
+            "skipped": 454
+          },
+          "windows_timer": {
+            "passed": 718,
+            "skipped": 769,
+            "duration": "34m41s"
+          },
+          "postgresql_jobs": "All ten jobs passed; see linked workflow run.",
+          "conclusions": "All six exact-source hosted workflows passed.",
+          "full_conformance": false
+        }
       },
       {
         "id": "S3-02",
@@ -75365,7 +75541,7 @@
         "status": "Pending",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "unqualified_progress": {
-          "status": "Unqualified authoring; no completed acceptance",
+          "status": "Partial finite Python evidence recorded; A2A01-A2A08 are not fully accepted",
           "baseline_source": "325458af130cccc8d9d899dc09614f6e55cc48f5",
           "acceptance_record": "docs/s3-02-a2a-acceptance.md",
           "scope": "Typed common SDK/card transport, protected durable initial delivery and blocking resume, native workflow/tool parity and bounded lifecycle/interoperability",
@@ -75389,7 +75565,7 @@
             "official_sdk_inbound": 16,
             "process_stop_initial_delivery": 24,
             "inbound_controls": 22,
-            "status": "Final authored inventory only; no executed or hosted qualification",
+            "status": "Declared inventory counts; not per-gate execution totals",
             "outbound_sdk_http": 84,
             "card_admission": 53,
             "native_sqlite_inspection": 14,
@@ -75409,7 +75585,34 @@
             "Existing-task returnImmediately resume and streaming input resume until durable wait-revision consumption qualifies",
             "Push notifications, delegated grants, gRPC and independent JavaScript/full interoperability remain separate gates"
           ],
-          "runtime_qualified": false
+          "runtime_qualified": false,
+          "executed_evidence_checkpoint": {
+            "source_commit": "af4acd61c200787fb68248b2d180ba69efb8c837",
+            "hosted_runs": {
+              "CI": 38586728177,
+              "PostgreSQL CI": 38586728590,
+              "Agent Framework CI": 38586728663,
+              "External Sandbox CI": 38586728346,
+              "Security": 38586728258,
+              "Docs": 38586728332
+            },
+            "local_profiles": {
+              "core_a2a_tests": "332 passed, 39 skipped",
+              "adk_sqlite_a2a_contract": "26 passed",
+              "langgraph_sqlite_a2a_contract": "26 passed"
+            },
+            "gate_states": {
+              "A2A01": "partial",
+              "A2A02": "finite Python profile directly evidenced",
+              "A2A03": "partial",
+              "A2A04": "partial",
+              "A2A05": "partial",
+              "A2A06": "partial",
+              "A2A07": "partial; actual HTTPS bearer/API-key grants and OAuth to AgentCard-selected peer, plus named mTLS",
+              "A2A08": "partial; TCP first/partial-response loss, bounded timeout, cross-worker and terminal witnesses"
+            },
+            "record": "docs/s3-02-a2a-acceptance.md#current-evidence-checkpoint-not-task-qualification"
+          }
         }
       },
       {

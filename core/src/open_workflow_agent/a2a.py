@@ -16,7 +16,6 @@ and extended Agent Cards remain outside this bounded slice.
 
 from __future__ import annotations
 
-import hmac
 import json
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
@@ -28,16 +27,16 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from .a2a_streaming import a2a_sse_stream, a2a_stream_media_type
 from .a2a_tasks import project_a2a_task
 from .config import A2AConfig
-from .errors import ToolError
+from .errors import OwaError, ToolError
+from .execution_authority import ExecutionAuthority, authority_scope, current_authority
 from .persistence import ExecutionHandle
 from .security import (
     AuthorizationPolicy,
     BearerSecurityProfile,
     Principal,
     SecurityConfig,
+    authenticate_static,
     authorize,
-    resolve_secret,
-    static_principal,
 )
 from .streaming import StreamLimits
 
@@ -310,16 +309,10 @@ def _authenticate(
     profile = security.profile(config.security_profile)
     if not isinstance(profile, BearerSecurityProfile):
         return None
-    authorization = request.headers.get("authorization", "")
-    if not authorization.startswith("Bearer "):
-        return None
     try:
-        expected = resolve_secret(profile.token)
-    except ValueError:
+        return authenticate_static(list(request.scope.get("headers", [])), profile)
+    except (OwaError, ValueError, TypeError, UnicodeError):
         return None
-    if not hmac.compare_digest(authorization.removeprefix("Bearer ").strip(), expected):
-        return None
-    return static_principal(profile)
 
 
 class _A2APrincipalMiddleware:
@@ -341,6 +334,13 @@ class _A2APrincipalMiddleware:
             principal = _authenticate(self.config, self.security, Request(scope, receive))
             if principal is not None:
                 scope["owa.principal"] = principal.identity
+                authority = ExecutionAuthority.capture(
+                    principal, security_profile=self.config.security_profile
+                )
+                scope["owa.execution_authority"] = authority
+                with authority_scope(authority):
+                    await self.app(scope, receive, send)
+                return
         await self.app(scope, receive, send)
 
 
@@ -559,8 +559,21 @@ def mount_a2a(
             resource=f"skill:{skill_id}" if skill_id else _IMPLICIT_SKILL_RESOURCE,
         )
 
-    def task_permitted(principal: Principal, action: str) -> bool:
-        return _permitted(principal, config.authorization, action=action, resource=_TASK_RESOURCE)
+    def ingress_permitted(action: str, resource: str) -> bool:
+        store = getattr(app.state.services, "execution_authorizations", None)
+        if store is None:
+            # Minimal mount-only peers do not compose runtime authorization.
+            return True
+        try:
+            store.authorize_request(current_authority(), action, resource)
+        except OwaError:
+            return False
+        return True
+
+    def task_permitted(principal: Principal, action: str, task_id: str) -> bool:
+        return _permitted(
+            principal, config.authorization, action=action, resource=_TASK_RESOURCE
+        ) and ingress_permitted(action, "invocation:" + task_id)
 
     def validate_message(
         params: Any, request_id: Any
@@ -719,6 +732,8 @@ def mount_a2a(
                 )
             if not send_permitted(principal, target.skill_id):
                 return forbidden(request_id)
+            if not ingress_permitted("invocations.resume", "invocation:" + normalized_task_ref):
+                return forbidden(request_id)
             if return_immediately:
                 return send_error(
                     request_id,
@@ -727,7 +742,12 @@ def mount_a2a(
                     status=400,
                     rpc_code=JsonRpcError.UNSUPPORTED_OPERATION,
                 )
-            outcome = await resume_task(text, normalized_task_ref, return_immediately)
+            try:
+                outcome = await resume_task(text, normalized_task_ref, return_immediately)
+            except OwaError as error:
+                if error.status_code == 403:
+                    return forbidden(request_id)
+                raise
         else:
             skill_id = _requested_skill_id(params, message)
             if config.skills and skill_id not in {skill.id for skill in config.skills}:
@@ -742,13 +762,18 @@ def mount_a2a(
                 )
             if not send_permitted(principal, skill_id):
                 return forbidden(request_id)
-            outcome = await start_task(
-                text,
-                skill_id,
-                return_immediately,
-                context_id,
-                principal.identity,
-            )
+            try:
+                outcome = await start_task(
+                    text,
+                    skill_id,
+                    return_immediately,
+                    context_id,
+                    principal.identity,
+                )
+            except OwaError as error:
+                if error.status_code == 403:
+                    return forbidden(request_id)
+                raise
 
         if outcome.error_code:
             return send_error(
@@ -813,7 +838,12 @@ def mount_a2a(
             )
         if not send_permitted(principal, skill_id):
             return forbidden(request_id)
-        outcome = await start_task(text, skill_id, True, context_id, principal.identity)
+        try:
+            outcome = await start_task(text, skill_id, True, context_id, principal.identity)
+        except OwaError as error:
+            if error.status_code == 403:
+                return forbidden(request_id)
+            raise
         if outcome.error_code or outcome.task is None:
             return send_error(
                 request_id,
@@ -827,8 +857,6 @@ def mount_a2a(
     def handle_resubscribe(
         principal: Principal, params: Any, *, request_id: Any = None
     ) -> JSONResponse | StreamingResponse:
-        if not task_permitted(principal, "tasks.get"):
-            return forbidden(request_id)
         try:
             task_id = _task_id(params)
         except JsonRpcError as error:
@@ -839,6 +867,8 @@ def mount_a2a(
                 status=422,
                 rpc_code=JsonRpcError.INVALID_PARAMS,
             )
+        if not task_permitted(principal, "tasks.get", task_id):
+            return forbidden(request_id)
         try:
             task_handle(principal, task_id)
         except JsonRpcError as error:
@@ -928,9 +958,9 @@ def mount_a2a(
                             JsonRpcError.INVALID_PARAMS, "task parameters are invalid"
                         ) from None
                 if method == "GetTask":
-                    if not task_permitted(principal, "tasks.get"):
-                        return forbidden(request_id)
                     task_id = _task_id(params)
+                    if not task_permitted(principal, "tasks.get", task_id):
+                        return forbidden(request_id)
                     return _jsonrpc_response(
                         request_id,
                         project_a2a_task(
@@ -940,9 +970,9 @@ def mount_a2a(
                 if method == "SubscribeToTask":
                     return handle_resubscribe(principal, params, request_id=request_id)
                 if method == "CancelTask":
-                    if not task_permitted(principal, "tasks.cancel"):
-                        return forbidden(request_id)
                     task_id = _task_id(params)
+                    if not task_permitted(principal, "tasks.cancel", task_id):
+                        return forbidden(request_id)
                     task_handle(principal, task_id)
                     return _jsonrpc_response(
                         request_id,
@@ -1039,7 +1069,7 @@ def mount_a2a(
             if unauthorized is not None:
                 return unauthorized
             assert principal is not None
-            if not task_permitted(principal, "tasks.get"):
+            if not task_permitted(principal, "tasks.get", task_id):
                 return forbidden()
             if unsupported := version_supported(request):
                 return unsupported
@@ -1059,7 +1089,7 @@ def mount_a2a(
             if unauthorized is not None:
                 return unauthorized
             assert principal is not None
-            if not task_permitted(principal, "tasks.cancel"):
+            if not task_permitted(principal, "tasks.cancel", task_id):
                 return forbidden()
             if unsupported := version_supported(request):
                 return unsupported

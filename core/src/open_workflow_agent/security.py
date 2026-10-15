@@ -8,6 +8,8 @@ inside workflow documents or persisted invocation state.
 
 from __future__ import annotations
 
+import hmac
+import json
 import os
 import re
 from collections.abc import Mapping
@@ -231,6 +233,28 @@ class Principal:
     scopes: frozenset[str] = frozenset()
     audience: frozenset[str] = frozenset()
 
+    def __post_init__(self) -> None:
+        if (
+            type(self.identity) is not str
+            or not self.identity
+            or len(self.identity.encode("utf-8")) > 256
+            or any(ord(character) < 32 for character in self.identity)
+        ):
+            raise ValueError("principal identity must be a bounded nonempty reference")
+        for values in (self.roles, self.scopes, self.audience):
+            if (
+                type(values) is not frozenset
+                or len(values) > 64
+                or any(
+                    type(item) is not str
+                    or not item
+                    or len(item.encode("utf-8")) > 256
+                    or any(ord(character) < 32 for character in item)
+                    for item in values
+                )
+            ):
+                raise ValueError("principal claims must be bounded distinct references")
+
 
 @dataclass(frozen=True, slots=True, repr=False)
 class AuthenticationBinding:
@@ -277,12 +301,111 @@ class AuthorizationPolicy(_StrictSecurityModel):
     rules: list[AuthorizationRule] = Field(default_factory=list)
 
 
+class ExecutionAuthorizationConfig(_StrictSecurityModel):
+    """Deployment policy, separate from authentication and traffic admission."""
+
+    enabled: bool = False
+    id: str = "default"
+    version: str = "1"
+    max_business_receipt_bytes: int = Field(default=67_108_864, ge=1024, le=67_108_864, strict=True)
+    policy: AuthorizationPolicy = Field(default_factory=AuthorizationPolicy)
+
+    @field_validator("id", "version")
+    @classmethod
+    def bounded_reference(cls, value: str) -> str:
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,127}", value):
+            raise ValueError("authorization policy reference is malformed")
+        return value
+
+    @model_validator(mode="after")
+    def bounded_policy(self) -> ExecutionAuthorizationConfig:
+        if (
+            len(self.policy.rules) > 256
+            or any(
+                len(values) > 128 or any(len(item.encode("utf-8")) > 4096 for item in values)
+                for rule in self.policy.rules
+                for values in (rule.actions, rule.resources, rule.roles, rule.scopes, rule.audience)
+            )
+            or len(json.dumps(self.model_dump(mode="json"), ensure_ascii=False).encode()) > 65_536
+        ):
+            raise ValueError("execution authorization policy exceeds its finite limits")
+        return self
+
+
+def parse_static_credentials(
+    raw_headers: list[tuple[bytes, bytes]],
+    profile: BearerSecurityProfile | ApiKeySecurityProfile,
+) -> str:
+    """Read one bounded unambiguous credential; never include it in an error."""
+    from ._authentication import authentication_failure
+
+    try:
+        if type(raw_headers) is not list or len(raw_headers) > 256:
+            raise ValueError
+        selected = (
+            b"authorization"
+            if isinstance(profile, BearerSecurityProfile)
+            else profile.header.lower().encode("ascii")
+        )
+        values = []
+        size = 0
+        for pair in raw_headers:
+            if (
+                type(pair) is not tuple
+                or len(pair) != 2
+                or any(type(item) is not bytes for item in pair)
+            ):
+                raise ValueError
+            name, raw_value = pair
+            if not _HEADER_NAME.fullmatch(name.decode("ascii", errors="strict")):
+                raise ValueError
+            size += len(name) + len(raw_value)
+            if size > 65_536 or len(name) > 256 or len(raw_value) > 8192:
+                raise ValueError
+            if name.lower() == selected:
+                values.append(raw_value)
+        if len(values) != 1:
+            raise ValueError
+        value = values[0].decode("ascii", errors="strict")
+        if isinstance(profile, BearerSecurityProfile):
+            if len(value) <= 7 or value[:7].lower() != "bearer ":
+                raise ValueError
+            value = value[7:]
+        if not value or any(ord(character) < 33 or ord(character) > 126 for character in value):
+            raise ValueError
+        return value
+    except (ValueError, UnicodeError, TypeError):
+        raise authentication_failure("invalid_credentials") from None
+
+
+def authenticate_static(
+    raw_headers: list[tuple[bytes, bytes]],
+    profile: BearerSecurityProfile | ApiKeySecurityProfile,
+) -> Principal:
+    from ._authentication import authentication_failure
+
+    provided = parse_static_credentials(raw_headers, profile)
+    try:
+        reference = profile.token if isinstance(profile, BearerSecurityProfile) else profile.key
+        expected = resolve_secret(reference)
+        if len(expected.encode("utf-8")) > 8192 or not hmac.compare_digest(
+            provided.encode("utf-8"), expected.encode("utf-8")
+        ):
+            raise ValueError
+        return static_principal(profile)
+    except (ValueError, UnicodeError):
+        raise authentication_failure("invalid_credentials") from None
+
+
 def resolve_secret(reference: SecretReference) -> str:
     """Resolve one secret at the last responsible moment without caching it."""
 
     value = os.getenv(reference.from_env)
     if value is None or not value:
         raise ValueError(f"required deployment secret is unavailable: {reference.from_env}")
+    from .credential_guard import capture_credentials
+
+    capture_credentials(value)
     return value
 
 

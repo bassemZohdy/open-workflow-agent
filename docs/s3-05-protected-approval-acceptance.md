@@ -1,8 +1,14 @@
 # S3-05 protected approvals: authored acceptance plan
 
-Status: source authored, unqualified. S3-05 remains unchecked. No behavioral,
-native, database, process, platform or hosted acceptance is claimed by this plan.
-Current integration and prerequisite qualification remain pending.
+Status: source authored, unqualified. S3-05 remains unchecked. The PostgreSQL
+approval timestamp precision migration is implemented, and the f9 PostgreSQL
+protected-approval cases passed. The same checkpoint's Windows timer lane found
+a process-recovery fixture race before the durable approval barrier. The local
+fixture now allows a five-second ownership-renewal window and waits for natural
+database-clock lease expiry. The formerly failing hosted Windows `request-row`
+case passed at `8183776`; broader S3-05 qualification remains open. See the
+[checkpoint evidence](validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
+This finite plan makes no new capability or task-completion claim.
 
 The finite, default-disabled `owa/protected-approval/v1` business profile is
 carried in standard `emit.event.with.data.approvalPolicy`. It does not introduce

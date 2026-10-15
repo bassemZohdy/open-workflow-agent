@@ -64,7 +64,13 @@ def _definition(version: str) -> dict[str, Any]:
     }
 
 
-def _config(source: dict[str, Any], backend: str, *, skill: bool = False) -> RuntimeConfig:
+def _config(
+    source: dict[str, Any],
+    backend: str,
+    *,
+    skill: bool = False,
+    a2a_transport: str = "jsonrpc",
+) -> RuntimeConfig:
     datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
     if backend == "postgresql" and not datasource:
         pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
@@ -77,6 +83,7 @@ def _config(source: dict[str, Any], backend: str, *, skill: bool = False) -> Run
             "a2a": {
                 "enabled": True,
                 "security_profile": "api",
+                "transport": a2a_transport,
                 **(
                     {
                         "skills": [{"id": "retained", "workflow": "retained-root"}],
@@ -157,6 +164,9 @@ def _common_snapshot(services: RuntimeServices, invocation_id: str) -> dict[str,
             "input": "SELECT * FROM invocation_inputs WHERE invocation_id=?",
             "binding": "SELECT * FROM recovery_invocation_definitions WHERE invocation_id=?",
             "ownership": "SELECT * FROM invocation_ownership WHERE invocation_id=?",
+            "authority": "SELECT * FROM execution_authorities WHERE invocation_id=?",
+            "authority_candidate": "SELECT * FROM execution_authority_candidates "
+            "WHERE candidate_key='invocation:' || ?",
             "effects": "SELECT i.identity,e.payload FROM workflow_effect_invocations i "
             "JOIN workflow_effects e ON e.identity=i.identity WHERE i.invocation_id=? "
             "ORDER BY i.identity",
@@ -324,6 +334,7 @@ async def test_public_resume_uses_retained_v1_after_v2_deployment_and_reopen(
 @pytest.mark.parametrize(
     "damage", ["archive_missing", "archive_digest", "binding_missing", "binding_digest"]
 )
+@pytest.mark.parametrize("surface", ["rest", "jsonrpc", "http_json"])
 async def test_public_resume_rejects_changed_archive_before_ownership_or_native_mutation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -331,11 +342,16 @@ async def test_public_resume_rejects_changed_archive_before_ownership_or_native_
     engine_type: Any,
     backend: str,
     damage: str,
+    surface: str,
 ) -> None:
     monkeypatch.setenv(TOKEN_ENV, TOKEN)
     _clock(monkeypatch, [1000.0])
     receiver = Receiver(tmp_path / "receiver.sqlite3")
-    config = _config(_definition("1.0.0"), backend)
+    config = _config(
+        _definition("1.0.0"),
+        backend,
+        a2a_transport=surface if surface in {"jsonrpc", "http_json"} else "jsonrpc",
+    )
     services = _services(tmp_path, config, receiver)
     engine = engine_type()
     _actual_native(engine, engine_name)
@@ -386,11 +402,50 @@ async def test_public_resume_rejects_changed_archive_before_ownership_or_native_
                 connection.commit()
                 before = _common_snapshot(services, handle.invocation_id)
                 native_before = _native_snapshot(services, handle, backend)
-                response = await client.post(
-                    f"/v1/invocations/{handle.invocation_id}/resume",
-                    json={"input": {"replacement": True}},
-                )
-                assert response.status_code in {409, 500}, response.text
+                if surface == "rest":
+                    response = await client.post(
+                        f"/v1/invocations/{handle.invocation_id}/resume",
+                        json={"input": {"replacement": True}},
+                    )
+                    assert response.status_code in {409, 500}, response.text
+                else:
+                    message = {
+                        "role": "ROLE_USER",
+                        "messageId": "reject-damaged-archive",
+                        "taskId": handle.invocation_id,
+                        **(
+                            {"contextId": handle.session_id}
+                            if handle.session_id is not None
+                            else {}
+                        ),
+                        "parts": [{"text": "continue damaged archive"}],
+                    }
+                    if surface == "jsonrpc":
+                        response = await client.post(
+                            "/a2a",
+                            headers={"a2a-version": A2A_PROTOCOL_VERSION},
+                            json={
+                                "jsonrpc": "2.0",
+                                "id": "damaged-archive-resume",
+                                "method": "SendMessage",
+                                "params": {"message": message},
+                            },
+                        )
+                        body = response.json()
+                        assert response.status_code == 200, response.text
+                        assert body["error"]["code"] == -32000
+                        assert body["error"]["message"] == "task is not accepting input"
+                    else:
+                        response = await client.post(
+                            "/a2a/message:send",
+                            headers={"a2a-version": A2A_PROTOCOL_VERSION},
+                            json={"message": message},
+                        )
+                        body = response.json()
+                        assert response.status_code == 409, response.text
+                        assert body["error"]["details"][0]["metadata"]["owaCode"] == (
+                            "task_not_resumeable"
+                        )
                 assert "retained-secret" not in response.text and TOKEN not in response.text
                 report = await client.get(f"/v1/invocations/{handle.invocation_id}/recovery")
                 assert report.status_code == 200 and report.json()["continuation"] == "unavailable"
@@ -410,6 +465,110 @@ async def test_public_resume_rejects_changed_archive_before_ownership_or_native_
                 f"ON CONFLICT({column}) DO UPDATE SET "
                 "payload=excluded.payload,digest=excluded.digest",
                 tuple(row),
+            )
+            connection.commit()
+        if handle is not None:
+            await engine.cancel(handle, operation_id="version-fixture-cleanup")
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("surface", ["jsonrpc", "http_json"])
+async def test_a2a_resume_rejects_changed_owner_authority_before_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    engine_name: str,
+    engine_type: Any,
+    backend: str,
+    surface: str,
+) -> None:
+    monkeypatch.setenv(TOKEN_ENV, TOKEN)
+    _clock(monkeypatch, [1000.0])
+    receiver = Receiver(tmp_path / "receiver.sqlite3")
+    config = _config(_definition("1.0.0"), backend, a2a_transport=surface)
+    services = _services(tmp_path, config, receiver)
+    engine = engine_type()
+    _actual_native(engine, engine_name)
+    app = create_app(config=config, services=services, engine=engine)
+    headers = {"Authorization": "Bearer " + TOKEN}
+    handle: Any = None
+    original_authority: Any = None
+    try:
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test", headers=headers
+            ) as client:
+                started = await client.post(
+                    "/v1/invoke", json={"input": {"secret": "owner-evidence-secret"}}
+                )
+                assert started.status_code == 200 and started.json()["status"] == "waiting"
+                handle = services.invocations.get(started.json()["invocation_id"])
+                assert handle is not None and handle.owner_principal == PRINCIPAL
+                connection = services.execution_authorizations.connection
+                original_authority = connection.execute(
+                    "SELECT invocation_id,fingerprint FROM execution_authorities "
+                    "WHERE invocation_id=?",
+                    (handle.invocation_id,),
+                ).fetchone()
+                assert original_authority is not None
+                connection.execute(
+                    "UPDATE execution_authorities SET fingerprint='invalid' WHERE invocation_id=?",
+                    (handle.invocation_id,),
+                )
+                connection.commit()
+
+                before = _common_snapshot(services, handle.invocation_id)
+                native_before = _native_snapshot(services, handle, backend)
+                message = {
+                    "role": "ROLE_USER",
+                    "messageId": "reject-changed-owner-authority",
+                    "taskId": handle.invocation_id,
+                    **({"contextId": handle.session_id} if handle.session_id is not None else {}),
+                    "parts": [{"text": "continue with damaged owner evidence"}],
+                }
+                if surface == "jsonrpc":
+                    response = await client.post(
+                        "/a2a",
+                        headers={"a2a-version": A2A_PROTOCOL_VERSION},
+                        json={
+                            "jsonrpc": "2.0",
+                            "id": "changed-owner-authority-resume",
+                            "method": "SendMessage",
+                            "params": {"message": message},
+                        },
+                    )
+                    assert response.status_code == 200, response.text
+                    assert response.json()["error"]["message"] == "workflow execution failed"
+                    assert response.json()["error"]["data"]["code"] == ("invalid_invocation_state")
+                else:
+                    response = await client.post(
+                        "/a2a/message:send",
+                        headers={"a2a-version": A2A_PROTOCOL_VERSION},
+                        json={"message": message},
+                    )
+                    assert response.status_code == 500, response.text
+                    assert response.json()["error"]["details"][0]["metadata"]["code"] == (
+                        "invalid_invocation_state"
+                    )
+
+                assert "owner-evidence-secret" not in response.text and TOKEN not in response.text
+                assert _common_snapshot(services, handle.invocation_id) == before
+                assert _native_snapshot(services, handle, backend) == native_before
+                assert (
+                    not engine._active
+                    and not engine._execution_leases
+                    and not engine._ownership_tasks
+                )
+                assert len(receiver.calls) == len(receiver.rows()) == 1 and not services.model.calls
+    finally:
+        if original_authority is not None:
+            connection = services.execution_authorizations.connection
+            connection.execute(
+                "UPDATE execution_authorities SET fingerprint=? WHERE invocation_id=?",
+                (original_authority[1], original_authority[0]),
             )
             connection.commit()
         if handle is not None:
@@ -495,13 +654,35 @@ async def test_profile_change_or_native_only_history_cannot_adopt_new_admission(
                 base_url="http://test",
                 headers={"Authorization": "Bearer " + TOKEN},
             ) as client:
-                started = await client.post("/v1/invoke", json={"input": {"original": True}})
-                assert started.status_code == 200 and started.json()["status"] == "waiting"
-                handle = services.invocations.get(started.json()["invocation_id"])
-                assert handle is not None
+                if damage == "native_only_missing_binding":
+                    # Isolate the native-only archive guard with the supported
+                    # trusted engine seam. Authenticated API invocations also
+                    # retain independent authority, whose earlier rejection is
+                    # covered by the authenticated archive cases above.
+                    plan = app.state.plan
+                    handle = services.invocations.create(
+                        engine=engine_name,
+                        session_id=None,
+                        user_id=None,
+                        owner_principal=None,
+                        workflow_name=plan.name,
+                        workflow_version=plan.version,
+                        workflow_fingerprint=plan.fingerprint,
+                    )
+                    started_result = await engine.invoke(plan, handle, {"original": True})
+                    assert started_result.status == "waiting"
+                    assert services.execution_authorizations.verify_invocation(handle) is None
+                else:
+                    started = await client.post("/v1/invoke", json={"input": {"original": True}})
+                    assert started.status_code == 200 and started.json()["status"] == "waiting"
+                    handle = services.invocations.get(started.json()["invocation_id"])
+                    assert handle is not None
         native_before = _native_snapshot(services, handle, backend)
         assert any(native_before.values())
         if damage == "native_only_missing_binding":
+            # Prove the actual original SDK history while its prerequisites
+            # remain intact; do not invoke a gated native reader after damage.
+            assert await engine._native_initial_history_exists(handle)
             connection = services.recovery_definitions.connection
             connection.execute(
                 "DELETE FROM recovery_invocation_definitions WHERE invocation_id=?",
@@ -553,7 +734,6 @@ async def test_profile_change_or_native_only_history_cannot_adopt_new_admission(
                     and report["reason"] == "runtime_profile_changed"
                 )
         else:
-            assert await engine._native_initial_history_exists(saved)
             with pytest.raises(InvocationStateError) as failure:
                 await engine.invoke(
                     compile_workflow(_definition("1.0.0")), saved, {"replacement": True}

@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
+import ssl
 import threading
 import time
 from contextlib import asynccontextmanager
@@ -37,6 +38,7 @@ async def sdk_http_fixture(
     input_required: bool = False,
     tool_handler=None,
     sse: bool = False,
+    tls: tuple[tuple[str, str], str] | None = None,
 ):
     calls: list[dict[str, Any]] = []
 
@@ -149,6 +151,16 @@ async def sdk_http_fixture(
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
         port = listener.getsockname()[1]
+        tls_options = (
+            {
+                "ssl_certfile": tls[0][0],
+                "ssl_keyfile": tls[0][1],
+                "ssl_ca_certs": tls[1],
+                "ssl_cert_reqs": ssl.CERT_REQUIRED,
+            }
+            if tls is not None
+            else {}
+        )
         server = uvicorn.Server(
             uvicorn.Config(
                 network_app,
@@ -156,6 +168,7 @@ async def sdk_http_fixture(
                 port=port,
                 log_level="critical",
                 timeout_graceful_shutdown=2,
+                **tls_options,
             )
         )
         thread = threading.Thread(target=server.run, kwargs={"sockets": [listener]}, daemon=True)
@@ -165,7 +178,8 @@ async def sdk_http_fixture(
             while not server.started:
                 assert thread.is_alive() and time.monotonic() < deadline
                 await asyncio.sleep(0.02)
-            yield None, calls, f"http://127.0.0.1:{port}/mcp/"
+            scheme = "https" if tls is not None else "http"
+            yield None, calls, f"{scheme}://127.0.0.1:{port}/mcp/"
         finally:
             server.should_exit = True
             await asyncio.to_thread(thread.join, 5)

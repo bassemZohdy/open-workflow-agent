@@ -9,6 +9,7 @@ import json
 import os
 import sqlite3
 import sys
+import traceback
 from contextlib import closing
 from dataclasses import asdict
 from pathlib import Path
@@ -16,6 +17,7 @@ from pathlib import Path
 import httpx
 import pytest
 from _process_recovery_worker import write_json
+from _recovery_failure_artifact import failure_artifact
 from a2a.client.transports.jsonrpc import JsonRpcTransport
 from a2a.types.a2a_pb2 import AgentCard, GetTaskRequest, SendMessageRequest
 from google.protobuf.json_format import MessageToDict, ParseDict
@@ -37,6 +39,19 @@ from test_synchronous_child_waits import _clock
 from test_workflow_version_recovery import _common_snapshot
 
 TOKEN = "deterministic-initial-delivery-token"
+
+
+def profile_difference_paths(expected, actual, prefix=""):
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        paths = []
+        for key in sorted(set(expected) | set(actual)):
+            child = f"{prefix}.{key}" if prefix else key
+            if key not in expected or key not in actual:
+                paths.append(child)
+            else:
+                paths.extend(profile_difference_paths(expected[key], actual[key], child))
+        return paths
+    return [] if expected == actual else [prefix]
 
 
 def native_snapshot(services, handle, backend):
@@ -218,7 +233,25 @@ async def run(directory: Path, mode: str):
     }[engine_name]
     engine = getattr(importlib.import_module(module), cls)()
     assert engine.native.available if engine_name == "adk" else engine.native.task_nodes_available
-    engine._execution_ownership_seconds = 5
+    # Admission performs synchronous profile and SQLite work before the
+    # producer can heartbeat; use a longer fixture lease on hosted Windows.
+    engine._execution_ownership_seconds = 15
+    if mode == "start":
+        prepare_initial_delivery = engine.prepare_initial_delivery
+
+        async def diagnose_admission_error(*args, **kwargs):
+            try:
+                return await prepare_initial_delivery(*args, **kwargs)
+            except OwaError as error:
+                write_json(
+                    directory / "start-admission-error.json",
+                    failure_artifact(
+                        error, stage="prepare_initial_delivery", include_traceback=True
+                    ),
+                )
+                raise
+
+        patches.setattr(engine, "prepare_initial_delivery", diagnose_admission_error)
     with closing(sqlite3.connect(directory / "receiver.sqlite3")) as receiver:
         receiver.execute("CREATE TABLE IF NOT EXISTS commits(operation_id TEXT,body TEXT)")
         receiver.commit()
@@ -332,6 +365,8 @@ async def run(directory: Path, mode: str):
                     receipt = (
                         services.effect_journal.get(action_identity) if action_identity else None
                     )
+                    delivery_binding = services.initial_deliveries.get(handle)
+                    assert delivery_binding is not None
                     write_json(
                         directory / "ready.json",
                         {
@@ -356,7 +391,8 @@ async def run(directory: Path, mode: str):
                             if action_identity
                             else None,
                             "model_calls": len(model.calls),
-                            "delivery": services.initial_deliveries.get(handle).status,
+                            "delivery": delivery_binding.status,
+                            "skill_id": delivery_binding.skill_id,
                             "generation": services.invocations.connection.execute(
                                 "SELECT generation FROM invocation_ownership WHERE invocation_id=?",
                                 (handle.invocation_id,),
@@ -366,6 +402,19 @@ async def run(directory: Path, mode: str):
                     await asyncio.Event().wait()
                 handle = services.invocations.get(saved["invocation_id"])
                 assert services.invocations.read_input(handle) == saved["input"]
+                row = services.effect_journal.connection.execute(
+                    "SELECT payload FROM recovery_invocation_definitions WHERE invocation_id=?",
+                    (handle.invocation_id,),
+                ).fetchone()
+                assert row is not None
+                archived_profile = json.loads(row[0])["runtime_profile"]
+                current_profile = await services.recovery_definitions.prepare_profile(handle.engine)
+                profile_differences = profile_difference_paths(archived_profile, current_profile)
+                if profile_differences:
+                    write_json(
+                        directory / "runtime-profile-diff.json",
+                        {"changed_paths": profile_differences},
+                    )
                 dispatcher = engine._initial_delivery_dispatcher
                 negative = scenario["negative"]
                 if negative == "revoked":
@@ -448,7 +497,9 @@ async def run(directory: Path, mode: str):
                         == saved["receipt_digest"]
                     )
                 retained = services.invocations.get(handle.invocation_id)
-                assert services.initial_deliveries.get(retained).status == "settled"
+                retained_delivery = services.initial_deliveries.get(retained)
+                assert retained_delivery.status == "settled"
+                assert retained_delivery.skill_id == saved["skill_id"] == "retained"
                 duplicate = await engine.dispatch_initial_delivery(
                     retained, dispatcher._verify_authority
                 )
@@ -469,7 +520,8 @@ async def run(directory: Path, mode: str):
                         "clock": clock.output,
                         "commits": len(commits()),
                         "model_calls": len(model.calls),
-                        "delivery": services.initial_deliveries.get(retained).status,
+                        "delivery": retained_delivery.status,
+                        "skill_id": retained_delivery.skill_id,
                         "generation": services.invocations.connection.execute(
                             "SELECT generation FROM invocation_ownership WHERE invocation_id=?",
                             (retained.invocation_id,),
@@ -488,8 +540,31 @@ if __name__ == "__main__":
     try:
         asyncio.run(run(directory, mode))
     except BaseException as error:
+        secrets = [TOKEN]
+        try:
+            scenario = json.loads((directory / "scenario.json").read_text(encoding="utf-8"))
+            if isinstance(scenario, dict):
+                secrets.extend((scenario.get("subject"), scenario.get("original")))
+        except (OSError, ValueError, TypeError):
+            pass
+        detail = str(error)
+        trace = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+        for secret in secrets:
+            if isinstance(secret, str) and secret:
+                # Redact before truncating so a secret cut by the bound cannot
+                # leave a credential prefix in the diagnostic artifact.
+                detail = detail.replace(secret, "[redacted]")
+                trace = trace.replace(secret, "[redacted]")
+        detail = detail[:2048]
+        trace = trace[:8192]
         write_json(
             directory / (mode + "-failure.json"),
-            {"stage": mode, "type": type(error).__name__, "code": getattr(error, "code", None)},
+            {
+                "stage": mode,
+                "type": type(error).__name__,
+                "code": getattr(error, "code", None),
+                "message": detail,
+                "traceback": trace,
+            },
         )
         raise

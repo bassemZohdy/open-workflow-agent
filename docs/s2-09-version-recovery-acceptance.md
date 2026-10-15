@@ -1,9 +1,32 @@
 # S2-09 original-definition continuation and recovery policy
 
-Status: implementation and test authoring complete; batch validation pending. S2-09 remains unchecked;
-no new continuation profile is qualified until its complete finite validation
-and hosted gates pass. This record defines supported decisions and exclusions,
-not a successful in-place migration algorithm or full A086/T44 completion.
+Status: finite VM01-VM08 continuation/recovery policy verified at PR head
+`9578459` (code source `bfd149c`). This record defines the qualified decisions
+and exclusions, not a successful in-place migration algorithm or full A086/T44
+completion.
+
+The historical `bfd149c` workflow set was cancelled when documentation
+checkpoint `9578459` was published before it finished. Docs `38559048361` and
+Security `38559048345` passed; CI `38559048348`, Agent Framework `38559048460`,
+PostgreSQL `38559048668` and External Sandbox `38559048598` were cancelled or
+superseded. The latest checkpoint's Windows timer lane has a 45-minute limit.
+The preceding checkpoint, `c68950f`, was not
+fully qualified: CI `38551999533` was cancelled when its timer lane reached the
+former 35-minute limit after pytest reported 686 passed and 674 skipped with no
+assertion failures. Fifteen of sixteen CI jobs passed. PostgreSQL
+`38551999491`, Docs `38551999483`, Security `38551999498`, External Sandbox
+`38551999473`, and Agent Framework `38551999501` passed. The previous source
+`605a908` failed one Windows LangGraph/SQLite initial-delivery recovery
+case during admission; see the [batch history](validation-history/pending-batch-results.md#hosted-checkpoint-source-c68950f).
+The local fixture uses a 15-second ownership lease to reduce admission timing
+sensitivity. Recovery diagnostics identified an intermittent mismatch in
+`python.architecture`: the restricted subprocess environment omitted the
+non-secret Windows architecture variables used by `platform.machine()`. The
+fixture now preserves those variables and records changed-profile paths for
+diagnosis. After this correction the exact Windows selector passed three
+consecutive local repeats, and the related LangGraph process-recovery/A2A
+selection passed 14 tests with 14 PostgreSQL-only skips. Exact-source hosted
+qualification is still required; recovery profile verification remains strict.
 
 The combined `325458a` full local batch is retained as a failed unchanged-source
 attempt in `tmp/s3-01-third-batch`, including actual ADK process-stop failure
@@ -77,11 +100,13 @@ redeliver an initial invocation with its verified original archive/input after
 ownership becomes available; that is a distinct existing initial invocation path,
 not an automatic public resume or migration fallback.
 
-Rollback is supported only to a separately qualified producer/consumer profile
-and retained compatible persistence snapshot. Stop writers before snapshot
-restore, retain reconciliation evidence, and account for remote effects.
-Restoring local bytes cannot undo a committed remote action. No tested cross-SDK,
-cross-database-server or arbitrary platform upgrade matrix is claimed.
+Rollback execution is not implemented or qualified by this task. A deployment
+must not restore a persistence snapshot unless its producer/consumer profile
+and compatibility have been qualified independently. Any operational restore
+must stop writers first, preserve reconciliation evidence, and account for
+remote effects; restoring local bytes cannot undo a committed remote action.
+No cross-SDK, cross-database-server or arbitrary platform upgrade matrix is
+claimed.
 
 ## Public authorization and bounded diagnostics
 
@@ -136,8 +161,8 @@ T44 requires suspending v1, deploying incompatible v2, resuming pinned v1 **and*
 explicit migration only with an approved mapping, preserving fingerprint and
 dependency versions without silent reinterpretation. VM01/VM02/VM03 prove the
 pinned-continuation and negative unsupported-mapping portion. A successful
-approved source-to-target mapping remains unverified. T44/A086 must retain that
-remaining scope even if the finite S2-09 **Define** task is later validated.
+approved source-to-target mapping remains unverified. T44/A086 retain that
+scope independently of S2-09's verified finite **Define** policy.
 T45 diagnostic correlation does not activate native history export, earlier
 checkpoint replay, state edits/forks or later-stage capabilities.
 
@@ -196,35 +221,38 @@ and outcome/identity/cancellation assertions remain. The versioned API snapshot
 is regenerated and included in subsequent fixed-input manifests.
 
 Correction focus 01d13a6 passes 85 root cases with 31 unavailable PostgreSQL
-skips; actual ADK passes16/17 selected version cases, LangGraph15/17. The
+skips; actual ADK passes 16 of 17 selected version cases, and LangGraph passes
+15 of 17. The
 remaining nested-child fixture serializes unset Linux path defaults before
 Windows validation, and one process fixture observes transient Windows file
 sharing on its already atomic readiness publication. Both are fixture-only
 corrections: retain explicit config fields and retry only missing/sharing reads
-within the unchanged live-producer100-second bound. Malformed JSON still fails.
+within the unchanged live-producer 100-second bound. Malformed JSON still
+fails.
 Original source hashes/logs remain in `tmp/s2-09-fourth-batch`. Synthetic late
 finalization and memory corrections follow in the same supervised bundle; no
 partial failed bundle is qualified as complete.
 
-Corrected bundle 5ef4170 is green with396unchanged fixed inputs. Root passes
-85 checks with31 unavailable PostgreSQL skips. Both actual principal SDKs pass
-all17 selected version/process-stop cases (including nested archived child
+Corrected bundle 5ef4170 is green with 396 unchanged fixed inputs. Root passes
+85 checks with 31 unavailable PostgreSQL skips. Both actual principal SDKs pass
+all 17 selected version/process-stop cases (including nested archived child
 continuation under a v2-only catalog) without skips. Each passes both synthetic
 late-finalization cancellation cases. LangGraph also passes the five memory
-presence/fork regression cases. Supervisors complete in33seconds root,191ADK
-and149LangGraph, below their unchanged900-second bound. Allfivefreshwheel/
-sdist builds and source-lock/metadata provenance checks pass. Full broad suites
-and exact-source hosted backend/platform/image/security gates still remain;
-S2-09 is not complete and no pending source is published as qualified.
+presence/fork regression cases. Supervisors complete in 33 seconds (root),
+191 seconds (ADK) and 149 seconds (LangGraph), below their unchanged
+900-second bound. All five fresh wheel/sdist builds and source-lock/metadata
+provenance checks pass. Full broad suites and exact-source hosted backend,
+platform, image and security gates still remained at that historical snapshot;
+none of its partial runs qualified the task.
 
-Broad snapshot9582fb2 retains unchanged inputs under `tmp/s2-09-fifth-batch`.
+Broad snapshot 9582fb2 retains unchanged inputs under `tmp/s2-09-fifth-batch`.
 Three old receipt selectors assume no independent definition-admission receipt;
 they must target their intended HTTP/fork/clock evidence and preserve the new
 admission proof. Nested workflows also repeatedly revalidate identical archived
 public definitions against the official schema. Stack dumps locate the repeated
 `_plan`/`validate_schema` path; nested cases time out and both principal Windows
-processes exit with3221225477 during recursive schema traversal. Optional
-Framework reaches its early failure limit; root is explicitly stopped at820
+processes exit with code 3221225477 during recursive schema traversal. Optional
+Framework reaches its early failure limit; root is explicitly stopped at 820
 seconds. These failures are retained and are not complete full qualification.
 
 The correction caches only bounded successful identical strict-JSON validation
@@ -266,3 +294,12 @@ wait execution for A2A continuation. Existing input, no-dispatch, shutdown and
 task identity assertions are retained. New MCP work is authored separately;
 final combined source qualification must cover this recovery task and the MCP
 batch without relabelling earlier partial failed attempts as successful.
+
+## Final finite qualification status
+
+The preceding paragraphs are chronological records of failed or partial
+snapshots. The finite VM01-VM08 continuation/recovery policy is verified at PR
+head `9578459` (code correction `bfd149c`); all six hosted workflows passed.
+The verification does not claim successful in-place v1→v2 migration (A086/T44),
+full native history, or broader proposed criteria. See the
+[exact hosted checkpoint](validation-history/pending-batch-results.md#hosted-checkpoint-pr-head-9578459).

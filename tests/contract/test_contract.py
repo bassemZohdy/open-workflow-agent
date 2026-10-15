@@ -12,6 +12,7 @@ from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
+from openapi_fixtures import operation_document
 
 
 @pytest.mark.asyncio
@@ -53,6 +54,14 @@ async def test_portable_fixture_has_same_result_on_each_engine(
     if fixture_name == "protocol-calls":
 
         async def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/openapi" and request.url.params.get("value") is None:
+                assert request.method == "GET"
+                return httpx.Response(
+                    200,
+                    json=operation_document(
+                        "https://service.test", parameters=(("value", "query", "string"),)
+                    ),
+                )
             if request.url.path == "/mcp":
                 body = json.loads(request.content)
                 assert body["jsonrpc"] == "2.0" and body["method"] == "tools/call"
