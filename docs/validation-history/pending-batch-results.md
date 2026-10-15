@@ -1193,3 +1193,29 @@ backends; this source corrects that test to the established fail-closed
 contract. The CI, PostgreSQL, External Sandbox, Security, Agent Framework and
 Docs workflows must still qualify `89d7836` itself. S3-02 and all A2A gate
 checkboxes remain open.
+
+### A2A receipt, expiry and nested-child follow-up at `c5269bb`
+
+The receiver-receipt witness now covers absent and malformed persisted effect
+receipts across both A2A bindings, ADK/LangGraph and SQLite/PostgreSQL. It
+collected 16 cases and skipped all 16 locally: SQLite selections need isolated
+native SDK environments, and PostgreSQL selections need
+`OWA_TEST_POSTGRES_URL`. Ruff format/lint, relative Markdown links and
+`git diff --check` passed. The assertions therefore still require hosted
+qualification.
+
+A bounded HTTP+JSON diagnostic confirmed that `message:send` returns a working
+Task and creates parent and child invocation/effect records, but after five
+seconds both invocations remain running and the parent has no child-wait
+registration. The temporary probe was removed because no safe narrow runtime
+fix was established; the next step is to trace the HTTP+JSON dispatch/scheduler
+path against the passing JSON-RPC nested-child value witness. HTTP+JSON child
+projection and child-fault projection remain open.
+
+The A2A08 expiry review found no durable Task, invocation, effect-receipt or
+initial-delivery TTL or pruning API. EventStore's 24-hour retention is only for
+eligible inbox arrivals and cannot be used as Task/receipt expiry because
+recovery depends on retained evidence. No expiry behavior was invented or
+tested. The acceptance record asks for an explicit profile exclusion or a
+versioned retention contract before adding an expiry test. S3-02 remains active
+and unchecked; these gaps do not block continuing its other ready evidence.
