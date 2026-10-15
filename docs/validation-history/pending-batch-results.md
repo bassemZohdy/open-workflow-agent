@@ -1165,3 +1165,31 @@ The feature branch and existing draft PR head both contain `bf7d507`; the CI,
 PostgreSQL, External Sandbox, Security, Agent Framework and Docs workflows were
 queued at the time this entry was written. No task or feature gate is advanced
 by this local batch alone.
+
+### A2A resume and route follow-up at `89d7836` — hosted qualification pending
+
+This follow-up adds an HTTP+JSON rejection witness for all six optional A2A v1
+operations, a real JSON-RPC nested-child timer/value Task projection, and
+LangGraph native-checkpoint corruption coverage. The owner-authority resume
+contract assertion now matches the existing fail-closed preflight response:
+JSON-RPC `task_not_resumeable` and HTTP+JSON 409 with the same local code. The
+no-mutation and secret-redaction assertions remain in place. A2A04 is still
+partial: the HTTP+JSON child setup did not create its child-wait registration,
+and child-fault projection is unverified.
+
+The combined new A2A regressions passed 7 cases and skipped 12, with 92 unrelated
+cases deselected. The skips are the owner-authority and native-checkpoint
+cross-products that require isolated engine SDK environments and/or
+`OWA_TEST_POSTGRES_URL`; they are not recorded as passes. The CI selection suite
+first passed 69 cases while two PostgreSQL collection checks exceeded their
+30-second subprocess limit during the long Windows run. Replaying those exact
+parameter cases passed all four engine selections (4 passed, 45 deselected in
+27.63 seconds), so no selection mismatch reproduced. Markdown relative links,
+Ruff format/lint and `git diff --check` passed.
+
+At the preceding source `bf7d507`, hosted CI reproduced only the stale
+owner-authority response expectations in both engines and both database
+backends; this source corrects that test to the established fail-closed
+contract. The CI, PostgreSQL, External Sandbox, Security, Agent Framework and
+Docs workflows must still qualify `89d7836` itself. S3-02 and all A2A gate
+checkboxes remain open.
