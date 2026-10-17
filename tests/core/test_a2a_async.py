@@ -102,9 +102,12 @@ async def test_return_immediately_returns_task_and_completes(tmp_path) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
-@pytest.mark.parametrize("suppress_cancellation", [False, True])
+@pytest.mark.parametrize(
+    ("suppress_cancellation", "late_outcome"),
+    [(False, "value"), (True, "value"), (True, "fault")],
+)
 async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
-    tmp_path, transport: str, suppress_cancellation: bool
+    tmp_path, transport: str, suppress_cancellation: bool, late_outcome: str
 ) -> None:
     entered = asyncio.Event()
     interrupted = asyncio.Event()
@@ -112,6 +115,11 @@ async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
     release = asyncio.Event()
 
     async def slow_model(_prompt):
+        def late_result():
+            if late_outcome == "fault":
+                raise RuntimeError("late provider failure")
+            return {"response": "late-result"}
+
         entered.set()
         try:
             await release.wait()
@@ -119,10 +127,10 @@ async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
             if suppress_cancellation:
                 suppressed.set()
                 await asyncio.shield(release.wait())
-                return {"response": "late-result"}
+                return late_result()
             interrupted.set()
             raise
-        return {"response": "late-result"}
+        return late_result()
 
     config = RuntimeConfig.model_validate(
         {

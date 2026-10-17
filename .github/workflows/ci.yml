@@ -238,7 +238,7 @@ jobs:
       - name: Verify Windows native lifecycle and receiver recovery
         run: >-
           uv run --directory engines/langgraph --locked --extra sqlite
-          --with pytest --with pytest-asyncio pytest -vv --durations=20
+          --with apsw==3.54.0.0 --with pytest --with pytest-asyncio pytest -vv --durations=20
           ../../tests/contract/test_external_operation_keys.py
           ../../tests/contract/test_external_recovery_process.py
           ../../tests/contract/test_external_recovery_native_corruption.py
@@ -593,7 +593,7 @@ jobs:
           set -euo pipefail
           timeout --signal=TERM --kill-after=30s 10m \
             uv run --locked --extra knowledge --extra ${{ matrix.extra }} \
-            --with pytest --with pytest-asyncio pytest \
+            --with apsw==3.54.0.0 --with pytest --with pytest-asyncio pytest \
             ../../tests/contract/test_external_operation_keys.py \
             ../../tests/contract/test_external_recovery_process.py \
             ../../tests/contract/test_external_recovery_native_corruption.py \

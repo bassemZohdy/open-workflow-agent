@@ -169,6 +169,7 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     assert windows["timeout-minutes"] == "20" and "needs" not in windows
     command = next(step["run"] for step in windows["steps"] if "pytest" in step.get("run", ""))
     assert "\n" not in command
+    assert "--with apsw==3.54.0.0" in command
     assert all(f"../../tests/contract/{name}" in command for name in fixtures)
     assert "../../tests/core/test_native_sqlite_inspection.py" in command
 
@@ -180,6 +181,7 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     }
     command = _runs(native)
     assert "--kill-after=30s 10m" in command and "--locked --extra knowledge" in command
+    assert "--with apsw==3.54.0.0" in command
     assert all(f"../../tests/contract/{name}" in command for name in fixtures)
     assert "../../tests/core/test_native_sqlite_inspection.py" in command
     main = _runs(_workflow("ci.yml")["jobs"]["engines"])
