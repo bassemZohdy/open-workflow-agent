@@ -1423,20 +1423,51 @@ The fixture is restored unchanged. The next avenue is a proven SQLite VFS-level
 observation barrier; no recovery assertion is weakened and S3-02 remains active
 for its other actionable gates.
 
-## Grouped follow-up after `d7a3acf` — working tree, not qualified
+## Exact-source qualification — `5f11067`
 
-The resume-shutdown change, A2A04 host-drain projection, actual deadline
-transition witness and heartbeat-read retry are local and uncommitted. A
-serialized focused batch passed seven cases across resume shutdown, repeated
-host-drain Task projection, real workflow-deadline transition and IPC
-PermissionError retry. The host-drain event wait was raised from five to thirty
-seconds after an initial run competing with static checks timed out both
-bindings; the isolated rerun passed, then the serialized batch passed. The
-actual deadline witness advances the engine's absolute clock past the
-configured workflow timeout, observes the persisted fault, then verifies
-stable/read-only repeated GetTask results and zero model calls on both bindings.
-The IPC selection passed three cases with one skip; the original Windows
-autonomous-deadline scenario was not rerun locally, so hosted confirmation of
-the read-open retry remains pending. Unary gRPC client tests passed 77 cases
-locally; its cross-engine/backend and hosted gates remain open. No broad local
-root suite has been rerun, and no Stage 3 task is complete from this evidence.
+Commit `5f110670f19c001ae812dc5228c17aeb0c1958e7` is pushed to
+`codex/required-backlog` and PR #64. Its serialized focused batch passed seven
+cases across resume shutdown, repeated host-drain Task projection, real
+workflow-deadline transition and IPC PermissionError retry. The host-drain
+event wait was raised from five to thirty seconds after an initial run competing
+with static checks timed out both bindings; the isolated rerun passed, then the
+serialized batch passed. The deadline witness advances the engine's absolute
+clock past the configured workflow timeout, observes the persisted fault, then
+verifies stable/read-only repeated GetTask results and zero model calls on both
+bindings. The IPC selection passed three cases with one skip. Ruff, formatting,
+mypy, documentation links and diff checks passed locally before publication.
+Unary gRPC client tests passed 77 cases locally; its cross-engine/backend and
+hosted gates remain open. No broad local root suite has been rerun, and no Stage
+3 task is complete from this evidence.
+
+The exact-source run set completed with these outcomes:
+
+- [Main CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39068459469)
+  failed only the Windows operation-adapter job (960 passed, 454 skipped,
+  three failed). The failed `test_observation_denied_open_rechecks_proofs_with_bounded_wait`
+  variants showed that applying the new read-open retry to every IPC frame
+  multiplied deliberate observation-proof rechecks.
+- [PostgreSQL CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39068459458)
+  failed one ADK recovery case (357 passed, 1,118 deselected): when timer delivery
+  won the manual-resume race, the due-timer path left `$resume_input` unbound and
+  the downstream expression faulted.
+- [Agent Framework CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39068459460),
+  [External Sandbox CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39068459488),
+  [Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39068459451)
+  and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39068459463)
+  passed. Main CI's root quality gates, native ADK/LangGraph suites, Windows
+  timer/checkpoint/lifecycle/ownership lanes and Docker acceptance also passed.
+
+The current working batch narrows read-open retries to explicit heartbeat
+reads, binds or clears `$resume_input` for every inline and durable wait, adds a
+late-result host-drain guard and extends the A2A host-drain/socket-result
+witnesses. The grouped local regression run passed 28 cases and skipped two
+backend-inapplicable cases; the selected checks included the existing timer
+race, admission shutdown, both IPC permission behaviors, all A2A host-drain
+variants, the actual deadline transition and seven SDK methods over ASGI/TCP.
+Ruff, formatting, strict mypy, Markdown links and diff checks also passed
+before the last documentation edits; the documentation validator will be rerun
+with the final batch. Hosted requalification is pending. The original Windows
+autonomous-deadline scenario awaits confirmation. The SQLite hot-super-journal
+fixture remains unresolved as described above, and no recovery assertion was
+relaxed.

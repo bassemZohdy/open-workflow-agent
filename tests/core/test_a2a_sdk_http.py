@@ -51,8 +51,28 @@ def client(transport, network, **kwargs):
 def assert_method_result(method, result):
     if method in {"SendStreamingMessage", "SubscribeToTask"}:
         assert result[-1]["statusUpdate"]["status"]["state"] == "TASK_STATE_COMPLETED"
+        assert result[-1]["statusUpdate"]["taskId"] == (
+            "task-id" if method == "SubscribeToTask" else result[0]["task"]["id"]
+        )
+    elif method == "GetTask":
+        assert result["id"] == "task-id"
+        assert result["contextId"] == "context-id"
+        assert result["status"]["state"] == "TASK_STATE_WORKING"
+    elif method == "CancelTask":
+        assert result["id"] == "task-id"
+        assert result["status"]["state"] == "TASK_STATE_CANCELED"
+    elif method == "ListTasks":
+        assert [task["id"] for task in result["tasks"]] == ["task-id"]
+        assert result["tasks"][0]["contextId"] == "context-id"
+    elif method == "GetExtendedAgentCard":
+        assert result["name"] == "official-a2a-peer"
+        assert result["supportedInterfaces"][0]["protocolBinding"] == "JSONRPC"
     else:
-        assert isinstance(result, dict)
+        task = result["task"] if method == "SendMessage" else result
+        assert task["id"].startswith("peer-")
+        assert task["contextId"] == "context-id"
+        assert task["status"]["state"] == "TASK_STATE_COMPLETED"
+        assert task["artifacts"][0]["parts"] == [{"text": "hello"}]
 
 
 @pytest.mark.asyncio
@@ -69,6 +89,7 @@ async def test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_busi
         assert calls[0]["body"]["id"] == "original-business-key"
         assert calls[0]["headers"][b"a2a-version"] == b"1.0"
         assert calls[0]["headers"][b"idempotency-key"] == b"original-business-key"
+        assert_method_result(method, result)
         if method in {"SendMessage", "SendStreamingMessage"}:
             message = calls[0]["body"]["params"]["message"]
             assert message["role"] == "ROLE_USER"

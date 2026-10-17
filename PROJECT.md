@@ -7,7 +7,7 @@
 - `TODO.md` — ordered backlog and any blocked-task deferrals.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current backlog delivery mode — 2026-10-17
+## Current backlog delivery mode — 2026-10-18
 
 **19 of 37 backlog tasks are verified; 18 remain open. No task is deferred.**
 S2-09’s finite VM01-VM08 policy and S3-01’s finite Python MCP01-MCP08 profile
@@ -18,16 +18,18 @@ passed 718, and PostgreSQL passed all ten jobs. S3-02 is active. The latest
 full local root batch (before `36544b5`) completed in 3h30m with 4,616 passed,
 3,007 skipped, 28 failed, 13 setup errors and 125 warnings. Its coverage gate
 passed, but the suite was not green; the 13 setup errors reproduce at the
-Windows native SQLite super-journal fixture. The latest pushed checkpoint
-`d7a3acf` passed PostgreSQL, External Sandbox, Security and Docs. Main CI and
-Agent Framework CI failed on recovery-admission shutdown assertions after the
-common read-only resume preflight moved before lease acquisition. A local fix
-now tracks and cancels preflight tasks separately; its focused ADK/LangGraph
-contract cases pass, pending hosted requalification. The same source exposed an
-actionable Windows heartbeat permission failure and SQLite super-journal
-fixture setup failure. The jq/admission assertions had no independent semantic
-failure. Read-only Task projection and deadline-transition follow-ups remain
-local. See the [exact-source run record](docs/validation-history/pending-batch-results.md#exact-source-qualification-d7a3acf)
+Windows native SQLite super-journal fixture. Pushed source `5f11067` includes
+the recovery-admission shutdown fix, stable host-drain and actual deadline Task
+projections, and bounded Windows heartbeat read-open retry. At the latest
+hosted check, Agent Framework CI, External Sandbox, Security and Docs had
+passed. Main CI failed three Windows denied-open proof-recheck assertions
+because the retry also affected observation frames; PostgreSQL CI failed one
+ADK timer race where due delivery left `$resume_input` unbound. Both have
+concrete fixes in the current batch. The original Windows deadline scenario
+still needs hosted confirmation. The SQLite hot-super-journal fixture setup
+failure from `d7a3acf` remains unresolved; a proven SQLite VFS-level
+observation barrier is the next avenue.
+See the [exact-source run record](docs/validation-history/pending-batch-results.md#exact-source-qualification-5f11067)
 for workflow links and limits.
 JavaScript MCP, A145/full protocol coverage, proposed T29/T30/T31 criteria,
 and broader MCP extensions remain unqualified. See the
@@ -41,7 +43,7 @@ partial and superseded runs remain historical in the [validation history](docs/v
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at 6b23e5d / 96ce610. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
 | S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
-| S3-02 | Active task. The 3h30m local root batch was not green (4,616 passed, 3,007 skipped, 28 failed, 13 setup errors; coverage threshold met). At `d7a3acf`, PostgreSQL, External Sandbox, Security and Docs passed; main and Agent Framework CI exposed recovery-admission shutdown assertion failures. A local task-tracking fix passes focused ADK/LangGraph cases. A bounded heartbeat read-open retry passes focused IPC cases; the original Windows deadline scenario needs hosted confirmation. The super-journal fixture remains unresolved after lock, timestamp, direct-byte and cache-spill probes. A VFS-level observation hook is the next avenue. Stable canceled/terminal, host-drain and actual deadline projections are locally evidenced. Durable Task/receipt expiry needs a product decision. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [validation history](docs/validation-history/pending-batch-results.md#exact-source-qualification-d7a3acf) |
+| S3-02 | Active task. The 3h30m local root batch was not green (4,616 passed, 3,007 skipped, 28 failed, 13 setup errors; coverage threshold met). On pushed `5f11067`, Agent Framework CI, External Sandbox, Security and Docs passed; main CI failed three Windows denied-open proof-recheck assertions because the retry also affected observation frames; PostgreSQL CI failed one ADK timer race where due delivery left `$resume_input` unbound. Both have concrete fixes in the current batch. The original Windows deadline scenario needs hosted confirmation. The super-journal fixture remains unresolved after lock, timestamp, direct-byte and cache-spill probes; a VFS-level observation hook is the next avenue. Durable Task/receipt expiry needs a product decision. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [validation history](docs/validation-history/pending-batch-results.md#exact-source-qualification-5f11067) |
 | S3-03 | Operation adapters and independent recovery jobs remain open. The pre-ACK fixture correction passed its PostgreSQL LangGraph and Windows lanes at `8183776`. The PostgreSQL ADK operation job's 25-minute command/30-minute job limits passed at source `e45115c` in run `38645586498`; broader adapter, backend and deployment gates remain open. | [Operations](docs/s3-03-operation-adapters-acceptance.md), [timeout history and successful rerun](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4) |
 | S3-04 | Captured sources and awaited controls remain authored. Four late source-worker takeover cases cover the ADK/LangGraph × SQLite/PostgreSQL matrix; exact-source behavioral, platform and publication qualification remain pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored. The PostgreSQL `REAL`-to-`DOUBLE PRECISION` migration is implemented and f9 PostgreSQL protected-approval cases passed. The f9 Windows timer lane exposed a request-row process-recovery fixture race before its durable barrier; a five-second renewal lease plus natural database-clock wait passes the local LangGraph/SQLite suite. The formerly failing hosted Windows case passed at `8183776`; the expired-approval fixture now keeps invocation ownership independent from the short approval deadline and awaits independent-SDK/hosted requalification. Broader S3-05 gates remain open. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |
@@ -50,7 +52,7 @@ partial and superseded runs remain historical in the [validation history](docs/v
 | S3-08 | Selected compiler/provider/memory/embedded event adaptations and grouped corrections are authored; integrated qualification remains open. | [Selected scope and gates](docs/s3-08-selected-adapter-acceptance.md) |
 
 The current source and hosted run are recorded once in the delivery table above
-and the [validation history](docs/validation-history/pending-batch-results.md#exact-source-qualification-d7a3acf).
+and the [validation history](docs/validation-history/pending-batch-results.md#exact-source-qualification-5f11067).
 
 Historical source outcomes, full commands, hashes and correction details are
 retained in the [validation history](docs/validation-history/pending-batch-results.md).

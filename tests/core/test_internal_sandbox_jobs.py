@@ -459,7 +459,7 @@ def test_private_ipc_retries_transient_windows_read_open_conflict(tmp_path, monk
         return open_file(path, flags, *args, **kwargs)
 
     monkeypatch.setattr(_job_ipc.os, "open", transient_conflict)
-    assert read_frame(target, key) == {"generation": 1}
+    assert read_frame(target, key, retry_permission_conflicts=True) == {"generation": 1}
     assert attempts == 2
 
 

@@ -280,7 +280,9 @@ class InternalSandboxJobBackend:
             raise SandboxPolicyError("sandbox supervisor instance changed")
         if value.state in {"accepted", "running"}:
             try:
-                heartbeat = read_frame(directory / "heartbeat.json", key)
+                heartbeat = read_frame(
+                    directory / "heartbeat.json", key, retry_permission_conflicts=True
+                )
             except FileNotFoundError:
                 return SandboxJobObservation("unknown", value.binding)
             if (

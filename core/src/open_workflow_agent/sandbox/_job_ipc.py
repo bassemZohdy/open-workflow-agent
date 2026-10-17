@@ -216,18 +216,19 @@ def _encoded(value: Any) -> bytes:
         raise _failure() from None
 
 
-def _open_frame_for_read(path: Path) -> int:
+def _open_frame_for_read(path: Path, *, retry_permission_conflicts: bool = False) -> int:
     """Open a frame across brief Windows sharing conflicts.
 
     Windows may transiently deny a new open while another process is replacing
     the frame. Retry only the open operation; persistent permission failures
     still surface after a short, bounded delay.
     """
-    for attempt in range(5):
+    attempts = 5 if retry_permission_conflicts else 1
+    for attempt in range(attempts):
         try:
             return os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
         except PermissionError:
-            if attempt == 4:
+            if attempt + 1 == attempts:
                 raise
             time.sleep(0.01 * (2**attempt))
     raise AssertionError("unreachable")
@@ -311,10 +312,10 @@ def _unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
-def read_frame(path: Path, key: bytes) -> Any:
+def read_frame(path: Path, key: bytes, *, retry_permission_conflicts: bool = False) -> Any:
     check_path(path.parent, directory=True)
     check_path(path)
-    descriptor = _open_frame_for_read(path)
+    descriptor = _open_frame_for_read(path, retry_permission_conflicts=retry_permission_conflicts)
     try:
         before = os.fstat(descriptor)
         if not 0 < before.st_size <= MAX_FRAME_BYTES:

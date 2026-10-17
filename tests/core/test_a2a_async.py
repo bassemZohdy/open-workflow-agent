@@ -102,11 +102,13 @@ async def test_return_immediately_returns_task_and_completes(tmp_path) -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize("suppress_cancellation", [False, True])
 async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
-    tmp_path, transport: str
+    tmp_path, transport: str, suppress_cancellation: bool
 ) -> None:
     entered = asyncio.Event()
     interrupted = asyncio.Event()
+    suppressed = asyncio.Event()
     release = asyncio.Event()
 
     async def slow_model(_prompt):
@@ -114,6 +116,10 @@ async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
         try:
             await release.wait()
         except asyncio.CancelledError:
+            if suppress_cancellation:
+                suppressed.set()
+                await asyncio.shield(release.wait())
+                return {"response": "late-result"}
             interrupted.set()
             raise
         return {"response": "late-result"}
@@ -185,8 +191,14 @@ async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
                 before_drain = services.invocations.get(task_id)
                 assert before_drain is not None and before_drain.status == "running"
 
-                await asyncio.wait_for(app.state.engine.shutdown(), timeout=5)
-                await asyncio.wait_for(interrupted.wait(), timeout=5)
+                shutdown = asyncio.create_task(app.state.engine.shutdown())
+                if suppress_cancellation:
+                    await asyncio.wait_for(suppressed.wait(), timeout=5)
+                    assert not shutdown.done()
+                    release.set()
+                else:
+                    await asyncio.wait_for(interrupted.wait(), timeout=5)
+                await asyncio.wait_for(shutdown, timeout=5)
                 after_drain = services.invocations.get(task_id)
                 assert after_drain is not None and after_drain.status == "running"
                 persisted = after_drain._persisted_payload

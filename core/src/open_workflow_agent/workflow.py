@@ -2250,8 +2250,9 @@ class WorkflowExecutor:
             else:
                 resumed = await control.wait_or_resume(seconds)
             self._token(state).checkpoint()
-            if control is not None and resumed:
-                state.variables["resume_input"] = copy.deepcopy(control.resume_input)
+            state.variables["resume_input"] = (
+                copy.deepcopy(control.resume_input) if control is not None and resumed else None
+            )
             self._set_invocation_status(state, "running")
             resume_event = {
                 **self._task_event(task_reference, name, state),
@@ -2784,8 +2785,9 @@ class WorkflowExecutor:
                 state, replace(identity, operation="wait:wake:v1"), wake.receipt
             )
             self.services.timers.consume(registration, execution_lease=handle._execution_lease)
-            if wake.reason == "resume_requested":
-                state.variables["resume_input"] = copy.deepcopy(wake.resume_input)
+            state.variables["resume_input"] = (
+                copy.deepcopy(wake.resume_input) if wake.reason == "resume_requested" else None
+            )
             self._set_invocation_status(state, "running")
             event = {
                 **self._task_event(reference, name, state),

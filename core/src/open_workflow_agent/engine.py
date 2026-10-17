@@ -1392,6 +1392,10 @@ class PortableWorkflowEngine(WorkflowEngine):
                 input_data,
                 metadata=self._metadata(workflow, invocation, active),
             )
+            # Some native/framework awaits suppress cancellation and return a
+            # late value. Host drain or lost ownership still means this worker
+            # cannot publish that value into common invocation state.
+            self._raise_if_execution_interrupted(active)
             if active.control.token.cancelled or invocation.status == "cancelled":
                 result = self._record_result(
                     invocation,
