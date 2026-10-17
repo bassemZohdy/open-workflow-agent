@@ -98,6 +98,7 @@ async def _stream_asgi(
     body: bytes,
     headers: list[tuple[bytes, bytes]],
     request_id: str | int | None = None,
+    disconnect: asyncio.Event | None = None,
 ) -> tuple[asyncio.Task[None], Callable[[], list[dict[str, object]]]]:
     """Run one ASGI request as a live task with incremental body access.
 
@@ -116,7 +117,7 @@ async def _stream_asgi(
         # disconnect listener) must genuinely suspend or the loop would
         # busy-spin without ever yielding to the event loop.
         if body_sent.is_set():
-            await done.wait()
+            await (disconnect or done).wait()
             return {"type": "http.disconnect"}
         body_sent.set()
         return {"type": "http.request", "body": body, "more_body": False}
@@ -716,6 +717,190 @@ async def test_subscribed_stream_emits_one_error_or_cancellation_terminal(
     assert [update["status"]["state"] for update in terminal] == [a2a_state]
     assert not any("artifactUpdate" in frame for frame in frames)
     assert "private implementation detail" not in repr(frames)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+async def test_stream_disconnect_during_host_drain_keeps_working_projection(
+    tmp_path, transport: str
+) -> None:
+    entered = asyncio.Event()
+    cancellation_suppressed = asyncio.Event()
+    release_provider = asyncio.Event()
+    provider_returned = asyncio.Event()
+
+    async def slow_model(_prompt):
+        entered.set()
+        try:
+            await release_provider.wait()
+        except asyncio.CancelledError:
+            cancellation_suppressed.set()
+            await asyncio.shield(release_provider.wait())
+        provider_returned.set()
+        return {"response": "late-result"}
+
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake"},
+            "workflow": {
+                "catalog": [
+                    {
+                        "document": {
+                            "dsl": "1.0.3",
+                            "namespace": "a2a-stream-drain",
+                            "name": "slow",
+                            "version": "1.0.0",
+                        },
+                        "do": [
+                            {
+                                "wait": {
+                                    "call": "llm:1.0.0@default",
+                                    "with": {"prompt": "wait through stream disconnect"},
+                                }
+                            }
+                        ],
+                    }
+                ]
+            },
+            "a2a": {
+                "enabled": True,
+                "transport": transport,
+                "skills": [{"id": "slow", "workflow": "slow"}],
+            },
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(slow_model), database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    stream_disconnected = asyncio.Event()
+    stream_task: asyncio.Task[None] | None = None
+    shutdown: asyncio.Task[None] | None = None
+
+    try:
+        async with app.router.lifespan_context(app):
+            client_transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(
+                transport=client_transport, base_url="http://test"
+            ) as client:
+                if transport == "jsonrpc":
+                    started = await client.post(
+                        "/a2a",
+                        headers=HEADERS,
+                        json={
+                            "jsonrpc": "2.0",
+                            "id": 41,
+                            "method": "SendMessage",
+                            "params": {
+                                "message": _message(metadata={"skillId": "slow"}),
+                                "configuration": {"returnImmediately": True},
+                            },
+                        },
+                    )
+                    assert started.status_code == 200, started.text
+                    task_id = str(started.json()["result"]["task"]["id"])
+                    body = json.dumps(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": 42,
+                            "method": "SubscribeToTask",
+                            "params": {"id": task_id},
+                        }
+                    ).encode()
+                    stream_path = "/a2a"
+                    request_id: str | int | None = 42
+                else:
+                    started = await client.post(
+                        "/a2a/message:send",
+                        headers=HEADERS,
+                        json={
+                            "message": _message(metadata={"skillId": "slow"}),
+                            "configuration": {"returnImmediately": True},
+                        },
+                    )
+                    assert started.status_code == 200, started.text
+                    task_id = str(started.json()["task"]["id"])
+                    body = b"{}"
+                    stream_path = f"/a2a/tasks/{task_id}:subscribe"
+                    request_id = None
+
+                await asyncio.wait_for(entered.wait(), timeout=30)
+                stream_headers = [
+                    (b"a2a-version", V1.encode()),
+                    (b"content-type", b"application/json"),
+                ]
+                stream_task, parse = await _stream_asgi(
+                    app,
+                    method="POST",
+                    path=stream_path,
+                    body=body,
+                    headers=stream_headers,
+                    request_id=request_id,
+                    disconnect=stream_disconnected,
+                )
+
+                for _ in range(200):
+                    frames = parse()
+                    if any("task" in frame for frame in frames):
+                        break
+                    await asyncio.sleep(0.01)
+                else:
+                    raise AssertionError(f"stream did not publish its task snapshot: {parse()}")
+
+                snapshot = next(frame["task"] for frame in parse() if "task" in frame)
+                assert snapshot["id"] == task_id
+                assert snapshot["status"]["state"] == "TASK_STATE_WORKING"
+
+                shutdown = asyncio.create_task(app.state.engine.shutdown())
+                await asyncio.wait_for(cancellation_suppressed.wait(), timeout=5)
+                assert not shutdown.done()
+                assert not any(
+                    update["status"]["state"]
+                    in {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED"}
+                    for update in _updates(parse())
+                )
+
+                # The observer disconnects while the provider still owns the
+                # business work; release it only after the stream has closed.
+                stream_disconnected.set()
+                await asyncio.wait_for(stream_task, timeout=5)
+                frames_after_disconnect = parse()
+                assert not any(
+                    update["status"]["state"]
+                    in {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED"}
+                    for update in _updates(frames_after_disconnect)
+                )
+
+                release_provider.set()
+                await asyncio.wait_for(shutdown, timeout=5)
+                await asyncio.wait_for(provider_returned.wait(), timeout=1)
+                current = services.invocations.get(task_id)
+                assert current is not None and current.status == "running"
+
+                if transport == "jsonrpc":
+                    projected = await client.post(
+                        "/a2a",
+                        headers=HEADERS,
+                        json={
+                            "jsonrpc": "2.0",
+                            "id": 43,
+                            "method": "GetTask",
+                            "params": {"id": task_id},
+                        },
+                    )
+                    task_projection = projected.json()["result"]
+                else:
+                    projected = await client.get(f"/a2a/tasks/{task_id}", headers=HEADERS)
+                    task_projection = projected.json()
+                assert projected.status_code == 200
+                assert task_projection["status"]["state"] == "TASK_STATE_WORKING"
+    finally:
+        stream_disconnected.set()
+        release_provider.set()
+        if stream_task is not None and not stream_task.done():
+            stream_task.cancel()
+            await asyncio.gather(stream_task, return_exceptions=True)
+        if shutdown is not None and not shutdown.done():
+            await asyncio.gather(shutdown, return_exceptions=True)
+        services.close()
 
 
 class _BacklogSink:

@@ -2050,6 +2050,7 @@ provides-extras = ["model", "knowledge", "postgres"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "apsw", specifier = "==3.54.0.0" },
     { name = "mypy", specifier = "==2.3.1" },
     { name = "pytest", specifier = "==9.1.1" },
     { name = "pytest-asyncio", specifier = "==1.4.0" },

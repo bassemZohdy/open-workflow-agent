@@ -121,7 +121,11 @@ async def run(directory, mode):
     }[scenario["engine"]]
     engine = getattr(importlib.import_module(module), name)()
     await engine.initialize(services)
-    engine._execution_ownership_seconds = 5
+    # Keep producer leases short so the real stop/recovery test does not wait
+    # long after killing the producer. Native checkpoint restoration can take
+    # several seconds on Windows, so use the production-sized lease in the
+    # recovery process instead of letting the test lease expire mid-resume.
+    engine._execution_ownership_seconds = 5 if mode == "start" else 30
     plan = compile_sandbox_workflow(
         {
             "document": {
@@ -173,7 +177,21 @@ async def run(directory, mode):
 
             engine.executor._execute_background = barrier
             active = asyncio.create_task(engine.invoke(plan, handle, {"value": "original"}))
-            await asyncio.wait_for(reached.wait(), 40)
+            reached_wait = asyncio.create_task(reached.wait())
+            try:
+                done, _ = await asyncio.wait_for(
+                    asyncio.wait({reached_wait, active}, return_when=asyncio.FIRST_COMPLETED),
+                    40,
+                )
+                if reached_wait not in done:
+                    result = await active
+                    raise AssertionError(
+                        "invocation completed before background job admission "
+                        f"(status: {result.status})"
+                    )
+            finally:
+                reached_wait.cancel()
+                await asyncio.gather(reached_wait, return_exceptions=True)
             if scenario["boundary"] == "completed":
                 result = await asyncio.wait_for(active, 40)
                 assert result.status == "completed" and result.output == {

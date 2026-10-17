@@ -122,3 +122,59 @@ async def test_old_initial_delivery_process_cannot_write_after_takeover(
             if process is not None and process.poll() is None:
                 process.kill()
                 process.wait(timeout=15)
+
+
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.asyncio
+async def test_competing_initial_delivery_process_cannot_dispatch_while_owner_is_live(
+    tmp_path: Path,
+    backend: str,
+) -> None:
+    """A competing PID cannot enter dispatch while the durable owner is paused."""
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+    scenario = {
+        "backend": backend,
+        "invocation_id": "",
+        "input": {"request": "deliver exactly once"},
+    }
+    (tmp_path / "scenario.json").write_text(json.dumps(scenario), encoding="utf-8")
+
+    owner = _start(tmp_path, "competing-owner")
+    competitor: subprocess.Popen[bytes] | None = None
+    try:
+        owner_ready = _wait_for(tmp_path / "owner-ready.json", owner, 60)
+        assert owner_ready["pid"] == owner.pid
+        assert owner_ready["generation"] > 0
+
+        competitor = _start(tmp_path, "competing-worker")
+        competing_result = _wait_for(tmp_path / "competitor-result.json", competitor, 60)
+        assert competitor.wait(timeout=15) == 0
+        assert competing_result["pid"] == competitor.pid != owner.pid
+        assert competing_result["error_type"] == "InvocationStateConflict"
+        assert competing_result["snapshot"] == owner_ready["snapshot"]
+        with closing(sqlite3.connect(tmp_path / "receiver.sqlite3")) as receiver:
+            assert receiver.execute("SELECT COUNT(*) FROM commits").fetchone()[0] == 0
+
+        (tmp_path / "release-owner").write_text("release", encoding="utf-8")
+        settled = _wait_for(tmp_path / "owner-result.json", owner, 60)
+        assert owner.wait(timeout=15) == 0
+        assert settled["pid"] == owner.pid
+        assert settled["status"] == "completed"
+        assert settled["output"] == scenario["input"]
+        assert settled["generation"] == owner_ready["generation"]
+        assert settled["delivery_status"] == "settled"
+        assert settled["commits"] == 1
+        assert settled["snapshot"] != owner_ready["snapshot"]
+
+        with closing(sqlite3.connect(tmp_path / "receiver.sqlite3")) as receiver:
+            commits = receiver.execute("SELECT operation_id,body FROM commits").fetchall()
+        assert len(commits) == 1
+        assert json.loads(commits[0][1]) == {"input": scenario["input"]}
+    finally:
+        (tmp_path / "release-owner").write_text("release", encoding="utf-8")
+        for process in (owner, competitor):
+            if process is not None and process.poll() is None:
+                process.kill()
+                process.wait(timeout=15)

@@ -103,6 +103,10 @@ treated as a deferred task or as additional feature completion.
   fenced schedule slots, bounded calendars and atomic embedded event-created
   invocations. All six configured workflows, actual PostgreSQL, four runtime
   image capability observations, Windows, native CTK/benchmarks and audits pass.
+  A later PostgreSQL race at `5f11067` exposed an unbound `$resume_input` when
+  timer delivery won a manual-resume race. Source `a77678a` sets or clears that
+  value on every inline and durable wait; its local grouped timer cases pass,
+  with exact-source hosted requalification pending.
   See the [finite acceptance record](docs/s2-06-timer-schedule-acceptance.md).
   Child lifecycle, external transports, full proposed/JavaScript and broader
   deployment scaling remain separately gated.
@@ -154,19 +158,21 @@ treated as a deferred task or as additional feature completion.
   interoperability, lifecycle, authority, recovery, streaming and backend
   gates are not closed. Outbound calls are not automatically replayed after
   possible acceptance; callers may explicitly resubscribe to a known task.
-  Pushed source `5f11067` includes the recovery-admission shutdown fix, stable
-  host-drain and actual deadline Task projections, and a bounded Windows
-  heartbeat read-open retry. On `5f11067`, Agent Framework CI, External
-  Sandbox, Security and Docs passed. Main CI failed three Windows denied-open
-  proof-recheck assertions because the retry also affected observation frames;
-  PostgreSQL CI failed one ADK timer race where due delivery left
-  `$resume_input` unbound. Both have concrete fixes in the current batch; the
-  original Windows deadline scenario still needs hosted confirmation. The
-  SQLite hot-super-journal fixture setup failure from `d7a3acf` remains
-  unresolved. Repeated real-producer byte, timestamp, cache-spill and lock
-  probes did not find a safe
-  SQLite barrier for the latter; the next step is to evaluate a proven
-  SQLite VFS-level observation hook without relaxing recovery evidence.
+  Pushed source `a77678a` includes the recovery-admission shutdown fix, stable
+  host-drain and actual deadline Task projections, a heartbeat-only bounded
+  read-open retry, the timer-race fix and stronger A2A witnesses. Its grouped
+  local regressions pass 28 cases with two backend-inapplicable skips; Ruff,
+  formatting, mypy, docs links and diff checks pass. PostgreSQL, Agent
+  Framework, External Sandbox, Security and Docs hosted checks passed. Main CI
+  completed with one failure: its Windows operation-adapter recovery lane had
+  962 passed, 454 skipped, and one LangGraph host-drain recovery failure
+  (`InvocationStateConflict`); the other Main CI jobs passed. That race is under
+  focused correction.
+  The original Windows deadline scenario still needs hosted confirmation. The
+  SQLite hot-super-journal fixture now uses an APSW VFS barrier immediately
+  before the producer deletes the super-journal. Its focused recovery and A2A
+  follow-up batch passed 18 cases with two backend skips; exact-source hosted
+  qualification remains pending.
   Durable Task and receipt expiry still needs a product contract. Current gates
   and focused evidence are in the [acceptance record](docs/s3-02-a2a-acceptance.md); exact
   source outcomes are in the [validation history](docs/validation-history/pending-batch-results.md).

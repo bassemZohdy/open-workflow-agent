@@ -1471,3 +1471,52 @@ with the final batch. Hosted requalification is pending. The original Windows
 autonomous-deadline scenario awaits confirmation. The SQLite hot-super-journal
 fixture remains unresolved as described above, and no recovery assertion was
 relaxed.
+
+## Exact-source qualification — `a77678a`
+
+Commit `a77678a12375215f1964b86dd922138b3dcee06e` is pushed to
+`codex/required-backlog` and PR #64. The grouped local regressions passed 28
+cases with two backend-inapplicable skips. Ruff, repository formatting, strict
+mypy over 132 source files, Markdown relative-link validation and `git diff
+--check` passed. This includes the two fixes exposed by the prior hosted run:
+heartbeat retries are opt-in for heartbeat reads so observation-denial proof
+rechecks remain unchanged, and inline/durable waits bind `$resume_input` to the
+resume value or `None` for every completed wait. A2A host drain now checks for
+late returns after suppressed cancellation; the A2A SDK method witness asserts
+typed result fields across all seven advertised methods over ASGI and loopback
+TCP.
+
+Exact-source hosted runs: [PostgreSQL CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39072219292),
+[Agent Framework CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39072219309),
+[External Sandbox CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39072219313),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39072219288)
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39072219289)
+passed. Main [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39072219326)
+completed with one failure in Windows operation-adapter recovery: 962 passed,
+454 skipped, and the LangGraph host-drain recovery witness failed during resume
+with `InvocationStateConflict`. All other Main CI jobs passed. The exact failure
+is under focused correction; `a77678a` is not yet hosted-qualified and S3-02
+remains open.
+
+### Local fixture and A2A follow-up based on `a77678a`
+
+The follow-up adds a pinned APSW test dependency and pauses the producer inside
+the SQLite VFS `xDelete` callback immediately before deleting the hot
+super-journal. The parent kills the producer at that commit boundary and keeps
+the original rollback and immutability assertions. The focused batch covering
+`tests/core/test_native_sqlite_inspection.py`, the new host-drain stream cases,
+and the initial-delivery process-race file passed **18 tests with two
+backend-inapplicable skips** on Windows. Ruff checks for the edited tests,
+repository format validation, Markdown link validation, lock consistency and
+`git diff --check` passed. This is local evidence only; hosted Windows and
+PostgreSQL requalification remain pending.
+
+The same batch plus the exact hosted LangGraph drained-background-job case
+passed 18 tests with three skips in the root environment; that case skipped
+because the independent LangGraph SDK is not installed there. In the isolated
+LangGraph environment, two attempts failed before the recovery boundary: the
+producer timed out while starting the child job (once waiting for the child
+ready marker and once before `_execute_background` returned), leaving no
+`sandbox_jobs` row. These local setup timeouts do not verify the recovery-lease
+adjustment. The hosted case failed later, during recovery lease verification,
+and requires the post-fix hosted rerun for qualification.

@@ -132,7 +132,7 @@ async def _run(directory: Path, mode: str) -> None:
         return None
 
     try:
-        if mode == "old":
+        if mode in {"old", "competing-owner"}:
             handle = services.invocations.create(
                 engine="base",
                 session_id="initial-delivery-process-race",
@@ -147,6 +147,50 @@ async def _run(directory: Path, mode: str) -> None:
             await engine.prepare_initial_delivery(
                 plan, handle, scenario["input"], skill_id="process-race"
             )
+            if mode == "competing-owner":
+                original_invoke = engine._invoke_owned
+
+                async def pause_competing_owner(*args: Any, **kwargs: Any):
+                    lease = args[1]._execution_lease
+                    assert lease is not None
+                    _write(
+                        directory / "owner-ready.json",
+                        {
+                            "pid": os.getpid(),
+                            "invocation_id": args[1].invocation_id,
+                            "generation": lease.generation,
+                            "snapshot": _snapshot(services, args[1].invocation_id),
+                        },
+                    )
+                    deadline = time.monotonic() + 300
+                    while not (directory / "release-owner").exists():
+                        if time.monotonic() >= deadline:
+                            raise TimeoutError("test did not release competing owner")
+                        await asyncio.sleep(0.02)
+                    return await original_invoke(*args, **kwargs)
+
+                patches.setattr(engine, "_invoke_owned", pause_competing_owner)
+                result = await engine.dispatch_initial_delivery(handle, authorize)
+                delivery = services.initial_deliveries.get(handle)
+                assert delivery is not None
+                with closing(sqlite3.connect(directory / "receiver.sqlite3")) as receiver:
+                    commits = receiver.execute("SELECT COUNT(*) FROM commits").fetchone()[0]
+                _write(
+                    directory / "owner-result.json",
+                    {
+                        "pid": os.getpid(),
+                        "status": result.status,
+                        "output": result.output,
+                        "generation": services.invocations.connection.execute(
+                            "SELECT generation FROM invocation_ownership WHERE invocation_id=?",
+                            (handle.invocation_id,),
+                        ).fetchone()[0],
+                        "delivery_status": delivery.status,
+                        "commits": commits,
+                        "snapshot": _snapshot(services, handle.invocation_id),
+                    },
+                )
+                return
             original_invoke = engine._invoke_owned
 
             async def pause_old(*args: Any, **kwargs: Any):
@@ -181,29 +225,44 @@ async def _run(directory: Path, mode: str) -> None:
             with closing(sqlite3.connect(directory / "receiver.sqlite3")) as receiver:
                 result["commits"] = receiver.execute("SELECT COUNT(*) FROM commits").fetchone()[0]
             _write(directory / "old-result.json", result)
-        elif mode == "current":
+        elif mode in {"current", "competing-worker"}:
             handle = services.invocations.get(scenario["invocation_id"])
             assert handle is not None
-            result = await engine.dispatch_initial_delivery(handle, authorize)
-            delivery = services.initial_deliveries.get(handle)
-            assert delivery is not None
-            with closing(sqlite3.connect(directory / "receiver.sqlite3")) as receiver:
-                commits = receiver.execute("SELECT COUNT(*) FROM commits").fetchone()[0]
-            _write(
-                directory / "current-result.json",
-                {
-                    "pid": os.getpid(),
-                    "status": result.status,
-                    "output": result.output,
-                    "generation": services.invocations.connection.execute(
-                        "SELECT generation FROM invocation_ownership WHERE invocation_id=?",
-                        (handle.invocation_id,),
-                    ).fetchone()[0],
-                    "delivery_status": delivery.status,
-                    "commits": commits,
-                    "snapshot": _snapshot(services, handle.invocation_id),
-                },
-            )
+            if mode == "competing-worker":
+                try:
+                    await engine.dispatch_initial_delivery(handle, authorize)
+                except InvocationStateConflict as error:
+                    _write(
+                        directory / "competitor-result.json",
+                        {
+                            "pid": os.getpid(),
+                            "error_type": type(error).__name__,
+                            "snapshot": _snapshot(services, handle.invocation_id),
+                        },
+                    )
+                else:
+                    raise AssertionError("competing initial-delivery owner was not fenced")
+            else:
+                result = await engine.dispatch_initial_delivery(handle, authorize)
+                delivery = services.initial_deliveries.get(handle)
+                assert delivery is not None
+                with closing(sqlite3.connect(directory / "receiver.sqlite3")) as receiver:
+                    commits = receiver.execute("SELECT COUNT(*) FROM commits").fetchone()[0]
+                _write(
+                    directory / "current-result.json",
+                    {
+                        "pid": os.getpid(),
+                        "status": result.status,
+                        "output": result.output,
+                        "generation": services.invocations.connection.execute(
+                            "SELECT generation FROM invocation_ownership WHERE invocation_id=?",
+                            (handle.invocation_id,),
+                        ).fetchone()[0],
+                        "delivery_status": delivery.status,
+                        "commits": commits,
+                        "snapshot": _snapshot(services, handle.invocation_id),
+                    },
+                )
         else:
             raise ValueError(f"unknown worker mode: {mode}")
     finally:

@@ -16,11 +16,20 @@ from open_workflow_agent import _native_sqlite_inspection as inspection
 from open_workflow_agent.errors import InvocationStateError
 
 _PRODUCER = r"""
-import sqlite3,sys,time
+import apsw,sys,time
 from pathlib import Path
 root=Path(sys.argv[1]); root.mkdir()
 native=root/'native.sqlite3'; common=root/'runtime.sqlite3'
-db=sqlite3.connect(native,isolation_level=None)
+class CommitGateVFS(apsw.VFS):
+ def __init__(self):
+  super().__init__('hot-rollback-gate','')
+ def xDelete(self,filename,syncdir):
+  if Path(filename).name.startswith('native.sqlite3-mj'):
+   (root/'barrier').write_text(filename)
+   while True: time.sleep(1)
+  return super().xDelete(filename,syncdir)
+gate_vfs=CommitGateVFS()
+db=apsw.Connection(str(native),vfs='hot-rollback-gate')
 db.execute('PRAGMA page_size=4096')
 db.execute('PRAGMA journal_mode=DELETE')
 db.execute('PRAGMA synchronous=FULL')
@@ -62,50 +71,49 @@ def _fingerprints(directory):
 @pytest.fixture(scope="module")
 def hot_rollback(tmp_path_factory):
     parent = tmp_path_factory.mktemp("native-hot-rollback")
-    for attempt in range(3):
-        root = parent / str(attempt)
-        process = subprocess.Popen(
-            [sys.executable, "-u", "-c", _PRODUCER, str(root)],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
-        )
-        found = False
-        try:
-            deadline = time.monotonic() + 25
-            while time.monotonic() < deadline and process.poll() is None:
-                if (root / "ready").exists():
-                    for master in root.glob("native.sqlite3-mj*"):
-                        journal = root / "native.sqlite3-journal"
-                        try:
-                            with journal.open("rb") as stream:
-                                stream.seek(-16, 2)
-                                tail = stream.read(16)
-                                stream.seek(8)
-                                count = struct.unpack(">I", stream.read(4))[0]
-                            if tail[-8:] == inspection._MAGIC and 0 < count < 0xFFFFFFFF:
-                                process.kill()
-                                process.wait(timeout=5)
-                                if master.exists() and journal.exists():
-                                    found = True
-                                    break
-                        except (OSError, ValueError, struct.error):
-                            pass
-                if found:
-                    break
-                time.sleep(0.0005)
-        finally:
-            if process.poll() is None:
-                process.kill()
-                process.wait(timeout=5)
-            error = process.stderr.read().decode(errors="replace")
-            process.stderr.close()
-        if found:
-            assert process.returncode != 0 and not (root / "committed").exists()
-            return root
-        assert not error, error
-    pytest.fail("real producer COMMIT did not expose its bounded super-journal stop barrier")
+    root = parent / "producer"
+    process = subprocess.Popen(
+        [sys.executable, "-u", "-c", _PRODUCER, str(root)],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    found = False
+    try:
+        deadline = time.monotonic() + 25
+        while time.monotonic() < deadline and process.poll() is None:
+            if (root / "barrier").exists():
+                master = next(root.glob("native.sqlite3-mj*"), None)
+                journal = root / "native.sqlite3-journal"
+                try:
+                    with journal.open("rb") as stream:
+                        stream.seek(-16, 2)
+                        tail = stream.read(16)
+                        stream.seek(8)
+                        count = struct.unpack(">I", stream.read(4))[0]
+                    if (
+                        master is not None
+                        and tail[-8:] == inspection._MAGIC
+                        and 0 < count < 0xFFFFFFFF
+                    ):
+                        process.kill()
+                        process.wait(timeout=5)
+                        found = master.exists() and journal.exists()
+                        break
+                except (OSError, ValueError, struct.error):
+                    pass
+            time.sleep(0.01)
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+        error = process.stderr.read().decode(errors="replace")
+        process.stderr.close()
+    assert not error, error
+    assert found, "real producer COMMIT did not reach the super-journal delete barrier"
+    assert process.returncode != 0 and not (root / "committed").exists()
+    return root
 
 
 def _copy_fixture(source, target):
