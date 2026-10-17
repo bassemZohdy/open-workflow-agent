@@ -1342,10 +1342,47 @@ individually, all four nested-child projection variants, and the PostgreSQL CI
 selection check. The malformed-JSON stream case initially returned
 `invalid_response`; `_stream` now catches malformed UTF-8/JSON parse failures
 and maps them to `invalid_stream`, matching the existing malformed-frame and
-unsupported-event behavior. A focused rerun of that corrected matrix remains
-required. The isolated super-journal fixture still fails as above.
+unsupported-event behavior. The corrected eight-case stream matrix passes, and
+the canceled-Task repeated-GetTask projection passes for JSON-RPC and HTTP+JSON
+(2 focused cases). The isolated super-journal fixture still fails as above.
 
 The earlier 12%-stopped run remains a historical partial run and is superseded
-as the latest validation by this completed, non-green batch. Current local
-changes remain unpushed and unqualified. S3-02 and A2A01-A2A08 remain open; no
-task is deferred because there are actionable follow-ups.
+as the latest full-suite validation; it does not qualify commit `36544b5`.
+Exact-source hosted outcomes for `36544b5` are recorded below. The canceled-Task
+projection follow-up is local and unpushed. S3-02 and A2A01-A2A08 remain open;
+no task is deferred because there are actionable follow-ups.
+
+## Exact-source qualification — `36544b5`
+
+Commit `36544b56ff0d9421a9dca6c7dc5bc956cf3029ca` is pushed to
+`codex/required-backlog`. Exact-source hosted workflow outcomes:
+
+- [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39051565929) failed. Root quality gates, deployment validation, mutation testing, Docker acceptance and Windows jobs passed. The ADK native/contract job had four failed cases (1,407 passed, 1,421 skipped): missing and malformed receiver receipts over JSON-RPC and HTTP+JSON.
+- The same CI run's LangGraph native/contract job had six failed cases (1,461 passed, 1,392 skipped): two corrupt native-checkpoint cases and four missing/malformed receiver-receipt cases, all over SQLite and the two A2A bindings.
+- [PostgreSQL CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39051565970) passed all ten jobs, including the initial-delivery PostgreSQL process-race witness.
+- [Agent Framework CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39051565945), [External Sandbox CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39051565907), [Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39051565978) and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39051565906) passed.
+
+The corruption-resume cases return the expected sanitized `invalid_invocation_state`,
+but their before/after snapshots show common invocation and ownership revisions
+changed before rejection. This is an actionable shared resume-ordering defect;
+the cases do not qualify. The 3h30m local root result above ran before this
+commit and also remains non-green. No S3-02 task or A2A gate is complete.
+
+## Local follow-up batch — 2026-10-17 (not qualified)
+
+The common resume path now verifies retained receiver/native state before
+acquiring durable execution ownership, then repeats the verification under the
+lease to guard against concurrent changes. The targeted LangGraph/SQLite
+corruption selection produced one failure followed by a Windows pytest
+reporting-thread access violation; it exited without a usable test summary.
+No native-profile case is counted as passing. The exact source and failure are
+in the preceding hosted qualification record.
+
+The A2A04 tests add stable, read-only repeated Task projections for cancellation
+(JSON-RPC and HTTP+JSON: 2 focused cases) and completed END/persisted deadline
+fault (same bindings: 4 focused cases). The deadline case seeds the terminal
+fault and does not exercise the clock transition. Together, the focused route
+and common version-recovery selection passed 15 cases and skipped 100 because
+optional backend environments were absent. Ruff, format, documentation-link
+validation and mypy passed after formatting the added tests. The wider root
+suite and exact-source workflows have not run on this batch.

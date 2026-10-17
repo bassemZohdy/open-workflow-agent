@@ -190,6 +190,123 @@ def test_http_json_get_and_cancel_task_use_official_paths(tmp_path) -> None:
     assert missing_response.json()["error"]["details"][0]["metadata"]["owaCode"] == "task_not_found"
 
 
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+def test_cancelled_task_get_projection_is_stable_and_read_only(tmp_path, transport: str) -> None:
+    app, services = _runtime(tmp_path, transport=transport)
+    handle = _create_handle(services)
+
+    with TestClient(app) as client:
+        if transport == "jsonrpc":
+            cancel_response = client.post(
+                "/a2a",
+                headers=A2A_HEADERS,
+                json=_task_request("CancelTask", handle.invocation_id, "cancel-readonly"),
+            )
+
+            def get_task(request_id: str):
+                return client.post(
+                    "/a2a",
+                    headers=A2A_HEADERS,
+                    json=_task_request("GetTask", handle.invocation_id, request_id),
+                )
+
+        else:
+            cancel_response = client.post(
+                f"/a2a/tasks/{handle.invocation_id}:cancel",
+                headers=A2A_HEADERS,
+            )
+
+            def get_task(_request_id: str):
+                return client.get(
+                    f"/a2a/tasks/{handle.invocation_id}",
+                    headers=A2A_HEADERS,
+                )
+
+        assert cancel_response.status_code == 200, cancel_response.text
+        snapshot_after_cancel = services.invocations.get(handle.invocation_id)._persisted_payload
+
+        first = get_task("get-cancelled-first")
+        second = get_task("get-cancelled-second")
+
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    first_body = first.json()
+    second_body = second.json()
+    first_task = first_body["result"] if transport == "jsonrpc" else first_body
+    second_task = second_body["result"] if transport == "jsonrpc" else second_body
+    assert first_task["id"] == second_task["id"] == handle.invocation_id
+    assert first_task["contextId"] == second_task["contextId"] == "ctx-1"
+    assert first_task["status"]["state"] == second_task["status"]["state"] == "TASK_STATE_CANCELED"
+    assert (
+        services.invocations.get(handle.invocation_id)._persisted_payload == snapshot_after_cancel
+    )
+
+
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize(
+    ("terminal", "expected_state"),
+    [
+        ("end", "TASK_STATE_COMPLETED"),
+        ("deadline", "TASK_STATE_FAILED"),
+    ],
+)
+def test_end_and_deadline_task_reads_are_authoritative_and_read_only(
+    tmp_path, transport: str, terminal: str, expected_state: str
+) -> None:
+    app, services = _runtime(tmp_path, transport=transport)
+    handle = _create_handle(services)
+    if terminal == "end":
+        services.invocations.update(handle, status="completed", output={"ended": True})
+    else:
+        services.invocations.update(
+            handle,
+            status="faulted",
+            error={"code": "workflow_deadline_exceeded"},
+        )
+    snapshot_after_terminal = services.invocations.get(handle.invocation_id)._persisted_payload
+
+    with TestClient(app) as client:
+        if transport == "jsonrpc":
+
+            def get_task(request_id: str):
+                return client.post(
+                    "/a2a",
+                    headers=A2A_HEADERS,
+                    json=_task_request("GetTask", handle.invocation_id, request_id),
+                )
+
+        else:
+
+            def get_task(_request_id: str):
+                return client.get(
+                    f"/a2a/tasks/{handle.invocation_id}",
+                    headers=A2A_HEADERS,
+                )
+
+        first = get_task("get-terminal-first")
+        second = get_task("get-terminal-second")
+
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    first_body = first.json()
+    second_body = second.json()
+    first_task = first_body["result"] if transport == "jsonrpc" else first_body
+    second_task = second_body["result"] if transport == "jsonrpc" else second_body
+    assert first_task == second_task
+    assert first_task["id"] == handle.invocation_id
+    assert first_task["contextId"] == "ctx-1"
+    assert first_task["status"]["state"] == expected_state
+    if terminal == "end":
+        assert first_task["artifacts"][0]["parts"][0]["data"] == {"ended": True}
+    else:
+        assert first_task["status"]["message"]["parts"][0]["text"] == (
+            "workflow failed: workflow_deadline_exceeded"
+        )
+    assert (
+        services.invocations.get(handle.invocation_id)._persisted_payload == snapshot_after_terminal
+    )
+
+
 def test_capabilities_advertise_only_implemented_task_operations(tmp_path) -> None:
     app, _services = _runtime(tmp_path, transport="jsonrpc")
 

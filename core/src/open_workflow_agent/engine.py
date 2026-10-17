@@ -741,6 +741,11 @@ class WorkflowEngine:
             and self._ownership_tasks.get(handle.invocation_id) is not asyncio.current_task()
         ):
             await released.wait()
+        # Corrupt retained receipts or native continuation state must be
+        # rejected before acquiring (and advancing) the durable ownership
+        # generation.  State may progress after this read-only preflight, so
+        # repeat the verification under the lease before any resume mutation.
+        await self._verify_resume_state(handle, plan)
         try:
             async with self._own_execution(handle):
                 self.services.invocations.refresh(handle)

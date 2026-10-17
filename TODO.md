@@ -150,77 +150,40 @@ treated as a deferred task or as additional feature completion.
   [acceptance record](docs/s3-01-mcp-acceptance.md) and
   [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6).
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
-  S2-09 and S3-01 are verified prerequisites. The bounded A2A profile has broad
-  local and hosted evidence, but A2A01-A2A08 remain partial pending direct
-  cross-product, authority, recovery, streaming and backend evidence. Outbound
-  calls are not automatically replayed after possible acceptance; callers may
-  explicitly resubscribe to a known task. Recent local witnesses cover card
-  selection, HTTP+JSON resume, protected-approval denial, malformed-resume
-  no-mutation, all six optional-operation rejections, and timer/child Task
-  projection. The nested-child value/fault test now covers both inbound
-  bindings, with immutable repeated GetTask reads. A separate-process SQLite
-  takeover test proves initial-delivery owner-generation fencing. Owner-
-  authority, native-checkpoint and receiver-receipt cases still require
-  independent engine SDK and PostgreSQL qualification.
-
-  The hosted CI run at `8ff5f6e` exposed incorrect receipt-fixture decoding,
-  missing HTTP+JSON version headers, an outdated JSON-RPC error assertion and a
-  LangGraph Windows receipt-boundary fixture. The later exact-source run
-  `aafe53c` passed PostgreSQL CI (all ten jobs), Agent Framework, External
-  Sandbox, Security and Docs. CI exposed receiver-receipt corruption fixtures
-  expecting the wrong sanitized error, HTTP+JSON checkpoint fixtures reading
-  the JSON-RPC metadata field, and one Windows retry harness timeout. Docker
-  acceptance also hit a pre-build Docker Hub HTTP 502. The assertion and
-  timeout corrections, plus an A2A05 PostgreSQL process-race witness, are in
-  the current local batch and have not yet been requalified on the exact
-  source. The latest 2026-10-17 working-tree root batch completed in 3h30m
-  with 4,616 passed, 3,007 skipped, 28 failed, 13 setup errors and 125
-  warnings. Its coverage gate was met, but the suite was not green. The 13
-  errors reproduce in isolation at the Windows real super-journal barrier
-  fixture; approval-wait and nested-child projection cases pass when isolated.
-  The malformed SSE JSON stream now maps parse failures to `invalid_stream`;
-  its focused matrix still needs rerun after that correction. The 28 failures
-  include timing-sensitive Windows sandbox/process and workflow cases;
-  individual actionable failures remain open. The earlier 12%-stopped run is
-  historical only. These results do not qualify the full batch; finish the
-  grouped changes, then run the required consolidated suite and exact-source
-  hosted workflows. Durable Task/receipt expiry remains undefined; the
-  acceptance record lists the policy choices and the cleanup evidence a future
-  retention contract would require. See the [gate-by-gate acceptance
-  record](docs/s3-02-a2a-acceptance.md) and [validation
-  history](docs/validation-history/pending-batch-results.md).
+  S2-09 and S3-01 are verified prerequisites. A2A01-A2A08 remain partial;
+  interoperability, lifecycle, authority, recovery, streaming and backend
+  gates are not closed. Outbound calls are not automatically replayed after
+  possible acceptance; callers may explicitly resubscribe to a known task.
+  Pushed source `36544b5` passes PostgreSQL CI, Agent Framework, External
+  Sandbox, Security and Docs. Main CI found ten actionable corruption-resume
+  failures: ADK receipt and LangGraph checkpoint/receipt paths mutate common
+  state before rejecting the damaged evidence. A local common-engine change now
+  preflights retained state before lease acquisition and rechecks under the
+  lease; its native-profile rerun ended in a Windows pytest access violation
+  without a usable summary, so the fix is unqualified. The local Windows
+  super-journal fixture remains unresolved. Durable Task/receipt expiry still
+  requires a contract decision. Current gate status and focused evidence are in the
+  [acceptance record](docs/s3-02-a2a-acceptance.md); exact-source and historical
+  results are in the [validation history](docs/validation-history/pending-batch-results.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
-  Selected adapters and independent recovery fixtures are authored. The
-  `8183776` PostgreSQL and Windows runs confirm one corrected inbox/ACK
-  recurrence only; broader behavior, backend, platform, lifetime, packaging
-  and hosted qualification remain open. At `f235be4`, PostgreSQL ADK operation
-  recovery reached 97% before its 20-minute command limit (exit 124). The
-  extended 25-minute command and 30-minute job completed in PostgreSQL CI run
-  `38645586498` at `e45115c`; broader backend and adapter qualification remains
-  open. See
+  Selected adapters and recovery fixtures are authored; cross-adapter,
+  backend, platform, lifetime, packaging and hosted acceptance remain open.
   the [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and
   [retained run evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
-  Finite captured script sources, independent recovery proofs and awaited internal
-  process controls are authored. See [the acceptance plan](docs/s3-04-executable-source-acceptance.md).
-  Actual native/backend cases include a late script worker losing parent
-  ownership while its business receipt remains pending. The coherent source
-  batch and all platform/backend/publication gates remain pending; no new
-  executable or isolation profile is complete.
+  Captured sources, recovery proofs and awaited internal process controls are
+  authored; the required profile and deployment acceptance remains open. See
+  the [acceptance plan](docs/s3-04-executable-source-acceptance.md).
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
   Protected actor identity, atomic decisions, expiry and native recovery
-  controls are authored. The PostgreSQL timestamp migration and lease-fixture
-  correction have focused passing evidence; the hosted Windows request-row
-  case passed at `8183776`. Cross-engine/backend acceptance remains open. See
+  controls are authored; cross-engine/backend acceptance remains open. See
   the [finite acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
   [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and applicable delegated authorization.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
-  Eight finite recipe families and named role bindings are authored. A 15-second
-  test lease passes the focused case and LangGraph/SQLite recovery matrix
-  locally; the `8183776` Windows timing run exposed that fixture-timing issue
-  and two retry-output mismatches. Hosted requalification remains pending. See
-  the [acceptance plan](docs/s3-07-agent-pattern-acceptance.md) and
+  Eight finite recipe families and named role bindings are authored; hosted
+  acceptance remains open. See the
+  [acceptance plan](docs/s3-07-agent-pattern-acceptance.md) and
   [timing evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
   Selected finite adapters and grouped corrections are authored; see
