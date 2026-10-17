@@ -4,10 +4,13 @@ import asyncio
 
 import httpx
 import pytest
+from engine_cases import engine_cases
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.engine import PortableWorkflowEngine
 from open_workflow_agent.errors import ToolError
+from open_workflow_agent.events import InMemoryEventBus
 from open_workflow_agent.external_catalog import ExternalCatalogResolver
 from open_workflow_agent.protocols import HttpClient
 from open_workflow_agent.services import RuntimeServices
@@ -33,7 +36,7 @@ async def test_invoke_capabilities_health_and_reload(tmp_path):
             assert capabilities["features"]["events"] == {
                 "emit": True,
                 "listen": True,
-                "durable": False,
+                "durable": True,
             }
             assert capabilities["features"]["cloudEvents"] == {
                 "lifecycle": True,
@@ -162,7 +165,8 @@ async def test_api_cancel_waiting_invocation_is_idempotent(tmp_path):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             invoke_task = asyncio.create_task(client.post("/v1/invoke", json={"input": {}}))
-            for _ in range(100):
+            deadline = asyncio.get_running_loop().time() + 30
+            while asyncio.get_running_loop().time() < deadline:
                 waiting = next(
                     (
                         event
@@ -173,7 +177,12 @@ async def test_api_cancel_waiting_invocation_is_idempotent(tmp_path):
                 )
                 if waiting is not None:
                     break
-                await asyncio.sleep(0.005)
+                if invoke_task.done():
+                    result = invoke_task.result()
+                    raise AssertionError(
+                        f"invocation completed before entering waiting state: {result}"
+                    )
+                await asyncio.sleep(0.01)
             assert waiting is not None
             cancelled = await client.post(
                 f"/v1/invocations/{waiting.invocation_id}/cancel",
@@ -228,20 +237,125 @@ async def test_api_schedule_is_durable_and_idempotent(tmp_path):
             assert first.status_code == duplicate.status_code == 200
             assert first.json()["schedule_id"] == duplicate.json()["schedule_id"]
             schedule_id = first.json()["schedule_id"]
-            for _ in range(100):
+            for _ in range(1000):
                 current = await client.get(f"/v1/schedules/{schedule_id}")
-                if current.json()["status"] == "completed":
+                assert current.status_code == 200, current.text
+                if current.json().get("last_status") == "completed":
                     break
                 await asyncio.sleep(0.005)
-            assert current.json()["status"] == "completed"
-            assert current.json()["last_status"] == "completed"
+            assert current.json()["status"] == "active"
+            assert current.json().get("last_status") == "completed", current.text
+            handle = services.invocations.get(current.json()["last_invocation_id"])
+            assert handle is not None and handle.status == "completed"
+            assert handle.output == {"done": True}
+            assert services.invocations.read_input(handle) == {"from": "api"}
+            assert services.model.calls == []
             cancelled = await client.post(
                 f"/v1/schedules/{schedule_id}/cancel",
                 headers={"Idempotency-Key": "schedule-cancel-1"},
             )
             assert cancelled.status_code == 200
-            assert cancelled.json()["status"] == "completed"
+            assert cancelled.json()["status"] == "cancelled"
     services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("backend", ["embedded", "memory"])
+@pytest.mark.parametrize("authenticated", [False, True])
+async def test_api_event_schedule_dispatches_projected_input_and_stops_after_cancel(
+    tmp_path, backend, authenticated, monkeypatch
+):
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake"},
+            "execution_timing": {"timezone": "Asia/Dubai"},
+            "events": {"backend": backend},
+            "workflow": {
+                "definition": {
+                    "document": {
+                        "dsl": "1.0.3",
+                        "namespace": "tests",
+                        "name": "api-event-schedule",
+                        "version": "1.0.0",
+                    },
+                    "schedule": {"on": {"one": {"with": {"type": "ready"}}}},
+                    "do": [{"finish": {"set": {"triggered": "${ $workflow.input }"}}}],
+                }
+            },
+        }
+    )
+    headers = {}
+    principal = "anonymous"
+    if authenticated:
+        monkeypatch.setenv("SCHEDULE_TEST_TOKEN", "schedule-test-token")
+        settings = config.model_dump(exclude_unset=True)
+        settings["server"] = {"api_security_profile": "schedule-auth"}
+        settings["security"] = {
+            "profiles": {
+                "schedule-auth": {
+                    "type": "bearer",
+                    "token": {"from_env": "SCHEDULE_TEST_TOKEN"},
+                    "principal": "schedule-test-client",
+                }
+            }
+        }
+        config = RuntimeConfig.model_validate(settings)
+        headers = {"Authorization": "Bearer schedule-test-token"}
+        principal = "schedule-test-client"
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    try:
+        async with app.router.lifespan_context(app):
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://test", headers=headers
+            ) as client:
+                if authenticated:
+                    denied = await client.post(
+                        "/v1/schedules", json={"input": {}}, headers={"Authorization": ""}
+                    )
+                    assert denied.status_code == 403
+                    assert denied.json()["error"]["code"] == "authentication_failed"
+                    assert services.schedules.active_triggers() == ()
+                created = await client.post("/v1/schedules", json={"input": {"registration": True}})
+                if backend == "memory":
+                    assert created.status_code == 400, created.text
+                    assert created.json()["error"]["code"] == "schedule_validation_error"
+                    assert services.schedules.active_triggers() == ()
+                    return
+                assert created.status_code == 200, created.text
+                schedule_id = created.json()["schedule_id"]
+                record = services.schedules.get(schedule_id)
+                assert record is not None and record.timezone == "Asia/Dubai"
+                assert record.owner_principal == record.event_scope == principal
+                # Register before publication so pre-registration events cannot start a cycle.
+                await app.state.scheduler.tick()
+                published = await client.post(
+                    "/v1/events", json={"event": {"type": "ready", "data": {"value": None}}}
+                )
+                assert published.status_code == 200, published.text
+                for _ in range(1000):
+                    current = await client.get(f"/v1/schedules/{schedule_id}")
+                    assert current.status_code == 200, current.text
+                    if current.json().get("last_status") == "completed":
+                        break
+                    await asyncio.sleep(0.005)
+                assert current.json().get("last_status") == "completed", current.text
+                handle = services.invocations.get(current.json()["last_invocation_id"])
+                assert handle is not None and handle.output == {"triggered": [{"value": None}]}
+                cancelled = await client.post(f"/v1/schedules/{schedule_id}/cancel")
+                assert cancelled.status_code == 200 and cancelled.json()["status"] == "cancelled"
+                assert (
+                    await client.post(
+                        "/v1/events", json={"event": {"type": "ready", "data": {"value": 2}}}
+                    )
+                ).status_code == 200
+                await app.state.scheduler.tick()
+                assert (
+                    services.schedules.get(schedule_id).last_invocation_id == handle.invocation_id
+                )
+    finally:
+        services.close()
 
 
 @pytest.mark.asyncio
@@ -293,3 +407,74 @@ async def test_api_runs_a_registered_local_subworkflow(tmp_path):
             assert response.status_code == 200
             assert response.json()["output"] == {"result": "api"}
     services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("backend", ["embedded", "embedded-approval", "memory", "custom"])
+@pytest.mark.parametrize(
+    "engine_name,engine_type", [("base", PortableWorkflowEngine), *engine_cases()]
+)
+async def test_scheduling_capabilities_match_known_event_backend(
+    tmp_path, monkeypatch, backend, engine_name, engine_type
+):
+    settings = {
+        "model": {"provider": "fake"},
+        "events": {"backend": "memory" if backend == "memory" else "embedded"},
+        "workflow": {
+            "definition": {
+                "document": {
+                    "dsl": "1.0.3",
+                    "namespace": "tests",
+                    "name": "capability-event-schedule",
+                    "version": "1.0.0",
+                },
+                "schedule": {"on": {"one": {"with": {"type": "ready"}}}},
+                "do": [{"finish": {"set": {"done": True}}}],
+            }
+        },
+    }
+    if backend == "embedded-approval":
+        monkeypatch.setenv("SCHEDULE_CAPABILITY_OPERATOR_TOKEN", "test-operator-token")
+        settings["approvals"] = {"enabled": True, "operator_security_profile": "operator"}
+        settings["security"] = {
+            "profiles": {
+                "operator": {
+                    "type": "bearer",
+                    "token": {"from_env": "SCHEDULE_CAPABILITY_OPERATOR_TOKEN"},
+                }
+            }
+        }
+    config = RuntimeConfig.model_validate(settings)
+    services = RuntimeServices(
+        config,
+        model=FakeModel(),
+        database_root=tmp_path,
+        event_bus=InMemoryEventBus() if backend == "custom" else None,
+    )
+    app = create_app(config=config, services=services, engine=engine_type())
+    expected = backend in {"embedded", "embedded-approval"}
+    try:
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                capabilities = (await client.get("/v1/capabilities")).json()
+                assert capabilities["engine"] == engine_name
+                assert capabilities["features"]["scheduling"] == {
+                    "after": True,
+                    "every": True,
+                    "cron": True,
+                    "on": expected,
+                    "durable": True,
+                    "owner": "fenced_workers",
+                }
+                created = await client.post("/v1/schedules", json={"input": {}})
+                assert created.status_code == (200 if expected else 400), created.text
+                if expected:
+                    cancelled = await client.post(
+                        f"/v1/schedules/{created.json()['schedule_id']}/cancel"
+                    )
+                    assert cancelled.status_code == 200
+                assert services.model.calls == []
+    finally:
+        services.close()

@@ -10,7 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_full_inventory_is_preserved_and_owned_by_pending_tasks():
+def test_full_inventory_is_preserved_and_owned_by_tracked_tasks():
     tracker = json.loads((ROOT / "resources/compatibility/feature-tracker.json").read_text())
     rows = tracker["matrix_a"] + tracker["matrix_b"]
     assert len(tracker["matrix_a"]) == 575
@@ -24,6 +24,7 @@ def test_full_inventory_is_preserved_and_owned_by_pending_tasks():
     assert len(tracking) == len(ids) == 658
     assert {row["feature_id"] for row in tracking} == ids
     tasks = {task["id"] for task in tracker["repository_tracking"]["tasks"]}
+    task_states = {task["id"]: task["status"] for task in tracker["repository_tracking"]["tasks"]}
     pending = {
         task["id"]
         for task in tracker["repository_tracking"]["tasks"]
@@ -35,8 +36,16 @@ def test_full_inventory_is_preserved_and_owned_by_pending_tasks():
     tests = {test["id"] for test in tracker["tests"]}
     for row in tracking:
         assert row["todo_ids"] and set(row["todo_ids"]) <= tasks
-        assert row["repository_status"] == "Verification pending"
-        assert row["evidence_of_completion"] == []
+        if row["repository_status"] != "Verification pending":
+            assert row["evidence_of_completion"]
+            for evidence in row["evidence_of_completion"]:
+                assert evidence["task_id"] in row["todo_ids"]
+                assert evidence["task_id"] in task_states
+                assert evidence["scope"]
+                for path in evidence["tests"]:
+                    assert (ROOT / path).is_file()
+        else:
+            assert row["evidence_of_completion"] == []
         assert set(re.findall(r"T\d+", row["required_tests"])) <= tests
     assert not tracker["repository_tracking"]["verification"]["full_conformance"]
 

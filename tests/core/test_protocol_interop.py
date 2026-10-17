@@ -6,6 +6,8 @@ respective specifications and accurately advertise their capabilities.
 
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 from open_workflow_agent.a2a import (
@@ -14,6 +16,7 @@ from open_workflow_agent.a2a import (
 from open_workflow_agent.a2a import (
     A2A_SPEC_RELEASE,
 )
+from open_workflow_agent.errors import _McpOutcomeUncertain
 from open_workflow_agent.observability import (
     CLOUD_EVENTS_SPECVERSION,
     CloudEvent,
@@ -27,6 +30,7 @@ from open_workflow_agent.protocols import (
     HttpClient,
     ProtocolServices,
 )
+from openapi_fixtures import operation_document
 
 # --- CloudEvents 1.0 Conformance Tests ---
 
@@ -136,7 +140,22 @@ def test_mcp_outbound_request_includes_required_headers() -> None:
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
-        return httpx.Response(200, json={"result": {"ok": True}})
+        import json
+
+        body = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": body["id"],
+                "result": {
+                    "resultType": "complete",
+                    "tools": [],
+                    "ttlMs": 0,
+                    "cacheScope": "public",
+                },
+            },
+        )
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
 
@@ -184,6 +203,39 @@ def test_mcp_rejects_legacy_protocol_version() -> None:
         )
 
 
+def test_mcp_server_notification_is_explicitly_unsupported_without_replay() -> None:
+    """A server notification cannot stand in for the correlated business result."""
+    calls: list[dict[str, object]] = []
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(json.loads(request.content))
+        return httpx.Response(
+            200,
+            json={"jsonrpc": "2.0", "method": "notifications/progress", "params": {"progress": 1}},
+        )
+
+    services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
+
+    import asyncio
+
+    with pytest.raises(_McpOutcomeUncertain) as error:
+        asyncio.run(
+            services.call(
+                "mcp",
+                {
+                    "protocolVersion": MCP_PROTOCOL_VERSION,
+                    "method": "tools/call",
+                    "transport": {"http": {"endpoint": "https://mcp.test"}},
+                    "parameters": {"name": "lookup", "arguments": {}},
+                    "id": "business-key",
+                },
+            )
+        )
+
+    assert error.value.details["reason"] == "unsupported_interaction"
+    assert len(calls) == 1 and calls[0]["method"] == "tools/call"
+
+
 # --- A2A Protocol Conformance Tests ---
 
 
@@ -215,7 +267,21 @@ def test_a2a_outbound_request_includes_required_headers() -> None:
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
-        return httpx.Response(200, json={"result": {"ok": True}})
+        body = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": body["id"],
+                "result": {
+                    "message": {
+                        "messageId": "peer-response",
+                        "role": "ROLE_AGENT",
+                        "parts": [{"data": {"ok": True}}],
+                    }
+                },
+            },
+        )
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
 
@@ -295,6 +361,14 @@ def test_openapi_outbound_request_uses_operation_id() -> None:
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
+        if request.url.path == "/openapi":
+            assert request.method == "GET"
+            return httpx.Response(
+                200,
+                json=operation_document(
+                    "https://api.test", path="/lookup", parameters=(("query", "query", "string"),)
+                ),
+            )
         return httpx.Response(200, json={"ok": True})
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
@@ -312,8 +386,11 @@ def test_openapi_outbound_request_uses_operation_id() -> None:
         )
     )
 
-    # Should have made a request
-    assert len(seen) == 1
+    assert [(request.method, request.url.path) for request in seen] == [
+        ("GET", "/openapi"),
+        ("GET", "/lookup"),
+    ]
+    assert seen[1].url.params["query"] == "hello"
 
 
 # --- Cross-Protocol Consistency Tests ---

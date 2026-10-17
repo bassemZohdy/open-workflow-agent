@@ -78,6 +78,7 @@ document:
 do:
   - execute:
       run:
+        return: all
         container:
           image: "$worker_image"
           command: /opt/venv/bin/python
@@ -219,7 +220,7 @@ from pathlib import Path
 value = json.loads(Path(sys.argv[1]).read_text())
 assert value["status"] == "completed"
 output = value["output"]
-assert output["exitCode"] == 0
+assert output["code"] == 0
 assert output["stderr"] == ""
 probe = json.loads(output["stdout"])
 expected = {

@@ -10,13 +10,14 @@ from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
-from open_workflow_agent_langgraph.native import LANGGRAPH_AVAILABLE
+from open_workflow_agent_langgraph.native import LANGGRAPH_AVAILABLE, LangGraphFunctionalAdapter
 
 
 @pytest.mark.asyncio
-async def test_native_langgraph_functional_invocation(tmp_path):
+async def test_native_langgraph_task_graph_invocation(tmp_path):
     if not LANGGRAPH_AVAILABLE:
         pytest.skip("langgraph optional dependency is not installed")
+    pytest.importorskip("langgraph.checkpoint.sqlite.aio")
     services = RuntimeServices(
         RuntimeConfig(), model=FakeModel({"response": "native"}), database_root=tmp_path
     )
@@ -51,6 +52,7 @@ async def test_native_langgraph_functional_invocation(tmp_path):
 async def test_native_langgraph_interrupted_resume_preserves_operation_identity(tmp_path):
     if not LANGGRAPH_AVAILABLE:
         pytest.skip("langgraph optional dependency is not installed")
+    pytest.importorskip("langgraph.checkpoint.sqlite.aio")
     workflow = {
         "document": {
             "dsl": "1.0.3",
@@ -69,7 +71,7 @@ async def test_native_langgraph_interrupted_resume_preserves_operation_identity(
                     },
                 }
             },
-            {"pause": {"wait": {"seconds": 1}}},
+            {"pause": {"wait": {"seconds": 300}}},
             {"finish": {"set": {"done": True}}},
         ],
     }
@@ -97,11 +99,20 @@ async def test_native_langgraph_interrupted_resume_preserves_operation_identity(
         workflow_fingerprint=plan.fingerprint,
     )
     running = asyncio.create_task(engine.invoke(plan, handle, {}))
-    await asyncio.wait_for(reached_side_effect.wait(), timeout=5)
-    running.cancel()
-    with pytest.raises(asyncio.CancelledError):
-        await running
-    services.close()
+    try:
+        await asyncio.wait_for(reached_side_effect.wait(), timeout=5)
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=5)
+        assert waiting.status == "waiting", waiting.error
+        assert handle.invocation_id not in engine._active
+        assert handle.invocation_id not in engine._ownership_tasks
+        assert handle._execution_lease is None
+        assert services.invocations.read_input(handle) == {}
+        assert services.model.calls == []
+    finally:
+        running.cancel()
+        await asyncio.gather(running, return_exceptions=True)
+        await engine.shutdown()
+        services.close()
 
     restarted = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
     restarted.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
@@ -110,10 +121,58 @@ async def test_native_langgraph_interrupted_resume_preserves_operation_identity(
     await resumed_engine.initialize(restarted)
     persisted = restarted.invocations.get(handle.invocation_id)
     assert persisted is not None
-    assert persisted.status == "running"
-    resumed = await resumed_engine.resume(persisted, {}, plan)
-    assert resumed.status == "completed"
-    assert resumed.output == {"done": True}
-    assert len(calls) >= 2
-    assert len(set(calls[-2:])) == 1
-    restarted.close()
+    assert persisted.status == "waiting"
+    try:
+        resumed = await resumed_engine.resume(persisted, {}, plan)
+        assert resumed.status == "completed"
+        assert resumed.output == {"done": True}
+        assert len(calls) == 1 and len(set(calls)) == 1
+        assert restarted.model.calls == []
+    finally:
+        await resumed_engine.shutdown()
+        restarted.close()
+
+
+@pytest.mark.asyncio
+async def test_fresh_native_sqlite_storage_allows_concurrent_first_invocations(tmp_path):
+    if not LANGGRAPH_AVAILABLE:
+        pytest.skip("langgraph optional dependency is not installed")
+    pytest.importorskip("langgraph.checkpoint.sqlite.aio")
+    adapter = LangGraphFunctionalAdapter(str(tmp_path / "fresh.sqlite"))
+    entered = 0
+    all_entered = asyncio.Event()
+    release = asyncio.Event()
+    count = 12
+
+    async def runner(value):
+        nonlocal entered
+        entered += 1
+        if entered == count:
+            all_entered.set()
+        await release.wait()
+        return {"value": value}
+
+    running = [
+        asyncio.create_task(adapter.invoke(runner, index, thread_id=f"thread-{index}"))
+        for index in range(count)
+    ]
+    try:
+        # Every workflow reaches the barrier before any can finish: checkpoint
+        # initialization is ordered without serializing workflow execution.
+        await asyncio.wait_for(all_entered.wait(), timeout=15)
+        release.set()
+        outputs = await asyncio.wait_for(asyncio.gather(*running), timeout=15)
+        assert outputs == [{"value": index} for index in range(count)]
+    finally:
+        release.set()
+        for task in running:
+            task.cancel()
+        await asyncio.gather(*running, return_exceptions=True)
+
+    from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+    async with AsyncSqliteSaver.from_conn_string(str(tmp_path / "fresh.sqlite")) as saver:
+        for index in range(count):
+            checkpoint = await saver.aget_tuple({"configurable": {"thread_id": f"thread-{index}"}})
+            assert checkpoint is not None
+            assert checkpoint.checkpoint["channel_values"]["__end__"] == {"value": index}

@@ -60,7 +60,8 @@ async def test_backend_sends_only_bounded_controller_contract() -> None:
     finally:
         await backend.shutdown()
 
-    assert result.stdout == "ok\n"
+    assert result.stdout == result.stderr == ""
+    assert result.exit_code == 0 and result.duration == 0.2
     assert captured["image"] == _IMAGE
     assert captured["environment"] == {
         "MODE": "test",

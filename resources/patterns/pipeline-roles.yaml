@@ -1,0 +1,62 @@
+document:
+  dsl: 1.0.3
+  namespace: patterns
+  name: pipeline-roles
+  version: 1.0.0
+  title: Pipeline Roles
+  summary: Bounded canonical OWS recipe. Named roles are immutable deployment bindings;
+    model output never grants authority.
+input:
+  schema:
+    format: json
+    document:
+      type: object
+      required:
+      - question
+      properties:
+        question:
+          type: string
+          maxLength: 65536
+      additionalProperties: false
+timeout:
+  after:
+    seconds: 120
+do:
+- draft:
+    call: agent-drafter:1.0.0@default
+    with:
+      input: ${ .question }
+    timeout:
+      after:
+        seconds: 30
+    output:
+      schema:
+        format: json
+        document:
+          type: object
+          required:
+          - text
+          properties:
+            text:
+              type: string
+              maxLength: 65536
+          additionalProperties: false
+- refine:
+    call: agent-reviewer:1.0.0@default
+    with:
+      input: ${ . }
+    timeout:
+      after:
+        seconds: 30
+    output:
+      schema:
+        format: json
+        document:
+          type: object
+          required:
+          - text
+          properties:
+            text:
+              type: string
+              maxLength: 65536
+          additionalProperties: false

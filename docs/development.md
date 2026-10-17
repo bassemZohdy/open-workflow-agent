@@ -300,7 +300,7 @@ docker compose --profile langgraph up --build
 
 Remote CI additionally validates image metadata/size, container acceptance, PostgreSQL persistence, selected CTK coverage, and stop/restart/resume behavior.
 
-Container acceptance verifies internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container. Docker external-sandbox acceptance runs on the self-hosted Docker runner; Kubernetes/OpenShift real-cluster acceptance is recorded separately in `PROJECT.md` under `DEPLOY-1`.
+Container acceptance verifies internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container. Docker external-sandbox acceptance runs on GitHub-hosted Ubuntu; Kubernetes/OpenShift real-cluster acceptance is recorded separately in `PROJECT.md` under `DEPLOY-1`. See [CI runners and validation](ci-runners.md) for current triggers and publication gates.
 
 ### Native engine benchmark evidence
 

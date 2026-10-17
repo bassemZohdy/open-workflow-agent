@@ -14,8 +14,8 @@ WORKDIR /build
 # Install the locked third-party dependency graph before copying application
 # source so normal code changes can reuse the expensive dependency layer.
 # Package metadata (readme/license) files are required by the wheel builds.
-COPY pyproject.toml README.md LICENSE ./
-COPY engines/langgraph/pyproject.toml engines/langgraph/uv.lock engines/langgraph/README.md ./engines/langgraph/
+COPY pyproject.toml uv.lock hatch_build.py README.md LICENSE ./
+COPY engines/langgraph/pyproject.toml engines/langgraph/uv.lock engines/langgraph/hatch_build.py engines/langgraph/README.md ./engines/langgraph/
 RUN pip install --no-cache-dir "uv==0.11.26" \
     && uv sync --directory /build/engines/langgraph --locked --no-dev --no-editable \
        --extra sqlite --extra knowledge --extra model --extra postgres \

@@ -8,6 +8,7 @@ public surface re-exported from `open_workflow_agent.sandbox`.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol
 
@@ -50,10 +51,29 @@ class SandboxExecutionResult:
 
     def as_output(self) -> dict[str, Any]:
         return {
-            "exitCode": self.exit_code,
+            "code": self.exit_code,
             "stdout": self.stdout,
             "stderr": self.stderr,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class SandboxStdioRequest:
+    execution_id: str
+    command: str
+    arguments: tuple[str, ...] = ()
+    environment: tuple[tuple[str, str], ...] | None = None
+    timeout_seconds: float = 30.0
+
+
+class SandboxStdioSession(Protocol):
+    async def send_frame(
+        self, value: bytes, *, on_dispatch: Callable[[], None] | None = None
+    ) -> None: ...
+
+    async def receive_frame(self) -> bytes: ...
+
+    async def aclose(self) -> None: ...
 
 
 class SandboxBackend(Protocol):

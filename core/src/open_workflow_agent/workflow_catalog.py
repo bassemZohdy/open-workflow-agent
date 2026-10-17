@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from .errors import UnsupportedWorkflowFeature, WorkflowExecutionError
+from .errors import UnsupportedWorkflowFeature, WorkflowExecutionError, WorkflowSemanticError
+from .versions import version_precedence
 from .workflow import WorkflowPlan, compile_workflow
 
 
@@ -26,7 +27,15 @@ class WorkflowCatalog:
             if isinstance(workflow, WorkflowPlan)
             else compile_workflow(workflow, trusted_catalogs=trusted_catalogs)
         )
-        self._plans[(plan.namespace, plan.name, plan.version)] = plan
+        if version_precedence(plan.version) is None:
+            raise WorkflowSemanticError(
+                "workflow catalog requires a valid bounded semantic version"
+            )
+        key = (plan.namespace, plan.name, plan.version)
+        existing = self._plans.get(key)
+        if existing is not None and existing.fingerprint != plan.fingerprint:
+            raise WorkflowSemanticError("registered workflow version is immutable")
+        self._plans[key] = plan
         return plan
 
     def resolve(self, reference: Mapping[str, Any]) -> WorkflowPlan:
@@ -53,8 +62,21 @@ class WorkflowCatalog:
                 for (item_namespace, item_name, _), plan in self._plans.items()
                 if item_namespace == namespace and item_name == name
             ]
-            if len(candidates) == 1:
-                return candidates[0]
+            if candidates:
+                highest = max(
+                    key
+                    for plan in candidates
+                    if (key := version_precedence(plan.version)) is not None
+                )
+                matches = [
+                    plan for plan in candidates if version_precedence(plan.version) == highest
+                ]
+                if len(matches) == 1:
+                    return matches[0]
+                raise WorkflowExecutionError(
+                    "latest workflow version has ambiguous semantic precedence",
+                    details={"namespace": namespace, "name": name},
+                )
         else:
             plan = self._plans.get((namespace, name, version))
             if plan is not None:

@@ -15,7 +15,7 @@
       "revision": "48db0cf5e1a1d3202cbbec6021736e1d89e94cd0",
       "license": "Apache-2.0",
       "visibility": "public",
-      "archive_status": "Pending",
+      "archive_status": "Archived; GitHub metadata verified",
       "tracked_file_count": 284,
       "refs": [
         {
@@ -2708,14 +2708,21 @@
           "sha256": "1ed4a4ce8d7fd25d40293dcd85a5544c18b8e0f10b56f4df12a02fd6e67ad85e",
           "disposition": "Frozen Apache reference; not a live engine or conformance oracle"
         }
-      ]
+      ],
+      "archive_verification": {
+        "verified_at": "2026-10-11T14:23:42.414407+00:00",
+        "isArchived": true,
+        "nameWithOwner": "bassemZohdy/open-workflow-agent-adk",
+        "url": "https://github.com/bassemZohdy/open-workflow-agent-adk",
+        "visibility": "PUBLIC"
+      }
     },
     {
       "repository": "bassemZohdy/generic-agent-lang",
       "revision": "00dafe26f8ddc72f191ea585547972e892a7afff",
       "license": null,
       "visibility": "public",
-      "archive_status": "Pending",
+      "archive_status": "Archived; GitHub metadata verified",
       "tracked_file_count": 102,
       "refs": [
         {
@@ -3450,14 +3457,21 @@
           "git_blob_sha": "ae4f2dab8e05c890b331c23cf8e2d5819680c2de",
           "disposition": "Retained at origin; no license grant detected; patterns independently expressed in canonical OWS"
         }
-      ]
+      ],
+      "archive_verification": {
+        "verified_at": "2026-10-11T14:23:42.414407+00:00",
+        "isArchived": true,
+        "nameWithOwner": "bassemZohdy/generic-agent-lang",
+        "url": "https://github.com/bassemZohdy/generic-agent-lang",
+        "visibility": "PUBLIC"
+      }
     },
     {
       "repository": "bassemZohdy/specs-agent-platform",
       "revision": "a90b25a8c0d3518e1c0bd311f42621869b94a0a8",
       "license": "Apache-2.0",
       "visibility": "private at origin; approved canonical reference publication",
-      "archive_status": "Pending user action; browser is not authenticated",
+      "archive_status": "Archived; GitHub metadata verified",
       "tracked_file_count": 109,
       "refs": [
         {
@@ -4573,7 +4587,14 @@
           "destination": "migration/reference/specs-agent-platform/uv.lock.source",
           "disposition": "Frozen Apache reference; native compiler patterns require canonical semantics and checkpoint qualification"
         }
-      ]
+      ],
+      "archive_verification": {
+        "verified_at": "2026-10-11T14:23:42.414407+00:00",
+        "isArchived": true,
+        "nameWithOwner": "bassemZohdy/specs-agent-platform",
+        "url": "https://github.com/bassemZohdy/specs-agent-platform",
+        "visibility": "PRIVATE"
+      }
     }
   ],
   "policy": "Archiving retains history, releases, branches and source. It does not prove API migration, consumer migration or implementation conformance."

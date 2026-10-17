@@ -1,23 +1,6 @@
 name: open-workflow-agent
 
 services:
-  postgres:
-    image: ${POSTGRES_IMAGE:-postgres:16}
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-owa}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-owa-local-only}
-      POSTGRES_DB: ${POSTGRES_DB:-owa}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-    restart: unless-stopped
-
   adk:
     profiles: ["adk"]
     build:
@@ -27,16 +10,13 @@ services:
         OWA_VERSION: ${OWA_VERSION:-0.2.0}
         VCS_REF: ${VCS_REF:-local}
     image: ${ADK_IMAGE:-owa-adk:local}
-    depends_on:
-      postgres:
-        condition: service_healthy
     env_file:
       - path: .env
         required: false
     environment:
       OWA__MODEL__PROVIDER: ${MODEL_PROVIDER:-fake}
       OWA__MODEL__NAME: ${MODEL_NAME:-fake/default}
-      OWA__PERSISTENCE__DATASOURCE: postgresql://${POSTGRES_USER:-owa}:${POSTGRES_PASSWORD:-owa-local-only}@postgres:5432/${POSTGRES_DB:-owa}
+      OWA__PERSISTENCE__DATASOURCE: ${OWA__PERSISTENCE__DATASOURCE:-}
       OWA__KNOWLEDGE__PATH: /knowledge
       OWA__SERVER__HOST: 0.0.0.0
     extra_hosts:
@@ -73,16 +53,13 @@ services:
         OWA_VERSION: ${OWA_VERSION:-0.2.0}
         VCS_REF: ${VCS_REF:-local}
     image: ${LANGGRAPH_IMAGE:-owa-langgraph:local}
-    depends_on:
-      postgres:
-        condition: service_healthy
     env_file:
       - path: .env
         required: false
     environment:
       OWA__MODEL__PROVIDER: ${MODEL_PROVIDER:-fake}
       OWA__MODEL__NAME: ${MODEL_NAME:-fake/default}
-      OWA__PERSISTENCE__DATASOURCE: postgresql://${POSTGRES_USER:-owa}:${POSTGRES_PASSWORD:-owa-local-only}@postgres:5432/${POSTGRES_DB:-owa}
+      OWA__PERSISTENCE__DATASOURCE: ${OWA__PERSISTENCE__DATASOURCE:-}
       OWA__KNOWLEDGE__PATH: /knowledge
       OWA__SERVER__HOST: 0.0.0.0
     extra_hosts:
@@ -111,6 +88,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data:
   adk_data:
   langgraph_data:

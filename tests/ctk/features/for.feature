@@ -18,7 +18,7 @@ Feature: For Task
       - loopColors:
           for:
             each: color
-            in: '.colors'
+            in: '${ .colors }'
           do:
             - markProcessed:
                 set:

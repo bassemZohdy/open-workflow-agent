@@ -10,21 +10,29 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Callable
+from types import SimpleNamespace
 
 import httpx
 import pytest
 from open_workflow_agent.a2a import A2A_PROTOCOL_VERSION as V1
+from open_workflow_agent.a2a_streaming import a2a_sse_stream
 from open_workflow_agent.api import create_app
 from open_workflow_agent.approvals import APPROVAL_DECISION_EVENT, APPROVAL_REQUEST_EVENT
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.observability import WorkflowEvent
+from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.services import RuntimeServices
 
 HEADERS = {"a2a-version": V1}
 
 
 def _message(text: str = "hello", **extra: object) -> dict[str, object]:
-    message: dict[str, object] = {"role": "ROLE_USER", "parts": [{"text": text}]}
+    message: dict[str, object] = {
+        "messageId": "fixture-message",
+        "role": "ROLE_USER",
+        "parts": [{"text": text}],
+    }
     message.update(extra)
     return message
 
@@ -37,7 +45,29 @@ def _make_app(tmp_path, config: RuntimeConfig):
     return app, services
 
 
-async def _drain_sse(response: httpx.Response, timeout: float = 15.0) -> list[dict[str, object]]:
+def _stream_result(value: object, *, request_id: str | int | None) -> dict[str, object]:
+    """Validate binding/correlation before exposing a streamed result."""
+    assert isinstance(value, dict), value
+    if request_id is not None:
+        assert set(value) == {"jsonrpc", "id", "result"}, value
+        assert value["jsonrpc"] == "2.0", value
+        assert type(value["id"]) is type(request_id) and value["id"] == request_id, value
+        value = value["result"]
+        assert isinstance(value, dict), value
+    else:
+        assert not {"jsonrpc", "id", "result"}.intersection(value), value
+    assert len(value) == 1 and set(value) <= {
+        "task",
+        "message",
+        "statusUpdate",
+        "artifactUpdate",
+    }, value
+    return value
+
+
+async def _drain_sse(
+    response: httpx.Response, timeout: float = 15.0, *, request_id: str | int | None = None
+) -> list[dict[str, object]]:
     """Collect SSE data frames until the server closes the stream."""
 
     frames: list[dict[str, object]] = []
@@ -45,7 +75,9 @@ async def _drain_sse(response: httpx.Response, timeout: float = 15.0) -> list[di
     async def collect() -> None:
         async for line in response.aiter_lines():
             if line.startswith("data: "):
-                frames.append(json.loads(line.removeprefix("data: ")))
+                frames.append(
+                    _stream_result(json.loads(line.removeprefix("data: ")), request_id=request_id)
+                )
 
     try:
         await asyncio.wait_for(collect(), timeout)
@@ -65,6 +97,7 @@ async def _stream_asgi(
     path: str,
     body: bytes,
     headers: list[tuple[bytes, bytes]],
+    request_id: str | int | None = None,
 ) -> tuple[asyncio.Task[None], Callable[[], list[dict[str, object]]]]:
     """Run one ASGI request as a live task with incremental body access.
 
@@ -92,7 +125,9 @@ async def _stream_asgi(
         raw = b"".join(received)
         for line in raw.split(b"\n"):
             if line.startswith(b"data: "):
-                frame = json.loads(line.removeprefix(b"data: ").decode("utf-8"))
+                frame = _stream_result(
+                    json.loads(line.removeprefix(b"data: ").decode("utf-8")), request_id=request_id
+                )
                 if frame not in parsed:
                     parsed.append(frame)
         return parsed
@@ -142,13 +177,18 @@ async def test_streaming_message_emits_protocol_frames_until_terminal(tmp_path) 
             ) as response:
                 assert response.status_code == 200
                 assert response.headers["content-type"].startswith("text/event-stream")
-                frames = await _drain_sse(response)
+                frames = await _drain_sse(response, request_id=1)
 
     assert any("task" in frame for frame in frames), frames
     updates = _updates(frames)
     assert updates, frames
     assert [str(update["status"]["state"]) for update in updates][-1] == "TASK_STATE_COMPLETED"
-    terminal = [update for update in updates if update["final"] is True]
+    terminal = [
+        update
+        for update in updates
+        if update["status"]["state"]
+        in {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED"}
+    ]
     assert [str(update["status"]["state"]) for update in terminal] == ["TASK_STATE_COMPLETED"]
 
     task_frame = next(frame["task"] for frame in frames if "task" in frame)
@@ -177,13 +217,15 @@ async def test_streaming_message_completes_with_artifact_update(tmp_path) -> Non
                     "params": {"message": _message()},
                 },
             ) as response:
-                frames = await _drain_sse(response)
+                frames = await _drain_sse(response, request_id=1)
 
     artifact_positions = [i for i, frame in enumerate(frames) if "artifactUpdate" in frame]
     terminal_positions = [
         i
         for i, frame in enumerate(frames)
-        if "statusUpdate" in frame and frame["statusUpdate"]["final"]
+        if "statusUpdate" in frame
+        and frame["statusUpdate"]["status"]["state"]
+        in {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED"}
     ]
     assert artifact_positions and terminal_positions
     assert artifact_positions[0] < terminal_positions[-1]
@@ -250,7 +292,7 @@ async def test_streaming_message_waits_through_input_required(tmp_path) -> None:
         ).encode()
         headers = [(b"a2a-version", V1.encode()), (b"content-type", b"application/json")]
         app_task, parse = await _stream_asgi(
-            app, method="POST", path="/a2a", body=request, headers=headers
+            app, method="POST", path="/a2a", body=request, headers=headers, request_id=1
         )
 
         try:
@@ -294,7 +336,12 @@ async def test_streaming_message_waits_through_input_required(tmp_path) -> None:
     states = [str(update["status"]["state"]) for update in _updates(frames)]
     assert "TASK_STATE_INPUT_REQUIRED" in states
     assert states[-1] == "TASK_STATE_COMPLETED"
-    terminal = [update for update in _updates(frames) if update["final"] is True]
+    terminal = [
+        update
+        for update in _updates(frames)
+        if update["status"]["state"]
+        in {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED"}
+    ]
     assert [str(update["status"]["state"]) for update in terminal] == ["TASK_STATE_COMPLETED"]
 
 
@@ -327,7 +374,7 @@ async def test_resubscribe_streams_existing_task_and_rejects_unknown(tmp_path) -
                 },
             ) as response:
                 assert response.status_code == 200
-                frames = await _drain_sse(response)
+                frames = await _drain_sse(response, request_id=2)
             assert len(frames) == 1
             task = frames[0]["task"]
             assert task["id"] == handle.invocation_id
@@ -345,6 +392,117 @@ async def test_resubscribe_streams_existing_task_and_rejects_unknown(tmp_path) -
                 },
             )
             assert missing.json()["error"]["code"] == -32001
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("case", "expected_code"),
+    [
+        ("mismatched-context", -32602),
+        ("matching-context-async-resume", -32004),
+        ("unknown-task", -32001),
+        ("foreign-task", -32001),
+    ],
+)
+async def test_stream_resume_rejects_existing_task_references_without_side_effects(
+    tmp_path, monkeypatch, case, expected_code
+) -> None:
+    if case == "foreign-task":
+        monkeypatch.setenv("OWA_TEST_STREAM_OWNER", "stream-token")
+        config = RuntimeConfig.model_validate(
+            {
+                "a2a": {"enabled": True, "security_profile": "partner"},
+                "security": {
+                    "profiles": {
+                        "partner": {
+                            "type": "bearer",
+                            "token": {"from_env": "OWA_TEST_STREAM_OWNER"},
+                            "principal": "requester",
+                        }
+                    }
+                },
+            }
+        )
+    else:
+        config = RuntimeConfig.model_validate({"a2a": {"enabled": True}})
+    app, services = _make_app(tmp_path, config)
+    async with app.router.lifespan_context(app):
+        handle = None
+        if case != "unknown-task":
+            handle = services.invocations.create(
+                engine="adk",
+                session_id="ctx-existing",
+                user_id=None,
+                workflow_name="flow",
+                workflow_version="1.0.0",
+                workflow_fingerprint="fingerprint",
+                owner_principal="someone-else" if case == "foreign-task" else None,
+            )
+            services.invocations.update(handle, status="waiting")
+
+        invocations_created = []
+        original_create = services.invocations.create
+
+        def record_create(**kwargs):
+            invocations_created.append(kwargs)
+            return original_create(**kwargs)
+
+        monkeypatch.setattr(services.invocations, "create", record_create)
+        side_effects = []
+        engine = app.state.engine
+
+        async def unexpected_engine_action(*_args, **_kwargs):
+            side_effects.append("engine")
+            raise AssertionError("stream resume must not invoke or resume a workflow")
+
+        monkeypatch.setattr(engine, "invoke", unexpected_engine_action)
+        monkeypatch.setattr(engine, "resume", unexpected_engine_action)
+
+        def unexpected_subscription(*_args, **_kwargs):
+            side_effects.append("subscription")
+            raise AssertionError("rejected stream resume must not subscribe to task events")
+
+        monkeypatch.setattr(services.lifecycle_events, "subscribe", unexpected_subscription)
+        count_before = services.invocations.connection.execute(
+            "SELECT COUNT(*) FROM invocations"
+        ).fetchone()[0]
+        subscriber_ids_before = set(services.lifecycle_events._subscribers)
+        message = _message(taskId=handle.invocation_id if handle else "missing-task")
+        if case == "mismatched-context":
+            message["contextId"] = "different-context"
+        elif case == "matching-context-async-resume":
+            message["contextId"] = "ctx-existing"
+        params: dict[str, object] = {"message": message}
+        if case == "matching-context-async-resume":
+            params["configuration"] = {"returnImmediately": True}
+        headers = HEADERS
+        if case == "foreign-task":
+            headers = {**HEADERS, "Authorization": "Bearer stream-token"}
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/a2a",
+                headers=headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 7,
+                    "method": "SendStreamingMessage",
+                    "params": params,
+                },
+            )
+
+        assert response.status_code == 200
+        assert response.json()["error"]["code"] == expected_code
+        assert invocations_created == [] and side_effects == []
+        assert (
+            services.invocations.connection.execute("SELECT COUNT(*) FROM invocations").fetchone()[
+                0
+            ]
+            == count_before
+        )
+        assert set(services.lifecycle_events._subscribers) == subscriber_ids_before
 
 
 @pytest.mark.asyncio
@@ -440,7 +598,9 @@ async def test_stream_disconnect_does_not_cancel_invocation(tmp_path) -> None:
                 ) as response:
                     async for line in response.aiter_lines():
                         if line.startswith("data: "):
-                            payload = json.loads(line.removeprefix("data: "))
+                            payload = _stream_result(
+                                json.loads(line.removeprefix("data: ")), request_id=1
+                            )
                             task_id.append(str(payload["task"]["id"]))
                             break
                     # Abrupt disconnect once the task id is known.
@@ -467,3 +627,171 @@ async def test_stream_disconnect_does_not_cancel_invocation(tmp_path) -> None:
                 await asyncio.sleep(0.05)
             assert result is not None
             assert result["status"]["state"] == "TASK_STATE_COMPLETED"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("status", "event_type", "a2a_state"),
+    [
+        ("faulted", "WorkflowFaulted", "TASK_STATE_FAILED"),
+        ("cancelled", "WorkflowCancelled", "TASK_STATE_CANCELED"),
+    ],
+)
+async def test_subscribed_stream_emits_one_error_or_cancellation_terminal(
+    tmp_path, status: str, event_type: str, a2a_state: str
+) -> None:
+    config = RuntimeConfig.model_validate({"a2a": {"enabled": True}})
+    app, services = _make_app(tmp_path, config)
+    async with app.router.lifespan_context(app):
+        handle = services.invocations.create(
+            engine="adk",
+            session_id="ctx-terminal-stream",
+            user_id=None,
+            workflow_name="flow",
+            workflow_version="1.0.0",
+            workflow_fingerprint="fingerprint",
+        )
+        services.invocations.update(handle, status="running")
+        request = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 9,
+                "method": "SubscribeToTask",
+                "params": {"id": handle.invocation_id},
+            }
+        ).encode()
+        headers = [(b"a2a-version", V1.encode()), (b"content-type", b"application/json")]
+        app_task, parse = await _stream_asgi(
+            app,
+            method="POST",
+            path="/a2a",
+            body=request,
+            headers=headers,
+            request_id=9,
+        )
+
+        try:
+            for _ in range(200):
+                frames = parse()
+                if any("task" in frame for frame in frames):
+                    break
+                await asyncio.sleep(0.01)
+            else:
+                raise AssertionError(f"stream did not publish its task snapshot: {parse()}")
+
+            current = services.invocations.get(handle.invocation_id)
+            assert current is not None
+            changes: dict[str, object] = {"status": status}
+            if status == "faulted":
+                changes["error"] = {
+                    "code": "fixture_failure",
+                    "message": "private implementation detail",
+                }
+            services.invocations.update(current, **changes)
+            services.lifecycle_events.emit(
+                WorkflowEvent(
+                    event_type=event_type,
+                    invocation_id=handle.invocation_id,
+                    session_id=handle.session_id,
+                    workflow_name=handle.workflow_name,
+                    workflow_version=handle.workflow_version,
+                    engine=handle.engine,
+                    status=status,
+                )
+            )
+            await asyncio.wait_for(app_task, timeout=5)
+        finally:
+            if not app_task.done():
+                app_task.cancel()
+                await asyncio.gather(app_task, return_exceptions=True)
+
+    frames = parse()
+    updates = _updates(frames)
+    terminal = [
+        update
+        for update in updates
+        if update["status"]["state"]
+        in {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED"}
+    ]
+    assert [update["status"]["state"] for update in terminal] == [a2a_state]
+    assert not any("artifactUpdate" in frame for frame in frames)
+    assert "private implementation detail" not in repr(frames)
+
+
+class _BacklogSink:
+    def __init__(self, backlog: list[object]) -> None:
+        self.backlog = backlog
+        self.subscription = _ClosableSubscription()
+
+    def subscribe(self, *, last_event_id: str | None, queue_size: int):
+        assert last_event_id is None
+        assert queue_size > 0
+        return self.backlog, self.subscription
+
+
+class _ClosableSubscription:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
+
+    async def receive(self, *, timeout: float):
+        raise TimeoutError
+
+
+def _stream_handle(*, status: str = "running", session_id: str = "ctx-stream"):
+    return ExecutionHandle(
+        invocation_id="stream-task",
+        engine="langgraph",
+        engine_execution_reference="native-ref",
+        user_id=None,
+        session_id=session_id,
+        workflow_name="stream-flow",
+        workflow_version="1.0.0",
+        workflow_fingerprint="fixture-fingerprint",
+        status=status,
+        output={"answer": "done"} if status == "completed" else None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_stream_handles_missing_task_and_disappearing_resubscription() -> None:
+    missing_sink = _BacklogSink([])
+    no_invocation = a2a_sse_stream(missing_sink, SimpleNamespace(get=lambda _id: None), "missing")
+    assert [frame async for frame in no_invocation] == []
+    assert missing_sink.subscription.closed
+
+    backlog = [
+        SimpleNamespace(id="other-event", data={"invocation_id": "other-task"}),
+        SimpleNamespace(id="task-event", data={"invocation_id": "stream-task"}),
+    ]
+    sink = _BacklogSink(backlog)
+    lookups = iter((_stream_handle(), None))
+    invocations = SimpleNamespace(get=lambda _id: next(lookups))
+    frames = [frame async for frame in a2a_sse_stream(sink, invocations, "stream-task")]
+
+    # Keep the snapshot while ignoring unrelated events and vanished updates.
+    assert len(frames) == 1
+    assert b"stream-task:snapshot" in frames[0]
+    assert sink.subscription.closed
+
+
+@pytest.mark.asyncio
+async def test_completed_stream_uses_task_id_when_session_context_is_unavailable() -> None:
+    event = SimpleNamespace(id="completed-event", data={"invocation_id": "stream-task"})
+    sink = _BacklogSink([event])
+    completed = _stream_handle(status="completed", session_id="")
+    lookups = iter((_stream_handle(), completed, completed, completed))
+    invocations = SimpleNamespace(get=lambda _id: next(lookups))
+
+    frames = [frame async for frame in a2a_sse_stream(sink, invocations, "stream-task")]
+    payloads = [json.loads(frame.split(b"data: ", 1)[1]) for frame in frames]
+
+    artifact = next(
+        payload["artifactUpdate"] for payload in payloads if "artifactUpdate" in payload
+    )
+    status = next(payload["statusUpdate"] for payload in payloads if "statusUpdate" in payload)
+    assert artifact["contextId"] == "stream-task"
+    assert status["contextId"] == "stream-task"
+    assert sink.subscription.closed

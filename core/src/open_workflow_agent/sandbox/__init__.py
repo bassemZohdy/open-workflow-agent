@@ -17,9 +17,12 @@ from .contract import (
     SandboxKind,
     SandboxSecretReference,
     SandboxStatus,
+    SandboxStdioRequest,
+    SandboxStdioSession,
 )
 from .executor import SandboxWorkflowExecutor
 from .manager import SandboxManager
+from .stdio_policy import validate_stdio_transport
 from .validation import (
     compile_sandbox_workflow,
     resolve_and_compile_sandbox_workflow,
@@ -35,6 +38,9 @@ __all__ = [
     "SandboxSecretReference",
     "SandboxStatus",
     "SandboxKind",
+    "SandboxStdioRequest",
+    "SandboxStdioSession",
+    "validate_stdio_transport",
     "SandboxWorkflowExecutor",
     "compile_sandbox_workflow",
     "resolve_and_compile_sandbox_workflow",

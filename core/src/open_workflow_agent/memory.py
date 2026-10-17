@@ -23,39 +23,75 @@ class MemoryService:
                     id {identifier_type} PRIMARY KEY,
                     text TEXT NOT NULL,
                     metadata TEXT,
-                    created REAL NOT NULL
+                    created REAL NOT NULL,
+                    namespace TEXT NOT NULL DEFAULT ''
                 )"""
             )
+            if self._connection.is_postgresql:
+                self._connection.execute(
+                    "ALTER TABLE memory ADD COLUMN IF NOT EXISTS namespace TEXT NOT NULL DEFAULT ''"
+                )
+            elif "namespace" not in {
+                row[1] for row in self._connection.execute("PRAGMA table_info(memory)").fetchall()
+            }:
+                self._connection.execute(
+                    "ALTER TABLE memory ADD COLUMN namespace TEXT NOT NULL DEFAULT ''"
+                )
             self._connection.commit()
 
-    def add(self, text: str, metadata: dict[str, Any] | None = None) -> int:
+    @staticmethod
+    def _namespace(namespace: str | None) -> str:
+        if namespace is None:
+            return ""
+        if not isinstance(namespace, str) or not namespace or len(namespace.encode()) > 512:
+            raise ValueError("memory namespace must be an original bounded principal binding")
+        return namespace
+
+    def add(
+        self, text: str, metadata: dict[str, Any] | None = None, *, namespace: str | None = None
+    ) -> int:
+        bound = self._namespace(namespace)
         metadata = metadata or {}
         if self._connection is None:
             identifier = self._next_id
             self._next_id += 1
             self._items.append(
-                {"id": identifier, "text": text, "metadata": metadata, "created": time.time()}
+                {
+                    "id": identifier,
+                    "text": text,
+                    "metadata": metadata,
+                    "created": time.time(),
+                    "namespace": bound,
+                }
             )
             return identifier
         if self._connection.is_postgresql:
             cursor = self._connection.execute(
-                "INSERT INTO memory(text, metadata, created) VALUES (?, ?, ?) RETURNING id",
-                (text, json.dumps(metadata), time.time()),
+                "INSERT INTO memory(text, metadata, created, namespace) "
+                "VALUES (?, ?, ?, ?) RETURNING id",
+                (text, json.dumps(metadata), time.time(), bound),
             )
             identifier = cursor.fetchone()[0]
             self._connection.commit()
             return int(identifier)
         cursor = self._connection.execute(
-            "INSERT INTO memory(text, metadata, created) VALUES (?, ?, ?)",
-            (text, json.dumps(metadata), time.time()),
+            "INSERT INTO memory(text, metadata, created, namespace) VALUES (?, ?, ?, ?)",
+            (text, json.dumps(metadata), time.time(), bound),
         )
         self._connection.commit()
         return int(cursor.lastrowid or 0)
 
-    def search(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
+    def search(
+        self, query: str, limit: int = 10, *, namespace: str | None = None
+    ) -> list[dict[str, Any]]:
+        bound = self._namespace(namespace)
         terms = set(query.lower().split())
         if self._connection is None:
-            rows = self._items
+            rows = [
+                {key: value for key, value in row.items() if key != "namespace"}
+                for row in self._items
+                if row["namespace"] == bound
+            ]
         else:
             rows = [
                 {
@@ -65,7 +101,7 @@ class MemoryService:
                     "created": row[3],
                 }
                 for row in self._connection.execute(
-                    "SELECT id, text, metadata, created FROM memory"
+                    "SELECT id, text, metadata, created FROM memory WHERE namespace=?", (bound,)
                 )
             ]
         ranked = sorted(
@@ -77,12 +113,19 @@ class MemoryService:
             row for row in ranked if not terms or any(term in row["text"].lower() for term in terms)
         ][:limit]
 
-    def delete(self, memory_id: int) -> bool:
+    def delete(self, memory_id: int, *, namespace: str | None = None) -> bool:
+        bound = self._namespace(namespace)
         if self._connection is None:
             before = len(self._items)
-            self._items[:] = [item for item in self._items if item["id"] != memory_id]
+            self._items[:] = [
+                item
+                for item in self._items
+                if item["id"] != memory_id or item["namespace"] != bound
+            ]
             return len(self._items) != before
-        cursor = self._connection.execute("DELETE FROM memory WHERE id = ?", (memory_id,))
+        cursor = self._connection.execute(
+            "DELETE FROM memory WHERE id = ? AND namespace=?", (memory_id, bound)
+        )
         self._connection.commit()
         return int(cursor.rowcount) > 0
 

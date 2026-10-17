@@ -1,4 +1,8 @@
+from types import SimpleNamespace
+
+import pytest
 from open_workflow_agent.config import AgentConfig, ModelConfig
+from open_workflow_agent.errors import InvocationStateError
 from open_workflow_agent.tools import AgentToolBinding
 from open_workflow_agent_adk import AdkWorkflowEngine
 from open_workflow_agent_adk.agent import AdkAgentFactory
@@ -29,3 +33,49 @@ def test_adk_factory_binds_real_function_tools():
     )
     assert tools
     assert getattr(tools[0], "name", "configured") == "configured"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure_boundary", ["open", "read", "close"])
+async def test_native_admission_storage_failures_use_common_sanitized_errors(
+    monkeypatch, failure_boundary
+):
+    closed = []
+
+    class Sessions:
+        async def get_session(self, **kwargs):
+            if failure_boundary == "read":
+                raise RuntimeError("private-storage-error-must-not-leak")
+            return SimpleNamespace(
+                events=[
+                    SimpleNamespace(
+                        invocation_id="private-native-reference",
+                        author="user",
+                        content=SimpleNamespace(parts=[SimpleNamespace(text='{"original":true}')]),
+                    )
+                ]
+            )
+
+        async def close(self):
+            closed.append(True)
+            if failure_boundary == "close":
+                raise RuntimeError("private-storage-error-must-not-leak")
+
+    def service(_path):
+        if failure_boundary == "open":
+            raise RuntimeError("private-storage-error-must-not-leak")
+        return Sessions()
+
+    native = NativeAdkRunner()
+    monkeypatch.setattr(native, "_session_service", service)
+    with pytest.raises(InvocationStateError) as failure:
+        await native.admit_resume(
+            {"original": True},
+            session_id="session",
+            user_id=None,
+            invocation_id="private-native-reference",
+        )
+    assert failure.value.code == "invalid_invocation_state"
+    assert failure.value.details == {}
+    assert "private-" not in failure.value.message
+    assert closed == ([] if failure_boundary == "open" else [True])

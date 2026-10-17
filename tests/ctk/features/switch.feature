@@ -15,13 +15,13 @@ Feature: Switch Task
       - switchColor:
           switch:
             - red:
-                when: '.color == "red"'
+                when: '${ .color == "red" }'
                 then: setRed
             - green:
-                when: '.color == "green"'
+                when: '${ .color == "green" }'
                 then: setGreen
             - blue:
-                when: '.color == "blue"'
+                when: '${ .color == "blue" }'
                 then: setBlue
       - setRed:
           set:
@@ -60,13 +60,13 @@ Feature: Switch Task
       - switchColor:
           switch:
             - red:
-                when: '.color == "red"'
+                when: '${ .color == "red" }'
                 then: setRed
             - green:
-                when: '.color == "green"'
+                when: '${ .color == "green" }'
                 then: setGreen
             - blue:
-                when: '.color == "blue"'
+                when: '${ .color == "blue" }'
                 then: setBlue
           then: end
       - setRed:
@@ -103,13 +103,13 @@ Feature: Switch Task
       - switchColor:
           switch:
             - red:
-                when: '.color == "red"'
+                when: '${ .color == "red" }'
                 then: setRed
             - green:
-                when: '.color == "green"'
+                when: '${ .color == "green" }'
                 then: setGreen
             - blue:
-                when: '.color == "blue"'
+                when: '${ .color == "blue" }'
                 then: setBlue
             - anyOtherColor:
                 then: setCustomColor

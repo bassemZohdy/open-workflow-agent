@@ -56,7 +56,13 @@ def _send() -> dict[str, object]:
         "jsonrpc": "2.0",
         "id": 1,
         "method": "SendMessage",
-        "params": {"message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]}},
+        "params": {
+            "message": {
+                "messageId": "fixture-message",
+                "role": "ROLE_USER",
+                "parts": [{"text": "hello"}],
+            }
+        },
     }
 
 
@@ -188,10 +194,16 @@ async def test_http_json_transport_returns_forbidden_shape(tmp_path, monkeypatch
             denied = await client.post(
                 "/a2a/message:send",
                 headers=HEADERS,
-                json={"message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]}},
+                json={
+                    "message": {
+                        "messageId": "fixture-message",
+                        "role": "ROLE_USER",
+                        "parts": [{"text": "hello"}],
+                    }
+                },
             )
             assert denied.status_code == 403
-            assert denied.json()["error"]["code"] == "forbidden"
+            assert denied.json()["error"]["details"][0]["metadata"]["owaCode"] == "forbidden"
             card = await client.get(A2A_AGENT_CARD_PATH, headers=HEADERS)
             assert card.status_code == 200
 

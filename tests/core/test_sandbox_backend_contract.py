@@ -15,6 +15,7 @@ from open_workflow_agent.sandbox_capabilities import (
     internal_backend_capabilities,
     validate_backend_compatibility,
 )
+from sandbox_fixture_policy import supported_process_limits
 
 
 def test_input_files_are_relative_and_traversal_free() -> None:
@@ -28,6 +29,7 @@ def test_input_files_are_relative_and_traversal_free() -> None:
 def test_internal_backend_maps_to_honest_portable_capabilities(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
         SandboxConfig(
+            **supported_process_limits(),
             enabled=True,
             allow_shell=True,
             workspace_root=str(tmp_path / "sandbox"),
@@ -52,7 +54,12 @@ def test_internal_backend_maps_to_honest_portable_capabilities(tmp_path: Path) -
 
 def test_internal_backend_accepts_only_requirements_it_can_enforce(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
-        SandboxConfig(enabled=True, workspace_root=str(tmp_path / "sandbox"), memory_bytes=None)
+        SandboxConfig(
+            **supported_process_limits(),
+            enabled=True,
+            workspace_root=str(tmp_path / "sandbox"),
+            memory_bytes=None,
+        )
     )
     capabilities = internal_backend_capabilities(backend.capabilities())
 
@@ -118,7 +125,12 @@ def test_internal_backend_fails_closed_for_stronger_requirements(
     expected_requirement: str,
 ) -> None:
     backend = InternalSandboxBackend(
-        SandboxConfig(enabled=True, workspace_root=str(tmp_path / "sandbox"), memory_bytes=None)
+        SandboxConfig(
+            **supported_process_limits(),
+            enabled=True,
+            workspace_root=str(tmp_path / "sandbox"),
+            memory_bytes=None,
+        )
     )
     capabilities = internal_backend_capabilities(backend.capabilities())
 
