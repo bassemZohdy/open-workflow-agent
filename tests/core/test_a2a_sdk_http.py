@@ -678,7 +678,17 @@ async def test_card_fetch_is_bounded_and_sanitized_without_business_dispatch(fai
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "failure", ["size", "foreign-task", "after-terminal", "incomplete", "notification"]
+    "failure",
+    [
+        "size",
+        "foreign-task",
+        "after-terminal",
+        "incomplete",
+        "notification",
+        "malformed-json",
+        "unsupported-event",
+        "malformed-framing",
+    ],
 )
 async def test_stream_limits_identity_and_completion_are_checked_without_reconnect(failure):
     calls = []
@@ -715,6 +725,12 @@ async def test_stream_limits_identity_and_completion_are_checked_without_reconne
             frames = 'data: {"jsonrpc":"2.0","method":"notifications/progress"}\n\n' + frames
         elif failure == "size":
             frames += ":" + "x" * 8192 + "\n\n"
+        elif failure == "malformed-json":
+            frames = "data: {not-json}\n\n"
+        elif failure == "unsupported-event":
+            frames = "event: task-update\n" + frames
+        elif failure == "malformed-framing":
+            frames = 'data {"jsonrpc":"2.0"}\n\n'
         return httpx.Response(
             200, content=frames.encode(), headers={"Content-Type": "text/event-stream"}
         )
@@ -722,9 +738,11 @@ async def test_stream_limits_identity_and_completion_are_checked_without_reconne
     services = ProtocolServices(
         HttpClient(transport=httpx.MockTransport(receiver), max_response_bytes=4096)
     )
-    with pytest.raises(_A2AOutcomeUncertain):
+    with pytest.raises(_A2AOutcomeUncertain) as error:
         await services.call("a2a", payload("SendStreamingMessage", "https://a2a.test/a2a"))
     assert len(calls) == 1
+    if failure in {"malformed-json", "unsupported-event", "malformed-framing"}:
+        assert error.value.details == {"reason": "invalid_stream"}
 
 
 def named_authentication(

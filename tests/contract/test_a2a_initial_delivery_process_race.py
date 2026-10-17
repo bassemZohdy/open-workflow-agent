@@ -1,8 +1,9 @@
-"""Initial-delivery ownership fencing across independent SQLite processes."""
+"""Initial-delivery ownership fencing across independent database processes."""
 
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -47,12 +48,18 @@ def _wait_for(path: Path, process: subprocess.Popen[bytes], timeout: float) -> A
     pytest.fail(f"timed out waiting for {path.name}")
 
 
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.asyncio
-async def test_old_initial_delivery_process_cannot_write_after_sqlite_takeover(
+async def test_old_initial_delivery_process_cannot_write_after_takeover(
     tmp_path: Path,
+    backend: str,
 ) -> None:
     """A later process settles delivery once; the paused old owner stays fenced."""
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
     scenario = {
+        "backend": backend,
         "invocation_id": "",
         "input": {"request": "deliver exactly once"},
     }
@@ -65,14 +72,27 @@ async def test_old_initial_delivery_process_cannot_write_after_sqlite_takeover(
         assert old_ready["pid"] == old.pid
         assert old_ready["generation"] > 0
 
-        database = tmp_path / "runtime" / "runtime.sqlite3"
-        with closing(sqlite3.connect(database, timeout=10)) as connection:
-            updated = connection.execute(
-                "UPDATE invocation_ownership SET expires_at=0 WHERE invocation_id=?",
-                (old_ready["invocation_id"],),
-            )
-            connection.commit()
-            assert updated.rowcount == 1
+        if backend == "postgresql":
+            import psycopg
+
+            assert datasource is not None
+            with closing(psycopg.connect(datasource, autocommit=True)) as connection:
+                updated = connection.execute(
+                    "UPDATE owa_runtime.invocation_ownership "
+                    "SET expires_at=0 WHERE invocation_id=%s",
+                    (old_ready["invocation_id"],),
+                )
+                updated_count = updated.rowcount
+        else:
+            database = tmp_path / "runtime" / "runtime.sqlite3"
+            with closing(sqlite3.connect(database, timeout=10)) as connection:
+                updated = connection.execute(
+                    "UPDATE invocation_ownership SET expires_at=0 WHERE invocation_id=?",
+                    (old_ready["invocation_id"],),
+                )
+                connection.commit()
+                updated_count = updated.rowcount
+        assert updated_count == 1
 
         current = _start(tmp_path, "current")
         recovered = _wait_for(tmp_path / "current-result.json", current, 60)

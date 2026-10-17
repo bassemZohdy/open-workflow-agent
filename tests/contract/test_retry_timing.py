@@ -222,7 +222,9 @@ async def test_timeout_drains_an_uncertain_action_without_catch_retry(
         workflow_fingerprint=plan.fingerprint,
     )
     try:
-        result = await asyncio.wait_for(engine.invoke(plan, handle, {}), timeout=15)
+        # The workflow keeps its 10-second deadline; this is only a generous
+        # outer harness ceiling for busy Windows runners.
+        result = await asyncio.wait_for(engine.invoke(plan, handle, {}), timeout=45)
         assert result.status == "faulted", result.output
         assert result.error and "unresolved execution intent" in result.error["message"]
         assert len(model.calls) == (2 if boundary == "attempt" else 1)

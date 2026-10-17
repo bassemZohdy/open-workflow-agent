@@ -50,6 +50,7 @@ def _snapshot(services: RuntimeServices, invocation_id: str) -> dict[str, list[l
 
 async def _run(directory: Path, mode: str) -> None:
     scenario = json.loads((directory / "scenario.json").read_text(encoding="utf-8"))
+    backend = scenario["backend"]
     source = {
         "document": {
             "dsl": "1.0.3",
@@ -78,17 +79,29 @@ async def _run(directory: Path, mode: str) -> None:
 
     patches.setattr(TimerDispatcher, "start", no_timer_worker)
     config = RuntimeConfig.model_validate(
-        {"model": {"provider": "fake"}, "workflow": {"definition": source}}
+        {
+            "model": {"provider": "fake"},
+            "persistence": {
+                "datasource": os.getenv("OWA_TEST_POSTGRES_URL")
+                if backend == "postgresql"
+                else None
+            },
+            "workflow": {"definition": source},
+        }
     )
     model = FakeModel()
-    services = RuntimeServices(config, model=model, database_root=directory / "runtime")
+    services = RuntimeServices(
+        config,
+        model=model,
+        database_root=directory / "runtime" if backend == "sqlite" else None,
+    )
     services.recovery_definitions = RecoveryDefinitionArchive(
         services.effect_journal,
         services.invocations,
         profile_provider=lambda engine: {
             "profile": PROFILE,
             "engine": engine,
-            "backend": "sqlite",
+            "backend": backend,
             "artifact": "initial-delivery-process-owner-fence",
             "continuation_supported": True,
         },

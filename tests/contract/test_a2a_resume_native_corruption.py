@@ -141,7 +141,7 @@ async def test_a2a_resume_rejects_corrupt_native_checkpoint_before_mutation(
                         json={"message": message},
                     )
                     assert response.status_code == 500, response.text
-                    assert response.json()["error"]["details"][0]["metadata"]["code"] == (
+                    assert response.json()["error"]["details"][0]["metadata"]["owaCode"] == (
                         "invalid_invocation_state"
                     )
 

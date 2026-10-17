@@ -380,7 +380,11 @@ def _stream(
         raw = "\n".join(chunks).encode("utf-8")
         if len(raw) > MAX_VALUE_BYTES:
             raise _uncertain("stream_limit")
-        result = validate_v1_result(method, _rpc(_strict_json(raw), identifier))
+        try:
+            decoded = _strict_json(raw)
+        except (ValueError, UnicodeError, RecursionError):
+            raise _uncertain("invalid_stream") from None
+        result = validate_v1_result(method, _rpc(decoded, identifier))
         _validate_requested_identity(result, method, params)
         if "message" in result:
             if results:

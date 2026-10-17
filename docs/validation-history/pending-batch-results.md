@@ -1284,6 +1284,68 @@ The final static batch passed repository Ruff, format checking across 466
 files, Markdown relative-link validation and `git diff --check`. Earlier in
 this worktree, strict mypy, lock verification and root/core package builds also
 passed; the recent fixture-only edits do not alter typed runtime source. Exact-
-source hosted workflows have not yet run for this working tree. Keep all A2A
-gate states partial and rerun the required local/hosted batch after resolving
-the Windows supervisor startup/observation behavior.
+source hosted workflows completed for pushed commit
+`aafe53cc3ae614ed561fb0cec2cb4dc9f639db06`: [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39030788698),
+[PostgreSQL CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39030788688),
+[Agent Framework CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39030788689),
+[External Sandbox CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39030788680),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39030788670),
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39030788676).
+PostgreSQL passed all ten jobs; Agent Framework, External Sandbox, Security and
+Docs passed. CI failed four ADK and four LangGraph cases in
+`test_a2a_resume_rejects_damaged_receiver_receipt_before_mutation`; both
+bindings returned the sanitized `invalid_invocation_state` error after the
+durable receiver-receipt proof was damaged, while the fixture expected a
+non-resumable-task response. The workflow is waiting-input, so the generic
+state-integrity error is the expected result. LangGraph also failed the
+HTTP+JSON native-checkpoint corruption assertion because HTTP encodes the local
+code as `metadata.owaCode`; JSON-RPC continues to use `metadata.code`. One
+Windows LangGraph retry-timing case exceeded a 15-second outer test timeout;
+the workflow's original 10-second deadline remains unchanged and the test's
+outer harness ceiling is widened. The ADK Docker acceptance failure occurred
+before build steps: Docker Hub returned HTTP 502 while resolving
+`docker/dockerfile:1`.
+
+The receiver-receipt and HTTP+JSON checkpoint assertions were corrected after
+this run. A subsequent broad local run was stopped at 12% because its collected
+test set predated those assertion and fixture changes; its early passing tests
+are partial evidence only and it does not validate the current batch. The
+supervisor integration-test deadline changes, outer retry harness timeout, and
+A2A05 PostgreSQL process-race witness are also local follow-up changes. The
+PostgreSQL workflow now selects the PostgreSQL process-race case, and a
+workflow-selection test confirms that selection. Keep all A2A gate states
+partial until a new exact-source batch and its hosted workflows pass.
+
+### Latest working-tree root batch — 2026-10-17 (not green)
+
+The latest consolidated command was
+`uv run --locked pytest tests -vv --durations=20 --cov=core/src/open_workflow_agent --cov-report=term-missing --cov-fail-under=90 --cov-precision=2`.
+It completed in 3h30m with 4,616 passed, 3,007 skipped, 28 failed, 13 errors
+and 125 warnings. The configured 90% coverage gate passed. This run was on the
+uncommitted worktree based on `aafe53c`, before the malformed-stream JSON
+classification correction described below; it is not exact-source qualification
+and does not close any task.
+
+The 13 setup errors share one cause: the Windows `hot_rollback` fixture did not
+observe SQLite's bounded real super-journal stop barrier after three 25-second
+producer attempts. An isolated rerun reproduced the same fixture failure, so
+this is not attributed solely to root-suite contention. The dependent SQLite
+inspection tests could not start. The fixture mechanism remains actionable and
+must be made reliable or the platform limitation precisely characterized before
+claiming that acceptance gate.
+
+The 28 failures included the new malformed-SSE-JSON assertion, two A2A
+protected-approval polling cases that remained `WORKING` during the loaded run,
+Windows sandbox/process supervision and stream timing cases, and several
+workflow lifecycle cases. Focused follow-up passed both approval-wait cases
+individually, all four nested-child projection variants, and the PostgreSQL CI
+selection check. The malformed-JSON stream case initially returned
+`invalid_response`; `_stream` now catches malformed UTF-8/JSON parse failures
+and maps them to `invalid_stream`, matching the existing malformed-frame and
+unsupported-event behavior. A focused rerun of that corrected matrix remains
+required. The isolated super-journal fixture still fails as above.
+
+The earlier 12%-stopped run remains a historical partial run and is superseded
+as the latest validation by this completed, non-green batch. Current local
+changes remain unpushed and unqualified. S3-02 and A2A01-A2A08 remain open; no
+task is deferred because there are actionable follow-ups.

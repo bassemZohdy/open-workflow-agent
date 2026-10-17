@@ -165,17 +165,26 @@ treated as a deferred task or as additional feature completion.
 
   The hosted CI run at `8ff5f6e` exposed incorrect receipt-fixture decoding,
   missing HTTP+JSON version headers, an outdated JSON-RPC error assertion and a
-  LangGraph Windows receipt-boundary fixture. Corrections are in this batch;
-  the Windows recovery case passed once after one transient failure. Run the
-  consolidated suite and exact-source hosted workflows before recording these
-  fixes as qualified. The 2026-10-17 consolidated root suite recorded 4,638
-  passed, 3,006 skipped and 15 failed at 90.47% coverage. The widened
-  nested-child projection waits pass all four focused cases; selected
-  competitive/scoped/CTK regressions pass 12 cases. A selected Windows sandbox
-  rerun still fails five cases around supervisor startup/observation, with
-  actionable timeout evidence. These results do not qualify the full batch;
-  resolve the Windows failure, then rerun the consolidated suite and exact-
-  source hosted workflows. Durable Task/receipt expiry remains undefined; the
+  LangGraph Windows receipt-boundary fixture. The later exact-source run
+  `aafe53c` passed PostgreSQL CI (all ten jobs), Agent Framework, External
+  Sandbox, Security and Docs. CI exposed receiver-receipt corruption fixtures
+  expecting the wrong sanitized error, HTTP+JSON checkpoint fixtures reading
+  the JSON-RPC metadata field, and one Windows retry harness timeout. Docker
+  acceptance also hit a pre-build Docker Hub HTTP 502. The assertion and
+  timeout corrections, plus an A2A05 PostgreSQL process-race witness, are in
+  the current local batch and have not yet been requalified on the exact
+  source. The latest 2026-10-17 working-tree root batch completed in 3h30m
+  with 4,616 passed, 3,007 skipped, 28 failed, 13 setup errors and 125
+  warnings. Its coverage gate was met, but the suite was not green. The 13
+  errors reproduce in isolation at the Windows real super-journal barrier
+  fixture; approval-wait and nested-child projection cases pass when isolated.
+  The malformed SSE JSON stream now maps parse failures to `invalid_stream`;
+  its focused matrix still needs rerun after that correction. The 28 failures
+  include timing-sensitive Windows sandbox/process and workflow cases;
+  individual actionable failures remain open. The earlier 12%-stopped run is
+  historical only. These results do not qualify the full batch; finish the
+  grouped changes, then run the required consolidated suite and exact-source
+  hosted workflows. Durable Task/receipt expiry remains undefined; the
   acceptance record lists the policy choices and the cleanup evidence a future
   retention contract would require. See the [gate-by-gate acceptance
   record](docs/s3-02-a2a-acceptance.md) and [validation

@@ -589,7 +589,8 @@ jobs:
             ../../tests/contract/test_mcp_stdio_integration.py \
             ../../tests/contract/test_a2a_workflow_calls.py \
             ../../tests/contract/test_a2a_sdk_inbound.py \
-            ../../tests/contract/test_a2a_initial_delivery.py -vv --durations=20 -k postgresql
+            ../../tests/contract/test_a2a_initial_delivery.py \
+            ../../tests/contract/test_a2a_initial_delivery_process_race.py -vv --durations=20 -k postgresql
 
   postgres-langgraph-lifecycle:
     name: PostgreSQL LangGraph lifecycle recovery

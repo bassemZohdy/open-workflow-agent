@@ -142,6 +142,37 @@ def test_actual_a2a_postgresql_lifecycle_gate_selects_all_principal_cases(
     assert all("postgresql" in node and engine in node.lower() for node in nodes)
 
 
+def test_a2a_postgresql_process_race_witness_is_selected_in_postgres_ci():
+    workflow = yaml.safe_load(
+        (ROOT / ".github/workflows/postgres-ci.yml").read_text(encoding="utf-8")
+    )
+    job = workflow["jobs"]["postgres-adk-lifecycle"]
+    command = next(step["run"] for step in job["steps"] if "pytest" in step.get("run", ""))
+    fixture = "test_a2a_initial_delivery_process_race.py"
+    assert f"../../tests/contract/{fixture}" in command
+    collected = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            str(ROOT / "tests/contract" / fixture),
+            "--collect-only",
+            "-q",
+            "-k",
+            "postgresql",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert collected.returncode == 0, collected.stdout + collected.stderr
+    nodes = [line for line in collected.stdout.splitlines() if "::test_" in line]
+    assert len(nodes) == 1, collected.stdout
+    assert all("postgresql" in node for node in nodes)
+
+
 @pytest.mark.parametrize(
     "fixture,expected",
     [

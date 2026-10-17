@@ -72,7 +72,7 @@ def _windows_pid_is_gone(pid):
 def supervisor(tmp_path):
     records = []
 
-    def prepare(code, *, seconds=12, output=4096, workspace=65536):
+    def prepare(code, *, seconds=30, output=4096, workspace=65536):
         root = tmp_path / str(len(records))
         config = RuntimeConfig.model_validate(
             {
@@ -171,7 +171,7 @@ def supervisor(tmp_path):
 
 
 async def terminal(backend, launch, binding=None, *, allow_unknown=False):
-    async with asyncio.timeout(20):
+    async with asyncio.timeout(45):
         while True:
             value = await backend.inspect(launch, binding)
             if value.state == "terminal" or (allow_unknown and value.state == "unknown"):
@@ -218,7 +218,7 @@ async def test_authenticated_autonomous_deadline_keeps_original_cause_and_first_
     supervisor, late_control
 ):
     _, store, lease, backend, manager, launch = supervisor(
-        "import time\nprint('started',flush=True)\ntime.sleep(60)\n", seconds=7
+        "import time\nprint('started',flush=True)\ntime.sleep(60)\n", seconds=30
     )
     observed = await backend.submit(launch)
     assert observed.state == "running" and observed.binding is not None
@@ -335,7 +335,7 @@ async def test_actual_resource_failure_is_unknown_without_invented_exit_or_relau
     observed = await backend.submit(launch)
     child_pid = None
     if failure == "workspace":
-        async with asyncio.timeout(5):
+        async with asyncio.timeout(20):
             while not child_marker.exists():
                 await asyncio.sleep(0.025)
         child_pid = int(child_marker.read_text())
