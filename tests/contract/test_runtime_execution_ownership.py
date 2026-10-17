@@ -376,12 +376,13 @@ async def test_shutdown_drains_recovery_admission_before_execution_begins(
         before = handle._persisted_payload
         running = asyncio.create_task(engine.resume(handle, None, plan))
         await asyncio.wait_for(entered.wait(), 15)
-        assert not engine._active and engine._ownership_tasks
+        assert not engine._active and running in engine._resume_admission_tasks
         await engine.shutdown()
         assert running.done() and running.cancelled()
         current = service.invocations.get(handle.invocation_id)
         assert current is not None and current._persisted_payload == before
         assert not engine._ownership_tasks and not engine._execution_leases
+        assert not engine._resume_admission_tasks
         token = service.execution_ownership.acquire(current)
         service.execution_ownership.release(token)
     finally:

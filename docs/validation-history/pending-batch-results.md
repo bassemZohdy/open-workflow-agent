@@ -1386,3 +1386,57 @@ and common version-recovery selection passed 15 cases and skipped 100 because
 optional backend environments were absent. Ruff, format, documentation-link
 validation and mypy passed after formatting the added tests. The wider root
 suite and exact-source workflows have not run on this batch.
+
+## Exact-source qualification — `d7a3acf`
+
+Commit `d7a3acf99d6a62f17fac23de7bbece48e854558b` is pushed to
+`codex/required-backlog`. [PostgreSQL CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39059740959),
+[External Sandbox CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39059740828),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39059740908)
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39059740818)
+passed. Main [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39059740893)
+and [Agent Framework CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39059740920)
+failed on the same recovery-admission shutdown assertion: read-only resume
+preflight now runs before lease acquisition, while the test expected only
+lease-owned tasks to be tracked. The failures were two each in root/ADK/LangGraph,
+two in Windows ownership, and three in Agent Framework. The current working-tree
+change tracks and cancels preflight admission tasks separately from leased
+ownership tasks; the focused ADK/LangGraph contract selection passes locally.
+
+The same CI run exposed two independent Windows fixture issues: the
+authenticated autonomous-deadline test received a `PermissionError` while
+reading `heartbeat.json` (Windows operation-adapter job: 961 passed, 454
+skipped, one failed), and the native SQLite inspection fixture did not expose
+its real hot-super-journal barrier, producing 13 setup errors in the
+jq/admission selection. The jq/admission assertions showed no independent
+semantic failure. Both fixture issues remain under investigation and are not
+qualified or deferred. The current exact-source result does not close S3-02.
+
+The SQLite fixture investigation rejected several bounded strategies with
+real-producer evidence: Windows byte-range locking caused SQLite `disk I/O
+error`; 8/32 MiB timestamp polling and 64 MiB direct-byte sampling did not
+observe a changed database page while the master journal was valid; a 127 MiB
+native database plus journal approached the 256 MiB inspection snapshot cap
+and did not produce a sample; small-cache spill wrote marker bytes before the
+master existed; and a directory-notification probe did not terminate cleanly.
+The fixture is restored unchanged. The next avenue is a proven SQLite VFS-level
+observation barrier; no recovery assertion is weakened and S3-02 remains active
+for its other actionable gates.
+
+## Grouped follow-up after `d7a3acf` — working tree, not qualified
+
+The resume-shutdown change, A2A04 host-drain projection, actual deadline
+transition witness and heartbeat-read retry are local and uncommitted. A
+serialized focused batch passed seven cases across resume shutdown, repeated
+host-drain Task projection, real workflow-deadline transition and IPC
+PermissionError retry. The host-drain event wait was raised from five to thirty
+seconds after an initial run competing with static checks timed out both
+bindings; the isolated rerun passed, then the serialized batch passed. The
+actual deadline witness advances the engine's absolute clock past the
+configured workflow timeout, observes the persisted fault, then verifies
+stable/read-only repeated GetTask results and zero model calls on both bindings.
+The IPC selection passed three cases with one skip; the original Windows
+autonomous-deadline scenario was not rerun locally, so hosted confirmation of
+the read-open retry remains pending. Unary gRPC client tests passed 77 cases
+locally; its cross-engine/backend and hosted gates remain open. No broad local
+root suite has been rerun, and no Stage 3 task is complete from this evidence.

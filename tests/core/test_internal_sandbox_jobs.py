@@ -439,6 +439,30 @@ def test_private_ipc_authentication_size_duplicate_json_and_key_integrity(tmp_pa
         read_key(directory / "auth.key")
 
 
+def test_private_ipc_retries_transient_windows_read_open_conflict(tmp_path, monkeypatch):
+    from open_workflow_agent.sandbox import _job_ipc
+
+    directory = tmp_path / "ipc"
+    private_directory(directory)
+    key = create_key(directory / "auth.key")
+    target = directory / "heartbeat.json"
+    write_frame(target, {"generation": 1}, key)
+    open_file = _job_ipc.os.open
+    attempts = 0
+
+    def transient_conflict(path, flags, *args, **kwargs):
+        nonlocal attempts
+        if Path(path) == target:
+            attempts += 1
+            if attempts == 1:
+                raise PermissionError("controlled transient Windows sharing conflict")
+        return open_file(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(_job_ipc.os, "open", transient_conflict)
+    assert read_frame(target, key) == {"generation": 1}
+    assert attempts == 2
+
+
 @pytest.mark.parametrize("failure", ["write", "fsync", "replace"])
 def test_failed_ipc_publication_removes_only_owned_temp_and_keeps_original(
     tmp_path, monkeypatch, failure

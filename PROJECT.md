@@ -18,12 +18,16 @@ passed 718, and PostgreSQL passed all ten jobs. S3-02 is active. The latest
 full local root batch (before `36544b5`) completed in 3h30m with 4,616 passed,
 3,007 skipped, 28 failed, 13 setup errors and 125 warnings. Its coverage gate
 passed, but the suite was not green; the 13 setup errors reproduce at the
-Windows native SQLite super-journal fixture. The pushed exact-source checkpoint
-`36544b5` passed PostgreSQL CI, Agent Framework, External Sandbox, Security and
-Docs. Main CI has ten A2A resume corruption failures: four ADK receipt cases
-and six LangGraph checkpoint/receipt cases, all rejected only after common
-state changed. Those are active implementation defects. Read-only canceled/terminal Task projection follow-ups are local and unpushed. See the
-[exact-source run record](docs/validation-history/pending-batch-results.md#exact-source-qualification-36544b5)
+Windows native SQLite super-journal fixture. The latest pushed checkpoint
+`d7a3acf` passed PostgreSQL, External Sandbox, Security and Docs. Main CI and
+Agent Framework CI failed on recovery-admission shutdown assertions after the
+common read-only resume preflight moved before lease acquisition. A local fix
+now tracks and cancels preflight tasks separately; its focused ADK/LangGraph
+contract cases pass, pending hosted requalification. The same source exposed an
+actionable Windows heartbeat permission failure and SQLite super-journal
+fixture setup failure. The jq/admission assertions had no independent semantic
+failure. Read-only Task projection and deadline-transition follow-ups remain
+local. See the [exact-source run record](docs/validation-history/pending-batch-results.md#exact-source-qualification-d7a3acf)
 for workflow links and limits.
 JavaScript MCP, A145/full protocol coverage, proposed T29/T30/T31 criteria,
 and broader MCP extensions remain unqualified. See the
@@ -37,7 +41,7 @@ partial and superseded runs remain historical in the [validation history](docs/v
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at 6b23e5d / 96ce610. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
 | S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
-| S3-02 | Active task. The 3h30m local root batch was not green (4,616 passed, 3,007 skipped, 28 failed, 13 setup errors; coverage threshold met). The setup errors reproduce at the Windows native SQLite super-journal fixture. Pushed exact source `36544b5` passed PostgreSQL CI (all ten jobs), Agent Framework, External Sandbox, Security and Docs; main CI failed ten A2A resume corruption cases because common state changed before rejection (four ADK receipt, two LangGraph checkpoint, four LangGraph receipt). Read-only canceled/terminal Task projection follow-ups remain local. Durable Task/receipt expiry still needs a contract decision. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [validation history](docs/validation-history/pending-batch-results.md#exact-source-qualification-36544b5) |
+| S3-02 | Active task. The 3h30m local root batch was not green (4,616 passed, 3,007 skipped, 28 failed, 13 setup errors; coverage threshold met). At `d7a3acf`, PostgreSQL, External Sandbox, Security and Docs passed; main and Agent Framework CI exposed recovery-admission shutdown assertion failures. A local task-tracking fix passes focused ADK/LangGraph cases. A bounded heartbeat read-open retry passes focused IPC cases; the original Windows deadline scenario needs hosted confirmation. The super-journal fixture remains unresolved after lock, timestamp, direct-byte and cache-spill probes. A VFS-level observation hook is the next avenue. Stable canceled/terminal, host-drain and actual deadline projections are locally evidenced. Durable Task/receipt expiry needs a product decision. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [validation history](docs/validation-history/pending-batch-results.md#exact-source-qualification-d7a3acf) |
 | S3-03 | Operation adapters and independent recovery jobs remain open. The pre-ACK fixture correction passed its PostgreSQL LangGraph and Windows lanes at `8183776`. The PostgreSQL ADK operation job's 25-minute command/30-minute job limits passed at source `e45115c` in run `38645586498`; broader adapter, backend and deployment gates remain open. | [Operations](docs/s3-03-operation-adapters-acceptance.md), [timeout history and successful rerun](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4) |
 | S3-04 | Captured sources and awaited controls remain authored. Four late source-worker takeover cases cover the ADK/LangGraph × SQLite/PostgreSQL matrix; exact-source behavioral, platform and publication qualification remain pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored. The PostgreSQL `REAL`-to-`DOUBLE PRECISION` migration is implemented and f9 PostgreSQL protected-approval cases passed. The f9 Windows timer lane exposed a request-row process-recovery fixture race before its durable barrier; a five-second renewal lease plus natural database-clock wait passes the local LangGraph/SQLite suite. The formerly failing hosted Windows case passed at `8183776`; the expired-approval fixture now keeps invocation ownership independent from the short approval deadline and awaits independent-SDK/hosted requalification. Broader S3-05 gates remain open. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |
@@ -46,7 +50,7 @@ partial and superseded runs remain historical in the [validation history](docs/v
 | S3-08 | Selected compiler/provider/memory/embedded event adaptations and grouped corrections are authored; integrated qualification remains open. | [Selected scope and gates](docs/s3-08-selected-adapter-acceptance.md) |
 
 The current source and hosted run are recorded once in the delivery table above
-and the [validation history](docs/validation-history/pending-batch-results.md#exact-source-qualification-36544b5).
+and the [validation history](docs/validation-history/pending-batch-results.md#exact-source-qualification-d7a3acf).
 
 Historical source outcomes, full commands, hashes and correction details are
 retained in the [validation history](docs/validation-history/pending-batch-results.md).

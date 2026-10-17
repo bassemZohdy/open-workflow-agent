@@ -142,6 +142,7 @@ class WorkflowEngine:
         self._restart_resume_inputs: dict[str, Any] = {}
         self._execution_leases: dict[str, ExecutionLease] = {}
         self._ownership_tasks: dict[str, asyncio.Task[Any]] = {}
+        self._resume_admission_tasks: set[asyncio.Task[Any]] = set()
         self._timer_dispatcher: TimerDispatcher | None = None
         self._initial_delivery_dispatcher: InitialDeliveryDispatcher | None = None
         self._timer_claims: dict[str, TimerClaim] = {}
@@ -722,6 +723,18 @@ class WorkflowEngine:
             return await self._resume_owned(handle, None, plan)
 
     async def resume(
+        self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
+    ) -> InvocationResult:
+        task = asyncio.current_task()
+        if task is not None:
+            self._resume_admission_tasks.add(task)
+        try:
+            return await self._resume_admitted(handle, resume_input, plan)
+        finally:
+            if task is not None:
+                self._resume_admission_tasks.discard(task)
+
+    async def _resume_admitted(
         self, handle: ExecutionHandle, resume_input: Any, plan: WorkflowPlan
     ) -> InvocationResult:
         self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
@@ -1318,11 +1331,19 @@ class WorkflowEngine:
             await self._timer_dispatcher.stop()
         if self._initial_delivery_dispatcher is not None:
             await self._initial_delivery_dispatcher.stop()
-        tasks = {
-            active.task
-            for active in self._active.values()
-            if active.task is not None and active.task is not asyncio.current_task()
-        } | {task for task in self._ownership_tasks.values() if task is not asyncio.current_task()}
+        tasks = (
+            {
+                active.task
+                for active in self._active.values()
+                if active.task is not None and active.task is not asyncio.current_task()
+            }
+            | {
+                task
+                for task in self._ownership_tasks.values()
+                if task is not asyncio.current_task()
+            }
+            | {task for task in self._resume_admission_tasks if task is not asyncio.current_task()}
+        )
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)

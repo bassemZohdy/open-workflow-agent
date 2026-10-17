@@ -307,6 +307,117 @@ def test_end_and_deadline_task_reads_are_authoritative_and_read_only(
     )
 
 
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+def test_actual_workflow_deadline_projects_stable_read_only_task(
+    tmp_path, monkeypatch, transport: str
+) -> None:
+    config = RuntimeConfig.model_validate(
+        {
+            "workflow": {
+                "definition": {
+                    "document": {
+                        "dsl": "1.0.3",
+                        "namespace": "a2a-tests",
+                        "name": "deadline-projection",
+                        "version": "1.0.0",
+                    },
+                    "timeout": {"after": {"seconds": 1}},
+                    "do": [
+                        {
+                            "model": {
+                                "call": "llm:1.0.0@default",
+                                "with": {"prompt": "must not run after deadline"},
+                            }
+                        }
+                    ],
+                }
+            },
+            "a2a": {"enabled": True, "transport": transport},
+        }
+    )
+    model = FakeModel()
+    services = RuntimeServices(config, model=model, database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    message = {
+        "messageId": "deadline-message",
+        "role": "ROLE_USER",
+        "parts": [{"text": "start deadline workflow"}],
+    }
+
+    with TestClient(app) as client:
+        absolute_time = [1000.0]
+
+        def advance_workflow_clock() -> float:
+            current = absolute_time[0]
+            absolute_time[0] += 2.0
+            return current
+
+        monkeypatch.setattr(app.state.engine.executor, "_absolute_clock", advance_workflow_clock)
+        if transport == "jsonrpc":
+            send = client.post(
+                "/a2a",
+                headers=A2A_HEADERS,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "deadline-send",
+                    "method": "SendMessage",
+                    "params": {"message": message},
+                },
+            )
+
+            def get_task(request_id: str):
+                return client.post(
+                    "/a2a",
+                    headers=A2A_HEADERS,
+                    json=_task_request("GetTask", task_id, request_id),
+                )
+
+        else:
+            send = client.post(
+                "/a2a/message:send",
+                headers=A2A_HEADERS,
+                json={"message": message},
+            )
+
+            def get_task(_request_id: str):
+                return client.get(f"/a2a/tasks/{task_id}", headers=A2A_HEADERS)
+
+        assert send.status_code == 200, send.text
+        send_body = send.json()
+        if transport == "jsonrpc":
+            assert send_body["id"] == "deadline-send"
+        task_id = (
+            send_body["result"]["task"]["id"] if transport == "jsonrpc" else send_body["task"]["id"]
+        )
+        handle = services.invocations.get(task_id)
+        assert handle is not None
+        first = get_task("deadline-first")
+        second = get_task("deadline-second")
+        terminal_handle = services.invocations.get(task_id)
+        assert terminal_handle is not None
+        assert terminal_handle.status == "faulted"
+        assert terminal_handle.error is not None
+        assert terminal_handle.error["message"] == "workflow timed out", terminal_handle.error
+        snapshot_after_deadline = terminal_handle._persisted_payload
+        model_calls_after_deadline = list(model.calls)
+
+    assert first.status_code == second.status_code == 200
+    first_body = first.json()
+    second_body = second.json()
+    first_task = first_body["result"] if transport == "jsonrpc" else first_body
+    second_task = second_body["result"] if transport == "jsonrpc" else second_body
+    assert first_task == second_task
+    assert first_task["id"] == task_id
+    assert first_task["contextId"] == terminal_handle.session_id
+    assert first_task["status"]["state"] == "TASK_STATE_FAILED"
+    assert first_task["status"]["message"]["parts"][0]["text"] == (
+        "workflow failed: workflow_execution_error"
+    )
+    assert model_calls_after_deadline == []
+    assert model.calls == model_calls_after_deadline
+    assert services.invocations.get(task_id)._persisted_payload == snapshot_after_deadline
+
+
 def test_capabilities_advertise_only_implemented_task_operations(tmp_path) -> None:
     app, _services = _runtime(tmp_path, transport="jsonrpc")
 

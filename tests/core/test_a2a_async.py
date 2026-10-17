@@ -101,6 +101,112 @@ async def test_return_immediately_returns_task_and_completes(tmp_path) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
+    tmp_path, transport: str
+) -> None:
+    entered = asyncio.Event()
+    interrupted = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow_model(_prompt):
+        entered.set()
+        try:
+            await release.wait()
+        except asyncio.CancelledError:
+            interrupted.set()
+            raise
+        return {"response": "late-result"}
+
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake"},
+            "workflow": {
+                "catalog": [
+                    {
+                        "document": {
+                            "dsl": "1.0.3",
+                            "namespace": "a2a-host-drain",
+                            "name": "slow",
+                            "version": "1.0.0",
+                        },
+                        "do": [
+                            {
+                                "wait": {
+                                    "call": "llm:1.0.0@default",
+                                    "with": {"prompt": "wait for host drain"},
+                                }
+                            }
+                        ],
+                    }
+                ]
+            },
+            "a2a": {
+                "enabled": True,
+                "transport": transport,
+                "skills": [{"id": "slow", "workflow": "slow"}],
+            },
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(slow_model), database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    try:
+        async with app.router.lifespan_context(app):
+            client_transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(
+                transport=client_transport, base_url="http://test"
+            ) as client:
+                if transport == "jsonrpc":
+                    started = await client.post(
+                        "/a2a",
+                        headers=HEADERS,
+                        json=_send(
+                            _text_message("start the slow task", metadata={"skillId": "slow"}),
+                            configuration={"returnImmediately": True},
+                        ),
+                    )
+                    assert started.status_code == 200, started.text
+                    task_id = started.json()["result"]["task"]["id"]
+                else:
+                    started = await client.post(
+                        "/a2a/message:send",
+                        headers=HEADERS,
+                        json={
+                            "message": _text_message(
+                                "start the slow task", metadata={"skillId": "slow"}
+                            ),
+                            "configuration": {"returnImmediately": True},
+                        },
+                    )
+                    assert started.status_code == 200, started.text
+                    task_id = started.json()["task"]["id"]
+
+                await asyncio.wait_for(entered.wait(), timeout=30)
+                before_drain = services.invocations.get(task_id)
+                assert before_drain is not None and before_drain.status == "running"
+
+                await asyncio.wait_for(app.state.engine.shutdown(), timeout=5)
+                await asyncio.wait_for(interrupted.wait(), timeout=5)
+                after_drain = services.invocations.get(task_id)
+                assert after_drain is not None and after_drain.status == "running"
+                persisted = after_drain._persisted_payload
+                model_calls_after_drain = list(services.model.calls)
+
+                first = await _poll_task_state(
+                    client, task_id, "TASK_STATE_WORKING", transport=transport
+                )
+                second = await _poll_task_state(
+                    client, task_id, "TASK_STATE_WORKING", transport=transport
+                )
+                assert second == first
+                assert services.invocations.get(task_id)._persisted_payload == persisted
+                assert services.model.calls == model_calls_after_drain
+    finally:
+        release.set()
+        services.close()
+
+
+@pytest.mark.asyncio
 async def test_return_immediately_is_opt_in_and_defaults_to_blocking(tmp_path) -> None:
     config = RuntimeConfig.model_validate({"a2a": {"enabled": True}})
     app, _services = _make_app(tmp_path, config)

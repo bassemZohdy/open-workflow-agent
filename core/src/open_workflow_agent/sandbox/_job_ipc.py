@@ -8,6 +8,7 @@ import hmac
 import json
 import os
 import stat
+import time
 import uuid
 from pathlib import Path
 from typing import Any
@@ -215,6 +216,23 @@ def _encoded(value: Any) -> bytes:
         raise _failure() from None
 
 
+def _open_frame_for_read(path: Path) -> int:
+    """Open a frame across brief Windows sharing conflicts.
+
+    Windows may transiently deny a new open while another process is replacing
+    the frame. Retry only the open operation; persistent permission failures
+    still surface after a short, bounded delay.
+    """
+    for attempt in range(5):
+        try:
+            return os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        except PermissionError:
+            if attempt == 4:
+                raise
+            time.sleep(0.01 * (2**attempt))
+    raise AssertionError("unreachable")
+
+
 def write_frame(path: Path, value: Any, key: bytes, *, exclusive: bool = False) -> None:
     check_path(path.parent, directory=True)
     frame = _encoded(
@@ -296,7 +314,7 @@ def _unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 def read_frame(path: Path, key: bytes) -> Any:
     check_path(path.parent, directory=True)
     check_path(path)
-    descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    descriptor = _open_frame_for_read(path)
     try:
         before = os.fstat(descriptor)
         if not 0 < before.st_size <= MAX_FRAME_BYTES:

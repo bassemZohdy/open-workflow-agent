@@ -154,17 +154,21 @@ treated as a deferred task or as additional feature completion.
   interoperability, lifecycle, authority, recovery, streaming and backend
   gates are not closed. Outbound calls are not automatically replayed after
   possible acceptance; callers may explicitly resubscribe to a known task.
-  Pushed source `36544b5` passes PostgreSQL CI, Agent Framework, External
-  Sandbox, Security and Docs. Main CI found ten actionable corruption-resume
-  failures: ADK receipt and LangGraph checkpoint/receipt paths mutate common
-  state before rejecting the damaged evidence. A local common-engine change now
-  preflights retained state before lease acquisition and rechecks under the
-  lease; its native-profile rerun ended in a Windows pytest access violation
-  without a usable summary, so the fix is unqualified. The local Windows
-  super-journal fixture remains unresolved. Durable Task/receipt expiry still
-  requires a contract decision. Current gate status and focused evidence are in the
-  [acceptance record](docs/s3-02-a2a-acceptance.md); exact-source and historical
-  results are in the [validation history](docs/validation-history/pending-batch-results.md).
+  Pushed source `d7a3acf` passes PostgreSQL CI, External Sandbox, Security and
+  Docs. Main CI and Agent Framework CI failed on recovery-admission shutdown
+  assertions after the read-only resume preflight was moved before lease
+  acquisition. A local follow-up now tracks and cancels these admission tasks
+  separately; its focused ADK/LangGraph cases pass, but hosted requalification
+  is pending. The same source exposed a Windows heartbeat-file permission
+  failure and a SQLite hot-super-journal fixture setup failure. A bounded
+  read-open retry passes focused IPC tests; the original Windows deadline
+  scenario still needs hosted confirmation. Repeated real-
+  producer byte, timestamp, cache-spill and lock probes did not find a safe
+  SQLite barrier for the latter; the next step is to evaluate a proven
+  SQLite VFS-level observation hook without relaxing recovery evidence.
+  Durable Task and receipt expiry still needs a product contract. Current gates and focused
+  evidence are in the [acceptance record](docs/s3-02-a2a-acceptance.md); exact
+  source outcomes are in the [validation history](docs/validation-history/pending-batch-results.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected adapters and recovery fixtures are authored; cross-adapter,
   backend, platform, lifetime, packaging and hosted acceptance remain open.

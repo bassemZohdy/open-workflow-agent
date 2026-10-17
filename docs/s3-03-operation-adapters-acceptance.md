@@ -310,7 +310,9 @@ owner context; mutable catalog content is not substituted during replay.
 
 Authored inventories, not passing test counts:
 
-- `tests/core/test_grpc_client.py`: 71 authored client/registry/type/security cases.
+- `tests/core/test_grpc_client.py`: 77 authored client/registry/type/security cases;
+  the focused local run passed all 77 on 2026-10-18. This does not qualify the
+  cross-engine/backend workflow matrix or source-frozen hosted acceptance.
 - `tests/contract/test_grpc_calls.py`: 17 per principal/backend, 68 across actual
   ADK/LangGraph and SQLite/PostgreSQL, including imported workflows, null/value/
   fault recovery, logical loop identity, deadline, uncertainty and ownership.
