@@ -1,4 +1,4 @@
-# Pending batch results — 2026-10-14
+# Pending batch results — 2026-10-17
 
 Historical attempts below remain distinct from qualification. S2-09's finite
 VM01-VM08 policy and S3-01's finite Python MCP01-MCP08 profile are verified.
@@ -1219,3 +1219,71 @@ recovery depends on retained evidence. No expiry behavior was invented or
 tested. The acceptance record asks for an explicit profile exclusion or a
 versioned retention contract before adding an expiry test. S3-02 remains active
 and unchecked; these gaps do not block continuing its other ready evidence.
+
+### Follow-up to the transient HTTP+JSON child-wait observation
+
+The earlier HTTP+JSON diagnostic in the `c5269bb` entry stalled once with the
+parent and child left `running`. A subsequent identical-payload comparison
+exercised both transports with `returnImmediately: true`, the same catalog,
+lifespan and engine, then checked the initial-delivery, timer, child-wait and
+detached-child dispatcher error queues. Both bindings reached one registered
+parent child wait with empty error queues (2 passed in 32.29 seconds). No
+transport-specific runtime defect is established. The permanent child
+projection test now covers JSON-RPC and HTTP+JSON with both terminal values and
+faults; all four focused cases passed in 52.87 seconds. Repeated GetTask reads
+preserve terminal payload and identity, and child fault details remain
+sanitized. The separate-process A2A05 SQLite takeover witness also passed (1
+case in 15.23 seconds); it settles one receiver commit under a higher owner
+generation and rejects the paused old owner without changing its snapshot.
+
+### Hosted CI findings at `8ff5f6e`
+
+The exact-source CI run [38670669655](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/38670669655)
+failed in the Windows native lifecycle job and the ADK/LangGraph contract jobs;
+the Windows timer job was canceled after the aggregate failed. ADK failed four
+receiver-receipt corruption cases because the fixture decoded a hashed identity
+instead of its persisted JSON payload. LangGraph failed those same receipt
+cases plus two native-checkpoint cases: HTTP+JSON requests omitted
+`A2A-Version: 1.0`, and the JSON-RPC assertion expected an object while the
+current error contract returns an ErrorInfo list. These were test-fixture
+defects, not evidence of a production contract change.
+
+The same Windows run exposed a LangGraph host-drain child-recovery fixture that
+waited at an executor callback the native scope observer does not call. The
+fixture now waits after the LangGraph child scope records its completed
+receipt. The exact Windows test passed once on rerun after one transient
+`InvocationStateError` about inconsistent recovery evidence; a direct worker
+kill/recovery cycle also passed. The one transient failure retained only its
+exception representation, so no more specific cause is established. All A2A
+fixture corrections and the host-drain boundary correction are in the current
+batch; this entry does not qualify them or mark S3-02 complete.
+
+### Consolidated A2A batch at working tree based on `8ff5f6e` — 2026-10-17 (not green)
+
+The locked root command
+`uv run --locked pytest tests -vv --durations=20 --cov=core/src/open_workflow_agent --cov-report=term-missing --cov-fail-under=90 --cov-precision=2`
+completed in 2h12m32s with 4,638 passed, 3,006 skipped, 15 failed and 90.47%
+coverage. The failures were two ADK competitive-fork/scoped-flow ownership or
+timeout cases; four nested-child projection polling timeouts (subsequently
+addressed by widening fixture polling); eight internal sandbox/process cases
+covering awaited-process cleanup, supervisor/job startup, deadline, resource,
+output and mutation-fence timing; and one ADK CTK listener that remained
+`running` instead of reaching `waiting`. This is not a
+green root suite and does not qualify S3-02.
+
+Focused follow-up passed all four nested-child terminal value/fault projections
+for JSON-RPC and HTTP+JSON after fixture polling was widened to 30 seconds
+(4 passed in 87.27s). The selected competitive-fork, scoped-flow and CTK cases
+passed 12 (12 passed, 228 deselected in 30.99s). The selected Windows sandbox
+rerun completed with 5 failed and 4 passed in 160.07s: both real-exit cases
+hit the 15-second supervisor startup bound or returned `unknown`, both late
+deadline/cancel cases observed `unknown`, and the workspace-quota case timed
+out before its child marker. These remain actionable; no task is deferred.
+
+The final static batch passed repository Ruff, format checking across 466
+files, Markdown relative-link validation and `git diff --check`. Earlier in
+this worktree, strict mypy, lock verification and root/core package builds also
+passed; the recent fixture-only edits do not alter typed runtime source. Exact-
+source hosted workflows have not yet run for this working tree. Keep all A2A
+gate states partial and rerun the required local/hosted batch after resolving
+the Windows supervisor startup/observation behavior.

@@ -152,36 +152,34 @@ treated as a deferred task or as additional feature completion.
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
   S2-09 and S3-01 are verified prerequisites. The bounded A2A profile has broad
   local and hosted evidence, but A2A01-A2A08 remain partial pending direct
-  cross-product, authority, recovery, streaming, expiry and backend evidence.
-  Outbound calls are not automatically replayed after possible acceptance;
-  callers may explicitly resubscribe to a known task. This batch adds card
-  interface-selection, HTTP+JSON resume, recovery skill-binding and optional-
-  method rejection witnesses. Follow-up tests now reject protected-approval
-  resumes, verify a real timer's terminal Task projection, and reject A2A resume
-  when archived workflow or invocation-binding evidence is missing or corrupt.
-  A real nested-child timer now has a passing JSON-RPC terminal-value projection
-  witness with immutable repeated GetTask reads. HTTP+JSON SendMessage creates
-  both parent and child rows and their effect records, but after five seconds
-  both invocations remain running without the parent's child-wait registration;
-  trace its dispatch/scheduling path against JSON-RPC before changing runtime
-  code. Child-fault projection remains open.
-  The earlier 217-case core A2A profile is verified at `e45115c`; the malformed-
-  Part/data resume and in-process stale-generation tests pass locally. This
-  follow-up adds HTTP+JSON rejection for all six optional v1 operations and a
-  LangGraph native-checkpoint and missing/corrupt receiver-receipt witnesses;
-  these actual-native cases require isolated engine SDK and PostgreSQL
-  qualification. The owner-authority resume matrix
-  likewise requires independent engine SDK environments, and the ADK
-  expired-approval lease fixture awaits hosted requalification. A hosted
-  fail-closed owner-authority assertion mismatch is corrected to the existing
-  `task_not_resumeable` response contract. Exact-source
-  hosted results remain pending. A2A08 expiry semantics are not currently
-  defined: the existing 24-hour EventStore retention applies only to eligible
-  inbox arrivals, not durable Tasks or receipts. The acceptance record captures
-  the policy decision and recovery-evidence requirements before an expiry test
-  can be written. See the
-  [gate-by-gate acceptance record](docs/s3-02-a2a-acceptance.md) and
-  [retained validation history](docs/validation-history/pending-batch-results.md).
+  cross-product, authority, recovery, streaming and backend evidence. Outbound
+  calls are not automatically replayed after possible acceptance; callers may
+  explicitly resubscribe to a known task. Recent local witnesses cover card
+  selection, HTTP+JSON resume, protected-approval denial, malformed-resume
+  no-mutation, all six optional-operation rejections, and timer/child Task
+  projection. The nested-child value/fault test now covers both inbound
+  bindings, with immutable repeated GetTask reads. A separate-process SQLite
+  takeover test proves initial-delivery owner-generation fencing. Owner-
+  authority, native-checkpoint and receiver-receipt cases still require
+  independent engine SDK and PostgreSQL qualification.
+
+  The hosted CI run at `8ff5f6e` exposed incorrect receipt-fixture decoding,
+  missing HTTP+JSON version headers, an outdated JSON-RPC error assertion and a
+  LangGraph Windows receipt-boundary fixture. Corrections are in this batch;
+  the Windows recovery case passed once after one transient failure. Run the
+  consolidated suite and exact-source hosted workflows before recording these
+  fixes as qualified. The 2026-10-17 consolidated root suite recorded 4,638
+  passed, 3,006 skipped and 15 failed at 90.47% coverage. The widened
+  nested-child projection waits pass all four focused cases; selected
+  competitive/scoped/CTK regressions pass 12 cases. A selected Windows sandbox
+  rerun still fails five cases around supervisor startup/observation, with
+  actionable timeout evidence. These results do not qualify the full batch;
+  resolve the Windows failure, then rerun the consolidated suite and exact-
+  source hosted workflows. Durable Task/receipt expiry remains undefined; the
+  acceptance record lists the policy choices and the cleanup evidence a future
+  retention contract would require. See the [gate-by-gate acceptance
+  record](docs/s3-02-a2a-acceptance.md) and [validation
+  history](docs/validation-history/pending-batch-results.md).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected adapters and independent recovery fixtures are authored. The
   `8183776` PostgreSQL and Windows runs confirm one corrected inbox/ACK

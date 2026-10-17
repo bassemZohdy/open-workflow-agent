@@ -153,6 +153,48 @@ async def run(directory: Path, mode: str) -> None:
                     await asyncio.Event().wait()
 
             engine.executor._notify_receipt = notify
+            if engine_name == "langgraph":
+                from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
+
+                original_run_scope = LangGraphScopeExecutor.run_scope
+
+                async def run_scope(scope_executor: Any, *args: Any, **kwargs: Any) -> None:
+                    await original_run_scope(scope_executor, *args, **kwargs)
+                    if (
+                        scope_executor.plan.fingerprint != child_plan.fingerprint
+                        or kwargs.get("prefix") != "/do"
+                    ):
+                        return
+                    child_effect = next(
+                        (
+                            dependency.identity
+                            for dependency in scope_executor.receipts.values()
+                            if dependency.identity.operation == "call:http"
+                            and dependency.identity.invocation_id == scope_executor.invocation_id
+                        ),
+                        None,
+                    )
+                    if child_effect is None:
+                        return
+                    child_receipt = services.effect_journal.get(child_effect)
+                    assert child_receipt is not None and child_receipt.status == "completed"
+                    child_id = scope_executor.invocation_id
+                    write_json(
+                        directory / "ready.json",
+                        {
+                            "pid": os.getpid(),
+                            "native_available": True,
+                            "parent_id": parent.invocation_id,
+                            "child_id": child_id,
+                            "fingerprint": parent_plan.fingerprint,
+                            "original": scenario["original"],
+                            "effect": asdict(child_effect),
+                            "receipt": asdict(child_receipt),
+                        },
+                    )
+                    await asyncio.Event().wait()
+
+                LangGraphScopeExecutor.run_scope = run_scope  # type: ignore[method-assign]
             invocation = asyncio.create_task(
                 engine.invoke(parent_plan, parent, scenario["original"])
             )

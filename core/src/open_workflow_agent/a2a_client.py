@@ -512,6 +512,13 @@ async def call_a2a(
     content_type = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
     try:
         if method in STREAM_METHODS:
+            if content_type == "application/json":
+                # A peer may return a correlated JSON-RPC error before opening
+                # an SSE stream (for example, TaskNotFound on SubscribeToTask).
+                # Such an error is a known protocol result; a successful JSON
+                # response is still invalid for a streaming method.
+                _rpc(_strict_json(response.content), identifier)
+                raise _uncertain("invalid_stream_type")
             if content_type != "text/event-stream":
                 raise _uncertain("invalid_stream_type")
             return _stream(response.content, identifier, method, params)

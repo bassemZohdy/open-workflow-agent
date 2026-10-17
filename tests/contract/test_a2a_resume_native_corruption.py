@@ -131,9 +131,15 @@ async def test_a2a_resume_rejects_corrupt_native_checkpoint_before_mutation(
                     )
                     assert response.status_code == 200, response.text
                     assert response.json()["error"]["message"] == "workflow execution failed"
-                    assert response.json()["error"]["data"]["code"] == ("invalid_invocation_state")
+                    assert response.json()["error"]["data"][0]["metadata"]["code"] == (
+                        "invalid_invocation_state"
+                    )
                 else:
-                    response = await client.post("/a2a/message:send", json={"message": message})
+                    response = await client.post(
+                        "/a2a/message:send",
+                        headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                        json={"message": message},
+                    )
                     assert response.status_code == 500, response.text
                     assert response.json()["error"]["details"][0]["metadata"]["code"] == (
                         "invalid_invocation_state"

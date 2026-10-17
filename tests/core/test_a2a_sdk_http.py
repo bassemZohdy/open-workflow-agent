@@ -84,6 +84,25 @@ async def test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_busi
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method", METHODS)
+async def test_every_advertised_method_rejects_legacy_version_before_dispatch(method):
+    calls = []
+
+    def receiver(request):
+        calls.append(request)
+        return httpx.Response(200, json={"jsonrpc": "2.0", "id": "unused", "result": {}})
+
+    value = payload(method, "https://a2a.test/a2a")
+    value["protocolVersion"] = "0.3"
+    with pytest.raises(ToolError, match="unsupported A2A protocol version"):
+        await ProtocolServices(
+            HttpClient(transport=httpx.MockTransport(receiver), allowed_hosts={"a2a.test"})
+        ).call("a2a", value)
+
+    assert calls == []
+
+
+@pytest.mark.asyncio
 async def test_actual_tcp_streaming_lost_response_is_uncertain_without_reconnect():
     accepted = asyncio.Event()
     business_dispatches = []
@@ -301,19 +320,20 @@ async def test_remote_acceptance_with_invalid_reply_remains_uncertain_without_re
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("network", [False, True], ids=["asgi-wire", "actual-tcp-sdk"])
-async def test_correlated_official_task_not_found_is_known_sanitized_protocol_fault(network):
-    async with sdk_a2a_fixture(network=network) as (transport, calls, endpoint):
-        value = payload("GetTask", endpoint)
+@pytest.mark.parametrize("method", ["GetTask", "CancelTask", "SubscribeToTask"])
+async def test_correlated_official_task_not_found_is_known_sanitized_protocol_fault(method):
+    async with sdk_a2a_fixture(network=True) as (transport, calls, endpoint):
+        value = payload(method, endpoint)
         value["parameters"]["id"] = "unknown-private-task"
         with pytest.raises(ToolError) as error:
-            await ProtocolServices(client(transport, network)).call("a2a", value)
+            await ProtocolServices(client(transport, True)).call("a2a", value)
         assert not isinstance(error.value, _A2AOutcomeUncertain)
         assert (
             error.value.details["reason"] == "protocol_error"
             and error.value.details["code"] == -32001
         )
-        assert "unknown-private-task" not in str(error.value) and len(calls) == 1
+        assert "unknown-private-task" not in str(error.value)
+        assert len(calls) == 1 and calls[0]["body"]["method"] == method
 
 
 @pytest.mark.asyncio

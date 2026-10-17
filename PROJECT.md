@@ -7,15 +7,20 @@
 - `TODO.md` — ordered backlog and any blocked-task deferrals.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current backlog delivery mode — 2026-10-15
+## Current backlog delivery mode — 2026-10-17
 
 **19 of 37 backlog tasks are verified; 18 remain open. No task is deferred.**
 S2-09’s finite VM01-VM08 policy and S3-01’s finite Python MCP01-MCP08 profile
 are verified. S3-01 passed all six hosted workflows at exact source
 `af4acd61c200787fb68248b2d180ba69efb8c837`; the root suite passed 4,569 tests
 at 90.04% coverage, Windows operation recovery passed 962, Windows timers
-passed 718, and PostgreSQL passed all ten jobs. S3-02 is the active next task;
-its latest focused A2A suites pass locally, with hosted qualification pending.
+passed 718, and PostgreSQL passed all ten jobs. S3-02 is active. The latest
+consolidated root suite recorded 4,638 passed, 3,006 skipped and 15 failed at
+90.47% coverage after 2h12m; it is not a green full-suite result. The nested-
+child projection rerun passed all 4 cases, and the selected competitive-fork,
+scoped-flow and CTK regressions passed 12 cases. The selected Windows sandbox
+rerun still has five failures around supervisor startup/observation. Exact-
+source hosted qualification remains pending.
 JavaScript MCP, A145/full protocol coverage, proposed T29/T30/T31 criteria,
 and broader MCP extensions remain unqualified. See the
 [exact-source qualification record](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6),
@@ -28,7 +33,7 @@ partial and superseded runs remain historical in the [validation history](docs/v
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at 6b23e5d / 96ce610. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
 | S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
-| S3-02 | Active task; the bounded A2A profile has broad local evidence. New card-selection, HTTP+JSON resume, retained-skill recovery, JSON-RPC and HTTP+JSON optional-method rejection, SubscribeToTask partial-loss, unknown/foreign task-access equivalence, malformed-resume no-mutation, in-process stale-generation, protected-approval resume denial, timer and JSON-RPC nested-child terminal Task projection, and damaged-archive A2A rejection cases pass locally. Owner-authority, native-checkpoint and receiver-receipt resume witnesses need isolated engine SDK environments; HTTP+JSON child dispatch creates parent/child records but no parent child-wait registration, so its dispatch/scheduling path needs investigation. Child-fault projection, A2A01-A2A08 cross-products and recovery races remain open. Durable Task/receipt expiry has no current policy; decide whether to exclude it from this finite profile or define a retention contract. Exact-source hosted qualification remains open. | [A2A acceptance](docs/s3-02-a2a-acceptance.md) |
+| S3-02 | Active task; the bounded A2A profile has broad local evidence. The latest root batch was not green (4,638 passed, 3,006 skipped, 15 failed; 90.47% coverage). Nested-child projection and selected workflow/CTK cases pass focused reruns; selected Windows sandbox startup/observation failures remain actionable. A2A fixture corrections and the LangGraph native receipt-boundary fixture still need exact-source hosted qualification. Owner-authority/native/receipt cross-products still require independent SDK/PostgreSQL environments. Durable Task/receipt expiry still needs a contract decision. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [validation history](docs/validation-history/pending-batch-results.md) |
 | S3-03 | Operation adapters and independent recovery jobs remain open. The pre-ACK fixture correction passed its PostgreSQL LangGraph and Windows lanes at `8183776`. The PostgreSQL ADK operation job's 25-minute command/30-minute job limits passed at source `e45115c` in run `38645586498`; broader adapter, backend and deployment gates remain open. | [Operations](docs/s3-03-operation-adapters-acceptance.md), [timeout history and successful rerun](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4) |
 | S3-04 | Captured sources and awaited controls remain authored. Four late source-worker takeover cases cover the ADK/LangGraph × SQLite/PostgreSQL matrix; exact-source behavioral, platform and publication qualification remain pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored. The PostgreSQL `REAL`-to-`DOUBLE PRECISION` migration is implemented and f9 PostgreSQL protected-approval cases passed. The f9 Windows timer lane exposed a request-row process-recovery fixture race before its durable barrier; a five-second renewal lease plus natural database-clock wait passes the local LangGraph/SQLite suite. The formerly failing hosted Windows case passed at `8183776`; the expired-approval fixture now keeps invocation ownership independent from the short approval deadline and awaits independent-SDK/hosted requalification. Broader S3-05 gates remain open. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |
@@ -38,9 +43,12 @@ partial and superseded runs remain historical in the [validation history](docs/v
 
 The earlier feature checkpoint `67aa724` is on draft
 [PR 64](https://github.com/bassemZohdy/open-workflow-agent/pull/64), whose
-aggregate CI failed. The current correction batch is published on draft
-[PR 65](https://github.com/bassemZohdy/open-workflow-agent/pull/65). Earlier
-hosted failures and their fixes are detailed in the
+aggregate CI failed. The latest published correction checkpoint is `8ff5f6e`
+on draft [PR 65](https://github.com/bassemZohdy/open-workflow-agent/pull/65).
+The current A2A batch remains local until its actionable focused failures are
+resolved and the coherent batch is pushed; hosted status for new source is not
+yet available.
+Earlier hosted failures and their fixes are detailed in the
 [validation history](docs/validation-history/pending-batch-results.md#hosted-validation-of-corrective-batch--pr-65).
 
 Historical source outcomes, full commands, hashes and correction details are

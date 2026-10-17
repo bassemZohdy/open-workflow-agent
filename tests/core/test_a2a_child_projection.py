@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from typing import Any
 
 import httpx
@@ -65,10 +66,23 @@ def _task(response: httpx.Response, binding: str):
     return payload["result"] if binding == "jsonrpc" else payload
 
 
+async def _wait_for(description: str, read: Callable[[], Any | None]) -> Any:
+    try:
+        async with asyncio.timeout(30):
+            while True:
+                result = read()
+                if result is not None:
+                    return result
+                await asyncio.sleep(0.01)
+    except TimeoutError:
+        pytest.fail(f"timed out waiting for {description}")
+
+
 @pytest.mark.asyncio
-@pytest.mark.parametrize("binding", ["jsonrpc"])
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize("child_outcome", ["value", "fault"])
 async def test_get_task_projects_committed_terminal_nested_child_outcome_immutably(
-    tmp_path, monkeypatch, binding: str
+    tmp_path, monkeypatch, binding: str, child_outcome: str
 ) -> None:
     current = [1000.0]
     original_initialize = WorkflowExecutor.__init__
@@ -78,7 +92,21 @@ async def test_get_task_projects_committed_terminal_nested_child_outcome_immutab
         executor._absolute_clock = lambda: current[0]
 
     monkeypatch.setattr(WorkflowExecutor, "__init__", initialize)
-    child_tail = {"finish": {"set": {"child_result": "actual"}}}
+    child_tail = (
+        {
+            "finish": {
+                "raise": {
+                    "error": {
+                        "type": "https://child.test/fault",
+                        "status": 422,
+                        "title": "child failed",
+                    }
+                }
+            }
+        }
+        if child_outcome == "fault"
+        else {"finish": {"set": {"child_result": "actual"}}}
+    )
     child = {
         "document": {
             "dsl": "1.0.3",
@@ -139,27 +167,28 @@ async def test_get_task_projects_committed_terminal_nested_child_outcome_immutab
                 start_body = start_result["result"] if binding == "jsonrpc" else start_result
                 task_id = start_body["task"]["id"]
 
-                async with asyncio.timeout(5):
-                    while True:
-                        handle = services.invocations.get(task_id)
-                        if handle is not None and handle.status in {
-                            "completed",
-                            "faulted",
-                            "cancelled",
-                        }:
-                            pytest.fail(
-                                f"parent reached {handle.status} before child wait: {handle.error}"
-                            )
-                        waits = (
-                            services.child_waits.for_invocation(
-                                task_id, handle.workflow_fingerprint
-                            )
-                            if handle is not None
-                            else []
+                def parent_wait_registration():
+                    handle = services.invocations.get(task_id)
+                    if handle is not None and handle.status in {
+                        "completed",
+                        "faulted",
+                        "cancelled",
+                    }:
+                        pytest.fail(
+                            f"parent reached {handle.status} before child wait: {handle.error}"
                         )
-                        if handle is not None and handle.status == "waiting" and waits:
-                            break
-                        await asyncio.sleep(0.01)
+                    waits = (
+                        services.child_waits.for_invocation(task_id, handle.workflow_fingerprint)
+                        if handle is not None
+                        else []
+                    )
+                    if handle is not None and handle.status == "waiting" and waits:
+                        return handle, waits
+                    return None
+
+                handle, waits = await _wait_for(
+                    "parent waiting state and child-wait registration", parent_wait_registration
+                )
                 registration = waits[0]
                 child_id = registration.suspension.child_id
                 child_handle = services.invocations.get(child_id)
@@ -177,29 +206,52 @@ async def test_get_task_projects_committed_terminal_nested_child_outcome_immutab
 
                 current[0] = 1060.0
                 assert await dispatcher.tick(now=current[0], invocation_id=child_id) == 1
-                async with asyncio.timeout(5):
-                    while child_id in dispatcher._workers:
-                        await asyncio.sleep(0.01)
-                assert services.invocations.get(child_id).status == "completed"
+                await _wait_for(
+                    "child timer worker drain",
+                    lambda: True if child_id not in dispatcher._workers else None,
+                )
+                child_terminal = services.invocations.get(child_id)
+                assert child_terminal.status == (
+                    "faulted" if child_outcome == "fault" else "completed"
+                )
 
                 await dispatcher.child_waits.tick(run_key=registration.identity.key)
-                async with asyncio.timeout(5):
-                    while task_id in dispatcher.child_waits._workers:
-                        await asyncio.sleep(0.01)
+                await _wait_for(
+                    "parent child-wait worker drain",
+                    lambda: True if task_id not in dispatcher.child_waits._workers else None,
+                )
                 committed = services.invocations.get(task_id)
                 assert committed is not None
-                assert committed.status == "completed"
-                assert committed.output == {"child_result": "actual"}
+                expected_status = "faulted" if child_outcome == "fault" else "completed"
+                assert committed.status == expected_status
+                if child_outcome == "value":
+                    assert committed.output == {"child_result": "actual"}
+                else:
+                    assert committed.error is not None
 
                 terminal = await _get_task(client, binding, task_id, "terminal")
                 assert terminal.status_code == 200, terminal.text
                 terminal_task = _task(terminal, binding)
                 assert terminal_task["id"] == task_id
                 assert terminal_task["contextId"] == waiting_task["contextId"]
-                assert terminal_task["status"]["state"] == "TASK_STATE_COMPLETED"
-                assert terminal_task["artifacts"][0]["parts"][0]["data"] == {
-                    "child_result": "actual"
-                }
+                if child_outcome == "fault":
+                    assert terminal_task["status"]["state"] == "TASK_STATE_FAILED"
+                    message = terminal_task["status"]["message"]
+                    assert message["taskId"] == task_id
+                    assert message["contextId"] == waiting_task["contextId"]
+                    assert message["parts"] == [
+                        {
+                            "text": "workflow failed: workflow_execution_error",
+                            "mediaType": "text/plain",
+                        }
+                    ]
+                    assert "child failed" not in repr(terminal_task)
+                    assert "child_result" not in terminal_task
+                else:
+                    assert terminal_task["status"]["state"] == "TASK_STATE_COMPLETED"
+                    assert terminal_task["artifacts"][0]["parts"][0]["data"] == {
+                        "child_result": "actual"
+                    }
 
                 persisted = committed._persisted_payload
                 repeated = await _get_task(client, binding, task_id, "repeated")

@@ -73,7 +73,7 @@ async def test_a2a_resume_rejects_damaged_receiver_receipt_before_mutation(
 
                 connection = services.effect_journal.connection
                 rows = connection.execute(
-                    "SELECT i.identity,e.owner,e.status,e.payload "
+                    "SELECT i.identity,i.payload,e.owner,e.status,e.payload "
                     "FROM workflow_effect_invocations i JOIN workflow_effects e "
                     "ON e.identity=i.identity WHERE i.invocation_id=?",
                     (handle.invocation_id,),
@@ -81,11 +81,12 @@ async def test_a2a_resume_rejects_damaged_receiver_receipt_before_mutation(
                 matches = [
                     row
                     for row in rows
-                    if EffectIdentity.from_value(json.loads(row[0])).task_reference
+                    if EffectIdentity.from_value(json.loads(row[1])).task_reference
                     == "/do/0/commit"
                 ]
                 assert len(matches) == 1
-                saved_receipt = tuple(matches[0])
+                matched = matches[0]
+                saved_receipt = (matched[0], matched[2], matched[3], matched[4])
                 if damage == "missing":
                     changed = connection.execute(
                         "DELETE FROM workflow_effects WHERE identity=?", (saved_receipt[0],)
@@ -122,7 +123,11 @@ async def test_a2a_resume_rejects_damaged_receiver_receipt_before_mutation(
                     assert response.json()["error"]["code"] == -32000
                     assert response.json()["error"]["message"] == "task is not accepting input"
                 else:
-                    response = await client.post("/a2a/message:send", json={"message": message})
+                    response = await client.post(
+                        "/a2a/message:send",
+                        headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                        json={"message": message},
+                    )
                     assert response.status_code == 409, response.text
                     assert response.json()["error"]["details"][0]["metadata"]["owaCode"] == (
                         "task_not_resumeable"
