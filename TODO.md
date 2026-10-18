@@ -1,6 +1,6 @@
 # Open Workflow Agent — implementation gaps
 
-`open-workflow-agent` is the main repository. Implement these stages in order; keep every gap tracked from day one. Existing shipped behavior is recorded in [PROJECT.md](PROJECT.md), not assumed missing or conformant here.
+`open-workflow-agent` is the main repository. Implement stages 1 to 4 in order, then run the stage 5 acceptance; keep every gap tracked from day one. Existing shipped behavior is recorded in [PROJECT.md](PROJECT.md), not assumed missing or conformant here.
 
 The [full tracker](resources/compatibility/feature-tracker.json) preserves **658 features, 443 proposed tests and 774 schema constraints**, with Python/JS status and links to tasks below. All new delivery claims await verification. The [migration record](docs/agent-runtime-consolidation.md) distinguishes imported reference material from active code.
 
@@ -10,8 +10,8 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 
 ## Stage 1 — Correct core execution
 
-- [ ] **S1-01** (M) — Pin the supported OWS schema, release status and semantic profile; reject unsupported definitions clearly.
-- [ ] **S1-02** (L) — Replace the partial expression evaluator with validated jq behavior and consistent data/type handling.
+- [ ] **S1-01** (M) — Pin the supported OWS schema, release status and semantic profile; reject unsupported definitions clearly. *Done 2026-10-18 (branch `fix/strict-yaml-duplicate-keys`, awaiting merge): duplicate mapping keys are rejected. Remaining: expose the pinned release status/semantic profile and extend unsupported-definition diagnostics.*
+- [ ] **S1-02** (L) — Replace the partial expression evaluator with validated jq behavior and consistent data/type handling. *Verified gap 2026-10-18: unsupported jq expressions return text or `None` instead of failing (for example `.a | map(. * 2)`, `.o.k // "d"`, `.a[1:]`, `if/then/else`, `join`); decision-critical for the runtime decision below.*
 - [ ] **S1-03** (M) — Fix input/output/export ordering, context replacement, task-local data and immutable branch input.
 - [ ] **S1-04** (M) — Preserve transitions, loop/condition rules, and the different scopes of exit and end.
 - [ ] **S1-05** (L) — Compile individual tasks and routing to native LangGraph nodes/tasks; keep native checkpoints private.
@@ -45,7 +45,7 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 
 ## Stage 4 — Advanced features and full verification
 
-- [ ] **S4-01** (M) — Implement versioned native YAML metadata extensions with capability admission; reject unsupported requests.
+- [ ] **S4-01** (M) — Implement versioned native YAML metadata extensions with capability admission; reject unsupported requests. *Decision-critical: the runtime decision report names executing agent extensions from configuration as the hardest unproven requirement.*
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
 - [ ] **S4-04** (L) — Automate official CTK plus all proposed tests, schema constraints, parity and cross-engine outcome checks.
@@ -56,6 +56,15 @@ Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, 
 - [ ] **S4-09** (L) — Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; require its own native acceptance.
 - [ ] **S4-10** (L) — Preserve EVENT-1 through EVENT-5; add optional external brokers, AsyncAPI and A2A push only with delivery/security contracts.
 - [ ] **S4-11** (L) — Keep multi-tenancy and RFC 8693/consent as tracked conditional work; do not invent a security protocol.
+
+## Stage 5 — Runtime-decision acceptance
+
+Source: [Extended OWS Workflow and Agent Runtime Decision, revision 3](https://github.com/bassemZohdy/tech-reports/tree/main/reports/open-workflow-runtime-decision) (provisional: 65.5/100 for OWA + LangGraph versus 70.0/100 for Quarkus Flow + LangChain4j, no mandatory acceptance demonstrated on either candidate). These are pass/fail conditions, not scored rows. They depend on earlier stages and must use the same definitions, fixtures and expected outcomes that any candidate runtime would run. Passing them is evidence for the decision, not a claim of full conformance.
+
+- [ ] **S5-01** (L) — Build one matched acceptance workflow with deterministic branching, parallel tasks, a bounded agent/tool loop, model-driven routing and a human approval; verify data/context handling and bounded termination. Needs S1-02..S1-05, S2-01, S3-05, S3-07.
+- [ ] **S5-02** (M) — Prove configuration-only change of agent instructions, supported model/tool/memory bindings and extension attributes, with capability admission and clear rejection of unsupported versions; no bespoke per-workflow graph or class. Needs S4-01.
+- [ ] **S5-03** (L) — Run a crash and recovery matrix: during an agent/tool loop, during approval waiting and around an external side effect; verify state, resumed work, identity, cancellation and duplicate handling beyond outer-workflow recovery. Needs S2-03, S2-08, S3-05.
+- [ ] **S5-04** (M) — Record custom integration code, dependency maturity, remaining implementation/maintenance estimate and matched operational measurements, then update the report ratings from the results. Needs S4-06.
 
 ## Completion rule
 

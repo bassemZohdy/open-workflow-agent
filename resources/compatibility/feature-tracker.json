@@ -53189,6 +53189,42 @@
         "status": "Pending",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "blocker": "GitHub connector has no archive action; browser not authenticated; user offered to perform unavailable actions."
+      },
+      {
+        "id": "S5-01",
+        "stage": 5,
+        "module": "M12",
+        "description": "Matched acceptance workflow: branching, parallel tasks, bounded agent/tool loop, model-driven routing and human approval.",
+        "effort": "L",
+        "status": "Pending",
+        "acceptance": "Mandatory acceptance from tech-reports runtime decision revision 3; record evidence for each supported backend before completion"
+      },
+      {
+        "id": "S5-02",
+        "stage": 5,
+        "module": "M12",
+        "description": "Configuration-only change of agent instructions, model/tool/memory bindings and extension attributes with capability admission and unsupported-version rejection.",
+        "effort": "M",
+        "status": "Pending",
+        "acceptance": "Mandatory acceptance from tech-reports runtime decision revision 3; record evidence for each supported backend before completion"
+      },
+      {
+        "id": "S5-03",
+        "stage": 5,
+        "module": "M12",
+        "description": "Crash and recovery matrix for agent/tool loop, approval waiting and external side effects.",
+        "effort": "L",
+        "status": "Pending",
+        "acceptance": "Mandatory acceptance from tech-reports runtime decision revision 3; record evidence for each supported backend before completion"
+      },
+      {
+        "id": "S5-04",
+        "stage": 5,
+        "module": "M12",
+        "description": "Record integration code, dependency maturity, maintenance estimate and matched operational measurements; update report ratings.",
+        "effort": "M",
+        "status": "Pending",
+        "acceptance": "Mandatory acceptance from tech-reports runtime decision revision 3; record evidence for each supported backend before completion"
       }
     ],
     "source_disposition": "All 284 public ADK and 109 approved private specs files imported as Apache frozen references; generic code retained at origin with all eight patterns tracked; unsafe approval excluded",
