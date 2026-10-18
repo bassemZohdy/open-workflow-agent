@@ -26,6 +26,7 @@ from .protocols import (
     resolve_public_addresses_async,
 )
 from .security import ProfileAuthentication, SecurityConfig
+from .strict_yaml import load_strict_yaml
 
 CATALOG_FUNCTION_REFERENCE = re.compile(
     r"^(?P<name>[a-z0-9][a-z0-9-]*):(?P<version>\d+\.\d+\.\d+)@(?P<catalog>[A-Za-z][A-Za-z0-9_-]*)$"
@@ -350,7 +351,9 @@ class ExternalCatalogResolver:
         digest = hashlib.sha256(raw).hexdigest()
         self._verify_pin(digest, policy, reference, resource_uri)
         try:
-            definition = body if isinstance(body, Mapping) else yaml.safe_load(raw.decode("utf-8"))
+            definition = (
+                body if isinstance(body, Mapping) else load_strict_yaml(raw.decode("utf-8"))
+            )
         except (UnicodeDecodeError, yaml.YAMLError) as exc:
             raise WorkflowSchemaError(
                 f"external catalog function {reference} is not valid YAML"

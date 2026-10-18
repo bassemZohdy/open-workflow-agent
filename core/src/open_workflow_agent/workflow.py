@@ -30,6 +30,7 @@ from .errors import (
 from .external_catalog import parse_catalog_function_reference
 from .lifecycle import LifecycleControl
 from .observability import EventSink, NullEventSink, WorkflowEvent
+from .strict_yaml import load_strict_yaml
 
 DEFAULT_WORKFLOW: dict[str, Any] = {
     "document": {
@@ -80,7 +81,7 @@ def load_workflow(source: str | Path | Mapping[str, Any]) -> dict[str, Any]:
     path = Path(source)
     try:
         raw = path.read_text(encoding="utf-8")
-        loaded = yaml.safe_load(raw)
+        loaded = load_strict_yaml(raw)
     except OSError as exc:
         raise WorkflowSchemaError(f"unable to read workflow: {path}") from exc
     except yaml.YAMLError as exc:
