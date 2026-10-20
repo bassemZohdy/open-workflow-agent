@@ -60,6 +60,7 @@ on:
       - "tests/core/test_timer_archive_preflight.py"
       - "tests/core/test_schedule_archive_preflight.py"
       - "tests/contract/test_workflow_version_recovery.py"
+      - "tests/contract/test_a2a_resume_context_rejection.py"
       - "tests/contract/test_workflow_version_process_recovery.py"
       - "tests/contract/_version_recovery_worker.py"
       - "core/src/open_workflow_agent/protocols.py"
@@ -585,6 +586,7 @@ jobs:
             ../../tests/contract/test_host_drain_child_controls.py \
             ../../tests/contract/test_explicit_compensation.py \
             ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_a2a_resume_context_rejection.py \
             ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py \
             ../../tests/contract/test_workflow_version_process_recovery.py \
             ../../tests/contract/test_mcp_sdk_calls.py \
@@ -636,6 +638,7 @@ jobs:
             ../../tests/contract/test_host_drain_child_controls.py \
             ../../tests/contract/test_explicit_compensation.py \
             ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_a2a_resume_context_rejection.py \
             ../../tests/contract/test_a2a_resume_native_corruption.py \
             ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py \
             ../../tests/contract/test_workflow_version_process_recovery.py \

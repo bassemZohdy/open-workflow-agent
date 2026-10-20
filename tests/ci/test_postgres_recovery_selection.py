@@ -104,7 +104,8 @@ def test_actual_postgresql_gate_selects_required_recovery_cases(
     "fixture,expected",
     [
         ("test_a2a_workflow_calls.py", 16),
-        ("test_a2a_sdk_inbound.py", 4),
+        ("test_a2a_sdk_inbound.py", 7),
+        ("test_a2a_resume_context_rejection.py", 2),
         ("test_a2a_initial_delivery.py", 6),
     ],
 )
@@ -169,13 +170,16 @@ def test_a2a_postgresql_process_race_witness_is_selected_in_postgres_ci():
     )
     assert collected.returncode == 0, collected.stdout + collected.stderr
     nodes = [line for line in collected.stdout.splitlines() if "::test_" in line]
-    assert len(nodes) == 2, collected.stdout
+    assert len(nodes) == 3, collected.stdout
     assert any(
         "test_old_initial_delivery_process_cannot_write_after_takeover" in node for node in nodes
     )
     assert any(
         "test_competing_initial_delivery_process_cannot_dispatch_while_owner_is_live" in node
         for node in nodes
+    )
+    assert any(
+        "test_simultaneous_initial_delivery_claimants_dispatch_once" in node for node in nodes
     )
     assert all("postgresql" in node for node in nodes)
 

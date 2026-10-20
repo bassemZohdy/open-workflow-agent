@@ -138,6 +138,7 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
         "test_host_drain_child_controls.py",
         "test_explicit_compensation.py",
         "test_workflow_version_recovery.py",
+        "test_a2a_resume_context_rejection.py",
         "test_workflow_version_process_recovery.py",
         "test_mcp_sdk_calls.py",
         "test_mcp_stdio_integration.py",
@@ -224,6 +225,7 @@ def test_windows_mcp_controls_include_real_transport_and_cleanup_boundaries():
         "test_native_sqlite_inspection.py",
     ):
         assert fixture in command
+    assert "tests/contract/test_a2a_http_json_optional_methods.py" in command
     assert "uv run --locked pytest -vv" in command
 
 

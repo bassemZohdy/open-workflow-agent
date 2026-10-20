@@ -49,6 +49,7 @@ async def sdk_a2a_fixture(
     send_handler=None,
     response_mutation=None,
     response_truncate_after_sse_events=None,
+    card_mutation=None,
     tls=None,
     require_client_cert=True,
 ):
@@ -156,7 +157,10 @@ async def sdk_a2a_fixture(
     peer = Peer()
 
     async def discovery(request):
-        return JSONResponse(json_format.MessageToDict(card))
+        payload = json_format.MessageToDict(card)
+        if card_mutation is not None:
+            payload = card_mutation(payload)
+        return JSONResponse(payload)
 
     app = Starlette(
         routes=[

@@ -245,6 +245,7 @@ jobs:
           ../../tests/contract/test_host_drain_child_controls.py
           ../../tests/contract/test_explicit_compensation.py
           ../../tests/contract/test_workflow_version_recovery.py
+          ../../tests/contract/test_a2a_resume_context_rejection.py
           ../../tests/contract/test_a2a_resume_native_corruption.py
           ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py
           ../../tests/contract/test_workflow_version_process_recovery.py
@@ -289,6 +290,7 @@ jobs:
           tests/core/test_a2a_child_projection.py
           tests/core/test_a2a.py
           tests/core/test_a2a_http_json_optional_methods.py
+          tests/contract/test_a2a_http_json_optional_methods.py
           tests/core/test_a2a_card_admission.py
           tests/core/test_a2a_skills.py
           tests/core/test_initial_delivery.py
@@ -520,6 +522,7 @@ jobs:
             --ignore=../../tests/contract/test_host_drain_child_controls.py \
             --ignore=../../tests/contract/test_explicit_compensation.py \
             --ignore=../../tests/contract/test_workflow_version_recovery.py \
+            --ignore=../../tests/contract/test_a2a_resume_context_rejection.py \
             --ignore=../../tests/contract/test_workflow_version_process_recovery.py \
             --ignore=../../tests/contract/test_mcp_sdk_calls.py \
             --ignore=../../tests/contract/test_mcp_stdio_integration.py \
@@ -609,6 +612,7 @@ jobs:
             ../../tests/contract/test_host_drain_child_controls.py \
             ../../tests/contract/test_explicit_compensation.py \
             ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_a2a_resume_context_rejection.py \
             ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py \
             ../../tests/contract/test_workflow_version_process_recovery.py \
             ../../tests/contract/test_mcp_sdk_calls.py \

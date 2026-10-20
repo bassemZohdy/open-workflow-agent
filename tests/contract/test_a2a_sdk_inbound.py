@@ -62,6 +62,7 @@ async def listening(app):
         ("jsonrpc", "cancel_stream"),
         ("http_json", "cancel_stream"),
         ("jsonrpc", "list_tasks_rejected"),
+        ("http_json", "list_tasks_rejected"),
         ("jsonrpc", "extended_card"),
     ],
 )
@@ -178,17 +179,17 @@ async def test_official_sdk_client_discovers_sends_and_reads_native_task(
                         assert interface.protocol_binding == "JSONRPC"
                         assert interface.protocol_version == "1.0"
                         return
-                        if mode == "list_tasks_rejected":
-                            with pytest.raises(MethodNotFoundError):
-                                await peer.list_tasks(ListTasksRequest())
-                            assert (
-                                services.invocations.connection.execute(
-                                    "SELECT COUNT(*) FROM invocations"
-                                ).fetchone()[0]
-                                == 0
-                            )
-                            assert model.calls == []
-                            return
+                    if mode == "list_tasks_rejected":
+                        with pytest.raises(MethodNotFoundError):
+                            await peer.list_tasks(ListTasksRequest())
+                        assert (
+                            services.invocations.connection.execute(
+                                "SELECT COUNT(*) FROM invocations"
+                            ).fetchone()[0]
+                            == 0
+                        )
+                        assert model.calls == []
+                        return
                     if mode == "cancel_stream":
                         updates = peer.send_message_streaming(request)
                         first = await anext(updates)

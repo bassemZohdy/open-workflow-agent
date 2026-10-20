@@ -1697,7 +1697,52 @@ requalification of the follow-up source.
 The same root run also exposed two stale CI guards: the implementation audit
 still named the previous public-subscription test symbol, and the authority and
 protected-approval selectors expected a 45-minute Windows timing job after its
-budget had been raised to 60 minutes. The current follow-up updates the audit
-anchor and both selector expectations; those CI tests are included in the
-next exact-source root run. No behavior or acceptance status is inferred from
-these selector corrections.
+budget had been raised to 60 minutes. Commit `9202774` updates the audit anchor
+and both selector expectations; no behavior or acceptance status is inferred
+from these selector corrections.
+
+## Exact-source CI guard refresh — `9202774`
+
+This source corrects the two stale root CI selectors and includes the Windows
+TCP timeout-boundary fix from `fa778a1`. The focused Windows regression passed
+locally, and the targeted CI guard/audit selection passed 18 tests. The local
+Ruff, format, documentation-link and diff checks passed on the preceding
+grouped coverage batch; these do not qualify the later uncommitted SDK tests or
+context-rejection matrix.
+
+For exact source `920277422db473a7e637a05286680c72097326c3`, Docs run
+[39356197281](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39356197281)
+and Security run
+[39356197293](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39356197293)
+passed. At the latest check, CI run
+[39356197225](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39356197225)
+had passed mutation testing, both Docker acceptance jobs, deployment manifest
+validation, Windows jq/admission and transport/authentication, both native
+lifecycle/version suites, native task/checkpoint/routing, and native
+ownership/effect recovery. Root quality, Windows timers, Windows operation
+adapters, ADK native/contract and LangGraph native/contract jobs were still
+running. Agent Framework run
+[39356197239](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39356197239)
+passed. PostgreSQL run
+[39356197267](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39356197267)
+passed. External Sandbox run
+[39356197258](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39356197258)
+passed. No failed job was observed at that check. These partial outcomes do
+not qualify S3-02; record final outcomes only after each run completes.
+
+## Grouped A2A SDK and resume matrix — 2026-10-20
+
+The local batch adds an official SDK `ListTasks` rejection to the inbound
+matrix, an HTTP+JSON SDK exact-error/zero-dispatch witness, six actual-TCP
+malformed-reply and AgentCard-order cases, and a context-mismatch rejection
+matrix that verifies native checkpoint and delivery state remain unchanged.
+The user's scope decision explicitly excludes durable Task/receipt expiry from
+the finite S3-02 profile; no expiry capability is advertised.
+
+The grouped root selection passed **329 tests with 36 expected environment
+skips**. Isolated ADK and LangGraph selections each passed **9 applicable
+SQLite cases with 9 engine/backend skips**; PostgreSQL was unavailable locally.
+Ruff, formatting, Markdown-link validation and `git diff --check` passed. These
+are local results for the current worktree, not hosted qualification. The
+PostgreSQL variants are selected in the hosted lifecycle lanes. No A2A gate or
+backlog task is marked complete.

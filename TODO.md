@@ -162,21 +162,20 @@ treated as a deferred task or as additional feature completion.
   interoperability, lifecycle, authority, recovery, streaming and backend
   gates are not closed. Outbound calls are not automatically replayed after
   possible acceptance; callers may explicitly resubscribe to a known task.
-  Pushed source `bd5cf79` adds public cross-worker streaming on both bindings,
-  skill routing parity, pre-credential-preparation rejection, legacy-interface
-  fallback and Windows/PostgreSQL process-race selection. The combined local
-  batch passed 265 tests with 25 backend-inapplicable skips; exact-source hosted
-  Security, Docs, Agent Framework, External Sandbox and PostgreSQL workflows
-  passed. Main CI exposed a Windows timeout-boundary failure in one TCP A2A
-  test and two stale CI guards (a renamed audit anchor and 45-minute assertions
-  against the 60-minute Windows timing job). All three corrections are included
-  in the current follow-up; the focused Windows regression and local grouped
-  core/native-engine batches pass. Exact-source hosted requalification is
-  pending. The five active locks use `aiohttp 3.14.5` and
-  `yarl 1.25.1`; all seven security audit scopes passed on `a7176a0`. Durable
-  Task/receipt expiry is explicitly outside the finite S3-02 profile; no expiry
-  capability is claimed. See the [acceptance record](docs/s3-02-a2a-acceptance.md)
-  and [validation history](docs/validation-history/pending-batch-results.md#exact-source-a2a-expansion-bd5cf79).
+  The `bd5cf79` source is the historical 265-test batch with 25
+  backend-inapplicable skips; `fa778a1` adds the Windows TCP timeout correction
+  and A2A lifecycle coverage, and `9202774` refreshes the renamed audit anchor
+  and 60-minute timing-budget selectors. Docs, Security, PostgreSQL, Agent
+  Framework and External Sandbox passed for `9202774`; main CI remained in
+  progress at last check. The current official-SDK `ListTasks`, malformed
+  response/card-selection and native context-mismatch additions passed 329
+  common tests with 36 environment skips, plus 9 SQLite cases in each isolated
+  engine environment. Ruff, format, docs-link and diff checks passed. Exact-
+  source hosted checks for this batch remain pending. A2A01-A2A08 remain partial
+  and S3-02 stays unchecked. Durable Task/receipt expiry is explicitly outside
+  the finite profile; no expiry capability is claimed. See the
+  [acceptance record](docs/s3-02-a2a-acceptance.md) and
+  [grouped validation history](docs/validation-history/pending-batch-results.md#grouped-a2a-sdk-and-resume-matrix-2026-10-20).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected adapters and recovery fixtures are authored; cross-adapter,
   backend, platform, lifetime, packaging and hosted acceptance remain open.

@@ -17,10 +17,16 @@ from a2a.types import a2a_pb2 as a2a_types
 from google.protobuf import json_format
 from open_workflow_agent import _a2a_types
 from open_workflow_agent.a2a_client import A2ACardSelection, fetch_validate_card, select_interface
+from open_workflow_agent.catalog import FakeModel
+from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.effects import EffectIdentity
+from open_workflow_agent.engine import PortableWorkflowEngine
 from open_workflow_agent.errors import ToolError, _A2AOutcomeUncertain
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.security import ProfileAuthentication, SecurityConfig
+from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.tools import ToolDefinition, ToolRegistry
+from open_workflow_agent.workflow import compile_workflow
 
 METHODS = {
     "SendMessage": {"message": {"parts": [{"text": "hello"}]}},
@@ -902,6 +908,135 @@ async def test_card_selection_skips_legacy_interface_and_dispatches_only_to_v1()
         assert result["status"]["state"] == "TASK_STATE_WORKING"
         assert dispatched_urls == [endpoint]
         assert len(calls) == 1 and calls[0]["body"]["method"] == "GetTask"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("damage", ["foreign-id", "invalid-task", "unsupported-result"])
+@pytest.mark.parametrize("card_layout", ["legacy-first", "unsupported-binding-first"])
+async def test_actual_tcp_card_matrix_keeps_malformed_business_result_pending(
+    tmp_path, damage, card_layout
+):
+    def corrupt(response):
+        if damage == "foreign-id":
+            response["id"] = "foreign-peer-id"
+        elif damage == "invalid-task":
+            response["result"]["task"]["status"]["state"] = "TASK_STATE_UNRECOGNIZED"
+        else:
+            response["result"] = {"unsupported": True}
+        return response
+
+    def reorder_card(payload):
+        payload["supportedInterfaces"] = [
+            unsupported,
+            {
+                "url": endpoint,
+                "protocolBinding": "JSONRPC",
+                "protocolVersion": "1.0",
+            },
+        ]
+        return payload
+
+    async with sdk_a2a_fixture(
+        network=True, response_mutation=corrupt, card_mutation=reorder_card
+    ) as (
+        _transport,
+        calls,
+        endpoint,
+    ):
+        if card_layout == "legacy-first":
+            unsupported = {
+                "url": endpoint.removesuffix("/a2a") + "/legacy",
+                "protocolBinding": "JSONRPC",
+                "protocolVersion": "0.3",
+            }
+        else:
+            unsupported = {
+                "url": endpoint.removesuffix("/a2a") + "/grpc",
+                "protocolBinding": "GRPC",
+                "protocolVersion": "1.0",
+            }
+        source = {
+            "document": {
+                "dsl": "1.0.3",
+                "namespace": "a2a-card-matrix",
+                "name": "malformed-peer-reply",
+                "version": "1.0.0",
+            },
+            "do": [
+                {
+                    "action": {
+                        "call": "a2a",
+                        "with": {
+                            "agentCard": {
+                                "endpoint": endpoint.removesuffix("/a2a")
+                                + "/.well-known/agent-card.json"
+                            },
+                            "server": "https://ignored.test/a2a",
+                            "method": "message/send",
+                            "parameters": {
+                                "message": {
+                                    "role": "ROLE_USER",
+                                    "messageId": "selected-card-matrix",
+                                    "parts": [{"text": "hello"}],
+                                }
+                            },
+                        },
+                    }
+                }
+            ],
+        }
+        services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+        services.protocols = ProtocolServices(HttpClient(allowed_hosts={"127.0.0.1"}))
+        services.recovery_definitions.profile_provider = lambda engine: {
+            "profile": "a2a-card-matrix",
+            "engine": engine,
+        }
+        engine = PortableWorkflowEngine()
+        plan = compile_workflow(source)
+        invocation = services.invocations.create(
+            engine="portable",
+            session_id="matrix-session",
+            user_id="matrix-user",
+            workflow_name=plan.name,
+            workflow_version=plan.version,
+            workflow_fingerprint=plan.fingerprint,
+        )
+        try:
+            await engine.initialize(services)
+            result = await engine.invoke(await engine.compile(plan), invocation, {})
+
+            assert result.status == "faulted"
+            assert result.output is None
+            requests = [call for call in calls if call["method"] == "POST"]
+            assert len(calls) == 2 and len(requests) == 1
+            assert requests[0]["body"]["method"] == "SendMessage"
+            assert requests[0]["headers"][b"a2a-version"] == b"1.0"
+            assert requests[0]["body"]["params"]["message"]["messageId"] == "selected-card-matrix"
+
+            rows = services.effect_journal.connection.execute(
+                """SELECT payload FROM workflow_effect_invocations
+                WHERE invocation_id=?""",
+                (invocation.invocation_id,),
+            ).fetchall()
+            business = []
+            for row in rows:
+                identity = EffectIdentity.from_value(json.loads(row[0]))
+                if identity.operation == "call:a2a":
+                    business.append(identity)
+            assert len(business) == 1
+            receipt = services.effect_journal.get(business[0])
+            assert receipt is not None and receipt.status == "pending"
+
+            # Re-reading/recovering the uncertain invocation must neither accept
+            # the malformed peer result nor issue a second business request.
+            again = await engine.resume(invocation, {}, plan)
+            assert again == result
+            assert services.effect_journal.get(business[0]) == receipt
+            assert len(calls) == 2
+            assert services.invocations.read_input(invocation) == {}
+        finally:
+            await engine.shutdown()
+            services.close()
 
 
 def test_card_selection_skips_tenant_interface_for_unscoped_v1_peer():
