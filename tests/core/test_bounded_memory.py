@@ -376,9 +376,17 @@ def test_maintenance_rolls_back_then_rejects_actual_stale_owner_takeover(memory_
     service, handle, ownership = memory_tree(
         bounds=replace(Bounds(), retention_seconds=0.04, sweep_limit=1)
     )
+    actual_running = service._running
+    clock = [actual_running(handle)]
+
+    def controlled_clock(current):
+        actual_running(current)
+        return clock[0]
+
+    monkeypatch.setattr(service, "_running", controlled_clock)
     service.add("original", **_arguments(handle))
     service.add("other expired", **_arguments(handle))
-    time.sleep(0.08)
+    clock[0] += 0.08
     before = _snapshot(service, handle)
     original_guard = service._finish_guard
 
@@ -390,9 +398,9 @@ def test_maintenance_rolls_back_then_rejects_actual_stale_owner_takeover(memory_
         service.prune_due(**_arguments(handle))
     assert _snapshot(service, handle) == before
     monkeypatch.setattr(service, "_finish_guard", original_guard)
-    handle._execution_lease = ownership.renew(handle._execution_lease, seconds=0.04)
+    handle._execution_lease = ownership.renew(handle._execution_lease, seconds=0.25)
     generation = handle._execution_lease.generation
-    time.sleep(0.08)
+    time.sleep(0.35)
     current = service.invocations.get(handle.invocation_id)
     assert current is not None
     current._execution_lease = ownership.acquire(current, seconds=60)
