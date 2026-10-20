@@ -404,15 +404,21 @@ async def test_a2a_skill_resume_keeps_archived_workflow_after_reopen(
                     while True:
                         current = services.invocations.get(invocation_id)
                         assert current is not None
-                        if current.status == "waiting":
+                        if (
+                            current.status == "waiting"
+                            and invocation_id not in engine._ownership_tasks
+                            and invocation_id not in engine._active
+                        ):
                             return
-                        assert current.status == "running"
+                        assert current.status in {"running", "waiting"}
                         await asyncio.sleep(0.01)
 
                 await asyncio.wait_for(wait_until_waiting(), timeout=30)
                 waiting = services.invocations.get(invocation_id)
                 assert waiting is not None and waiting.session_id == session_id
                 assert waiting.owner_principal == PRINCIPAL
+                delivery = services.initial_deliveries.get(waiting)
+                assert delivery is not None and delivery.status == "settled"
                 assert len(receiver.calls) == len(receiver.rows()) == 1
                 assert not services.model.calls
         services.close()

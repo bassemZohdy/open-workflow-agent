@@ -331,7 +331,14 @@ class WorkflowEngine:
                 await self._verify_resume_state(handle, plan)
                 return await self._resume_owned(handle, None, plan)
             original = self.services.invocations.read_input(handle)
-            return await self._invoke_owned(plan, handle, original)
+            result = await self._invoke_owned(plan, handle, original)
+            if result.status == "waiting":
+                # The initial message has been delivered and checkpointed. A
+                # durable wait is now owned by its timer/event/child source;
+                # leaving the initial-delivery row ready would let startup
+                # replay race an explicit resume of that same invocation.
+                self.services.initial_deliveries.settle(handle)
+            return result
 
     async def run_child(
         self,
