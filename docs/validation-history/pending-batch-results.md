@@ -1799,12 +1799,33 @@ still requires hosted lanes; no S3-02 gate is closed.
 
 ## A2A authority, uncertain-effect and stream follow-up — 2026-10-20
 
-The local follow-up on top of pushed source `cf2691e` strengthens A2A04 cross-worker host-drain and stable terminal reads, A2A05 recovery after a remote receiver may have committed before the sender receives a response, A2A06 missing/corrupt owner-authority rejection, A2A07 OAuth profile/card audience boundaries, and A2A08 malformed backlog-event handling. Recovery deliberately leaves the outbound effect pending and does not repeat a possibly accepted remote action. Durable Task/receipt expiry remains excluded from the finite S3-02 profile by the user's decision; no expiry capability is claimed.
+The unpushed batch on top of `f3d399b` adds actual-socket typed errors and
+tenant-first card selection, authenticated-owner cancel/subscribe/resume,
+archived-v1 skill recovery after reopen, malformed public stream-event
+handling, cross-origin bearer/OAuth rejection, and native-engine cross-worker
+host-drain coverage. Durable Task/receipt expiry remains excluded from the
+finite S3-02 profile by the user's decision; no expiry capability is claimed.
 
-Validation completed locally before documentation-only updates:
+The first native host-drain regression run found that a cancellation-resistant
+provider could return after host drain and have its effect receipt marked
+completed while the common Task stayed working. Core now checks lifecycle
+authority before storing successful or failed effect outcomes, leaving a late
+result unresolved for recovery. Isolated native ADK and LangGraph tests now
+pass this cross-worker late-result case for both A2A bindings.
 
-- Grouped root run: **127 passed, 136 skipped, 1 warning**.
-- Isolated ADK/SQLite selection: **36 passed**; isolated LangGraph/SQLite selection: **36 passed**.
-- Ruff format check, Ruff lint, mypy (132 source files), documentation-link validation and `git diff --check` passed.
+Final local grouped validation on this working tree:
 
-The selector guards and workflow selections are included in the grouped root run. The latest checked hosted status for pushed `cf2691e`: Docs, Security, External Sandbox and Agent Framework passed; main CI and PostgreSQL remained in progress. PostgreSQL had reported failure in the ADK and LangGraph native lifecycle recovery jobs, but GitHub had not made their logs available while the overall workflow remained active. The current local source is unpushed and has not been hosted-qualified. No S3-02 task or A2A gate is complete or deferred. After the PostgreSQL workflow concludes, inspect the failure logs and fix/revalidate the exact cause before claiming qualification.
+- A2A, recovery, public-route and CI-selector root batch: **378 passed, 149 skipped**.
+- Isolated native host-drain checks: **ADK 2 passed/2 engine-specific skips**;
+  **LangGraph 2 passed/2 engine-specific skips**.
+- Ruff lint and formatting, mypy (130 source files), documentation links and
+  `git diff --check` passed.
+
+The pushed source `f3d399b` still has a failed PostgreSQL workflow. Its three
+failures are the `ListTasks` rejection assertions in two SDK-binding cases and
+the HTTP+JSON case; each expected a globally empty shared invocation table but
+found 164 unrelated rows from earlier tests. The local correction compares the
+table count before and after each rejected request. Docs, Security, External
+Sandbox and Agent Framework passed at `f3d399b`; the aggregate CI workflow was
+still running at the latest check. The corrected working tree has not yet been
+hosted-qualified. No S3-02 task or A2A gate is complete or deferred.

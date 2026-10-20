@@ -628,6 +628,7 @@ jobs:
             ../../tests/contract/test_a2a_sdk_http_json_optional_methods.py \
             ../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
             ../../tests/contract/test_a2a_initial_delivery.py \
+            ../../tests/contract/test_a2a_native_host_drain.py \
             ../../tests/core/test_native_sqlite_inspection.py -vv --durations=20
       - name: Verify LangGraph A2A native checkpoint corruption
         if: matrix.engine == 'langgraph'

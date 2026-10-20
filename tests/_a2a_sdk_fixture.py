@@ -48,6 +48,7 @@ async def sdk_a2a_fixture(
     outcome="task",
     send_handler=None,
     response_mutation=None,
+    response_override=None,
     response_truncate_after_sse_events=None,
     card_mutation=None,
     tls=None,
@@ -204,7 +205,11 @@ async def sdk_a2a_fixture(
                     )
             return frame
 
-        if response_mutation is None and response_truncate_after_sse_events is None:
+        if (
+            response_mutation is None
+            and response_override is None
+            and response_truncate_after_sse_events is None
+        ):
             await app(scope, recorded_receive, send)
             return
         frames = []
@@ -229,7 +234,14 @@ async def sdk_a2a_fixture(
             await send({**start, "headers": headers})
             await send({"type": "http.response.body", "body": changed, "more_body": False})
             return
-        changed = json.dumps(response_mutation(json.loads(content))).encode()
+        if response_override is not None:
+            changed = json.dumps(response_override(json.loads(body))).encode()
+            headers = [
+                key_value for key_value in headers if key_value[0].lower() != b"content-type"
+            ]
+            headers.append((b"content-type", b"application/json"))
+        else:
+            changed = json.dumps(response_mutation(json.loads(content))).encode()
         await send(
             {**start, "headers": [*headers, (b"content-length", str(len(changed)).encode())]}
         )

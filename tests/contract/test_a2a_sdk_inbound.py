@@ -180,13 +180,16 @@ async def test_official_sdk_client_discovers_sends_and_reads_native_task(
                         assert interface.protocol_version == "1.0"
                         return
                     if mode == "list_tasks_rejected":
+                        invocation_count_before = services.invocations.connection.execute(
+                            "SELECT COUNT(*) FROM invocations"
+                        ).fetchone()[0]
                         with pytest.raises(MethodNotFoundError):
                             await peer.list_tasks(ListTasksRequest())
                         assert (
                             services.invocations.connection.execute(
                                 "SELECT COUNT(*) FROM invocations"
                             ).fetchone()[0]
-                            == 0
+                            == invocation_count_before
                         )
                         assert model.calls == []
                         return

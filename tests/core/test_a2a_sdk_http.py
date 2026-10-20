@@ -112,22 +112,35 @@ async def test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_busi
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", METHODS)
-@pytest.mark.parametrize("unsupported_first", ["legacy-version", "unsupported-binding"])
-async def test_actual_tcp_card_selection_skips_unsupported_interface_for_every_method(
-    method, unsupported_first
+@pytest.mark.parametrize(
+    "card_layout", ["legacy-first", "unsupported-binding-first", "tenant-first"]
+)
+async def test_actual_tcp_card_selection_skips_ineligible_interface_for_every_method(
+    method, card_layout
 ):
-    def add_unsupported_interface(card):
+    def add_ineligible_interface(card):
+        if card_layout == "tenant-first":
+            card["supportedInterfaces"].insert(
+                0,
+                {
+                    "url": endpoint.removesuffix("/a2a") + "/tenant/a2a",
+                    "protocolBinding": "JSONRPC",
+                    "protocolVersion": "1.0",
+                    "tenant": "acme",
+                },
+            )
+            return card
         card["supportedInterfaces"].insert(
             0,
             {
                 "url": endpoint.removesuffix("/a2a") + "/unsupported",
-                "protocolBinding": "JSONRPC" if unsupported_first == "legacy-version" else "GRPC",
-                "protocolVersion": "0.3" if unsupported_first == "legacy-version" else "1.0",
+                "protocolBinding": "JSONRPC" if card_layout == "legacy-first" else "GRPC",
+                "protocolVersion": "0.3" if card_layout == "legacy-first" else "1.0",
             },
         )
         return card
 
-    async with sdk_a2a_fixture(network=True, card_mutation=add_unsupported_interface) as (
+    async with sdk_a2a_fixture(network=True, card_mutation=add_ineligible_interface) as (
         _transport,
         calls,
         endpoint,
@@ -152,6 +165,9 @@ async def test_actual_tcp_card_selection_skips_unsupported_interface_for_every_m
         assert len(business) == 1
         assert business[0]["body"]["method"] == method
         assert business[0]["headers"][b"a2a-version"] == b"1.0"
+        # The fixture serves only the advertised unscoped /a2a endpoint; a
+        # successful, sole business request proves the tenant URL was skipped.
+        assert_method_result(method, result)
 
 
 @pytest.mark.asyncio
@@ -327,6 +343,7 @@ async def test_actual_tls_a2a_call_uses_named_oauth_credential_for_card_endpoint
                 oauth_token_url=tls.origin + "/token",
                 oauth_resource_endpoints=[endpoint],
                 oauth_resource=tls.origin + "/resource",
+                oauth_audience="selected-peer-audience",
             )
             value = payload(method, "https://ignored-user-server.test/a2a")
             value["agentCard"] = card
@@ -336,6 +353,11 @@ async def test_actual_tls_a2a_call_uses_named_oauth_credential_for_card_endpoint
             ).call("a2a", value, _authentication=authentication)
             assert_method_result(method, result)
             assert len(tls.requests) == 1 and tls.requests[0][0] == "/token"
+            from urllib.parse import parse_qs
+
+            token_form = parse_qs(tls.requests[0][2].decode())
+            assert token_form["audience"] == ["selected-peer-audience"]
+            assert token_form["resource"] == [tls.origin + "/resource"]
             assert len(calls) == 2 and calls[0]["method"] == "GET"
             assert b"authorization" not in calls[0]["headers"]
             assert calls[1]["body"]["method"] == method
@@ -678,6 +700,42 @@ async def test_correlated_typed_rpc_error_is_known_for_every_advertised_method(m
     assert "private peer exception" not in str(error.value)
     assert "do-not-copy" not in json.dumps(error.value.as_dict())
     assert len(calls) == 1 and calls[0]["method"] == method
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", METHODS)
+async def test_actual_tcp_correlated_typed_rpc_error_is_known_for_every_method(method):
+    def typed_error(request):
+        return {
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "error": {
+                "code": -32042,
+                "message": "private peer exception",
+                "data": [{"@type": "https://peer.test/private", "secret": "do-not-copy"}],
+            },
+        }
+
+    async with sdk_a2a_fixture(network=True, response_override=typed_error) as (
+        _transport,
+        calls,
+        endpoint,
+    ):
+        with pytest.raises(ToolError) as error:
+            await ProtocolServices(client(None, True)).call("a2a", payload(method, endpoint))
+
+    assert not isinstance(error.value, _A2AOutcomeUncertain)
+    assert error.value.details == {
+        "reason": "protocol_error",
+        "code": -32042,
+        "type": "https://serverlessworkflow.io/spec/1.0.0/errors/runtime",
+    }
+    assert "private peer exception" not in str(error.value)
+    assert "do-not-copy" not in json.dumps(error.value.as_dict())
+    assert len(calls) == 1
+    assert calls[0]["body"]["method"] == method
+    assert calls[0]["body"]["id"] == "original-business-key"
+    assert calls[0]["headers"][b"idempotency-key"] == b"original-business-key"
 
 
 @pytest.mark.asyncio
@@ -1306,6 +1364,7 @@ def named_authentication(
     oauth_token_url=None,
     oauth_resource_endpoints=None,
     oauth_resource=None,
+    oauth_audience=None,
 ):
     profiles = {
         "bearer": {"type": "bearer", "token": {"from_env": "A2A_TEST_SECRET"}},
@@ -1327,6 +1386,8 @@ def named_authentication(
     if ca_bundle_env is not None:
         profile["ca_bundle"] = {"from_env": ca_bundle_env}
     if kind == "oauth":
+        if oauth_audience is not None:
+            profile["audience"] = oauth_audience
         if oauth_token_url is not None:
             profile["token_url"] = oauth_token_url
         if oauth_resource_endpoints is not None:
@@ -1381,6 +1442,50 @@ async def test_exact_deployment_credential_grant_reaches_selected_sdk_peer(
         name = b"authorization" if kind == "bearer" else b"x-api-key"
         expected = b"Bearer selected-test-value" if kind == "bearer" else b"selected-test-value"
         assert calls[0]["headers"][name] == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize("kind", ["bearer", "oauth"])
+async def test_card_cannot_exfiltrate_deployment_granted_credentials_cross_origin(
+    monkeypatch, method, kind
+):
+    calls = []
+    http = HttpClient(
+        transport=httpx.MockTransport(lambda request: calls.append(request)),
+        allowed_hosts={"a2a.test", "attacker.test"},
+    )
+    auth = named_authentication(
+        kind,
+        http,
+        oauth_resource_endpoints=["https://a2a.test/authorized"] if kind == "oauth" else None,
+    )
+    preparation_attempts = []
+
+    def forbidden_headers(endpoint):
+        preparation_attempts.append(("headers", endpoint))
+        raise AssertionError("credentials must not be resolved for a card-selected foreign origin")
+
+    async def forbidden_prepare(endpoint, *, remaining_timeout=None):
+        del remaining_timeout
+        preparation_attempts.append(("prepare", endpoint))
+        raise AssertionError("credentials must not be prepared for a card-selected foreign origin")
+
+    monkeypatch.setattr(auth, "headers", forbidden_headers)
+    monkeypatch.setattr(auth, "prepare", forbidden_prepare)
+    value = payload(method, "https://a2a.test/authorized")
+    value["agentCard"] = json_format.MessageToDict(peer_card("https://attacker.test/a2a"))
+    protocols = ProtocolServices(
+        http,
+        a2a_credential_endpoints={"selected": ("https://a2a.test/authorized",)},
+    )
+
+    with pytest.raises(ToolError) as error:
+        await protocols.call("a2a", value, _authentication=auth)
+
+    assert error.value.details["reason"] == "unbound_card_credentials"
+    assert preparation_attempts == []
+    assert calls == []
 
 
 @pytest.mark.asyncio

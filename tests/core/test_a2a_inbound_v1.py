@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+from dataclasses import replace
+from typing import Any, cast
 
 import httpx
 import pytest
@@ -502,6 +504,89 @@ async def test_public_subscription_reads_another_services_terminal_commit_withou
                 assert other_model.calls == []
     finally:
         other.close()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+async def test_public_subscription_skips_malformed_event_and_closes_after_terminal(
+    tmp_path, monkeypatch, binding
+):
+    import open_workflow_agent.a2a_streaming as streaming_module
+
+    app, services, model = runtime(tmp_path, binding)
+    handle = shell(services)
+    initial_projection = asyncio.Event()
+    project = streaming_module.project_a2a_task
+
+    def observe_initial_projection(*args, **kwargs):
+        task = project(*args, **kwargs)
+        initial_projection.set()
+        return task
+
+    monkeypatch.setattr(streaming_module, "project_a2a_task", observe_initial_projection)
+
+    try:
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                request = asyncio.create_task(
+                    stream_or_subscribe(client, binding, "subscribe", handle.invocation_id)
+                )
+                await asyncio.wait_for(initial_projection.wait(), timeout=3)
+                assert len(services.lifecycle_events._subscribers) == 1
+                queue = next(iter(services.lifecycle_events._subscribers.values()))
+
+                malformed = WorkflowEvent(
+                    "WorkflowStatusChanged",
+                    invocation_id=handle.invocation_id,
+                    event_id="malformed-event",
+                    status="running",
+                ).to_cloud_event()
+                queue.put_nowait(replace(malformed, data=cast(Any, ["malformed-payload"])))
+
+                current = services.invocations.get(handle.invocation_id)
+                assert current is not None
+                services.invocations.update(
+                    current,
+                    status="completed",
+                    output={"answer": "terminal after malformed event"},
+                )
+                services.lifecycle_events.emit(
+                    WorkflowEvent(
+                        "WorkflowStatusChanged",
+                        invocation_id=handle.invocation_id,
+                        event_id="terminal-event",
+                        status="completed",
+                    )
+                )
+
+                response = await asyncio.wait_for(request, timeout=5)
+                assert response.status_code == 200, response.text
+                assert response.headers["content-type"].startswith("text/event-stream")
+                frames = [
+                    json.loads(line.removeprefix("data: "))
+                    for line in response.text.splitlines()
+                    if line.startswith("data: ")
+                ]
+                events = [frame["result"] for frame in frames] if binding == "jsonrpc" else frames
+                assert [set(event) for event in events] == [
+                    {"task"},
+                    {"artifactUpdate"},
+                    {"statusUpdate"},
+                ]
+                assert events[0]["task"]["status"]["state"] == "TASK_STATE_WORKING"
+                assert events[1]["artifactUpdate"]["artifact"]["parts"] == [
+                    {
+                        "data": {"answer": "terminal after malformed event"},
+                        "mediaType": "application/json",
+                    }
+                ]
+                assert events[2]["statusUpdate"]["status"]["state"] == "TASK_STATE_COMPLETED"
+                assert services.lifecycle_events._subscribers == {}
+                assert model.calls == []
+    finally:
         services.close()
 
 

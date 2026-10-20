@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+import json
+
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from open_workflow_agent.api import create_app
@@ -44,25 +48,35 @@ def _create_handle(services, *, status: str = "running", output=None, owner_prin
     return handle
 
 
-def _secured_runtime(tmp_path, *, transport: str, principal: str, token_env: str):
-    config = RuntimeConfig.model_validate(
-        {
-            "security": {
-                "profiles": {
-                    "a2a-caller": {
-                        "type": "bearer",
-                        "token": {"from_env": token_env},
-                        "principal": principal,
-                    }
+def _secured_runtime(
+    tmp_path,
+    *,
+    transport: str,
+    principal: str,
+    token_env: str,
+    workflow: dict[str, object] | None = None,
+    skills: list[dict[str, str]] | None = None,
+):
+    config_values: dict[str, object] = {
+        "security": {
+            "profiles": {
+                "a2a-caller": {
+                    "type": "bearer",
+                    "token": {"from_env": token_env},
+                    "principal": principal,
                 }
-            },
-            "a2a": {
-                "enabled": True,
-                "transport": transport,
-                "security_profile": "a2a-caller",
-            },
-        }
-    )
+            }
+        },
+        "a2a": {
+            "enabled": True,
+            "transport": transport,
+            "security_profile": "a2a-caller",
+            "skills": skills or [],
+        },
+    }
+    if workflow is not None:
+        config_values["workflow"] = workflow
+    config = RuntimeConfig.model_validate(config_values)
     services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
     return create_app(config=config, services=services), services
 
@@ -74,6 +88,59 @@ def _task_request(method: str, task_id: str, request_id: str = "task-1") -> dict
         "method": method,
         "params": {"id": task_id},
     }
+
+
+async def _start_live_subscription(app, *, path: str, body: bytes, headers: dict[str, str]):
+    """Start an ASGI SSE request without buffering it until the stream closes."""
+    chunks: list[bytes] = []
+    response_status: list[int] = []
+    finished = asyncio.Event()
+    request_sent = False
+
+    async def receive():
+        nonlocal request_sent
+        if not request_sent:
+            request_sent = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        await finished.wait()
+        return {"type": "http.disconnect"}
+
+    async def send(message):
+        if message["type"] == "http.response.start":
+            response_status.append(message["status"])
+        elif message["type"] == "http.response.body":
+            chunks.append(message.get("body", b""))
+            if not message.get("more_body", False):
+                finished.set()
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": b"",
+        "root_path": "",
+        "scheme": "http",
+        "server": ("test", 80),
+        "client": ("test", 123),
+        "headers": [(key.lower().encode(), value.encode()) for key, value in headers.items()],
+    }
+    task = asyncio.create_task(app(scope, receive, send))
+
+    def frames() -> list[dict[str, object]]:
+        parsed = []
+        for line in b"".join(chunks).splitlines():
+            if not line.startswith(b"data: "):
+                continue
+            value = json.loads(line.removeprefix(b"data: ").decode("utf-8"))
+            if isinstance(value, dict) and value.get("id") == "owner-subscribe":
+                value = value.get("result", value)
+            parsed.append(value)
+        return parsed
+
+    return task, frames, response_status
 
 
 def test_jsonrpc_get_task_projects_common_invocation_state(tmp_path) -> None:
@@ -705,6 +772,267 @@ def test_authenticated_a2a_task_access_is_bound_to_creator(
         # shared SQLite handle for the next test.
         alice_services.close()
         bob_services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+async def test_authenticated_a2a_creator_can_cancel_subscribe_and_resume_waiting_task(
+    tmp_path, monkeypatch, transport: str
+) -> None:
+    monkeypatch.setenv("OWA_A2A_ALICE", "alice-secret")
+    workflow = {
+        "catalog": [
+            {
+                "document": {
+                    "dsl": "1.0.3",
+                    "namespace": "a2a-owner-tests",
+                    "name": "owner-resume-flow",
+                    "version": "1.0.0",
+                },
+                "do": [
+                    {"pause": {"wait": {"seconds": 300}}},
+                    {"mark": {"set": {"resumed": True}}},
+                ],
+            }
+        ],
+    }
+    # The workflow skill lets the authenticated creator produce and resume a
+    # persisted timer-wait task through the public A2A routes.
+    app, services = _secured_runtime(
+        tmp_path,
+        transport=transport,
+        principal="alice",
+        token_env="OWA_A2A_ALICE",
+        workflow=workflow,
+        skills=[{"id": "echo", "workflow": "owner-resume-flow"}],
+    )
+    headers = {**A2A_HEADERS, "Authorization": "Bearer alice-secret"}
+    subscribe_task = None
+
+    try:
+        async with app.router.lifespan_context(app):
+            plan = app.state.a2a_skill_plans["echo"]
+            cancellable = services.invocations.create(
+                engine=app.state.engine.engine_name,
+                session_id="owner-cancel-context",
+                user_id=None,
+                workflow_name=plan.name,
+                workflow_version=plan.version,
+                workflow_fingerprint=plan.fingerprint,
+                owner_principal="alice",
+            )
+            transport_client = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(
+                transport=transport_client, base_url="http://test"
+            ) as client:
+                if transport == "jsonrpc":
+                    start = await client.post(
+                        "/a2a",
+                        headers=headers,
+                        json={
+                            "jsonrpc": "2.0",
+                            "id": "owner-start",
+                            "method": "SendMessage",
+                            "params": {
+                                "message": {
+                                    "messageId": "owner-initial-message",
+                                    "role": "ROLE_USER",
+                                    "metadata": {"skillId": "echo"},
+                                    "parts": [{"text": "start creator task"}],
+                                }
+                            },
+                        },
+                    )
+                    assert start.status_code == 200, start.text
+                    initial_task = start.json()["result"]["task"]
+                    assert initial_task["id"]
+                    waiting = services.invocations.get(initial_task["id"])
+                    assert waiting is not None and waiting.status == "waiting"
+                    assert waiting.owner_principal == "alice"
+                    assert services.invocations.read_input(waiting) == {
+                        "question": "start creator task"
+                    }
+                    assert initial_task["contextId"] == waiting.session_id
+                    refreshed = await client.post(
+                        "/a2a",
+                        headers=headers,
+                        json=_task_request("GetTask", waiting.invocation_id, "owner-get-waiting"),
+                    )
+                    assert refreshed.status_code == 200, refreshed.text
+                    waiting_task = refreshed.json()["result"]
+                    assert waiting_task["id"] == initial_task["id"]
+                    assert waiting_task["contextId"] == initial_task["contextId"]
+                    assert waiting_task["status"]["state"] == "TASK_STATE_WORKING"
+                    assert waiting.invocation_id not in app.state.engine._active
+                    assert waiting._execution_lease is None
+                    assert not any(
+                        event.invocation_id == waiting.invocation_id and event.task_name == "mark"
+                        for event in services.events.events
+                    )
+                    cancel = await client.post(
+                        "/a2a",
+                        headers=headers,
+                        json=_task_request("CancelTask", cancellable.invocation_id, "owner-cancel"),
+                    )
+                    (
+                        subscribe_task,
+                        subscribe_frames,
+                        subscribe_status,
+                    ) = await _start_live_subscription(
+                        app,
+                        path="/a2a",
+                        body=json.dumps(
+                            _task_request(
+                                "SubscribeToTask", waiting.invocation_id, "owner-subscribe"
+                            )
+                        ).encode(),
+                        headers={
+                            **headers,
+                            "content-type": "application/json",
+                            "accept": "text/event-stream",
+                        },
+                    )
+                    for _ in range(100):
+                        if subscribe_frames():
+                            break
+                        await asyncio.sleep(0.01)
+                    initial_frames = subscribe_frames()
+                    assert initial_frames, "owner subscription did not receive the timer-wait task"
+                    assert initial_frames[0]["task"]["id"] == waiting.invocation_id
+                    assert initial_frames[0]["task"]["status"]["state"] == ("TASK_STATE_WORKING")
+                    resume = await client.post(
+                        "/a2a",
+                        headers=headers,
+                        json={
+                            "jsonrpc": "2.0",
+                            "id": "owner-resume",
+                            "method": "SendMessage",
+                            "params": {
+                                "message": {
+                                    "messageId": "owner-resume-message",
+                                    "role": "ROLE_USER",
+                                    "taskId": waiting.invocation_id,
+                                    "contextId": waiting.session_id,
+                                    "parts": [{"text": "continue as owner"}],
+                                }
+                            },
+                        },
+                    )
+                else:
+                    start = await client.post(
+                        "/a2a/message:send",
+                        headers=headers,
+                        json={
+                            "message": {
+                                "messageId": "owner-initial-message",
+                                "role": "ROLE_USER",
+                                "metadata": {"skillId": "echo"},
+                                "parts": [{"text": "start creator task"}],
+                            }
+                        },
+                    )
+                    assert start.status_code == 200, start.text
+                    initial_task = start.json()["task"]
+                    assert initial_task["id"]
+                    waiting = services.invocations.get(initial_task["id"])
+                    assert waiting is not None and waiting.status == "waiting"
+                    assert waiting.owner_principal == "alice"
+                    assert services.invocations.read_input(waiting) == {
+                        "question": "start creator task"
+                    }
+                    assert initial_task["contextId"] == waiting.session_id
+                    refreshed = await client.get(
+                        f"/a2a/tasks/{waiting.invocation_id}", headers=headers
+                    )
+                    assert refreshed.status_code == 200, refreshed.text
+                    waiting_task = refreshed.json()
+                    assert waiting_task["id"] == initial_task["id"]
+                    assert waiting_task["contextId"] == initial_task["contextId"]
+                    assert waiting_task["status"]["state"] == "TASK_STATE_WORKING"
+                    assert waiting.invocation_id not in app.state.engine._active
+                    assert waiting._execution_lease is None
+                    assert not any(
+                        event.invocation_id == waiting.invocation_id and event.task_name == "mark"
+                        for event in services.events.events
+                    )
+                    cancel = await client.post(
+                        f"/a2a/tasks/{cancellable.invocation_id}:cancel", headers=headers
+                    )
+                    (
+                        subscribe_task,
+                        subscribe_frames,
+                        subscribe_status,
+                    ) = await _start_live_subscription(
+                        app,
+                        path=f"/a2a/tasks/{waiting.invocation_id}:subscribe",
+                        body=b"",
+                        headers={**headers, "accept": "text/event-stream"},
+                    )
+                    for _ in range(100):
+                        if subscribe_frames():
+                            break
+                        await asyncio.sleep(0.01)
+                    initial_frames = subscribe_frames()
+                    assert initial_frames, "owner subscription did not receive the timer-wait task"
+                    assert initial_frames[0]["task"]["id"] == waiting.invocation_id
+                    assert initial_frames[0]["task"]["status"]["state"] == ("TASK_STATE_WORKING")
+                    resume = await client.post(
+                        "/a2a/message:send",
+                        headers=headers,
+                        json={
+                            "message": {
+                                "messageId": "owner-resume-message",
+                                "role": "ROLE_USER",
+                                "taskId": waiting.invocation_id,
+                                "contextId": waiting.session_id,
+                                "parts": [{"text": "continue as owner"}],
+                            }
+                        },
+                    )
+
+            await asyncio.wait_for(subscribe_task, timeout=15)
+            assert subscribe_status == [200]
+
+            assert cancel.status_code == 200, cancel.text
+            cancel_payload = cancel.json()
+            cancel_task = cancel_payload["result"] if transport == "jsonrpc" else cancel_payload
+            assert cancel_task["status"]["state"] == "TASK_STATE_CANCELED"
+            canceled = services.invocations.get(cancellable.invocation_id)
+            assert canceled is not None and canceled.status == "cancelled"
+
+            assert resume.status_code == 200, resume.text
+            resume_payload = resume.json()
+            resumed_task = (
+                resume_payload["result"]["task"]
+                if transport == "jsonrpc"
+                else resume_payload["task"]
+            )
+            assert resumed_task["id"] == waiting.invocation_id
+            assert resumed_task["contextId"] == waiting_task["contextId"]
+            assert resumed_task["status"]["state"] == "TASK_STATE_COMPLETED"
+            assert resumed_task["artifacts"][0]["parts"][0]["data"] == {"resumed": True}
+            resumed = services.invocations.get(waiting.invocation_id)
+            assert resumed is not None and resumed.status == "completed"
+            assert resumed.owner_principal == "alice"
+
+            frames = subscribe_frames()
+            assert frames
+            terminal_updates = [
+                frame["statusUpdate"]
+                for frame in frames
+                if isinstance(frame, dict)
+                and isinstance(frame.get("statusUpdate"), dict)
+                and frame["statusUpdate"].get("status", {}).get("state")
+                in {"TASK_STATE_COMPLETED", "TASK_STATE_FAILED", "TASK_STATE_CANCELED"}
+            ]
+            assert terminal_updates, frames
+            assert terminal_updates[-1]["taskId"] == waiting.invocation_id
+            assert terminal_updates[-1]["status"]["state"] == "TASK_STATE_COMPLETED"
+    finally:
+        if subscribe_task is not None and not subscribe_task.done():
+            subscribe_task.cancel()
+            await asyncio.gather(subscribe_task, return_exceptions=True)
+        services.close()
 
 
 def test_authenticated_a2a_start_persists_creator_identity(tmp_path, monkeypatch) -> None:

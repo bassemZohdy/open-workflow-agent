@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import sqlite3
@@ -323,6 +324,151 @@ async def test_public_resume_uses_retained_v1_after_v2_deployment_and_reopen(
                 assert len(receiver.calls) == len(receiver.rows()) == 2
                 assert [body["version"] for _, body in receiver.calls] == ["1.0.0", "2.0.0"]
                 assert len({key for key, _ in receiver.calls}) == 2 and not services.model.calls
+    finally:
+        await app.state.engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("surface", ["jsonrpc", "http_json"])
+async def test_a2a_skill_resume_keeps_archived_workflow_after_reopen(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    engine_name: str,
+    engine_type: Any,
+    backend: str,
+    surface: str,
+) -> None:
+    """A declared current skill may resume its existing task on the archived version."""
+    monkeypatch.setenv(TOKEN_ENV, TOKEN)
+    _clock(monkeypatch, [1000.0])
+    receiver = Receiver(tmp_path / "receiver.sqlite3")
+    headers = {"Authorization": "Bearer " + TOKEN, "a2a-version": A2A_PROTOCOL_VERSION}
+    first_config = _config(_definition("1.0.0"), backend, skill=True, a2a_transport=surface)
+    services = _services(tmp_path, first_config, receiver)
+    engine = engine_type()
+    _actual_native(engine, engine_name)
+    app = create_app(config=first_config, services=services, engine=engine)
+    invocation_id = ""
+    session_id = ""
+    original_input = {"question": "start through retained skill"}
+    try:
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://test",
+                headers=headers,
+            ) as client:
+                message = {
+                    "role": "ROLE_USER",
+                    "messageId": "start-retained-skill",
+                    "parts": [{"text": original_input["question"]}],
+                    "metadata": {"skillId": "retained"},
+                }
+                if surface == "jsonrpc":
+                    started = await client.post(
+                        "/a2a",
+                        json={
+                            "jsonrpc": "2.0",
+                            "id": "start-retained-skill",
+                            "method": "SendMessage",
+                            "params": {
+                                "message": message,
+                                "configuration": {"returnImmediately": True},
+                            },
+                        },
+                    )
+                    assert started.status_code == 200, started.text
+                    task = started.json()["result"]["task"]
+                else:
+                    started = await client.post(
+                        "/a2a/message:send",
+                        json={
+                            "message": message,
+                            "configuration": {"returnImmediately": True},
+                        },
+                    )
+                    assert started.status_code == 200, started.text
+                    task = started.json()["task"]
+                invocation_id = task["id"]
+                session_id = task["contextId"]
+                handle = services.invocations.get(invocation_id)
+                assert handle is not None and handle.status in {"running", "waiting"}
+                assert handle.workflow_version == "1.0.0"
+                assert handle.owner_principal == PRINCIPAL
+                assert services.invocations.read_input(handle) == original_input
+
+                async def wait_until_waiting() -> None:
+                    while True:
+                        current = services.invocations.get(invocation_id)
+                        assert current is not None
+                        if current.status == "waiting":
+                            return
+                        assert current.status == "running"
+                        await asyncio.sleep(0.01)
+
+                await asyncio.wait_for(wait_until_waiting(), timeout=30)
+                waiting = services.invocations.get(invocation_id)
+                assert waiting is not None and waiting.session_id == session_id
+                assert waiting.owner_principal == PRINCIPAL
+                assert len(receiver.calls) == len(receiver.rows()) == 1
+                assert not services.model.calls
+        services.close()
+
+        next_config = _config(_definition("2.0.0"), backend, skill=True, a2a_transport=surface)
+        services = _services(tmp_path, next_config, receiver)
+        engine = engine_type()
+        app = create_app(config=next_config, services=services, engine=engine)
+        async with app.router.lifespan_context(app):
+            assert app.state.plan.version == "2.0.0"
+            assert app.state.a2a_skill_plans["retained"].version == "2.0.0"
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://test",
+                headers=headers,
+            ) as client:
+                message = {
+                    "role": "ROLE_USER",
+                    "messageId": "resume-retained-skill",
+                    "taskId": invocation_id,
+                    "contextId": session_id,
+                    "parts": [{"text": "continue through retained skill"}],
+                }
+                if surface == "jsonrpc":
+                    resumed = await client.post(
+                        "/a2a",
+                        json={
+                            "jsonrpc": "2.0",
+                            "id": "resume-retained-skill",
+                            "method": "SendMessage",
+                            "params": {"message": message},
+                        },
+                    )
+                    assert resumed.status_code == 200, resumed.text
+                    task = resumed.json()["result"]["task"]
+                else:
+                    resumed = await client.post("/a2a/message:send", json={"message": message})
+                    assert resumed.status_code == 200, resumed.text
+                    task = resumed.json()["task"]
+                assert task["id"] == invocation_id
+                assert task["contextId"] == session_id
+                assert task["status"]["state"] == "TASK_STATE_COMPLETED"
+                assert task["artifacts"][0]["parts"][0]["data"] == {
+                    "version": "1.0.0",
+                    "original": original_input,
+                    "resume": {"question": "continue through retained skill"},
+                }
+                recovered = services.invocations.get(invocation_id)
+                assert recovered is not None
+                assert recovered.workflow_version == "1.0.0"
+                assert recovered.session_id == session_id
+                assert recovered.owner_principal == PRINCIPAL
+                assert services.invocations.read_input(recovered) == original_input
+                assert len(receiver.calls) == len(receiver.rows()) == 1
+                assert [body["version"] for _, body in receiver.calls] == ["1.0.0"]
+                assert not services.model.calls
     finally:
         await app.state.engine.shutdown()
         services.close()

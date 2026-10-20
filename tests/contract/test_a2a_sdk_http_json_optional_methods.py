@@ -81,6 +81,9 @@ async def test_public_http_json_list_tasks_is_rejected_before_workflow_invocatio
                 card = ParseDict(card_response.json(), AgentCard(), ignore_unknown_fields=False)
                 assert card.supported_interfaces[0].protocol_binding == "HTTP+JSON"
                 peer = RestTransport(http, card, base + "/a2a")
+                invocation_count_before = services.invocations.connection.execute(
+                    "SELECT COUNT(*) FROM invocations"
+                ).fetchone()[0]
 
                 with pytest.raises(MethodNotFoundError) as failure:
                     await peer.list_tasks(ListTasksRequest())
@@ -90,7 +93,7 @@ async def test_public_http_json_list_tasks_is_rejected_before_workflow_invocatio
                     services.invocations.connection.execute(
                         "SELECT COUNT(*) FROM invocations"
                     ).fetchone()[0]
-                    == 0
+                    == invocation_count_before
                 )
                 assert model.calls == []
     finally:

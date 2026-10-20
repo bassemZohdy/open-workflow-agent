@@ -197,6 +197,7 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     assert "--kill-after=30s 10m" in command and "--locked --extra knowledge" in command
     assert "--with apsw==3.54.0.0" in command
     assert all(f"../../tests/contract/{name}" in command for name in fixtures)
+    assert "../../tests/contract/test_a2a_native_host_drain.py" in command
     assert "../../tests/core/test_native_sqlite_inspection.py" in command
     main = _runs(_workflow("ci.yml")["jobs"]["engines"])
     assert all(f"--ignore=../../tests/contract/{name}" in main for name in fixtures)

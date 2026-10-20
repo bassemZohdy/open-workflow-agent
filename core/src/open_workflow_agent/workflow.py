@@ -2709,6 +2709,7 @@ class WorkflowExecutor:
             # authorized business cancellation. Retain its pending intent.
             raise
         except Exception as exc:
+            self._checkpoint_effect_completion(state)
             # Match the common task boundary and avoid saving unexpected native
             # exception messages in the durable journal.
             error = (
@@ -2733,6 +2734,7 @@ class WorkflowExecutor:
             if error is exc:
                 raise
             raise error from exc
+        self._checkpoint_effect_completion(state)
         receipt = self._store_effect_outcome(
             journal,
             identity,
@@ -4017,6 +4019,16 @@ class WorkflowExecutor:
         if control is None:
             return _NoCancellationToken()
         return control.token
+
+    def _checkpoint_effect_completion(self, state: ExecutionState) -> None:
+        """Do not persist an outcome returned after cancellation or host drain."""
+        control = self._control(state)
+        if control is not None and control.interruption_reason in {
+            "host_drain",
+            "ownership_lost",
+        }:
+            raise asyncio.CancelledError
+        self._token(state).checkpoint()
 
     async def _await_with_cancellation(self, operation: Any, state: ExecutionState) -> Any:
         control = self._control(state)

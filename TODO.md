@@ -162,18 +162,18 @@ treated as a deferred task or as additional feature completion.
   interoperability, lifecycle, authority, recovery, streaming and backend
   gates are not closed. Outbound calls are not automatically replayed after
   possible acceptance; callers may explicitly resubscribe to a known task.
-  The latest pushed source is `cf2691e`; Docs, Security, External Sandbox and
-  Agent Framework have passed. Main CI and PostgreSQL are still running; two
-  PostgreSQL lifecycle jobs failed and await final logs. The current local follow-up adds repeatable cross-worker
-  host-drain reads, terminal-read no-replay checks, missing/corrupt owner
-  authority cases, OAuth profile/card audience cross-pairs, and an accepted-
-  remote-send process-stop case that preserves the uncertain effect without
-  sending again. Its grouped root batch passed 127 tests with 136 environment
-  skips; isolated ADK/SQLite and LangGraph/SQLite batches each passed 36 tests.
-  Ruff, formatting, mypy, documentation links and diff checks passed. PostgreSQL
-  CI on `cf2691e` reported failures in both native lifecycle recovery jobs;
-  GitHub has not published failure logs while that workflow is still running.
-  Exact-source requalification for this local batch remains pending. A2A01-A2A08
+  The latest pushed source is `f3d399b`. Its PostgreSQL run failed three
+  `ListTasks` rejection assertions because earlier tests had left 164 unrelated
+  rows in the shared invocation table; the local correction now compares
+  before/after counts. Docs, Security, External Sandbox and Agent Framework
+  passed on that source; main CI is still running. The unpushed batch adds
+  actual-socket method/error and card-selection coverage, authenticated-owner
+  cancel/subscribe/resume, archived-v1 recovery, malformed-stream handling,
+  cross-origin credential rejection, and native late-result fencing. The
+  grouped root run passed 378 tests and skipped 149; isolated ADK and LangGraph
+  host-drain checks each passed 2 tests and skipped the other engine's 2. Ruff,
+  formatting, mypy (130 files), documentation links and diff checks passed.
+  Hosted qualification of this corrected source remains pending. A2A01-A2A08
   remain partial and S3-02 stays unchecked. Durable Task/receipt expiry is
   explicitly outside the finite profile; no expiry capability is claimed. See
   the [acceptance record](docs/s3-02-a2a-acceptance.md) and
