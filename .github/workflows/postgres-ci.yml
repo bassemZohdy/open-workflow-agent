@@ -599,7 +599,8 @@ jobs:
             ../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
             ../../tests/core/test_a2a_task_routes.py \
             ../../tests/contract/test_a2a_initial_delivery.py \
-            ../../tests/contract/test_a2a_initial_delivery_process_race.py -vv --durations=20 -k postgresql
+            ../../tests/contract/test_a2a_initial_delivery_process_race.py \
+            ../../tests/contract/test_a2a_native_host_drain.py -vv --durations=20 -k postgresql
 
   postgres-langgraph-lifecycle:
     name: PostgreSQL LangGraph lifecycle recovery
@@ -654,7 +655,8 @@ jobs:
             ../../tests/contract/test_a2a_sdk_http_json_optional_methods.py \
             ../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
             ../../tests/core/test_a2a_task_routes.py \
-            ../../tests/contract/test_a2a_initial_delivery.py -vv --durations=20 -k postgresql
+            ../../tests/contract/test_a2a_initial_delivery.py \
+            ../../tests/contract/test_a2a_native_host_drain.py -vv --durations=20 -k postgresql
 
   postgres-adk-operations:
     name: PostgreSQL ADK operation adapter recovery

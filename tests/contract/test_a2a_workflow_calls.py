@@ -11,6 +11,7 @@ import httpx
 import pytest
 from _a2a_sdk_fixture import sdk_a2a_fixture
 from engine_cases import engine_cases
+from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity, ReceiptDependency
@@ -99,12 +100,12 @@ def definition(endpoint, method="message/send"):
     }
 
 
-def handle(services, engine_name, plan):
+def handle(services, engine_name, plan, *, owner_principal="original-owner"):
     return services.invocations.create(
         engine=engine_name,
         session_id="original-session",
         user_id="original-user",
-        owner_principal="original-owner",
+        owner_principal=owner_principal,
         workflow_name=plan.name,
         workflow_version=plan.version,
         workflow_fingerprint=plan.fingerprint,
@@ -504,8 +505,9 @@ async def test_original_deadline_is_preserved_before_a2a_receiver_dispatch(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("engine_name,engine_type", ENGINES)
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("surface", ["jsonrpc", "http_json"])
 async def test_known_receipt_recovery_never_refetches_mutable_agent_card(
-    tmp_path, engine_name, engine_type, backend
+    tmp_path, engine_name, engine_type, backend, surface
 ):
     engine = engine_type()
     native(engine, engine_name)
@@ -518,7 +520,7 @@ async def test_known_receipt_recovery_never_refetches_mutable_agent_card(
             "endpoint": endpoint.rsplit("/", 1)[0] + "/.well-known/agent-card.json"
         }
         plan = compile_workflow(source)
-        invocation = handle(services, engine_name, plan)
+        invocation = handle(services, engine_name, plan, owner_principal="anonymous")
         reached = asyncio.Event()
         original = engine.executor._call
 
@@ -546,11 +548,17 @@ async def test_known_receipt_recovery_never_refetches_mutable_agent_card(
             await asyncio.gather(running, return_exceptions=True)
             await engine.shutdown()
             services.close()
-        recovered = runtime(tmp_path, backend, engine_name)
+        recovered = runtime(
+            tmp_path,
+            backend,
+            engine_name,
+            options={"a2a": {"enabled": True, "transport": surface}},
+        )
         recovered.protocols = ProtocolServices(HttpClient(transport=transport))
         resumed = engine_type()
         try:
             await resumed.initialize(recovered)
+            app = create_app(config=recovered.config, services=recovered, engine=resumed)
             recovered_handle = recovered.invocations.get(invocation.invocation_id)
             result = await asyncio.wait_for(resumed.resume(recovered_handle, {}, plan), 15)
             assert result.status == "completed" and len(calls) == 2
@@ -562,8 +570,8 @@ async def test_known_receipt_recovery_never_refetches_mutable_agent_card(
             )
             assert recovered.model.calls == []
 
-            # Once the known receipt has produced a terminal invocation, later
-            # reads must return that exact outcome without consulting the peer.
+            # Once known-receipt recovery has produced a terminal Task, public
+            # GetTask must be a stable projection and must not consult the peer.
             network_attempts: list[str] = []
 
             async def reject_network(request: httpx.Request) -> httpx.Response:
@@ -574,11 +582,37 @@ async def test_known_receipt_recovery_never_refetches_mutable_agent_card(
                 HttpClient(transport=httpx.MockTransport(reject_network))
             )
             recovered.tools.protocols = recovered.protocols
-            repeated = await asyncio.wait_for(
-                resumed.resume(recovered_handle, {"replacement": True}, plan), 15
-            )
-            assert repeated == result
+            headers = {"A2A-Version": "1.0"}
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app),
+                base_url="http://test",
+                headers=headers,
+            ) as client:
+                if surface == "jsonrpc":
+                    request = {
+                        "jsonrpc": "2.0",
+                        "id": "known-receipt-get-task",
+                        "method": "GetTask",
+                        "params": {"id": invocation.invocation_id},
+                    }
+                    first_response = await client.post("/a2a", json=request)
+                    second_response = await client.post("/a2a", json=request)
+                    assert first_response.status_code == second_response.status_code == 200
+                    first = first_response.json()["result"]
+                    second = second_response.json()["result"]
+                else:
+                    path = f"/a2a/tasks/{invocation.invocation_id}"
+                    first_response = await client.get(path)
+                    second_response = await client.get(path)
+                    assert first_response.status_code == second_response.status_code == 200
+                    first = first_response.json()
+                    second = second_response.json()
+
+            assert first == second
+            assert first["id"] == invocation.invocation_id
+            assert first["status"]["state"] == "TASK_STATE_COMPLETED"
             assert network_attempts == [] and len(calls) == 2
+            assert recovered.invocations.get(invocation.invocation_id) == recovered_handle
             assert recovered.invocations.read_input(recovered_handle) == {"original": True}
             assert len(identities(recovered, invocation.invocation_id)) == 1
             assert (

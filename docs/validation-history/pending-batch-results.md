@@ -1923,3 +1923,23 @@ rerun. All six exact-source workflows are green at `923302f`. No S3-02 or
 S3-03 task is complete from this batch alone; A2A05's finite process-recovery
 gate is verified, while the other A2A gates and broader adapter acceptance
 remain open.
+
+## A2A native owner-read, PostgreSQL host-drain, and receipt-read follow-up — 2026-10-20
+
+This local candidate is based on pushed source `ab83bbd`. It adds native
+foreign-principal `GetTask`/`SubscribeToTask` checks on ADK and LangGraph, extends
+late-provider host-drain coverage to actual PostgreSQL in both engine lanes,
+and repeats public `GetTask` after known-receipt recovery through JSON-RPC and
+HTTP+JSON. The PostgreSQL workflow selectors include the new host-drain cases;
+the existing selectors already collect the new owner-read and receipt-read
+cases.
+
+The focused SQLite selections passed on each principal engine: **6 passed,
+18 skipped** for ADK and **6 passed, 18 skipped** for LangGraph. The skips are
+the PostgreSQL variants, which require hosted database services. Ruff lint,
+format, documentation links and `git diff --check` passed. An initial ADK
+invocation omitted its required native extra and collected 24 skips; rerunning
+with the declared engine extra produced the passing result above. No task or
+gate is complete from these tests alone. Fresh exact-source hosted CI and the
+PostgreSQL selections remain pending; durable Task/receipt expiry stays
+excluded from the finite profile.

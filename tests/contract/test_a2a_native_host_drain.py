@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import os
 from contextlib import AsyncExitStack
 from typing import Any
 
@@ -66,9 +67,14 @@ async def _working_task(client: httpx.AsyncClient, task_id: str, transport: str)
 @pytest.mark.asyncio
 @pytest.mark.parametrize("engine_name", ["adk", "langgraph"])
 @pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_native_host_drain_late_provider_result_is_read_only_cross_worker(
-    tmp_path, engine_name: str, transport: str
+    tmp_path, engine_name: str, transport: str, backend: str
 ) -> None:
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+
     entered = asyncio.Event()
     cancellation_suppressed = asyncio.Event()
     late_provider_finished = asyncio.Event()
@@ -87,6 +93,7 @@ async def test_native_host_drain_late_provider_result_is_read_only_cross_worker(
     config = RuntimeConfig.model_validate(
         {
             "model": {"provider": "fake"},
+            "persistence": {"datasource": datasource},
             "workflow": {
                 "catalog": [
                     {
@@ -115,7 +122,18 @@ async def test_native_host_drain_late_provider_result_is_read_only_cross_worker(
         }
     )
     source_engine = _native_engine(engine_name)
-    source_services = RuntimeServices(config, model=FakeModel(slow_model), database_root=tmp_path)
+    source_services = RuntimeServices(
+        config,
+        model=FakeModel(slow_model),
+        database_root=None if datasource else tmp_path,
+    )
+    assert source_services.effect_journal.connection.kind == backend
+    native_path = source_services.engine_database_path(engine_name, create_namespace=False)
+    if datasource:
+        assert native_path.startswith(("postgresql://", "postgresql+"))
+        assert source_services.database_root is None
+    else:
+        assert source_services.database_root == tmp_path
     source_app = create_app(config=config, services=source_services, engine=source_engine)
     reader_services: RuntimeServices | None = None
     reader_stack = AsyncExitStack()
@@ -166,7 +184,12 @@ async def test_native_host_drain_late_provider_result_is_read_only_cross_worker(
                 assert source_handle is not None and source_handle.status == "running"
                 persisted_before_drain = source_handle._persisted_payload
 
-                reader_services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+                reader_services = RuntimeServices(
+                    config,
+                    model=FakeModel(),
+                    database_root=None if datasource else tmp_path,
+                )
+                assert reader_services.effect_journal.connection.kind == backend
                 reader_app = create_app(
                     config=config,
                     services=reader_services,
