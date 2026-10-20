@@ -1799,12 +1799,22 @@ still requires hosted lanes; no S3-02 gate is closed.
 
 ## A2A authority, uncertain-effect and stream follow-up — 2026-10-20
 
-The unpushed batch on top of `f3d399b` adds actual-socket typed errors and
+Commit `58c102c` on top of `f3d399b` adds actual-socket typed errors and
 tenant-first card selection, authenticated-owner cancel/subscribe/resume,
 archived-v1 skill recovery after reopen, malformed public stream-event
 handling, cross-origin bearer/OAuth rejection, and native-engine cross-worker
-host-drain coverage. Durable Task/receipt expiry remains excluded from the
-finite S3-02 profile by the user's decision; no expiry capability is claimed.
+host-drain coverage. Its Docs and Security workflows passed; CI, PostgreSQL,
+Agent Framework and External Sandbox were still active at the initial check.
+All six workflows have since completed: PostgreSQL, Agent Framework, Docs,
+Security and External Sandbox passed; main CI failed three Windows sandbox
+stdio cases where a 0.5-second test deadline expired during process startup or
+stream validation. The current uncommitted batch adds a seven-method actual-TLS
+foreign-origin rejection witness, a PostgreSQL selector guard for A2A06
+recovery witnesses, terminal Task resubscription projection through the
+official SDK, and a wider five-second fixture deadline for malformed/output
+cases (stall/partial-stream cases retain 0.5 seconds). Durable Task/receipt
+expiry remains excluded from the finite S3-02 profile by the user's decision;
+no expiry capability is claimed.
 
 The first native host-drain regression run found that a cancellation-resistant
 provider could return after host drain and have its effect receipt marked
@@ -1820,6 +1830,15 @@ Final local grouped validation on this working tree:
   **LangGraph 2 passed/2 engine-specific skips**.
 - Ruff lint and formatting, mypy (130 source files), documentation links and
   `git diff --check` passed.
+
+The expanded local qualification batch on this worktree completed the full
+Windows root suite with **4,821 passed, 3,074 skipped, and 90.53% coverage**;
+this run began before the sandbox fixture deadline adjustment. After that
+adjustment, all six bounded stdio cases passed. The A2A SDK HTTP and PostgreSQL
+selector root selection passed **330 tests with 2 skipped**; the isolated ADK
+and LangGraph A2A inbound/archive-resume selections each passed **36 tests**.
+Ruff, formatting, mypy (133 source files), documentation links and diff checks
+passed on the final worktree. The new exact-source hosted run remains pending.
 
 The pushed source `f3d399b` still has a failed PostgreSQL workflow. Its three
 failures are the `ListTasks` rejection assertions in two SDK-binding cases and

@@ -230,8 +230,9 @@ def test_stdio_policy_rejects_unapproved_values_before_launch(tmp_path, damage):
 )
 async def test_stdio_bad_streams_are_bounded_and_cleaned(tmp_path, mode, error):
     config, backend, manager = configured(tmp_path)
+    timeout = 0.5 if mode in {"stall", "partial"} else 5.0
     with pytest.raises(error):
-        async with manager.open_stdio(request(config, mode, timeout=0.5)) as session:
+        async with manager.open_stdio(request(config, mode, timeout=timeout)) as session:
             await session.send_frame(json.dumps({"mode": mode}).encode())
             await session.receive_frame()
     assert not backend._stdio_sessions and not backend._stdio_starting

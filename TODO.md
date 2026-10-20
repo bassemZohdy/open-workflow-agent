@@ -166,7 +166,14 @@ treated as a deferred task or as additional feature completion.
   possible acceptance; callers may explicitly resubscribe to a known task.
   `bd934ee` corrected a known-result receipt regression after authorized
   business cancellation while retaining host-drain and ownership-loss fences.
-  The exact-source correction batch `923302f` passed local focused tests and
+  The last fully qualified source is `923302f`. Candidate `58c102c` passed
+  PostgreSQL, Agent Framework, Docs, Security and External Sandbox, while main
+  CI failed three Windows sandbox stdio cases whose 0.5-second fixture deadline
+  expired during process startup or stream validation. The worktree widens
+  those bounds only for invalid/oversized/stderr/exit responses; stall and
+  partial-stream cases retain the 0.5-second bound. Six corrected sandbox
+  cases and the grouped A2A tests pass locally; a fresh exact-source hosted run
+  remains required. The earlier exact-source correction batch `923302f` passed local focused tests and
   all six hosted workflows: main CI, PostgreSQL, Agent Framework, Docs,
   Security and External Sandbox. The sandbox image job passed on rerun after
   a transient APK repository TLS error. The hosted Windows timer, ownership/

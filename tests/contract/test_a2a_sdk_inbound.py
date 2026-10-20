@@ -237,6 +237,24 @@ async def test_official_sdk_client_discovers_sends_and_reads_native_task(
                                     == "TASK_STATE_CANCELED"
                                 )
                                 assert frames[-1]["statusUpdate"]["taskId"] == task_id
+                            # An explicit resubscription after terminal completion is
+                            # a read of the common Task snapshot, not a replay of the
+                            # native workflow or of the earlier live event sequence.
+                            terminal_resubscription = peer.subscribe(
+                                SubscribeToTaskRequest(id=task_id)
+                            )
+                            terminal_frames = [
+                                MessageToDict(frame) async for frame in terminal_resubscription
+                            ]
+                            assert len(terminal_frames) == 1
+                            assert terminal_frames[0]["task"]["id"] == task_id
+                            assert terminal_frames[0]["task"]["contextId"] == "sdk-context"
+                            assert (
+                                terminal_frames[0]["task"]["status"]["state"]
+                                == "TASK_STATE_CANCELED"
+                            )
+                            assert "statusUpdate" not in terminal_frames[0]
+                            assert "artifactUpdate" not in terminal_frames[0]
                             assert (
                                 before.workflow_fingerprint
                                 == services.invocations.get(task_id).workflow_fingerprint

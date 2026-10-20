@@ -163,6 +163,67 @@ def test_actual_a2a_postgresql_lifecycle_gate_selects_all_principal_cases(
     )
 
 
+@pytest.mark.parametrize("engine", ["adk", "langgraph"])
+def test_a2a06_postgresql_recovery_witnesses_are_selected_for_each_engine(engine):
+    """Keep archived workflow, owner, and skill-authority A2A06 witnesses in PostgreSQL CI."""
+    workflow = yaml.safe_load(
+        (ROOT / ".github/workflows/postgres-ci.yml").read_text(encoding="utf-8")
+    )
+    job = workflow["jobs"][f"postgres-{engine}-lifecycle"]
+    command = next(step["run"] for step in job["steps"] if "pytest" in step.get("run", ""))
+    fixture = "test_workflow_version_recovery.py"
+    assert f"../../tests/contract/{fixture}" in command
+    arguments = shlex.split(command)
+    selector = arguments[arguments.index("-k") + 1]
+    selected = f"({selector}) and {engine}"
+    collected = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            str(ROOT / "tests/contract" / fixture),
+            "--collect-only",
+            "-q",
+            "-k",
+            selected,
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert collected.returncode == 0, collected.stdout + collected.stderr
+    nodes = [line for line in collected.stdout.splitlines() if "::test_" in line]
+    a2a06_nodes = [
+        node
+        for node in nodes
+        if any(
+            test_name in node
+            for test_name in (
+                "test_a2a_skill_resume_keeps_archived_workflow_after_reopen",
+                "test_a2a_resume_rejects_changed_owner_authority_before_mutation",
+            )
+        )
+    ]
+    assert len(a2a06_nodes) == 6, collected.stdout
+    assert (
+        sum(
+            "test_a2a_skill_resume_keeps_archived_workflow_after_reopen" in node
+            for node in a2a06_nodes
+        )
+        == 2
+    )
+    assert (
+        sum(
+            "test_a2a_resume_rejects_changed_owner_authority_before_mutation" in node
+            for node in a2a06_nodes
+        )
+        == 4
+    )
+    assert all("postgresql" in node and engine in node.lower() for node in a2a06_nodes)
+
+
 def test_a2a_postgresql_process_race_witness_is_selected_in_postgres_ci():
     workflow = yaml.safe_load(
         (ROOT / ".github/workflows/postgres-ci.yml").read_text(encoding="utf-8")

@@ -447,6 +447,7 @@ async def test_a2a_skill_resume_keeps_archived_workflow_after_reopen(
                         },
                     )
                     assert resumed.status_code == 200, resumed.text
+                    assert "result" in resumed.json(), resumed.text
                     task = resumed.json()["result"]["task"]
                 else:
                     resumed = await client.post("/a2a/message:send", json={"message": message})

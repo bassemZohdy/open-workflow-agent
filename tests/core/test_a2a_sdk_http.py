@@ -627,6 +627,79 @@ async def test_actual_tls_oauth_profiles_follow_their_public_agent_cards(monkeyp
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method", METHODS)
+async def test_actual_tls_card_selected_foreign_origin_is_rejected_before_credentials(
+    monkeypatch, tmp_path, method
+):
+    """A real TLS card cannot redirect a granted OAuth profile to another origin."""
+    monkeypatch.setenv("A2A_TEST_ID", "local-client")
+    monkeypatch.setenv("A2A_TEST_SECRET", "private-local-secret")
+
+    with auth_tls_receiver(tmp_path) as tls:
+        monkeypatch.setenv("A2A_TEST_CA", tls.ca_bundle)
+        async with sdk_a2a_fixture(network=True, tls=tls, require_client_cert=False) as (
+            transport,
+            calls,
+            endpoint,
+        ):
+            http = client(transport, True, verify_tls=tls.ca_bundle)
+            origin = endpoint.removesuffix("/a2a")
+            card = await fetch_validate_card(
+                http, {"endpoint": origin + "/.well-known/agent-card.json"}, timeout=2
+            )
+            assert select_interface(card).endpoint == endpoint
+
+            security = SecurityConfig.model_validate(
+                {
+                    "profiles": {
+                        "selected": {
+                            "type": "oauth2_client_credentials",
+                            "token_url": tls.origin + "/token",
+                            "client_id": {"from_env": "A2A_TEST_ID"},
+                            "client_secret": {"from_env": "A2A_TEST_SECRET"},
+                            "resource": endpoint,
+                            "allowed_resource_endpoints": [endpoint],
+                            "ca_bundle": {"from_env": "A2A_TEST_CA"},
+                        }
+                    }
+                }
+            )
+            authentication = ProfileAuthentication(security, "selected", token_http=http)
+            credential_attempts = []
+
+            def forbidden_headers(target):
+                credential_attempts.append(("headers", target))
+                raise AssertionError("credentials must not be resolved for a foreign card origin")
+
+            async def forbidden_prepare(target, *, remaining_timeout=None):
+                del remaining_timeout
+                credential_attempts.append(("prepare", target))
+                raise AssertionError("credentials must not be prepared for a foreign card origin")
+
+            monkeypatch.setattr(authentication, "headers", forbidden_headers)
+            monkeypatch.setattr(authentication, "prepare", forbidden_prepare)
+
+            foreign_card = copy.deepcopy(card)
+            foreign_card["supportedInterfaces"][0]["url"] = "https://attacker.test/collect"
+            value = payload(method, endpoint)
+            value["agentCard"] = foreign_card
+            before_business = len(calls)
+
+            with pytest.raises(ToolError) as error:
+                await ProtocolServices(
+                    http, a2a_credential_endpoints={"selected": (endpoint,)}
+                ).call("a2a", value, _authentication=authentication)
+
+            assert error.value.details["reason"] == "unbound_card_credentials"
+            assert credential_attempts == []
+            assert tls.requests == []
+            assert len(calls) == before_business
+            rendered_error = str(error.value) + json.dumps(error.value.as_dict())
+            assert "private-local-secret" not in rendered_error
+            assert "local-client" not in rendered_error
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("network", [False, True], ids=["asgi-wire", "actual-tcp-sdk"])
 @pytest.mark.parametrize("outcome", ["task", "message"])
 async def test_sdk_task_and_message_results_preserve_explicit_null_parts(network, outcome):
