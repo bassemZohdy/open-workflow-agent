@@ -1080,6 +1080,9 @@ async def test_real_timer_wait_projects_authoritative_terminal_task_after_get_ta
             async with asyncio.timeout(5):
                 while task_id in dispatcher._workers:
                     await asyncio.sleep(0.01)
+            assert not dispatcher._errors, f"timer dispatch failed: {list(dispatcher._errors)!r}"
+            handle = services.invocations.get(task_id)
+            assert handle is not None and handle.status == "completed"
 
             completed = await client.post(
                 "/a2a",

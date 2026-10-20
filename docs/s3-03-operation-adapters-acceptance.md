@@ -1,15 +1,25 @@
 # S3-03 operation adapters: finite acceptance plan
 
-Status: authored, local batch validation in progress; S3-03 remains unchecked.
+Status: authored, local batch validation complete; exact-source hosted run
+completed with failures, and correction validation is pending. S3-03 remains
+unchecked.
 The current worktree passes its scoped root selection (140 passed, 12 skipped),
 gRPC SQLite contract/process recovery (22 cases per principal engine), and
 background process recovery (13 cases per principal engine). Ruff lint and
 format checks, mypy (131 source files), documentation validation and diff
 checks pass; the optional Agent Framework host-drain selection passed 20 tests
-with 36 expected skips. These are local results. New Windows required-engine
-matrices have not run on GitHub, and no hosted qualification or inventory
-completion is claimed. The embedded background profile remains disabled by a
-default-false internal qualification gate until its acceptance is complete.
+with 36 expected skips. These are local results. In GitHub run `39366187632`,
+Docs, Security and External Sandbox passed, as did both Windows gRPC and both
+Windows background matrices, the Windows operation-adapter suite, Agent
+Framework, and all PostgreSQL CI jobs. Remaining Windows native/timer, engine
+contract and root-quality lanes completed with three failures: two bounded
+Windows startup waits expired, and the root A2A timer projection did not reach
+completion after its worker ended. The current follow-up raises the startup
+bounds to 30 seconds and exposes the A2A dispatch error and persisted status;
+that batch remains unvalidated. No full hosted qualification or inventory
+completion is claimed. The embedded background
+profile remains disabled by a default-false internal qualification gate until
+its acceptance is complete.
 AsyncAPI network activation and broader function/sandbox responsibilities
 remain pending.
 
@@ -144,11 +154,12 @@ requires equality. No private selector or broker configuration enters user JSON.
 | Security | Declared server and operation alternatives remain independent; named v2 schemes and local v3 scheme references, bounded client-credential OAuth descriptions and finite HTTP/Kafka mechanism declarations. | No secret resolution or credentials in descriptions; inline credential fields and unsupported flows reject. Parsing a mechanism does not enable its authentication implementation. |
 | Subscription descriptor | Original filtered consumption amount/while/until, filter, foreach and duration retained; while is after a filtered message, until before. Fixed day/time and integer-unit durations remain original inputs. | No consumer loop or second execution engine. Original absolute deadline, foreach native checkpoints, durable registration/inbox and offset ACK semantics remain unimplemented here. Calendar/unresolved duration profiles reject. |
 
-`tests/core/test_asyncapi_client.py` authors description/order/immutability,
+`tests/core/test_asyncapi_client.py` covers description/order/immutability,
 JSON/YAML, selected references, messages/correlation, server/security/binding,
-consumption-position and rejection witnesses. They are unexecuted at this authoring
-stage and cannot substitute for actual broker, native, SQLite/PostgreSQL,
-cross-worker, process-stop or CI proof.
+consumption-position and rejection witnesses; the focused local suite passed
+**134 tests**. This is pure descriptor evidence only. It does not establish
+actual broker, native, SQLite/PostgreSQL, cross-worker, process-stop or hosted
+CI behavior.
 
 External broker activation remains conditional on the concrete consumer/transport/
 deployment requirements in `Project Definition.md` section36 and
@@ -269,18 +280,17 @@ background environment values currently require deployment-approved secret
 references; synchronous literal environment semantics are unchanged. No resolved
 secrets are persisted in ordinary admission, receipt or supervisor bootstrap.
 
-Authored evidence pending collection and execution includes common SQLite/actual
-PostgreSQL atomic ledger/control/corruption fixtures, embedded supervisor fixtures,
-and `tests/contract/test_background_job_recovery.py`: four real native OS-stop
-boundaries per ADK/LangGraph principal (receipt, parent completion, cancellation,
-and runtime drain), plus eight actual native nonterminal proof failures per
-principal before submit: missing job/admission/action/indices/archive/input and
-changed current deployment profile. These require unchanged parent owner generation
-and native snapshot, no supervisor launch and no business commit. Those workers
-publish actual producer/supervisor/child/recovery
-PIDs, kill the producer through its real OS handle, preserve original deadline and
-receipt identities, and require exactly one real business commit. No behavioral
-pass, native/backend qualification or task checkbox is claimed by authoring.
+`tests/contract/test_background_job_recovery.py` passed 13 local SQLite cases
+for each principal engine. This includes four real native OS-stop boundaries
+(receipt, parent completion, cancellation, and runtime drain) and native
+nonterminal proof failures before submit. The remaining acceptance includes
+actual PostgreSQL atomic ledger/control/corruption fixtures, broader embedded
+supervisor cases, and hosted evidence. Rejection witnesses require unchanged
+parent owner generation and native snapshot, no supervisor launch and no
+business commit. Those workers publish actual producer/supervisor/child/recovery
+PIDs, kill the producer through its real OS handle, preserve the original
+deadline and receipt identities, and require exactly one real business commit.
+No backend qualification or task checkbox is claimed from the local selection.
 
 Hosted Windows SQLite recovery uses a dedicated ADK/native and LangGraph/SQLite
 matrix with `OWA_TEST_REQUIRED_ENGINE`; an unavailable selected SDK fails the
@@ -328,7 +338,7 @@ Activated profile drift or damaged admission fails before lease/native/receiver
 mutation. Captured imported workflows retain their original common service and
 owner context; mutable catalog content is not substituted during replay.
 
-Authored inventories, not passing test counts:
+Authored inventories and latest local results:
 
 - `tests/core/test_grpc_client.py`: 77 authored client/registry/type/security cases;
   the focused local run passed all 77 on 2026-10-18. This does not qualify the
@@ -336,6 +346,8 @@ Authored inventories, not passing test counts:
 - `tests/contract/test_grpc_calls.py`: 17 per principal/backend, 68 across actual
   ADK/LangGraph and SQLite/PostgreSQL, including imported workflows, null/value/
   fault recovery, logical loop identity, deadline, uncertainty and ownership.
+  Local SQLite selections passed 22 cases for each principal engine; PostgreSQL
+  and hosted execution remain required.
 - `tests/contract/test_grpc_process_recovery.py`: 5 per principal/backend, 20
   across the same grid. An independent pinned grpc.aio peer retains a no-dedup
   business ledger. Actual producer termination and a different recovery PID

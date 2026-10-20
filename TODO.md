@@ -162,15 +162,17 @@ treated as a deferred task or as additional feature completion.
   interoperability, lifecycle, authority, recovery, streaming and backend
   gates are not closed. Outbound calls are not automatically replayed after
   possible acceptance; callers may explicitly resubscribe to a known task.
-  Latest pushed source `cf59700` passed Docs, Security and External Sandbox,
-  while PostgreSQL and Agent Framework CI exposed the same observed-effect
+  The preceding source `cf59700` passed Docs, Security and External Sandbox,
+  while PostgreSQL, Agent Framework and native lifecycle CI exposed the same observed-effect
   regression: after authorized business cancellation, a known returned
-  external result remained pending. The current worktree correction records
+  external result remained pending. Current pushed commit `bd934ee` records
   that known result while still fencing host drain and ownership loss; normal
-  subsequent checkpoints continue to honor cancellation. Exact-source main CI
-  also reported native lifecycle and Windows task-checkpoint failures; their
-  logs and remaining Windows jobs are under review. The current unpushed batch
-  adds actual-socket method/error and card-selection coverage,
+  subsequent checkpoints continue to honor cancellation. Both principal
+  native lifecycle jobs passed this correction on `bd934ee`. Exact-source main CI
+  confirmed the same receipt regression and one independent Windows root-scope
+  wait timeout; the latter now has a 30-second bounded wait in the current
+  follow-up. Commit `bd934ee` adds
+  actual-socket method/error and card-selection coverage,
   authenticated-owner cancel/subscribe/resume, archived-v1 recovery,
   malformed-stream handling, cross-origin credential rejection, native late-
   result fencing, gRPC required-engine coverage, and a default-off background
@@ -180,13 +182,27 @@ treated as a deferred task or as additional feature completion.
   140 tests with 12 skips; Ruff, formatting, mypy (131 source files), docs
   validation and diff checks passed. These results are local; the corrected
   source awaits hosted qualification. A2A01-A2A08
-  remain partial and S3-02 stays unchecked. Durable Task/receipt expiry is
+  remain partial and S3-02 stays unchecked. The completed hosted run at
+  `bd934ee` additionally found two Windows native startup waits exceeding their
+  10/15-second test bounds and an A2A timer worker error masked as a nonterminal
+  Task projection. The current correction batch widens those waits to 30
+  seconds and asserts no timer-dispatch errors plus persisted completion; this
+  follow-up still requires local batch and hosted qualification. Durable
+  Task/receipt expiry is
   explicitly outside the finite profile; no expiry capability is claimed. See
   the [acceptance record](docs/s3-02-a2a-acceptance.md) and
   [A2A follow-up validation history](docs/validation-history/pending-batch-results.md#a2a-authority-uncertain-effect-and-stream-follow-up-2026-10-20).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
-  Selected adapters and recovery fixtures are authored; cross-adapter,
-  backend, platform, lifetime, packaging and hosted acceptance remain open.
+  Commit `bd934ee` locally passed the pure AsyncAPI descriptor selection
+  (134 tests), gRPC SQLite recovery (22 cases per principal engine), background
+  SQLite recovery (13 per engine), and the scoped core batch (140 passed, 12
+  skipped). All PostgreSQL CI, both hosted Windows gRPC/background matrices,
+  and the Windows operation-adapter suite passed. The background profile
+  remains default-off pending full qualification;
+  cross-adapter, backend, platform, lifetime, packaging and broader hosted
+  acceptance remain open. The completed `bd934ee` run exposed two Windows
+  timing failures and a masked A2A timer-dispatch error; the current bounded
+  wait and diagnostic-assertion corrections remain unvalidated.
   The [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and
   [retained run evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.

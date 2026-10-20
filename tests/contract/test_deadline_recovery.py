@@ -120,7 +120,10 @@ async def test_original_deadline_is_reused_after_native_waiting_restart(
     running = asyncio.create_task(engine.invoke(plan, handle, {"original": True}))
     before: list[tuple[str, str]] = []
     try:
-        waiting = await asyncio.wait_for(running, timeout=10)
+        # Native graph setup and SQLite persistence can exceed 10 seconds on
+        # loaded Windows runners; keep the wait bounded without timing out a
+        # valid suspension during backend startup.
+        waiting = await asyncio.wait_for(running, timeout=30)
         assert waiting.status == "waiting", waiting.error
         saved = services.invocations.get(handle.invocation_id)
         assert saved is not None and saved.status == "waiting"

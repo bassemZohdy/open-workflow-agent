@@ -1,14 +1,20 @@
 # S3-02 finite A2A invocation and interoperability acceptance
 
 Status: implementation in progress; S3-02 remains unchecked. S2-09's finite
-recovery policy and S3-01's finite Python MCP profile are verified. Pushed
+recovery policy and S3-01's finite Python MCP profile are verified. The prior
 source `cf59700` passed Docs, Security and External Sandbox; its PostgreSQL and
 Agent Framework workflows exposed a known-result receipt regression after
-authorized business cancellation. The current worktree records known external
+authorized business cancellation. Pushed commit `bd934ee` records known external
 results after that cancellation while still fencing host drain and ownership
-loss. Exact-source main CI also reported native lifecycle and Windows
-task-checkpoint failures; workflow logs and remaining Windows jobs are under
-review. The correction has not yet been hosted-qualified. Local gRPC and
+loss. The exact-source ADK and LangGraph native lifecycle jobs passed this
+correction on `bd934ee`; full A2A backend qualification remains open. A prior
+Windows root-scope wait timed out, then passed on `bd934ee`; the current
+follow-up uses a 30-second bound. The completed `bd934ee` hosted run also found
+two native startup waits exceeding their 10/15-second bounds and an A2A timer
+dispatch failure masked by a `TASK_STATE_WORKING` projection. The current
+follow-up widens the affected waits to 30 seconds and makes the A2A test surface
+dispatcher errors and persisted invocation state; this batch is not yet
+validated. Local gRPC and
 background recovery evidence belongs to the related S3-03 batch. Suite totals
 alone do not complete the eight acceptance gates. A2A01-A2A08 remain open
 wherever cross-method, authority, failure, backend or recovery controls have
@@ -158,9 +164,10 @@ projection, and known business receipt before native commit, plus revoked
 skill/archive/queue corruption rejection. The initial delivery preserves v1
 source/input/identity/clock under v2 and has no paid model calls.
 
-The current pushed checkpoint and hosted status are recorded in the
-[latest-source validation history](validation-history/pending-batch-results.md#exact-source-ci-guard-refresh-9202774).
-The current worktree changes remain unqualified until grouped checks finish.
+The pushed checkpoint and completed hosted status are recorded in the
+[A2A validation history](validation-history/pending-batch-results.md#a2a-authority-uncertain-effect-and-stream-follow-up-2026-10-20).
+Commit `bd934ee` passed several required lanes but the aggregate run ended with
+three failures; the current correction batch is not yet qualified.
 The prior `a77678a` and `18123a6` hosted failures and their corrections remain
 documented in the validation history.
 SDK version 1.2.2 is required before enabled inbound exposure; sanitized

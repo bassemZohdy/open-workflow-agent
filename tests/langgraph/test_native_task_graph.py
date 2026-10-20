@@ -202,7 +202,9 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
     handle = _handle(services, plan)
     running = asyncio.create_task(engine.invoke(plan, handle, {"original": True}))
     try:
-        async with asyncio.timeout(10):
+        # CI can load the native SQLite checkpoint path heavily on Windows;
+        # allow the scheduler time without changing the persisted wait contract.
+        async with asyncio.timeout(30):
             while not any(event.event_type == "TaskWaiting" for event in services.events.events):
                 if running.done():
                     pytest.fail(str(running.result()))
@@ -219,7 +221,7 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
                 else "/do/0/parent/do/0/sideEffect"
             )
         ]
-        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=10)
+        waiting = await asyncio.wait_for(asyncio.shield(running), timeout=30)
         assert waiting.status == "waiting", waiting.error
         assert handle.invocation_id not in engine._active
         assert handle.invocation_id not in engine._ownership_tasks
@@ -248,7 +250,7 @@ async def test_restart_resumes_pending_native_task_without_replaying_completed_c
     assert persisted.status == "waiting"
     try:
         result = await asyncio.wait_for(
-            resumed_engine.resume(persisted, {"resume": True}, plan), timeout=10
+            resumed_engine.resume(persisted, {"resume": True}, plan), timeout=30
         )
         assert result.status == "completed", result.error
         assert result.output == {"done": True}

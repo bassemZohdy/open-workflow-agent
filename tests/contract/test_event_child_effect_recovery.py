@@ -177,7 +177,7 @@ async def test_event_or_child_receipt_prevents_another_recovery_dispatch(
             (bus.committed if kind == "emit" else committed).wait()
             if outcome == "pending"
             else reached.wait(),
-            15,
+            30,
         )
         assert handle.status == "running"
         assert (bus.attempts if kind == "emit" else len(calls)) == 1

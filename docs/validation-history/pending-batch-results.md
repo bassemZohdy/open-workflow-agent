@@ -1841,16 +1841,31 @@ ownership-loss fences. Later workflow checkpoints still honor cancellation.
 This correction is locally exercised by the existing cross-worker contract
 cases and has not yet been hosted-qualified.
 
-At the latest exact-source check, run
-[39364230331](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39364230331)
-was still running. Its ADK and LangGraph native lifecycle/version-recovery
-jobs failed, as did Windows native task checkpoints and routing; their failure
-logs and other in-progress Windows/native jobs were not yet available. Docs,
-Security and External Sandbox passed. Do not treat the `cf59700` run as green or
-mark S3-02 complete; update this record when all exact-source logs are
-available.
+The `cf59700` main CI run was superseded and cancelled after commit `bd934ee`
+started newer workflows. Its ADK and LangGraph native lifecycle jobs failed
+only the same observed-result cancellation case. Windows task-checkpoint CI
+failed one LangGraph SQLite `root` scope: it did not observe `TaskWaiting`
+within the test's 10-second deadline, while the other five SQLite scopes
+passed (281 passed, 55 skipped, 1 failed). This was an independent timing
+failure, not an effect-receipt failure. The current follow-up raises that
+test's bounded wait and resume deadlines to 30 seconds; its hosted and local
+requalification are pending. The other in-progress native and Windows jobs
+were cancelled with the superseded run.
 
-The current unpushed S3-03 batch adds required-engine selectors and Windows
+The `cf59700` main CI run
+[39364230331](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39364230331)
+was cancelled after exposing these failures. In the `bd934ee` workflows, Docs,
+Security and External Sandbox passed. Both required Windows gRPC matrices and
+both Windows background matrices passed. Both principal native lifecycle jobs,
+the Windows native task-checkpoint and receiver-recovery jobs, PostgreSQL
+LangGraph lifecycle/native/operation-adapter jobs, Agent Framework CI, and all
+PostgreSQL CI jobs also passed. At the previous check, the Windows operation-
+adapter lane, remaining principal contract/timer lanes and root quality were
+still running. The Windows operation-adapter suite later passed. The remaining
+lanes then completed with three failures detailed below. These partial results
+do not qualify the full new source or close S3-02/S3-03.
+
+Commit `bd934ee` adds required-engine selectors and Windows
 SQLite matrices for gRPC and background recovery, a capability-positive gRPC
 test, and an internal default-false background qualification gate. It also
 adds recovery coverage for a producer stopped after the supervisor records a
@@ -1862,8 +1877,24 @@ Local validation on this batch passed: the scoped root selection **140 passed,
 12 skipped**; gRPC SQLite contract/process recovery **22 passed on ADK and 22
 on LangGraph**; background process recovery **13 passed on ADK and 13 on
 LangGraph**; optional Agent Framework host-drain selection **20 passed, 36
-skipped**. Ruff lint/format, mypy (131 source files), documentation validation
-and `git diff --check` passed. The new hosted Windows matrices and exact-source
-requalification remain pending. Durable A2A Task/receipt expiry remains
+skipped**; pure AsyncAPI descriptor selection **134 passed**. Ruff lint/format,
+mypy (131 source files), documentation validation and `git diff --check`
+passed. AsyncAPI remains transport-inactive; no broker behavior is qualified.
+The new hosted Windows matrices and exact-source requalification remain
+pending. Durable A2A Task/receipt expiry remains
 excluded from S3-02 by the user's scope decision; no expiry capability is
 advertised. S3-02 and S3-03 remain unchecked, and no task is deferred.
+
+The completed hosted run `39366187632` for `bd934ee` ended with three failures:
+the Windows LangGraph event/child recovery case exceeded its 15-second wait
+for a slow child subworkflow; the Windows LangGraph deadline recovery case
+exceeded its 10-second native startup wait; and the root A2A timer test saw a
+working Task after its dispatch worker exited. The first two failures expired
+their test synchronization bounds, with neighboring cases passing. The A2A
+dispatcher records caught errors in a private queue, which the old test did not
+inspect. The current unvalidated correction batch raises both native startup
+bounds to 30 seconds and makes the A2A test fail with the recorded dispatcher
+error or persisted nonterminal invocation state. The existing LangGraph native
+task recovery waits were also widened to 30 seconds following an earlier
+Windows root-scope timeout. Run full grouped local checks and exact-source
+hosted requalification before replacing this record with a pass.
