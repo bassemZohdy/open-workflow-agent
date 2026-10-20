@@ -12,7 +12,12 @@ import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity, effect_request_digest
-from open_workflow_agent.errors import InvocationStateConflict, OwaError, WorkflowExecutionError
+from open_workflow_agent.errors import (
+    InvocationStateConflict,
+    OwaError,
+    SandboxPolicyError,
+    WorkflowExecutionError,
+)
 from open_workflow_agent.sandbox import compile_sandbox_workflow
 from open_workflow_agent.sandbox.contract import (
     SandboxExecutionRequest,
@@ -210,6 +215,19 @@ def test_admission_is_atomic_frozen_acceptance_not_process_completion(jobs, monk
     verify_job_admission_receipt(store, policy_identity(identity), job.receipt)
     assert services.effect_journal.get(identity) is None and services.model.calls == []
     assert admit(jobs) == job
+
+
+def test_postgresql_store_cannot_be_bound_to_internal_process_supervisor(jobs):
+    services, store, *_ = jobs
+    if store.connection.kind != "postgresql":
+        pytest.skip("the internal process supervisor is intentionally SQLite-only")
+
+    from open_workflow_agent.sandbox.internal_jobs import InternalSandboxJobBackend
+
+    supervisor_root = os.path.join(services.config.sandbox.workspace_root, ".owa-job-supervisors")
+    with pytest.raises(SandboxPolicyError, match="require embedded SQLite"):
+        InternalSandboxJobBackend(services.config.sandbox, store)
+    assert not os.path.exists(supervisor_root)
 
 
 @pytest.mark.parametrize(

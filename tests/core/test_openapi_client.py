@@ -917,6 +917,69 @@ async def test_actual_mtls_selected_operation_uses_exact_named_endpoint_binding(
 
 
 @pytest.mark.asyncio
+async def test_actual_mtls_wrong_endpoint_grant_rejects_before_certificate_resolution(
+    tmp_path, monkeypatch
+):
+    with auth_tls_receiver(tmp_path) as server:
+        certificate, key = server.certificates["client-A"]
+        monkeypatch.setenv("OPENAPI_CERT", str(certificate))
+        monkeypatch.setenv("OPENAPI_KEY", str(key))
+        monkeypatch.setenv("OPENAPI_CA", server.ca_bundle)
+        auth = ProfileAuthentication(
+            SecurityConfig.model_validate(
+                {
+                    "profiles": {
+                        "named": {
+                            "type": "mtls",
+                            "certificate": {"from_env": "OPENAPI_CERT"},
+                            "private_key": {"from_env": "OPENAPI_KEY"},
+                            "ca_bundle": {"from_env": "OPENAPI_CA"},
+                        }
+                    }
+                }
+            ),
+            "named",
+        )
+        prepared = []
+
+        async def resolve_certificate(*args, **kwargs):
+            prepared.append((args, kwargs))
+            raise AssertionError("wrong endpoint must reject before certificate resolution")
+
+        monkeypatch.setattr(auth, "prepare", resolve_certificate)
+        document = source("3.2.0")
+        document["servers"] = [{"url": server.origin}]
+        document["components"] = {"securitySchemes": {"certificate": {"type": "mutualTLS"}}}
+        document["paths"] = {
+            "/mtls": {
+                "post": {
+                    "operationId": "certificate",
+                    "security": [{"certificate": []}],
+                    "responses": {"200": {"description": "Identity"}},
+                }
+            }
+        }
+        selected = select_operation(
+            OpenApiDescription.capture(DOCUMENT, document),
+            "certificate",
+            credential_profile="named",
+        )
+
+        with pytest.raises(ToolError) as rejected:
+            await call_openapi(
+                HttpClient(timeout=3),
+                {"operationId": "certificate"},
+                selection=selected,
+                timeout=3,
+                authentication=auth,
+                credential_endpoints={"named": (server.origin + "/different-path",)},
+            )
+
+        assert rejected.value.details["reason"] == "credential_endpoint_not_granted"
+        assert prepared == [] and server.requests == []
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "header",
     [
