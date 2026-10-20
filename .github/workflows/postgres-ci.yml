@@ -50,6 +50,7 @@ on:
       - "tests/contract/test_a2a_sdk_inbound.py"
       - "tests/contract/test_a2a_initial_delivery.py"
       - "tests/contract/_a2a_initial_delivery_worker.py"
+      - "tests/contract/_a2a_initial_delivery_race_worker.py"
       - "tests/core/test_recovery_definitions.py"
       - "tests/core/test_recovery_sdk_inventory.py"
       - "tests/core/test_recovery_cooperation.py"

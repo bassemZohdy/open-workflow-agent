@@ -154,6 +154,16 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
         assert "--locked --exact --extra knowledge --extra postgres" in command
         assert "-k postgresql" in command
         assert all(f"../../tests/contract/{name}" in command for name in fixtures)
+    process_race = "test_a2a_initial_delivery_process_race.py"
+    windows = _workflow("ci.yml")["jobs"]["windows-native-lifecycle"]
+    windows_command = _runs(windows)
+    assert windows["runs-on"] == "windows-latest"
+    assert f"../../tests/contract/{process_race}" in windows_command
+    # Keep the actual-PostgreSQL process-race parameter selected on the ADK
+    # job while adding the SQLite parameter to the Windows native lane.
+    adk_postgres = _runs(workflow["jobs"]["postgres-adk-lifecycle"])
+    assert f"../../tests/contract/{process_race}" in adk_postgres
+    assert "-k postgresql" in adk_postgres
     core = _runs(workflow["jobs"]["postgres-core"])
     assert "tests/core/test_external_recovery.py" in core
     assert "tests/core/test_invocation_cancellation_controls.py" in core
@@ -165,6 +175,7 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     assert "tests/core/test_a2a_card_admission.py" in core
     paths = set(workflow["on"]["pull_request"]["paths"])
     assert {f"tests/contract/{name}" for name in fixtures} <= paths
+    assert "tests/contract/_a2a_initial_delivery_race_worker.py" in paths
     windows = _workflow("ci.yml")["jobs"]["windows-native-lifecycle"]
     assert windows["timeout-minutes"] == "20" and "needs" not in windows
     command = next(step["run"] for step in windows["steps"] if "pytest" in step.get("run", ""))
@@ -207,6 +218,7 @@ def test_windows_mcp_controls_include_real_transport_and_cleanup_boundaries():
         "test_a2a.py",
         "test_a2a_http_json_optional_methods.py",
         "test_a2a_card_admission.py",
+        "test_a2a_skills.py",
         "test_initial_delivery.py",
         "test_native_sqlite_inspection.py",
     ):

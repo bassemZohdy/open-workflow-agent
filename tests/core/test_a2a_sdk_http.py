@@ -666,6 +666,44 @@ def test_card_selection_uses_first_supported_interface_and_ignores_server_endpoi
     assert selection.protocol_version == "1.0"
 
 
+@pytest.mark.asyncio
+async def test_card_selection_skips_legacy_interface_and_dispatches_only_to_v1():
+    async with sdk_a2a_fixture() as (transport, calls, endpoint):
+        card = json_format.MessageToDict(peer_card(endpoint))
+        card["supportedInterfaces"] = [
+            {
+                "url": "https://a2a.test/legacy",
+                "protocolBinding": "JSONRPC",
+                "protocolVersion": "0.3",
+            },
+            {
+                "url": endpoint,
+                "protocolBinding": "JSONRPC",
+                "protocolVersion": "1.0",
+            },
+        ]
+        dispatched_urls = []
+
+        class RecordingTransport(httpx.AsyncBaseTransport):
+            async def handle_async_request(self, request):
+                dispatched_urls.append(str(request.url))
+                return await transport.handle_async_request(request)
+
+            async def aclose(self):
+                await transport.aclose()
+
+        value = payload("GetTask", "https://server.test/a2a")
+        value["agentCard"] = card
+        result = await ProtocolServices(
+            HttpClient(transport=RecordingTransport(), allowed_hosts={"a2a.test"})
+        ).call("a2a", value)
+
+        assert result["id"] == "task-id"
+        assert result["status"]["state"] == "TASK_STATE_WORKING"
+        assert dispatched_urls == [endpoint]
+        assert len(calls) == 1 and calls[0]["body"]["method"] == "GetTask"
+
+
 @pytest.mark.parametrize(
     "interface",
     [
@@ -942,6 +980,43 @@ async def test_card_cannot_redirect_protected_tool_credentials_to_another_endpoi
     with pytest.raises(ToolError) as error:
         await tools.invoke("peer", value)
     assert error.value.details["reason"] == "configured_endpoint_changed" and calls == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", METHODS)
+async def test_card_endpoint_mismatch_rejects_before_credential_preparation_or_send(method):
+    calls = []
+    http = HttpClient(transport=httpx.MockTransport(lambda request: calls.append(request)))
+
+    class ForbiddenCredentialPreparation:
+        profile_name = "selected"
+
+        def headers(self, endpoint):
+            raise AssertionError("unauthorized card credentials must not be resolved")
+
+        async def prepare(self, endpoint, *, remaining_timeout):
+            raise AssertionError("unauthorized card credentials must not be prepared")
+
+    tools = ToolRegistry(
+        [
+            ToolDefinition(
+                "peer",
+                "a2a",
+                "https://a2a.test/authorized",
+                {},
+                ForbiddenCredentialPreparation(),
+            )
+        ],
+        ProtocolServices(http),
+    )
+    value = payload(method, "https://a2a.test/a2a")
+    value["agentCard"] = json_format.MessageToDict(peer_card("https://a2a.test/a2a"))
+
+    with pytest.raises(ToolError) as error:
+        await tools.invoke("peer", value)
+
+    assert error.value.details["reason"] == "configured_endpoint_changed"
+    assert calls == []
 
 
 @pytest.mark.asyncio

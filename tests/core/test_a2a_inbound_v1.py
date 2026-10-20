@@ -408,33 +408,101 @@ def test_completed_null_is_an_explicit_artifact(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_subscription_reads_another_services_terminal_commit_without_local_event(tmp_path):
-    _app, services, _model = runtime(tmp_path, "jsonrpc")
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+async def test_public_subscription_reads_another_services_terminal_commit_without_local_event(
+    tmp_path, monkeypatch, binding
+):
+    app, services, model = runtime(tmp_path, binding)
     handle = shell(services)
-    other = RuntimeServices(services.config, model=FakeModel(), database_root=tmp_path)
-    stream = a2a_sse_stream(
-        services.lifecycle_events,
-        services.invocations,
-        handle.invocation_id,
-        services=services,
-        limits=StreamLimits(timeout_seconds=2),
-    )
-    first = json.loads((await anext(stream)).decode().split("data: ", 1)[1])
-    assert first["task"]["status"]["state"] == "TASK_STATE_WORKING"
-    worker_handle = other.invocations.get(handle.invocation_id)
-    other.invocations.update(worker_handle, status="completed", output=None)
-    frames = []
+    other_model = FakeModel()
+    other = RuntimeServices(services.config, model=other_model, database_root=tmp_path)
+    initial_projection = asyncio.Event()
 
-    async def drain():
-        async for frame in stream:
-            frames.append(json.loads(frame.decode().split("data: ", 1)[1]))
+    import open_workflow_agent.a2a_streaming as streaming_module
 
-    await asyncio.wait_for(drain(), timeout=3)
-    assert frames[0]["artifactUpdate"]["artifact"]["parts"][0]["data"] is None
-    assert frames[-1]["statusUpdate"]["status"]["state"] == "TASK_STATE_COMPLETED"
-    assert "final" not in frames[-1]["statusUpdate"]
-    other.close()
-    services.close()
+    project = streaming_module.project_a2a_task
+    initial_tasks = []
+
+    def observe_initial_projection(*args, **kwargs):
+        task = project(*args, **kwargs)
+        if not initial_tasks:
+            initial_tasks.append(task)
+            initial_projection.set()
+        return task
+
+    monkeypatch.setattr(streaming_module, "project_a2a_task", observe_initial_projection)
+
+    try:
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                request = asyncio.create_task(
+                    stream_or_subscribe(client, binding, "subscribe", handle.invocation_id)
+                )
+                # The public endpoint has opened its stream and projected the initial
+                # working Task before the independent worker commits a terminal result.
+                await asyncio.wait_for(initial_projection.wait(), timeout=3)
+                assert initial_tasks[0]["id"] == handle.invocation_id
+                assert initial_tasks[0]["contextId"] == "original-context"
+                assert initial_tasks[0]["status"]["state"] == "TASK_STATE_WORKING"
+
+                worker_handle = other.invocations.get(handle.invocation_id)
+                assert worker_handle is not None
+                other.invocations.update(
+                    worker_handle,
+                    status="completed",
+                    output={"answer": "committed by another worker", "count": 2},
+                )
+
+                response = await asyncio.wait_for(request, timeout=5)
+                assert response.status_code == 200, response.text
+                assert response.headers["content-type"].startswith("text/event-stream")
+                frames = [
+                    json.loads(line.removeprefix("data: "))
+                    for line in response.text.splitlines()
+                    if line.startswith("data: ")
+                ]
+
+                if binding == "jsonrpc":
+                    assert all(
+                        frame["jsonrpc"] == "2.0"
+                        and frame["id"] == "call-1"
+                        and set(frame) == {"jsonrpc", "id", "result"}
+                        for frame in frames
+                    )
+                    events = [frame["result"] for frame in frames]
+                else:
+                    events = frames
+
+                assert [set(event) for event in events] == [
+                    {"task"},
+                    {"artifactUpdate"},
+                    {"statusUpdate"},
+                ]
+                snapshot = events[0]["task"]
+                assert snapshot["id"] == handle.invocation_id
+                assert snapshot["contextId"] == "original-context"
+                assert snapshot["status"]["state"] == "TASK_STATE_WORKING"
+
+                artifact = events[1]["artifactUpdate"]
+                assert artifact["taskId"] == handle.invocation_id
+                assert artifact["contextId"] == "original-context"
+                assert artifact["artifact"]["parts"] == [
+                    {
+                        "data": {"answer": "committed by another worker", "count": 2},
+                        "mediaType": "application/json",
+                    }
+                ]
+                terminal = events[2]["statusUpdate"]
+                assert terminal["taskId"] == handle.invocation_id
+                assert terminal["contextId"] == "original-context"
+                assert terminal["status"]["state"] == "TASK_STATE_COMPLETED"
+                assert model.calls == []
+                assert other_model.calls == []
+    finally:
+        other.close()
+        services.close()
 
 
 @pytest.mark.asyncio

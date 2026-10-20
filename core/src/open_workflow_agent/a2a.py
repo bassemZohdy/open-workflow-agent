@@ -267,6 +267,7 @@ def _http_json_response(content: dict[str, Any], *, status_code: int = 200) -> J
             "unsupported_async_resume": "UNSUPPORTED_OPERATION",
             "unsupported_streaming_resume": "UNSUPPORTED_OPERATION",
             "task_not_accepting_input": "UNSUPPORTED_OPERATION",
+            "skill_not_found": "INVALID_PARAMS",
             "invalid_request": "INVALID_PARAMS",
             "message_too_large": "INVALID_PARAMS",
             "unauthorized": "UNAUTHENTICATED",

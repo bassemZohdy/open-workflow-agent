@@ -8,7 +8,7 @@ from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.services import RuntimeServices
 
 
-def _config(**a2a: object) -> RuntimeConfig:
+def _config(transport: str = "jsonrpc", **a2a: object) -> RuntimeConfig:
     base = {
         "model": {"provider": "fake", "name": "fake/default"},
         "workflow": {
@@ -34,7 +34,7 @@ def _config(**a2a: object) -> RuntimeConfig:
             ]
         },
     }
-    base["a2a"] = {"enabled": True, **a2a}
+    base["a2a"] = {"enabled": True, "transport": transport, **a2a}
     return RuntimeConfig.model_validate(base)
 
 
@@ -46,24 +46,42 @@ def _make_app(tmp_path, config: RuntimeConfig):
 HEADERS = {"a2a-version": "1.0"}
 
 
-def _send(client: httpx.AsyncClient, skill_id: str | None) -> httpx.Response:
+def _send(client: httpx.AsyncClient, skill_id: str | None, transport: str) -> httpx.Response:
     message = {"messageId": "fixture-message", "role": "ROLE_USER", "parts": [{"text": "run"}]}
     if skill_id is not None:
         message["metadata"] = {"skillId": skill_id}
+    if transport == "jsonrpc":
+        return client.post(
+            "/a2a",
+            headers=HEADERS,
+            json={
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "SendMessage",
+                "params": {"message": message},
+            },
+        )
     return client.post(
-        "/a2a",
+        "/a2a/message:send",
         headers=HEADERS,
-        json={"jsonrpc": "2.0", "id": 1, "method": "SendMessage", "params": {"message": message}},
+        json={"message": message},
     )
 
 
+def _send_body(response: httpx.Response, transport: str) -> dict[str, object]:
+    body = response.json()
+    return body["result"] if transport == "jsonrpc" else body
+
+
 @pytest.mark.asyncio
-async def test_declared_skills_are_advertised_and_routed(tmp_path) -> None:
+@pytest.mark.parametrize("transport_name", ["jsonrpc", "http_json"])
+async def test_declared_skills_are_advertised_and_routed(tmp_path, transport_name: str) -> None:
     config = _config(
+        transport=transport_name,
         skills=[
             {"id": "a", "workflow": "skill-a"},
             {"id": "b", "name": "Skill B", "workflow": "skill-b"},
-        ]
+        ],
     )
     app = _make_app(tmp_path, config)
     async with app.router.lifespan_context(app):
@@ -76,32 +94,70 @@ async def test_declared_skills_are_advertised_and_routed(tmp_path) -> None:
             assert [skill["id"] for skill in card["skills"]] == ["a", "b"]
             assert card["skills"][1]["name"] == "Skill B"
 
-            first = await _send(client, "a")
-            first_task = first.json()["result"]["task"]
+            first = await _send(client, "a", transport_name)
+            assert first.status_code == 200, first.text
+            first_task = _send_body(first, transport_name)["task"]
             assert first_task["status"]["state"] == "TASK_STATE_COMPLETED"
             assert first_task["artifacts"][0]["parts"][0]["data"] == {"skill": "a"}
 
-            second = await _send(client, "b")
-            second_task = second.json()["result"]["task"]
+            second = await _send(client, "b", transport_name)
+            assert second.status_code == 200, second.text
+            second_task = _send_body(second, transport_name)["task"]
             assert second_task["status"]["state"] == "TASK_STATE_COMPLETED"
             assert second_task["artifacts"][0]["parts"][0]["data"] == {"skill": "b"}
             assert first_task["id"] != second_task["id"]
+            assert app.state.services.model.calls == []
 
 
 @pytest.mark.asyncio
-async def test_unknown_skill_id_fails_closed(tmp_path) -> None:
-    config = _config(skills=[{"id": "a", "workflow": "skill-a"}])
+@pytest.mark.parametrize("transport_name", ["jsonrpc", "http_json"])
+async def test_unknown_skill_id_fails_closed(tmp_path, transport_name: str) -> None:
+    config = _config(transport=transport_name, skills=[{"id": "a", "workflow": "skill-a"}])
     app = _make_app(tmp_path, config)
     async with app.router.lifespan_context(app):
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await _send(client, "not-a-skill")
+            invocations_before = app.state.services.invocations.connection.execute(
+                "SELECT COUNT(*) FROM invocations"
+            ).fetchone()[0]
+            response = await _send(client, "not-a-skill", transport_name)
+            assert (
+                app.state.services.invocations.connection.execute(
+                    "SELECT COUNT(*) FROM invocations"
+                ).fetchone()[0]
+                == invocations_before
+            )
+            assert app.state.services.model.calls == []
             body = response.json()
-            assert body["error"]["code"] == -32602
-            assert "not-a-skill" in body["error"]["message"]
+            if transport_name == "jsonrpc":
+                assert body["error"]["code"] == -32602
+                assert "not-a-skill" in body["error"]["message"]
+            else:
+                assert response.status_code == 422
+                assert body["error"]["code"] == 3
+                assert body["error"]["details"][0]["reason"] == "INVALID_PARAMS"
+                assert body["error"]["details"][0]["metadata"]["owaCode"] == "skill_not_found"
+                assert "not-a-skill" in body["error"]["message"]
 
-            missing = await _send(client, None)
-            assert "skillId" in missing.json()["error"]["message"]
+            missing = await _send(client, None, transport_name)
+            assert (
+                app.state.services.invocations.connection.execute(
+                    "SELECT COUNT(*) FROM invocations"
+                ).fetchone()[0]
+                == invocations_before
+            )
+            assert app.state.services.model.calls == []
+            missing_body = missing.json()
+            if transport_name == "jsonrpc":
+                assert "skillId" in missing_body["error"]["message"]
+            else:
+                assert missing.status_code == 422
+                assert missing_body["error"]["code"] == 3
+                assert missing_body["error"]["details"][0]["reason"] == "INVALID_PARAMS"
+                assert (
+                    missing_body["error"]["details"][0]["metadata"]["owaCode"] == "skill_not_found"
+                )
+                assert "skillId" in missing_body["error"]["message"]
 
 
 @pytest.mark.asyncio
