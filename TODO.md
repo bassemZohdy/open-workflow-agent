@@ -160,17 +160,18 @@ treated as a deferred task or as additional feature completion.
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
   S2-09 and S3-01 are verified prerequisites. A2A02's finite native-call gate
   and A2A05's finite process-recovery gate are verified at `923302f`; the other
-  six gates remain partial. `980d9ca` is pushed and locally passed the grouped
-  A2A suite, selected native cases, static/type checks, builds and docs
-  validation. As of 2026-10-20 07:28 UTC, Docs, Security and External Sandbox
-  passed; CI, Agent Framework and PostgreSQL were in progress. The local
-  follow-up passed 275 core A2A SDK HTTP tests, 20 selected cases per native
-  engine (56 backend/engine skips each), three CI selector tests, static/type
-  checks, builds, docs validation and diff checks. Exact-source hosted
-  qualification is pending its push. No gate advances yet. Durable Task/receipt
+  six gates remain partial. `980d9ca` is pushed and locally passed its grouped
+  batch. Follow-up `3a56878` adds all-method request-parameter and stream-frame
+  assertions, actual-TCP Task/Message alternatives, and docs cleanup. It passed
+  275 core A2A SDK HTTP tests, 20 selected cases per native engine (56
+  backend/engine skips each), three CI selector tests, static/type checks,
+  builds, docs validation and diff checks. All six hosted workflows started
+  for `3a568784374539db341f2a9321dd35f9353f01e6`; as of 2026-10-20 07:31 UTC,
+  Docs and Security passed, External Sandbox was in progress, and CI, Agent
+  Framework and PostgreSQL were pending. No gate advances yet. Durable Task/receipt
   expiry is outside the finite profile and no expiry capability is claimed. See the
   [acceptance record](docs/s3-02-a2a-acceptance.md) and the
-  [exact-source candidate history](docs/validation-history/pending-batch-results.md#exact-source-candidate-980d9ca).
+  [exact-source follow-up history](docs/validation-history/pending-batch-results.md#exact-source-follow-up-3a56878).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Exact source `923302f` passed the pure AsyncAPI descriptor selection
   (134 tests), gRPC SQLite recovery (22 cases per principal engine), background

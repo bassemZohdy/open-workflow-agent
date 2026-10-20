@@ -12,16 +12,14 @@
 **19 of 37 backlog tasks are verified; 18 remain open. No task is deferred.**
 S2-09’s finite VM01-VM08 policy and S3-01’s finite Python MCP01-MCP08 profile are verified.
 S3-02's last fully qualified source is `923302f`. Pushed candidate `980d9ca`
-passed grouped local A2A, native, static/type, build and documentation checks.
-As of 2026-10-20 07:28 UTC, Docs, Security and External Sandbox passed; CI,
-Agent Framework and PostgreSQL were in progress. The current uncommitted
-follow-up adds all-method outbound parameter checks, complete stream-frame
-assertions, actual-TCP Task/Message alternatives and documentation cleanup. It
-passed the local combined tests, static checks, builds and docs validation, and
-awaits exact-source hosted qualification. A2A02 and A2A05 remain the only
-verified finite S3-02 gates. Durable Task/receipt expiry is excluded from the
-finite profile and is not advertised.
-
+passed its grouped local batch. Follow-up `3a56878` adds all-method outbound
+parameter checks, full stream-frame assertions, actual-TCP Task/Message
+alternatives, and documentation cleanup; its local tests, static checks,
+builds and docs validation passed. As of 2026-10-20 07:31 UTC, all six hosted
+workflows had started for `3a568784374539db341f2a9321dd35f9353f01e6`; Docs was
+in progress, Docs/Security passed, and CI/Agent Framework/PostgreSQL were pending. A2A02 and A2A05 remain
+the only verified finite S3-02 gates. Durable Task/receipt expiry is excluded
+from the finite profile and is not advertised.
 JavaScript MCP, A145/full protocol coverage, proposed T29/T30/T31 criteria,
 and broader MCP extensions remain unqualified. See the
 [exact-source qualification record](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6),
@@ -34,7 +32,7 @@ partial and superseded runs remain historical in the [validation history](docs/v
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at 6b23e5d / 96ce610. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
 | S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
-| S3-02 | `923302f` is the last fully qualified source. Pushed `980d9ca` passed grouped local checks; at the 2026-10-20 07:28 UTC snapshot Docs, Security and External Sandbox passed, while CI, Agent Framework and PostgreSQL were in progress. The follow-up passed combined local A2A/native tests, static/type checks, builds and docs validation; hosted qualification is pending. A2A02 and A2A05 are verified; the other six finite gates remain partial. Durable Task/receipt expiry is excluded. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [candidate 980d9ca validation history](docs/validation-history/pending-batch-results.md#exact-source-candidate-980d9ca) |
+| S3-02 | `923302f` is the last fully qualified source. Follow-up `3a56878` passed combined local A2A/native tests, static/type checks, builds and docs validation. At the 2026-10-20 07:31 UTC snapshot, Docs and Security passed, External Sandbox was in progress, and CI/Agent Framework/PostgreSQL were pending. A2A02 and A2A05 are verified; the other six finite gates remain partial. Durable Task/receipt expiry is excluded. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [candidate validation history](docs/validation-history/pending-batch-results.md#exact-source-follow-up-3a56878) |
 | S3-04 | Captured sources and awaited controls remain authored. Four late source-worker takeover cases cover the ADK/LangGraph × SQLite/PostgreSQL matrix; exact-source behavioral, platform and publication qualification remain pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored. The PostgreSQL `REAL`-to-`DOUBLE PRECISION` migration is implemented and f9 PostgreSQL protected-approval cases passed. The f9 Windows timer lane exposed a request-row process-recovery fixture race before its durable barrier; a five-second renewal lease plus natural database-clock wait passes the local LangGraph/SQLite suite. The formerly failing hosted Windows case passed at `8183776`; the expired-approval fixture now keeps invocation ownership independent from the short approval deadline and awaits independent-SDK/hosted requalification. Broader S3-05 gates remain open. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |
 | S3-06 | Identity, action policy, isolation and credential safeguards remain authored; full qualification remains open. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |

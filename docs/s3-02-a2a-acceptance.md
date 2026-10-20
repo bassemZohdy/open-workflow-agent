@@ -6,14 +6,14 @@ which passed all six hosted workflows. Pushed candidate `980d9ca`
 (`980d9caff579a244780c1a7e3621f09901b26400`) adds terminal owner privacy,
 ADK route-history corruption, API-key/mTLS origin rejection, tenant-only
 actual-TCP rejection, and native late-provider/uncertain-receipt host-drain
-coverage. Its original local combined batch passed 271 core SDK HTTP tests.
-The uncommitted follow-up passed 275 core SDK HTTP tests, 20 selected cases
+coverage. `980d9ca` passed its original local combined batch (271 core SDK HTTP
+tests). Follow-up `3a56878` passed 275 core SDK HTTP tests, 20 selected cases
 per native engine (56 backend/engine skips each), three CI selector tests,
-static/type checks, builds and docs validation. As of 2026-10-20 07:28 UTC, Docs (run
-`39385388915`), Security (`39385388839`) and External Sandbox (`39385388827`)
-passed; CI (`39385388862`), Agent Framework (`39385388823`) and PostgreSQL
-(`39385388831`) were in progress. These runs qualify `980d9ca`, not the
-uncommitted follow-up, which awaits a push for exact-source hosted qualification.
+static/type checks, builds and docs validation. All six hosted workflows
+started for exact source `3a568784374539db341f2a9321dd35f9353f01e6`. As of
+2026-10-20 07:31 UTC, Docs and Security passed, External Sandbox was in
+progress, and CI, Agent Framework and PostgreSQL were pending. Their results are
+recorded in the [validation history](validation-history/pending-batch-results.md#exact-source-follow-up-3a56878).
 A2A02's finite native-call gate and A2A05's finite process-recovery gate are
 verified at `923302f`; A2A01, A2A03-A2A04 and A2A06-A2A08 remain partial because
 cross-method, authority, failure, backend or recovery controls still lack
@@ -27,7 +27,7 @@ recovery controls have not been directly evidenced.
 
 ## Candidate additions — local pass, exact-source hosted qualification pending
 
-The current worktree adds five bounded witnesses and closes outbound actual-SDK
+Follow-up `3a56878` adds five bounded witnesses and closes outbound actual-SDK
 request and response assertion gaps. The all-method socket case checks ordered
 Task/artifact/status frames for
 `SendStreamingMessage` and Task/status frames for `SubscribeToTask`, including

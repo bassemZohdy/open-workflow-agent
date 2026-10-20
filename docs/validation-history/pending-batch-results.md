@@ -1993,11 +1993,30 @@ ADK sessions use the invocation's authority-derived native user key; and the
 official A2A method spelling is `message/send`. No S3-02 gate or backlog
 checkbox advances from this local batch until all exact-source hosted workflows
 and actual PostgreSQL selections pass. The active profile excludes durable
-Task/receipt expiry by the user's scope decision. The current uncommitted
-follow-up adds all-method request-parameter assertions, complete SendStreaming
-and SubscribeToTask event-order checks, and actual-TCP Task/Message alternatives;
-it also reconciles acceptance and backlog documentation. The local combined
-follow-up passed **275** core A2A SDK HTTP tests, **20 passed / 56 skipped** in
-each principal-engine contract selection, **3** CI selector tests, Ruff lint
-and format, mypy for CI and 133 packages, both builds, documentation links and
-`git diff --check`. Hosted exact-source qualification awaits the push.
+Task/receipt expiry by the user's scope decision. Follow-up commit `3a56878`
+adds all-method request-parameter assertions, complete SendStreamingMessage and
+SubscribeToTask event-order checks, actual-TCP Task/Message alternatives, and
+acceptance/backlog documentation cleanup. Its exact-source local and hosted
+results are recorded below.
+
+<a id="exact-source-follow-up-3a56878"></a>
+
+## Exact-source follow-up `3a56878` — local pass, hosted qualification pending
+
+Source `3a568784374539db341f2a9321dd35f9353f01e6` passed local combined
+validation: **275** core A2A SDK HTTP tests; **20 passed / 56 skipped** in each
+principal-engine contract selection; **3** CI selector tests; Ruff lint and
+format; mypy for CI and 133 packages; root and core builds; Markdown link
+validation; and `git diff --check`. The engine skips are PostgreSQL and
+cross-engine cases unavailable in the isolated local environments.
+
+All six hosted workflows started for this exact source. As of 2026-10-20
+07:31 UTC, [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39386891073)
+and [Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39386891018)
+passed; [External Sandbox CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39386890981)
+was in progress; [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39386890964),
+[PostgreSQL CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39386891137)
+and [Agent Framework CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39386891138)
+were pending. No S3-02 gate advances before required workflows and
+actual PostgreSQL selections pass. Durable Task/receipt expiry remains
+excluded from the finite profile.
