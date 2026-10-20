@@ -253,7 +253,10 @@ async def run(directory: Path, mode: str):
 
         patches.setattr(engine, "prepare_initial_delivery", diagnose_admission_error)
     with closing(sqlite3.connect(directory / "receiver.sqlite3")) as receiver:
-        receiver.execute("CREATE TABLE IF NOT EXISTS commits(operation_id TEXT,body TEXT)")
+        receiver.execute(
+            "CREATE TABLE IF NOT EXISTS commits(operation_id TEXT PRIMARY KEY,body TEXT)"
+        )
+        receiver.execute("CREATE TABLE IF NOT EXISTS requests(operation_id TEXT,body TEXT)")
         receiver.commit()
 
     def commits():
@@ -262,18 +265,43 @@ async def run(directory: Path, mode: str):
                 "SELECT operation_id,body FROM commits ORDER BY rowid"
             ).fetchall()
 
+    def requests():
+        with closing(sqlite3.connect(directory / "receiver.sqlite3")) as receiver:
+            return receiver.execute(
+                "SELECT operation_id,body FROM requests ORDER BY rowid"
+            ).fetchall()
+
+    def invocation_effects(invocation_id):
+        return services.effect_journal.connection.execute(
+            "SELECT e.identity,e.status,e.payload FROM workflow_effects e "
+            "JOIN workflow_effect_invocations i ON i.identity=e.identity "
+            "WHERE i.invocation_id=? ORDER BY e.identity",
+            (invocation_id,),
+        ).fetchall()
+
+    reached = asyncio.Event()
+
     async def receiver(request):
+        operation_id = request.headers["Idempotency-Key"]
         with closing(sqlite3.connect(directory / "receiver.sqlite3")) as connection:
             with connection:
                 connection.execute(
-                    "INSERT INTO commits(operation_id,body) VALUES (?,?)",
-                    (request.headers["Idempotency-Key"], request.content.decode()),
+                    "INSERT INTO requests(operation_id,body) VALUES (?,?)",
+                    (operation_id, request.content.decode()),
                 )
+                connection.execute(
+                    "INSERT OR IGNORE INTO commits(operation_id,body) VALUES (?,?)",
+                    (operation_id, request.content.decode()),
+                )
+        if mode == "start" and boundary == "remote-accepted":
+            reached.set()
+            # The receiver has committed the business effect, but the producer
+            # has not received an HTTP response and cannot have saved a receipt.
+            await asyncio.Event().wait()
         return httpx.Response(200, json={"accepted": json.loads(request.content)})
 
     services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(receiver)))
     services.tools.protocols = services.protocols
-    reached = asyncio.Event()
     action_identity = None
     budgets = []
     if mode == "start" and boundary == "before-sdk":
@@ -461,6 +489,82 @@ async def run(directory: Path, mode: str):
                     write_json(
                         directory / "result.json",
                         {"pid": os.getpid(), "rejected_unchanged": True, "commits": len(commits())},
+                    )
+                    return
+                if scenario["boundary"] == "remote-accepted":
+                    before = {
+                        "common": _common_snapshot(services, handle.invocation_id),
+                        "queue": services.effect_journal.connection.execute(
+                            "SELECT * FROM initial_invocation_deliveries WHERE invocation_id=?",
+                            (handle.invocation_id,),
+                        ).fetchall(),
+                        "native": native_snapshot(services, handle, backend),
+                        "effects": invocation_effects(handle.invocation_id),
+                        "requests": requests(),
+                        "commits": commits(),
+                    }
+                    assert len(before["requests"]) == len(before["commits"]) == 1
+                    pending_before = [row for row in before["effects"] if row[1] == "pending"]
+                    assert len(pending_before) == 1
+                    async with asyncio.timeout(30):
+                        while True:
+                            try:
+                                result = await engine.dispatch_initial_delivery(
+                                    handle, dispatcher._verify_authority
+                                )
+                                break
+                            except InvocationStateConflict:
+                                await asyncio.sleep(0.05)
+                    task = MessageToDict(
+                        await peer.get_task(GetTaskRequest(id=handle.invocation_id))
+                    )
+                    retained = services.invocations.get(handle.invocation_id)
+                    delivery = services.initial_deliveries.get(retained)
+                    after = {
+                        "common": _common_snapshot(services, handle.invocation_id),
+                        "queue": services.effect_journal.connection.execute(
+                            "SELECT * FROM initial_invocation_deliveries WHERE invocation_id=?",
+                            (handle.invocation_id,),
+                        ).fetchall(),
+                        "native": native_snapshot(services, retained, backend),
+                        "effects": invocation_effects(handle.invocation_id),
+                        "requests": requests(),
+                        "commits": commits(),
+                    }
+                    pending_after = [row for row in after["effects"] if row[1] == "pending"]
+                    assert result.status == "faulted"
+                    assert (
+                        result.error is not None and "unresolved" in result.error["message"].lower()
+                    )
+                    assert task["status"]["state"] not in {
+                        "TASK_STATE_COMPLETED",
+                        "TASK_STATE_CANCELED",
+                    }
+                    assert len(pending_after) == 1 and pending_after == pending_before
+                    assert len(after["requests"]) == len(after["commits"]) == 1
+                    assert after["requests"] == before["requests"]
+                    assert after["commits"] == before["commits"]
+                    assert model.calls == []
+                    write_json(
+                        directory / "result.json",
+                        {
+                            "pid": os.getpid(),
+                            "invocation_id": retained.invocation_id,
+                            "status": result.status,
+                            "task_state": task["status"]["state"],
+                            "delivery": delivery.status,
+                            "pending_effect": pending_after[0][0],
+                            "pending_effect_status": pending_after[0][1],
+                            "generation": services.invocations.connection.execute(
+                                "SELECT generation FROM invocation_ownership WHERE invocation_id=?",
+                                (retained.invocation_id,),
+                            ).fetchone()[0],
+                            "before": before,
+                            "after": after,
+                            "requests": len(after["requests"]),
+                            "commits": len(after["commits"]),
+                            "model_calls": len(model.calls),
+                        },
                     )
                     return
                 async with asyncio.timeout(30):

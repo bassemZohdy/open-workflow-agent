@@ -338,7 +338,11 @@ def test_cross_worker_terminal_task_read_preserves_uncertain_effect_without_repl
     ],
 )
 def test_end_and_deadline_task_reads_are_authoritative_and_read_only(
-    tmp_path, transport: str, terminal: str, expected_state: str
+    tmp_path,
+    monkeypatch: pytest.MonkeyPatch,
+    transport: str,
+    terminal: str,
+    expected_state: str,
 ) -> None:
     app, services = _runtime(tmp_path, transport=transport)
     handle = _create_handle(services)
@@ -351,6 +355,14 @@ def test_end_and_deadline_task_reads_are_authoritative_and_read_only(
             error={"code": "workflow_deadline_exceeded"},
         )
     snapshot_after_terminal = services.invocations.get(handle.invocation_id)._persisted_payload
+
+    async def forbidden(*_args, **_kwargs):
+        raise AssertionError("terminal GetTask must not resume workflow or perform network work")
+
+    monkeypatch.setattr(app.state.engine, "invoke", forbidden)
+    monkeypatch.setattr(app.state.engine, "resume", forbidden)
+    monkeypatch.setattr(services.protocols, "call", forbidden)
+    monkeypatch.setattr(services.protocols.http, "request", forbidden)
 
     with TestClient(app) as client:
         if transport == "jsonrpc":

@@ -10,29 +10,19 @@
 ## Current backlog delivery mode — 2026-10-20
 
 **19 of 37 backlog tasks are verified; 18 remain open. No task is deferred.**
-S2-09’s finite VM01-VM08 policy and S3-01’s finite Python MCP01-MCP08 profile
-are verified. S3-02 remains active at latest pushed source `447432b`. The
-previous `bd5cf79` grouped batch passed 265 tests with 25 backend-inapplicable
-skips; `fa778a1` then added the Windows TCP timeout-boundary correction and
-expanded A2A lifecycle coverage. `9202774` refreshes the renamed audit anchor
-and the Windows timing-budget selectors. Docs, Security, PostgreSQL, Agent
-Framework and External Sandbox passed for `9202774`; its main CI was cancelled
-after the newer `447432b` push superseded it. The pushed `447432b` batch adds
-reachable official-SDK `ListTasks` checks, an actual-TCP malformed-response/
-card-selection matrix, and native context-mismatch rejection. Its local batch
-passed 329 common tests with 36 environment skips; isolated ADK and LangGraph
-selections each passed 9 SQLite cases with 9 non-applicable engine skips. Main
-CI found a duplicate pytest module name for its core and contract optional-
-method tests; the contract module now has a unique name. The worktree follow-up
-passed 365 grouped tests with 49 environment skips, and its focused workflow
-selector correction passed. Ruff, format, docs links and diff checks passed.
-Exact-source hosted requalification is pending. The follow-up adds actual-TCP
-AgentCard precedence for all methods, cross-worker terminal reads during
-uncertain outbound work, pre-lease native checkpoint corruption assertions,
-and malformed streaming admission coverage across engines/backends. Native and
-PostgreSQL cases await hosted execution. No S3-02 gate is closed. Durable
-Task/receipt expiry is excluded from the finite profile; no expiry capability
-is claimed.
+S2-09’s finite VM01-VM08 policy and S3-01’s finite Python MCP01-MCP08 profile are verified.
+S3-02 remains active at pushed source `cf2691e`. Docs, Security and External
+Sandbox and Agent Framework passed. PostgreSQL CI reported failures in both
+native lifecycle recovery jobs; the workflow is still running and failure
+details are not yet available. Main CI is also still running. The current local follow-up adds cross-worker host-drain and terminal-
+read stability, missing or corrupt owner-authority rejection, OAuth profile/card
+audience cross-pairs, and a process-stop case after a remote business action may
+have been accepted. The grouped root batch passed 127 tests with 136 environment
+skips; isolated ADK/SQLite and LangGraph/SQLite batches each passed 36 tests.
+Ruff, formatting, mypy, documentation links and diff checks passed. Exact-source
+hosted requalification and PostgreSQL execution remain pending. No S3-02 gate
+is closed. Durable Task/receipt expiry is excluded from the finite profile; no
+expiry capability is claimed.
 JavaScript MCP, A145/full protocol coverage, proposed T29/T30/T31 criteria,
 and broader MCP extensions remain unqualified. See the
 [exact-source qualification record](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6),
@@ -45,7 +35,7 @@ partial and superseded runs remain historical in the [validation history](docs/v
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at 6b23e5d / 96ce610. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
 | S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
-| S3-02 | Active. Source `bd5cf79` is the 265-test historical batch; `fa778a1` contains the TCP timeout correction and added lifecycle coverage; `9202774` refreshes CI guards. Five hosted workflows passed on `9202774`, and its main CI was cancelled after `447432b` superseded it. The `447432b` SDK, card-matrix and context-rejection batch passed 329 common tests plus applicable isolated ADK/LangGraph SQLite cases; Main CI found duplicate pytest module naming, corrected by renaming the contract module. The following grouped worktree batch passed 365 tests with 49 environment skips, and a focused workflow selector guard passed after its path-trigger correction. Exact-source hosted qualification remains pending. Native and PostgreSQL cases await hosted execution. All A2A gates remain open; durable Task/receipt expiry is outside the finite profile. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [latest-source qualification](docs/validation-history/pending-batch-results.md#a2a-response-terminal-projection-and-corruption-follow-up-2026-10-20) |
+| S3-02 | Active at pushed source `cf2691e`: Docs, Security, External Sandbox and Agent Framework passed; two PostgreSQL native lifecycle jobs failed while the workflow remains active and logs are unavailable. Main CI is still running. Current local follow-up passed 127 root tests (136 environment skips), and 36 tests in each isolated ADK/SQLite and LangGraph/SQLite batch; Ruff, formatting, mypy, docs links and diff checks passed. Exact-source hosted requalification remains pending. All A2A gates remain open; durable Task/receipt expiry is outside the finite profile. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [latest-source qualification](docs/validation-history/pending-batch-results.md#a2a-authority-uncertain-effect-and-stream-follow-up-2026-10-20) |
 | S3-03 | Operation adapters and independent recovery jobs remain open. The pre-ACK fixture correction passed its PostgreSQL LangGraph and Windows lanes at `8183776`. At `a77678a`, hosted Windows operation-adapter recovery passed 962 tests and skipped 454, with one LangGraph host-drain recovery failure (`InvocationStateConflict`) under focused correction. The PostgreSQL ADK operation job's 25-minute command/30-minute job limits passed at source `e45115c` in run `38645586498`; broader adapter, backend and deployment gates remain open. | [Operations](docs/s3-03-operation-adapters-acceptance.md), [timeout history and successful rerun](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4) |
 | S3-04 | Captured sources and awaited controls remain authored. Four late source-worker takeover cases cover the ADK/LangGraph × SQLite/PostgreSQL matrix; exact-source behavioral, platform and publication qualification remain pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored. The PostgreSQL `REAL`-to-`DOUBLE PRECISION` migration is implemented and f9 PostgreSQL protected-approval cases passed. The f9 Windows timer lane exposed a request-row process-recovery fixture race before its durable barrier; a five-second renewal lease plus natural database-clock wait passes the local LangGraph/SQLite suite. The formerly failing hosted Windows case passed at `8183776`; the expired-approval fixture now keeps invocation ownership independent from the short approval deadline and awaits independent-SDK/hosted requalification. Broader S3-05 gates remain open. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |

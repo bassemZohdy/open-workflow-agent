@@ -105,7 +105,7 @@ def case(directory, engine_name, engine_type, backend, boundary, negative):
         assert ready["skill_id"] == "retained"
         assert ready["delivery"] == "ready" and ready["model_calls"] == 0
         assert ready["clock"] == {"profile": "owa/timing/v1", "started_at": 1000.0}
-        assert ready["commits"] == (1 if boundary == "known-receipt" else 0)
+        assert ready["commits"] == (1 if boundary in {"known-receipt", "remote-accepted"} else 0)
         if boundary == "before-sdk":
             assert not any(row["count"] for row in ready["native"]["rows"].values())
         else:
@@ -123,6 +123,33 @@ def case(directory, engine_name, engine_type, backend, boundary, negative):
         assert result["pid"] == recovery.pid != ready["pid"]
         if negative != "none":
             assert result["rejected_unchanged"] and result["commits"] == 0
+        elif boundary == "remote-accepted":
+            assert result["status"] == "faulted"
+            assert result["task_state"] not in {
+                "TASK_STATE_COMPLETED",
+                "TASK_STATE_CANCELED",
+            }
+            # The durable initial-delivery queue settles after recording the
+            # failed invocation; the unresolved external effect remains pending.
+            assert result["delivery"] == "settled"
+            assert result["pending_effect_status"] == "pending"
+            assert result["requests"] == result["commits"] == 1
+            assert result["model_calls"] == 0
+            pending_before = [row for row in result["before"]["effects"] if row[1] == "pending"]
+            pending_after = [row for row in result["after"]["effects"] if row[1] == "pending"]
+            assert len(pending_before) == len(pending_after) == 1
+            assert pending_before == pending_after
+            with closing(sqlite3.connect(directory / "receiver.sqlite3")) as receiver:
+                rows = receiver.execute("SELECT operation_id,body FROM commits").fetchall()
+                requests = receiver.execute(
+                    "SELECT operation_id,body FROM requests ORDER BY rowid"
+                ).fetchall()
+            assert len(rows) == len(requests) == 1
+            assert requests[0] == rows[0]
+            assert json.loads(rows[0][1]) == {
+                "version": "1.0.0",
+                "original": {"question": original},
+            }
         else:
             assert result["skill_id"] == ready["skill_id"] == "retained"
             for field in (
@@ -145,6 +172,9 @@ def case(directory, engine_name, engine_type, backend, boundary, negative):
             assert result["generation"] > ready["generation"]
             with closing(sqlite3.connect(directory / "receiver.sqlite3")) as receiver:
                 rows = receiver.execute("SELECT operation_id,body FROM commits").fetchall()
+                requests = receiver.execute(
+                    "SELECT operation_id,body FROM requests ORDER BY rowid"
+                ).fetchall()
             assert len(rows) == 1 and rows[0][0]
             assert json.loads(rows[0][1]) == {
                 "version": "1.0.0",
@@ -157,7 +187,9 @@ def case(directory, engine_name, engine_type, backend, boundary, negative):
 
 @pytest.mark.parametrize("engine_name,engine_type", ENGINES)
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
-@pytest.mark.parametrize("boundary", ["before-sdk", "known-receipt", "partial-native"])
+@pytest.mark.parametrize(
+    "boundary", ["before-sdk", "remote-accepted", "known-receipt", "partial-native"]
+)
 def test_sdk_async_ack_survives_real_stop_with_original_definition_and_clock(
     tmp_path, engine_name, engine_type, backend, boundary
 ):

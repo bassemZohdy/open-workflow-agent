@@ -1796,3 +1796,15 @@ assertion, the malformed-streaming ADK/SQLite and LangGraph/SQLite cases passed
 (2 each), as did the LangGraph native-checkpoint corruption SQLite cases (2).
 Ruff, format, documentation-link and diff checks passed. PostgreSQL execution
 still requires hosted lanes; no S3-02 gate is closed.
+
+## A2A authority, uncertain-effect and stream follow-up — 2026-10-20
+
+The local follow-up on top of pushed source `cf2691e` strengthens A2A04 cross-worker host-drain and stable terminal reads, A2A05 recovery after a remote receiver may have committed before the sender receives a response, A2A06 missing/corrupt owner-authority rejection, A2A07 OAuth profile/card audience boundaries, and A2A08 malformed backlog-event handling. Recovery deliberately leaves the outbound effect pending and does not repeat a possibly accepted remote action. Durable Task/receipt expiry remains excluded from the finite S3-02 profile by the user's decision; no expiry capability is claimed.
+
+Validation completed locally before documentation-only updates:
+
+- Grouped root run: **127 passed, 136 skipped, 1 warning**.
+- Isolated ADK/SQLite selection: **36 passed**; isolated LangGraph/SQLite selection: **36 passed**.
+- Ruff format check, Ruff lint, mypy (132 source files), documentation-link validation and `git diff --check` passed.
+
+The selector guards and workflow selections are included in the grouped root run. The latest checked hosted status for pushed `cf2691e`: Docs, Security, External Sandbox and Agent Framework passed; main CI and PostgreSQL remained in progress. PostgreSQL had reported failure in the ADK and LangGraph native lifecycle recovery jobs, but GitHub had not made their logs available while the overall workflow remained active. The current local source is unpushed and has not been hosted-qualified. No S3-02 task or A2A gate is complete or deferred. After the PostgreSQL workflow concludes, inspect the failure logs and fix/revalidate the exact cause before claiming qualification.

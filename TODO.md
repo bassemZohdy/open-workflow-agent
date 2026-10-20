@@ -162,29 +162,22 @@ treated as a deferred task or as additional feature completion.
   interoperability, lifecycle, authority, recovery, streaming and backend
   gates are not closed. Outbound calls are not automatically replayed after
   possible acceptance; callers may explicitly resubscribe to a known task.
-  The `bd5cf79` source is the historical 265-test batch with 25
-  backend-inapplicable skips; `fa778a1` adds the Windows TCP timeout correction
-  and A2A lifecycle coverage, and `9202774` refreshes the renamed audit anchor
-  and 60-minute timing-budget selectors. Docs, Security, PostgreSQL, Agent
-  Framework and External Sandbox passed for `9202774`; its main CI was cancelled
-  when `447432b` superseded it. The current official-SDK `ListTasks`, malformed
-  response/card-selection and native context-mismatch additions passed 329
-  common tests with 36 environment skips, plus 9 SQLite cases in each isolated
-  engine environment. Ruff, format, docs-link and diff checks passed. Exact-
-  Main CI for `447432b` found a duplicate pytest module-name collection failure
-  in the root and Windows common lanes. The contract test now has a unique
-  SDK-specific module name. The following grouped worktree batch passed 365
-  tests with 49 environment skips; a focused workflow selector guard passed
-  after its path-trigger correction. Exact-source hosted requalification is
-  pending. It adds all-method actual-TCP card precedence, cross-worker terminal observation
-  during uncertain effect recovery, a pre-lease guard for native checkpoint
-  corruption, and native malformed-streaming admission across engines/backends;
-  combined validation is pending. A2A01-A2A08 remain partial and S3-02 stays
-  unchecked. Durable
-  Task/receipt expiry is explicitly outside the finite profile; no expiry
-  capability is claimed. See the
-  [acceptance record](docs/s3-02-a2a-acceptance.md) and
-  [grouped validation history](docs/validation-history/pending-batch-results.md#grouped-a2a-sdk-and-resume-matrix-2026-10-20).
+  The latest pushed source is `cf2691e`; Docs, Security, External Sandbox and
+  Agent Framework have passed. Main CI and PostgreSQL are still running; two
+  PostgreSQL lifecycle jobs failed and await final logs. The current local follow-up adds repeatable cross-worker
+  host-drain reads, terminal-read no-replay checks, missing/corrupt owner
+  authority cases, OAuth profile/card audience cross-pairs, and an accepted-
+  remote-send process-stop case that preserves the uncertain effect without
+  sending again. Its grouped root batch passed 127 tests with 136 environment
+  skips; isolated ADK/SQLite and LangGraph/SQLite batches each passed 36 tests.
+  Ruff, formatting, mypy, documentation links and diff checks passed. PostgreSQL
+  CI on `cf2691e` reported failures in both native lifecycle recovery jobs;
+  GitHub has not published failure logs while that workflow is still running.
+  Exact-source requalification for this local batch remains pending. A2A01-A2A08
+  remain partial and S3-02 stays unchecked. Durable Task/receipt expiry is
+  explicitly outside the finite profile; no expiry capability is claimed. See
+  the [acceptance record](docs/s3-02-a2a-acceptance.md) and
+  [A2A follow-up validation history](docs/validation-history/pending-batch-results.md#a2a-authority-uncertain-effect-and-stream-follow-up-2026-10-20).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected adapters and recovery fixtures are authored; cross-adapter,
   backend, platform, lifetime, packaging and hosted acceptance remain open.

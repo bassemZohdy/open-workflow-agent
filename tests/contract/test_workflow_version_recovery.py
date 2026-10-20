@@ -477,6 +477,7 @@ async def test_public_resume_rejects_changed_archive_before_ownership_or_native_
 @pytest.mark.parametrize("engine_name,engine_type", ENGINES)
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("surface", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize("damage", ["missing", "fingerprint"])
 async def test_a2a_resume_rejects_changed_owner_authority_before_mutation(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -484,6 +485,7 @@ async def test_a2a_resume_rejects_changed_owner_authority_before_mutation(
     engine_type: Any,
     backend: str,
     surface: str,
+    damage: str,
 ) -> None:
     monkeypatch.setenv(TOKEN_ENV, TOKEN)
     _clock(monkeypatch, [1000.0])
@@ -509,15 +511,22 @@ async def test_a2a_resume_rejects_changed_owner_authority_before_mutation(
                 assert handle is not None and handle.owner_principal == PRINCIPAL
                 connection = services.execution_authorizations.connection
                 original_authority = connection.execute(
-                    "SELECT invocation_id,fingerprint FROM execution_authorities "
+                    "SELECT invocation_id,fingerprint,payload,digest FROM execution_authorities "
                     "WHERE invocation_id=?",
                     (handle.invocation_id,),
                 ).fetchone()
                 assert original_authority is not None
-                connection.execute(
-                    "UPDATE execution_authorities SET fingerprint='invalid' WHERE invocation_id=?",
-                    (handle.invocation_id,),
-                )
+                if damage == "missing":
+                    connection.execute(
+                        "DELETE FROM execution_authorities WHERE invocation_id=?",
+                        (handle.invocation_id,),
+                    )
+                else:
+                    connection.execute(
+                        "UPDATE execution_authorities SET fingerprint='invalid' "
+                        "WHERE invocation_id=?",
+                        (handle.invocation_id,),
+                    )
                 connection.commit()
 
                 before = _common_snapshot(services, handle.invocation_id)
@@ -567,8 +576,10 @@ async def test_a2a_resume_rejects_changed_owner_authority_before_mutation(
         if original_authority is not None:
             connection = services.execution_authorizations.connection
             connection.execute(
-                "UPDATE execution_authorities SET fingerprint=? WHERE invocation_id=?",
-                (original_authority[1], original_authority[0]),
+                "INSERT INTO execution_authorities(invocation_id,fingerprint,payload,digest) "
+                "VALUES (?,?,?,?) ON CONFLICT(invocation_id) DO UPDATE SET "
+                "fingerprint=excluded.fingerprint,payload=excluded.payload,digest=excluded.digest",
+                original_authority,
             )
             connection.commit()
         if handle is not None:

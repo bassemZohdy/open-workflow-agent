@@ -108,7 +108,7 @@ def test_actual_postgresql_gate_selects_required_recovery_cases(
         ("test_a2a_sdk_http_json_optional_methods.py", 1),
         ("test_a2a_sdk_malformed_streaming_admission.py", 2),
         ("test_a2a_resume_context_rejection.py", 2),
-        ("test_a2a_initial_delivery.py", 6),
+        ("test_a2a_initial_delivery.py", 7),
     ],
 )
 def test_actual_a2a_postgresql_lifecycle_gate_selects_all_principal_cases(

@@ -7,6 +7,7 @@ and resuming sends over the common resume contract (A2A-6).
 from __future__ import annotations
 
 import asyncio
+from contextlib import AsyncExitStack
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -142,10 +143,12 @@ async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
     entered = asyncio.Event()
     interrupted = asyncio.Event()
     suppressed = asyncio.Event()
+    late_provider_finished = asyncio.Event()
     release = asyncio.Event()
 
     async def slow_model(_prompt):
         def late_result():
+            late_provider_finished.set()
             if late_outcome == "fault":
                 raise RuntimeError("late provider failure")
             return {"response": "late-result"}
@@ -195,6 +198,7 @@ async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
     services = RuntimeServices(config, model=FakeModel(slow_model), database_root=tmp_path)
     app = create_app(config=config, services=services)
     reader: RuntimeServices | None = None
+    reader_stack = AsyncExitStack()
     try:
         async with app.router.lifespan_context(app):
             client_transport = httpx.ASGITransport(app=app)
@@ -230,14 +234,72 @@ async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
                 before_drain = services.invocations.get(task_id)
                 assert before_drain is not None and before_drain.status == "running"
 
+                reader_model = FakeModel()
+                reader = RuntimeServices(config, model=reader_model, database_root=tmp_path)
+                reader_app = create_app(
+                    config=config, services=reader, engine=PortableWorkflowEngine()
+                )
+                await reader_stack.enter_async_context(
+                    reader_app.router.lifespan_context(reader_app)
+                )
+
+                async def forbidden(*_args, **_kwargs):
+                    raise AssertionError("a late-result GetTask must not replay workflow work")
+
+                reader_app.state.engine.invoke = forbidden
+                reader_app.state.engine.resume = forbidden
+                reader_client_context = httpx.AsyncClient(
+                    transport=httpx.ASGITransport(app=reader_app),
+                    base_url="http://test",
+                )
+                reader_client = await reader_stack.enter_async_context(reader_client_context)
+
+                def effect_rows(services_: RuntimeServices) -> list[tuple[object, ...]]:
+                    rows = services_.effect_journal.connection.execute(
+                        "SELECT identity, owner, status, payload FROM workflow_effects "
+                        "ORDER BY identity"
+                    ).fetchall()
+                    return [tuple(row) for row in rows]
+
+                effects_before_drain = effect_rows(services)
+
                 shutdown = asyncio.create_task(app.state.engine.shutdown())
                 if suppress_cancellation:
                     await asyncio.wait_for(suppressed.wait(), timeout=5)
                     assert not shutdown.done()
+
+                    # While the original provider is still holding the cancelled
+                    # invocation open, a separate worker must observe stable task
+                    # state without invoking or resuming workflow work.
+                    reader_first = await _poll_task_state(
+                        reader_client,
+                        task_id,
+                        "TASK_STATE_WORKING",
+                        transport=transport,
+                    )
+                    reader_second = await _poll_task_state(
+                        reader_client,
+                        task_id,
+                        "TASK_STATE_WORKING",
+                        transport=transport,
+                    )
+                    assert reader_second == reader_first
+                    assert reader.invocations.get(task_id)._persisted_payload == (
+                        before_drain._persisted_payload
+                    )
+                    assert services.invocations.get(task_id)._persisted_payload == (
+                        before_drain._persisted_payload
+                    )
+                    assert effect_rows(reader) == effects_before_drain
+                    assert effect_rows(services) == effects_before_drain
+                    assert reader_model.calls == []
+                    assert len(services.model.calls) == 1
                     release.set()
                 else:
                     await asyncio.wait_for(interrupted.wait(), timeout=5)
                 await asyncio.wait_for(shutdown, timeout=5)
+                if suppress_cancellation:
+                    assert late_provider_finished.is_set()
                 after_drain = services.invocations.get(task_id)
                 assert after_drain is not None and after_drain.status == "running"
                 persisted = after_drain._persisted_payload
@@ -252,39 +314,32 @@ async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
                 assert second == first
                 assert services.invocations.get(task_id)._persisted_payload == persisted
                 assert services.model.calls == model_calls_after_drain
-
-                reader_model = FakeModel()
-                reader = RuntimeServices(config, model=reader_model, database_root=tmp_path)
-                reader_app = create_app(
-                    config=config, services=reader, engine=PortableWorkflowEngine()
+                effects_after_late_provider = effect_rows(services)
+                worker_task = await _poll_task_state(
+                    reader_client,
+                    task_id,
+                    "TASK_STATE_WORKING",
+                    transport=transport,
                 )
-
-                async def forbidden(*_args, **_kwargs):
-                    raise AssertionError("a late-result GetTask must not replay workflow work")
-
-                async with reader_app.router.lifespan_context(reader_app):
-                    reader_app.state.engine.invoke = forbidden
-                    reader_app.state.engine.resume = forbidden
-                    async with httpx.AsyncClient(
-                        transport=httpx.ASGITransport(app=reader_app),
-                        base_url="http://test",
-                    ) as reader_client:
-                        worker_task = await _poll_task_state(
-                            reader_client,
-                            task_id,
-                            "TASK_STATE_WORKING",
-                            transport=transport,
-                        )
-
-                    reader_handle = reader.invocations.get(task_id)
-                    assert reader_handle is not None and reader_handle.status == "running"
-                    assert worker_task == first
-                    assert reader_handle._persisted_payload == persisted
-                    assert services.invocations.get(task_id)._persisted_payload == persisted
-                    assert reader_model.calls == []
-                    assert services.model.calls == model_calls_after_drain
+                reader_after_late_result = await _poll_task_state(
+                    reader_client,
+                    task_id,
+                    "TASK_STATE_WORKING",
+                    transport=transport,
+                )
+                reader_handle = reader.invocations.get(task_id)
+                assert reader_handle is not None and reader_handle.status == "running"
+                assert worker_task == first
+                assert reader_after_late_result == first
+                assert reader_handle._persisted_payload == persisted
+                assert services.invocations.get(task_id)._persisted_payload == persisted
+                assert effect_rows(reader) == effects_after_late_provider
+                assert effect_rows(services) == effects_after_late_provider
+                assert reader_model.calls == []
+                assert services.model.calls == model_calls_after_drain
     finally:
         release.set()
+        await reader_stack.aclose()
         if reader is not None:
             reader.close()
         services.close()

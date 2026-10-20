@@ -217,6 +217,7 @@ def test_windows_mcp_controls_include_real_transport_and_cleanup_boundaries():
         "test_mcp_capabilities.py",
         "test_mcp_stdio_integration.py",
         "test_a2a_sdk_http.py",
+        "test_a2a_credential_authority.py",
         "test_a2a_async.py",
         "test_a2a_inbound_v1.py",
         "test_a2a.py",
@@ -228,6 +229,10 @@ def test_windows_mcp_controls_include_real_transport_and_cleanup_boundaries():
     ):
         assert fixture in command
     assert "tests/contract/test_a2a_sdk_http_json_optional_methods.py" in command
+    assert (
+        "tests/core/test_a2a_streaming.py::test_stream_skips_malformed_event_and_closes_after_authoritative_terminal"
+        in command
+    )
     assert "uv run --locked pytest -vv" in command
 
 

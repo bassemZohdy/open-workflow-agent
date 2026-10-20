@@ -1,21 +1,16 @@
 # S3-02 finite A2A invocation and interoperability acceptance
 
 Status: implementation in progress; S3-02 remains unchecked. S2-09's finite
-recovery policy and S3-01's finite Python MCP profile are verified. `bd5cf79`
-is the historical 265-test batch with 25 backend-inapplicable skips;
-`fa778a1` added the Windows TCP timeout-boundary correction and expanded A2A
-lifecycle coverage; `9202774` refreshed the renamed audit anchor and 60-minute
-timing-job selectors. Docs, Security, PostgreSQL, Agent Framework and External
-Sandbox passed on `9202774`; its main CI was cancelled when `447432b`
-superseded it.
-The current pushed source `447432b` has its exact-source hosted workflows
-running. Main CI found a duplicate pytest module-name collection failure in the
-root and Windows common lanes; the contract test is renamed to a unique SDK
-module name for requalification. The following grouped worktree batch passed
-365 tests with 49 environment skips, and its corrected workflow selector guard
-passed. Hosted exact-source qualification remains pending; native-engine and
-PostgreSQL execution is selected in hosted lanes. Suite totals alone do not
-complete the eight acceptance gates.
+recovery policy and S3-01's finite Python MCP profile are verified. The latest
+pushed source is `cf2691e`: Docs, Security and External Sandbox passed; two
+PostgreSQL native lifecycle jobs failed, and GitHub has not exposed their logs
+while PostgreSQL CI remains active. Main CI is also still running. The current
+local follow-up passed 127 grouped
+root tests with 136 environment skips, plus 36 isolated ADK/SQLite and 36
+LangGraph/SQLite tests. Ruff, formatting, mypy, documentation links and diff
+checks passed. Exact-source hosted qualification and PostgreSQL cases for this
+local batch remain pending. Suite totals alone do not complete the eight
+acceptance gates.
 A2A01-A2A08 remain open wherever cross-method, authority, failure, backend or
 recovery controls have not been directly evidenced.
 

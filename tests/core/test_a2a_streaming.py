@@ -963,6 +963,36 @@ async def test_stream_handles_missing_task_and_disappearing_resubscription() -> 
 
 
 @pytest.mark.asyncio
+async def test_stream_skips_malformed_event_and_closes_after_authoritative_terminal() -> None:
+    backlog = [
+        SimpleNamespace(id="malformed-event", data=["not", "a", "CloudEvent", "object"]),
+        SimpleNamespace(id="terminal-event", data={"invocation_id": "stream-task"}),
+    ]
+    sink = _BacklogSink(backlog)
+    completed = _stream_handle(status="completed")
+    lookup_count = 0
+
+    def lookup(_id: str):
+        nonlocal lookup_count
+        lookup_count += 1
+        return _stream_handle() if lookup_count == 1 else completed
+
+    invocations = SimpleNamespace(get=lookup)
+
+    frames = [frame async for frame in a2a_sse_stream(sink, invocations, "stream-task")]
+    payloads = [json.loads(frame.split(b"data: ", 1)[1]) for frame in frames]
+
+    # Event contents are hints only: the common invocation record supplies the
+    # terminal state, and malformed unrelated data cannot leak a subscription.
+    assert payloads[0]["task"]["status"]["state"] == "TASK_STATE_WORKING"
+    assert all("task" not in payload for payload in payloads[1:])
+    terminal = [payload["statusUpdate"] for payload in payloads if "statusUpdate" in payload]
+    assert [update["status"]["state"] for update in terminal] == ["TASK_STATE_COMPLETED"]
+    assert any("artifactUpdate" in payload for payload in payloads)
+    assert sink.subscription.closed
+
+
+@pytest.mark.asyncio
 async def test_completed_stream_uses_task_id_when_session_context_is_unavailable() -> None:
     event = SimpleNamespace(id="completed-event", data={"invocation_id": "stream-task"})
     sink = _BacklogSink([event])
