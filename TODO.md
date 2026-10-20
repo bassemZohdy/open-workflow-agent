@@ -91,6 +91,8 @@ treated as a deferred task or as additional feature completion.
   selections pass on both engines; the assertion now captures output, error,
   calls, sleeps, draws and clock for a hosted rerun. See the
   [exact-source history](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
+  The checked finite profile remains the earlier accepted scope; this is a
+  later regression requalification against its corrected duration-bound witness.
 - [x] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
   Verified: common storage and matching, native consumption/iterator
   recovery, scope and approval guards are implemented. Focused native and
@@ -106,7 +108,9 @@ treated as a deferred task or as additional feature completion.
   A later PostgreSQL race at `5f11067` exposed an unbound `$resume_input` when
   timer delivery won a manual-resume race. Source `a77678a` sets or clears that
   value on every inline and durable wait; its local grouped timer cases pass,
-  with exact-source hosted requalification pending.
+  with exact-source hosted requalification pending. The checked finite profile
+  remains the earlier accepted scope; this is regression requalification of the
+  later timer-race correction.
   See the [finite acceptance record](docs/s2-06-timer-schedule-acceptance.md).
   Child lifecycle, external transports, full proposed/JavaScript and broader
   deployment scaling remain separately gated.
@@ -158,28 +162,20 @@ treated as a deferred task or as additional feature completion.
   interoperability, lifecycle, authority, recovery, streaming and backend
   gates are not closed. Outbound calls are not automatically replayed after
   possible acceptance; callers may explicitly resubscribe to a known task.
-  Pushed source `a77678a` includes the recovery-admission shutdown fix, stable
-  host-drain and actual deadline Task projections, a heartbeat-only bounded
-  read-open retry, the timer-race fix and stronger A2A witnesses. Its grouped
-  local regressions pass 28 cases with two backend-inapplicable skips; Ruff,
-  formatting, mypy, docs links and diff checks pass. PostgreSQL, Agent
-  Framework, External Sandbox, Security and Docs hosted checks passed. Main CI
-  completed with one failure: its Windows operation-adapter recovery lane had
-  962 passed, 454 skipped, and one LangGraph host-drain recovery failure
-  (`InvocationStateConflict`); the other Main CI jobs passed. That race is under
-  focused correction.
-  The original Windows deadline scenario still needs hosted confirmation. The
-  SQLite hot-super-journal fixture now uses an APSW VFS barrier immediately
-  before the producer deletes the super-journal. Its focused recovery and A2A
-  follow-up batch passed 18 cases with two backend skips; exact-source hosted
-  qualification remains pending.
-  Durable Task and receipt expiry still needs a product contract. Current gates
-  and focused evidence are in the [acceptance record](docs/s3-02-a2a-acceptance.md); exact
-  source outcomes are in the [validation history](docs/validation-history/pending-batch-results.md).
+  The grouped current batch corrects the `bc5f551` selector guard, gives the
+  Windows timer lane a 60-minute bound, and schedules A2A06 corruption and
+  terminal-projection witnesses in hosted CI. Its complete local and hosted
+  qualification is pending. The earlier `a77678a` Windows operation-adapter
+  recovery failure (`InvocationStateConflict`) and the original Windows
+  deadline scenario still need hosted confirmation of their focused fixes.
+  Durable Task/receipt expiry is explicitly outside the finite S3-02 profile;
+  no expiry capability is claimed. See the [acceptance record](docs/s3-02-a2a-acceptance.md)
+  for current gates and the [validation history](docs/validation-history/pending-batch-results.md)
+  for exact-source outcomes.
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected adapters and recovery fixtures are authored; cross-adapter,
   backend, platform, lifetime, packaging and hosted acceptance remain open.
-  the [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and
+  The [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and
   [retained run evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Captured sources, recovery proofs and awaited internal process controls are

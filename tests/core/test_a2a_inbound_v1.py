@@ -154,6 +154,49 @@ async def test_invalid_v1_send_rejects_before_invocation_or_model(tmp_path, bind
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+async def test_malformed_streaming_message_rejects_without_invocation_or_subscription(
+    tmp_path, binding
+):
+    app, services, model = runtime(tmp_path, binding)
+    invalid_message = message(parts=[{"text": "hello", "data": {"secret": "must-not-be-admitted"}}])
+    params = {"message": invalid_message}
+    invocation_count_before = services.invocations.connection.execute(
+        "SELECT COUNT(*) FROM invocations"
+    ).fetchone()[0]
+    subscriber_ids_before = set(services.lifecycle_events._subscribers)
+
+    async with app.router.lifespan_context(app):
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/a2a" if binding == "jsonrpc" else "/a2a/message:stream",
+                headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                json={
+                    "jsonrpc": "2.0",
+                    "id": "stream-call-1",
+                    "method": "SendStreamingMessage",
+                    "params": params,
+                }
+                if binding == "jsonrpc"
+                else params,
+            )
+
+        assert "error" in response.json()
+        assert "must-not-be-admitted" not in response.text
+        assert (
+            services.invocations.connection.execute("SELECT COUNT(*) FROM invocations").fetchone()[
+                0
+            ]
+            == invocation_count_before
+        )
+        assert model.calls == []
+        assert set(services.lifecycle_events._subscribers) == subscriber_ids_before
+    services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
 async def test_resume_context_mismatch_has_no_delivery_or_input_mutation(tmp_path, binding):
     app, services, model = runtime(tmp_path, binding)
     handle = shell(services, status="waiting")

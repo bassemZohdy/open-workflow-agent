@@ -178,7 +178,7 @@ jobs:
   windows-native-timing:
     name: Windows native timers events and scheduling
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
         with:
@@ -245,6 +245,8 @@ jobs:
           ../../tests/contract/test_host_drain_child_controls.py
           ../../tests/contract/test_explicit_compensation.py
           ../../tests/contract/test_workflow_version_recovery.py
+          ../../tests/contract/test_a2a_resume_native_corruption.py
+          ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py
           ../../tests/contract/test_workflow_version_process_recovery.py
           ../../tests/contract/test_mcp_sdk_calls.py
           ../../tests/contract/test_mcp_stdio_integration.py
@@ -281,6 +283,8 @@ jobs:
           tests/core/test_mcp_capabilities.py
           tests/core/test_a2a_sdk_http.py
           tests/core/test_a2a_inbound_v1.py
+          tests/core/test_a2a_task_routes.py
+          tests/core/test_a2a_child_projection.py
           tests/core/test_a2a_card_admission.py
           tests/core/test_initial_delivery.py
           tests/core/test_native_sqlite_inspection.py
@@ -600,6 +604,7 @@ jobs:
             ../../tests/contract/test_host_drain_child_controls.py \
             ../../tests/contract/test_explicit_compensation.py \
             ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py \
             ../../tests/contract/test_workflow_version_process_recovery.py \
             ../../tests/contract/test_mcp_sdk_calls.py \
             ../../tests/contract/test_mcp_stdio_integration.py \
@@ -607,6 +612,12 @@ jobs:
             ../../tests/contract/test_a2a_sdk_inbound.py \
             ../../tests/contract/test_a2a_initial_delivery.py \
             ../../tests/core/test_native_sqlite_inspection.py -vv --durations=20
+      - name: Verify LangGraph A2A native checkpoint corruption
+        if: matrix.engine == 'langgraph'
+        run: >-
+          uv run --locked --extra knowledge --extra sqlite
+          --with pytest --with pytest-asyncio pytest
+          ../../tests/contract/test_a2a_resume_native_corruption.py -vv
 
   containers:
     # Principal lifecycle/process fixtures run in the independent job above.

@@ -584,6 +584,7 @@ jobs:
             ../../tests/contract/test_host_drain_child_controls.py \
             ../../tests/contract/test_explicit_compensation.py \
             ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py \
             ../../tests/contract/test_workflow_version_process_recovery.py \
             ../../tests/contract/test_mcp_sdk_calls.py \
             ../../tests/contract/test_mcp_stdio_integration.py \
@@ -634,6 +635,8 @@ jobs:
             ../../tests/contract/test_host_drain_child_controls.py \
             ../../tests/contract/test_explicit_compensation.py \
             ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_a2a_resume_native_corruption.py \
+            ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py \
             ../../tests/contract/test_workflow_version_process_recovery.py \
             ../../tests/contract/test_mcp_sdk_calls.py \
             ../../tests/contract/test_mcp_stdio_integration.py \

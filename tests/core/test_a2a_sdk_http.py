@@ -394,6 +394,43 @@ async def test_valid_rpc_error_is_known_and_does_not_expose_peer_message_or_data
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method", METHODS)
+async def test_correlated_typed_rpc_error_is_known_for_every_advertised_method(method):
+    calls = []
+
+    async def receiver(request):
+        body = json.loads(request.content)
+        calls.append(body)
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": body["id"],
+                "error": {
+                    "code": -32042,
+                    "message": "private peer exception",
+                    "data": [{"@type": "https://peer.test/private", "secret": "do-not-copy"}],
+                },
+            },
+        )
+
+    with pytest.raises(ToolError) as error:
+        await ProtocolServices(HttpClient(transport=httpx.MockTransport(receiver))).call(
+            "a2a", payload(method, "https://a2a.test/a2a")
+        )
+
+    assert not isinstance(error.value, _A2AOutcomeUncertain)
+    assert error.value.details == {
+        "reason": "protocol_error",
+        "code": -32042,
+        "type": "https://serverlessworkflow.io/spec/1.0.0/errors/runtime",
+    }
+    assert "private peer exception" not in str(error.value)
+    assert "do-not-copy" not in json.dumps(error.value.as_dict())
+    assert len(calls) == 1 and calls[0]["method"] == method
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     "damage",
     ["boolean-code", "non-string-message", "non-list-data", "malformed-data", "extra-error-key"],
@@ -651,6 +688,45 @@ def test_card_selection_rejects_when_no_interface_matches_finite_profile(interfa
 
     with pytest.raises(ToolError):
         select_interface(card, explicit_endpoint="https://server.test/a2a")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize(
+    "interface",
+    [
+        {
+            "url": "https://peer.test/a2a",
+            "protocolBinding": "JSONRPC",
+            "protocolVersion": "0.3",
+        },
+        {
+            "url": "https://peer.test/a2a",
+            "protocolBinding": "GRPC",
+            "protocolVersion": "1.0",
+        },
+    ],
+    ids=["legacy-card-version", "unsupported-card-binding"],
+)
+async def test_legacy_or_unsupported_card_interface_rejects_every_method_before_dispatch(
+    method, interface
+):
+    calls = []
+    card = json_format.MessageToDict(peer_card("https://ignored.test/a2a"))
+    card["supportedInterfaces"] = [interface]
+    value = payload(method, "https://server.test/a2a")
+    value["agentCard"] = card
+
+    with pytest.raises(ToolError) as error:
+        await ProtocolServices(
+            HttpClient(
+                transport=httpx.MockTransport(lambda request: calls.append(request)),
+                allowed_hosts={"peer.test", "server.test"},
+            )
+        ).call("a2a", value)
+
+    assert error.value.details["reason"] == "unsupported_interface"
+    assert calls == []
 
 
 @pytest.mark.parametrize(

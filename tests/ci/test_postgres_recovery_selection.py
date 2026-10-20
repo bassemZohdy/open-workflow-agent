@@ -169,7 +169,14 @@ def test_a2a_postgresql_process_race_witness_is_selected_in_postgres_ci():
     )
     assert collected.returncode == 0, collected.stdout + collected.stderr
     nodes = [line for line in collected.stdout.splitlines() if "::test_" in line]
-    assert len(nodes) == 1, collected.stdout
+    assert len(nodes) == 2, collected.stdout
+    assert any(
+        "test_old_initial_delivery_process_cannot_write_after_takeover" in node for node in nodes
+    )
+    assert any(
+        "test_competing_initial_delivery_process_cannot_dispatch_while_owner_is_live" in node
+        for node in nodes
+    )
     assert all("postgresql" in node for node in nodes)
 
 

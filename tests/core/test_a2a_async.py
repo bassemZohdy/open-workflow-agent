@@ -16,6 +16,7 @@ from open_workflow_agent.api import create_app
 from open_workflow_agent.approvals import APPROVAL_DECISION_EVENT, APPROVAL_REQUEST_EVENT
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.security import Principal
 from open_workflow_agent.services import RuntimeServices
 
 HEADERS = {"a2a-version": V1}
@@ -79,25 +80,53 @@ async def _poll_task_state(
 
 
 @pytest.mark.asyncio
-async def test_return_immediately_returns_task_and_completes(tmp_path) -> None:
-    config = RuntimeConfig.model_validate({"a2a": {"enabled": True}})
-    app, _services = _make_app(tmp_path, config)
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+async def test_return_immediately_returns_task_and_completes(tmp_path, transport: str) -> None:
+    config = RuntimeConfig.model_validate({"a2a": {"enabled": True, "transport": transport}})
+    app, services = _make_app(tmp_path, config)
     async with app.router.lifespan_context(app):
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post(
-                "/a2a",
-                headers=HEADERS,
-                json=_send(_text_message(), configuration={"returnImmediately": True}),
+        asgi_transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=asgi_transport, base_url="http://test") as client:
+            message = _text_message(
+                "complete exactly once",
+                messageId="return-immediately-message",
+                contextId="return-immediately-context",
             )
+            if config.a2a.transport == "jsonrpc":
+                response = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(message, configuration={"returnImmediately": True}),
+                )
+            else:
+                response = await client.post(
+                    "/a2a/message:send",
+                    headers=HEADERS,
+                    json={"message": message, "configuration": {"returnImmediately": True}},
+                )
             assert response.status_code == 200
-            body = response.json()["result"]
+            body = (
+                response.json()["result"] if config.a2a.transport == "jsonrpc" else response.json()
+            )
             assert "task" in body
             assert "message" not in body
             task_id = body["task"]["id"]
+            assert body["task"]["contextId"] == "return-immediately-context"
+            handle = services.invocations.get(task_id)
+            assert handle is not None
+            assert handle.invocation_id == task_id
+            assert handle.session_id == body["task"]["contextId"]
 
-            final = await _poll_task_state(client, task_id, "TASK_STATE_COMPLETED")
+            final = await _poll_task_state(
+                client,
+                task_id,
+                "TASK_STATE_COMPLETED",
+                transport=config.a2a.transport,
+            )
+            assert final["id"] == task_id
+            assert final["contextId"] == body["task"]["contextId"]
             assert final["artifacts"][0]["parts"][0]["data"] == {"response": "a2a-reply"}
+            assert len(services.model.calls) == 1
 
 
 @pytest.mark.asyncio
@@ -320,6 +349,163 @@ async def test_approval_wait_projects_input_required_and_completes(tmp_path) -> 
 
             final = await _poll_task_state(client, task_id, "TASK_STATE_COMPLETED")
             assert final["artifacts"][0]["parts"][0]["data"] == {"approved": True}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("outcome", ["cross_worker_decision", "expiry_recovery"])
+async def test_protected_approval_terminal_outcome_survives_a2a_recovery(
+    tmp_path, monkeypatch, outcome: str
+) -> None:
+    """A2A observes durable approval decisions, including expiry after dispatcher restart."""
+    monkeypatch.setenv("OWA_TEST_A2A_APPROVAL_ACTOR", "approval-secret")
+    subject = f"protected-a2a-recovery-{outcome}"
+    expiry = (
+        datetime.now(UTC) - timedelta(seconds=1)
+        if outcome == "expiry_recovery"
+        else datetime.now(UTC) + timedelta(minutes=5)
+    )
+    expires_at = expiry.isoformat().replace("+00:00", "Z")
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "a2a-async",
+            "name": "protected-recovery-flow",
+            "version": "1.0.0",
+        },
+        "do": [
+            {
+                "request": {
+                    "emit": {
+                        "event": {
+                            "with": {
+                                "id": subject,
+                                "source": "urn:a2a-async:protected-recovery",
+                                "type": APPROVAL_REQUEST_EVENT,
+                                "subject": subject,
+                                "approvalexpiresat": expires_at,
+                                "data": {
+                                    "approvalPolicy": {
+                                        "profile": "owa/protected-approval/v1",
+                                        "assignee": "reviewer-a",
+                                        "reassignmentTargets": [],
+                                        "escalationTargets": [],
+                                    },
+                                    "question": "continue?",
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "decision": {
+                    "listen": {
+                        "to": {
+                            "one": {
+                                "with": {
+                                    "type": APPROVAL_DECISION_EVENT,
+                                    "subject": subject,
+                                }
+                            }
+                        },
+                        "read": "data",
+                    }
+                }
+            },
+            {"finish": {"set": {"approved": True}}},
+        ],
+    }
+    config = RuntimeConfig.model_validate(
+        {
+            "approvals": {
+                "enabled": True,
+                "protected": True,
+                "actor_security_profiles": ["approval-actor"],
+            },
+            "security": {
+                "profiles": {
+                    "approval-actor": {
+                        "type": "bearer",
+                        "token": {"from_env": "OWA_TEST_A2A_APPROVAL_ACTOR"},
+                        "principal": "reviewer-a",
+                    }
+                }
+            },
+            "workflow": {"catalog": [workflow]},
+            "a2a": {
+                "enabled": True,
+                "skills": [{"id": "approve", "workflow": "protected-recovery-flow"}],
+            },
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    other_worker: RuntimeServices | None = None
+    try:
+        async with app.router.lifespan_context(app):
+            if outcome == "expiry_recovery":
+                # Hold the durable expiry observer down while the Task and approval
+                # are persisted. Restarting it must reconcile the already-due row.
+                await services.stop_protected_approvals()
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                started = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(
+                        _text_message(metadata={"skillId": "approve"}),
+                        configuration={"returnImmediately": True},
+                    ),
+                )
+                assert started.status_code == 200, started.text
+                task_id = started.json()["result"]["task"]["id"]
+                await _poll_task_state(client, task_id, "TASK_STATE_INPUT_REQUIRED")
+
+                pending = services.approvals.store.get(subject)
+                assert pending is not None and pending.status == "pending"
+                assert pending.expires_at is not None
+                if outcome == "expiry_recovery":
+                    await services.start_protected_approvals()
+                    expected_decision = "expired"
+                else:
+                    other_worker = RuntimeServices(
+                        config, model=FakeModel(), database_root=tmp_path
+                    )
+                    await other_worker.approvals.decide(
+                        subject,
+                        decision="approved",
+                        operator_id="reviewer-a",
+                        actor=Principal("reviewer-a"),
+                        value={"approved": True},
+                        revision=1,
+                        operation_key=f"{subject}:decision",
+                    )
+                    expected_decision = "approved"
+
+                final = await _poll_task_state(client, task_id, "TASK_STATE_COMPLETED")
+                assert final["artifacts"][0]["parts"][0]["data"] == {"approved": True}
+                assert services.approvals.store.get(subject).status == expected_decision
+                # Terminal observation is read-only: repeated A2A reads return the
+                # same committed result and cannot replay the approval or workflow.
+                repeated = await _poll_task_state(client, task_id, "TASK_STATE_COMPLETED")
+                assert repeated == final
+                assert services.approvals.store.get(subject).status == expected_decision
+                resumed = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(_text_message(taskId=task_id, contextId=final["contextId"])),
+                )
+                assert resumed.status_code == 200
+                assert resumed.json()["error"]["code"] == -32004
+                after_rejected_resume = await _poll_task_state(
+                    client, task_id, "TASK_STATE_COMPLETED"
+                )
+                assert after_rejected_resume == final
+                assert services.model.calls == []
+    finally:
+        if other_worker is not None:
+            other_worker.close()
+        services.close()
 
 
 @pytest.mark.asyncio

@@ -1520,3 +1520,80 @@ ready marker and once before `_execute_background` returned), leaving no
 `sandbox_jobs` row. These local setup timeouts do not verify the recovery-lease
 adjustment. The hosted case failed later, during recovery lease verification,
 and requires the post-fix hosted rerun for qualification.
+
+## Exact-source follow-up — `bc5f551`
+
+Commit `bc5f551bb8c2157c2293efe3ab5fd08da142349e` is pushed to
+`codex/required-backlog` and PR #64. The batch adds the pinned APSW test
+dependency to the Linux engine lifecycle matrix and Windows LangGraph lifecycle
+command. Those commands select isolated engine environments, so the root
+development group does not provide APSW to the child process that constructs
+the real SQLite super-journal fixture. A CI workflow assertion covers both
+install commands. The batch also extends the A2A host-drain projection witness
+to a late provider fault, preserving its persisted-running, stable WORKING
+projection, payload and model-call assertions.
+
+The grouped local batch passed **24 tests with one backend-inapplicable skip**.
+It covered the actual APSW VFS super-journal barrier, both bindings for late
+host-drain values/faults and stream disconnect, the SQLite initial-delivery
+process race, and the lifecycle workflow guard. Ruff, formatting, and
+`git diff --check` passed. A separate locked LangGraph environment check
+confirmed an APSW import from a child process. No broad root suite was rerun.
+
+The preceding exact-source run at `18123a6` passed PostgreSQL CI, Agent
+Framework CI, External Sandbox CI, Security and Docs, but Main CI failed in
+three native lifecycle jobs because those isolated child processes could not
+import APSW. The failure was a test-environment dependency omission, not a
+runtime assertion failure. On `bc5f551`, the isolated Windows, ADK and
+LangGraph lifecycle jobs passed with APSW installed; PostgreSQL CI, Agent
+Framework CI, External Sandbox CI, Security and Docs also passed. Main CI
+failed its root suite only because a selector guard still expected one
+PostgreSQL process-race test after the second witness was added. Its Windows
+timer lane was cancelled at 45 minutes after reaching 95% progress. The current
+unpublished batch updates the selector guard, extends that job bound to 60
+minutes, and adds A2A06 corruption/terminal-projection selections with explicit
+workflow guards. At the time this record was prepared, Docs
+([run](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39080070098))
+and Security
+([run](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39080070121))
+passed, along with PostgreSQL
+([run](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39080070133)),
+Agent Framework
+([run](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39080070059))
+and External Sandbox
+([run](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39080070212)).
+CI [run](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39080070127)
+did not pass for the selector-guard and timer-limit reasons above. These checks
+do not close S3-02. The earlier `a77678a` Windows operation-adapter host-drain
+recovery failure remains subject to hosted confirmation. On 2026-10-20 the
+finite S3-02 scope decision explicitly excluded durable Task/receipt expiry;
+no expiry capability is advertised.
+
+## Unpublished grouped S3-02 acceptance batch — 2026-10-20
+
+The current working-tree batch adds a seven-method correlated JSON-RPC error
+matrix and a seven-method legacy-version/unsupported-card-binding rejection
+matrix; strengthens `returnImmediately` identity, structured-output and
+single-dispatch assertions on both inbound bindings; adds protected-approval
+decision-by-another-worker and expiry-dispatcher-restart recovery witnesses;
+and rejects malformed streaming messages before invocation or subscription on
+both bindings. It also corrects the stale PostgreSQL selector guard, extends
+the Windows timer workflow bound from 45 to 60 minutes, and schedules A2A06
+corruption/terminal-projection witnesses in Windows and PostgreSQL lifecycle
+CI. The A2A acceptance record now states that durable Task/receipt expiry is
+outside this finite profile and is not advertised.
+
+The grouped local root selection passed **344 tests with 2 backend-inapplicable
+skips** in 260.24 seconds. It included the updated A2A async, SDK HTTP, inbound
+v1, route, child projection, optional-method, process-race and CI guard suites.
+The isolated ADK receipt-corruption selection passed **4 with 12 matrix skips**;
+the isolated LangGraph native/receipt corruption selections passed **6 with 14
+matrix skips**. The additional isolated-engine skips reflect backend/transport
+combinations not available to those local profiles and are not promoted to
+acceptance; PostgreSQL and complete engine matrices remain in hosted CI.
+
+Markdown relative links passed. Ruff lint passed and all 549 Python files passed
+format checking after formatting the two touched A2A test files. `git diff
+--check` passed. These local results do not qualify the unpublished source;
+exact-source hosted checks and review of their full engine/backend matrices are
+pending. S3-02 remains open. No task is deferred.
