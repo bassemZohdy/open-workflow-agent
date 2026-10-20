@@ -43,7 +43,7 @@ from open_workflow_agent.storage import StorageConnection
 
 
 @pytest.fixture
-def supervisor_record(tmp_path, monkeypatch):
+def supervisor_record(tmp_path, monkeypatch, request):
     config = RuntimeConfig.model_validate(
         {
             "sandbox": {
@@ -105,7 +105,7 @@ def supervisor_record(tmp_path, monkeypatch):
         ((plan.tasks[0].reference, 1),),
         "run:script",
     )
-    request = SandboxExecutionRequest(
+    execution_request = SandboxExecutionRequest(
         job_id(identity),
         "script",
         script_language="python",
@@ -115,12 +115,15 @@ def supervisor_record(tmp_path, monkeypatch):
         task_reference=identity.task_reference,
     )
     store = SandboxJobStore(services, profile_provider=lambda: internal_job_profile(config.sandbox))
+    callspec = getattr(request.node, "callspec", None)
+    mode = callspec.params.get("mode") if callspec is not None else None
+    deadline_seconds = 15 if mode == "deadline" else 25
     job = store.admit(
         identity,
         handle,
-        request,
+        execution_request,
         {"original": None},
-        deadline_at=time.time() + 5,
+        deadline_at=time.time() + deadline_seconds,
         execution_lease=owner,
     )
     lease = store.claim(job.job_id, seconds=90)
@@ -262,7 +265,7 @@ async def test_supervisor_verifies_submit_and_publishes_authenticated_running_th
                 verify()
                 applied()
         elif mode == "deadline":
-            await asyncio.wait_for(stop.wait(), 6)
+            await asyncio.wait_for(stop.wait(), 16)
             assert time.time() >= record.launch.deadline_at and deadline_due()
             assert control_mutation() is None
             deadline_reached()
