@@ -14,7 +14,9 @@ from open_workflow_agent.a2a import A2A_PROTOCOL_VERSION
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.effects import EffectIdentity, effect_request_digest
 from open_workflow_agent.engine import PortableWorkflowEngine
+from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 
 HEADERS = {"a2a-version": A2A_PROTOCOL_VERSION}
@@ -253,6 +255,240 @@ async def test_native_host_drain_late_provider_result_is_read_only_cross_worker(
                 assert effect_rows(reader_services) == effects_after_result == effects_before_drain
                 assert reader_services.model.calls == []
                 assert len(source_services.model.calls) == 1
+    finally:
+        release.set()
+        await reader_stack.aclose()
+        if reader_services is not None:
+            reader_services.close()
+        source_services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name", ["adk", "langgraph"])
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("receipt_status", ["pending", "completed"])
+async def test_native_host_drain_late_provider_preserves_outbound_a2a_receipt(
+    tmp_path, engine_name: str, transport: str, backend: str, receipt_status: str
+) -> None:
+    """A late model result cannot advance into or rewrite an uncertain A2A effect."""
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+
+    entered = asyncio.Event()
+    cancellation_suppressed = asyncio.Event()
+    late_provider_finished = asyncio.Event()
+    release = asyncio.Event()
+    outbound_calls: list[httpx.Request] = []
+
+    async def slow_model(_prompt: Any) -> dict[str, str]:
+        entered.set()
+        try:
+            await release.wait()
+        except asyncio.CancelledError:
+            cancellation_suppressed.set()
+            await asyncio.shield(release.wait())
+        late_provider_finished.set()
+        return {"response": "late-provider-result"}
+
+    async def outbound(request: httpx.Request) -> httpx.Response:
+        outbound_calls.append(request)
+        raise AssertionError("late provider result must not dispatch the following A2A call")
+
+    endpoint = "https://peer.test/a2a"
+    peer_message = {
+        "role": "ROLE_USER",
+        "messageId": "host-drain-peer-message",
+        "parts": [{"text": "pre-existing uncertain peer action"}],
+    }
+    peer_payload = {
+        "server": endpoint,
+        "method": "message/send",
+        "parameters": {"message": peer_message},
+    }
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake"},
+            "persistence": {"datasource": datasource},
+            "workflow": {
+                "catalog": [
+                    {
+                        "document": {
+                            "dsl": "1.0.3",
+                            "namespace": "a2a-native-host-drain",
+                            "name": "slow-then-peer",
+                            "version": "1.0.0",
+                        },
+                        "do": [
+                            {
+                                "wait": {
+                                    "call": "llm:1.0.0@default",
+                                    "with": {"prompt": "wait before peer recovery"},
+                                }
+                            },
+                            {"peer": {"call": "a2a", "with": peer_payload}},
+                        ],
+                    }
+                ]
+            },
+            "a2a": {
+                "enabled": True,
+                "transport": transport,
+                "skills": [{"id": "slow", "workflow": "slow-then-peer"}],
+            },
+        }
+    )
+    source_engine = _native_engine(engine_name)
+    source_services = RuntimeServices(
+        config,
+        model=FakeModel(slow_model),
+        database_root=None if datasource else tmp_path,
+    )
+    source_protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(outbound)))
+    source_services.protocols = source_protocols
+    source_services.tools.protocols = source_protocols
+    assert source_services.effect_journal.connection.kind == backend
+    source_app = create_app(config=config, services=source_services, engine=source_engine)
+    reader_services: RuntimeServices | None = None
+    reader_stack = AsyncExitStack()
+    try:
+        async with AsyncExitStack() as source_stack:
+            await source_stack.enter_async_context(source_app.router.lifespan_context(source_app))
+            source_stack.callback(release.set)
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=source_app), base_url="http://test"
+            ) as source_client:
+                message = {
+                    "messageId": "native-host-drain-a2a-message",
+                    "role": "ROLE_USER",
+                    "parts": [{"text": "start native task"}],
+                    "metadata": {"skillId": "slow"},
+                }
+                if transport == "http_json":
+                    started = await source_client.post(
+                        "/a2a/message:send",
+                        headers=HEADERS,
+                        json={
+                            "message": message,
+                            "configuration": {"returnImmediately": True},
+                        },
+                    )
+                    assert started.status_code == 200, started.text
+                    task_id = started.json()["task"]["id"]
+                else:
+                    started = await source_client.post(
+                        "/a2a",
+                        headers=HEADERS,
+                        json={
+                            "jsonrpc": "2.0",
+                            "id": 1,
+                            "method": "SendMessage",
+                            "params": {
+                                "message": message,
+                                "configuration": {"returnImmediately": True},
+                            },
+                        },
+                    )
+                    assert started.status_code == 200, started.text
+                    task_id = started.json()["result"]["task"]["id"]
+
+                await asyncio.wait_for(entered.wait(), timeout=30)
+                source_handle = source_services.invocations.get(task_id)
+                assert source_handle is not None and source_handle.status == "running"
+                peer_identity = EffectIdentity(
+                    invocation_id=task_id,
+                    workflow_fingerprint=source_handle.workflow_fingerprint,
+                    task_reference="/do/1/peer",
+                    occurrence=(("/do/1/peer", 1),),
+                    operation="call:a2a",
+                )
+                peer_digest = effect_request_digest("a2a", peer_payload)
+                peer_receipt = source_services.effect_journal.begin(
+                    peer_identity, peer_digest, "prior-native-owner"
+                )
+                if receipt_status == "completed":
+                    peer_receipt = source_services.effect_journal.finish(
+                        peer_identity,
+                        "prior-native-owner",
+                        output={"task": {"id": "peer-task", "status": {"state": "working"}}},
+                    )
+                assert peer_receipt.status == receipt_status
+
+                reader_services = RuntimeServices(
+                    config,
+                    model=FakeModel(),
+                    database_root=None if datasource else tmp_path,
+                )
+                reader_app = create_app(
+                    config=config,
+                    services=reader_services,
+                    engine=PortableWorkflowEngine(),
+                )
+                await reader_stack.enter_async_context(
+                    reader_app.router.lifespan_context(reader_app)
+                )
+
+                async def forbidden(*_args: Any, **_kwargs: Any) -> Any:
+                    raise AssertionError("cross-worker Task reads must not replay workflow work")
+
+                reader_app.state.engine.invoke = forbidden
+                reader_app.state.engine.resume = forbidden
+                reader_client = await reader_stack.enter_async_context(
+                    httpx.AsyncClient(
+                        transport=httpx.ASGITransport(app=reader_app), base_url="http://test"
+                    )
+                )
+
+                def effect_rows(services: RuntimeServices) -> list[tuple[Any, ...]]:
+                    rows = services.effect_journal.connection.execute(
+                        "SELECT identity, owner, status, payload FROM workflow_effects "
+                        "ORDER BY identity"
+                    ).fetchall()
+                    return [tuple(row) for row in rows]
+
+                effects_before_drain = effect_rows(source_services)
+                shutdown = asyncio.create_task(source_engine.shutdown())
+                await asyncio.wait_for(cancellation_suppressed.wait(), timeout=10)
+                peer_handle = reader_services.invocations.get(task_id)
+                assert peer_handle is not None and peer_handle.status == "running"
+                reader_services.invocations.update(
+                    peer_handle,
+                    status="faulted",
+                    error={
+                        "code": "unresolved_external_action",
+                        "message": "remote operation outcome is uncertain",
+                    },
+                )
+                terminal_handle = reader_services.invocations.get(task_id)
+                assert terminal_handle is not None and terminal_handle.status == "faulted"
+                terminal_snapshot = terminal_handle._persisted_payload
+                before_result = await _get_task(reader_client, task_id, transport)
+                assert before_result["status"]["state"] == "TASK_STATE_FAILED"
+                assert (await _get_task(reader_client, task_id, transport)) == before_result
+                assert source_services.effect_journal.get(peer_identity) == peer_receipt
+                assert effect_rows(source_services) == effects_before_drain
+                assert source_services.invocations.get(task_id)._persisted_payload == (
+                    terminal_snapshot
+                )
+
+                release.set()
+                await asyncio.wait_for(shutdown, timeout=30)
+                assert late_provider_finished.is_set()
+                after_result = await _get_task(reader_client, task_id, transport)
+                assert after_result == before_result
+                assert source_services.effect_journal.get(peer_identity) == peer_receipt
+                assert effect_rows(source_services) == effects_before_drain
+                assert source_services.invocations.get(task_id)._persisted_payload == (
+                    terminal_snapshot
+                )
+                assert reader_services.invocations.get(task_id)._persisted_payload == (
+                    terminal_snapshot
+                )
+                assert reader_services.effect_journal.get(peer_identity) == peer_receipt
+                assert reader_services.model.calls == []
+                assert len(source_services.model.calls) == 1
+                assert outbound_calls == []
     finally:
         release.set()
         await reader_stack.aclose()

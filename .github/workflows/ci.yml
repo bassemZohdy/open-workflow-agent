@@ -692,6 +692,12 @@ jobs:
             ../../tests/contract/test_a2a_initial_delivery.py \
             ../../tests/contract/test_a2a_native_host_drain.py \
             ../../tests/core/test_native_sqlite_inspection.py -vv --durations=20
+      - name: Verify ADK A2A native event corruption
+        if: matrix.engine == 'adk'
+        run: >-
+          uv run --locked --extra knowledge --extra native
+          --with pytest --with pytest-asyncio pytest
+          ../../tests/contract/test_a2a_resume_adk_native_corruption.py -vv
       - name: Verify LangGraph A2A native checkpoint corruption
         if: matrix.engine == 'langgraph'
         run: >-

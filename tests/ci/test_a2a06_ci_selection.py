@@ -45,6 +45,9 @@ def test_resume_corruption_witnesses_run_in_engine_lifecycle_ci() -> None:
     )
     assert langgraph_step["if"] == "matrix.engine == 'langgraph'"
     assert "test_a2a_resume_native_corruption.py" in langgraph_step["run"]
+    adk_step = _step(jobs["native-lifecycle"], "Verify ADK A2A native event corruption")
+    assert adk_step["if"] == "matrix.engine == 'adk'"
+    assert "test_a2a_resume_adk_native_corruption.py" in adk_step["run"]
 
 
 def test_resume_corruption_witnesses_run_in_postgresql_lifecycle_ci() -> None:
@@ -64,4 +67,7 @@ def test_resume_corruption_witnesses_run_in_postgresql_lifecycle_ci() -> None:
         assert lifecycle_step.get("env", {}).get("OWA_TEST_POSTGRES_URL")
 
     langgraph_command = _commands(jobs["postgres-langgraph-lifecycle"])
+    adk_command = _commands(jobs["postgres-adk-lifecycle"])
+    assert "test_a2a_resume_adk_native_corruption.py" in adk_command
+    assert "test_a2a_resume_adk_native_corruption.py" not in langgraph_command
     assert "test_a2a_resume_native_corruption.py" in langgraph_command

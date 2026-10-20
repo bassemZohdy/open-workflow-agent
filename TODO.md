@@ -176,10 +176,18 @@ treated as a deferred task or as additional feature completion.
   `5584242` adds native foreign-owner GetTask/SubscribeToTask checks, PostgreSQL
   host-drain coverage, and repeated public GetTask reads after known-receipt
   recovery. Those grouped SQLite cases pass locally on both engines. A real-TLS
-  redirect credential-boundary case also passes in the local 250-case A2A SDK
-  HTTP suite. PostgreSQL and fresh exact-source hosted qualification remain
-  pending. The earlier exact-source correction batch `923302f` passed local focused tests and
-  all six hosted workflows: main CI, PostgreSQL, Agent Framework, Docs,
+  redirect credential-boundary case also passed in the 250-case A2A SDK HTTP
+  suite at `4ce26e6`; Docs and Security passed, while CI, PostgreSQL, Agent
+  Framework and External Sandbox were still queued or running. The grouped
+  local batch now passes: 271 core A2A SDK HTTP tests, 16 selected cases per
+  native engine (PostgreSQL and cross-engine profiles remain for hosted jobs),
+  three CI selector tests, lint, format, type checks, builds and documentation
+  validation. It adds terminal-task owner privacy, ADK public-route native
+  history corruption, API-key/mTLS foreign-origin rejection, tenant-only
+  actual-TCP card rejection, and native late-provider/uncertain-A2A host-drain
+  evidence. Exact-source hosted and PostgreSQL qualification remains pending;
+  no gate or checkbox advances yet. The earlier exact-source correction
+  batch `923302f` passed local focused tests and all six hosted workflows: main CI, PostgreSQL, Agent Framework, Docs,
   Security and External Sandbox. The sandbox image job passed on rerun after
   a transient APK repository TLS error. The hosted Windows timer, ownership/
   effect, task-checkpoint and root-quality lanes all passed. Durable

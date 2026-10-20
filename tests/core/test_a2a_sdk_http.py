@@ -177,8 +177,8 @@ async def test_actual_tcp_card_selection_skips_ineligible_interface_for_every_me
 @pytest.mark.parametrize("method", METHODS)
 @pytest.mark.parametrize(
     ("binding", "protocol_version"),
-    [("JSONRPC", "0.3"), ("GRPC", "1.0")],
-    ids=["legacy-version", "unsupported-binding"],
+    [("JSONRPC", "0.3"), ("GRPC", "1.0"), ("JSONRPC", "1.0")],
+    ids=["legacy-version", "unsupported-binding", "tenant-only"],
 )
 async def test_actual_tcp_discovery_rejects_incompatible_card_before_every_method(
     method, binding, protocol_version
@@ -189,6 +189,9 @@ async def test_actual_tcp_discovery_rejects_incompatible_card_before_every_metho
                 "url": endpoint,
                 "protocolBinding": binding,
                 "protocolVersion": protocol_version,
+                **(
+                    {"tenant": "acme"} if binding == "JSONRPC" and protocol_version == "1.0" else {}
+                ),
             }
         ]
         return card
@@ -700,6 +703,83 @@ async def test_actual_tls_card_selected_foreign_origin_is_rejected_before_creden
             rendered_error = str(error.value) + json.dumps(error.value.as_dict())
             assert "private-local-secret" not in rendered_error
             assert "local-client" not in rendered_error
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize("kind", ["api_key", "mtls"])
+async def test_actual_tls_card_selected_foreign_origin_rejects_api_key_and_mtls(
+    monkeypatch, tmp_path, method, kind
+):
+    """A foreign TLS card cannot trigger API-key or client-certificate use."""
+    secret = "private-local-api-key"
+    monkeypatch.setenv("A2A_TEST_SECRET", secret)
+
+    with auth_tls_receiver(tmp_path) as tls:
+        monkeypatch.setenv("A2A_TEST_CA", tls.ca_bundle)
+        if kind == "mtls":
+            certificate, private_key = tls.certificates["client-A"]
+            monkeypatch.setenv("A2A_TEST_CERT", str(certificate))
+            monkeypatch.setenv("A2A_TEST_KEY", str(private_key))
+
+        async with sdk_a2a_fixture(network=True, tls=tls, require_client_cert=False) as (
+            _foreign_transport,
+            foreign_calls,
+            foreign_endpoint,
+        ):
+            async with sdk_a2a_fixture(network=True, tls=tls, require_client_cert=False) as (
+                transport,
+                calls,
+                endpoint,
+            ):
+                http = HttpClient(
+                    transport=transport,
+                    allowed_hosts={"127.0.0.1"},
+                    verify_tls=tls.ca_bundle,
+                )
+                origin = endpoint.removesuffix("/a2a")
+                card = await fetch_validate_card(
+                    http, {"endpoint": origin + "/.well-known/agent-card.json"}, timeout=2
+                )
+                authentication = named_authentication(
+                    kind,
+                    http,
+                    **({"ca_bundle_env": "A2A_TEST_CA"} if kind == "mtls" else {}),
+                )
+                credential_attempts = []
+
+                def forbidden_headers(target):
+                    credential_attempts.append(("headers", target))
+                    raise AssertionError("foreign card origin must be rejected before credentials")
+
+                async def forbidden_prepare(target, *, remaining_timeout=None):
+                    del remaining_timeout
+                    credential_attempts.append(("prepare", target))
+                    raise AssertionError("foreign card origin must be rejected before credentials")
+
+                monkeypatch.setattr(authentication, "headers", forbidden_headers)
+                monkeypatch.setattr(authentication, "prepare", forbidden_prepare)
+
+                foreign_card = copy.deepcopy(card)
+                foreign_card["supportedInterfaces"][0]["url"] = foreign_endpoint
+                value = payload(method, endpoint)
+                value["agentCard"] = foreign_card
+
+                with pytest.raises(ToolError) as error:
+                    await ProtocolServices(
+                        http, a2a_credential_endpoints={"selected": (endpoint,)}
+                    ).call("a2a", value, _authentication=authentication)
+
+                assert error.value.details["reason"] == "unbound_card_credentials"
+                assert credential_attempts == []
+                assert len(calls) == 1 and calls[0]["method"] == "GET"
+                assert foreign_calls == []
+                assert tls.requests == []
+                rendered_error = str(error.value) + json.dumps(error.value.as_dict())
+                assert secret not in rendered_error
+                if kind == "mtls":
+                    assert str(tls.certificates["client-A"][0]) not in rendered_error
+                    assert str(tls.certificates["client-A"][1]) not in rendered_error
 
 
 @pytest.mark.asyncio

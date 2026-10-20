@@ -1949,3 +1949,31 @@ gate is complete from these tests alone. The hosted batch was canceled while
 the redirect witness was added; fresh exact-source hosted workflows and the
 PostgreSQL selections remain pending. Durable Task/receipt expiry stays
 excluded from the finite profile.
+
+## A2A terminal authority, corruption, credential and drain batch — local pass, hosted pending
+
+The current candidate adds five finite-profile witnesses: terminal native
+`GetTask`/`SubscribeToTask` privacy for foreign principals; authenticated ADK
+native-history corruption rejection through both public resume routes; API-key
+and mTLS foreign-origin rejection across all seven advertised methods; actual
+loopback rejection of tenant-only AgentCards across those methods; and native
+late-provider host-drain behavior while an outbound A2A receipt is pending or
+completed. The ADK history test is selected by the ADK native lifecycle and
+PostgreSQL workflows; existing selectors collect the other contract cases.
+
+The local combined selections pass: core A2A SDK HTTP **271 passed**; ADK
+contracts **16 passed, 44 skipped**; LangGraph contracts **16 passed, 48
+skipped**; CI selector checks **3 passed**. PostgreSQL variants and tests for
+the other engine are skipped in each isolated environment; hosted PostgreSQL
+and Windows/native jobs remain mandatory. Ruff, format, CI and package mypy,
+documentation validation, source/wheel builds, and `git diff --check` passed.
+The SDK HTTP suite reports 92 HTTPX `verify` deprecation warnings; the ADK
+suite reports the existing ADK `BaseAgentConfig` deprecation warning.
+
+The initial combined run exposed three fixture issues, corrected before the
+passing run: A2A status uses the SDK `TASK_STATE_COMPLETED` value; authorized
+ADK sessions use the invocation's authority-derived native user key; and the
+official A2A method spelling is `message/send`. No S3-02 gate or backlog
+checkbox advances until the final exact-source hosted workflows and actual
+PostgreSQL selections pass. Durable Task/receipt expiry remains excluded by
+the user's finite-profile decision.

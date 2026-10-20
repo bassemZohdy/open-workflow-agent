@@ -589,6 +589,7 @@ jobs:
             ../../tests/contract/test_explicit_compensation.py \
             ../../tests/contract/test_workflow_version_recovery.py \
             ../../tests/contract/test_a2a_resume_context_rejection.py \
+            ../../tests/contract/test_a2a_resume_adk_native_corruption.py \
             ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py \
             ../../tests/contract/test_workflow_version_process_recovery.py \
             ../../tests/contract/test_mcp_sdk_calls.py \

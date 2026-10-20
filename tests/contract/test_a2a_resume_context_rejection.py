@@ -307,6 +307,7 @@ async def test_foreign_principal_cannot_cancel_or_resume_native_task(
 @pytest.mark.parametrize("engine_name,engine_type", ENGINES)
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("surface", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize("task_state", ["waiting", "terminal"])
 async def test_foreign_principal_cannot_get_or_subscribe_to_native_task(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -314,8 +315,9 @@ async def test_foreign_principal_cannot_get_or_subscribe_to_native_task(
     engine_type: Any,
     backend: str,
     surface: str,
+    task_state: str,
 ) -> None:
-    """Native task reads and subscriptions hide tasks owned by another principal."""
+    """Native task reads and subscriptions hide waiting and terminal owner data."""
     foreign_token_env = "OWA_A2A_FOREIGN_TOKEN"
     foreign_token = "deterministic-foreign-a2a-test-token"
     monkeypatch.setenv(TOKEN_ENV, TOKEN)
@@ -324,7 +326,8 @@ async def test_foreign_principal_cannot_get_or_subscribe_to_native_task(
     engine = engine_type()
     _actual_native(engine, engine_name)
     receiver = Receiver(tmp_path / "receiver.sqlite3")
-    config = _config(_definition("1.0.0"), backend, a2a_transport=surface)
+    version = "1.0.0" if task_state == "waiting" else "2.0.0"
+    config = _config(_definition(version), backend, a2a_transport=surface)
     services = _services(tmp_path, config, receiver)
     app = create_app(config=config, services=services, engine=engine)
     foreign_config = config.model_copy(deep=True)
@@ -353,10 +356,29 @@ async def test_foreign_principal_cannot_get_or_subscribe_to_native_task(
                 started = await owner_client.post(
                     "/v1/invoke", json={"input": {"secret": "owned-native-task"}}
                 )
-                assert started.status_code == 200 and started.json()["status"] == "waiting"
+                expected_status = "waiting" if task_state == "waiting" else "completed"
+                assert started.status_code == 200 and started.json()["status"] == expected_status
                 handle = services.invocations.get(started.json()["invocation_id"])
                 assert handle is not None and handle.owner_principal == PRINCIPAL
                 assert len(receiver.calls) == len(receiver.rows()) == 1
+                if task_state == "terminal":
+                    if surface == "jsonrpc":
+                        owner_task_response = await owner_client.post(
+                            "/a2a",
+                            headers={"a2a-version": A2A_PROTOCOL_VERSION},
+                            json=jsonrpc_request("GetTask", handle.invocation_id),
+                        )
+                        assert owner_task_response.status_code == 200
+                        owner_task = owner_task_response.json()["result"]
+                    else:
+                        owner_task_response = await owner_client.get(
+                            f"/a2a/tasks/{handle.invocation_id}",
+                            headers={"a2a-version": A2A_PROTOCOL_VERSION},
+                        )
+                        assert owner_task_response.status_code == 200
+                        owner_task = owner_task_response.json()
+                    assert owner_task["status"]["state"] == "TASK_STATE_COMPLETED"
+                    assert "owned-native-task" in str(owner_task["artifacts"])
 
                 common_before = _common_snapshot(services, handle.invocation_id)
                 native_before = _native_snapshot(services, handle, backend)
@@ -416,6 +438,7 @@ async def test_foreign_principal_cannot_get_or_subscribe_to_native_task(
 
                             assert "owned-native-task" not in denied.text
                             assert foreign_token not in denied.text and TOKEN not in denied.text
+                            assert "text/event-stream" not in denied.headers.get("content-type", "")
                             assert _common_snapshot(services, handle.invocation_id) == common_before
                             assert _native_snapshot(services, handle, backend) == native_before
                             assert (
@@ -433,7 +456,7 @@ async def test_foreign_principal_cannot_get_or_subscribe_to_native_task(
                             assert not engine._active and not engine._execution_leases
                             assert not engine._ownership_tasks
     finally:
-        if handle is not None:
+        if handle is not None and task_state == "waiting":
             await engine.cancel(handle, operation_id="foreign-a2a-read-fixture-cleanup")
         await engine.shutdown()
         services.close()

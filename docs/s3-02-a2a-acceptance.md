@@ -3,25 +3,41 @@
 Status: S3-02 remains open. S2-09's finite recovery policy and S3-01's finite
 Python MCP profile are verified. The last fully qualified source is `923302f`,
 which passed all six hosted workflows and local focused correction checks.
-Candidate `58c102c` passed PostgreSQL, Agent Framework, Docs, Security and
-External Sandbox; main CI failed three Windows sandbox stdio cases when a
-0.5-second fixture deadline expired during process startup or stream
-validation. Pushed candidate `ab83bbd` widens the bound only for invalid,
-oversized, stderr and exit responses; stall and partial-stream cases retain the
-short bound. Its hosted run was superseded and canceled while the next batch was
-prepared. Pushed follow-up `5584242` adds three A2A witnesses whose SQLite
-selections pass locally. The current working tree adds a real-TLS redirect
-credential-boundary witness; the full local A2A SDK HTTP selection passes 250
-cases. Fresh exact-source hosted and PostgreSQL results are pending. A2A02's finite native-call gate and A2A05's finite
-process-recovery gate are verified at `923302f`; A2A01, A2A03-A2A04 and
-A2A06-A2A08 remain partial because cross-method, authority, failure, backend
-or recovery controls still lack complete evidence. Durable Task/receipt expiry
-remains outside the accepted profile. Earlier regressions, their corrections,
-and the transient External Sandbox image retry are preserved in the validation history.
+Pushed follow-up `5584242` adds three A2A witnesses whose SQLite selections pass
+locally. Exact-source `4ce26e6` adds a real-TLS redirect credential-boundary
+witness; its 250-case local A2A SDK HTTP selection, Docs and Security passed.
+At the latest check, CI and External Sandbox were queued, while PostgreSQL and
+Agent Framework were running. The grouped local batch now passes 271 core A2A
+SDK HTTP cases, 16 selected cases in each native engine environment, three CI
+selector tests, lint, format, type checks, builds and documentation validation.
+The exact-source hosted and PostgreSQL qualification remains pending.
+A2A02's finite native-call gate and A2A05's finite process-recovery gate are
+verified at `923302f`; A2A01, A2A03-A2A04 and A2A06-A2A08 remain partial because
+cross-method, authority, failure, backend or recovery controls still lack
+complete evidence. Durable Task/receipt expiry remains outside the accepted
+profile. Earlier regressions, their corrections, and the transient External
+Sandbox image retry are preserved in the validation history.
 Local gRPC and background recovery evidence belongs to S3-03. Suite totals
 alone do not complete the remaining seven A2A gates.
 A2A01-A2A08 remain open wherever cross-method, authority, failure, backend or
 recovery controls have not been directly evidenced.
+
+## Current grouped candidate additions — local pass, hosted qualification pending
+
+The current worktree adds five bounded witnesses before the next combined
+validation run: `test_actual_tcp_discovery_rejects_incompatible_card_before_every_method`
+now includes a tenant-only card; `test_foreign_principal_cannot_get_or_subscribe_to_native_task`
+adds terminal tasks with secret-bearing artifacts; `test_a2a_resume_rejects_corrupt_adk_event_history_before_mutation`
+covers actual ADK history corruption through authenticated JSON-RPC and HTTP+JSON
+routes; `test_actual_tls_card_selected_foreign_origin_rejects_api_key_and_mtls`
+covers all seven outbound methods for both credential types; and
+`test_native_host_drain_late_provider_preserves_outbound_a2a_receipt` combines
+native host drain, a late provider result and pending/completed outbound A2A
+receipts across engines, bindings and stores. The ADK route-corruption test is
+selected in the ADK native lifecycle and PostgreSQL lanes; the remaining tests
+are collected by existing core/contract selectors. PostgreSQL-specific and
+cross-engine cases are skipped in the isolated local environments. These
+results do not close any gate until the exact-source hosted workflows pass.
 
 ## Contract and authority
 
@@ -154,7 +170,7 @@ Representative executed witnesses for the partial gates include:
 
 - **A2A01:** `tests/core/test_a2a_sdk_http.py::test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_business_dispatch`, `::test_card_selection_uses_first_supported_interface_and_ignores_server_endpoint` and `::test_card_selection_rejects_when_no_interface_matches_finite_profile`; `tests/contract/test_a2a_sdk_inbound.py::test_official_sdk_client_discovers_sends_and_reads_native_task` covers the independent SDK client on both inbound bindings.
 - **A2A03:** `tests/core/test_a2a_async.py::test_return_immediately_returns_task_and_completes`, `::test_resuming_send_restarts_persisted_waiting_task` and `::test_a2a_resume_cannot_bypass_protected_approval_wait`; `tests/core/test_a2a_task_routes.py::test_authenticated_a2a_task_access_is_bound_to_creator` checks unknown/foreign response equality across Get, Cancel, Subscribe and resume on JSON-RPC and HTTP+JSON; `tests/core/test_a2a_inbound_v1.py::test_invalid_v1_send_rejects_before_invocation_or_model`, `::test_resume_context_mismatch_has_no_delivery_or_input_mutation`, `::test_malformed_resume_rejects_before_invocation_or_delivery_mutation` (both bindings passed locally), `::test_unknown_and_foreign_a2a_tasks_share_sanitized_not_found_without_callbacks` and `::test_completed_null_is_an_explicit_artifact`.
-- **A2A04:** `tests/core/test_a2a_task_routes.py::test_actual_workflow_deadline_projects_stable_read_only_task` drives the configured top-level workflow timeout to a persisted fault by advancing the engine's deterministic absolute clock, then checks repeated GetTask identity/error stability, unchanged persisted payload, and zero model calls on JSON-RPC and HTTP+JSON (2 focused cases passed). The adjacent `::test_end_and_deadline_task_reads_are_authoritative_and_read_only` separately seeds END and deadline-fault records (4 focused cases passed). `tests/core/test_a2a_async.py::test_host_drain_keeps_inflight_task_authoritative_in_later_reads` verifies an in-flight model-backed task remains working and unchanged through repeated GetTask reads on both bindings after engine shutdown, including a late provider result after suppressed cancellation (4 cases passed; cross-worker native late-result remains untested; `test_public_subscription_reads_another_services_terminal_commit_without_local_event` now covers public JSON-RPC and HTTP+JSON streaming projection from a second RuntimeServices worker). Other witnesses: `tests/core/test_a2a_inbound_v1.py::test_real_timer_wait_projects_authoritative_terminal_task_after_get_task` and `::test_real_retained_timer_is_automatic_work_without_mutating_wait_evidence`; `tests/core/test_a2a_child_projection.py::test_get_task_projects_committed_terminal_nested_child_outcome_immutably` (4 focused cases passed); `tests/core/test_a2a_async.py::test_public_subscription_reads_another_services_terminal_commit_without_local_event` and `::test_approval_wait_projects_input_required_and_completes`; `tests/core/test_a2a_streaming.py::test_stream_disconnect_does_not_cancel_invocation`; `tests/contract/test_a2a_workflow_calls.py::test_accepted_remote_task_with_lost_correlation_stays_pending_without_catch_replay`.
+- **A2A04:** `tests/core/test_a2a_task_routes.py::test_actual_workflow_deadline_projects_stable_read_only_task` drives the configured top-level workflow timeout to a persisted fault by advancing the engine's deterministic absolute clock, then checks repeated GetTask identity/error stability, unchanged persisted payload, and zero model calls on JSON-RPC and HTTP+JSON (2 focused cases passed). The adjacent `::test_end_and_deadline_task_reads_are_authoritative_and_read_only` separately seeds END and deadline-fault records (4 focused cases passed). `tests/core/test_a2a_async.py::test_host_drain_keeps_inflight_task_authoritative_in_later_reads` verifies an in-flight model-backed task remains working and unchanged through repeated GetTask reads on both bindings after engine shutdown, including a late provider result after suppressed cancellation (4 cases passed; the new local batch adds `tests/contract/test_a2a_native_host_drain.py::test_native_host_drain_late_provider_preserves_outbound_a2a_receipt` for pending/completed A2A receipts and peer terminal commits, with hosted PostgreSQL and Windows/native qualification pending; `test_public_subscription_reads_another_services_terminal_commit_without_local_event` covers public JSON-RPC and HTTP+JSON streaming projection from a second RuntimeServices worker). Other witnesses: `tests/core/test_a2a_inbound_v1.py::test_real_timer_wait_projects_authoritative_terminal_task_after_get_task` and `::test_real_retained_timer_is_automatic_work_without_mutating_wait_evidence`; `tests/core/test_a2a_child_projection.py::test_get_task_projects_committed_terminal_nested_child_outcome_immutably` (4 focused cases passed); `tests/core/test_a2a_async.py::test_public_subscription_reads_another_services_terminal_commit_without_local_event` and `::test_approval_wait_projects_input_required_and_completes`; `tests/core/test_a2a_streaming.py::test_stream_disconnect_does_not_cancel_invocation`; `tests/contract/test_a2a_workflow_calls.py::test_accepted_remote_task_with_lost_correlation_stays_pending_without_catch_replay`.
 - **A2A05:** `tests/contract/test_a2a_initial_delivery.py::test_sdk_async_ack_survives_real_stop_with_original_definition_and_clock` and `::test_stopped_delivery_invalid_authority_or_evidence_rejects_before_lease_or_native_mutation`; the recovery worker asserts the persisted delivery retains the original skill ID. `::test_stale_initial_delivery_generation_cannot_write_after_takeover` covers an in-process fence. In exact-source hosted runs, `tests/contract/test_a2a_initial_delivery_process_race.py::test_old_initial_delivery_process_cannot_write_after_takeover`, `::test_competing_initial_delivery_process_cannot_dispatch_while_owner_is_live` and `::test_simultaneous_initial_delivery_claimants_dispatch_once` passed on SQLite and actual PostgreSQL with distinct PIDs, one receiver commit and unchanged state after stale/rejected claims. `tests/contract/test_a2a_workflow_calls.py::test_original_known_a2a_receipt_survives_native_restart_without_second_task`.
 - **A2A06:** `tests/contract/test_workflow_version_recovery.py::test_public_resume_rejects_changed_archive_before_ownership_or_native_mutation` covers REST plus JSON-RPC and HTTP+JSON A2A resume for missing/digest-corrupt archive and invocation-binding evidence; the two principal engines each pass 12 SQLite selections locally. `::test_a2a_resume_rejects_changed_owner_authority_before_mutation`, `tests/contract/test_a2a_resume_native_corruption.py::test_a2a_resume_rejects_corrupt_native_checkpoint_before_mutation` and `tests/contract/test_a2a_resume_receiver_receipt_corruption.py::test_a2a_resume_rejects_damaged_receiver_receipt_before_mutation` add owner/native/receipt evidence rejection across bindings and backends; all isolated actual-native selections collected but skipped in the root environment. The owner-authority assertion matches common fail-closed `task_not_resumeable`. `::test_a2a_cannot_grant_an_unadvertised_archived_workflow_default_skill_authority`, `tests/contract/test_a2a_workflow_calls.py::test_known_receipt_recovery_never_refetches_mutable_agent_card` and `tests/core/test_a2a_card_admission.py::test_changed_request_or_deployment_binding_cannot_replace_original_decision` cover adjacent authority and receipt controls.
 - **A2A07:** `tests/core/test_a2a_sdk_http.py::test_actual_tls_a2a_call_uses_named_mtls_credential[method]`, `::test_actual_tls_a2a_call_uses_named_http_credential[kind-method]` and `::test_actual_tls_a2a_call_uses_named_oauth_credential_for_card_endpoint[method]` passed locally across the seven advertised methods and four named TLS credential profiles. Bearer, API-key and OAuth cases use the fetched AgentCard-selected endpoint and assert public discovery has no business credential. `::test_card_cannot_redirect_protected_tool_credentials_to_another_endpoint[method]` and `::test_oauth_card_requires_exact_resource_endpoint_before_issuer_dispatch[method]` reject all seven methods before network or issuer dispatch when endpoint/resource authority is missing. The complete SDK HTTP test file passed 133 cases locally; hosted requalification remains pending. `::test_public_card_fetch_has_no_inherited_business_credentials_and_uses_pinned_selection`, `::test_exact_deployment_credential_grant_reaches_selected_sdk_peer` and `tests/core/test_secret_safety.py::test_a2a_surfaces_never_expose_the_resolved_secret` cover adjacent policy and secret surfaces.
