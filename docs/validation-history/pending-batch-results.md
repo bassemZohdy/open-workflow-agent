@@ -1597,3 +1597,9 @@ format checking after formatting the two touched A2A test files. `git diff
 --check` passed. These local results do not qualify the unpublished source;
 exact-source hosted checks and review of their full engine/backend matrices are
 pending. S3-02 remains open. No task is deferred.
+
+After that grouped batch was pushed, the post-push selector audit found that
+the six JSON-RPC and six HTTP+JSON optional-operation rejection cases were in
+the full Linux root suite but not in the dedicated Windows common A2A suite.
+The current follow-up adds both test files to `windows-mcp` and its selector
+guard. The guard passed locally; the new exact-source hosted run is pending.

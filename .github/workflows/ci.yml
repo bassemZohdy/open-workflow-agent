@@ -285,6 +285,8 @@ jobs:
           tests/core/test_a2a_inbound_v1.py
           tests/core/test_a2a_task_routes.py
           tests/core/test_a2a_child_projection.py
+          tests/core/test_a2a.py
+          tests/core/test_a2a_http_json_optional_methods.py
           tests/core/test_a2a_card_admission.py
           tests/core/test_initial_delivery.py
           tests/core/test_native_sqlite_inspection.py
