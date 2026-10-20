@@ -1,23 +1,21 @@
 # S3-03 operation adapters: finite acceptance plan
 
-Status: authored, local batch validation complete; exact-source hosted run
-completed with failures, and correction validation is pending. S3-03 remains
-unchecked.
+Status: authored, local and exact-source hosted batch validation complete;
+S3-03 remains unchecked because broader adapter, backend, platform, packaging
+and deployment acceptance remains open.
 The current worktree passes its scoped root selection (140 passed, 12 skipped),
 gRPC SQLite contract/process recovery (22 cases per principal engine), and
 background process recovery (13 cases per principal engine). Ruff lint and
 format checks, mypy (131 source files), documentation validation and diff
 checks pass; the optional Agent Framework host-drain selection passed 20 tests
-with 36 expected skips. These are local results. In GitHub run `39366187632`,
-Docs, Security and External Sandbox passed, as did both Windows gRPC and both
+with 36 expected skips. These are local results. In GitHub run `39370261789`,
+the main CI passed, as did both Windows gRPC and both
 Windows background matrices, the Windows operation-adapter suite, Agent
 Framework, and all PostgreSQL CI jobs. Remaining Windows native/timer, engine
-contract and root-quality lanes completed with three failures: two bounded
-Windows startup waits expired, and the root A2A timer projection did not reach
-completion after its worker ended. The current follow-up raises the startup
-bounds to 30 seconds and exposes the A2A dispatch error and persisted status;
-that batch remains unvalidated. No full hosted qualification or inventory
-completion is claimed. The embedded background
+contract and root-quality lanes passed at exact source `923302f`. The External
+Sandbox run `39370261833` initially hit a transient APK repository TLS/index
+failure; its failed image job passed on rerun. This validates the scoped batch
+but does not complete the broader S3-03 inventory. The embedded background
 profile remains disabled by a default-false internal qualification gate until
 its acceptance is complete.
 AsyncAPI network activation and broader function/sandbox responsibilities

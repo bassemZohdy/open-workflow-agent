@@ -1892,9 +1892,15 @@ exceeded its 10-second native startup wait; and the root A2A timer test saw a
 working Task after its dispatch worker exited. The first two failures expired
 their test synchronization bounds, with neighboring cases passing. The A2A
 dispatcher records caught errors in a private queue, which the old test did not
-inspect. The current unvalidated correction batch raises both native startup
-bounds to 30 seconds and makes the A2A test fail with the recorded dispatcher
-error or persisted nonterminal invocation state. The existing LangGraph native
-task recovery waits were also widened to 30 seconds following an earlier
-Windows root-scope timeout. Run full grouped local checks and exact-source
-hosted requalification before replacing this record with a pass.
+inspect. Correction commit `923302f` raises both native startup bounds to 30
+seconds, adds assertions that surface recorded dispatcher errors and persisted
+nonterminal state, and widens the earlier LangGraph native task recovery waits
+to 30 seconds. The corrected timer, task-checkpoint, ownership/effect, and
+operation-adapter Windows lanes passed. The full root and ADK/LangGraph suites
+passed, as did PostgreSQL, Agent Framework, Docs, Security and External
+Sandbox. External Sandbox initially failed its LangGraph image build because
+the Alpine package index returned a TLS error; that failed image job passed on
+rerun. All six exact-source workflows are green at `923302f`. No S3-02 or
+S3-03 task is complete from this batch alone; A2A05's finite process-recovery
+gate is verified, while the other A2A gates and broader adapter acceptance
+remain open.

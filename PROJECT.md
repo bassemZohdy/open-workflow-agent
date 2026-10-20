@@ -11,28 +11,19 @@
 
 **19 of 37 backlog tasks are verified; 18 remain open. No task is deferred.**
 S2-09’s finite VM01-VM08 policy and S3-01’s finite Python MCP01-MCP08 profile are verified.
-S3-02 remains active at pushed source `bd934ee`. The preceding `cf59700` source's
-PostgreSQL, Agent Framework and native lifecycle CI exposed an observed-effect
-regression: a known external result returned after authorized business
-cancellation remained pending. Commit `bd934ee` records that result while
-retaining host-drain and ownership-loss fences; later workflow checkpoints
-still honor cancellation. Both principal native lifecycle jobs passed this
-correction on `bd934ee`. That CI also found one independent Windows root-scope
-wait timeout; the current unpushed follow-up gives that test
-a 30-second bounded wait. The completed `bd934ee` hosted run also found two
-Windows native startup waits that exceeded 10 and 15 seconds and an A2A timer
-dispatch whose caught error was hidden by a task-projection assertion. The
-current worktree raises those startup bounds to 30 seconds and exposes timer
-dispatcher errors and persisted state in that A2A test. This correction batch
-is not yet validated or hosted-qualified. The local batch adds gRPC
-required-engine coverage and a default-off background qualification gate,
-alongside the A2A socket,
-authority, recovery, streaming and credential cases. gRPC SQLite recovery passed 22 cases per principal
-engine, background recovery passed 13 per engine, and the grouped core batch
-passed 140 tests with 12 skips. Ruff, formatting, mypy (131 source files), docs
-validation and diff checks passed. Hosted requalification is pending. No S3-02
-gate is closed. Durable Task/receipt expiry is excluded from the finite
-profile and is not advertised.
+S3-02 remains active at exact source `923302f`. Commit `bd934ee` corrected the
+known-result receipt regression found after authorized business cancellation,
+while retaining host-drain and ownership-loss fences. Commit `923302f` then
+raised two Windows startup bounds, surfaced the A2A timer dispatch error and
+persisted status in its test, and passed all six hosted workflows: main CI,
+PostgreSQL, Agent Framework, Docs, Security and External Sandbox. The sandbox
+image job passed on rerun after a transient APK repository TLS error. Local
+focused corrections and the grouped core, gRPC SQLite, background recovery,
+AsyncAPI descriptor, Ruff, format, mypy, docs and diff checks passed. A2A05's
+finite native-call gate A2A02 and process-recovery gate A2A05 are verified at
+`923302f`; A2A01, A2A03, A2A04 and A2A06-A2A08 remain partial, so S3-02 stays
+unchecked. Durable Task/receipt
+expiry is excluded from the finite profile and is not advertised.
 JavaScript MCP, A145/full protocol coverage, proposed T29/T30/T31 criteria,
 and broader MCP extensions remain unqualified. See the
 [exact-source qualification record](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6),
@@ -45,8 +36,8 @@ partial and superseded runs remain historical in the [validation history](docs/v
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at 6b23e5d / 96ce610. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
 | S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
-| S3-02 | Active at pushed source `bd934ee`; the known-result receipt correction passed both principal native lifecycle jobs, but the completed hosted run has three remaining failures under active correction: two Windows startup timeouts and a timer dispatch failure whose error was masked in the A2A assertion. Full A2A hosted qualification remains open. Durable Task/receipt expiry is excluded from the finite profile. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [latest-source qualification](docs/validation-history/pending-batch-results.md#a2a-authority-uncertain-effect-and-stream-follow-up-2026-10-20) |
-| S3-03 | Operation adapters and independent recovery jobs remain open. Pushed commit `bd934ee` has local gRPC SQLite recovery (22 cases per principal engine), background recovery (13 per engine), pure AsyncAPI descriptor tests (134), and a 140-pass/12-skip core batch. Both hosted Windows gRPC matrices, both Windows background matrices, the Windows operation-adapter suite, and all PostgreSQL CI passed; the completed hosted run failed two Windows timing cases and root A2A timer projection, which are under correction. Broader backend, platform, packaging and deployment acceptance remains open. | [Operations](docs/s3-03-operation-adapters-acceptance.md), [timeout history and successful rerun](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4) |
+| S3-02 | Active at exact source `923302f`; all six hosted workflows passed. A2A02's finite native-call gate and A2A05's finite process-recovery gate are verified; A2A01, A2A03, A2A04 and A2A06-A2A08 remain partial, so the S3-02 task remains open. Durable Task/receipt expiry is excluded from the finite profile. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [latest-source qualification](docs/validation-history/pending-batch-results.md#a2a-authority-uncertain-effect-and-stream-follow-up-2026-10-20) |
+| S3-03 | Operation adapters and independent recovery jobs remain open. Exact source `923302f` passed both hosted Windows gRPC matrices, both Windows background matrices, the Windows operation-adapter suite, all PostgreSQL CI, and the pure AsyncAPI descriptor selection and scoped recovery checks locally. The background profile remains default-off; broader backend, platform, packaging and deployment acceptance remains open. | [Operations](docs/s3-03-operation-adapters-acceptance.md), [timeout history and successful rerun](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4) |
 | S3-04 | Captured sources and awaited controls remain authored. Four late source-worker takeover cases cover the ADK/LangGraph × SQLite/PostgreSQL matrix; exact-source behavioral, platform and publication qualification remain pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored. The PostgreSQL `REAL`-to-`DOUBLE PRECISION` migration is implemented and f9 PostgreSQL protected-approval cases passed. The f9 Windows timer lane exposed a request-row process-recovery fixture race before its durable barrier; a five-second renewal lease plus natural database-clock wait passes the local LangGraph/SQLite suite. The formerly failing hosted Windows case passed at `8183776`; the expired-approval fixture now keeps invocation ownership independent from the short approval deadline and awaits independent-SDK/hosted requalification. Broader S3-05 gates remain open. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |
 | S3-06 | Identity, action policy, isolation and credential safeguards remain authored; full qualification remains open. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
