@@ -202,10 +202,21 @@ treated as a deferred task or as additional feature completion.
   so it remains in the final batch as a required regression. The remaining
   `c3ca7f1` CI, PostgreSQL, and Agent Framework runs were cancelled while
   batching the remaining work; Docs, Security, and External Sandbox passed but
-  do not qualify this partial source. Full hosted requalification remains
-  pending; S3-03 remains open. The background profile remains default-off
-  pending full qualification. Cross-adapter, backend, platform, lifetime,
-  packaging and broader hosted acceptance remain open.
+  do not qualify this partial source. Hosted requalification remains pending.
+  The later ADK JSON-RPC skill-resume failure exposed an initial-delivery race:
+  a waiting invocation left its initial-delivery row ready for startup replay.
+  The dispatcher now settles that row under the execution lease once the first
+  run reaches durable waiting; the regression passed five focused reruns. A
+  safe `_resume_owned` diagnostic regression is authored but final-batch
+  validation is pending:
+  it injects a sentinel failure through the call site and checks that logs
+  contain only the resume stage, stable error code and exception type, with no
+  exception message, input or native identifier. Twelve new cases also check
+  that nonzero script exits remain faults under return projections `code`,
+  `all`, and `none`, for inline and reusable functions on both engines. S3-03
+  remains open. The background profile remains default-off pending full
+  qualification. Cross-adapter, backend, platform, lifetime, packaging and
+  broader hosted acceptance remain open.
   The [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and
   [retained run evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
@@ -232,8 +243,9 @@ treated as a deferred task or as additional feature completion.
   acceptance remains open. A focused real-native role-policy test passes on
   SQLite for both principal engines, proving denial before provider dispatch;
   a new ADK/LangGraph × SQLite/PostgreSQL credential regression checks archived
-  `from_env` references without the resolved canary value. It awaits the final
-  batch; PostgreSQL and the full eight-family matrix remain pending. See the
+  `from_env` references without a known environment canary. Its injected fake
+  model does not resolve the credential. It awaits the final batch; PostgreSQL
+  and the full eight-family matrix remain pending. See the
   [acceptance plan](docs/s3-07-agent-pattern-acceptance.md) and
   [timing evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.

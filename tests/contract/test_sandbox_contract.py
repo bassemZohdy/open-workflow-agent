@@ -141,6 +141,97 @@ async def test_internal_sandbox_run_tasks_have_cross_engine_parity(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("return_mode", ["code", "all", "none"])
+@pytest.mark.parametrize("reusable", [False, True])
+@pytest.mark.parametrize(
+    ("engine_name", "engine_type"),
+    [("adk", AdkWorkflowEngine), ("langgraph", LangGraphWorkflowEngine)],
+)
+async def test_nonzero_internal_script_exit_stays_faulted_for_every_return_projection(
+    tmp_path: Path,
+    engine_name: str,
+    engine_type: type[AdkWorkflowEngine] | type[LangGraphWorkflowEngine],
+    reusable: bool,
+    return_mode: str,
+) -> None:
+    task = {
+        "run": {
+            "script": {
+                "language": "python",
+                "code": (
+                    "import sys\n"
+                    "sys.stdout.write('must-not-be-projected')\n"
+                    "sys.stderr.write('diagnostic')\n"
+                    "raise SystemExit(7)\n"
+                ),
+            },
+            "return": return_mode,
+        }
+    }
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "contract",
+            "name": "sandbox-nonzero-return-projection",
+            "version": "1.0.0",
+        },
+        "do": [{"execute": task}],
+    }
+    if reusable:
+        workflow["use"] = {"functions": {"execute": task}}
+        workflow["do"] = [{"executeReusable": {"call": "execute"}}]
+
+    sandbox = SandboxConfig(
+        **supported_process_limits(),
+        enabled=True,
+        workspace_root=str(tmp_path / engine_name / "sandbox"),
+        memory_bytes=None,
+    )
+    services = RuntimeServices(
+        RuntimeConfig(sandbox=sandbox),
+        model=FakeModel({"response": "ok"}),
+        database_root=tmp_path / engine_name,
+    )
+    engine = engine_type()
+    await engine.initialize(services)
+    try:
+        if not (
+            engine.native.available if engine_name == "adk" else engine.native.task_nodes_available
+        ):
+            pytest.skip("actual engine SDK is unavailable in this independent environment")
+        plan = compile_sandbox_workflow(workflow, sandbox=sandbox)
+        handle = services.invocations.create(
+            engine=engine_name,
+            session_id=None,
+            user_id=None,
+            workflow_name=plan.name,
+            workflow_version=plan.version,
+            workflow_fingerprint=plan.fingerprint,
+        )
+
+        result = await engine.invoke(plan, handle, {})
+
+        assert result.status == "faulted"
+        assert result.output is None
+        assert result.error is not None
+        assert result.error["code"] == "sandbox_process_error"
+        assert result.error["details"]["exit_code"] == 7
+        sandbox_events = [
+            event
+            for event in services.events.events
+            if event.event_type.startswith("SandboxExecution")
+        ]
+        assert [event.event_type for event in sandbox_events] == [
+            "SandboxExecutionStarted",
+            "SandboxExecutionFailed",
+        ]
+        assert sandbox_events[1].error == {"code": "sandbox_process_error"}
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("engine_name", "engine_type"),
     [("adk", AdkWorkflowEngine), ("langgraph", LangGraphWorkflowEngine)],

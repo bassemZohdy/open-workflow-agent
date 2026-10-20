@@ -24,8 +24,9 @@ eight-family acceptance matrix remain pending; this does not close S3-07.
 
 A second actual-native regression now covers ADK/LangGraph × SQLite/PostgreSQL.
 It verifies that the archived role binding retains its named `from_env`
-credential reference while the resolved credential canary appears neither in
-the retained profile nor the invocation result. This new matrix awaits the final
+credential reference while the known environment canary appears neither in the
+retained profile nor the invocation result. The fixture uses an injected fake
+model, so it does not resolve the credential. This new matrix awaits the final
 validation batch and does not close S3-07.
 
 An additional focused contract regression is authored but unrun: a role policy
