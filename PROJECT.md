@@ -86,7 +86,10 @@ was also an actual per-attempt wall-clock timeout, too short for durable ADK/
 PostgreSQL overhead. The current correction scales the logical duration and
 delay by 100 while preserving the exact retry-boundary ratio; the focused ADK
 SQLite selection passes locally. Hosted PostgreSQL and Windows requalification
-is pending.
+is pending. The exact-source Windows native lifecycle/receiver job was then
+cancelled at its 20-minute job timeout while running the expanded recovery
+selector. The same selector had taken 19m45s previously; its CI cap is now
+30 minutes with a selector guard, and exact-source requalification is pending.
 
 ### S2-06 durable timer and schedule work — 2026-10-13 (verified)
 

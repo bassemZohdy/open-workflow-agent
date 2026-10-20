@@ -308,7 +308,7 @@ jobs:
   windows-native-lifecycle:
     name: Windows native lifecycle and receiver recovery
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:

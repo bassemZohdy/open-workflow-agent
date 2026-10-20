@@ -2140,3 +2140,11 @@ locally (**2 passed**, 42 deselected); PostgreSQL is unavailable in this local
 run. Exact-source Windows and PostgreSQL requalification is required before
 closing the follow-up. This is an actionable test-fixture correction, not a
 deferred task.
+
+<a id="windows-native-lifecycle-timeout-0c50b1b"></a>
+
+## Windows native lifecycle timeout at `0c50b1b` — CI cap raised, requalification pending
+
+On exact-source CI run [39463496981](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39463496981), the Windows native lifecycle and receiver recovery job ran for 20m11s and was cancelled at its `timeout-minutes: 20` job limit. The job had not produced a test failure summary; its command runs the expanded receiver, lifecycle, A2A, MCP, and native SQLite recovery selectors. An earlier source completed the same lane in 19m45s, leaving insufficient headroom as the selector grew.
+
+The workflow cap is raised to 30 minutes, and `tests/ci/test_a2a06_ci_selection.py` now guards that value. The job is not treated as a test pass; exact-source hosted requalification remains required. This is an actionable CI timeout correction, not a deferred task.

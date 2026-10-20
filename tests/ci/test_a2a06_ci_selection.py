@@ -32,6 +32,7 @@ def test_terminal_get_task_witnesses_run_in_common_windows_ci() -> None:
 
 def test_resume_corruption_witnesses_run_in_engine_lifecycle_ci() -> None:
     jobs = _workflow("ci.yml")["jobs"]
+    assert jobs["windows-native-lifecycle"]["timeout-minutes"] == 30
     windows_command = _commands(jobs["windows-native-lifecycle"])
     native_command = _commands(jobs["native-lifecycle"])
 
