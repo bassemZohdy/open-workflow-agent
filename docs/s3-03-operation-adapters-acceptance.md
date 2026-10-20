@@ -1,9 +1,11 @@
 # S3-03 operation adapters: finite acceptance plan
 
-Status: authored, local and exact-source hosted batch validation complete;
-S3-03 remains unchecked because broader adapter, backend, platform, packaging
-and deployment acceptance remains open.
-The current worktree passes its scoped root selection (140 passed, 12 skipped),
+Status: the authored batch at exact source `923302f` passed its recorded local
+and hosted gates. Source `31ec0eb` has a separate recorded local follow-up;
+source `237f09f` adds two focused security regressions and is awaiting exact-
+source hosted requalification. S3-03 remains unchecked because broader adapter,
+backend, platform, packaging and deployment acceptance remains open.
+At exact source `923302f`, the scoped root selection passed (140 passed, 12 skipped),
 gRPC SQLite contract/process recovery (22 cases per principal engine), and
 background process recovery (13 cases per principal engine). Ruff lint and
 format checks, mypy (131 source files), documentation validation and diff
@@ -20,6 +22,33 @@ profile remains disabled by a default-false internal qualification gate until
 its acceptance is complete.
 AsyncAPI network activation and broader function/sandbox responsibilities
 remain pending.
+
+### Prior code-source follow-up — `31ec0eb`
+
+The follow-up adds a production qualification guard to background job profile
+validation and regression coverage that rejects dispatch while the profile is
+unqualified. It also strengthens gRPC cancellation/deadline and uncertain
+outcome witnesses, and adds OpenAPI process-recovery coverage proving a
+dispatched cancellation keeps its pending intent without refetch or replay.
+These additions do not qualify the background profile or close S3-03.
+
+Local grouped results at `31ec0eb`: core gRPC/background/dispatcher, 116 passed
+and 26 skipped; ADK OpenAPI calls/process recovery, 32 passed and 96 skipped;
+LangGraph OpenAPI calls/process recovery, 32 passed and 96 skipped (one warning).
+Formatting, lint and diff checks passed. At inspection, exact-source hosted
+results were Docs [39400114997], Security [39400114979] and External Sandbox
+[39400114886] passed; CI [39400115602], PostgreSQL [39400115146] and Agent
+Framework [39400114914] remained in progress when this source was superseded.
+These runs do not qualify later source.
+
+### Current code-source requalification — `237f09f` (hosted gates pending)
+
+This source adds a real local-mTLS negative test proving a wrong endpoint grant
+rejects before certificate resolution or a receiver request, and a PostgreSQL-
+only regression proving the internal SQLite supervisor rejects a PostgreSQL
+store before creating supervisor state. The mTLS test passed locally; the
+PostgreSQL case requires the hosted PostgreSQL service. The background profile
+remains default-off. No source-level or partial test result closes S3-03.
 
 Earlier hosted checkpoint `f9cb76f` failed the PostgreSQL LangGraph operation
 adapter job on the selected-adapter `inbox-before-ack` recovery case (220

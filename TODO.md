@@ -168,15 +168,21 @@ treated as a deferred task or as additional feature completion.
   outside this qualification. See the [finite acceptance record](docs/s3-02-a2a-acceptance.md)
   and [exact-source validation](docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
-  Exact source `923302f` passed the pure AsyncAPI descriptor selection
-  (134 tests), gRPC SQLite recovery (22 cases per principal engine), background
-  SQLite recovery (13 per engine), and the scoped core batch (140 passed, 12
-  skipped). All PostgreSQL CI, both hosted Windows gRPC/background matrices,
-  and the Windows operation-adapter suite passed. The background profile
-  remains default-off pending full qualification;
-  cross-adapter, backend, platform, lifetime, packaging and broader hosted
-  acceptance remain open. Exact-source Windows gRPC, background and
-  operation-adapter matrices, PostgreSQL CI, and main CI all passed.
+  Historical exact source `923302f` passed the pure AsyncAPI descriptor
+  selection (134 tests), gRPC SQLite recovery (22 cases per principal engine),
+  background SQLite recovery (13 per engine), the scoped core batch (140
+  passed, 12 skipped), and its recorded hosted Windows, PostgreSQL and main CI
+  gates. At current code source `31ec0eb`, the core gRPC/background/dispatcher
+  batch passed 116 tests (26 skipped); ADK OpenAPI calls/process recovery
+  passed 32 (96 skipped), and LangGraph passed 32 (96 skipped, one warning).
+  Source `237f09f` adds a real-mTLS wrong-endpoint rejection test and a
+  PostgreSQL regression proving the SQLite-only internal supervisor rejects a
+  PostgreSQL store before creating supervisor state. The focused mTLS test and
+  its lint/format checks passed locally; PostgreSQL execution requires hosted
+  CI. Exact-source hosted requalification is pending; these changes do not
+  close S3-03. The background profile remains default-off pending full
+  qualification. Cross-adapter, backend, platform, lifetime, packaging and
+  broader hosted acceptance remain open.
   The [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and
   [retained run evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
