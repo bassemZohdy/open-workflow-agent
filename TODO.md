@@ -179,8 +179,13 @@ treated as a deferred task or as additional feature completion.
   PostgreSQL regression proving the SQLite-only internal supervisor rejects a
   PostgreSQL store before creating supervisor state. The focused mTLS test and
   its lint/format checks passed locally; PostgreSQL execution requires hosted
-  CI. Exact-source hosted requalification is pending; these changes do not
-  close S3-03. The background profile remains default-off pending full
+  CI. Exact-source `0f16415` then produced one Windows fixture error in
+  `test_supervisor_verifies_submit_and_publishes_authenticated_running_then_terminal[cancel]`
+  after 967 passed and 460 skipped: its five-second job deadline expired during
+  test setup before the cancellation path ran. Correction `f89a154` uses
+  separate bounded fixture windows; the focused supervisor suite passed all 15
+  tests locally. Full hosted requalification on `f89a154` is pending; S3-03
+  remains open. The background profile remains default-off pending full
   qualification. Cross-adapter, backend, platform, lifetime, packaging and
   broader hosted acceptance remain open.
   The [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and

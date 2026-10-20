@@ -2,8 +2,10 @@
 
 Status: the authored batch at exact source `923302f` passed its recorded local
 and hosted gates. Source `31ec0eb` has a separate recorded local follow-up;
-source `237f09f` adds two focused security regressions and is awaiting exact-
-source hosted requalification. S3-03 remains unchecked because broader adapter,
+source `237f09f` adds two focused security regressions. Source `f89a154` fixes a
+Windows-only test-fixture deadline error discovered in the `0f16415` hosted
+batch; the focused supervisor suite passes locally and exact-source hosted
+requalification is pending. S3-03 remains unchecked because broader adapter,
 backend, platform, packaging and deployment acceptance remains open.
 At exact source `923302f`, the scoped root selection passed (140 passed, 12 skipped),
 gRPC SQLite contract/process recovery (22 cases per principal engine), and
@@ -41,14 +43,21 @@ results were Docs [39400114997], Security [39400114979] and External Sandbox
 Framework [39400114914] remained in progress when this source was superseded.
 These runs do not qualify later source.
 
-### Current code-source requalification — `237f09f` (hosted gates pending)
+### Source `237f09f` adapter regressions and `0f16415` Windows fixture result
 
 This source adds a real local-mTLS negative test proving a wrong endpoint grant
 rejects before certificate resolution or a receiver request, and a PostgreSQL-
 only regression proving the internal SQLite supervisor rejects a PostgreSQL
 store before creating supervisor state. The mTLS test passed locally; the
-PostgreSQL case requires the hosted PostgreSQL service. The background profile
-remains default-off. No source-level or partial test result closes S3-03.
+PostgreSQL case runs against the hosted PostgreSQL service. On exact source
+`0f16415`, the Windows operation-adapter suite reported 967 passed, 460 skipped,
+and one setup error: the cancellation case's five-second deadline expired in
+`store.begin_submit` before its test body ran. This is a test synchronization
+failure, not a production dispatch result. Correction `f89a154` gives the
+ordinary supervisor fixtures a 25-second deadline and the deadline-specific
+case a 15-second window; its focused local supervisor suite passed all 15 tests.
+The full `f89a154` hosted batch remains pending. The background profile remains
+default-off; no partial result closes S3-03.
 
 Earlier hosted checkpoint `f9cb76f` failed the PostgreSQL LangGraph operation
 adapter job on the selected-adapter `inbox-before-ack` recovery case (220
