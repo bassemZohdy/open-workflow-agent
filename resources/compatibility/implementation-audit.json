@@ -12136,7 +12136,7 @@
         },
         {
           "path": "tests/core/test_a2a_inbound_v1.py",
-          "symbol": "test_subscription_reads_another_services_terminal_commit_without_local_event"
+          "symbol": "test_public_subscription_reads_another_services_terminal_commit_without_local_event"
         },
         {
           "path": "tests/core/test_a2a_inbound_v1.py",

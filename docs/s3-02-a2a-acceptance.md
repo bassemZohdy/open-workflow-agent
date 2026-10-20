@@ -5,10 +5,12 @@ recovery policy and S3-01's finite Python MCP profile are verified. Pushed sourc
 `bd5cf79` passed the grouped local batch (265 passed, 25 backend-inapplicable
 skips) and static checks. Its Security, Docs, Agent Framework, External Sandbox
 and PostgreSQL workflows passed. Main CI exposed a Windows timeout-boundary
-failure in one TCP A2A test; the outer observation window is now 10 seconds and
-the focused Windows test passes locally. The combined core, ADK and LangGraph
-follow-up batch also passed locally, while exact-source hosted requalification
-is pending. Suite totals alone do not complete the eight acceptance gates.
+failure in one TCP A2A test plus two stale selector guards (one renamed audit
+anchor and two 45-minute assertions against the 60-minute Windows timing job).
+The timeout, anchor and job-budget expectations are corrected. The focused
+Windows regression and combined core, ADK and LangGraph follow-up batches pass
+locally, while exact-source hosted requalification is pending. Suite totals
+alone do not complete the eight acceptance gates.
 A2A01-A2A08 remain open wherever cross-method, authority, failure, backend or
 recovery controls have not been directly evidenced.
 

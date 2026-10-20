@@ -34,7 +34,7 @@ def command(job):
 def test_windows_original_authority_uses_existing_native_job():
     job = workflow("ci.yml")["jobs"]["windows-native-timing"]
     assert job["runs-on"] == "windows-latest" and "needs" not in job
-    assert job["timeout-minutes"] == "45"
+    assert job["timeout-minutes"] == "60"
     text = command(job)
     assert "--directory engines/langgraph --locked --extra sqlite" in text
     assert all(f"../../tests/core/{name}" in text for name in CORE)

@@ -1693,3 +1693,11 @@ hosted CI, PostgreSQL, security, documentation, Agent Framework and external
 sandbox results. The prior `bd5cf79` Security, Docs, Agent Framework, External
 Sandbox and PostgreSQL workflows passed; those results do not substitute for
 requalification of the follow-up source.
+
+The same root run also exposed two stale CI guards: the implementation audit
+still named the previous public-subscription test symbol, and the authority and
+protected-approval selectors expected a 45-minute Windows timing job after its
+budget had been raised to 60 minutes. The current follow-up updates the audit
+anchor and both selector expectations; those CI tests are included in the
+next exact-source root run. No behavior or acceptance status is inferred from
+these selector corrections.

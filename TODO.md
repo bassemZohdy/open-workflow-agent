@@ -168,9 +168,11 @@ treated as a deferred task or as additional feature completion.
   batch passed 265 tests with 25 backend-inapplicable skips; exact-source hosted
   Security, Docs, Agent Framework, External Sandbox and PostgreSQL workflows
   passed. Main CI exposed a Windows timeout-boundary failure in one TCP A2A
-  test; the focused local correction passes, and exact-source hosted
-  requalification is pending. The current grouped core and both native-engine
-  batches pass locally. The five active locks use `aiohttp 3.14.5` and
+  test and two stale CI guards (a renamed audit anchor and 45-minute assertions
+  against the 60-minute Windows timing job). All three corrections are included
+  in the current follow-up; the focused Windows regression and local grouped
+  core/native-engine batches pass. Exact-source hosted requalification is
+  pending. The five active locks use `aiohttp 3.14.5` and
   `yarl 1.25.1`; all seven security audit scopes passed on `a7176a0`. Durable
   Task/receipt expiry is explicitly outside the finite S3-02 profile; no expiry
   capability is claimed. See the [acceptance record](docs/s3-02-a2a-acceptance.md)
