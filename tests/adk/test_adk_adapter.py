@@ -19,7 +19,9 @@ from open_workflow_agent_adk.native import (
 def test_adk_factory_and_adapter_preserve_common_contract():
     agent = AdkAgentFactory().create(AgentConfig(name="support"), ModelConfig(name="fake/test"))
     assert agent.name == "support"
-    assert AdkWorkflowEngine().capabilities().engine == "adk"
+    capabilities = AdkWorkflowEngine().capabilities().as_dict()
+    assert capabilities["engine"] == "adk"
+    assert capabilities["nativeExtensions"] == []
     assert AdkModelAdapter(ModelConfig()).config.name == "fake/default"
     assert NativeAdkRunner().available is ADK_AVAILABLE
     assert NativeAdkRunner().resume_strategy == ADK_RESUME_STRATEGY

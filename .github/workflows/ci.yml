@@ -24,6 +24,29 @@ env:
   IMAGE_SIZE_LIMIT_BYTES: "2147483648"
 
 jobs:
+  javascript-definition-validation:
+    name: JavaScript OWS 1.0.3 definition validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: engines/langgraph-js/package-lock.json
+      - name: Activate the pinned npm package manager
+        run: npm install --global npm@12.0.2
+      - name: Install the isolated JavaScript engine dependencies
+        working-directory: engines/langgraph-js
+        run: npm ci
+      - name: Validate the pinned schema loader and native graph foundation
+        working-directory: engines/langgraph-js
+        run: npm test
+      - name: Audit production dependencies
+        working-directory: engines/langgraph-js
+        run: npm audit --omit=dev
+
   windows-expressions:
     name: Windows jq expression and admission tests
     runs-on: windows-latest

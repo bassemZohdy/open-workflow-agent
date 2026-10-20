@@ -96,7 +96,8 @@ async def run(directory, mode):
             {"answer": "assistant"},
         ]
     roles, _ = providers(pattern)
-    if scenario["boundary"] in {"openapi-pending", "openapi-known"}:
+    tool_binding_change = scenario["boundary"] == "tool-change"
+    if scenario["boundary"] in {"openapi-pending", "openapi-known", "tool-change"}:
         roles["assistant"] = role_configuration("assistant", tools=["lookup"])
     services = None
     handle = None
@@ -210,12 +211,18 @@ async def run(directory, mode):
         approvals=pattern == "approval_gate",
         **(
             {"tools": [deployed_openapi_tool("lookup", "GET")]}
-            if scenario["boundary"] in {"openapi-pending", "openapi-known"}
+            if scenario["boundary"] in {"openapi-pending", "openapi-known", "tool-change"}
             else {}
         ),
     )
-    if mode == "recover" and scenario["boundary"] == "role-change":
-        config.agent.roles[STOP_ROLE[pattern]].instruction += " Different deployment revision."
+    if mode == "recover":
+        role = config.agent.roles[STOP_ROLE[pattern]]
+        if scenario["boundary"] == "role-change":
+            role.instruction += " Different deployment revision."
+        elif scenario["boundary"] == "model-change":
+            role.model.name += "-changed"
+        elif tool_binding_change:
+            role.tools = []
     services = runtime(
         directory / "runtime",
         backend,
@@ -302,7 +309,7 @@ async def run(directory, mode):
             before_counts = {
                 name: sum(row[0] == name for row in ledger(directory)) for name in script
             }
-            if scenario["boundary"] == "role-change":
+            if scenario["boundary"] in {"role-change", "model-change", "tool-change"}:
                 plan = compiled(services, pattern)
                 before = snapshot(services, handle, backend)
                 with pytest.raises(OwaError):

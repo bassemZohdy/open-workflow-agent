@@ -323,6 +323,8 @@ class ExternalCatalogResolver:
         mode: ExpressionMode = "strict",
         registry: Any = None,
         _openapi_selection: OpenApiOperationSelection | None = None,
+        _openapi_authentication: AuthenticationProvider | None = None,
+        _openapi_credential_endpoints: Mapping[str, tuple[str, ...]] | None = None,
     ) -> Any:
         """Dispatch an evaluated protocol payload under current deployment trust."""
         reference = parse_catalog_function_reference(binding.reference)
@@ -356,17 +358,23 @@ class ExternalCatalogResolver:
                 "external catalog invocation authorization headers are disabled"
             )
         _validate_invocation_endpoints(invocation_payload, policy)
-        client = self._client(policy, auth_host=urlparse(binding.resource_uri).hostname)
+        client = self._client(policy, auth_endpoint=binding.resource_uri)
         if client.transport is not None:
             await _validate_invocation_destinations(invocation_payload, policy, client)
         protocols = ProtocolServices(
             client,
             grpc_registry=self.grpc_registry,
             grpc_credential_endpoints=self.grpc_credential_endpoints,
+            openapi_credential_endpoints=_openapi_credential_endpoints,
         )
         prepared = workflow_protocol_payload(call, invocation_payload)
         if _openapi_selection is not None:
-            return await protocols.call(call, prepared, _openapi_selection=_openapi_selection)
+            return await protocols.call(
+                call,
+                prepared,
+                _openapi_selection=_openapi_selection,
+                _authentication=_openapi_authentication,
+            )
         return await protocols.call(call, prepared)
 
     def capabilities(self) -> dict[str, Any]:
@@ -420,17 +428,19 @@ class ExternalCatalogResolver:
         return policy
 
     def _schema_client(self, policy: ExternalCatalogConfig, uri: str) -> HttpClient:
-        return self._client(policy, auth_host=urlparse(uri).hostname)
+        return self._client(policy, auth_endpoint=uri)
 
-    def _client(self, policy: ExternalCatalogConfig, *, auth_host: str | None = None) -> HttpClient:
+    def _client(
+        self, policy: ExternalCatalogConfig, *, auth_endpoint: str | None = None
+    ) -> HttpClient:
         auth = policy.authentication
         provided = self.http.authentication if self.http is not None else None
         security = self.security
         if security is None and isinstance(provided, ProfileAuthentication):
             security = provided.security
         authentication: AuthenticationProvider | None = _authentication(auth, security) or provided
-        if authentication is not None and auth_host:
-            authentication = _HostBoundAuthentication(authentication, auth_host)
+        if authentication is not None and auth_endpoint:
+            authentication = _OriginBoundAuthentication(authentication, auth_endpoint)
         return HttpClient(
             timeout=min(policy.timeout_seconds, self.http.timeout)
             if self.http
@@ -479,7 +489,7 @@ class ExternalCatalogResolver:
             if cached.last_modified:
                 headers["If-Modified-Since"] = cached.last_modified
         try:
-            client = self._client(policy, auth_host=urlparse(resource_uri).hostname)
+            client = self._client(policy, auth_endpoint=resource_uri)
             self._emit("CatalogFetchStarted", reference, status="fetching")
             if client.transport is not None:
                 await _validate_network_destination(resource_uri, policy, client)
@@ -927,14 +937,25 @@ def _contains_sensitive_header(value: Any) -> bool:
     return False
 
 
-class _HostBoundAuthentication:
-    def __init__(self, provider: AuthenticationProvider, host: str) -> None:
+class _OriginBoundAuthentication:
+    def __init__(self, provider: AuthenticationProvider, endpoint: str) -> None:
         self.provider = provider
         self.profile_name = getattr(provider, "profile_name", None)
-        self.host = host.lower()
+        self.origin = _https_origin(endpoint)
 
     def headers(self, endpoint: str) -> Mapping[str, str]:
-        return self.provider.headers(endpoint) if urlparse(endpoint).hostname == self.host else {}
+        return self.provider.headers(endpoint) if _https_origin(endpoint) == self.origin else {}
+
+
+def _https_origin(endpoint: str) -> tuple[str, str, int] | None:
+    """Return a normalized HTTPS origin, excluding paths and user information."""
+    try:
+        parsed = urlparse(endpoint)
+        if parsed.scheme.lower() != "https" or not parsed.hostname:
+            return None
+        return ("https", parsed.hostname.lower(), parsed.port or 443)
+    except ValueError:
+        return None
 
 
 def _referenced_functions(workflow: Mapping[str, Any]) -> set[CatalogFunctionReference]:

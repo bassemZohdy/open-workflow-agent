@@ -74,6 +74,11 @@ has no access to those Secret values; known exit status and duration remain inta
 This adds no Secret-read RBAC or hard-isolation claim. Changed backend behavior
 requires its applicable deployment acceptance before qualification.
 
+External-catalog credentials are now bound to the HTTPS origin (scheme, host and
+effective port) of the selected catalog resource. Same-host requests to a different
+port or scheme receive no catalog credential. Focused resolver tests cover origin
+matching; full behavioral and deployment qualification remains pending.
+
 ## Required qualification
 
 Author a coherent source batch before behavior testing. Use deterministic providers

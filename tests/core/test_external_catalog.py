@@ -22,8 +22,8 @@ from open_workflow_agent.external_catalog import (
     _endpoint_uri,
     _function_uri,
     _header,
-    _HostBoundAuthentication,
     _nested_values,
+    _OriginBoundAuthentication,
     _referenced_functions,
     _resolve_external_destination,
     _validate_function_definition,
@@ -530,12 +530,23 @@ def test_external_catalog_invocation_destinations_and_headers(monkeypatch):
     assert _header({}, "etag") is None
 
     class Provider:
+        calls: list[str] = []
+
         def headers(self, endpoint: str) -> dict[str, str]:
+            self.calls.append(endpoint)
             return {"X-Endpoint": endpoint}
 
-    bound = _HostBoundAuthentication(Provider(), "api.test")
+    provider = Provider()
+    bound = _OriginBoundAuthentication(provider, "https://api.test/catalog/function.yaml")
     assert bound.headers("https://api.test/one") == {"X-Endpoint": "https://api.test/one"}
     assert bound.headers("https://other.test/one") == {}
+    assert bound.headers("https://api.test:8443/one") == {}
+    assert bound.headers("http://api.test/one") == {}
+    assert bound.headers("https://api.test:443/one") == {"X-Endpoint": "https://api.test:443/one"}
+    assert provider.calls == [
+        "https://api.test/one",
+        "https://api.test:443/one",
+    ]
 
     assert _authentication(type("Auth", (), {"security_profile": None})(), None) is None
     with pytest.raises(ToolError, match="runtime security configuration"):

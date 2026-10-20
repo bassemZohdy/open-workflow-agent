@@ -8,7 +8,7 @@ identifiers so engine adapters and public lifecycle state remain portable.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Literal
 
 from .errors import SandboxPolicyError
@@ -28,7 +28,19 @@ class SandboxInputFile:
 
     def __post_init__(self) -> None:
         normalized = PurePosixPath(self.path)
-        if normalized.is_absolute() or not self.path or ".." in normalized.parts:
+        # This is a portable contract, so validate path syntax on both path
+        # grammars. A Windows drive or backslash traversal is still dangerous
+        # when the request is authored on POSIX and later consumed by Windows.
+        windows = PureWindowsPath(self.path)
+        if (
+            normalized.is_absolute()
+            or windows.is_absolute()
+            or windows.drive
+            or "\\" in self.path
+            or not self.path
+            or ".." in normalized.parts
+            or ".." in windows.parts
+        ):
             raise ValueError("sandbox input file path must be relative and traversal-free")
 
 

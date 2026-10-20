@@ -61,6 +61,16 @@ def test_coverage_bridge_exhaustively_tracks_proposed_tests_and_schema_constrain
     assert bridge["format_version"] == 1
     assert len(bridge["test_inventory"]) == len(tracker["tests"]) == 443
     assert len(bridge["schema_constraint_inventory"]) == len(tracker["schema_constraints"]) == 774
+    blockers = bridge["current_mapping_blockers"]
+    for inventory_name, rows in (
+        ("test_inventory", bridge["test_inventory"]),
+        ("schema_constraint_inventory", bridge["schema_constraint_inventory"]),
+    ):
+        summary = blockers[inventory_name]
+        assert summary["mapped_count"] == sum(row["status"] != "unmapped" for row in rows)
+        assert summary["unmapped_count"] == sum(row["status"] == "unmapped" for row in rows)
+        if summary["unmapped_count"]:
+            assert len(summary["blocker"].strip()) >= 80
 
     tests = {item["id"]: item for item in tracker["tests"]}
     mapped_tests = {item["id"]: item for item in bridge["test_inventory"]}

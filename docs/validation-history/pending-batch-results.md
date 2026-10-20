@@ -2117,3 +2117,26 @@ contract suites each passed **50 tests** with 150 cross-engine/optional skips.
 Ruff format, Ruff lint and mypy for all four packages pass. Fresh exact-source
 hosted qualification remains pending; no S2-05 checkbox advances from this
 follow-up alone.
+
+<a id="retry-duration-fixture-headroom-2bcd5e1"></a>
+
+## Retry-duration fixture headroom at `2bcd5e1` — hosted requalification pending
+
+PostgreSQL CI run [39459079488](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39459079488), job `118753487700` (ADK native recovery), completed with **357 passed, 1 failed, 1,118 deselected**. The sole failure was
+`test_retry_clock_and_rng_determine_actual_attempts[duration-postgresql-adk-AdkWorkflowEngine]`:
+it observed two model calls and one retry sleep as expected, but returned
+`workflow_execution_error` instead of the expected `model_error`. The earlier
+Windows timer run `38632792174` had the same mismatch for both principal
+engines with SQLite. Its test used a three-second logical retry budget, which
+also imposed a three-second wall-clock per-attempt timeout; slow durable
+database work could exhaust that real timeout before the synthetic retry
+boundary was evaluated.
+
+The fixture now scales its synthetic duration and delay from `3`/`1` seconds
+to `300`/`100`, and each synthetic model call advances the clock by `100`.
+This preserves the intended call count and equality boundary while giving
+durable operations wall-clock headroom. The focused ADK/SQLite case passes
+locally (**2 passed**, 42 deselected); PostgreSQL is unavailable in this local
+run. Exact-source Windows and PostgreSQL requalification is required before
+closing the follow-up. This is an actionable test-fixture correction, not a
+deferred task.

@@ -16,6 +16,17 @@ def test_langgraph_factory_and_native_bridge_are_optional():
     assert LangGraphFunctionalAdapter().compile(lambda value: value) is not None
 
 
+def test_channel_extension_advertisement_tracks_native_backend_availability(monkeypatch):
+    import open_workflow_agent_langgraph.native as native
+
+    engine = LangGraphWorkflowEngine()
+    monkeypatch.setattr(native, "LANGGRAPH_AVAILABLE", True)
+    assert engine.capabilities().as_dict()["nativeExtensions"] == ["langgraph.channels@1.0.0"]
+
+    monkeypatch.setattr(native, "LANGGRAPH_AVAILABLE", False)
+    assert engine.capabilities().as_dict()["nativeExtensions"] == []
+
+
 def test_langgraph_factory_binds_real_structured_tools():
     async def invoke(payload):
         return payload

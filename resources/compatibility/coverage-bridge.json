@@ -1,6 +1,18 @@
 {
   "format_version": 1,
   "purpose": "Coverage guard for the preserved compatibility inventory; this is not a conformance result.",
+  "current_mapping_blockers": {
+    "test_inventory": {
+      "mapped_count": 0,
+      "unmapped_count": 443,
+      "blocker": "The proposed test rows specify multi-runtime acceptance (including Python and JS/TS, with reference/runtime comparison where applicable). No local selector has been demonstrated to assert every criterion across the row's complete backend scope; shared-fixture overlap is insufficient."
+    },
+    "schema_constraint_inventory": {
+      "mapped_count": 0,
+      "unmapped_count": 774,
+      "blocker": "The inventory is a structural extraction. Each mapping still needs a selector and retained evidence for the exact constraint in its enclosing operation/property context; generic schema-validation coverage is insufficient."
+    }
+  },
   "status_definitions": {
     "unmapped": "No exact runnable test selector is linked; not executed.",
     "mapped_not_executed": "An exact runnable selector is linked, but no execution is claimed.",

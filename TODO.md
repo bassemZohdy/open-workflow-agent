@@ -190,8 +190,11 @@ treated as a deferred task or as additional feature completion.
   agent-call receipt after durable native suspension; it is also authored and
   unrun. An imported-catalog regression now checks that the transformed
   resolver binding forwards the original durable OpenAPI selection and pinned
-  catalog reference. The final focused selection passes locally; exact-source
-  hosted qualification is pending. S3-03 remains open.
+  catalog reference. Imported resolver calls also retain the invocation's
+  granted OpenAPI profile and endpoint bindings while catalog credentials stay
+  scoped to catalog fetches; native ADK/LangGraph × SQLite/PostgreSQL regressions
+  are authored. The focused SQLite selections pass locally; exact-source hosted
+  and PostgreSQL qualification is pending. S3-03 remains open.
   Background execution stays default-off, and cross-adapter, backend, platform,
   lifetime, packaging and broader hosted acceptance remain open.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
@@ -199,8 +202,9 @@ treated as a deferred task or as additional feature completion.
   authored; only the dedicated expected source-policy rejection is translated
   into a user-facing policy error, while registry configuration/execution
   defects (including unrelated common unsupported-feature errors) propagate
-  unchanged. Regression cases pass in the local root suite. Required profile and
-  deployment acceptance remains
+  unchanged. Portable sandbox input paths now reject Windows drive, UNC and
+  backslash-traversal forms before cross-platform consumption; focused cases
+  pass locally. Required profile and deployment acceptance remains
   open. See the
   [acceptance plan](docs/s3-04-executable-source-acceptance.md).
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
@@ -220,21 +224,29 @@ treated as a deferred task or as additional feature completion.
   Unpaired Unicode in principal and named-profile references now fails as a
   bounded-reference `ValueError` instead of leaking an encoding exception;
   descriptor regressions cover identity, role, scope, audience and profile.
-  Cross-engine/backend and recovery acceptance remains open.
+  External-catalog credentials are restricted to the normalized HTTPS origin
+  (scheme, host and effective port), with focused resolver coverage for cross-
+  port/scheme denial and default-port equivalence. Full qualification remains
+  open.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
   Eight finite recipe families and named role bindings are authored; hosted
   acceptance remains open. A focused real-native role-policy test passes on
   SQLite for both principal engines, proving denial before provider dispatch;
   a new ADK/LangGraph × SQLite/PostgreSQL credential regression checks archived
   `from_env` references without a known environment canary. Its injected fake
-  model does not resolve the credential. It awaits the final batch; PostgreSQL
-  and the full eight-family matrix remain pending. See the
+  model does not resolve the credential. Recovery regressions also vary the
+  model binding and tool allowlist and require rejection before provider or
+  state mutation; authored, not yet run. PostgreSQL and the full eight-family
+  matrix remain pending. See the
   [acceptance plan](docs/s3-07-agent-pattern-acceptance.md) and
   [timing evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
   Selected finite adapters and grouped corrections are authored. A new
   cross-engine/backend regression checks direct LLM tool-request pass-through
-  without dispatching an undeployed tool; it awaits the final batch. See
+  without dispatching an undeployed tool. Unpaired surrogate characters in
+  provider tool IDs or arguments now map to sanitized `ModelError`s; focused
+  DTO regressions pass locally. Broader adapter/backend qualification remains
+  pending. See
   [the acceptance plan](docs/s3-08-selected-adapter-acceptance.md). Qualification remains pending.
 
 ## Stage 4 — Advanced features and full verification
@@ -256,16 +268,21 @@ treated as a deferred task or as additional feature completion.
   [the S4-02 acceptance record](docs/s4-02-native-channels-acceptance.md).
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   An optional pinned LangGraph/TypeScript scaffold and native smoke test now
-  exist under `engines/langgraph-js`; frozen predecessor sources remain
-  reference-only. The package does not load or execute OWS definitions yet;
-  implement the isolated engine and shared fixture tests before any parity claim.
+  exist under `engines/langgraph-js`. Its loader validates YAML/JSON against the
+  SHA-256-pinned official OWS 1.0.3 schema and sanitizes malformed-YAML errors;
+  local Node tests and the production dependency audit pass. CI now runs the
+  isolated check. The package does not compile or execute OWS definitions and
+  has no shared-fixture parity; implement the engine adapter and independent
+  acceptance before any parity claim. Frozen predecessor sources remain
+  reference-only.
 - [ ] **S4-04** (L) — Automate official CTK plus all proposed tests, schema constraints, parity and cross-engine outcome checks.
   `resources/compatibility/coverage-bridge.json` now inventories all 443
   proposed test IDs and 774 schema-constraint rows. Every row remains explicitly
   unmapped and unexecuted because partial overlap is not evidence of equivalent
   coverage. An integrity test checks exhaustive IDs and requires live selectors
-  and retained evidence before any row can be promoted; its integrity guard
-  passes locally.
+  and retained evidence before any row can be promoted. The bridge now includes
+  reasoned blocker counts (443 tests, 774 constraints) guarded against row
+  status drift; the local integrity tests pass.
   Full CTK automation and parity qualification remain open. See
   [the coverage bridge](resources/compatibility/README.md).
 - [ ] **S4-05** (M) — Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.
@@ -281,9 +298,12 @@ treated as a deferred task or as additional feature completion.
   footprint, and timed engine and service reinitialization plus resume with
   stable operation-id and single-dispatch assertions. PostgreSQL CI is wired to
   aggregate the four exact-source profile JSON files into one artifact. Harness
-  tests pass locally and CI/docs validation passes; the hosted measurements,
-  aggregate report and full
-  qualification remain pending. Measurements document their runner and scope
+  tests pass locally. The first hosted four-cell report passed at exact source
+  `4b22e801f4f7f01d475caa03a754dd3ac45bf64a`; retained measurements are in the
+  [benchmark record](docs/benchmarks.md#retained-exact-source-measurements) and
+  [GitHub run artifact](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39459079488).
+  The broader exact-source root and required gates are still running; full
+  qualification remains pending. Measurements document their runner and scope
   limits; PostgreSQL reports whole fresh service-database size, database I/O
   remains included in invocation latency rather than isolated by operation, and
   recovery reinitializes services in one process rather than forcing an OS stop.
@@ -299,7 +319,8 @@ treated as a deferred task or as additional feature completion.
   coverage. Publication now waits for exact-head CI, PostgreSQL, External
   Sandbox, Security and Docs results; Agent Framework remains optional. These
   guards and revised main-push triggers pass local workflow tests; exact-head
-  hosted results remain pending.
+  hosted results remain pending. CI now includes a Node 24 job for the isolated
+  JavaScript schema loader.
   Remaining S4-07 release/rollback and broader capability/version acceptance
   stay open. See the [release gate record](docs/s4-07-release-gates-acceptance.md).
 - [ ] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.

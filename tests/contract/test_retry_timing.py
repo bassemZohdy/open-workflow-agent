@@ -104,10 +104,12 @@ async def test_retry_clock_and_rng_determine_actual_attempts(
         retry = {}
         expected_sleeps = [0, 0, 0]
     elif case == "duration":
-        retry = {"limit": {"duration": {"seconds": 3}}, "delay": {"seconds": 1}}
+        # Keep the logical-clock boundary exact while giving durable database
+        # work ample wall-clock headroom before the per-attempt timeout fires.
+        retry = {"limit": {"duration": {"seconds": 300}}, "delay": {"seconds": 100}}
         failures = 20
         expected_calls = 2
-        expected_sleeps = [1]
+        expected_sleeps = [100]
         expected_output = {"code": "model_error"}
     elif case == "zero-duration":
         retry = {"limit": {"duration": {"seconds": 0}}}
@@ -122,7 +124,7 @@ async def test_retry_clock_and_rng_determine_actual_attempts(
     def response(_prompt: Any) -> Any:
         nonlocal failures, now
         if case == "duration":
-            now += 1
+            now += 100
         if failures:
             failures -= 1
             raise ModelError("controlled transient failure")

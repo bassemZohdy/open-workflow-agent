@@ -145,6 +145,18 @@ def test_malformed_or_nonobject_tool_arguments_cannot_reach_a_tool(arguments):
         _project(_reply(calls=[_call(arguments=arguments)]))
 
 
+@pytest.mark.parametrize("field", ["identifier", "arguments"])
+def test_unpaired_surrogates_in_provider_tool_fields_become_safe_model_errors(field):
+    call = _call()
+    if field == "identifier":
+        call.id = "\ud800"
+    else:
+        call.function.arguments = "\ud800"
+    with pytest.raises(ModelError) as caught:
+        _project(_reply(calls=[call]))
+    assert "\ud800" not in str(caught.value)
+
+
 @pytest.mark.parametrize(
     "damage",
     [

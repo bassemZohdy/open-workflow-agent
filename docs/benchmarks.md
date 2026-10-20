@@ -22,6 +22,29 @@ backend, runner identity/platform, and measurement parameters. The PostgreSQL
 DSN is used only for the connection; credentials and the DSN are never written
 to the report.
 
+## Retained exact-source measurements
+
+The first hosted matched report was generated at exact source
+`4b22e801f4f7f01d475caa03a754dd3ac45bf64a` with 30 measured sequential
+invocations, five warm-ups, concurrency 8, and three recovery samples per
+engine/backend cell. All four cells completed, each recovery resumed without
+replaying the fake model or side effect, and each retained one operation ID.
+The complete measurements and runner metadata are in the [hosted report
+artifact](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39459079488).
+
+| Engine | Backend | Invocation p50 / p95 (s) | Concurrent throughput (/s) | CPU (s) | Peak RSS (MiB) | Persistence delta (bytes) | Resume p50 (s) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| ADK | SQLite | 0.803 / 1.011 | 2.18 | 14.33 | 188.8 | 1,191,936 | 0.469 |
+| ADK | PostgreSQL | 0.811 / 6.643 | 1.20 | 25.86 | 260.3 | 2,670,592 | 1.423 |
+| LangGraph | SQLite | 0.152 / 0.194 | 4.53 | 6.38 | 143.6 | 2,125,824 | 0.224 |
+| LangGraph | PostgreSQL | 0.268 / 0.326 | 2.79 | 8.25 | 132.6 | 3,522,560 | 0.481 |
+
+The percentile column is the harness's end-to-end invocation measurement,
+including persistence. PostgreSQL footprint is the full fresh service database;
+SQLite footprint is the combined temporary common/native files. The workflow
+artifact is the authoritative raw result, and these runner-specific values are
+not deployment performance guarantees.
+
 These measurements compare only profiles from the same aggregate report.
 Runner scheduling and host load still affect timings, so the results are not
 portable performance rankings. CPU time covers the measured sequential and

@@ -138,10 +138,18 @@ now observes the immutable selection forwarded from durable OpenAPI admission
 through the transformed catalog binding into `ExternalCatalogResolver`, and
 checks it against the persisted admission receipt as well as its operation,
 description digest, and pinned catalog reference alongside the existing parent
-invocation/principal proof. This regression is authored but unrun. Imported workflow calls dispatch through the resolver and common
+invocation/principal proof. Its ADK/SQLite selected case passed locally.
+Imported workflow calls dispatch through the resolver and common
 `ProtocolServices`; they do not enter `ToolRegistry`, which remains a separate
 configured-agent-tool path. This source-level evidence does not close either
 integration gate or qualify imported recovery.
+
+The resolver also forwards the invocation's named OpenAPI authentication profile
+and exact endpoint grants to its protocol adapter. Catalog credentials remain
+host-bound to catalog requests, while an imported operation uses the separately
+admitted business endpoint authority. The focused native ADK/SQLite regression
+proves the business receiver gets the granted bearer credential; the complete
+ADK/LangGraph × SQLite/PostgreSQL selection remains part of the final batch.
 
 The existing agent-role call has an outer versioned agent-function effect
 receipt (`call:agent…`), so an interrupted role execution remains pending and

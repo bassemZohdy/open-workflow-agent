@@ -25,6 +25,8 @@ CASES = [(pattern, "known") for pattern in PATTERNS] + [
     ("assistant", "openapi-pending"),
     ("assistant", "openapi-known"),
     ("pipeline", "role-change"),
+    ("assistant", "model-change"),
+    ("assistant", "tool-change"),
 ]
 
 
@@ -92,7 +94,7 @@ def test_killed_pattern_producer_retains_original_role_receipts_or_explicit_unce
         assert recovery.wait(timeout=100) == 0, failure(tmp_path, "recover")
         result = json.loads((tmp_path / "result.json").read_text(encoding="utf-8"))
         assert result["pid"] != evidence["pid"] and result["producer_pid"] == evidence["pid"]
-        if boundary == "role-change":
+        if boundary in {"role-change", "model-change", "tool-change"}:
             assert result["rejected"] and result["unchanged"]
             assert result["provider_count"] == evidence["provider_count"]
         else:

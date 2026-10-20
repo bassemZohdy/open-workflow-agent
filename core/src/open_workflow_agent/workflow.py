@@ -2348,6 +2348,10 @@ class WorkflowExecutor:
                         mode=self._expressions(state).mode,
                         registry=state.metadata.get("_schema_registry"),
                         _openapi_selection=selection,
+                        _openapi_authentication=self.services.protocols._profile_authentication,
+                        _openapi_credential_endpoints=(
+                            self.services.protocols._openapi_credential_endpoints
+                        ),
                     )
                 )
                 if call == "openapi"

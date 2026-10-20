@@ -122,6 +122,7 @@ def imported_fixture(services, receiver, monkeypatch):
 
     async def request(message):
         if message.url.host == "catalog.test":
+            assert "authorization" not in message.headers
             fetched.append(message)
             return httpx.Response(404 if receiver.deleted else 200, json=inline)
         return await receiver(message)
@@ -157,6 +158,7 @@ class Receiver:
         self.outcome = outcome
         self.calls = []
         self.deleted = False
+        self.expected_authorization = None
         self.dispatch_entered = asyncio.Event()
         self.dispatch_release = asyncio.Event()
         self.description = operation_document(
@@ -174,6 +176,7 @@ class Receiver:
                 httpx.Response(404) if self.deleted else httpx.Response(200, json=self.description)
             )
         assert request.method == "GET" and request.url.host == "business.test"
+        assert request.headers.get("authorization") == self.expected_authorization
         if self.outcome == "blocked":
             self.dispatch_entered.set()
             await self.dispatch_release.wait()
@@ -287,6 +290,71 @@ async def test_registered_import_uses_original_parent_authority_for_inner_operat
             len(receiver.calls) == 2
             and str(receiver.calls[1].url) == SERVER + "/items/original%2Fvalue"
         )
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_registered_import_forwards_named_openapi_authentication_without_catalog_auth_leak(
+    tmp_path, monkeypatch, engine_name, engine_type, backend
+):
+    monkeypatch.setenv("OPENAPI_TEST_TOKEN", "operation-only-secret")
+    engine = engine_type()
+    actual_native(engine, engine_name)
+    receiver = Receiver()
+    receiver.expected_authorization = "Bearer operation-only-secret"
+    receiver.description["components"] = {
+        "securitySchemes": {"OperationBearer": {"type": "http", "scheme": "bearer"}}
+    }
+    receiver.description["paths"]["/items/{id}"]["get"]["security"] = [{"OperationBearer": []}]
+    endpoint = "https://business.test/items/original%2Fvalue"
+    security_value = {
+        "profiles": {
+            "operation": {
+                "type": "bearer",
+                "token": {"from_env": "OPENAPI_TEST_TOKEN"},
+            }
+        }
+    }
+    services = runtime(
+        tmp_path,
+        backend,
+        engine_name,
+        options={
+            "security": security_value,
+            "protocols": {
+                "security_profile": "operation",
+                "openapi_credential_endpoints": {"operation": (endpoint,)},
+            },
+        },
+    )
+    definition, fetched = imported_fixture(services, receiver, monkeypatch)
+    client = services.protocols.http
+    services.protocols = ProtocolServices(
+        client,
+        security=services.config.security,
+        security_profile="operation",
+        openapi_credential_endpoints={"operation": (endpoint,)},
+    )
+    services.tools.protocols = services.protocols
+    try:
+        await services.external_catalogs.resolve_workflow(definition, services.catalog)
+        plan = compile_workflow(definition, trusted_catalogs=services.external_catalogs.policies)
+        await engine.initialize(services)
+        invocation = handle(services, engine_name, plan)
+        result = await asyncio.wait_for(
+            engine.invoke(plan, invocation, {"id": "original/value", "untouched": None}), 15
+        )
+        assert result.status == "completed" and result.output == {"id": "original/value"}, (
+            result.error
+        )
+        assert len(fetched) == 1
+        assert [str(request.url) for request in receiver.calls if str(request.url) != DOCUMENT] == [
+            "https://business.test/items/original%2Fvalue"
+        ]
     finally:
         await engine.shutdown()
         services.close()

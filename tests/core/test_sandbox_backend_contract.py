@@ -26,6 +26,21 @@ def test_input_files_are_relative_and_traversal_free() -> None:
         SandboxInputFile(path="../secret", content=b"")
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        r"..\secret",
+        r"input\..\secret",
+        r"C:\Windows\system.ini",
+        "C:/Windows/system.ini",
+        r"\\server\share\secret",
+    ],
+)
+def test_input_files_reject_windows_absolute_and_traversal_paths(path: str) -> None:
+    with pytest.raises(ValueError, match="relative and traversal-free"):
+        SandboxInputFile(path=path, content=b"")
+
+
 def test_internal_backend_maps_to_honest_portable_capabilities(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
         SandboxConfig(

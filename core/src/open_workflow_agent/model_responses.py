@@ -98,6 +98,13 @@ def _field(value: Any, name: str, default: Any = None) -> Any:
     return value.get(name, default) if isinstance(value, Mapping) else getattr(value, name, default)
 
 
+def _utf8_length(value: str, reason: str) -> int:
+    try:
+        return len(value.encode("utf-8", "strict"))
+    except UnicodeError:
+        raise _invalid(reason) from None
+
+
 def completion_message(
     response: Any, *, max_output_bytes: int, max_tool_calls: int, max_argument_bytes: int
 ) -> Any:
@@ -138,7 +145,7 @@ def completion_message(
             if (
                 type(identifier) is not str
                 or not identifier
-                or len(identifier.encode("utf-8")) > 256
+                or _utf8_length(identifier, "invalid_tool_identity") > 256
                 or identifier in identifiers
                 or any(ord(char) < 33 or ord(char) > 126 for char in identifier)
             ):
@@ -146,7 +153,10 @@ def completion_message(
             identifiers.add(identifier)
         function = _field(call, "function")
         arguments = _field(function, "arguments")
-        if type(arguments) is not str or len(arguments.encode("utf-8")) > max_argument_bytes:
+        if (
+            type(arguments) is not str
+            or _utf8_length(arguments, "argument_limit") > max_argument_bytes
+        ):
             raise _invalid("argument_limit")
         try:
             parsed = json.loads(arguments, object_pairs_hook=_pairs, parse_constant=_constant)

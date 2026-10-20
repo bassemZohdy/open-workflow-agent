@@ -24,3 +24,12 @@ unless it names an existing pytest function and retained evidence anchor. This
 bridge is a coverage guard and migration scaffold; it does not run the 443
 proposed tests, validate all 774 constraints, expand the selected CTK subset,
 or claim Python/JavaScript parity or full conformance.
+
+The bridge now records the current mapping blockers and CI checks their counts
+against the row statuses. The proposed test rows require their full stated
+multi-runtime scope, including Python and JS/TS comparisons where listed; no
+selector is credited for only one engine or a shared fixture. Schema mappings
+likewise require evidence for the precise constraint in its enclosing
+operation/property context, not just a general schema-validation test. These
+counts describe the current audit, not a claim that the work is impossible;
+update the blocker summary as exact selectors and evidence are added.
