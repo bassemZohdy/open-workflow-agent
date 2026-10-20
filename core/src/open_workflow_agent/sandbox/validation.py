@@ -51,11 +51,14 @@ def validate_sandbox_capabilities(
     )
     bindings = capture_script_resources(workflow, registry)
     if bindings:
-        from ..executable_source_admission import source_business_receipt_limit
+        from ..executable_source_admission import (
+            ExecutableSourceProfileLimitError,
+            source_business_receipt_limit,
+        )
 
         try:
             source_business_receipt_limit(sandbox.max_output_bytes)
-        except Exception:
+        except ExecutableSourceProfileLimitError:
             raise UnsupportedWorkflowFeature(
                 "executable source output profile is unsupported",
                 details={"reason": "executable_source_output_profile_unsupported"},

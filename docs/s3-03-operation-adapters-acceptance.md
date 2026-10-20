@@ -133,6 +133,16 @@ private selections; mutable discovery without genuine admission context is not a
 qualified configured-tool recovery profile. Reusable OWS authentication remains
 its existing pending capability, distinct from named deployment security profiles.
 
+The existing agent-role call has an outer versioned agent-function effect
+receipt (`call:agent…`), so an interrupted role execution remains pending and
+is not automatically replayed.
+The agent tool step does not yet have its own durable transcript/result checkpoint;
+therefore a dispatched tool outcome cannot be independently resumed after a stop.
+Treat configured agent-tool recovery as unqualified until an actual native-process
+test proves the selected binding and explicit pending-versus-known outcome behavior
+across both engines and databases. This is fail-closed uncertainty, not an
+exactly-once guarantee.
+
 Required shared evidence covers actual ADK/LangGraph with SQLite/actual PostgreSQL,
 changed/deleted descriptions after reopen, value/null/fault known-receipt replay,
 distinct loop keys, original task deadlines, concurrent/stale workers and genuine
@@ -165,6 +175,21 @@ includes authored and unexecuted acceptance beyond that batch:
   policy/business proofs. A committed action without a receipt stays pending and
   is never sent again. This finite proof does not grant generic receiver
   reconciliation or an exactly-once guarantee.
+
+`tests/contract/test_agent_pattern_process_recovery.py` also authors a focused
+OpenAPI agent-tool boundary for ADK/LangGraph on SQLite/PostgreSQL. In the
+pending case, a configured assistant role calls the adapter against a
+non-deduplicating mock receiver, which commits one request to its independent
+ledger while the outer `call:agent-assistant:1.0.0@default` receipt remains
+pending. The producer is stopped and a separate process must fail closed after
+restart without another model or business request. In the known case, the receiver
+commits, the outer `call:agent-assistant:1.0.0@default` role receipt completes,
+and the invocation reaches a durable timer wait and returns its native
+suspended checkpoint before the producer is stopped. Recovery resumes from that
+wait without another model or business request, and a duplicate terminal resume
+leaves both ledgers unchanged. These
+eight ADK/LangGraph × SQLite/PostgreSQL cases are authored but unrun and do not
+qualify OpenAPI recovery.
 
 These are source inventories, not passing test counts. Backend/native presence,
 original identity/input/principal/deadline, zero extra metadata/business requests,

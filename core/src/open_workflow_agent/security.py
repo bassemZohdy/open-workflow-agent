@@ -30,7 +30,11 @@ _HEADER_NAME = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
 
 
 def _valid_bounded_reference(value: object, *, maximum_bytes: int) -> bool:
-    if type(value) is not str or not value or any(ord(character) < 32 for character in value):
+    if (
+        type(value) is not str
+        or not value
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
+    ):
         return False
     try:
         return len(value.encode("utf-8")) <= maximum_bytes
@@ -221,8 +225,8 @@ class SecurityConfig(_StrictSecurityModel):
         normalized: dict[str, SecurityProfile] = {}
         for name, profile in value.items():
             selected = name.strip()
-            if not selected or selected != name:
-                raise ValueError("security profile names must be non-empty and already trimmed")
+            if selected != name or not _valid_bounded_reference(name, maximum_bytes=256):
+                raise ValueError("security profile names must be bounded, non-empty references")
             if selected in normalized:
                 raise ValueError("security profile names must be unique")
             normalized[selected] = profile

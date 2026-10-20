@@ -4,6 +4,10 @@ Status: authored; behavioral, native, platform, database and publication
 qualification pending. New descriptor regressions reject unpaired Unicode in
 principal identity/role/scope/audience and named security-profile references as
 bounded-reference `ValueError`s; they await the final batch.
+Security profile names now use the same 256-byte bounded-reference rule and
+reject DEL and unpaired-surrogate values before a profile can be selected. The
+focused configuration regressions are authored and unrun; full S3-06
+qualification remains pending.
 Project Definition sections 11 and 22–25 govern this work. TODO.md retains the
 unchecked task. Source-only audits identify gaps; they do not establish behavioral
 failure or delivery. The preceding combined batch at `ebc2694` is tested separately.

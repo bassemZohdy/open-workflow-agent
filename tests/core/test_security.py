@@ -56,6 +56,21 @@ def test_named_profiles_are_strict_and_discriminated() -> None:
     assert config.profile("service-mtls").type == "mtls"
 
 
+@pytest.mark.parametrize("name", ["x" * 257, "bad\x7fname", "bad\ud800name"])
+def test_named_profile_reference_rejects_unbounded_or_invalid_unicode(name: str) -> None:
+    with pytest.raises(ValueError, match="bounded, non-empty references"):
+        SecurityConfig.model_validate(
+            {
+                "profiles": {
+                    name: {
+                        "type": "bearer",
+                        "token": {"from_env": "OWA_TOKEN"},
+                    }
+                }
+            }
+        )
+
+
 def test_secret_reference_resolves_from_environment_without_storing_value(monkeypatch) -> None:
     reference = SecretReference(from_env="OWA_TEST_SECRET")
     monkeypatch.setenv("OWA_TEST_SECRET", "super-secret")

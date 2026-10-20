@@ -34,6 +34,10 @@ _MAX_BUSINESS_RECEIPT_BYTES = 64_000_000
 _OWNER = "executable-source-admission"
 
 
+class ExecutableSourceProfileLimitError(WorkflowExecutionError):
+    """The configured output budget exceeds the finite source receipt profile."""
+
+
 def _failure() -> WorkflowExecutionError:
     return WorkflowExecutionError("executable source admission evidence is inconsistent")
 
@@ -173,7 +177,7 @@ def source_business_receipt_limit(budget: int) -> int:
             raise ValueError
         return limit
     except (ValueError, TypeError, KeyError):
-        raise WorkflowExecutionError(
+        raise ExecutableSourceProfileLimitError(
             "executable source output profile exceeds its finite receipt boundary"
         ) from None
 

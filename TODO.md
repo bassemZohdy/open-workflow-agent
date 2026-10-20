@@ -18,7 +18,7 @@ Rules: reuse native LangGraph graphs/tasks/checkpoints; start in one container w
 
 Effort: **S** small, **M** medium, **L** substantial. These are relative sizes, not time estimates.
 
-## Accepted prerequisite snapshot — 2026-10-14
+## Historical verified prerequisites — 2026-10-14
 
 This dated snapshot records the accepted prerequisites for the active S3-02
 work; [PROJECT.md](PROJECT.md) is the current source for backlog counts and
@@ -94,20 +94,15 @@ treated as a deferred task or as additional feature completion.
   The checked finite profile remains the earlier accepted scope; this is a
   later regression requalification against its corrected duration-bound witness.
 - [x] **S2-05** (L) — Add an embedded durable event inbox/outbox, correlation, duplicate/late-event handling and restart recovery.
-  Verified: common storage and matching, native consumption/iterator
-  recovery, scope and approval guards are implemented. Focused native and
-  process-stop, full-suite and configured acceptance qualify runtime source
-  `143d38a` and publication `58de90e`. All fourteen finite requirements pass;
-  embedded capability reports are verified. See
-  [acceptance evidence](PROJECT.md#s2-05-embedded-event-work--2026-10-12-verified).
-  Regression requalification at source `9d4d3ec` found the nondurable-listener
-  test expected a faulted result where the common engine rejects unsupported
-  capabilities before execution ownership. It now asserts the common rejection
-  and unchanged input/state; resume checks native continuation before that
-  rejection. A first invoke reorder broke Windows gRPC and PostgreSQL
-  protected-approval pre-ownership gates, so it was reverted. Corrected local
-  event/gRPC selectors pass; exact-source hosted requalification remains
-  pending. See the [run record](docs/validation-history/pending-batch-results.md#event-backend-admission-order-follow-up-at-9d4d3ec).
+  The finite profile is verified at runtime source `143d38a` and publication
+  `58de90e`; all fourteen requirements and embedded capability reports passed.
+  Regression requalification at `9d4d3ec` corrected the nondurable-listener
+  test to expect capability rejection before ownership, with unchanged input
+  and state. A pre-ownership invoke reorder broke Windows gRPC and PostgreSQL
+  approval gates and was reverted. Corrected local event/gRPC selectors pass;
+  exact-source hosted requalification remains pending. See the
+  [verified profile](PROJECT.md#s2-05-embedded-event-work--2026-10-12-verified)
+  and [regression record](docs/validation-history/pending-batch-results.md#event-backend-admission-order-follow-up-at-9d4d3ec).
 - [x] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.
   Verified at `3f568e5`: common timer decisions, native nonresident suspension,
   fenced schedule slots, bounded calendars and atomic embedded event-created
@@ -176,49 +171,26 @@ treated as a deferred task or as additional feature completion.
   outside this qualification. See the [finite acceptance record](docs/s3-02-a2a-acceptance.md)
   and [exact-source validation](docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
-  Historical exact source `923302f` passed the pure AsyncAPI descriptor
-  selection (134 tests), gRPC SQLite recovery (22 cases per principal engine),
-  background SQLite recovery (13 per engine), the scoped core batch (140
-  passed, 12 skipped), and its recorded hosted Windows, PostgreSQL and main CI
-  gates. At current code source `31ec0eb`, the core gRPC/background/dispatcher
-  batch passed 116 tests (26 skipped); ADK OpenAPI calls/process recovery
-  passed 32 (96 skipped), and LangGraph passed 32 (96 skipped, one warning).
-  Source `237f09f` adds a real-mTLS wrong-endpoint rejection test and a
-  PostgreSQL regression proving the SQLite-only internal supervisor rejects a
-  PostgreSQL store before creating supervisor state. The focused mTLS test and
-  its lint/format checks passed locally; PostgreSQL execution requires hosted
-  CI. Exact-source `0f16415` then produced one Windows fixture error in
-  `test_supervisor_verifies_submit_and_publishes_authenticated_running_then_terminal[cancel]`
-  after 967 passed and 460 skipped: its five-second job deadline expired during
-  test setup before the cancellation path ran. Correction `f89a154` uses
-  separate bounded fixture windows; the focused supervisor suite passed all 15
-  tests locally. Source `c3ca7f1` included that correction, but its hosted batch
-  exposed a Windows provider timeout one-ULP overshoot (`30.00000000000003`
-  for a 30s bound) and one non-reproducible ADK HTTP/JSON resume failure
-  returning `invalid_invocation_state` (the equivalent JSON-RPC case passed).
-  The provider timeout is now clamped to its explicit bound; its focused suite
-  passed locally (62 passed, 6 skipped), with Ruff and formatting clean. The
-  ADK case passed in a focused local rerun; its hosted cause was not retained,
-  so it remains in the final batch as a required regression. The remaining
-  `c3ca7f1` CI, PostgreSQL, and Agent Framework runs were cancelled while
-  batching the remaining work; Docs, Security, and External Sandbox passed but
-  do not qualify this partial source. Hosted requalification remains pending.
-  The later ADK JSON-RPC skill-resume failure exposed an initial-delivery race:
-  a waiting invocation left its initial-delivery row ready for startup replay.
-  The dispatcher now settles that row under the execution lease once the first
-  run reaches durable waiting; the regression passed five focused reruns. A
-  safe `_resume_owned` diagnostic regression is authored but final-batch
-  validation is pending:
-  it injects a sentinel failure through the call site and checks that logs
-  contain only the resume stage, stable error code and exception type, with no
-  exception message, input or native identifier. Twelve new cases also check
-  that nonzero script exits remain faults under return projections `code`,
-  `all`, and `none`, for inline and reusable functions on both engines. S3-03
-  remains open. The background profile remains default-off pending full
-  qualification. Cross-adapter, backend, platform, lifetime, packaging and
-  broader hosted acceptance remain open.
-  The [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and
-  [retained run evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4).
+  Finite and partial results for sources `923302f`, `31ec0eb`, `237f09f`,
+  `0f16415`, `f89a154` and `c3ca7f1`, including their fixes and hosted outcomes,
+  remain in the [acceptance plan](docs/s3-03-operation-adapters-acceptance.md)
+  and [validation history](docs/validation-history/pending-batch-results.md#partial-source-c3ca7f1).
+  The `c3ca7f1` Windows provider timeout exceeded its 30-second bound by one
+  floating-point step; the clamp's focused suite passed (62 passed, 6 skipped).
+  Its hosted ADK HTTP/JSON skill-resume failure returned
+  `invalid_invocation_state`; a focused rerun passed, but the hosted cause was
+  not retained. That batch was partial and cancelled during consolidation. A
+  later ADK JSON-RPC skill-resume failure exposed startup replay of a waiting
+  invocation's initial-delivery row. The dispatcher now settles it under the
+  execution lease; five focused reruns passed. A safe `_resume_owned` call-site
+  diagnostic regression and 12 inline/reusable-function cases for nonzero exits
+  under `code`, `all` and `none` projections are authored and await final-batch
+  validation. An eight-case actual-process witness covers configured OpenAPI
+  agent-tool dispatch with both a pending receiver commit and a completed outer
+  agent-call receipt after durable native suspension; it is also authored and
+  unrun. S3-03 remains open; exact-source hosted qualification is pending.
+  Background execution stays default-off, and cross-adapter, backend, platform,
+  lifetime, packaging and broader hosted acceptance remain open.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Captured sources, recovery proofs and awaited internal process controls are
   authored; registry configuration/execution defects now propagate instead of
@@ -227,12 +199,18 @@ treated as a deferred task or as additional feature completion.
   open. See the
   [acceptance plan](docs/s3-04-executable-source-acceptance.md).
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
-  Protected actor identity, atomic decisions, expiry and native recovery
-  controls are authored; cross-engine/backend acceptance remains open. See
-  the [finite acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
-  [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f). The new producer-stop
-  witness replays reassignment/escalation after restart and checks the record
-  and audit remain unchanged; it awaits the final validation batch.
+  Protected actor identity, atomic decisions, expiry and native recovery are
+  authored. The PostgreSQL timestamp migration and f9 database cases passed;
+  its Windows timer lane exposed a request-row recovery race before the durable
+  barrier. A five-second renewal lease and natural database-clock wait pass
+  locally, and the formerly failing hosted Windows case passed at `8183776`.
+  The new producer-stop witness replays reassignment/escalation after restart
+  and checks the record/audit remain unchanged; its ADK/LangGraph × SQLite/
+  PostgreSQL matrix and hosted requalification remain pending. The expired-
+  approval fixture now decouples invocation ownership from its short approval
+  deadline; independent-SDK requalification also remains pending. See the
+  [acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
+  [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and authorization within existing contracts. Delegated token exchange and consent remain conditional S4-11 work.
   Unpaired Unicode in principal and named-profile references now fails as a
   bounded-reference `ValueError` instead of leaking an encoding exception;

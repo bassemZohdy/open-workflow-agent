@@ -80,6 +80,40 @@ def test_source_output_profile_rejects_before_plan_admission(budget, supported):
     assert public == original
 
 
+def test_source_output_profile_internal_failure_propagates(monkeypatch):
+    from open_workflow_agent import executable_source_admission
+
+    public = workflow([{"action": script()}])
+    failure = RuntimeError("receipt profile implementation defect")
+
+    def fail(_budget):
+        raise failure
+
+    monkeypatch.setattr(executable_source_admission, "source_business_receipt_limit", fail)
+    with pytest.raises(RuntimeError) as raised:
+        compile_original(public)
+    assert raised.value is failure
+
+
+def test_source_output_profile_limit_remains_an_unsupported_feature(monkeypatch):
+    from open_workflow_agent.executable_source_admission import (
+        ExecutableSourceProfileLimitError,
+    )
+
+    public = workflow([{"action": script()}])
+
+    def over_limit(_budget):
+        raise ExecutableSourceProfileLimitError("bounded profile limit")
+
+    monkeypatch.setattr(
+        "open_workflow_agent.executable_source_admission.source_business_receipt_limit",
+        over_limit,
+    )
+    with pytest.raises(UnsupportedWorkflowFeature) as raised:
+        compile_original(public)
+    assert raised.value.details["reason"] == "executable_source_output_profile_unsupported"
+
+
 @pytest.mark.parametrize("kind", ["direct", "nested", "fork", "reusable"])
 def test_capture_materializes_private_code_without_changing_public_source_or_pointer(kind):
     task = script()

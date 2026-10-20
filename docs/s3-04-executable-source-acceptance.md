@@ -45,7 +45,10 @@ and PostgreSQL, awaited process controls 21, shared actual native/source calls 2
 and process-stop/recovery 24 across the two principal engines and both databases.
 The compiler/archive group includes a new regression that ensures unexpected
 registry implementation failures are not mislabeled as workflow source-policy
-rejections. It is authored and remains unrun with the rest of this batch.
+rejections. The output-receipt bound gate now translates only its dedicated
+finite-profile-limit error to an unsupported-feature rejection; unexpected
+implementation errors propagate unchanged. Regressions for both branches are
+authored and remain unrun with the rest of this batch.
 The four actual-native/backend late-worker takeover cases are authored in
 `tests/contract/test_executable_source_calls.py`; each requires the source
 business receipt to remain pending after a successor acquires ownership. Their

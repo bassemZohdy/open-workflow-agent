@@ -22,6 +22,8 @@ from test_protected_approval_process_recovery import (
 WORKER = Path(__file__).with_name("_agent_pattern_recovery_worker.py")
 CASES = [(pattern, "known") for pattern in PATTERNS] + [
     ("assistant", "pending"),
+    ("assistant", "openapi-pending"),
+    ("assistant", "openapi-known"),
     ("pipeline", "role-change"),
 ]
 
@@ -67,8 +69,19 @@ def test_killed_pattern_producer_retains_original_role_receipts_or_explicit_unce
         assert evidence["authority"]["principal"]["identity"] == "alice"
         assert evidence["original_input"]["question"] == "hello"
         assert evidence["clock"]["profile"] == "owa/timing/v1"
-        assert evidence["receipt_status"] == ("pending" if boundary == "pending" else "completed")
+        assert evidence["receipt_status"] == (
+            "pending" if boundary in {"pending", "openapi-pending"} else "completed"
+        )
         assert evidence["provider_count"] >= 1
+        if boundary == "openapi-pending":
+            assert evidence["receipt_status"] == "pending"
+            assert evidence["outer_agent_status"] == "pending"
+            assert evidence["business_count"] == 1
+        elif boundary == "openapi-known":
+            assert evidence["receipt_status"] == "completed"
+            assert evidence["outer_agent_status"] == "completed"
+            assert evidence["invocation_status"] == "waiting"
+            assert evidence["business_count"] == 1
         identity = ProducerIdentity(evidence["pid"])
         write_json(tmp_path / "ack.json", {"pid": evidence["pid"]})
         assert ready(tmp_path, "acknowledged.json", producer)["pid"] == evidence["pid"]
@@ -88,11 +101,19 @@ def test_killed_pattern_producer_retains_original_role_receipts_or_explicit_unce
                 and result["clock"] == evidence["clock"]
             )
             assert result["original_input"] == evidence["original_input"]
-            assert result["status"] == ("faulted" if boundary == "pending" else "completed")
-            if boundary == "pending":
+            assert result["status"] == (
+                "faulted" if boundary in {"pending", "openapi-pending"} else "completed"
+            )
+            if boundary in {"pending", "openapi-pending"}:
                 assert (
                     result["provider_count"] == 1 and sum(result["recovery_counts"].values()) == 0
                 )
+                if boundary == "openapi-pending":
+                    assert result["business_count"] == 1
+            elif boundary == "openapi-known":
+                assert result["provider_count"] == 2
+                assert sum(result["recovery_counts"].values()) == 0
+                assert result["business_count"] == 1
             else:
                 assert result["provider_count"] == sum(
                     len(values)

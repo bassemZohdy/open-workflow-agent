@@ -95,10 +95,10 @@ def collected(filename, selector=None):
     "filename,expected",
     [
         ("test_protected_approval_workflows.py", 14),
-        ("test_protected_approval_process_recovery.py", 6),
+        ("test_protected_approval_process_recovery.py", 8),
     ],
 )
-def test_actual_postgresql_selectors_retain_twenty_approval_nodes_per_principal(
+def test_actual_postgresql_selectors_retain_all_approval_nodes_per_principal(
     engine, filename, expected
 ):
     text = command(workflow("postgres-ci.yml")["jobs"][f"postgres-{engine}-operations"])

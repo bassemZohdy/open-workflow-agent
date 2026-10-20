@@ -10,19 +10,23 @@ import sqlite3
 import sys
 from pathlib import Path
 
+import httpx
 import pytest
 from _agent_pattern_fixtures import (
     actual_native,
     compiled,
     configuration,
     create,
+    deployed_openapi_tool,
     expected,
     invoke,
     original_authority,
     providers,
     register_workers,
     retained,
+    role_configuration,
     runtime,
+    source,
     scripts,
 )
 from _process_recovery_worker import write_json
@@ -30,6 +34,7 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.errors import OwaError
 from open_workflow_agent.execution_authority import authority_scope, current_authority
 from open_workflow_agent.execution_context import current_action_context
+from open_workflow_agent.workflow import compile_workflow
 from test_agent_patterns import QUESTION, approval_input, decision, waiting
 from test_execution_authority_isolation import snapshot
 
@@ -50,6 +55,19 @@ def ledger(directory):
         return db.execute("SELECT role,prompt,response,pid FROM calls ORDER BY rowid").fetchall()
 
 
+def business_ledger(directory):
+    with sqlite3.connect(directory / "provider.sqlite3", timeout=3) as db:
+        return db.execute(
+            "SELECT method,url,body,pid FROM business_requests ORDER BY rowid"
+        ).fetchall()
+
+
+def compile_openapi_wait(services):
+    workflow = source("assistant")
+    workflow["do"].append({"afterTool": {"wait": {"seconds": 3600}}})
+    return compile_workflow(workflow, enabled_function_calls=services.role_function_calls)
+
+
 async def run(directory, mode):
     scenario = json.loads((directory / "scenario.json").read_text(encoding="utf-8"))
     pattern, backend = scenario["pattern"], scenario["backend"]
@@ -65,8 +83,19 @@ async def run(directory, mode):
         db.execute(
             "CREATE TABLE IF NOT EXISTS calls(role TEXT,prompt TEXT,response TEXT,pid INTEGER)"
         )
+        db.execute(
+            "CREATE TABLE IF NOT EXISTS business_requests "
+            "(method TEXT,url TEXT,body BLOB,pid INTEGER)"
+        )
     script = scripts(pattern)
+    if scenario["boundary"] in {"openapi-pending", "openapi-known"}:
+        script["assistant"] = [
+            {"tool_call": {"name": "lookup", "arguments": {}}},
+            {"answer": "assistant"},
+        ]
     roles, _ = providers(pattern)
+    if scenario["boundary"] in {"openapi-pending", "openapi-known"}:
+        roles["assistant"] = role_configuration("assistant", tools=["lookup"])
     services = None
     handle = None
     original = None
@@ -84,6 +113,14 @@ async def run(directory, mode):
         ).fetchone()
         assert lease_row is not None
         rows = ledger(directory)
+        agent_status = next(
+            (
+                item.status
+                for action_identity, item in receipts(services, handle)
+                if action_identity.operation == "call:agent-assistant:1.0.0@default"
+            ),
+            None,
+        )
         write_json(
             directory / "ready.json",
             {
@@ -96,11 +133,14 @@ async def run(directory, mode):
                 "clock": proof["clock"],
                 "receipt_key": identity.key,
                 "receipt_status": receipt.status,
+                "outer_agent_status": agent_status,
+                "invocation_status": services.invocations.get(handle.invocation_id).status,
                 "receipts": proof["receipts"],
                 "native": proof["native"],
                 "lease_until": lease_row[0],
                 "provider_count": len(rows),
                 "provider_counts": {name: sum(row[0] == name for row in rows) for name in script},
+                "business_count": len(business_ledger(directory)),
             },
         )
         while not (directory / "ack.json").exists():
@@ -135,10 +175,48 @@ async def run(directory, mode):
         return output
 
     models = {name: FakeModel(lambda prompt, name=name: response(name, prompt)) for name in script}
-    config = configuration(backend, roles, approvals=pattern == "approval_gate")
+
+    async def dispatch(request):
+        assert request.method == "GET"
+        assert str(request.url) == "https://patterns.test/lookup"
+        assert request.content == b""
+        with sqlite3.connect(directory / "provider.sqlite3", timeout=3) as db:
+            db.execute(
+                "INSERT INTO business_requests VALUES (?,?,?,?)",
+                (request.method, str(request.url), request.content, os.getpid()),
+            )
+            db.commit()
+        if mode == "start" and scenario["boundary"] == "openapi-pending":
+            context = current_action_context()
+            assert context is not None
+            assert context.identity.operation == "call:agent-assistant:1.0.0@default"
+            receipt = services.effect_journal.get(context.identity)
+            assert receipt is not None and receipt.status == "pending"
+            await park(context.identity, receipt)
+        return httpx.Response(200, json={"result": "read"})
+
+    config = configuration(
+        backend,
+        roles,
+        approvals=pattern == "approval_gate",
+        **(
+            {"tools": [deployed_openapi_tool("lookup", "GET")]}
+            if scenario["boundary"] in {"openapi-pending", "openapi-known"}
+            else {}
+        ),
+    )
     if mode == "recover" and scenario["boundary"] == "role-change":
         config.agent.roles[STOP_ROLE[pattern]].instruction += " Different deployment revision."
-    services = runtime(directory / "runtime", backend, roles, models, config=config)
+    services = runtime(
+        directory / "runtime",
+        backend,
+        roles,
+        models,
+        config=config,
+        dispatch=dispatch
+        if scenario["boundary"] in {"openapi-pending", "openapi-known"}
+        else None,
+    )
     await engine.initialize(services)
     # A finite original lease, renewed normally by the genuine producer. Allow
     # multi-node native patterns enough time to reach their durable receipt
@@ -150,7 +228,11 @@ async def run(directory, mode):
         register_workers(services)
     try:
         if mode == "start":
-            plan = compiled(services, pattern)
+            plan = (
+                compile_openapi_wait(services)
+                if scenario["boundary"] == "openapi-known"
+                else compiled(services, pattern)
+            )
             original = approval_input() if pattern == "approval_gate" else dict(QUESTION)
             handle = create(services, engine_name, plan)
             original_notify = engine.executor._notify_receipt
@@ -158,7 +240,8 @@ async def run(directory, mode):
             async def notify(state, identity, receipt):
                 await original_notify(state, identity, receipt)
                 if (
-                    scenario["boundary"] != "pending"
+                    scenario["boundary"]
+                    not in {"pending", "openapi-pending", "openapi-known"}
                     and receipt.status == "completed"
                     and identity.invocation_id == handle.invocation_id
                     and identity.operation == "call:agent-" + STOP_ROLE[pattern] + ":1.0.0@default"
@@ -166,7 +249,40 @@ async def run(directory, mode):
                     await park(identity, receipt)
 
             engine.executor._notify_receipt = notify
+            if scenario["boundary"] == "openapi-known":
+                original_notify_waiting = engine.executor._notify_waiting
+                waiting_notified = asyncio.Event()
+                waiting_states = []
+
+                async def notify_waiting(state):
+                    await original_notify_waiting(state)
+                    waiting_states.append(state)
+                    waiting_notified.set()
+
+                engine.executor._notify_waiting = notify_waiting
             task = asyncio.create_task(invoke(engine, services, plan, handle, original))
+            if scenario["boundary"] == "openapi-known":
+                async with asyncio.timeout(30):
+                    await waiting_notified.wait()
+                    while services.invocations.get(handle.invocation_id).status != "waiting":
+                        await asyncio.sleep(0.01)
+                waiting_result = await asyncio.wait_for(task, timeout=30)
+                assert waiting_result.status == "waiting"
+                state = waiting_states[-1]
+                identity = engine.executor._effect_identity(state, "wait:arm:v1")
+                receipt = services.effect_journal.get(identity)
+                assert receipt is not None and receipt.status == "completed"
+                agent_receipt = next(
+                    (
+                        item
+                        for action_identity, item in receipts(services, handle)
+                        if action_identity.operation == "call:agent-assistant:1.0.0@default"
+                    ),
+                    None,
+                )
+                assert agent_receipt is not None and agent_receipt.status == "completed"
+                assert services.invocations.get(handle.invocation_id).status == "waiting"
+                await park(identity, receipt)
             if pattern == "approval_gate":
                 await waiting(services, handle, task)
                 assert models["approver-action"].calls == []
@@ -225,6 +341,35 @@ async def run(directory, mode):
                     ).fetchone()[0]
                     == "pending"
                 )
+            elif scenario["boundary"] == "openapi-pending":
+                assert (
+                    result.status == "faulted"
+                    and result.error["code"] == "workflow_execution_error"
+                )
+                assert len(rows) == 1 and len(business_ledger(directory)) == 1
+                assert all(model.calls == [] for model in models.values())
+                assert (
+                    services.effect_journal.connection.execute(
+                        "SELECT status FROM workflow_effects WHERE identity=?",
+                        (ready["receipt_key"],),
+                    ).fetchone()[0]
+                    == "pending"
+                )
+            elif scenario["boundary"] == "openapi-known":
+                assert result.status == "completed" and result.output == expected(pattern), (
+                    result.error
+                )
+                assert len(rows) == 2 and len(business_ledger(directory)) == 1
+                assert all(model.calls == [] for model in models.values())
+                assert (
+                    services.effect_journal.connection.execute(
+                        "SELECT status FROM workflow_effects WHERE identity=?",
+                        (ready["receipt_key"],),
+                    ).fetchone()[0]
+                    == "completed"
+                )
+                assert await engine.resume(handle, {"late": True}, plan) == result
+                assert len(ledger(directory)) == 2 and len(business_ledger(directory)) == 1
             else:
                 assert result.status == "completed" and result.output == expected(pattern), (
                     result.error
@@ -254,6 +399,7 @@ async def run(directory, mode):
                     "authority": proof["authority"],
                     "clock": proof["clock"],
                     "provider_count": len(rows),
+                    "business_count": len(business_ledger(directory)),
                     "before_counts": before_counts,
                     "recovery_counts": {name: len(model.calls) for name, model in models.items()},
                     "provider_counts": {
