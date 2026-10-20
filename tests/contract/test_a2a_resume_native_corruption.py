@@ -151,6 +151,11 @@ async def test_a2a_resume_rejects_corrupt_native_checkpoint_before_mutation(
                 )
                 assert _common_snapshot(services, handle.invocation_id) == before
                 assert _native_snapshot(services, handle, backend) == native_before
+                assert (
+                    not engine._active
+                    and not engine._execution_leases
+                    and not engine._ownership_tasks
+                )
                 assert len(receiver.calls) == len(receiver.rows()) == 1
                 assert not services.model.calls
     finally:

@@ -1727,8 +1727,9 @@ passed. PostgreSQL run
 [39356197267](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39356197267)
 passed. External Sandbox run
 [39356197258](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39356197258)
-passed. No failed job was observed at that check. These partial outcomes do
-not qualify S3-02; record final outcomes only after each run completes.
+passed. No failed job was observed at that check. The main CI was later
+cancelled after commit `447432b` superseded it. These partial outcomes do not
+qualify S3-02; record exact-source outcomes from the superseding batch.
 
 ## Grouped A2A SDK and resume matrix — 2026-10-20
 
@@ -1746,3 +1747,52 @@ Ruff, formatting, Markdown-link validation and `git diff --check` passed. These
 are local results for the current worktree, not hosted qualification. The
 PostgreSQL variants are selected in the hosted lifecycle lanes. No A2A gate or
 backlog task is marked complete.
+
+The batch was pushed as `447432b`. Its Docs, Security, PostgreSQL, Agent
+Framework and External Sandbox workflows were queued or running at the latest
+check. Main CI run
+[39358262414](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39358262414)
+is in progress and exposed a pytest import-name collision between the core and
+contract `test_a2a_http_json_optional_methods.py` modules in root and Windows
+common collection. The contract module has been renamed to a unique SDK-specific
+filename, and the HTTP+JSON SDK witness is now selected by both PostgreSQL
+lifecycle jobs. Requalification is pending.
+
+## A2A response, terminal-projection and corruption follow-up — 2026-10-20
+
+The current worktree extends actual-TCP AgentCard precedence to all seven
+advertised methods against legacy-version-first and unsupported-binding-first
+cards (14 cases). It adds a cross-worker terminal Task read in both bindings
+while an outbound `call:a2a` effect remains pending, asserting repeated reads
+preserve the terminal payload and uncertain receipt without invocation/model
+replay. The native-checkpoint corruption witness now also checks that rejection
+starts no active LangGraph run, execution lease or ownership task. A new
+official-SDK malformed streaming admission matrix covers ADK/LangGraph,
+SQLite/PostgreSQL and both inbound bindings, checking invocation, effects,
+delivery, subscription and model state remain unchanged.
+
+These are implementation additions only; A2A01, A2A04, A2A06 and A2A08 remain
+partial. Their consolidated local results and exact-source hosted qualification
+state are recorded below.
+
+The first consolidated worktree run then completed with **17 failed, 349 passed,
+and 49 skipped**. Fourteen actual-TCP card cases bypassed validated-card
+admission instead of fetching and selecting the fixture AgentCard; the case now
+uses the production card-fetch/selection path. Two PostgreSQL selector guards
+filtered the generic HTTP+JSON case by a non-applicable engine id, and the
+native lifecycle guard omitted that fixture; the selector assertions and
+fixture list now match the hosted commands. These failures were actionable and
+have corrections in the current worktree. Consolidated requalification is
+pending.
+
+After those corrections, the grouped local batch passed **365 tests with 49
+environment skips**. The only remaining failure was the workflow guard for the
+Windows/ADK/LangGraph native lifecycle selector set; the two new SDK contracts
+are now selected in each native lane and excluded from the generic engine
+matrix. The focused guard passed. A separate isolated-engine run found that
+the SDK raises `InvalidParamsError` for malformed streamed input rather than
+the broader client error the first assertion expected; after correcting the
+assertion, the malformed-streaming ADK/SQLite and LangGraph/SQLite cases passed
+(2 each), as did the LangGraph native-checkpoint corruption SQLite cases (2).
+Ruff, format, documentation-link and diff checks passed. PostgreSQL execution
+still requires hosted lanes; no S3-02 gate is closed.

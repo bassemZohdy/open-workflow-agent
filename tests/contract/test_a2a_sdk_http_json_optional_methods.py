@@ -40,8 +40,13 @@ async def listening(app):
 
 
 @pytest.mark.asyncio
-async def test_public_http_json_list_tasks_is_rejected_before_workflow_invocation(tmp_path):
-    datasource = os.getenv("OWA_TEST_POSTGRES_URL")
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"], ids=["sqlite", "postgresql"])
+async def test_public_http_json_list_tasks_is_rejected_before_workflow_invocation(
+    tmp_path, backend
+):
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
     config = RuntimeConfig.model_validate(
         {
             "model": {"provider": "fake"},
@@ -66,6 +71,7 @@ async def test_public_http_json_list_tasks_is_rejected_before_workflow_invocatio
         model=model,
         database_root=None if datasource else tmp_path,
     )
+    assert services.effect_journal.connection.kind == backend
     app = create_app(config=config, services=services)
     try:
         async with listening(app) as base:

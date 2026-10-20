@@ -105,6 +105,8 @@ def test_actual_postgresql_gate_selects_required_recovery_cases(
     [
         ("test_a2a_workflow_calls.py", 16),
         ("test_a2a_sdk_inbound.py", 7),
+        ("test_a2a_sdk_http_json_optional_methods.py", 1),
+        ("test_a2a_sdk_malformed_streaming_admission.py", 2),
         ("test_a2a_resume_context_rejection.py", 2),
         ("test_a2a_initial_delivery.py", 6),
     ],
@@ -120,6 +122,11 @@ def test_actual_a2a_postgresql_lifecycle_gate_selects_all_principal_cases(
     assert f"../../tests/contract/{fixture}" in command
     arguments = shlex.split(command)
     selector = arguments[arguments.index("-k") + 1]
+    engine_selector = (
+        f"({selector})"
+        if fixture == "test_a2a_sdk_http_json_optional_methods.py"
+        else f"({selector}) and {engine}"
+    )
     collected = subprocess.run(
         [
             sys.executable,
@@ -129,7 +136,7 @@ def test_actual_a2a_postgresql_lifecycle_gate_selects_all_principal_cases(
             "--collect-only",
             "-q",
             "-k",
-            f"({selector}) and {engine}",
+            engine_selector,
         ],
         cwd=ROOT,
         capture_output=True,
@@ -140,7 +147,11 @@ def test_actual_a2a_postgresql_lifecycle_gate_selects_all_principal_cases(
     assert collected.returncode == 0, collected.stdout + collected.stderr
     nodes = [line for line in collected.stdout.splitlines() if "::test_" in line]
     assert len(nodes) == expected, collected.stdout
-    assert all("postgresql" in node and engine in node.lower() for node in nodes)
+    assert all(
+        "postgresql" in node
+        and (fixture == "test_a2a_sdk_http_json_optional_methods.py" or engine in node.lower())
+        for node in nodes
+    )
 
 
 def test_a2a_postgresql_process_race_witness_is_selected_in_postgres_ci():

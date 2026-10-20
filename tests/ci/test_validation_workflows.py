@@ -144,6 +144,8 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
         "test_mcp_stdio_integration.py",
         "test_a2a_workflow_calls.py",
         "test_a2a_sdk_inbound.py",
+        "test_a2a_sdk_http_json_optional_methods.py",
+        "test_a2a_sdk_malformed_streaming_admission.py",
         "test_a2a_initial_delivery.py",
     }
     workflow = _workflow("postgres-ci.yml")
@@ -225,7 +227,7 @@ def test_windows_mcp_controls_include_real_transport_and_cleanup_boundaries():
         "test_native_sqlite_inspection.py",
     ):
         assert fixture in command
-    assert "tests/contract/test_a2a_http_json_optional_methods.py" in command
+    assert "tests/contract/test_a2a_sdk_http_json_optional_methods.py" in command
     assert "uv run --locked pytest -vv" in command
 
 

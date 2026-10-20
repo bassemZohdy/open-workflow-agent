@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import A2AConfig, RuntimeConfig
+from open_workflow_agent.effects import EffectIdentity, effect_request_digest
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
@@ -240,6 +241,92 @@ def test_cancelled_task_get_projection_is_stable_and_read_only(tmp_path, transpo
     assert (
         services.invocations.get(handle.invocation_id)._persisted_payload == snapshot_after_cancel
     )
+
+
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+def test_cross_worker_terminal_task_read_preserves_uncertain_effect_without_replay(
+    tmp_path, transport: str
+) -> None:
+    """A stale worker's GetTask sees a peer commit without retrying uncertain work."""
+    app, services = _runtime(tmp_path, transport=transport)
+    handle = _create_handle(services)
+    identity = EffectIdentity(
+        invocation_id=handle.invocation_id,
+        workflow_fingerprint=handle.workflow_fingerprint,
+        task_reference="a2a-send",
+        occurrence=(("a2a-send", 1),),
+        operation="call:a2a",
+    )
+    request_digest = effect_request_digest("call:a2a", {"messageId": "uncertain-send"})
+    pending = services.effect_journal.begin(identity, request_digest, "worker-one")
+    assert pending.status == "pending"
+
+    peer = RuntimeServices(
+        services.config,
+        model=FakeModel(),
+        database_root=tmp_path,
+    )
+    try:
+        peer_handle = peer.invocations.get(handle.invocation_id)
+        assert peer_handle is not None and peer_handle.status == "running"
+        peer.invocations.update(
+            peer_handle,
+            status="faulted",
+            error={
+                "code": "unresolved_external_action",
+                "message": "remote operation outcome is uncertain",
+            },
+        )
+        terminal = peer.invocations.get(handle.invocation_id)
+        assert terminal is not None and terminal.status == "faulted"
+        snapshot_after_peer_commit = terminal._persisted_payload
+
+        async def forbidden(*_args, **_kwargs):
+            raise AssertionError("cross-worker terminal GetTask must not replay workflow work")
+
+        app.state.engine.invoke = forbidden
+        app.state.engine.resume = forbidden
+        with TestClient(app) as client:
+            if transport == "jsonrpc":
+
+                def get_task(request_id: str):
+                    return client.post(
+                        "/a2a",
+                        headers=A2A_HEADERS,
+                        json=_task_request("GetTask", handle.invocation_id, request_id),
+                    )
+            else:
+
+                def get_task(_request_id: str):
+                    return client.get(
+                        f"/a2a/tasks/{handle.invocation_id}",
+                        headers=A2A_HEADERS,
+                    )
+
+            first = get_task("cross-worker-terminal-first")
+            second = get_task("cross-worker-terminal-second")
+
+        assert first.status_code == second.status_code == 200
+        first_body = first.json()
+        second_body = second.json()
+        first_task = first_body["result"] if transport == "jsonrpc" else first_body
+        second_task = second_body["result"] if transport == "jsonrpc" else second_body
+        assert first_task == second_task
+        assert first_task["id"] == handle.invocation_id
+        assert first_task["status"]["state"] == "TASK_STATE_FAILED"
+        assert first_task["status"]["message"]["parts"][0]["text"] == (
+            "workflow failed: unresolved_external_action"
+        )
+        assert services.invocations.get(handle.invocation_id)._persisted_payload == (
+            snapshot_after_peer_commit
+        )
+        observed_receipt = services.effect_journal.get(identity)
+        assert observed_receipt is not None and observed_receipt.status == "pending"
+        assert services.model.calls == []
+        assert peer.model.calls == []
+    finally:
+        peer.close()
+        services.close()
 
 
 @pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])

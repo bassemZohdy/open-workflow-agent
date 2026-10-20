@@ -253,6 +253,8 @@ jobs:
           ../../tests/contract/test_mcp_stdio_integration.py
           ../../tests/contract/test_a2a_workflow_calls.py
           ../../tests/contract/test_a2a_sdk_inbound.py
+          ../../tests/contract/test_a2a_sdk_http_json_optional_methods.py
+          ../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py
           ../../tests/contract/test_a2a_initial_delivery.py
           ../../tests/contract/test_a2a_initial_delivery_process_race.py
           ../../tests/core/test_native_sqlite_inspection.py
@@ -290,7 +292,7 @@ jobs:
           tests/core/test_a2a_child_projection.py
           tests/core/test_a2a.py
           tests/core/test_a2a_http_json_optional_methods.py
-          tests/contract/test_a2a_http_json_optional_methods.py
+          tests/contract/test_a2a_sdk_http_json_optional_methods.py
           tests/core/test_a2a_card_admission.py
           tests/core/test_a2a_skills.py
           tests/core/test_initial_delivery.py
@@ -528,6 +530,8 @@ jobs:
             --ignore=../../tests/contract/test_mcp_stdio_integration.py \
             --ignore=../../tests/contract/test_a2a_workflow_calls.py \
             --ignore=../../tests/contract/test_a2a_sdk_inbound.py \
+            --ignore=../../tests/contract/test_a2a_sdk_http_json_optional_methods.py \
+            --ignore=../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
             --ignore=../../tests/contract/test_a2a_initial_delivery.py
       - name: Portable Profile CTK subset
         shell: bash
@@ -619,6 +623,8 @@ jobs:
             ../../tests/contract/test_mcp_stdio_integration.py \
             ../../tests/contract/test_a2a_workflow_calls.py \
             ../../tests/contract/test_a2a_sdk_inbound.py \
+            ../../tests/contract/test_a2a_sdk_http_json_optional_methods.py \
+            ../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
             ../../tests/contract/test_a2a_initial_delivery.py \
             ../../tests/core/test_native_sqlite_inspection.py -vv --durations=20
       - name: Verify LangGraph A2A native checkpoint corruption

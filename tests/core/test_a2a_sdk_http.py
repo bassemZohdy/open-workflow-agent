@@ -112,6 +112,50 @@ async def test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_busi
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize("unsupported_first", ["legacy-version", "unsupported-binding"])
+async def test_actual_tcp_card_selection_skips_unsupported_interface_for_every_method(
+    method, unsupported_first
+):
+    def add_unsupported_interface(card):
+        card["supportedInterfaces"].insert(
+            0,
+            {
+                "url": endpoint.removesuffix("/a2a") + "/unsupported",
+                "protocolBinding": "JSONRPC" if unsupported_first == "legacy-version" else "GRPC",
+                "protocolVersion": "0.3" if unsupported_first == "legacy-version" else "1.0",
+            },
+        )
+        return card
+
+    async with sdk_a2a_fixture(network=True, card_mutation=add_unsupported_interface) as (
+        _transport,
+        calls,
+        endpoint,
+    ):
+        http = client(None, True)
+        card = await fetch_validate_card(
+            http,
+            {"endpoint": endpoint.removesuffix("/a2a") + "/.well-known/agent-card.json"},
+            timeout=2,
+        )
+        value = payload(method, "https://ignored.test/a2a")
+        value["agentCard"] = card
+        value["endpoint"] = endpoint
+
+        result = await ProtocolServices(http).call("a2a", value)
+
+        assert_method_result(method, result)
+        assert [call["path"] for call in calls if call["method"] == "GET"] == [
+            "/.well-known/agent-card.json"
+        ]
+        business = [call for call in calls if call["method"] == "POST"]
+        assert len(business) == 1
+        assert business[0]["body"]["method"] == method
+        assert business[0]["headers"][b"a2a-version"] == b"1.0"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", METHODS)
 async def test_every_advertised_method_rejects_legacy_version_before_dispatch(method):
     calls = []
 

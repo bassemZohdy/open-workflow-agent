@@ -166,14 +166,23 @@ treated as a deferred task or as additional feature completion.
   backend-inapplicable skips; `fa778a1` adds the Windows TCP timeout correction
   and A2A lifecycle coverage, and `9202774` refreshes the renamed audit anchor
   and 60-minute timing-budget selectors. Docs, Security, PostgreSQL, Agent
-  Framework and External Sandbox passed for `9202774`; main CI remained in
-  progress at last check. The current official-SDK `ListTasks`, malformed
+  Framework and External Sandbox passed for `9202774`; its main CI was cancelled
+  when `447432b` superseded it. The current official-SDK `ListTasks`, malformed
   response/card-selection and native context-mismatch additions passed 329
   common tests with 36 environment skips, plus 9 SQLite cases in each isolated
   engine environment. Ruff, format, docs-link and diff checks passed. Exact-
-  source hosted checks for this batch remain pending. A2A01-A2A08 remain partial
-  and S3-02 stays unchecked. Durable Task/receipt expiry is explicitly outside
-  the finite profile; no expiry capability is claimed. See the
+  Main CI for `447432b` found a duplicate pytest module-name collection failure
+  in the root and Windows common lanes. The contract test now has a unique
+  SDK-specific module name. The following grouped worktree batch passed 365
+  tests with 49 environment skips; a focused workflow selector guard passed
+  after its path-trigger correction. Exact-source hosted requalification is
+  pending. It adds all-method actual-TCP card precedence, cross-worker terminal observation
+  during uncertain effect recovery, a pre-lease guard for native checkpoint
+  corruption, and native malformed-streaming admission across engines/backends;
+  combined validation is pending. A2A01-A2A08 remain partial and S3-02 stays
+  unchecked. Durable
+  Task/receipt expiry is explicitly outside the finite profile; no expiry
+  capability is claimed. See the
   [acceptance record](docs/s3-02-a2a-acceptance.md) and
   [grouped validation history](docs/validation-history/pending-batch-results.md#grouped-a2a-sdk-and-resume-matrix-2026-10-20).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
