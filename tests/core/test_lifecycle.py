@@ -112,6 +112,43 @@ async def test_cancellation_while_running_is_terminal_and_real(tmp_path):
     services.close()
 
 
+@pytest.mark.asyncio
+async def test_idle_child_cancellation_event_preserves_parent_correlation(tmp_path):
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    engine = PortableWorkflowEngine()
+    await engine.initialize(services)
+    parent = services.invocations.create(
+        engine="portable",
+        session_id=None,
+        user_id=None,
+        workflow_name="parent",
+        workflow_version="1.0.0",
+        workflow_fingerprint="parent-fingerprint",
+    )
+    child = services.invocations.create(
+        engine="portable",
+        session_id=None,
+        user_id=None,
+        workflow_name="child",
+        workflow_version="1.0.0",
+        workflow_fingerprint="child-fingerprint",
+        parent_invocation_id=parent.invocation_id,
+        parent_task_reference="/do/0/child",
+    )
+
+    result = await engine.cancel(child, operation_id="operator-cancel")
+
+    assert result.status == "cancelled"
+    event = next(
+        event for event in services.events.events if event.event_type == "WorkflowCancelled"
+    )
+    assert event.invocation_id == child.invocation_id
+    assert event.parent_invocation_id == parent.invocation_id
+    assert event.parent_task_reference == "/do/0/child"
+    await engine.shutdown()
+    services.close()
+
+
 def test_invocation_store_rejects_invalid_terminal_transition(tmp_path):
     from open_workflow_agent.errors import InvocationStateError
     from open_workflow_agent.persistence import InvocationStore

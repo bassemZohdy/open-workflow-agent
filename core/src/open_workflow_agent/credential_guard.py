@@ -127,7 +127,10 @@ def capture_authentication_headers(headers: Mapping[str, str]) -> None:
     values: list[str] = []
     for name, value in headers.items():
         values.append(value)
-        if name.lower() in {"authorization", "proxy-authorization"} and value.startswith("Bearer "):
+        if (
+            name.lower() in {"authorization", "proxy-authorization"}
+            and value[:7].lower() == "bearer "
+        ):
             values.append(value[7:])
     capture_credentials(*values)
 

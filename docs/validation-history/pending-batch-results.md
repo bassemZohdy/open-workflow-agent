@@ -2148,3 +2148,36 @@ deferred task.
 On exact-source CI run [39463496981](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39463496981), the Windows native lifecycle and receiver recovery job ran for 20m11s and was cancelled at its `timeout-minutes: 20` job limit. The job had not produced a test failure summary; its command runs the expanded receiver, lifecycle, A2A, MCP, and native SQLite recovery selectors. An earlier source completed the same lane in 19m45s, leaving insufficient headroom as the selector grew.
 
 The workflow cap is raised to 30 minutes, and `tests/ci/test_a2a06_ci_selection.py` now guards that value. The job is not treated as a test pass; exact-source hosted requalification remains required. This is an actionable CI timeout correction, not a deferred task.
+
+## Consolidated S3/S4 backlog batch — exact-source hosted requalification pending
+
+The first exact-source run for the 30-minute Windows cap, commit `370d9cd`,
+completed PostgreSQL, Agent Framework, External Sandbox, Security and Docs
+successfully. Root Quality had two failures. The workflow regression still
+expected the previous 20-minute cap; its assertion now expects 30 minutes and
+the focused validation-workflow selectors pass. The other failure was
+`test_control_fence_stops_only_current_generation_and_preserves_live_job[False]`:
+under the hosted runner, its child process did not create the ready marker within
+the fixture's five-second startup window. The fixture now allows a 15-second
+ready window and has a 25-second operation budget; both current and stale
+generation cases pass locally. Neither correction changes runtime behavior.
+
+The new S3-05 terminal-decision replay witness initially passed the
+expiry-only `original_expiry` flag to the public wrapper, which intentionally
+does not expose it, and inspected the record before the asynchronous expiry
+observer had committed. It now replays through the internal expiry operation
+and waits for durable terminal state. Approved, rejected and expired SQLite
+process-recovery cases pass for both ADK and LangGraph. The S3-07 changed-policy
+recovery case passes for both engines on SQLite. The added S4-02 `last_value`
+channel integration, S3-03/04/06/08 core regressions, S4-01 admission check,
+S4-05 cancellation correlation and S4-07 release metadata guard also pass their
+focused selections.
+
+The final local root command
+`uv run pytest -q --cov=core/src/open_workflow_agent --cov-fail-under=90 --cov-precision=2`
+passed **4,919 tests, skipped 3,195, and reported 90.53% coverage** in 47m24s.
+Repository formatting (477 files), Ruff lint, strict mypy (135 source files),
+Markdown relative links, root/core package builds, the Node 24 package tests
+(10 passed), and the production npm audit (zero vulnerabilities) passed.
+Fresh exact-source hosted requalification for the resulting pushed batch remains
+required; no unchecked task is closed by these local results.

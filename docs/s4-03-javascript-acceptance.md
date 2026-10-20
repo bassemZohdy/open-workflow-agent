@@ -12,6 +12,12 @@ The package remains outside production images and releases. S4-03 stays open
 until the independent engine implementation, relevant inventory tests, and
 repository contract/native acceptance gates are complete and recorded.
 
+An additional authored loader slice caps workflow source at 1 MiB of UTF-8
+bytes before YAML parsing. Its intended deterministic boundary cases are the
+exact limit and one byte above it. This admission bound does not qualify runtime
+request limits, execution behavior, or cross-language parity; the slice awaits
+the final validation batch.
+
 Initial local smoke evidence is recorded after running the pinned package's
 `npm ci` and `npm test` commands on Node 24.16.0 / npm 12.0.2. `npm ci`
 installed from the committed lockfile, TypeScript compilation succeeded, and

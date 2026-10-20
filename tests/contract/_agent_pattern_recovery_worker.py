@@ -219,6 +219,16 @@ async def run(directory, mode):
         role = config.agent.roles[STOP_ROLE[pattern]]
         if scenario["boundary"] == "role-change":
             role.instruction += " Different deployment revision."
+        elif scenario["boundary"] == "policy-change":
+            role.policy = {
+                "rules": [
+                    {
+                        "actions": ["catalog.call"],
+                        "resources": ["*"],
+                        "roles": ["worker"],
+                    }
+                ]
+            }
         elif scenario["boundary"] == "model-change":
             role.model.name += "-changed"
         elif tool_binding_change:
@@ -309,7 +319,12 @@ async def run(directory, mode):
             before_counts = {
                 name: sum(row[0] == name for row in ledger(directory)) for name in script
             }
-            if scenario["boundary"] in {"role-change", "model-change", "tool-change"}:
+            if scenario["boundary"] in {
+                "role-change",
+                "policy-change",
+                "model-change",
+                "tool-change",
+            }:
                 plan = compiled(services, pattern)
                 before = snapshot(services, handle, backend)
                 with pytest.raises(OwaError):

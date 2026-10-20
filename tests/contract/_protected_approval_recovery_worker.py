@@ -26,8 +26,10 @@ from _protected_approval_fixtures import (
 from _recovery_failure_artifact import failure_artifact
 from _version_recovery_worker import native_snapshot
 from open_workflow_agent.errors import ApprovalAuthorizationError, OwaError
+from open_workflow_agent.protected_approval_service import mutate_protected
 from open_workflow_agent.protected_approval_store import REQUEST_POLICY
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
+from open_workflow_agent.security import Principal
 from open_workflow_agent.workflow import compile_workflow
 
 RAW = {"original": None, "nested": [True, False]}
@@ -174,6 +176,12 @@ async def run(directory, mode):
                 while time.time() < ready["expiry"]:
                     await asyncio.sleep(0.01)
             await services.start_protected_approvals()
+            async with asyncio.timeout(10):
+                while True:
+                    due_record = services.approvals.store.get(scenario["subject"])
+                    if due_record is not None and due_record.status == "expired":
+                        break
+                    await asyncio.sleep(0.02)
         if scenario["case"] in {"reassign", "escalate"}:
             target = "reviewer-b" if scenario["case"] == "reassign" else "lead"
             record = services.approvals.store.get(scenario["subject"])
@@ -219,6 +227,37 @@ async def run(directory, mode):
                 value=None,
                 revision=2,
                 operation_key=scenario["subject"] + "-decision",
+            )
+        if scenario["case"] in {"approved", "rejected", "expired"}:
+            terminal = services.approvals.store.get(scenario["subject"])
+            assert terminal is not None and terminal.status == scenario["case"]
+            before_terminal_replay = approval_snapshot(
+                services, scenario["subject"], invocation.invocation_id
+            )
+            if scenario["case"] == "expired":
+                replayed_terminal = await mutate_protected(
+                    services.approvals,
+                    scenario["subject"],
+                    action="expired",
+                    actor=Principal("system:approval-expiry"),
+                    revision=1,
+                    operation_key="expiry:" + scenario["subject"],
+                    original_expiry=True,
+                )
+            else:
+                replayed_terminal = await services.approvals.decide(
+                    scenario["subject"],
+                    decision=scenario["case"],
+                    operator_id="reviewer-a",
+                    actor=actor(services, "reviewer-a"),
+                    value=None,
+                    revision=1,
+                    operation_key=scenario["subject"] + "-decision",
+                )
+            assert replayed_terminal.as_dict() == terminal.as_dict()
+            assert (
+                approval_snapshot(services, scenario["subject"], invocation.invocation_id)
+                == before_terminal_replay
             )
         if damaged:
             try:

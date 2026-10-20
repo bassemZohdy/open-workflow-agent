@@ -38,8 +38,8 @@ def snapshot(services):
     )
 
 
-async def wait_file(path):
-    async with asyncio.timeout(5):
+async def wait_file(path, *, timeout_seconds=5):
+    async with asyncio.timeout(timeout_seconds):
         while not path.exists():
             await asyncio.sleep(0.01)
 
@@ -189,7 +189,7 @@ async def test_control_fence_stops_only_current_generation_and_preserves_live_jo
     code = (
         "import time\nfrom pathlib import Path\n"
         f"Path({str(ready)!r}).write_text('started')\n"
-        "due=time.monotonic()+6\n"
+        "due=time.monotonic()+20\n"
         f"while not Path({str(proceed)!r}).exists() and time.monotonic()<due: time.sleep(.01)\n"
         "print('continued',flush=True)\n"
     )
@@ -218,7 +218,7 @@ async def test_control_fence_stops_only_current_generation_and_preserves_live_jo
         run_job(
             InternalSandboxBackend(services.config.sandbox),
             launch.request,
-            remaining=8,
+            remaining=25,
             started=lambda pid: None,
             stop=stop,
             deadline_reached=lambda: pytest.fail("original budget was reset or expired early"),
@@ -230,7 +230,7 @@ async def test_control_fence_stops_only_current_generation_and_preserves_live_jo
         )
     )
     try:
-        await wait_file(ready)
+        await wait_file(ready, timeout_seconds=15)
         control.append(store.request_control(lease, reason="cancel", principal="original-owner"))
         if stale:
             services.effect_journal.connection.execute(

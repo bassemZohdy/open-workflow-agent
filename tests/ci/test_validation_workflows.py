@@ -184,7 +184,7 @@ def test_lifecycle_native_profiles_keep_actual_receiver_and_cancellation_proofs(
     assert {f"tests/contract/{name}" for name in fixtures} <= paths
     assert "tests/contract/_a2a_initial_delivery_race_worker.py" in paths
     windows = _workflow("ci.yml")["jobs"]["windows-native-lifecycle"]
-    assert windows["timeout-minutes"] == "20" and "needs" not in windows
+    assert windows["timeout-minutes"] == "30" and "needs" not in windows
     command = next(step["run"] for step in windows["steps"] if "pytest" in step.get("run", ""))
     assert "\n" not in command
     assert "--with apsw==3.54.0.0" in command

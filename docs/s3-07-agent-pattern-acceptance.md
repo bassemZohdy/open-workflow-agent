@@ -30,11 +30,12 @@ model, so it does not resolve the credential. This new matrix awaits the final
 validation batch and does not close S3-07.
 
 The producer-stop matrix now also authors separate recovery mismatches for a
-changed model binding and changed tool allowlist, alongside the existing role
-instruction change. Each case snapshots common/native state before resume and
-requires rejection without provider dispatch or lease/state mutation. These
-actual-native ADK/LangGraph × SQLite/PostgreSQL cases are authored and await the
-final batch.
+changed model binding, changed tool allowlist, and changed role authorization
+policy, alongside the existing role instruction change. The policy case narrows
+the original role permission set after a producer stop. Each case snapshots
+common/native state before resume and requires rejection without provider
+dispatch or lease/state mutation. These actual-native ADK/LangGraph ×
+SQLite/PostgreSQL cases are authored and await the final batch.
 
 An additional focused contract regression is authored but unrun: a role policy
 allows catalog/model dispatch while denying `tool.invoke` for a tool that is

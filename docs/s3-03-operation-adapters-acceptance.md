@@ -95,7 +95,7 @@ common adapter; ADK and LangGraph use their own existing native checkpoints.
 | Construct | Authored finite behavior | Qualification still required |
 | --- | --- | --- |
 | HTTP output | Exact bytes become ASCII base64 for `raw`; JSON/text and response projections retain existing semantics, including explicit null. | Empty/binary/UTF-8/null and all output modes in common/shared suites. |
-| HTTP redirect | OWS status acceptance (`200–299`, or `200–399` when true) does not imply an automatic request to Location. | Known status errors, no redirected credential/destination access, bounded transport regression. |
+| HTTP redirect | OWS status acceptance (`200–299`, or `200–399` when true) does not imply an automatic request to Location. | Known status errors and no redirected credential/destination access remain required; a credentialed redirect regression now asserts the source receives its bearer token and the Location is never requested. It is authored and awaits final-batch validation. |
 | OpenAPI version | Exact OAS `3.0.3` and `3.2.0`, finite selected-operation profile. Other versions reject; this is not full parser/conformance support. | Both versions, valid and negative schemas, document provenance. |
 | Description | Bounded strict UTF-8 JSON/YAML; public GET has no inherited business auth or client certificate. No aliases, anchors, arbitrary tags, duplicate keys, nonfinite values, opaque SSLContext or custom TLS transport. | Deterministic negative controls and actual description/business listener. |
 | Bounds | Description/canonical data at most 1 MiB, 10,000 nodes, depth32; up to32 selected local references; up to64 parameters per scope and8 security alternatives. | Exact edge/overflow cases and total original deadline/cancellation. |

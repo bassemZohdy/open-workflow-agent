@@ -650,22 +650,51 @@ async def test_explicit_oauth_client_credentials_satisfy_declared_operation_scop
 
 @pytest.mark.parametrize("redirect", [False, True])
 @pytest.mark.asyncio
-async def test_ows_redirect_controls_status_acceptance_without_visiting_location(redirect):
+async def test_ows_redirect_controls_status_without_forwarding_credentials(redirect, monkeypatch):
+    monkeypatch.setenv("OPENAPI_REDIRECT_TOKEN", "redirect-secret")
+    auth = ProfileAuthentication(
+        SecurityConfig.model_validate(
+            {
+                "profiles": {
+                    "named": {
+                        "type": "bearer",
+                        "token": {"from_env": "OPENAPI_REDIRECT_TOKEN"},
+                    }
+                }
+            }
+        ),
+        "named",
+    )
     calls = []
 
     def receiver(request):
         calls.append(request)
+        assert request.headers["Authorization"] == "Bearer redirect-secret"
         return httpx.Response(302, content=b"moved", headers={"Location": "https://forbidden.test"})
 
     client = HttpClient(transport=httpx.MockTransport(receiver))
     if redirect:
         assert (
-            await call_openapi(client, payload(redirect=True), selection=selection(), timeout=1)
+            await call_openapi(
+                client,
+                payload(redirect=True),
+                selection=selection(profile="named"),
+                timeout=1,
+                authentication=auth,
+                credential_endpoints={"named": (TARGET,)},
+            )
             == "moved"
         )
     else:
         with pytest.raises(ToolError) as known:
-            await call_openapi(client, payload(), selection=selection(), timeout=1)
+            await call_openapi(
+                client,
+                payload(),
+                selection=selection(profile="named"),
+                timeout=1,
+                authentication=auth,
+                credential_endpoints={"named": (TARGET,)},
+            )
         assert known.value.details["status"] == 302 and not isinstance(
             known.value, _OpenApiOutcomeUncertain
         )

@@ -8,7 +8,9 @@ SHA-256 pin before use. A deterministic native-graph smoke test remains
 separate from workflow validation.
 
 `loadWorkflowDefinition(source)` returns a validated definition or raises a
-`WorkflowDefinitionError` with a bounded diagnostic. Schema validity is only
+`WorkflowDefinitionError` with a bounded diagnostic. It rejects source above
+1 MiB measured as UTF-8 before parsing; this local admission bound does not
+replace deployment request limits. Schema validity is only
 the first admission layer: this package does not compile or execute workflows,
 validate the OWA Portable Profile, provide an engine adapter, or establish
 parity with Python. Unsupported execution features must remain explicit when

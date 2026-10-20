@@ -16,6 +16,7 @@ from open_workflow_agent.config import SandboxConfig
 from open_workflow_agent.credential_guard import (
     LiteralCredentialGuard,
     active_projection_guard,
+    capture_authentication_headers,
     credential_scope,
 )
 from open_workflow_agent.errors import SandboxPolicyError, ToolError
@@ -221,6 +222,15 @@ def test_short_credential_cannot_reappear_in_the_redaction_marker_or_conflicting
     with pytest.raises(ToolError):
         another.project({"private-credential": 1, "[REDACTED]": 2})
     assert "private-credential" not in repr(another)
+
+
+def test_bearer_scheme_case_does_not_change_credential_projection():
+    secret = "case-insensitive-bearer-secret-592"
+    with credential_scope() as guard:
+        capture_authentication_headers({"authorization": "bearer " + secret})
+        assert guard.contains_literal(secret)
+        assert guard.text("peer echoed " + secret) == "peer echoed [REDACTED]"
+    assert active_projection_guard() is None
 
 
 def test_guard_finite_bounds_and_exception_exit_do_not_leak_into_next_call():

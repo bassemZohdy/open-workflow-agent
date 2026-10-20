@@ -890,6 +890,8 @@ class WorkflowEngine:
                     workflow_name=handle.workflow_name,
                     workflow_version=handle.workflow_version,
                     engine=handle.engine,
+                    parent_invocation_id=handle.parent_invocation_id,
+                    parent_task_reference=handle.parent_task_reference,
                     operation_id=operation_id,
                     status="cancelled",
                     reason="cancelled",

@@ -167,6 +167,49 @@ async def test_native_channel_reducer_replaces_last_value_and_appends_json_array
     assert state == {"items": ["seed", "next"], "status": "new"}
 
 
+async def test_native_last_value_channel_is_admitted_written_and_read_by_a_later_task(services):
+    workflow = generate_default_workflow()
+    workflow["document"]["metadata"] = {
+        "owa": {
+            "nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}],
+            "nativeExtensionData": {
+                "langgraph.channels@1.0.0": {
+                    "channels": [
+                        {
+                            "id": "status",
+                            "reducer": "last_value",
+                            "initial": {"phase": "created"},
+                            "writes": [{"task": "/do/0"}],
+                        }
+                    ],
+                    "reads": [
+                        {
+                            "task": "/do/1",
+                            "as": "owa_native_channels",
+                            "channels": ["status"],
+                        }
+                    ],
+                }
+            },
+        }
+    }
+    workflow["do"] = [
+        {"write_status": {"set": {"phase": "complete", "count": 2}}},
+        {"read_status": {"set": {"observed": "${ $owa_native_channels.status }"}}},
+    ]
+    plan = compile_workflow(workflow)
+    engine = LangGraphWorkflowEngine()
+    await engine.initialize(services)
+    engine.native.database_path = None
+    handle = _handle(services, plan)
+
+    result = await engine.invoke(plan, handle, {})
+
+    assert result.status == "completed", result.error
+    assert result.output == {"observed": {"phase": "complete", "count": 2}}
+    assert not hasattr(result, "native_channels")
+
+
 async def test_native_channel_oversized_writer_fails_before_checkpoint(services):
     workflow = generate_default_workflow()
     workflow["document"]["metadata"] = {

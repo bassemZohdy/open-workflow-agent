@@ -22,6 +22,16 @@ before and after acceptance, plus serialized release concurrency, prevent an
 older commit from publishing current tags. Formal GitHub release creation
 waits for both runtime and controller publication.
 
+A release-workflow regression now requires both runtime and controller image
+publication paths to carry the verified source URL, project version, and exact
+workflow-run commit as OCI labels, while preserving SBOM and provenance
+generation. This guard is authored and awaits the final validation batch.
+
+The `370d9cd` hosted root-quality run also exposed a 5-second readiness timeout
+in a sandbox control-fence fixture under runner load. The test now provides a
+larger startup/deadline margin; both stale and current-generation cases pass
+locally. Exact-head hosted requalification remains pending.
+
 Final acceptance must validate the Release workflow, exact-head gate selectors,
 all required hosted workflows, package/image metadata, and rollback records on
 one unchanged source commit. This record does not claim a release, production

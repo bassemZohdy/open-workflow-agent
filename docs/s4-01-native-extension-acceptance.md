@@ -47,5 +47,9 @@ portable/equivalence evidence where required.
 Focused Python checks are in `tests/core/test_workflow.py`. They cover the
 declaration grammar and finite limits, exact-version capability binding,
 missing-capability rejection, and rejection of unsupported scoped
-declarations. This record does not close S4-01's broader feature inventory or
-independent JavaScript qualification.
+declarations. A deterministic regression now also checks that repeated
+capability verification rejects a required extension if the engine no longer
+advertises its exact version after an earlier successful check. This regression
+is authored and awaits the
+consolidated validation batch. This record does not close S4-01's broader
+feature inventory or independent JavaScript qualification.

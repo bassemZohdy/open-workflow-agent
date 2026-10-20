@@ -2,9 +2,11 @@
 
 Portable `SandboxInputFile` requests now validate path syntax under both POSIX
 and Windows grammars. Drive-qualified paths, UNC paths and backslash traversal
-are rejected before a request reaches a different platform. Focused regressions
-cover these forms; the full cross-platform and deployment acceptance gates
-remain unchanged.
+are rejected before a request reaches a different platform. Windows device
+names, alternate data stream syntax, invalid characters and trailing-dot/space
+aliases are rejected as well, including when nested below a directory. Focused
+regressions cover these forms; the full cross-platform and deployment
+acceptance gates remain unchanged.
 
 Status: source authored, unqualified. S3-04 remains unchecked. Registry
 configuration/execution errors now propagate without being mislabeled as source

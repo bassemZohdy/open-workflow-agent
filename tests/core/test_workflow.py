@@ -119,6 +119,35 @@ async def test_versioned_native_metadata_requires_exact_engine_capability():
         await WrongVersionEngine().compile(plan)
 
 
+def test_required_native_extension_is_rechecked_at_execution_admission():
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "x",
+            "name": "x",
+            "version": "1.0.0",
+            "metadata": {
+                "owa": {"nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}]}
+            },
+        },
+        "do": [{"finish": {"set": {"done": True}}}],
+    }
+    plan = compile_workflow(workflow)
+
+    class RevocableExtensionEngine(WorkflowEngine):
+        supports_extension = True
+
+        def capabilities(self) -> EngineCapabilities:
+            extensions = ("langgraph.channels@1.0.0",) if self.supports_extension else ()
+            return EngineCapabilities(engine="test", native_extensions=extensions)
+
+    engine = RevocableExtensionEngine()
+    engine._verify_workflow_capabilities(plan)
+    engine.supports_extension = False
+    with pytest.raises(UnsupportedWorkflowFeature, match="required native workflow extension"):
+        engine._verify_workflow_capabilities(plan)
+
+
 @pytest.mark.asyncio
 async def test_unsupported_optional_native_extension_is_inert_and_not_advertised():
     workflow = {

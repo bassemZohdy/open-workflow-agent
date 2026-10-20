@@ -6,6 +6,7 @@ import { Validator } from "@cfworker/json-schema";
 import { parse } from "yaml";
 
 export const OPEN_WORKFLOW_DSL = "1.0.3";
+export const MAX_WORKFLOW_SOURCE_BYTES = 1_048_576;
 export const OFFICIAL_SCHEMA_SHA256 =
   "704ef5e91c5d823167dd8751794edb1dd1a6f9a3bdf9bfd389bf9c6b23ae3816";
 
@@ -59,6 +60,10 @@ export async function loadWorkflowDefinition(
   source: string,
   schemaPath = defaultSchemaPath,
 ): Promise<WorkflowDefinition> {
+  if (Buffer.byteLength(source, "utf8") > MAX_WORKFLOW_SOURCE_BYTES) {
+    throw new WorkflowDefinitionError("workflow document exceeds the 1 MiB source limit");
+  }
+
   let definition: unknown;
   try {
     definition = parse(source);

@@ -14,6 +14,12 @@ all three terminal outcomes, a nonterminal event, negative duration, rendered
 histogram samples, and identifier exclusion. API and configuration docs
 describe the metric as in-process and runtime-local.
 
+This source batch also propagates a child's persisted parent invocation and
+canonical parent task reference on an operator-issued `WorkflowCancelled`
+event when the child has no active worker. A focused regression asserts the
+history link. This is authored and awaits the final batch; it adds no new
+identity source and makes no durable-history claim.
+
 The broader S4-05 scope remains open: durable execution history across process
 restarts, explicit trace-context and causation propagation, richer authenticated
 provenance, lifecycle correlation, and replay diagnostics tied to common

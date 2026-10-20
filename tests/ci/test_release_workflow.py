@@ -162,6 +162,32 @@ def test_release_publishes_controller_images_for_both_architectures() -> None:
     assert set(published[0]["platforms"].split(",")) == {"linux/amd64", "linux/arm64"}
 
 
+def test_every_published_image_carries_verified_source_version_and_revision() -> None:
+    workflow: dict[str, Any] = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    )
+    expected_labels = {
+        "org.opencontainers.image.source=https://github.com/${{ github.repository }}",
+        "org.opencontainers.image.version=${{ needs.prepare.outputs.version }}",
+        "org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}",
+    }
+
+    for job_name in ("publish", "publish-controllers"):
+        steps = _steps(workflow["jobs"][job_name])
+        metadata = next(step for step in steps if step.get("uses") == "docker/metadata-action@v6")
+        published_build = next(
+            step
+            for step in steps
+            if step.get("uses") == "docker/build-push-action@v7"
+            and step.get("with", {}).get("push") is True
+        )
+        labels = set(metadata["with"]["labels"].splitlines())
+        assert expected_labels <= labels
+        assert published_build["with"]["labels"] == "${{ steps.meta.outputs.labels }}"
+        assert published_build["with"]["provenance"] == "mode=max"
+        assert published_build["with"]["sbom"] is True
+
+
 def test_controller_publication_reuses_the_preflight_cache_scopes() -> None:
     workflow: dict[str, Any] = yaml.safe_load(
         (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")

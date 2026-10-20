@@ -41,6 +41,23 @@ def test_input_files_reject_windows_absolute_and_traversal_paths(path: str) -> N
         SandboxInputFile(path=path, content=b"")
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "input/NUL",
+        "input/CON.txt",
+        "input/Lpt1.log",
+        "input/data.json:alternate",
+        "input/trailing-dot.",
+        "input/trailing-space ",
+        "input/question?.txt",
+    ],
+)
+def test_input_files_reject_windows_device_and_alias_paths(path: str) -> None:
+    with pytest.raises(ValueError, match="not portable to Windows"):
+        SandboxInputFile(path=path, content=b"")
+
+
 def test_internal_backend_maps_to_honest_portable_capabilities(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
         SandboxConfig(

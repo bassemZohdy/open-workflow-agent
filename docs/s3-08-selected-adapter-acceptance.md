@@ -12,10 +12,11 @@ direct LLM call returns a finite tool-request DTO unchanged without dispatching
 an undeployed tool. The case awaits the final validation batch; no wider provider
 or tool-loop portability claim follows from it.
 
-Provider tool-call IDs and argument strings now turn unpaired Unicode
-surrogates into sanitized common `ModelError` responses instead of leaking a
-raw encoding exception. Focused finite-DTO regression cases cover both fields;
-the broader selected-adapter and backend qualification remains open.
+Provider tool-call IDs, function names and argument strings now have focused
+finite-DTO regression coverage for unpaired Unicode surrogates. They are
+rejected as sanitized common `ModelError` responses rather than leaking raw
+encoding exceptions. The broader selected-adapter and backend qualification
+remains open.
 
 ## Finite selected scope
 

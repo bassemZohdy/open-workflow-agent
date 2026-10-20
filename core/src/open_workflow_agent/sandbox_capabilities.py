@@ -43,6 +43,31 @@ class SandboxInputFile:
         ):
             raise ValueError("sandbox input file path must be relative and traversal-free")
 
+        # Windows reserves several path characters and device names even when
+        # they appear below an ordinary directory (for example, ``input/NUL``
+        # or ``input/data.json:stream``). Reject these in the portable contract
+        # so an accepted POSIX-authored request cannot acquire different file
+        # semantics when staged by a Windows backend.
+        windows_invalid = '<>:"|?*'
+        reserved_devices = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
+        components = self.path.split("/")
+        for component in components:
+            base_name = component.split(".", 1)[0].rstrip(" .").upper()
+            numbered_device = (
+                len(base_name) == 4
+                and base_name[:3] in {"COM", "LPT"}
+                and base_name[3] in "123456789¹²³"
+            )
+            if (
+                component.endswith((".", " "))
+                or any(
+                    ord(character) < 32 or character in windows_invalid for character in component
+                )
+                or base_name in reserved_devices
+                or numbered_device
+            ):
+                raise ValueError("sandbox input file path is not portable to Windows")
+
 
 @dataclass(frozen=True, slots=True)
 class SandboxResourceRequirements:

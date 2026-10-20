@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   loadWorkflowDefinition,
+  MAX_WORKFLOW_SOURCE_BYTES,
   WorkflowDefinitionError,
 } from "../src/workflow-definition.js";
 
@@ -62,6 +63,37 @@ test("does not expose malformed YAML source excerpts in parse errors", async () 
       return true;
     },
   );
+});
+
+test("accepts a valid source at the UTF-8 byte limit", async () => {
+  const paddingBytes = MAX_WORKFLOW_SOURCE_BYTES - Buffer.byteLength(minimalDefinition, "utf8");
+  const source = `${minimalDefinition}#${"x".repeat(paddingBytes - 2)}\n`;
+
+  assert.equal(Buffer.byteLength(source, "utf8"), MAX_WORKFLOW_SOURCE_BYTES);
+  await loadWorkflowDefinition(source);
+});
+
+test("rejects source above the UTF-8 byte limit before YAML parsing", async () => {
+  const paddingBytes = MAX_WORKFLOW_SOURCE_BYTES + 1 - Buffer.byteLength(minimalDefinition, "utf8");
+  const source = `${minimalDefinition}#${"x".repeat(paddingBytes - 2)}\n`;
+
+  assert.equal(Buffer.byteLength(source, "utf8"), MAX_WORKFLOW_SOURCE_BYTES + 1);
+  await assert.rejects(
+    loadWorkflowDefinition(source),
+    (error: unknown) => {
+      assert.ok(error instanceof WorkflowDefinitionError);
+      assert.equal(error.message, "workflow document exceeds the 1 MiB source limit");
+      return true;
+    },
+  );
+});
+
+test("measures the source limit in UTF-8 bytes rather than JavaScript code units", async () => {
+  const source = `${minimalDefinition}#${"é".repeat(MAX_WORKFLOW_SOURCE_BYTES / 2)}`;
+
+  assert.ok(source.length < MAX_WORKFLOW_SOURCE_BYTES);
+  assert.ok(Buffer.byteLength(source, "utf8") > MAX_WORKFLOW_SOURCE_BYTES);
+  await assert.rejects(loadWorkflowDefinition(source), /exceeds the 1 MiB source limit/);
 });
 
 test("rejects a schema file that differs from the reviewed official digest", async () => {

@@ -61,6 +61,13 @@ commit and no paid API. Windows and PostgreSQL selectors are added to existing
 mandatory jobs; their selectors, outer limits and image dependencies are
 retained.
 
+The actual-process recovery worker also replays each approved, rejected and
+expired terminal operation after restart using its original actor, operation
+key, revision and value. It requires the durable record and complete approval
+snapshot (including revisioned audit and inbox evidence) to remain unchanged.
+This adds coverage to the existing engine/backend matrix; it is authored and
+unqualified until the full batch passes.
+
 Qualification requires a coherent unchanged-source batch, relevant complete suites,
 actual principal SQLite/PostgreSQL and process evidence, platform gates, fresh
 package/image/security/provenance evidence, API snapshot validation and source-linked

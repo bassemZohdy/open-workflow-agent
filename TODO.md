@@ -194,7 +194,10 @@ treated as a deferred task or as additional feature completion.
   granted OpenAPI profile and endpoint bindings while catalog credentials stay
   scoped to catalog fetches; native ADK/LangGraph × SQLite/PostgreSQL regressions
   are authored. The focused SQLite selections pass locally; exact-source hosted
-  and PostgreSQL qualification is pending. S3-03 remains open.
+  and PostgreSQL qualification is pending. A credentialed redirect regression
+  now verifies that a named bearer credential reaches only the selected source
+  and never the redirect Location; it awaits final-batch validation. S3-03
+  remains open.
   Background execution stays default-off, and cross-adapter, backend, platform,
   lifetime, packaging and broader hosted acceptance remain open.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
@@ -203,8 +206,10 @@ treated as a deferred task or as additional feature completion.
   into a user-facing policy error, while registry configuration/execution
   defects (including unrelated common unsupported-feature errors) propagate
   unchanged. Portable sandbox input paths now reject Windows drive, UNC and
-  backslash-traversal forms before cross-platform consumption; focused cases
-  pass locally. Required profile and deployment acceptance remains
+  backslash-traversal forms, reserved Windows device names, alternate data
+  streams, invalid characters and trailing-dot/space aliases before
+  cross-platform consumption. New cases await final-batch validation. Required
+  profile and deployment acceptance remains
   open. See the
   [acceptance plan](docs/s3-04-executable-source-acceptance.md).
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
@@ -217,7 +222,11 @@ treated as a deferred task or as additional feature completion.
   and checks the record/audit remain unchanged; its ADK/LangGraph × SQLite/
   PostgreSQL matrix and hosted requalification remain pending. The expired-
   approval fixture now decouples invocation ownership from its short approval
-  deadline; independent-SDK requalification also remains pending. See the
+  deadline. The actual-process worker now replays approved, rejected and
+  expired terminal decisions with their original actor, key, revision and
+  value, then checks the complete durable approval snapshot remains unchanged;
+  this is authored and awaits the final batch. Independent-SDK and hosted
+  requalification remain pending. See the
   [acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
   [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and authorization within existing contracts. Delegated token exchange and consent remain conditional S4-11 work.
@@ -227,7 +236,9 @@ treated as a deferred task or as additional feature completion.
   External-catalog credentials are restricted to the normalized HTTPS origin
   (scheme, host and effective port), with focused resolver coverage for cross-
   port/scheme denial and default-port equivalence. Full qualification remains
-  open.
+  open. Credential projection now extracts Bearer values regardless of
+  authorization-scheme casing; its lowercase-scheme echo regression is authored
+  and awaits final-batch validation.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
   Eight finite recipe families and named role bindings are authored; hosted
   acceptance remains open. A focused real-native role-policy test passes on
@@ -236,18 +247,21 @@ treated as a deferred task or as additional feature completion.
   `from_env` references without a known environment canary. Its injected fake
   model does not resolve the credential. Recovery regressions also vary the
   model binding and tool allowlist and require rejection before provider or
-  state mutation; authored, not yet run. PostgreSQL and the full eight-family
-  matrix remain pending. See the
+  state mutation; a new recovery case also rejects a changed role authorization
+  policy before provider or state mutation across the native engine/database
+  matrix. These additions are authored and await final-batch validation.
+  PostgreSQL and the full eight-family matrix remain pending. See the
   [acceptance plan](docs/s3-07-agent-pattern-acceptance.md) and
   [timing evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
   Selected finite adapters and grouped corrections are authored. A new
   cross-engine/backend regression checks direct LLM tool-request pass-through
   without dispatching an undeployed tool. Unpaired surrogate characters in
-  provider tool IDs or arguments now map to sanitized `ModelError`s; focused
-  DTO regressions pass locally. Broader adapter/backend qualification remains
-  pending. See
-  [the acceptance plan](docs/s3-08-selected-adapter-acceptance.md). Qualification remains pending.
+  provider tool IDs, function names or arguments now map to sanitized
+  `ModelError`s; the function-name regression is authored and awaits validation,
+  while the other focused DTO regressions pass locally. Broader adapter/backend qualification remains
+  pending. See the
+  [acceptance plan](docs/s3-08-selected-adapter-acceptance.md).
 
 ## Stage 4 — Advanced features and full verification
 
@@ -255,8 +269,10 @@ treated as a deferred task or as additional feature completion.
   The bounded declaration and exact engine-capability gate are authored in
   standard `document.metadata` without changing the official schema; focused
   core tests pass. S4-02's exact LangGraph channel extension is the first
-  capability using this gate; broader tracker coverage and hosted
-  qualification remain open.
+  capability using this gate. A new regression withdraws the exact extension
+  after an initial successful capability check and verifies a subsequent check
+  rejects it; authored, awaiting final-batch validation. Broader tracker
+  coverage and hosted qualification remain open.
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
   The first scoped channel/reducer slice is authored for the exact
   `langgraph.channels@1.0.0` extension using private reducer-backed LangGraph
@@ -264,14 +280,18 @@ treated as a deferred task or as additional feature completion.
   A LangGraph × SQLite/PostgreSQL process-stop regression now checks the
   committed reducer delta survives restart without duplication; the SQLite
   selection passes locally and the PostgreSQL selection awaits hosted CI.
-  Broader S4-02 features remain open. See
+  A `last_value` integration regression now exercises exact extension
+  admission, a writer task, and a later reader binding; it is authored and
+  awaits final-batch validation. Broader S4-02 features remain open. See
   [the S4-02 acceptance record](docs/s4-02-native-channels-acceptance.md).
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   An optional pinned LangGraph/TypeScript scaffold and native smoke test now
   exist under `engines/langgraph-js`. Its loader validates YAML/JSON against the
   SHA-256-pinned official OWS 1.0.3 schema and sanitizes malformed-YAML errors;
-  local Node tests and the production dependency audit pass. CI now runs the
-  isolated check. The package does not compile or execute OWS definitions and
+  local Node tests and the production dependency audit pass. The loader now
+  rejects source above 1 MiB measured as UTF-8 before parsing, with boundary
+  and multibyte cases authored for the final batch. CI now runs the isolated
+  check. The package does not compile or execute OWS definitions and
   has no shared-fixture parity; implement the engine adapter and independent
   acceptance before any parity claim. Frozen predecessor sources remain
   reference-only.
@@ -290,6 +310,9 @@ treated as a deferred task or as additional feature completion.
   engine and terminal outcome, with privacy/outcome tests passing locally and
   API/configuration docs validated. Durable cross-process history, trace-context and
   causation propagation, richer provenance, and replay diagnostics remain open.
+  An idle-child operator cancellation now also carries the persisted parent
+  invocation and task reference into its lifecycle event; its correlation test
+  is authored for final-batch validation.
   See the [observability acceptance slice](docs/s4-05-observability-acceptance.md).
 - [ ] **S4-06** (M) — Run matched latency/CPU/memory/concurrency/persistence/recovery benchmarks; publish measured results.
   A separate matched-profile harness now records ADK/LangGraph × SQLite/
@@ -320,7 +343,11 @@ treated as a deferred task or as additional feature completion.
   Sandbox, Security and Docs results; Agent Framework remains optional. These
   guards and revised main-push triggers pass local workflow tests; exact-head
   hosted results remain pending. CI now includes a Node 24 job for the isolated
-  JavaScript schema loader.
+  JavaScript schema loader. A regression now guards source/version/exact-commit
+  OCI labels and retained SBOM/provenance generation on both release image
+  paths; it awaits final-batch validation. The older root-quality run also
+  exposed a hosted child-start timeout in a sandbox control-fence test; its
+  startup/deadline margin is widened and the focused two-case regression passes.
   Remaining S4-07 release/rollback and broader capability/version acceptance
   stay open. See the [release gate record](docs/s4-07-release-gates-acceptance.md).
 - [ ] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.
