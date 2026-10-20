@@ -9,6 +9,7 @@ import ssl
 from dataclasses import replace
 from uuid import NAMESPACE_URL, uuid5
 
+import _a2a_sdk_fixture
 import httpx
 import pytest
 from _a2a_sdk_fixture import peer_card, sdk_a2a_fixture
@@ -27,6 +28,8 @@ from open_workflow_agent.security import ProfileAuthentication, SecurityConfig
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.tools import ToolDefinition, ToolRegistry
 from open_workflow_agent.workflow import compile_workflow
+from starlette.responses import RedirectResponse
+from starlette.routing import Route
 
 METHODS = {
     "SendMessage": {"message": {"parts": [{"text": "hello"}]}},
@@ -697,6 +700,59 @@ async def test_actual_tls_card_selected_foreign_origin_is_rejected_before_creden
             rendered_error = str(error.value) + json.dumps(error.value.as_dict())
             assert "private-local-secret" not in rendered_error
             assert "local-client" not in rendered_error
+
+
+@pytest.mark.asyncio
+async def test_actual_tls_authenticated_a2a_redirect_is_not_followed(monkeypatch, tmp_path):
+    """An authorized TLS peer cannot forward an A2A credential through a redirect."""
+    secret = "selected-tls-business-secret"
+    monkeypatch.setenv("A2A_TEST_SECRET", secret)
+
+    with auth_tls_receiver(tmp_path) as tls:
+        business_requests = []
+
+        async def redirect(request):
+            business_requests.append((dict(request.headers), await request.body()))
+            return RedirectResponse(f"{tls.origin}/resource", status_code=307)
+
+        def redirect_route(_peer, path, **_kwargs):
+            return [Route(path, redirect, methods=["POST"])]
+
+        monkeypatch.setattr(_a2a_sdk_fixture, "create_jsonrpc_routes", redirect_route)
+        async with sdk_a2a_fixture(network=True, tls=tls, require_client_cert=False) as (
+            transport,
+            calls,
+            endpoint,
+        ):
+            http = HttpClient(
+                transport=transport,
+                allowed_hosts={"127.0.0.1"},
+                verify_tls=tls.ca_bundle,
+            )
+            origin = endpoint.removesuffix("/a2a")
+            card = await fetch_validate_card(
+                http, {"endpoint": origin + "/.well-known/agent-card.json"}, timeout=2
+            )
+            authentication = named_authentication("bearer", http)
+            http.authentication = authentication
+            value = payload("SendMessage", endpoint)
+            value["agentCard"] = card
+            value["endpoint"] = endpoint
+
+            with pytest.raises(_A2AOutcomeUncertain) as error:
+                await ProtocolServices(
+                    http, a2a_credential_endpoints={"selected": (endpoint,)}
+                ).call("a2a", value)
+
+            assert error.value.details["reason"] == "transport_failure"
+            assert len(calls) == 2 and calls[0]["method"] == "GET"
+            assert calls[1]["method"] == "POST"
+            assert calls[1]["headers"][b"authorization"] == ("Bearer " + secret).encode()
+            assert len(business_requests) == 1
+            assert business_requests[0][0]["authorization"] == "Bearer " + secret
+            assert tls.requests == []
+            rendered_error = str(error.value) + json.dumps(error.value.as_dict())
+            assert secret not in rendered_error
 
 
 @pytest.mark.asyncio

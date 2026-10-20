@@ -1926,7 +1926,7 @@ remain open.
 
 ## A2A native owner-read, PostgreSQL host-drain, and receipt-read follow-up — 2026-10-20
 
-This local candidate is based on pushed source `ab83bbd`. It adds native
+Pushed source `5584242` is based on candidate `ab83bbd`. It adds native
 foreign-principal `GetTask`/`SubscribeToTask` checks on ADK and LangGraph, extends
 late-provider host-drain coverage to actual PostgreSQL in both engine lanes,
 and repeats public `GetTask` after known-receipt recovery through JSON-RPC and
@@ -1935,11 +1935,17 @@ the existing selectors already collect the new owner-read and receipt-read
 cases.
 
 The focused SQLite selections passed on each principal engine: **6 passed,
-18 skipped** for ADK and **6 passed, 18 skipped** for LangGraph. The skips are
-the PostgreSQL variants, which require hosted database services. Ruff lint,
+18 skipped** for ADK and **6 passed, 18 skipped** for LangGraph; the skipped
+cases are PostgreSQL variants, which require hosted database services. The
+complete core A2A SDK HTTP file passed **250 tests**, including the actual-TLS
+redirect case. Its first run exposed an incorrect test expectation: a dispatched
+request with an unusable redirect is classified as an unresolved outcome, not
+a plain tool error. The test now asserts that contract and directly records
+that the second TLS receiver saw no request. Ruff lint,
 format, documentation links and `git diff --check` passed. An initial ADK
 invocation omitted its required native extra and collected 24 skips; rerunning
 with the declared engine extra produced the passing result above. No task or
-gate is complete from these tests alone. Fresh exact-source hosted CI and the
-PostgreSQL selections remain pending; durable Task/receipt expiry stays
+gate is complete from these tests alone. The hosted batch was canceled while
+the redirect witness was added; fresh exact-source hosted workflows and the
+PostgreSQL selections remain pending. Durable Task/receipt expiry stays
 excluded from the finite profile.

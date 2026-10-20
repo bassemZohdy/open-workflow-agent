@@ -171,12 +171,14 @@ treated as a deferred task or as additional feature completion.
   CI failed three Windows sandbox stdio cases whose 0.5-second fixture deadline
   expired during process startup or stream validation. Pushed candidate
   `ab83bbd` widens those bounds only for invalid/oversized/stderr/exit responses;
-  stall and partial-stream cases retain the 0.5-second bound. Its exact-source
-  hosted workflows are in progress. The current follow-up adds native foreign-
-  owner GetTask/SubscribeToTask checks, PostgreSQL host-drain coverage, and
-  repeated public GetTask reads after known-receipt recovery. Those grouped
-  SQLite cases pass locally on both engines; PostgreSQL and fresh hosted
-  qualification remain pending. The earlier exact-source correction batch `923302f` passed local focused tests and
+  stall and partial-stream cases retain the 0.5-second bound. Its hosted run was
+  superseded and canceled as the next batch was prepared. Pushed follow-up
+  `5584242` adds native foreign-owner GetTask/SubscribeToTask checks, PostgreSQL
+  host-drain coverage, and repeated public GetTask reads after known-receipt
+  recovery. Those grouped SQLite cases pass locally on both engines. A real-TLS
+  redirect credential-boundary case also passes in the local 250-case A2A SDK
+  HTTP suite. PostgreSQL and fresh exact-source hosted qualification remain
+  pending. The earlier exact-source correction batch `923302f` passed local focused tests and
   all six hosted workflows: main CI, PostgreSQL, Agent Framework, Docs,
   Security and External Sandbox. The sandbox image job passed on rerun after
   a transient APK repository TLS error. The hosted Windows timer, ownership/
