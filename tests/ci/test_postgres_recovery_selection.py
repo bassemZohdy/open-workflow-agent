@@ -103,12 +103,12 @@ def test_actual_postgresql_gate_selects_required_recovery_cases(
 @pytest.mark.parametrize(
     "fixture,expected",
     [
-        ("test_a2a_workflow_calls.py", 16),
+        ("test_a2a_workflow_calls.py", 17),
         ("test_a2a_sdk_inbound.py", 7),
         ("test_a2a_sdk_http_json_optional_methods.py", 1),
         ("test_a2a_sdk_malformed_streaming_admission.py", 2),
         ("test_a2a_task_routes.py", 2),
-        ("test_a2a_resume_context_rejection.py", 4),
+        ("test_a2a_resume_context_rejection.py", 8),
         ("test_a2a_initial_delivery.py", 7),
     ],
 )
