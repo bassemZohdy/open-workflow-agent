@@ -90,7 +90,8 @@ hash and all six hosted acceptance gates remain independent.
 
 ## Reviewed sources
 
-Authored OpenAPI witnesses, pending collection and execution:
+Scoped-batch OpenAPI evidence is recorded above; the following inventory also
+includes authored and unexecuted acceptance beyond that batch:
 
 - `tests/core/test_openapi_client.py`: 66 manually enumerated cases, including
   host-drain cancellation propagating after the response stream closes. Ordinary

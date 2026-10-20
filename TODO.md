@@ -159,42 +159,18 @@ treated as a deferred task or as additional feature completion.
   [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6).
 - [ ] **S3-02** (L) — Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.
   S2-09 and S3-01 are verified prerequisites. A2A02's finite native-call gate
-  and A2A05's finite process-recovery gate are verified at `923302f`; A2A01,
-  A2A03, A2A04 and A2A06-A2A08 remain partial;
-  interoperability, lifecycle, authority, recovery, streaming and backend
-  gates are not closed. Outbound calls are not automatically replayed after
-  possible acceptance; callers may explicitly resubscribe to a known task.
-  `bd934ee` corrected a known-result receipt regression after authorized
-  business cancellation while retaining host-drain and ownership-loss fences.
-  The last fully qualified source is `923302f`. Candidate `58c102c` passed
-  PostgreSQL, Agent Framework, Docs, Security and External Sandbox, while main
-  CI failed three Windows sandbox stdio cases whose 0.5-second fixture deadline
-  expired during process startup or stream validation. Pushed candidate
-  `ab83bbd` widens those bounds only for invalid/oversized/stderr/exit responses;
-  stall and partial-stream cases retain the 0.5-second bound. Its hosted run was
-  superseded and canceled as the next batch was prepared. Pushed follow-up
-  `5584242` adds native foreign-owner GetTask/SubscribeToTask checks, PostgreSQL
-  host-drain coverage, and repeated public GetTask reads after known-receipt
-  recovery. Those grouped SQLite cases pass locally on both engines. A real-TLS
-  redirect credential-boundary case also passed in the 250-case A2A SDK HTTP
-  suite at `4ce26e6`; Docs and Security passed, while CI, PostgreSQL, Agent
-  Framework and External Sandbox were still queued or running. The grouped
-  local batch now passes: 271 core A2A SDK HTTP tests, 16 selected cases per
-  native engine (PostgreSQL and cross-engine profiles remain for hosted jobs),
-  three CI selector tests, lint, format, type checks, builds and documentation
-  validation. It adds terminal-task owner privacy, ADK public-route native
-  history corruption, API-key/mTLS foreign-origin rejection, tenant-only
-  actual-TCP card rejection, and native late-provider/uncertain-A2A host-drain
-  evidence. Exact-source hosted and PostgreSQL qualification remains pending;
-  no gate or checkbox advances yet. The earlier exact-source correction
-  batch `923302f` passed local focused tests and all six hosted workflows: main CI, PostgreSQL, Agent Framework, Docs,
-  Security and External Sandbox. The sandbox image job passed on rerun after
-  a transient APK repository TLS error. The hosted Windows timer, ownership/
-  effect, task-checkpoint and root-quality lanes all passed. Durable
-  Task/receipt expiry is
-  explicitly outside the finite profile; no expiry capability is claimed. See
-  the [acceptance record](docs/s3-02-a2a-acceptance.md) and
-  [A2A follow-up validation history](docs/validation-history/pending-batch-results.md#a2a-authority-uncertain-effect-and-stream-follow-up-2026-10-20).
+  and A2A05's finite process-recovery gate are verified at `923302f`; the other
+  six gates remain partial. `980d9ca` is pushed and locally passed the grouped
+  A2A suite, selected native cases, static/type checks, builds and docs
+  validation. As of 2026-10-20 07:28 UTC, Docs, Security and External Sandbox
+  passed; CI, Agent Framework and PostgreSQL were in progress. The local
+  follow-up passed 275 core A2A SDK HTTP tests, 20 selected cases per native
+  engine (56 backend/engine skips each), three CI selector tests, static/type
+  checks, builds, docs validation and diff checks. Exact-source hosted
+  qualification is pending its push. No gate advances yet. Durable Task/receipt
+  expiry is outside the finite profile and no expiry capability is claimed. See the
+  [acceptance record](docs/s3-02-a2a-acceptance.md) and the
+  [exact-source candidate history](docs/validation-history/pending-batch-results.md#exact-source-candidate-980d9ca).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Exact source `923302f` passed the pure AsyncAPI descriptor selection
   (134 tests), gRPC SQLite recovery (22 cases per principal engine), background

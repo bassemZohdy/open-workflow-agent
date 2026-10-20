@@ -98,6 +98,13 @@ async def test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_busi
         assert calls[0]["body"]["id"] == "original-business-key"
         assert calls[0]["headers"][b"a2a-version"] == b"1.0"
         assert calls[0]["headers"][b"idempotency-key"] == b"original-business-key"
+        request_params = calls[0]["body"]["params"]
+        if method in {"GetTask", "CancelTask", "SubscribeToTask"}:
+            assert request_params == {"id": METHODS[method]["id"]}
+        elif method in {"SendMessage", "SendStreamingMessage"}:
+            assert request_params["message"]["parts"] == METHODS[method]["message"]["parts"]
+        else:
+            assert request_params == METHODS[method]
         assert_method_result(method, result)
         if method in {"SendMessage", "SendStreamingMessage"}:
             message = calls[0]["body"]["params"]["message"]
@@ -109,7 +116,28 @@ async def test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_busi
             assert result[0]["task"]["status"]["state"] == "TASK_STATE_WORKING"
             assert result[-1]["statusUpdate"]["status"]["state"] == "TASK_STATE_COMPLETED"
             assert all("jsonrpc" not in event for event in result)
-        else:
+        if method == "SendStreamingMessage":
+            assert [next(iter(event)) for event in result] == [
+                "task",
+                "artifactUpdate",
+                "statusUpdate",
+            ]
+            task = result[0]["task"]
+            artifact_update = result[1]["artifactUpdate"]
+            assert artifact_update["taskId"] == task["id"]
+            assert artifact_update["contextId"] == task["contextId"] == "context-id"
+            assert artifact_update["artifact"]["parts"] == [{"text": "hello"}]
+            assert artifact_update["lastChunk"] is True
+            status_update = result[2]["statusUpdate"]
+            assert status_update["taskId"] == task["id"]
+            assert status_update["contextId"] == task["contextId"]
+        if method == "SubscribeToTask":
+            assert [next(iter(event)) for event in result] == ["task", "statusUpdate"]
+            task = result[0]["task"]
+            status_update = result[1]["statusUpdate"]
+            assert task["id"] == status_update["taskId"] == "task-id"
+            assert task["contextId"] == status_update["contextId"] == "context-id"
+        if method not in {"SendStreamingMessage", "SubscribeToTask"}:
             assert isinstance(result, dict) and "jsonrpc" not in result and "result" not in result
 
 
@@ -1877,19 +1905,27 @@ async def test_correlated_valid_task_from_another_resource_is_uncertain(method):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("network", [False, True], ids=["asgi-wire", "actual-tcp-sdk"])
 @pytest.mark.parametrize("outcome", ["task", "message"])
 @pytest.mark.parametrize("method", ["SendMessage", "SendStreamingMessage"])
 async def test_existing_send_identity_is_preserved_in_task_and_message_alternatives(
-    outcome, method
+    network, outcome, method
 ):
-    async with sdk_a2a_fixture(outcome=outcome) as (transport, calls, endpoint):
+    async with sdk_a2a_fixture(network=network, outcome=outcome) as (
+        transport,
+        calls,
+        endpoint,
+    ):
         value = payload(method, endpoint)
         value["parameters"]["message"].update(taskId="existing-task", contextId="existing-context")
-        result = await ProtocolServices(client(transport, False)).call("a2a", value)
+        result = await ProtocolServices(client(transport, network)).call("a2a", value)
         response = result[0] if method == "SendStreamingMessage" else result
         item = response[outcome]
         assert item["id" if outcome == "task" else "taskId"] == "existing-task"
-        assert item["contextId"] == "existing-context" and len(calls) == 1
+        assert item["contextId"] == "existing-context"
+        business_calls = [call for call in calls if call["method"] == "POST"]
+        assert len(business_calls) == 1
+        assert business_calls[0]["body"]["method"] == method
 
 
 @pytest.mark.asyncio

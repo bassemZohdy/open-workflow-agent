@@ -7,6 +7,10 @@ first; earlier attempts remain historical and superseded. Passing subsets and
 fresh builds do not replace complete qualification. Local `tmp/` evidence is
 ignored and retained in its originating worktree.
 
+Scope note — 2026-10-20: durable A2A Task/receipt expiry is excluded from the
+finite S3-02 profile. Older entries that describe expiry as open or
+unqualified record prior scope and do not create an active acceptance gate.
+
 ### Exact-source qualification — `af4acd6`
 
 All six hosted workflows passed at exact source
@@ -1950,7 +1954,29 @@ the redirect witness was added; fresh exact-source hosted workflows and the
 PostgreSQL selections remain pending. Durable Task/receipt expiry stays
 excluded from the finite profile.
 
-## A2A terminal authority, corruption, credential and drain batch — local pass, hosted pending
+<a id="a2a-authority-uncertain-effect-and-stream-follow-up-2026-10-20"></a>
+<a id="exact-source-candidate-980d9ca"></a>
+
+## Exact-source candidate `980d9ca` — A2A terminal authority, corruption, credential and drain batch
+
+Source `980d9caff579a244780c1a7e3621f09901b26400` is pushed to
+`codex/required-backlog`. The local combined selections pass: core A2A SDK HTTP
+**271 passed**; ADK contracts **16 passed, 44 skipped**; LangGraph contracts
+**16 passed, 48 skipped**; CI selector checks **3 passed**. PostgreSQL variants
+and the opposite engine are skipped in the isolated local environments.
+Ruff, format, CI/package mypy, documentation validation, source/wheel builds
+and `git diff --check` passed. The SDK HTTP suite reports 92 HTTPX `verify`
+deprecation warnings; the ADK suite reports the existing ADK
+`BaseAgentConfig` deprecation warning.
+
+As of 2026-10-20 07:28 UTC, [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39385388915),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39385388839) and
+[External Sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39385388827)
+passed. [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39385388862),
+[Agent Framework](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39385388823)
+and [PostgreSQL](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39385388831)
+were in progress. These hosted runs do not include the later uncommitted test
+assertions or documentation edits.
 
 The current candidate adds five finite-profile witnesses: terminal native
 `GetTask`/`SubscribeToTask` privacy for foreign principals; authenticated ADK
@@ -1961,19 +1987,17 @@ late-provider host-drain behavior while an outbound A2A receipt is pending or
 completed. The ADK history test is selected by the ADK native lifecycle and
 PostgreSQL workflows; existing selectors collect the other contract cases.
 
-The local combined selections pass: core A2A SDK HTTP **271 passed**; ADK
-contracts **16 passed, 44 skipped**; LangGraph contracts **16 passed, 48
-skipped**; CI selector checks **3 passed**. PostgreSQL variants and tests for
-the other engine are skipped in each isolated environment; hosted PostgreSQL
-and Windows/native jobs remain mandatory. Ruff, format, CI and package mypy,
-documentation validation, source/wheel builds, and `git diff --check` passed.
-The SDK HTTP suite reports 92 HTTPX `verify` deprecation warnings; the ADK
-suite reports the existing ADK `BaseAgentConfig` deprecation warning.
-
 The initial combined run exposed three fixture issues, corrected before the
 passing run: A2A status uses the SDK `TASK_STATE_COMPLETED` value; authorized
 ADK sessions use the invocation's authority-derived native user key; and the
 official A2A method spelling is `message/send`. No S3-02 gate or backlog
-checkbox advances until the final exact-source hosted workflows and actual
-PostgreSQL selections pass. Durable Task/receipt expiry remains excluded by
-the user's finite-profile decision.
+checkbox advances from this local batch until all exact-source hosted workflows
+and actual PostgreSQL selections pass. The active profile excludes durable
+Task/receipt expiry by the user's scope decision. The current uncommitted
+follow-up adds all-method request-parameter assertions, complete SendStreaming
+and SubscribeToTask event-order checks, and actual-TCP Task/Message alternatives;
+it also reconciles acceptance and backlog documentation. The local combined
+follow-up passed **275** core A2A SDK HTTP tests, **20 passed / 56 skipped** in
+each principal-engine contract selection, **3** CI selector tests, Ruff lint
+and format, mypy for CI and 133 packages, both builds, documentation links and
+`git diff --check`. Hosted exact-source qualification awaits the push.
