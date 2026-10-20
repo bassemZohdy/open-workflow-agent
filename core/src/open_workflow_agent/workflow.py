@@ -4021,14 +4021,19 @@ class WorkflowExecutor:
         return control.token
 
     def _checkpoint_effect_completion(self, state: ExecutionState) -> None:
-        """Do not persist an outcome returned after cancellation or host drain."""
+        """Keep late host-drain or ownership-loss results out of the journal.
+
+        An authorized invocation cancellation does not invalidate a result that
+        the external action has already returned. Persisting that known result
+        keeps retries from replaying the action; the next ordinary task
+        checkpoint still observes cancellation and stops downstream work.
+        """
         control = self._control(state)
         if control is not None and control.interruption_reason in {
             "host_drain",
             "ownership_lost",
         }:
             raise asyncio.CancelledError
-        self._token(state).checkpoint()
 
     async def _await_with_cancellation(self, operation: Any, state: ExecutionState) -> Any:
         control = self._control(state)

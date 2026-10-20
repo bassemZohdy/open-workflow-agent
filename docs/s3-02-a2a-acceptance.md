@@ -2,16 +2,17 @@
 
 Status: implementation in progress; S3-02 remains unchecked. S2-09's finite
 recovery policy and S3-01's finite Python MCP profile are verified. Pushed
-source `f3d399b` failed three PostgreSQL `ListTasks` rejection assertions
-because the shared invocation table contained 164 unrelated rows; the local
-correction now compares row counts before and after each request. Docs,
-Security, External Sandbox and Agent Framework passed on that source; main CI
-was still running at the latest check. The unpushed follow-up passed 378 grouped
-root tests with 149 environment skips. Its native host-drain checks passed 2
-ADK cases and 2 LangGraph cases in their independent environments, with 2
-engine-specific skips in each. Ruff, formatting, mypy (130 source files),
-documentation links and diff checks passed. Exact-source hosted qualification
-remains pending. Suite totals alone do not complete the eight acceptance gates.
+source `cf59700` passed Docs, Security and External Sandbox; its PostgreSQL and
+Agent Framework workflows exposed a known-result receipt regression after
+authorized business cancellation. The current worktree records known external
+results after that cancellation while still fencing host drain and ownership
+loss. Exact-source main CI also reported native lifecycle and Windows
+task-checkpoint failures; workflow logs and remaining Windows jobs are under
+review. The correction has not yet been hosted-qualified. Local gRPC and
+background recovery evidence belongs to the related S3-03 batch. Suite totals
+alone do not complete the eight acceptance gates. A2A01-A2A08 remain open
+wherever cross-method, authority, failure, backend or recovery controls have
+not been directly evidenced.
 A2A01-A2A08 remain open wherever cross-method, authority, failure, backend or
 recovery controls have not been directly evidenced.
 

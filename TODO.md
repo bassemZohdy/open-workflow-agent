@@ -162,18 +162,24 @@ treated as a deferred task or as additional feature completion.
   interoperability, lifecycle, authority, recovery, streaming and backend
   gates are not closed. Outbound calls are not automatically replayed after
   possible acceptance; callers may explicitly resubscribe to a known task.
-  The latest pushed source is `f3d399b`. Its PostgreSQL run failed three
-  `ListTasks` rejection assertions because earlier tests had left 164 unrelated
-  rows in the shared invocation table; the local correction now compares
-  before/after counts. Docs, Security, External Sandbox and Agent Framework
-  passed on that source; main CI is still running. The unpushed batch adds
-  actual-socket method/error and card-selection coverage, authenticated-owner
-  cancel/subscribe/resume, archived-v1 recovery, malformed-stream handling,
-  cross-origin credential rejection, and native late-result fencing. The
-  grouped root run passed 378 tests and skipped 149; isolated ADK and LangGraph
-  host-drain checks each passed 2 tests and skipped the other engine's 2. Ruff,
-  formatting, mypy (130 files), documentation links and diff checks passed.
-  Hosted qualification of this corrected source remains pending. A2A01-A2A08
+  Latest pushed source `cf59700` passed Docs, Security and External Sandbox,
+  while PostgreSQL and Agent Framework CI exposed the same observed-effect
+  regression: after authorized business cancellation, a known returned
+  external result remained pending. The current worktree correction records
+  that known result while still fencing host drain and ownership loss; normal
+  subsequent checkpoints continue to honor cancellation. Exact-source main CI
+  also reported native lifecycle and Windows task-checkpoint failures; their
+  logs and remaining Windows jobs are under review. The current unpushed batch
+  adds actual-socket method/error and card-selection coverage,
+  authenticated-owner cancel/subscribe/resume, archived-v1 recovery,
+  malformed-stream handling, cross-origin credential rejection, native late-
+  result fencing, gRPC required-engine coverage, and a default-off background
+  qualification gate. The previous A2A grouped run passed 378 tests and skipped
+  149; current gRPC SQLite recovery passed 22 cases for each principal engine,
+  and background recovery passed 13 for each. Latest local core batch passed
+  140 tests with 12 skips; Ruff, formatting, mypy (131 source files), docs
+  validation and diff checks passed. These results are local; the corrected
+  source awaits hosted qualification. A2A01-A2A08
   remain partial and S3-02 stays unchecked. Durable Task/receipt expiry is
   explicitly outside the finite profile; no expiry capability is claimed. See
   the [acceptance record](docs/s3-02-a2a-acceptance.md) and

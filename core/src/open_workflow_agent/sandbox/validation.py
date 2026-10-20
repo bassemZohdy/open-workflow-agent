@@ -26,6 +26,7 @@ from ..workflow import (
     validate_expression_profile,
     validate_schema,
 )
+from . import background_qualification
 from .contract import RESERVED_ENVIRONMENT
 from .stdio_policy import validate_stdio_transport
 
@@ -213,6 +214,11 @@ def _validate_executable_run(
         # workflow contract; executable-process restrictions do not apply.
         return None
     if run.get("await", True) is not True:
+        if not background_qualification.BACKGROUND_EXECUTION_PROFILE_QUALIFIED:
+            raise UnsupportedWorkflowFeature(
+                "background execution profile has not passed qualification",
+                details={"reference": reference},
+            )
         if not sandbox.background.enabled or not sandbox.enabled or sandbox.backend != "internal":
             raise UnsupportedWorkflowFeature(
                 "background execution requires the deployment-enabled internal SQLite profile",

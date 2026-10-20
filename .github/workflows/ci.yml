@@ -143,6 +143,68 @@ jobs:
           ../../tests/contract/test_grpc_process_recovery.py
           ../../tests/contract/test_background_job_recovery.py
 
+  windows-grpc-sqlite-matrix:
+    name: Windows gRPC SQLite contract (${{ matrix.engine }})
+    runs-on: windows-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: adk
+            extra: native
+          - engine: langgraph
+            extra: sqlite
+    env:
+      OWA_TEST_REQUIRED_ENGINE: ${{ matrix.engine }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Verify required native gRPC SQLite contract and process recovery
+        run: >-
+          uv run --directory engines/${{ matrix.engine }} --locked --extra ${{ matrix.extra }}
+          --with pytest --with pytest-asyncio pytest -vv
+          ../../tests/contract/test_grpc_calls.py
+          ../../tests/contract/test_grpc_process_recovery.py
+          -k sqlite
+
+  windows-background-sqlite-matrix:
+    name: Windows background SQLite recovery (${{ matrix.engine }})
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: adk
+            extra: native
+          - engine: langgraph
+            extra: sqlite
+    env:
+      OWA_TEST_REQUIRED_ENGINE: ${{ matrix.engine }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Verify required native background SQLite recovery
+        run: >-
+          uv run --directory engines/${{ matrix.engine }} --locked --extra ${{ matrix.extra }}
+          --with pytest --with pytest-asyncio pytest -vv
+          ../../tests/contract/test_background_job_recovery.py
+
   windows-native-recovery:
     name: Windows native ownership and effect recovery
     runs-on: windows-latest

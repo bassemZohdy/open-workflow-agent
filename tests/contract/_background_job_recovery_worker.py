@@ -17,7 +17,7 @@ from _recovery_failure_artifact import failure_artifact
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import OwaError
-from open_workflow_agent.sandbox import compile_sandbox_workflow
+from open_workflow_agent.sandbox import background_qualification, compile_sandbox_workflow
 from open_workflow_agent.sandbox._job_ipc import read_frame, read_key
 from open_workflow_agent.services import RuntimeServices
 from test_native_checkpoint_fencing import _snapshot as raw_native_snapshot
@@ -34,6 +34,10 @@ connection.execute('INSERT INTO commits(value) VALUES (?)', (sys.stdin.read(),))
 connection.commit()
 print('real independent job completed')
 """
+
+# This isolated test worker exercises the authored profile behind a test-only
+# qualification override. Production activation remains hard-gated.
+background_qualification.BACKGROUND_EXECUTION_PROFILE_QUALIFIED = True
 
 
 def _independent_job_timeout(services, job_id: str) -> AssertionError:
@@ -107,6 +111,18 @@ async def run(directory, mode):
         configuration(directory), model=FakeModel(), database_root=directory / "runtime"
     )
     assert services.effect_journal.connection.kind == "sqlite"
+    recovery_submit_calls = [0]
+    if mode == "resume" and scenario["boundary"] == "terminal-observed":
+        assert services.sandbox is not None
+        backend = services.sandbox._job_backend
+        assert backend is not None
+        original_submit = backend.submit
+
+        async def count_recovery_submit(launch):
+            recovery_submit_calls[0] += 1
+            return await original_submit(launch)
+
+        backend.submit = count_recovery_submit
     if scenario.get("damage"):
 
         async def no_observer():
@@ -121,6 +137,34 @@ async def run(directory, mode):
     }[scenario["engine"]]
     engine = getattr(importlib.import_module(module), name)()
     await engine.initialize(services)
+    if mode == "start" and scenario["boundary"] == "terminal-observed":
+        dispatcher = services._background_dispatcher
+        assert dispatcher is not None
+        original_record = dispatcher._record
+
+        def stop_before_terminal_receipt(lease, observation):
+            if observation.state == "terminal":
+                supervisor = (
+                    Path(services.config.sandbox.workspace_root)
+                    / ".owa-job-supervisors"
+                    / lease.job_id
+                )
+                frame = read_frame(
+                    supervisor / "observation.json", read_key(supervisor / "auth.key")
+                )
+                assert frame["state"] == "terminal"
+                write_json(
+                    directory / "terminal-observed.json",
+                    {"job_id": lease.job_id, "observation": frame, "producer_pid": os.getpid()},
+                )
+                # The parent test terminates this process at the published
+                # boundary. Blocking here proves no common terminal receipt
+                # has been written after the authenticated supervisor result.
+                while True:
+                    time.sleep(60)
+            original_record(lease, observation)
+
+        dispatcher._record = stop_before_terminal_receipt
     # Keep producer leases short so the real stop/recovery test does not wait
     # long after killing the producer. Native checkpoint restoration can take
     # several seconds on Windows, so use the production-sized lease in the
@@ -258,6 +302,8 @@ async def run(directory, mode):
                     "child_pid": child["pid"],
                     "invocation_id": handle.invocation_id,
                     "job_id": job.job_id,
+                    "binding": json.loads(job.backend_json)["binding"],
+                    "submit_json": job.submit_json,
                     "admission_digest": job.admission_digest,
                     "deadline_at": json.loads(job.admission_json)["deadline_at"],
                     "native": native_snapshot(services, handle, "sqlite"),
@@ -365,6 +411,14 @@ async def run(directory, mode):
             assert current.admission_digest == saved["admission_digest"]
             assert json.loads(current.admission_json)["deadline_at"] == saved["deadline_at"]
             assert services.model.calls == []
+            supervisor = (
+                Path(services.config.sandbox.workspace_root)
+                / ".owa-job-supervisors"
+                / current.job_id
+            )
+            observation = read_frame(
+                supervisor / "observation.json", read_key(supervisor / "auth.key")
+            )
             write_json(
                 directory / "result.json",
                 {
@@ -372,6 +426,11 @@ async def run(directory, mode):
                     "result": result.as_dict(),
                     "job_id": current.job_id,
                     "admission_digest": current.admission_digest,
+                    "binding": json.loads(current.backend_json)["binding"],
+                    "submit_json": current.submit_json,
+                    "terminal": terminal,
+                    "observation": observation,
+                    "recovery_submit_calls": recovery_submit_calls[0],
                     "commits": len(commits),
                     "control": current.control_json,
                     "deadline_at": saved["deadline_at"],

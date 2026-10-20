@@ -69,6 +69,8 @@ def case(directory, engine_name, engine_type, backend, boundary, outcome, negati
         pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
     native = engine_type().native
     if not (native.available if engine_name == "adk" else native.task_nodes_available):
+        if os.getenv("OWA_TEST_REQUIRED_ENGINE") == engine_name:
+            raise AssertionError(f"required native {engine_name} SDK is unavailable")
         pytest.skip("actual independent native SDK is required")
     subject = str(uuid4())
     (directory / "scenario.json").write_text(

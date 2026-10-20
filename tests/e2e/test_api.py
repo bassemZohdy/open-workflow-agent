@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import hashlib
 
 import httpx
 import pytest
 from engine_cases import engine_cases
+from google.protobuf import descriptor_pb2
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
@@ -257,6 +260,69 @@ async def test_api_schedule_is_durable_and_idempotent(tmp_path):
             assert cancelled.status_code == 200
             assert cancelled.json()["status"] == "cancelled"
     services.close()
+
+
+@pytest.mark.asyncio
+async def test_capabilities_advertise_activated_grpc_binding(tmp_path, monkeypatch):
+    # Capability projection is an API contract; pin SDK observation here so
+    # the test isolates the config-to-manifest wiring from installed packages.
+    monkeypatch.setattr("open_workflow_agent.services.verify_grpc_sdk", lambda: None)
+    monkeypatch.setattr(
+        "open_workflow_agent.grpc_capabilities.version",
+        lambda package: {"grpcio": "1.84.0", "protobuf": "7.36.1"}[package],
+    )
+
+    source = (
+        'syntax = "proto3"; package capability; message Request {} '
+        "service Peer { rpc Echo(Request) returns (Request); }"
+    )
+    file = descriptor_pb2.FileDescriptorProto(
+        name="capability.proto", package="capability", syntax="proto3"
+    )
+    file.message_type.add(name="Request")
+    service = file.service.add(name="Peer")
+    service.method.add(
+        name="Echo", input_type=".capability.Request", output_type=".capability.Request"
+    )
+    descriptor_set = descriptor_pb2.FileDescriptorSet()
+    descriptor_set.file.add().CopyFrom(file)
+    descriptor_bytes = descriptor_set.SerializeToString(deterministic=True)
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake"},
+            "protocols": {
+                "grpc_bindings": {
+                    "capability-peer": {
+                        "proto_uri": "https://schemas.example/capability.proto",
+                        "proto_filename": "capability.proto",
+                        "proto_source": source,
+                        "proto_sha256": hashlib.sha256(source.encode()).hexdigest(),
+                        "descriptor_set_base64": base64.b64encode(descriptor_bytes).decode(),
+                        "descriptor_sha256": hashlib.sha256(descriptor_bytes).hexdigest(),
+                        "endpoint": "https://peer.example",
+                        "service": "capability.Peer",
+                        "method": "Echo",
+                    }
+                }
+            },
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    try:
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.get("/v1/capabilities")
+                assert response.status_code == 200
+                capabilities = response.json()
+                assert capabilities["features"]["grpc"]["enabled"] is True
+                assert capabilities["features"]["grpc"]["sdkAvailable"] is True
+                assert capabilities["features"]["grpc"]["transport"] == "unary"
+                assert capabilities["protocols"].count("grpc") == 1
+    finally:
+        services.close()
 
 
 @pytest.mark.asyncio

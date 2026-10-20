@@ -68,11 +68,23 @@ def kill_published_worker(pid):
 def await_file(directory, name, process, budget=100):
     deadline = time.monotonic() + budget
     while not (directory / name).exists():
-        failure = directory / (("start" if name == "ready.json" else "resume") + "-failure.json")
+        failure = directory / (
+            ("start" if name in {"ready.json", "terminal-observed.json"} else "resume")
+            + "-failure.json"
+        )
         assert process.poll() is None, failure.read_text() if failure.exists() else "worker ended"
         assert time.monotonic() < deadline, "worker did not reach the durable boundary"
         time.sleep(0.05)
     return json.loads((directory / name).read_text())
+
+
+def require_native_engine(engine_name, native):
+    available = native.available if engine_name == "adk" else native.task_nodes_available
+    if available:
+        return
+    if os.getenv("OWA_TEST_REQUIRED_ENGINE") == engine_name:
+        pytest.fail(f"required native {engine_name} SDK is unavailable")
+    pytest.skip("actual independent native SDK environment is required")
 
 
 @pytest.mark.parametrize(
@@ -83,8 +95,7 @@ def test_real_native_parent_stop_completion_cancel_and_drain_leave_one_independe
     tmp_path, engine_name, engine_type, boundary
 ):
     native = engine_type().native
-    if not (native.available if engine_name == "adk" else native.task_nodes_available):
-        pytest.skip("actual independent native SDK environment is required")
+    require_native_engine(engine_name, native)
     (tmp_path / "scenario.json").write_text(
         json.dumps({"engine": engine_name, "boundary": boundary})
     )
@@ -138,8 +149,7 @@ def test_actual_native_background_corruption_rejects_before_parent_ownership_or_
     tmp_path, engine_name, engine_type, damage
 ):
     native = engine_type().native
-    if not (native.available if engine_name == "adk" else native.task_nodes_available):
-        pytest.skip("actual independent native SDK environment is required")
+    require_native_engine(engine_name, native)
     (tmp_path / "scenario.json").write_text(
         json.dumps({"engine": engine_name, "boundary": "receipt", "damage": damage})
     )
@@ -191,6 +201,68 @@ def test_actual_native_background_corruption_rejects_before_parent_ownership_or_
         assert recovery.returncode == 0 and result["rejected"] is True
         assert result["commits"] == 0 and result["recovery_pid"] != ready["producer_pid"]
         assert not (tmp_path / "child-ready.json").exists()
+    finally:
+        stop(producer)
+        if recovery is not None:
+            stop(recovery)
+
+
+@pytest.mark.parametrize(
+    "engine_name,engine_type", [case for case in engine_cases() if case[0] in {"adk", "langgraph"}]
+)
+def test_real_native_producer_stop_after_terminal_observation_recovers_receipt(
+    tmp_path, engine_name, engine_type
+):
+    native = engine_type().native
+    require_native_engine(engine_name, native)
+    (tmp_path / "scenario.json").write_text(
+        json.dumps({"engine": engine_name, "boundary": "terminal-observed"})
+    )
+    with sqlite3.connect(tmp_path / "business.sqlite3") as receiver:
+        receiver.execute("CREATE TABLE commits(value TEXT NOT NULL)")
+    producer = launch(tmp_path, "start")
+    recovery = None
+    try:
+        ready = await_file(tmp_path, "ready.json", producer)
+        assert len({ready["producer_pid"], ready["supervisor_pid"], ready["child_pid"]}) == 3
+        assert ready["binding"] and ready["submit_json"]
+
+        # Let the independent process finish. The worker's synchronous _record
+        # barrier publishes only after inspect returned the authenticated
+        # terminal observation, then holds the producer before any terminal
+        # receipt can be committed.
+        (tmp_path / "release-job").touch()
+        boundary = await_file(tmp_path, "terminal-observed.json", producer, budget=100)
+        observation = boundary["observation"]
+        assert observation["state"] == "terminal" and observation["outcome"]["exit_code"] == 0
+        assert boundary["job_id"] == ready["job_id"]
+        assert boundary["producer_pid"] == ready["producer_pid"]
+        with sqlite3.connect(tmp_path / "runtime" / "runtime.sqlite3") as common:
+            status, submit_json, terminal_json = common.execute(
+                "SELECT status,submit_json,terminal_json FROM sandbox_job_delivery WHERE job_id=?",
+                (ready["job_id"],),
+            ).fetchone()
+        assert status == "accepted" and submit_json == ready["submit_json"]
+        assert terminal_json is None
+        kill_published_worker(ready["producer_pid"])
+        producer.wait(timeout=15)
+        assert not (tmp_path / "result.json").exists()
+
+        recovery = launch(tmp_path, "resume")
+        result = await_file(tmp_path, "result.json", recovery, budget=150)
+        recovery.wait(timeout=20)
+        assert recovery.returncode == 0
+        assert result["recovery_pid"] != ready["producer_pid"]
+        assert result["observation"] == observation
+        assert result["binding"] == ready["binding"]
+        assert result["submit_json"] == ready["submit_json"]
+        assert result["terminal"]["reason"] == observation["reason"] == "exited"
+        assert result["terminal"]["outcome"] == observation["outcome"]
+        assert result["terminal"]["binding"] == ready["binding"]
+        assert result["recovery_submit_calls"] == 0
+        assert result["commits"] == 1
+        assert result["admission_digest"] == ready["admission_digest"]
+        assert result["deadline_at"] == ready["deadline_at"]
     finally:
         stop(producer)
         if recovery is not None:

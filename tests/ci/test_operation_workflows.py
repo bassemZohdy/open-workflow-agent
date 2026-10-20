@@ -79,6 +79,50 @@ def test_windows_requires_real_native_operations_and_supervisor_mutation_control
     assert job["timeout-minutes"] == "40"
 
 
+def test_windows_grpc_sqlite_matrix_requires_each_native_engine_and_only_sqlite_cases():
+    job = workflow("ci.yml")["jobs"]["windows-grpc-sqlite-matrix"]
+    assert job["runs-on"] == "windows-latest" and job["timeout-minutes"] == "25"
+    assert job["strategy"]["fail-fast"] == "false"
+    assert job["strategy"]["matrix"]["include"] == [
+        {"engine": "adk", "extra": "native"},
+        {"engine": "langgraph", "extra": "sqlite"},
+    ]
+    assert job["env"]["OWA_TEST_REQUIRED_ENGINE"] == "${{ matrix.engine }}"
+    tests = next(step["run"] for step in job["steps"] if "pytest" in step.get("run", ""))
+    assert "--directory engines/${{ matrix.engine }} --locked --extra ${{ matrix.extra }}" in tests
+    assert all(
+        f"../../tests/contract/{name}" in tests
+        for name in ("test_grpc_calls.py", "test_grpc_process_recovery.py")
+    )
+    assert "-k sqlite" in tests
+    assert "OWA_TEST_REQUIRED_ENGINE" in (ROOT / "tests/engine_cases.py").read_text(
+        encoding="utf-8"
+    )
+    assert "required native" in (ROOT / "tests/contract/test_grpc_calls.py").read_text(
+        encoding="utf-8"
+    )
+    assert "required native" in (ROOT / "tests/contract/test_grpc_process_recovery.py").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_windows_background_sqlite_matrix_requires_each_native_engine():
+    job = workflow("ci.yml")["jobs"]["windows-background-sqlite-matrix"]
+    assert job["runs-on"] == "windows-latest" and job["timeout-minutes"] == "30"
+    assert job["strategy"]["fail-fast"] == "false"
+    assert job["strategy"]["matrix"]["include"] == [
+        {"engine": "adk", "extra": "native"},
+        {"engine": "langgraph", "extra": "sqlite"},
+    ]
+    assert job["env"]["OWA_TEST_REQUIRED_ENGINE"] == "${{ matrix.engine }}"
+    tests = next(step["run"] for step in job["steps"] if "pytest" in step.get("run", ""))
+    assert "--directory engines/${{ matrix.engine }} --locked --extra ${{ matrix.extra }}" in tests
+    assert "../../tests/contract/test_background_job_recovery.py" in tests
+    source = (ROOT / "tests/contract/test_background_job_recovery.py").read_text(encoding="utf-8")
+    assert "required native {engine_name} SDK is unavailable" in source
+    assert 'os.getenv("OWA_TEST_REQUIRED_ENGINE") == engine_name' in source
+
+
 def test_source_changes_trigger_required_postgresql_qualification():
     paths = workflow("postgres-ci.yml")["on"]["pull_request"]["paths"]
     assert all(

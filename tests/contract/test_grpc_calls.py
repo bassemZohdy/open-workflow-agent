@@ -171,6 +171,8 @@ def runtime(path, backend, engine_name, peer, *, enabled=True):
 def actual(engine, name):
     available = engine.native.available if name == "adk" else engine.native.task_nodes_available
     if not available:
+        if os.getenv("OWA_TEST_REQUIRED_ENGINE") == name:
+            pytest.fail(f"required native {name} SDK is unavailable in this matrix job")
         pytest.skip(f"actual {name} SDK is unavailable in this independent environment")
 
 

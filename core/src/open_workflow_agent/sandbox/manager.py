@@ -94,6 +94,8 @@ class SandboxManager:
         await self.backend.shutdown()
 
     def capabilities(self) -> dict[str, Any]:
+        from . import background_qualification
+
         value = dict(self.backend.capabilities())
         value["awaitedReturn"] = {
             "enabled": bool(value.get("enabled", False)),
@@ -107,7 +109,8 @@ class SandboxManager:
 
             backend = self._job_backend
             if (
-                isinstance(backend, InternalSandboxJobBackend)
+                background_qualification.BACKGROUND_EXECUTION_PROFILE_QUALIFIED
+                and isinstance(backend, InternalSandboxJobBackend)
                 and backend.config.background.enabled
                 and backend.store.connection.kind == "sqlite"
                 and value.get("enabled") is True

@@ -1,10 +1,17 @@
 # S3-03 operation adapters: finite acceptance plan
 
-Status: authored, unqualified. S3-03 remains unchecked. The first frozen
-behavioral batch failed as recorded below; no native/backend qualification,
-hosted CI or inventory-completion claim is made. Authored finite gRPC and embedded background executable
-profiles still require their independent S3-03 gates. AsyncAPI network activation
-and broader function/sandbox responsibilities remain pending.
+Status: authored, local batch validation in progress; S3-03 remains unchecked.
+The current worktree passes its scoped root selection (140 passed, 12 skipped),
+gRPC SQLite contract/process recovery (22 cases per principal engine), and
+background process recovery (13 cases per principal engine). Ruff lint and
+format checks, mypy (131 source files), documentation validation and diff
+checks pass; the optional Agent Framework host-drain selection passed 20 tests
+with 36 expected skips. These are local results. New Windows required-engine
+matrices have not run on GitHub, and no hosted qualification or inventory
+completion is claimed. The embedded background profile remains disabled by a
+default-false internal qualification gate until its acceptance is complete.
+AsyncAPI network activation and broader function/sandbox responsibilities
+remain pending.
 
 Earlier hosted checkpoint `f9cb76f` failed the PostgreSQL LangGraph operation
 adapter job on the selected-adapter `inbox-before-ack` recovery case (220
@@ -222,6 +229,13 @@ full proposed T40/T41 inventories stay separately required.
 
 ## Authored embedded background executable profile, unqualified
 
+The implementation is held behind the internal constant
+`BACKGROUND_EXECUTION_PROFILE_QUALIFIED`, which is false until this profile's
+acceptance gates pass. While false, deployment configuration cannot advertise
+`backgroundExecution` or admit `run.await: false`. Tests may override the
+constant inside an isolated test process only to exercise the authored runtime;
+there is no environment or deployment setting that enables the production path.
+
 The explicit deployment switch is `sandbox.background.enabled`, false by default.
 Activation requires an enabled internal sandbox and a persistent common SQLite
 file. PostgreSQL and external/container background activation reject before engine
@@ -267,6 +281,12 @@ publish actual producer/supervisor/child/recovery
 PIDs, kill the producer through its real OS handle, preserve original deadline and
 receipt identities, and require exactly one real business commit. No behavioral
 pass, native/backend qualification or task checkbox is claimed by authoring.
+
+Hosted Windows SQLite recovery uses a dedicated ADK/native and LangGraph/SQLite
+matrix with `OWA_TEST_REQUIRED_ENGINE`; an unavailable selected SDK fails the
+job instead of turning its recovery cases into skips. The existing broad
+operation-adapter lane remains supplemental and cannot stand in for either
+required engine lane.
 
 ## Authored unary gRPC profile, unqualified
 
@@ -323,6 +343,9 @@ Authored inventories, not passing test counts:
   Committed calls lacking a receipt remain pending without resend; known value/
   fault outcomes recover across the native-commit gap without another call.
   Missing archived binding and changed descriptors fail before mutation.
+- Windows hosted SQLite qualification uses a required ADK/native and
+  LangGraph/SQLite matrix; missing native SDKs fail rather than disappear as
+  skipped cases.
 - `tests/core/test_internal_sandbox_jobs.py`: 21 authored supervisor/IPC/platform
   cases authored separately, including a real independently living supervisor,
   real exit codes, manager drain, original deadline/late-cancel race, stale

@@ -1829,3 +1829,41 @@ table count before and after each rejected request. Docs, Security, External
 Sandbox and Agent Framework passed at `f3d399b`; the aggregate CI workflow was
 still running at the latest check. The corrected working tree has not yet been
 hosted-qualified. No S3-02 task or A2A gate is complete or deferred.
+
+## Exact-source follow-up at `cf59700` and current operation-adapter batch — 2026-10-20
+
+The `cf59700` hosted PostgreSQL and Agent Framework workflows both failed the
+observed-effect contract after an authorized business cancellation: the
+provider had returned a known result, but the durable effect receipt remained
+pending. The worktree correction allows the known external result to be
+checkpointed after business cancellation, while keeping host-drain and
+ownership-loss fences. Later workflow checkpoints still honor cancellation.
+This correction is locally exercised by the existing cross-worker contract
+cases and has not yet been hosted-qualified.
+
+At the latest exact-source check, run
+[39364230331](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39364230331)
+was still running. Its ADK and LangGraph native lifecycle/version-recovery
+jobs failed, as did Windows native task checkpoints and routing; their failure
+logs and other in-progress Windows/native jobs were not yet available. Docs,
+Security and External Sandbox passed. Do not treat the `cf59700` run as green or
+mark S3-02 complete; update this record when all exact-source logs are
+available.
+
+The current unpushed S3-03 batch adds required-engine selectors and Windows
+SQLite matrices for gRPC and background recovery, a capability-positive gRPC
+test, and an internal default-false background qualification gate. It also
+adds recovery coverage for a producer stopped after the supervisor records a
+terminal observation but before the durable terminal receipt is written. The
+gate prevents background execution from being admitted or advertised before
+the finite profile is accepted.
+
+Local validation on this batch passed: the scoped root selection **140 passed,
+12 skipped**; gRPC SQLite contract/process recovery **22 passed on ADK and 22
+on LangGraph**; background process recovery **13 passed on ADK and 13 on
+LangGraph**; optional Agent Framework host-drain selection **20 passed, 36
+skipped**. Ruff lint/format, mypy (131 source files), documentation validation
+and `git diff --check` passed. The new hosted Windows matrices and exact-source
+requalification remain pending. Durable A2A Task/receipt expiry remains
+excluded from S3-02 by the user's scope decision; no expiry capability is
+advertised. S3-02 and S3-03 remain unchecked, and no task is deferred.

@@ -12,7 +12,7 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig, SandboxConfig
 from open_workflow_agent.engine import PortableWorkflowEngine
 from open_workflow_agent.errors import SandboxPolicyError
-from open_workflow_agent.sandbox import compile_sandbox_workflow
+from open_workflow_agent.sandbox import background_qualification, compile_sandbox_workflow
 from open_workflow_agent.sandbox.backends.internal import InternalSandboxBackend
 from open_workflow_agent.sandbox.contract import SandboxExecutionRequest, SandboxSecretReference
 from open_workflow_agent.sandbox.manager import SandboxManager
@@ -55,7 +55,11 @@ def test_internal_request_preflight_creates_no_workspace_or_process(tmp_path, ca
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("field", ["stdin", "arguments"])
-async def test_oversized_evaluated_request_has_no_job_or_completed_acceptance(tmp_path, field):
+async def test_oversized_evaluated_request_has_no_job_or_completed_acceptance(
+    tmp_path, field, monkeypatch
+):
+    # Exercise request preflight behind a test-only release-gate override.
+    monkeypatch.setattr(background_qualification, "BACKGROUND_EXECUTION_PROFILE_QUALIFIED", True)
     config = RuntimeConfig.model_validate(
         {
             "sandbox": {

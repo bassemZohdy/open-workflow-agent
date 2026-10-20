@@ -13,7 +13,7 @@ from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig, SandboxBackgroundConfig
 from open_workflow_agent.effects import EffectIdentity
 from open_workflow_agent.errors import ConfigurationError, OwaError
-from open_workflow_agent.sandbox import compile_sandbox_workflow
+from open_workflow_agent.sandbox import background_qualification, compile_sandbox_workflow
 from open_workflow_agent.sandbox.contract import SandboxExecutionRequest
 from open_workflow_agent.sandbox.jobs import (
     SandboxJobProfile,
@@ -60,7 +60,9 @@ def test_background_runtime_rejects_unqualified_profile_before_store_or_native_s
 
 
 @pytest.fixture(params=["sqlite", "postgresql"])
-def admission(tmp_path, request):
+def admission(tmp_path, request, monkeypatch):
+    # Exercise the authored runtime behind a test-only release-gate override.
+    monkeypatch.setattr(background_qualification, "BACKGROUND_EXECUTION_PROFILE_QUALIFIED", True)
     datasource = os.getenv("OWA_TEST_POSTGRES_URL") if request.param == "postgresql" else None
     if request.param == "postgresql" and datasource is None:
         pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
@@ -139,6 +141,28 @@ def admission(tmp_path, request):
                 )
             services.effect_journal.connection.commit()
         services.execution_ownership.release(lease)
+        services.close()
+
+
+def test_configured_background_capability_stays_hidden_before_qualification(tmp_path):
+    config = RuntimeConfig.model_validate(
+        {
+            "sandbox": {
+                "enabled": True,
+                "allow_shell": True,
+                "background": {"enabled": True},
+                "file_size_bytes": None,
+                "process_count": None,
+                "workspace_root": str(tmp_path / "workspace"),
+            }
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    try:
+        capabilities = services.sandbox.capabilities()
+        assert capabilities["backgroundExecution"] is False
+        assert "backgroundProfile" not in capabilities
+    finally:
         services.close()
 
 

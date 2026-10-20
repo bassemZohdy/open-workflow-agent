@@ -49,6 +49,20 @@ def test_sandbox_rewrite_does_not_hide_unsupported_process_modes(option):
         )
 
 
+def test_configured_background_profile_still_rejects_before_qualification():
+    config = SandboxConfig(
+        enabled=True,
+        backend="internal",
+        background={"enabled": True},
+    )
+    with pytest.raises(UnsupportedWorkflowFeature, match="qualification"):
+        _validate_executable_run(
+            {"script": {"language": "python", "code": "print(1)"}, "await": False},
+            sandbox=config,
+            reference="/do/0/run",
+        )
+
+
 @pytest.mark.parametrize("mode", ["stdout", "stderr", "code", "all", "none"])
 def test_awaited_return_selection_preserves_executable_policy_gate(mode):
     run = {"script": {"language": "python", "code": "print(1)"}, "return": mode}

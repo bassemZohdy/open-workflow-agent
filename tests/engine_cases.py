@@ -11,6 +11,7 @@ real native adapter.
 from __future__ import annotations
 
 import importlib
+import os
 from typing import Any
 
 
@@ -42,4 +43,14 @@ def engine_cases() -> list[tuple[str, Any]]:
         except Exception:  # native dependency or adapter module unavailable
             continue
         cases.append((label, getattr(module, class_name)))
+    required = os.getenv("OWA_TEST_REQUIRED_ENGINE")
+    if required:
+        if required not in {"adk", "langgraph"}:
+            raise RuntimeError("OWA_TEST_REQUIRED_ENGINE must be either 'adk' or 'langgraph'")
+        selected = [case for case in cases if case[0] == required]
+        if not selected:
+            raise RuntimeError(
+                f"OWA_TEST_REQUIRED_ENGINE={required!r}, but its real adapter is unavailable"
+            )
+        return selected
     return cases
