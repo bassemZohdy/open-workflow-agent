@@ -21,8 +21,10 @@ GET /metrics
 
 The endpoint returns Prometheus text format `0.0.4`. It exposes bounded, runtime-local
 metric families for workflow starts/completions and latency, active invocations, task
-events, sandbox executions, HTTP requests/errors (including the A2A surface), traffic
-policy admissions/rejections, scheduler jobs, and pending approvals.
+events and terminal task latency, sandbox executions, HTTP requests/errors (including
+the A2A surface), traffic policy admissions/rejections, scheduler jobs, and pending
+approvals. Task duration is reported by engine and terminal outcome only; identifiers
+and workflow data are not metric labels.
 
 `/metrics` is outside the `/v1/*` API authentication profile. Deployments that expose
 it beyond a trusted monitoring network must protect it at the edge or through the

@@ -31,7 +31,7 @@ All eight agent families are preserved in [the pattern catalog](../resources/pat
 
 The generic approval prototype can default missing status to approved and route unknown states to completion. It must not be activated. Use the protected durable approval service and prove operator binding, denial/expiry, restart/replay and zero side effects before approval.
 
-Standalone Apache `open-workflow-agent-adk` v0.2.1 imports `openworkflow_adk`; the canonical MIT distribution v0.2.0 imports `open_workflow_agent_adk`. Archiving does not rename packages or migrate installed consumers. Decide compatibility packaging or documented API retirement before replacement releases. Retain open PRs and old releases; do not merge unrelated dependency changes solely for archival.
+The predecessor import, CLI, and package compatibility decision is recorded in [S4-08](s4-08-compatibility-decision.md): the canonical adapter is not a drop-in replacement and will not provide compatibility aliases. Both metadata files use the same distribution name despite distinct import roots, versions, licenses, and contents, so the release identity must be resolved before any future Python distribution publish. Archiving did not rename packages or migrate installed consumers; retain predecessor releases. Useful developer tools may be reimplemented under canonical contracts and remain open work.
 
 `open-simple-agent`, `generic-agent-adk` and other repositories are outside the named three-source archive instruction and remain separate.
 

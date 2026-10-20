@@ -133,6 +133,16 @@ private selections; mutable discovery without genuine admission context is not a
 qualified configured-tool recovery profile. Reusable OWS authentication remains
 its existing pending capability, distinct from named deployment security profiles.
 
+The registered-import regression in `tests/contract/test_openapi_calls.py`
+now observes the immutable selection forwarded from durable OpenAPI admission
+through the transformed catalog binding into `ExternalCatalogResolver`, and
+checks it against the persisted admission receipt as well as its operation,
+description digest, and pinned catalog reference alongside the existing parent
+invocation/principal proof. This regression is authored but unrun. Imported workflow calls dispatch through the resolver and common
+`ProtocolServices`; they do not enter `ToolRegistry`, which remains a separate
+configured-agent-tool path. This source-level evidence does not close either
+integration gate or qualify imported recovery.
+
 The existing agent-role call has an outer versioned agent-function effect
 receipt (`call:agent…`), so an interrupted role execution remains pending and
 is not automatically replayed.

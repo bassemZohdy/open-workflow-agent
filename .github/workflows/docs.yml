@@ -4,10 +4,6 @@ on:
   pull_request:
   push:
     branches: [main]
-    paths:
-      - "**/*.md"
-      - "tests/ci/validate_docs.py"
-      - ".github/workflows/docs.yml"
 
 permissions:
   contents: read

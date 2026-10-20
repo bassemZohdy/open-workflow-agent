@@ -1,7 +1,10 @@
 # S4-02 Native channels: first slice
 
 Status: implementation authored. The focused core admission/normalization tests
-pass (10 cases), as do the native LangGraph channel/recovery tests (3 cases).
+pass (10 cases), as do the native LangGraph channel tests (3 cases). These
+native tests do not yet restart or resume a workflow with this extension
+enabled; channel-specific process-stop recovery and reducer non-replay remain
+unqualified.
 The full validation batch and hosted qualification remain pending; S4-02 stays
 open.
 
@@ -9,7 +12,7 @@ This slice implements only declared LangGraph channels and reducers under the ex
 
 Each channel has `{id,reducer,initial,writes}`. The supported reducers are `append` for JSON arrays and `last_value` for any admitted JSON-safe value. Writers and readers bind only to direct root `/do/<index>` references. Writers are normalized to root task order. A reader receives only its selected channel values through the temporary `$owa_native_channels` expression variable for that task; the variable is removed before snapshotting task state.
 
-LangGraph stores the channel map in a private reducer-backed LangGraph state channel. Node updates are reducer deltas, so a resumed graph does not reapply already committed node writes. The channel map is not copied into the OWA execution snapshot or public invocation result. Channel values are bounded to 65,536 compact JSON bytes each and 262,144 aggregate bytes; the same limits are checked before emitting updates and while admitting checkpoint state. Initial values have matching finite caps.
+LangGraph stores the channel map in a private reducer-backed LangGraph state channel. Node updates are reducer deltas so the graph can apply each node's channel contribution through its native state mechanism. Channel-specific restart/resume behavior and non-replay of committed deltas still need a dedicated regression. The channel map is not copied into the OWA execution snapshot or public invocation result. Channel values are bounded to 65,536 compact JSON bytes each and 262,144 aggregate bytes; the same limits are checked before emitting updates and while admitting checkpoint state. Initial values have matching finite caps.
 
 The first slice deliberately excludes value schemas, nested or parallel
 writers, Command/Send, memory, streams, state-update APIs, replay, and time

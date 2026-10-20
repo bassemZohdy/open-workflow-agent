@@ -8,7 +8,11 @@ from typing import Any
 
 from .definitions import resolve_reusable_components
 from .errors import UnsupportedWorkflowFeature, WorkflowSemanticError
-from .executable_sources import ExecutableScriptBinding, ExecutableSourceRegistry
+from .executable_sources import (
+    ExecutableScriptBinding,
+    ExecutableSourcePolicyError,
+    ExecutableSourceRegistry,
+)
 
 
 def _script_tasks(workflow: Mapping[str, Any]) -> list[tuple[str, dict[str, Any]]]:
@@ -45,7 +49,7 @@ def capture_script_resources(
             raise WorkflowSemanticError("script source language must be declared")
         try:
             source = registry.resolve(script["source"], language=language)
-        except UnsupportedWorkflowFeature:
+        except ExecutableSourcePolicyError:
             raise UnsupportedWorkflowFeature(
                 "script source is not an exact approved executable binding",
                 details={"reference": reference},

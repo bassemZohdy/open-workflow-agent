@@ -70,6 +70,7 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
     )
     for filename in (
         "test_native_task_graph.py",
+        "test_native_channel_process_recovery.py",
         "test_process_crash_recovery.py",
         "test_durable_timer_process_recovery.py",
         "test_durable_event_process_recovery.py",
@@ -110,6 +111,9 @@ def test_postgresql_profiles_run_independently_and_gate_both_images():
         )
     assert "--kill-after=30s 30m" in _runs(jobs["postgres-adk"])
     assert "--kill-after=30s 30m" in _runs(jobs["postgres-langgraph"])
+    assert "../../tests/contract/test_native_channel_process_recovery.py" in _runs(
+        jobs["postgres-langgraph"]
+    )
     assert "--kill-after=30s 12m" in _runs(jobs["postgres-agent-framework"])
     assert "--kill-after=30s 25m" in _runs(jobs["postgres-adk-operations"])
     assert "--kill-after=30s 20m" in _runs(jobs["postgres-langgraph-operations"])

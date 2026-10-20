@@ -75,6 +75,8 @@ jobs:
               'core/pyproject.toml',
               'engines/adk/pyproject.toml',
               'engines/langgraph/pyproject.toml',
+              'sandbox-controller/pyproject.toml',
+              'kubernetes-sandbox-controller/pyproject.toml',
           )
           for path in paths:
               actual = tomllib.loads(Path(path).read_text())['project']['version']
@@ -136,7 +138,8 @@ jobs:
             echo "Skipping superseded commit $RELEASE_SHA; main is $current_head"
           fi
 
-      # CI and both companion suites run for every publishable main push.
+      # CI, dependency security, documentation, and both companion suites run
+      # for every publishable main push. Agent Framework remains optional.
       # workflow_run can arrive before the companions finish, so wait for
       # successful runs at this exact source commit.
       - name: Require exact-head companion acceptance runs
@@ -152,7 +155,7 @@ jobs:
             --sha "$RELEASE_SHA" \
             --repository "$GITHUB_REPOSITORY" \
             --timeout-seconds 1800 \
-            external-sandbox-ci.yml postgres-ci.yml
+            external-sandbox-ci.yml postgres-ci.yml security.yml docs.yml
           echo "companions_ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Skip commit superseded during acceptance wait

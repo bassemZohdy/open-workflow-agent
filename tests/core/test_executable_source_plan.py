@@ -253,6 +253,19 @@ def test_registry_owa_errors_outside_source_rejection_propagate_unchanged(monkey
     assert raised.value is failure
 
 
+def test_unexpected_registry_source_policy_error_propagates_unchanged(monkeypatch):
+    public = workflow([{"action": script()}])
+    failure = UnsupportedWorkflowFeature("internal registry verification defect")
+
+    def broken_registry(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(ExecutableSourceRegistry, "resolve", broken_registry)
+    with pytest.raises(UnsupportedWorkflowFeature) as raised:
+        capture_script_resources(public, ExecutableSourceRegistry((artifact(),)))
+    assert raised.value is failure
+
+
 def test_changed_capture_changes_fingerprint_but_keeps_original_public_document():
     public = workflow([{"action": script()}])
     original = compile_original(public)

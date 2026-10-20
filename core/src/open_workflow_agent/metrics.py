@@ -16,6 +16,7 @@ _HELP = {
     "owa_workflow_started_total": "Workflow executions started.",
     "owa_workflow_finished_total": "Workflow executions finished by outcome.",
     "owa_workflow_duration_seconds": "Workflow execution duration in seconds.",
+    "owa_task_duration_seconds": "Workflow task duration in seconds by terminal outcome.",
     "owa_active_invocations": "Invocations currently running or waiting.",
     "owa_task_events_total": "Workflow task lifecycle events.",
     "owa_sandbox_executions_total": "Sandbox executions by lifecycle event and outcome.",
@@ -153,6 +154,17 @@ class Metrics:
                     "status": event.status or "unknown",
                 },
             )
+            terminal_task_status = {
+                "TaskCompleted": "completed",
+                "TaskFaulted": "faulted",
+                "TaskCancelled": "cancelled",
+            }.get(event.event_type)
+            if terminal_task_status is not None and event.duration is not None:
+                self.observe(
+                    "owa_task_duration_seconds",
+                    max(0.0, event.duration),
+                    labels={"engine": engine, "status": terminal_task_status},
+                )
 
         if event.event_type.startswith("SandboxExecution"):
             action = event.event_type.removeprefix("SandboxExecution").lower()

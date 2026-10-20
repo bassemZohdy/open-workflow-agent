@@ -17,11 +17,11 @@ trigger. Weekly and manual dependency audits remain enabled.
 | Workflow | Coverage | Trigger |
 | --- | --- | --- |
 | [CI](../.github/workflows/ci.yml) | Root quality/coverage, Windows admission and native recovery, both principal native/shared/CTK suites, benchmarks, builds, manifests, mutation and main runtime images | Pull requests, non-documentation main pushes, manual |
-| [PostgreSQL CI](../.github/workflows/postgres-ci.yml) | Actual common/native database recovery and both database-backed runtime images | Relevant pull requests, non-documentation main pushes, manual |
+| [PostgreSQL CI](../.github/workflows/postgres-ci.yml) | Actual common/native database recovery, both database-backed runtime images, and the required matched S4-06 engine/backend performance report | Relevant pull requests, non-documentation main pushes, manual |
 | [External Sandbox CI](../.github/workflows/external-sandbox-ci.yml) | Restricted controller contracts, image defaults and actual Docker acceptance for both principal engines | Relevant pull requests, non-documentation main pushes, manual |
 | [Agent Framework CI](../.github/workflows/agent-framework-ci.yml) | Optional native adapter, shared contracts and CTK in its independent environment | Relevant pull requests/main pushes, manual |
-| [Security](../.github/workflows/security.yml) | All six locked dependency environments and their optional dependency profiles | Relevant pull requests/main pushes, weekly, manual |
-| [Docs](../.github/workflows/docs.yml) | Relative Markdown links | Pull requests and relevant main pushes |
+| [Security](../.github/workflows/security.yml) | All seven locked dependency environments and their optional dependency profiles | Relevant pull requests, every main push, weekly, manual |
+| [Docs](../.github/workflows/docs.yml) | Relative Markdown links | Pull requests and every main push |
 
 The optional Agent Framework workflow also watches common core and shared
 fixtures. A core-only change must not silently bypass that adapter's checks.
@@ -56,6 +56,13 @@ commands have fourteen-minute bounds after the expanded ADK selection reached
 89% without an assertion failure at its former nine-minute limit. Both
 database-backed images require all four integration jobs to succeed.
 
+The matched S4-06 report runs ADK and LangGraph sequentially on Ubuntu with
+both SQLite and an isolated PostgreSQL service. Its aggregate artifact requires
+all four profile cells to share the exact source commit and measurement
+parameters. The report is measurement evidence, not a portable performance
+claim; see [matched performance measurements](benchmarks.md) for its metrics
+and limits.
+
 Main native tests and container acceptance read the same source independently;
 they consume no artifact from the root job or each other. Those unnecessary
 job dependencies are removed. Both matrix members can finish when one fails,
@@ -69,8 +76,9 @@ The [Release workflow](../.github/workflows/release.yml) remains separate from
 feature-branch validation. Its existing safeguards are preserved:
 
 1. Successful main **push** CI at the exact publication source.
-2. Successful External Sandbox and PostgreSQL companion runs at that same
-   commit. Ancestor success never substitutes for exact-source acceptance.
+2. Successful External Sandbox, PostgreSQL, Security, and Docs runs at that
+   same commit. Agent Framework remains optional and outside production
+   publication. Ancestor success never substitutes for exact-source acceptance.
 3. Main-head checks before and after the companion wait, plus serialized release
    publication, so a superseded commit cannot overwrite current release tags.
 4. Runtime and controller vulnerability preflight for both image architectures

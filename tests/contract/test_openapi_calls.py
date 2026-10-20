@@ -211,6 +211,19 @@ async def test_registered_import_uses_original_parent_authority_for_inner_operat
         await engine.initialize(services)
         invocation = handle(services, engine_name, plan)
         invoke_frozen = services.external_catalogs.invoke_frozen
+        invoke_prepared = services.external_catalogs.invoke_prepared
+        forwarded = []
+
+        async def observe_prepared(binding, call, payload, **kwargs):
+            selection = kwargs.get("_openapi_selection")
+            assert call == "openapi" and selection is not None
+            # The catalog task is transformed into an immutable execution
+            # binding, but its operation selection still comes from the
+            # original invocation's durable admission receipt.
+            forwarded.append((binding, selection))
+            return await invoke_prepared(binding, call, payload, **kwargs)
+
+        services.external_catalogs.invoke_prepared = observe_prepared
 
         async def observe_inner(binding, payload, **kwargs):
             state = kwargs["parent_state"]
@@ -248,8 +261,22 @@ async def test_registered_import_uses_original_parent_authority_for_inner_operat
         policies = identities(services, invocation.invocation_id, OPERATION_POLICY)
         business = identities(services, invocation.invocation_id)
         assert len(policies) == len(business) == len(observed) == 1 and len(fetched) == 1
+        assert len(forwarded) == 1
+        forwarded_binding, forwarded_selection = forwarded[0]
+        from open_workflow_agent.openapi_client import OpenApiOperationSelection
+
+        verified_selection = OpenApiOperationSelection.from_value(forwarded_selection.as_value())
+        assert verified_selection.operation_id == "getItem"
+        assert verified_selection.description.uri == DOCUMENT
+        assert (
+            verified_selection.description.digest
+            == OpenApiDescription.capture(DOCUMENT, receiver.description).digest
+        )
+        assert forwarded_binding.reference == "operation:1.0.0@trusted"
+        assert forwarded_binding.execution_definition["call"] == "openapi"
         assert business[0].task_reference == "/do/0/remote"
         stored = services.effect_journal.get(policies[0])
+        assert verified_selection.as_value() == stored.output["selection"]
         assert stored.output["invocation_binding"]["invocation_id"] == invocation.invocation_id
         assert stored.output["invocation_binding"]["owner_principal"] == "original-owner"
         ReceiptDependency.capture(policies[0], stored).verify(services.effect_journal)

@@ -195,10 +195,14 @@ def source_uri(resource: Any) -> str:
             endpoint = endpoint["uri"]
         return _uri(endpoint)
     except (OwaError, ValueError, TypeError, KeyError):
-        raise UnsupportedWorkflowFeature(
+        raise ExecutableSourcePolicyError(
             "executable source requires an exact declared literal HTTPS resource",
             details={"reason": "unsupported_executable_source_endpoint"},
         ) from None
+
+
+class ExecutableSourcePolicyError(UnsupportedWorkflowFeature):
+    """Expected rejection for an executable source outside the finite profile."""
 
 
 def _reference(value: Any) -> str:
@@ -289,7 +293,7 @@ class ExecutableSourceRegistry:
         uri = source_uri(resource)
         source = self._by_uri.get(uri)
         if source is None or type(language) is not str or language != source.language:
-            raise UnsupportedWorkflowFeature(
+            raise ExecutableSourcePolicyError(
                 "executable source is not declared for this runtime",
                 details={"reason": "undeclared_executable_source"},
             )

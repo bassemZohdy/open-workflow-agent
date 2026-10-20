@@ -17,6 +17,10 @@ results. These measurements use the deterministic fake model and are intended
 for regression comparison on a stable runner, not as portable performance
 claims across machines.
 
+These smoke probes do not measure CPU, memory, or matched persistence profiles.
+The broader S4-06 matrix is described in [the matched benchmark profile](../docs/benchmarks.md)
+and implemented in `matched.py`; it remains separately reported from these probes.
+
 ## Engine adapter probes
 
 The engine-specific harness keeps adapter evidence separate from the common

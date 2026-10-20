@@ -7,12 +7,6 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - "**/uv.lock"
-      - "**/pyproject.toml"
-      - ".github/workflows/security.yml"
-      - "ci/security_audit.py"
-      - "tests/ci/test_security_audit.py"
   pull_request:
     paths:
       - "**/uv.lock"

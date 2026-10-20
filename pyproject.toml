@@ -23,6 +23,9 @@ dependencies = [
   "uvicorn==0.53.0",
 ]
 
+[project.scripts]
+owa = "open_workflow_agent.cli:main"
+
 [dependency-groups]
 dev = [
   "apsw==3.54.0.0",

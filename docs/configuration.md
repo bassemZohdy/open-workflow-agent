@@ -149,6 +149,9 @@ The runtime always exposes `GET /metrics` in Prometheus text format. Metrics are
 in-process and reset when the runtime restarts; no additional configuration or
 third-party metrics service is required. Protect the endpoint at the deployment edge
 when it is reachable outside a trusted monitoring network.
+Task latency is observed for completed, faulted, and cancelled tasks, using only the
+engine and terminal outcome as labels. Invocation, session, task, and operation IDs,
+workflow input, and error details are not included in metric labels.
 
 ### Knowledge reload modes
 

@@ -8,6 +8,7 @@ import json
 import os
 import sqlite3
 import sys
+import traceback
 from pathlib import Path
 
 import httpx
@@ -22,12 +23,13 @@ from _agent_pattern_fixtures import (
     invoke,
     original_authority,
     providers,
+    receipts,
     register_workers,
     retained,
     role_configuration,
     runtime,
-    source,
     scripts,
+    source,
 )
 from _process_recovery_worker import write_json
 from open_workflow_agent.catalog import FakeModel
@@ -104,14 +106,21 @@ async def run(directory, mode):
         assert services is not None and handle is not None
         proof = retained(services, handle, backend)
         lease = handle._execution_lease
-        assert lease is not None
-        services.execution_ownership.verify(lease)
-        lease_row = services.execution_ownership.connection.execute(
-            "SELECT expires_at FROM invocation_ownership "
-            "WHERE invocation_id=? AND owner=? AND generation=?",
-            (handle.invocation_id, lease.owner, lease.generation),
-        ).fetchone()
-        assert lease_row is not None
+        if scenario["boundary"] == "openapi-known":
+            # This boundary is an already-suspended invocation. Durable wait
+            # completion releases its execution lease before the producer parks.
+            assert lease is None
+            lease_until = None
+        else:
+            assert lease is not None
+            services.execution_ownership.verify(lease)
+            lease_row = services.execution_ownership.connection.execute(
+                "SELECT expires_at FROM invocation_ownership "
+                "WHERE invocation_id=? AND owner=? AND generation=?",
+                (handle.invocation_id, lease.owner, lease.generation),
+            ).fetchone()
+            assert lease_row is not None
+            lease_until = lease_row[0]
         rows = ledger(directory)
         agent_status = next(
             (
@@ -137,7 +146,7 @@ async def run(directory, mode):
                 "invocation_status": services.invocations.get(handle.invocation_id).status,
                 "receipts": proof["receipts"],
                 "native": proof["native"],
-                "lease_until": lease_row[0],
+                "lease_until": lease_until,
                 "provider_count": len(rows),
                 "provider_counts": {name: sum(row[0] == name for row in rows) for name in script},
                 "business_count": len(business_ledger(directory)),
@@ -213,9 +222,7 @@ async def run(directory, mode):
         roles,
         models,
         config=config,
-        dispatch=dispatch
-        if scenario["boundary"] in {"openapi-pending", "openapi-known"}
-        else None,
+        dispatch=dispatch if scenario["boundary"] in {"openapi-pending", "openapi-known"} else None,
     )
     await engine.initialize(services)
     # A finite original lease, renewed normally by the genuine producer. Allow
@@ -240,8 +247,7 @@ async def run(directory, mode):
             async def notify(state, identity, receipt):
                 await original_notify(state, identity, receipt)
                 if (
-                    scenario["boundary"]
-                    not in {"pending", "openapi-pending", "openapi-known"}
+                    scenario["boundary"] not in {"pending", "openapi-pending", "openapi-known"}
                     and receipt.status == "completed"
                     and identity.invocation_id == handle.invocation_id
                     and identity.operation == "call:agent-" + STOP_ROLE[pattern] + ":1.0.0@default"
@@ -424,6 +430,8 @@ if __name__ == "__main__":
             {
                 "exception": type(error).__name__,
                 "error": error.as_dict() if isinstance(error, OwaError) else None,
+                "message": str(error),
+                "traceback": traceback.format_exc(),
             },
         )
         raise

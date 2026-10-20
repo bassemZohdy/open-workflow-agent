@@ -13,3 +13,14 @@ explains partial, rejected, inert, mismatched and private native outcomes.
 `current_implementation_audit` links each delivery row to that evidence;
 original research fields and all full proposed acceptance criteria remain
 unchanged. A qualified subset is not a full-feature or conformance claim.
+
+[coverage-bridge.json](coverage-bridge.json) gives every proposed-test ID and
+every extracted schema-constraint row a stable inventory entry. Its current
+entries are explicitly unmapped and unexecuted: shared fixtures and the
+portable CTK can overlap with proposed criteria, but are not credited unless
+an exact runnable selector is mapped. The CI integrity check requires every
+inventory item to remain present and rejects an `executed` or `verified` claim
+unless it names an existing pytest function and retained evidence anchor. This
+bridge is a coverage guard and migration scaffold; it does not run the 443
+proposed tests, validate all 774 constraints, expand the selected CTK subset,
+or claim Python/JavaScript parity or full conformance.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import re
@@ -48,6 +49,77 @@ def test_full_inventory_is_preserved_and_owned_by_tracked_tasks():
             assert row["evidence_of_completion"] == []
         assert set(re.findall(r"T\d+", row["required_tests"])) <= tests
     assert not tracker["repository_tracking"]["verification"]["full_conformance"]
+
+
+def test_coverage_bridge_exhaustively_tracks_proposed_tests_and_schema_constraints():
+    tracker = json.loads(
+        (ROOT / "resources/compatibility/feature-tracker.json").read_text(encoding="utf-8")
+    )
+    bridge = json.loads(
+        (ROOT / "resources/compatibility/coverage-bridge.json").read_text(encoding="utf-8")
+    )
+    assert bridge["format_version"] == 1
+    assert len(bridge["test_inventory"]) == len(tracker["tests"]) == 443
+    assert len(bridge["schema_constraint_inventory"]) == len(tracker["schema_constraints"]) == 774
+
+    tests = {item["id"]: item for item in tracker["tests"]}
+    mapped_tests = {item["id"]: item for item in bridge["test_inventory"]}
+    assert len(mapped_tests) == len(bridge["test_inventory"])
+    assert set(mapped_tests) == set(tests)
+    for item in mapped_tests.values():
+        assert item["status"] in {"unmapped", "mapped_not_executed", "executed", "verified"}
+        _assert_coverage_bridge_claim(item)
+
+    constraints = tracker["schema_constraints"]
+    mapped_constraints = bridge["schema_constraint_inventory"]
+    assert [item["id"] for item in mapped_constraints] == [
+        f"SC{index:04d}" for index in range(1, len(constraints) + 1)
+    ]
+    assert [
+        (item["pointer"], item["keyword"], item["value"], item["reference"])
+        for item in mapped_constraints
+    ] == [
+        (item["pointer"], item["keyword"], item["value"], item["reference"]) for item in constraints
+    ]
+    for item in mapped_constraints:
+        assert item["status"] in {"unmapped", "mapped_not_executed", "executed", "verified"}
+        _assert_coverage_bridge_claim(item)
+
+
+def _assert_coverage_bridge_claim(item):
+    """Prevent an execution claim without a live pytest selector and retained evidence."""
+    selectors = item["runner_selectors"]
+    evidence = item["evidence_references"]
+    if item["status"] == "unmapped":
+        assert not selectors and not evidence
+        assert item["reason"].strip()
+        return
+    if item["status"] == "mapped_not_executed":
+        assert selectors and not evidence
+    else:
+        assert selectors and evidence
+
+    for selector in selectors:
+        path_text, separator, symbol = selector.partition("::")
+        assert separator and symbol.startswith("test_")
+        path = Path(path_text)
+        assert not path.is_absolute() and ".." not in path.parts
+        assert path_text.startswith("tests/") and path.suffix == ".py"
+        assert (ROOT / path).is_file()
+        tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
+        assert any(
+            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == symbol
+            for node in ast.walk(tree)
+        )
+
+    for reference in evidence:
+        path_text, separator, anchor = reference.partition("#")
+        assert separator and anchor
+        path = Path(path_text)
+        assert not path.is_absolute() and ".." not in path.parts
+        assert path_text.startswith(("docs/", "tests/"))
+        assert (ROOT / path).is_file()
+        assert anchor in (ROOT / path).read_text(encoding="utf-8")
 
 
 def test_apache_snapshot_exact_bytes_and_generic_source_boundary():

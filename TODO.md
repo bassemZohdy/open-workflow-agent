@@ -188,14 +188,19 @@ treated as a deferred task or as additional feature completion.
   validation. An eight-case actual-process witness covers configured OpenAPI
   agent-tool dispatch with both a pending receiver commit and a completed outer
   agent-call receipt after durable native suspension; it is also authored and
-  unrun. S3-03 remains open; exact-source hosted qualification is pending.
+  unrun. An imported-catalog regression now checks that the transformed
+  resolver binding forwards the original durable OpenAPI selection and pinned
+  catalog reference. The final focused selection passes locally; exact-source
+  hosted qualification is pending. S3-03 remains open.
   Background execution stays default-off, and cross-adapter, backend, platform,
   lifetime, packaging and broader hosted acceptance remain open.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Captured sources, recovery proofs and awaited internal process controls are
-  authored; registry configuration/execution defects now propagate instead of
-  being mislabeled as source-policy rejection, with internal-error regression
-  cases authored and unrun. Required profile and deployment acceptance remains
+  authored; only the dedicated expected source-policy rejection is translated
+  into a user-facing policy error, while registry configuration/execution
+  defects (including unrelated common unsupported-feature errors) propagate
+  unchanged. Regression cases pass in the local root suite. Required profile and
+  deployment acceptance remains
   open. See the
   [acceptance plan](docs/s3-04-executable-source-acceptance.md).
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
@@ -243,9 +248,11 @@ treated as a deferred task or as additional feature completion.
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
   The first scoped channel/reducer slice is authored for the exact
   `langgraph.channels@1.0.0` extension using private reducer-backed LangGraph
-  state. Its focused core (10 cases) and native LangGraph (3 cases) tests pass;
-  the final validation batch remains pending and broader S4-02 features remain
-  open. See
+  state. Its focused core (10 cases) and native channel (3 cases) tests pass.
+  A LangGraph × SQLite/PostgreSQL process-stop regression now checks the
+  committed reducer delta survives restart without duplication; the SQLite
+  selection passes locally and the PostgreSQL selection awaits hosted CI.
+  Broader S4-02 features remain open. See
   [the S4-02 acceptance record](docs/s4-02-native-channels-acceptance.md).
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   An optional pinned LangGraph/TypeScript scaffold and native smoke test now
@@ -253,16 +260,60 @@ treated as a deferred task or as additional feature completion.
   reference-only. The package does not load or execute OWS definitions yet;
   implement the isolated engine and shared fixture tests before any parity claim.
 - [ ] **S4-04** (L) — Automate official CTK plus all proposed tests, schema constraints, parity and cross-engine outcome checks.
+  `resources/compatibility/coverage-bridge.json` now inventories all 443
+  proposed test IDs and 774 schema-constraint rows. Every row remains explicitly
+  unmapped and unexecuted because partial overlap is not evidence of equivalent
+  coverage. An integrity test checks exhaustive IDs and requires live selectors
+  and retained evidence before any row can be promoted; its integrity guard
+  passes locally.
+  Full CTK automation and parity qualification remain open. See
+  [the coverage bridge](resources/compatibility/README.md).
 - [ ] **S4-05** (M) — Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.
+  The current batch adds a bounded task-duration histogram labeled only by
+  engine and terminal outcome, with privacy/outcome tests passing locally and
+  API/configuration docs validated. Durable cross-process history, trace-context and
+  causation propagation, richer provenance, and replay diagnostics remain open.
+  See the [observability acceptance slice](docs/s4-05-observability-acceptance.md).
 - [ ] **S4-06** (M) — Run matched latency/CPU/memory/concurrency/persistence/recovery benchmarks; publish measured results.
+  A separate matched-profile harness now records ADK/LangGraph × SQLite/
+  PostgreSQL samples, nearest-rank p50/p95, invocation-phase CPU, Linux
+  process-lifetime peak RSS, invocation-record creation latency, persistence
+  footprint, and timed engine and service reinitialization plus resume with
+  stable operation-id and single-dispatch assertions. PostgreSQL CI is wired to
+  aggregate the four exact-source profile JSON files into one artifact. Harness
+  tests pass locally and CI/docs validation passes; the hosted measurements,
+  aggregate report and full
+  qualification remain pending. Measurements document their runner and scope
+  limits; PostgreSQL reports whole fresh service-database size, database I/O
+  remains included in invocation latency rather than isolated by operation, and
+  recovery reinitializes services in one process rather than forcing an OS stop.
+  See the [S4-06 profile and limits](docs/benchmarks.md).
 - [ ] **S4-07** (M) — Keep CI, builds, releases, capability reports and rollback tied to verified versions and acceptance gates.
   User-requested cleanup is verified at `3f568e5`: PR/main trigger separation, independent
   Windows/native/image checks, one root contract execution, optional Framework
   coverage for common changes, and stale-PR cancellation. Required release
   gates were preserved and all six configured workflows passed at that checkpoint.
-  The later hosted checkpoint failed, as recorded above. Remaining S4-07
-  release/rollback and broader capability/version acceptance stay open.
+  The later hosted checkpoint failed, as recorded above. Release version
+  equality now covers the root, core, ADK, LangGraph and both published
+  controller packages; its test guards metadata agreement and workflow
+  coverage. Publication now waits for exact-head CI, PostgreSQL, External
+  Sandbox, Security and Docs results; Agent Framework remains optional. These
+  guards and revised main-push triggers pass local workflow tests; exact-head
+  hosted results remain pending.
+  Remaining S4-07 release/rollback and broader capability/version acceptance
+  stay open. See the [release gate record](docs/s4-07-release-gates-acceptance.md).
 - [ ] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.
+  Compatibility decision is recorded in
+  [the S4-08 decision](docs/s4-08-compatibility-decision.md): no drop-in
+  aliases are promised, and the same distribution-name collision must be
+  resolved before future Python publication. No consumer inventory or package
+  index ownership/transfer evidence is available. Selecting and implementing
+  the canonical `owa validate PATH` command, its focused tests and scope
+  documentation pass the local focused batch. The command
+  checks the default portable profile only; deployment credentials, trusted
+  external catalogs, and engine-specific capability/runtime configuration
+  remain outside its scope. External release-name or consumer-migration
+  decisions also remain open; this task is not complete.
 - [ ] **S4-09** (L) — Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; require its own native acceptance.
 - [ ] **S4-10** (L) — Preserve EVENT-1 through EVENT-5; add optional external brokers, AsyncAPI and A2A push only with delivery/security contracts.
 - [ ] **S4-11** (L) — Keep multi-tenancy and RFC 8693/consent as tracked conditional work; do not invent a security protocol.
