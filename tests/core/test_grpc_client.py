@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from dataclasses import replace
 from importlib.metadata import PackageNotFoundError
 from pathlib import PurePosixPath
+from typing import Any
 from urllib.parse import urlparse
 
 import pytest
@@ -41,6 +42,14 @@ double ratio = 4; oneof choice { string choice_text = 5; int32 choice_number = 6
 map<string,int64> counts = 7; google.protobuf.Value payload = 8; }
 service Peer { rpc Echo(Request) returns (Request); }
 """
+
+
+class PeerCalls(list[dict[str, Any]]):
+    """Records whether a dispatched stalled RPC was cancelled at the peer."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.server_cancelled = asyncio.Event()
 
 
 def descriptor_bytes(*, streaming=False, missing_import=False):
@@ -130,7 +139,7 @@ async def peer(*, outcome="echo", tls=None, require_client_auth=True):
     for file in files.file:
         pool.Add(file)
     message = message_factory.GetMessageClass(pool.FindMessageTypeByName("bound.Request"))
-    calls = []
+    calls = PeerCalls()
     entered = asyncio.Event()
 
     async def handle(request, context):
@@ -148,8 +157,16 @@ async def peer(*, outcome="echo", tls=None, require_client_auth=True):
                 }
                 context.set_trailing_metadata(((APPLICATION_STATUS_HEADER, json.dumps(receipt)),))
             await context.abort(grpc.StatusCode.NOT_FOUND, "private-remote-detail")
+        if outcome == "committed-unavailable":
+            # The call record represents the peer's business commit. Returning
+            # an unproven transport status afterward must not trigger replay.
+            await context.abort(grpc.StatusCode.UNAVAILABLE, "private-remote-detail")
         if outcome == "stall":
-            await asyncio.Event().wait()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                calls.server_cancelled.set()
+                raise
         if outcome == "large":
             request.raw_data = b"x" * 2048
         if outcome == "nonfinite":
@@ -410,6 +427,24 @@ async def test_deadline_is_uncertain_and_host_cancellation_propagates(control):
         with pytest.raises(expected):
             await asyncio.wait_for(task, timeout=3)
         assert len(calls) == 1
+        await asyncio.wait_for(calls.server_cancelled.wait(), timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_committed_unavailable_is_uncertain_without_replay_or_key_change():
+    operation_key = "logical-operation-across-recovery"
+    async with peer(outcome="committed-unavailable") as (selected, http, calls, _entered):
+        with pytest.raises(_GrpcOutcomeUncertain):
+            await call_grpc(
+                http,
+                payload(selected),
+                registry=GrpcRegistry([selected]),
+                operation_key=operation_key,
+            )
+        assert len(calls) == 1
+        metadata = calls[0]["metadata"]
+        assert metadata["x-owa-operation-id"] == operation_key
+        assert metadata["idempotency-key"] == operation_key
 
 
 @pytest.mark.asyncio

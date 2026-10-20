@@ -26,7 +26,11 @@ class SandboxManager:
         self._job_backend = job_backend
 
     def validate_job_profile(self, profile: SandboxJobProfile) -> None:
+        from . import background_qualification
+
         backend = self._job_backend
+        if not background_qualification.BACKGROUND_EXECUTION_PROFILE_QUALIFIED:
+            raise SandboxPolicyError("background execution profile has not passed qualification")
         selected = self.backend.capabilities()
         if (
             backend is None

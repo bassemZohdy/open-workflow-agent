@@ -8,6 +8,7 @@ from dataclasses import replace
 
 import pytest
 from open_workflow_agent.errors import SandboxPolicyError
+from open_workflow_agent.sandbox import background_qualification
 from open_workflow_agent.sandbox.job_backend import SandboxJobObservation
 from open_workflow_agent.sandbox.job_dispatcher import SandboxJobDispatcher
 from open_workflow_agent.sandbox.manager import SandboxManager
@@ -78,6 +79,14 @@ def dispatcher(tree, *, behavior="accepted", **options):
     peer = _Peer(tree, behavior=behavior)
     manager = _Manager(_Foreground(), job_backend=peer)
     return SandboxJobDispatcher(tree[1], manager, **options), peer
+
+
+@pytest.fixture(autouse=True)
+def qualify_fake_delivery_profile(monkeypatch):
+    # These protocol-fake tests exercise post-admission delivery only. The
+    # production profile remains unqualified and is covered by the fail-closed
+    # manager test in test_background_job_runtime.py.
+    monkeypatch.setattr(background_qualification, "BACKGROUND_EXECUTION_PROFILE_QUALIFIED", True)
 
 
 @pytest.mark.asyncio

@@ -144,7 +144,8 @@ def admission(tmp_path, request, monkeypatch):
         services.close()
 
 
-def test_configured_background_capability_stays_hidden_before_qualification(tmp_path):
+def test_configured_background_capability_stays_hidden_before_qualification(tmp_path, monkeypatch):
+    monkeypatch.setattr(background_qualification, "BACKGROUND_EXECUTION_PROFILE_QUALIFIED", False)
     config = RuntimeConfig.model_validate(
         {
             "sandbox": {
@@ -162,6 +163,9 @@ def test_configured_background_capability_stays_hidden_before_qualification(tmp_
         capabilities = services.sandbox.capabilities()
         assert capabilities["backgroundExecution"] is False
         assert "backgroundProfile" not in capabilities
+        with pytest.raises(OwaError, match="profile has not passed qualification"):
+            services.sandbox.validate_job_profile(services.sandbox._job_backend.profile())
+        assert not (tmp_path / "workspace" / ".owa-job-supervisors").exists()
     finally:
         services.close()
 

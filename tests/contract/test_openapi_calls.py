@@ -157,6 +157,8 @@ class Receiver:
         self.outcome = outcome
         self.calls = []
         self.deleted = False
+        self.dispatch_entered = asyncio.Event()
+        self.dispatch_release = asyncio.Event()
         self.description = operation_document(
             SERVER,
             operation_id="getItem",
@@ -172,6 +174,9 @@ class Receiver:
                 httpx.Response(404) if self.deleted else httpx.Response(200, json=self.description)
             )
         assert request.method == "GET" and request.url.host == "business.test"
+        if self.outcome == "blocked":
+            self.dispatch_entered.set()
+            await self.dispatch_release.wait()
         if self.outcome == "uncertain":
             raise httpx.ReadError("private-remote-detail")
         if self.outcome == "fault":
@@ -635,6 +640,64 @@ async def test_uncertain_dispatched_operation_stays_pending_without_catch_or_ret
     finally:
         await engine.shutdown()
         services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_cancellation_after_openapi_dispatch_keeps_pending_intent_without_replay(
+    tmp_path, engine_name, engine_type, backend
+):
+    engine = engine_type()
+    actual_native(engine, engine_name)
+    receiver = Receiver("blocked")
+    services = runtime(tmp_path, backend, engine_name)
+    receiver.install(services)
+    engine_closed = False
+    services_closed = False
+    try:
+        await engine.initialize(services)
+        plan = compile_workflow(source())
+        invocation = handle(services, engine_name, plan)
+        running = asyncio.create_task(engine.invoke(plan, invocation, {}))
+        await asyncio.wait_for(receiver.dispatch_entered.wait(), 15)
+        running.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(running, 15)
+        business = identities(services, invocation.invocation_id)
+        policies = identities(services, invocation.invocation_id, OPERATION_POLICY)
+        assert len(business) == len(policies) == 1
+        pending = services.effect_journal.get(business[0])
+        assert pending is not None and pending.status == "pending"
+        assert len(receiver.calls) == 2  # one discovery GET and one dispatched business call
+        await engine.shutdown()
+        engine_closed = True
+        services.close()
+        services_closed = True
+
+        receiver.outcome = "value"
+        recovered = runtime(tmp_path, backend, engine_name)
+        receiver.install(recovered)
+        resumed = engine_type()
+        try:
+            await resumed.initialize(recovered)
+            loaded = recovered.invocations.get(invocation.invocation_id)
+            result = await asyncio.wait_for(resumed.resume(loaded, {}, plan), 15)
+            assert result.status == "faulted"
+            assert (
+                len(receiver.calls) == 2
+            )  # neither mutable metadata nor business was fetched again
+            assert recovered.effect_journal.get(business[0]).status == "pending"
+            assert recovered.model.calls == []
+        finally:
+            await resumed.shutdown()
+            recovered.close()
+    finally:
+        receiver.dispatch_release.set()
+        if not engine_closed:
+            await engine.shutdown()
+        if not services_closed:
+            services.close()
 
 
 @pytest.mark.asyncio
