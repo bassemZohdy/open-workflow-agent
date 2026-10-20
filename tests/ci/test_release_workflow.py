@@ -131,6 +131,31 @@ def test_release_publishes_controller_images_for_both_architectures() -> None:
     assert set(published[0]["platforms"].split(",")) == {"linux/amd64", "linux/arm64"}
 
 
+def test_controller_publication_reuses_the_preflight_cache_scopes() -> None:
+    workflow: dict[str, Any] = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    )
+    jobs = workflow["jobs"]
+    preflight_scopes = {
+        f"release-{entry['image']}-{entry['arch']}"
+        for entry in jobs["preflight"]["strategy"]["matrix"]["include"]
+        if entry["image"] in {"sandbox-controller", "kubernetes-sandbox-controller"}
+    }
+    publication = next(
+        step
+        for step in _steps(jobs["publish-controllers"])
+        if step.get("uses") == "docker/build-push-action@v7"
+        and step.get("with", {}).get("push") is True
+    )
+    publication_scopes = {
+        f"release-{entry['cache_image']}-{architecture}"
+        for entry in jobs["publish-controllers"]["strategy"]["matrix"]["include"]
+        for architecture in ("amd64", "arm64")
+    }
+    assert publication_scopes == preflight_scopes
+    assert "${{ matrix.cache_image }}" in publication["with"]["cache-from"]
+
+
 def test_docker_controller_removes_unused_cli_plugins_from_base_paths() -> None:
     dockerfile = (ROOT / "docker" / "Dockerfile.sandbox-controller").read_text(encoding="utf-8")
     for plugin in ("docker-compose", "docker-buildx"):

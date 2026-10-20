@@ -179,6 +179,22 @@ async def run(directory, mode):
             record = services.approvals.store.get(scenario["subject"])
             assert record.status == "pending" and record.assignee == target
             assert record.assignment_revision == 2
+            before_assignment_replay = approval_snapshot(
+                services, scenario["subject"], invocation.invocation_id
+            )
+            replayed_assignment = await services.approvals.mutate_protected(
+                scenario["subject"],
+                action=scenario["case"],
+                actor=actor(services, "reviewer-a"),
+                revision=1,
+                operation_key=scenario["subject"] + "-assignment",
+                assignee=target,
+            )
+            assert replayed_assignment.as_dict() == record.as_dict()
+            assert (
+                approval_snapshot(services, scenario["subject"], invocation.invocation_id)
+                == before_assignment_replay
+            )
             original_actor = actor(services, "reviewer-a")
             target_actor = actor(services, target)
             try:

@@ -22,6 +22,12 @@ LangGraph/SQLite cases pass and prove that no provider is called and original
 invocation authority remains unchanged. The PostgreSQL parameters and full
 eight-family acceptance matrix remain pending; this does not close S3-07.
 
+A second actual-native regression now covers ADK/LangGraph × SQLite/PostgreSQL.
+It verifies that the archived role binding retains its named `from_env`
+credential reference while the resolved credential canary appears neither in
+the retained profile nor the invocation result. This new matrix awaits the final
+validation batch and does not close S3-07.
+
 An additional focused contract regression is authored but unrun: a role policy
 allows catalog/model dispatch while denying `tool.invoke` for a tool that is
 otherwise in the role's declared allowlist. The case requires the denial to

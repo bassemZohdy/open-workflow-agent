@@ -2088,3 +2088,29 @@ HTTP+JSON, bounded Python behavior across ADK/LangGraph and SQLite/PostgreSQL.
 Durable Task/receipt expiry is excluded by the user's 2026-10-20 decision.
 Push, delegated identity, JavaScript, and full protocol/proposed-test coverage
 remain unqualified. No other backlog item is deferred by this result.
+
+<a id="event-backend-admission-order-follow-up-at-9d4d3ec"></a>
+
+## Event-backend admission-order follow-up at `9d4d3ec` — correction pending hosted requalification
+
+The hosted Agent Framework workflow for source `9d4d3ec1bf141281acdd5844c49b308330c03d21`
+([run 39412175159](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39412175159))
+failed 36 cases in `test_nondurable_backend_rejects_advanced_listener_before_earlier_dispatch`;
+1,670 passed and 2,554 were skipped. The failures were one shared admission-order
+gap across ADK, LangGraph and Agent Framework: initial invoke let an
+`UnsupportedWorkflowFeature` escape from preflight instead of recording the
+expected faulted result before input binding, and resume rejected the event
+capability before the read-only native-continuation preflight. The remaining
+workflow gates at that source included passing Docs, Security, External Sandbox
+and PostgreSQL runs; main CI was still running when this note was written.
+
+The unpushed common-engine correction records unsupported capability admission
+as a faulted invocation before storing input or dispatching tasks, and orders
+resume's read-only native-continuation check before the capability gate. The
+Agent Framework environment's complete event-backend admission selection passes
+**72 tests** after that correction. Root error-contract cases pass **72 tests**;
+ADK and LangGraph selected contract suites each pass **50 tests** with 150
+cross-engine/optional skips. Ruff format, Ruff lint and mypy for all four
+packages pass. Exact-source hosted qualification and full-workflow outcomes for
+the corrected source remain pending; no S2-05 checkbox advances from this
+follow-up alone.

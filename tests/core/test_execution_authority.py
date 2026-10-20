@@ -46,7 +46,8 @@ def test_original_authority_roundtrip_contains_all_claims_and_no_credential_refe
 
 
 @pytest.mark.parametrize(
-    "mutation", ["extra", "profile", "duplicates", "unsorted", "control", "oversize", "label"]
+    "mutation",
+    ["extra", "profile", "duplicates", "unsorted", "control", "surrogate", "oversize", "label"],
 )
 def test_untrusted_descriptor_rejects_extra_or_unbounded_claims(mutation):
     value = copy.deepcopy(_authority().as_value())
@@ -60,12 +61,32 @@ def test_untrusted_descriptor_rejects_extra_or_unbounded_claims(mutation):
         value["principal"]["scopes"] = ["z", "a"]
     elif mutation == "control":
         value["principal"]["identity"] = "alice\nadmin"
+    elif mutation == "surrogate":
+        value["principal"]["identity"] = "alice\ud800"
     elif mutation == "oversize":
         value["principal"]["audience"] = ["x" * 257]
     else:
         value["security_profile"] = " ingress"
     with pytest.raises(ValueError):
         ExecutionAuthority.from_value(value)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["identity", "role", "scope", "audience", "security_profile"],
+)
+def test_unpaired_surrogates_are_rejected_as_invalid_authority_references(field):
+    selected = _authority().as_value()
+    if field == "identity":
+        selected["principal"]["identity"] = "alice\ud800"
+    elif field == "security_profile":
+        selected["security_profile"] = "ingress\ud800"
+    else:
+        selected["principal"][
+            {"role": "roles", "scope": "scopes", "audience": "audience"}[field]
+        ] = ["reader\ud800"]
+    with pytest.raises(ValueError):
+        ExecutionAuthority.from_value(selected)
 
 
 @pytest.mark.asyncio

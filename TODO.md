@@ -100,6 +100,12 @@ treated as a deferred task or as additional feature completion.
   `143d38a` and publication `58de90e`. All fourteen finite requirements pass;
   embedded capability reports are verified. See
   [acceptance evidence](PROJECT.md#s2-05-embedded-event-work--2026-10-12-verified).
+  Regression requalification at source `9d4d3ec` found that unsupported
+  nondurable event listeners escaped invoke admission and resume rejected them
+  before its read-only native-continuation check. The shared-engine correction
+  now records a faulted result before input binding and checks native continuation
+  first; all 72 event-backend matrix cases pass locally. Exact-source hosted
+  requalification remains pending; see the [run record](docs/validation-history/pending-batch-results.md#event-backend-admission-order-follow-up-at-9d4d3ec).
 - [x] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.
   Verified at `3f568e5`: common timer decisions, native nonresident suspension,
   fenced schedule slots, bounded calendars and atomic embedded event-created
@@ -202,25 +208,36 @@ treated as a deferred task or as additional feature completion.
   [retained run evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Captured sources, recovery proofs and awaited internal process controls are
-  authored; an unexpected registry defect now propagates instead of being
-  mislabeled as a source-policy rejection. The regression is authored and
-  unrun; required profile and deployment acceptance remains open. See the
+  authored; registry configuration/execution defects now propagate instead of
+  being mislabeled as source-policy rejection, with internal-error regression
+  cases authored and unrun. Required profile and deployment acceptance remains
+  open. See the
   [acceptance plan](docs/s3-04-executable-source-acceptance.md).
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
   Protected actor identity, atomic decisions, expiry and native recovery
   controls are authored; cross-engine/backend acceptance remains open. See
   the [finite acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
-  [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
+  [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f). The new producer-stop
+  witness replays reassignment/escalation after restart and checks the record
+  and audit remain unchanged; it awaits the final validation batch.
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and authorization within existing contracts. Delegated token exchange and consent remain conditional S4-11 work.
+  Unpaired Unicode in principal and named-profile references now fails as a
+  bounded-reference `ValueError` instead of leaking an encoding exception;
+  descriptor regressions cover identity, role, scope, audience and profile.
+  Cross-engine/backend and recovery acceptance remains open.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
   Eight finite recipe families and named role bindings are authored; hosted
   acceptance remains open. A focused real-native role-policy test passes on
   SQLite for both principal engines, proving denial before provider dispatch;
-  PostgreSQL and the full eight-family matrix remain pending. See the
+  a new ADK/LangGraph × SQLite/PostgreSQL credential regression checks archived
+  `from_env` references without the resolved canary value. It awaits the final
+  batch; PostgreSQL and the full eight-family matrix remain pending. See the
   [acceptance plan](docs/s3-07-agent-pattern-acceptance.md) and
   [timing evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
-  Selected finite adapters and grouped corrections are authored; see
+  Selected finite adapters and grouped corrections are authored. A new
+  cross-engine/backend regression checks direct LLM tool-request pass-through
+  without dispatching an undeployed tool; it awaits the final batch. See
   [the acceptance plan](docs/s3-08-selected-adapter-acceptance.md). Qualification remains pending.
 
 ## Stage 4 — Advanced features and full verification
@@ -234,8 +251,9 @@ treated as a deferred task or as additional feature completion.
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
   The first scoped channel/reducer slice is authored for the exact
   `langgraph.channels@1.0.0` extension using private reducer-backed LangGraph
-  state. Focused tests and the final validation batch remain pending; the
-  broader S4-02 features remain open. See
+  state. Its focused core (10 cases) and native LangGraph (3 cases) tests pass;
+  the final validation batch remains pending and broader S4-02 features remain
+  open. See
   [the S4-02 acceptance record](docs/s4-02-native-channels-acceptance.md).
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   An optional pinned LangGraph/TypeScript scaffold and native smoke test now

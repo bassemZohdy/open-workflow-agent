@@ -1,6 +1,15 @@
 # S2-05 embedded event acceptance
 
 Decision: **complete finite S2-05 profile qualified at `58de90e`**.
+
+Current-source regression requalification at `9d4d3ec` later found an admission
+ordering gap for advanced listeners on nondurable event buses: invoke raised the
+capability error instead of recording the common faulted result, and resume
+returned the capability rejection before checking native continuation state.
+The shared-engine correction records rejection before binding input and runs the
+read-only native preflight first. All 72 local event-backend admission cases
+pass after the correction. Exact-source hosted requalification remains pending;
+see the [validation history](validation-history/pending-batch-results.md#event-backend-admission-order-follow-up-at-9d4d3ec).
 All four frozen local suites and all seven configured workflows passed. The
 task in [TODO.md](../TODO.md) is complete after final publication source
 `58de90e816a1118252aec507cfd2425f60c2a1bd` passes its exact configured checks. No entry here promotes

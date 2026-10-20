@@ -215,6 +215,41 @@ async def test_native_pattern_role_policy_denies_model_before_provider_dispatch(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("engine_name,engine_type", ENGINES)
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_native_role_archive_keeps_credential_reference_without_secret_value(
+    tmp_path, monkeypatch, engine_name, engine_type, backend
+):
+    env_name = "OWA_PATTERN_ROLE_API_KEY"
+    secret_value = "s3-07-known-role-credential-canary"
+    monkeypatch.setenv(env_name, secret_value)
+    roles, models = providers("assistant")
+    roles["assistant"]["model"]["credentials"] = {
+        "api_key": {"from_env": env_name},
+    }
+    services = runtime(tmp_path, backend, roles, models)
+    engine = engine_type()
+    actual_native(engine, engine_name)
+    await engine.initialize(services)
+    plan = compiled(services, "assistant")
+    handle = create(services, engine_name, plan)
+    try:
+        result = await invoke(engine, services, plan, handle, QUESTION)
+        assert result.status == "completed", result.error
+        _, archived = services.recovery_definitions._read(handle, allow_unqualified=True)
+        manifest = archived["runtime_profile"]
+        role = manifest["policy"]["agent_roles"]["bindings"][0]
+        assert role["model"]["credentials"] == {
+            "api_key": {"from_env": env_name},
+        }
+        assert secret_value not in json.dumps(archived, sort_keys=True)
+        assert secret_value not in json.dumps(result.as_dict(), sort_keys=True)
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_perspectives_finish_in_reverse_order_but_synthesize_declaration_order(
     tmp_path, engine_name, engine_type, backend
 ):

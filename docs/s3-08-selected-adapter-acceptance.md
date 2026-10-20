@@ -7,6 +7,11 @@ Apache-2.0 ADK reference at
 license/provenance remain under `migration/reference/`; they are not runtime code
 or a conformance oracle. No unlicensed generic-agent source is copied.
 
+A new actual-native ADK/LangGraph × SQLite/PostgreSQL regression checks that a
+direct LLM call returns a finite tool-request DTO unchanged without dispatching
+an undeployed tool. The case awaits the final validation batch; no wider provider
+or tool-loop portability claim follows from it.
+
 ## Finite selected scope
 
 | Area | Adaptation | Limits and remaining gates |

@@ -1,8 +1,11 @@
 # S3-04 executable portability: authored acceptance plan
 
-Status: source authored, unqualified. S3-04 remains unchecked. No new executable
-operation, platform, backend or hard-isolation capability is advertised by this
-record. S3-03 corrections must be integrated before freezing this batch.
+Status: source authored, unqualified. S3-04 remains unchecked. Registry
+configuration/execution errors now propagate without being mislabeled as source
+policy rejection; new regression cases are authored and await the final batch.
+No new executable operation, platform, backend or hard-isolation capability is
+advertised by this record. S3-03 corrections must be integrated before freezing
+this batch.
 
 The public Open Workflow 1.0.3 document keeps its original `run.script.source`
 endpoint and canonical task references. Deployment configuration can supply a

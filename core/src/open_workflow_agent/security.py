@@ -29,6 +29,15 @@ _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _HEADER_NAME = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
 
 
+def _valid_bounded_reference(value: object, *, maximum_bytes: int) -> bool:
+    if type(value) is not str or not value or any(ord(character) < 32 for character in value):
+        return False
+    try:
+        return len(value.encode("utf-8")) <= maximum_bytes
+    except UnicodeEncodeError:
+        return False
+
+
 class _StrictSecurityModel(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -234,24 +243,13 @@ class Principal:
     audience: frozenset[str] = frozenset()
 
     def __post_init__(self) -> None:
-        if (
-            type(self.identity) is not str
-            or not self.identity
-            or len(self.identity.encode("utf-8")) > 256
-            or any(ord(character) < 32 for character in self.identity)
-        ):
+        if not _valid_bounded_reference(self.identity, maximum_bytes=256):
             raise ValueError("principal identity must be a bounded nonempty reference")
         for values in (self.roles, self.scopes, self.audience):
             if (
                 type(values) is not frozenset
                 or len(values) > 64
-                or any(
-                    type(item) is not str
-                    or not item
-                    or len(item.encode("utf-8")) > 256
-                    or any(ord(character) < 32 for character in item)
-                    for item in values
-                )
+                or any(not _valid_bounded_reference(item, maximum_bytes=256) for item in values)
             ):
                 raise ValueError("principal claims must be bounded distinct references")
 

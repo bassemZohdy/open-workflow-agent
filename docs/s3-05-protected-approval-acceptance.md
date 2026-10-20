@@ -52,12 +52,14 @@ across SQLite/PostgreSQL, expiry dispatcher 15, pure recovery/static admission 5
 shared actual native/backend cases 56 and actual producer-stop/process cases 32.
 The 88 native/process cases span the two principal SDKs and both databases, with
 22 per principal/backend. Producer-stop cases retain approved, rejected and
-expired decisions and now also persist reassignment/escalation before process
-termination, then prove that only the recovered assignee can decide. They require
-original expiry/input, genuine native checkpoints, actual separate process
-identities, exactly one observable business commit and no paid API. Windows and
-PostgreSQL selectors are added to existing mandatory jobs; their selectors, outer
-limits and image dependencies are retained.
+expired decisions and persist reassignment/escalation before process termination.
+After restart they replay the original assignment operation and require an
+unchanged revisioned record and audit before proving that only the recovered
+assignee can decide. They require original expiry/input, genuine native
+checkpoints, actual separate process identities, exactly one observable business
+commit and no paid API. Windows and PostgreSQL selectors are added to existing
+mandatory jobs; their selectors, outer limits and image dependencies are
+retained.
 
 Qualification requires a coherent unchanged-source batch, relevant complete suites,
 actual principal SQLite/PostgreSQL and process evidence, platform gates, fresh

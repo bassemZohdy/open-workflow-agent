@@ -83,6 +83,45 @@ async def test_selected_reference_patterns_keep_original_ows_semantics_and_nativ
 
 @pytest.mark.parametrize("engine_name,engine_type", ENGINES)
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_direct_llm_returns_tool_requests_without_dispatching_them(
+    tmp_path, engine_name, engine_type, backend
+):
+    request = {
+        "content": "considering a tool",
+        "tool_calls": [
+            {"name": "not-deployed-tool", "arguments": {"query": "bounded"}},
+        ],
+    }
+    model = FakeModel(request)
+    services = runtime(tmp_path, backend, model)
+    engine = engine_type()
+    actual_native(engine, engine_name)
+    await engine.initialize(services)
+    try:
+        plan = compile_workflow(
+            definition(
+                [
+                    {
+                        "complete": {
+                            "call": "llm:1.0.0@default",
+                            "with": {"prompt": "return a tool request"},
+                        }
+                    }
+                ]
+            )
+        )
+        handle = create(services, engine_name, plan)
+        result = await invoke(engine, services, plan, handle)
+
+        assert result.status == "completed" and result.output == request, result.error
+        assert len(model.calls) == 1
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize("read", ["data", "envelope"])
 async def test_embedded_codec_preserves_null_extensions_scope_and_duplicate_first_admission(
     tmp_path, engine_name, engine_type, backend, read

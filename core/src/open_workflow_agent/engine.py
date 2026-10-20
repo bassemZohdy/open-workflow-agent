@@ -519,16 +519,24 @@ class WorkflowEngine:
         self.services.invocations.refresh(invocation)
         if invocation.status in TERMINAL_INVOCATION_STATES:
             return self._stored_result(invocation)
-        await self._preflight_definition(invocation, workflow, initial=True)
         active = self._active.get(invocation.invocation_id)
         if active is not None:
+            await self._preflight_definition(invocation, workflow, initial=True)
             return await asyncio.shield(active.result)
         try:
             async with self._own_execution(invocation):
                 self.services.invocations.refresh(invocation)
                 if invocation.status in TERMINAL_INVOCATION_STATES:
                     return self._stored_result(invocation)
-                await self._preflight_definition(invocation, workflow, initial=True)
+                try:
+                    await self._preflight_definition(invocation, workflow, initial=True)
+                except UnsupportedWorkflowFeature as error:
+                    # Known capability rejection is an invocation result, but
+                    # it must be recorded before any input is bound or task runs.
+                    self.services.invocations.update(
+                        invocation, status="faulted", error=error.as_dict()
+                    )
+                    return self._stored_result(invocation)
                 try:
                     input_data = await self._prepare_workflow_input_owned(
                         workflow, invocation, input_data
@@ -749,9 +757,9 @@ class WorkflowEngine:
         self.services.invocations.refresh(handle)
         if handle.status in TERMINAL_INVOCATION_STATES:
             return self._stored_result(handle)
-        await self._preflight_definition(handle, plan)
         if handle.invocation_id not in self._active:
             await self._preflight_native_continuation(handle)
+        await self._preflight_definition(handle, plan)
         active_result = await self._resume_active_or_terminal(handle, resume_input)
         if active_result is not None:
             return active_result

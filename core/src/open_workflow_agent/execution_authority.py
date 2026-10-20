@@ -6,7 +6,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
 
-from .security import Principal
+from .security import Principal, _valid_bounded_reference
 
 PROFILE = "owa/execution-authority/v1"
 _CURRENT_AUTHORITY: ContextVar["ExecutionAuthority | None"] = ContextVar(
@@ -22,9 +22,7 @@ class ExecutionAuthority:
     def __post_init__(self) -> None:
         if (
             not isinstance(self.principal, Principal)
-            or type(self.security_profile) is not str
-            or not self.security_profile
-            or len(self.security_profile.encode("utf-8")) > 256
+            or not _valid_bounded_reference(self.security_profile, maximum_bytes=256)
             or any(ord(character) < 33 for character in self.security_profile)
         ):
             raise ValueError("execution authority requires a bounded named profile")

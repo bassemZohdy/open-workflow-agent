@@ -35,7 +35,9 @@ This stage provides the shared declaration and admission mechanism; feature
 semantics remain owned by engine adapters. The S4-02 working-tree slice now
 implements and advertises `langgraph.channels@1.0.0` for LangGraph only. That
 first consumer remains unqualified until its focused and final batch gates
-pass; ADK continues to reject the required extension. Ordinary descriptive
+pass; its focused core and native LangGraph tests pass, while final batch and
+hosted qualification remain pending. ADK continues to reject the required
+extension. Ordinary descriptive
 metadata remains inert. Optional declarations are retained as metadata and do
 not enable behavior; users must only mark an extension optional when the
 workflow remains correct without it. Each feature must implement its semantics

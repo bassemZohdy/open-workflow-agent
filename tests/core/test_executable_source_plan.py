@@ -9,7 +9,13 @@ import pytest
 from open_workflow_agent import recovery_definitions
 from open_workflow_agent.config import SandboxConfig
 from open_workflow_agent.effects import EffectJournal
-from open_workflow_agent.errors import OwaError, UnsupportedWorkflowFeature, WorkflowSemanticError
+from open_workflow_agent.errors import (
+    ConfigurationError,
+    OwaError,
+    UnsupportedWorkflowFeature,
+    WorkflowExecutionError,
+    WorkflowSemanticError,
+)
 from open_workflow_agent.executable_source_plan import (
     capture_script_resources,
     materialize_script_resources,
@@ -192,6 +198,25 @@ def test_unexpected_registry_failure_is_not_misreported_as_user_source_rejection
     monkeypatch.setattr(ExecutableSourceRegistry, "resolve", broken_registry)
     with pytest.raises(RuntimeError, match="internal source registry defect"):
         capture_script_resources(public, ExecutableSourceRegistry((artifact(),)))
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        ConfigurationError("invalid registry state"),
+        WorkflowExecutionError("captured source evidence is corrupt"),
+    ],
+)
+def test_registry_owa_errors_outside_source_rejection_propagate_unchanged(monkeypatch, failure):
+    public = workflow([{"action": script()}])
+
+    def broken_registry(*args, **kwargs):
+        raise failure
+
+    monkeypatch.setattr(ExecutableSourceRegistry, "resolve", broken_registry)
+    with pytest.raises(type(failure)) as raised:
+        capture_script_resources(public, ExecutableSourceRegistry((artifact(),)))
+    assert raised.value is failure
 
 
 def test_changed_capture_changes_fingerprint_but_keeps_original_public_document():

@@ -1,6 +1,9 @@
 # S3-06 identity and security acceptance
 
-Status: authored; behavioral, native, platform, database and publication qualification pending.
+Status: authored; behavioral, native, platform, database and publication
+qualification pending. New descriptor regressions reject unpaired Unicode in
+principal identity/role/scope/audience and named security-profile references as
+bounded-reference `ValueError`s; they await the final batch.
 Project Definition sections 11 and 22–25 govern this work. TODO.md retains the
 unchecked task. Source-only audits identify gaps; they do not establish behavioral
 failure or delivery. The preceding combined batch at `ebc2694` is tested separately.
