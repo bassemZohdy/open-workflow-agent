@@ -73,6 +73,13 @@ from .external_catalog import ResolvedCatalogFunction, parse_catalog_function_re
 from .forks import ForkDecision, ForkIdentity
 from .grpc_client import _GrpcOutcomeUncertain
 from .lifecycle import LifecycleControl
+from .native_extensions import (
+    NATIVE_CHANNEL_VARIABLE,
+    NativeChannelConfig,
+    NativeExtensionRequirement,
+    native_channel_config,
+    native_extension_requirements,
+)
 from .observability import EventSink, NullEventSink, WorkflowEvent
 from .openapi_client import _OpenApiOutcomeUncertain
 from .ownership import ExecutionLease
@@ -506,6 +513,10 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
     )
     globals_ = {"workflow", "runtime"}
     ambient = globals_ | {"context", "event", "resume_input"}
+    channel_extension = native_channel_config(workflow, native_extension_requirements(workflow))
+    channel_reader_tasks = (
+        {item.task for item in channel_extension.reads} if channel_extension is not None else set()
+    )
 
     def check(value: Any, scope: set[str], reference: str) -> None:
         try:
@@ -515,6 +526,7 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
 
     def binding(name: str, reference: str) -> str:
         if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) or name in {
+            NATIVE_CHANNEL_VARIABLE,
             "ENV",
             "input",
             "output",
@@ -544,7 +556,10 @@ def validate_expression_profile(workflow: Mapping[str, Any]) -> None:
 
     def tasks(task_list: Any, scope: set[str], prefix: str, *, indexed: bool = True) -> None:
         for reference, definition in _walk_tasks(task_list, prefix=prefix, indexed=indexed):
-            raw_scope = scope | {"task"}
+            channel_scope = (
+                {NATIVE_CHANNEL_VARIABLE} if reference in channel_reader_tasks else set()
+            )
+            raw_scope = scope | {"task"} | channel_scope
             body_scope = raw_scope | {"input"}
             data_slot(definition, "input", "from", raw_scope, reference)
             data_slot(definition, "output", "as", body_scope, reference)
@@ -962,6 +977,8 @@ class WorkflowPlan:
     imports: tuple[ResolvedCatalogFunction, ...] = ()
     resources: tuple[SchemaResource, ...] = ()
     script_resources: tuple[ExecutableScriptBinding, ...] = ()
+    native_extensions: tuple[NativeExtensionRequirement, ...] = ()
+    native_channels: NativeChannelConfig | None = None
 
     @property
     def source(self) -> dict[str, Any]:
@@ -1169,6 +1186,8 @@ def normalize_workflow(
         return result
 
     root = scope(effective["do"], "/do")
+    native_extensions = native_extension_requirements(workflow)
+    native_channels = native_channel_config(workflow, native_extensions)
     source_json = json.dumps(workflow, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return WorkflowPlan(
         namespace=str(document["namespace"]),
@@ -1184,6 +1203,8 @@ def normalize_workflow(
         imports=imports,
         resources=resources,
         script_resources=script_resources,
+        native_extensions=native_extensions,
+        native_channels=native_channels,
     )
 
 

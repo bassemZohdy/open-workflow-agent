@@ -8,7 +8,7 @@ import json
 import re
 from dataclasses import asdict, replace
 from importlib import import_module
-from typing import Any, TypedDict, cast
+from typing import Annotated, Any, TypedDict, cast
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
@@ -27,6 +27,12 @@ from open_workflow_agent.expressions import (
     ExpressionMode,
     validate_expression_data,
 )
+from open_workflow_agent.native_extensions import (
+    MAX_CHANNEL_VALUE_BYTES,
+    MAX_CHANNEL_VALUE_TOTAL_BYTES,
+    NATIVE_CHANNEL_VARIABLE,
+    NativeChannelConfig,
+)
 from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.timing import root_clock_identity
 from open_workflow_agent.workflow import (
@@ -39,12 +45,51 @@ from open_workflow_agent.workflow import (
 
 from .native import NATIVE_SCOPE_STEP_LIMIT
 
+_NATIVE_CHANNEL_UPDATES = "__owa_native_channel_updates__"
+
+
+def _reduce_native_channels(
+    current: dict[str, Any] | None, update: dict[str, Any]
+) -> dict[str, Any]:
+    """LangGraph reducer for admitted per-channel OWA reducer operations."""
+    values = copy.deepcopy(current or {})
+    if set(update) != {_NATIVE_CHANNEL_UPDATES}:
+        values.update(copy.deepcopy(update))
+        return values
+    operations = update[_NATIVE_CHANNEL_UPDATES]
+    if not isinstance(operations, list):
+        raise ValueError("native channel updates are invalid")
+    for operation in operations:
+        if not isinstance(operation, dict) or set(operation) != {"id", "reducer", "value"}:
+            raise ValueError("native channel update is invalid")
+        channel_id, reducer, value = operation["id"], operation["reducer"], operation["value"]
+        if reducer == "append":
+            if not isinstance(values.get(channel_id), list) or not isinstance(value, list):
+                raise ValueError("native append channel update is invalid")
+            values[channel_id] = [*values[channel_id], *copy.deepcopy(value)]
+        elif reducer == "last_value":
+            values[channel_id] = copy.deepcopy(value)
+        else:
+            raise ValueError("native channel reducer is invalid")
+    return values
+
 
 class _GraphState(TypedDict):
     snapshot: str
     counters: str
     next_node: str
     receipt_bindings: str
+
+
+class _GraphStateWithNativeChannels(TypedDict):
+    # Repeat the base fields instead of inheriting `_GraphState`: LangGraph's
+    # schema reader must see the Annotated reducer and all state keys together
+    # on the concrete schema passed to StateGraph.
+    snapshot: str
+    counters: str
+    next_node: str
+    receipt_bindings: str
+    native_channels: Annotated[dict[str, Any], _reduce_native_channels]
 
 
 def _node_name(task: TaskPlan) -> str:
@@ -55,25 +100,27 @@ def _snapshot(state: ExecutionState) -> str:
     # Live controls, services, expression evaluators and asyncio tasks never enter
     # native channels. JSON text also avoids serializer-specific integer limits
     # for inert document metadata admitted by the official schema.
+    value = {
+        "data": state.data,
+        "outputs": state.outputs,
+        "variables": state.variables,
+        "context": state.context,
+        "jump_to": state.jump_to,
+        "stop": state.stop,
+        "scope_exit": state.scope_exit,
+        "transition_selected": state.transition_selected,
+        "ended": state.flow.ended.is_set(),
+        "end_output": state.flow.output,
+        "end_context": state.flow.context,
+        "task_visits": state.task_visits,
+        "execution_path": state.execution_path,
+    }
     return json.dumps(
-        {
-            "data": state.data,
-            "outputs": state.outputs,
-            "variables": state.variables,
-            "context": state.context,
-            "jump_to": state.jump_to,
-            "stop": state.stop,
-            "scope_exit": state.scope_exit,
-            "transition_selected": state.transition_selected,
-            "ended": state.flow.ended.is_set(),
-            "end_output": state.flow.output,
-            "end_context": state.flow.context,
-            "task_visits": state.task_visits,
-            "execution_path": state.execution_path,
-        },
+        value,
         ensure_ascii=False,
         allow_nan=False,
         separators=(",", ":"),
+        sort_keys=True,
     )
 
 
@@ -115,7 +162,9 @@ def _decode_snapshot(snapshot: str) -> dict[str, Any]:
         "task_visits",
         "execution_path",
     }
-    if not isinstance(value, dict) or set(value) != fields:
+    if not isinstance(value, dict) or frozenset(value) not in {
+        frozenset(fields),
+    }:
         raise ValueError("native snapshot fields are unavailable")
     if not isinstance(value["outputs"], dict) or not isinstance(value["variables"], dict):
         raise ValueError("native snapshot task dictionaries are invalid")
@@ -247,6 +296,36 @@ class LangGraphScopeExecutor:
         }
         self._definition_json = _json_identity(plan.source)
         self._expected_input_json: str | None = None
+        self.native_channels: NativeChannelConfig | None = plan.native_channels
+        self._channels_by_id = (
+            {channel.channel_id: channel for channel in plan.native_channels.channels}
+            if plan.native_channels is not None
+            else {}
+        )
+        self._channel_writes = (
+            {
+                writer: tuple(
+                    channel
+                    for channel in plan.native_channels.channels
+                    if writer in channel.writers
+                )
+                for writer in {
+                    task for channel in plan.native_channels.channels for task in channel.writers
+                }
+            }
+            if plan.native_channels is not None
+            else {}
+        )
+        self._channel_reads = (
+            {item.task: item for item in plan.native_channels.reads}
+            if plan.native_channels is not None
+            else {}
+        )
+
+    def _initial_channel_values(self) -> dict[str, Any] | None:
+        if self.native_channels is None:
+            return None
+        return {channel.channel_id: channel.initial for channel in self.native_channels.channels}
 
     def checkpoint_config(self, reference: str, occurrence: int) -> dict[str, Any]:
         identity = json.dumps(
@@ -351,10 +430,17 @@ class LangGraphScopeExecutor:
             ):
                 raise ValueError("initial SDK channel has already advanced")
             initial = channels[START]
-            if not isinstance(initial, dict) or set(initial) != set(_GraphState.__annotations__):
+            expected_initial_fields = set(_GraphState.__annotations__)
+            if self.native_channels is not None:
+                expected_initial_fields.add("native_channels")
+            if not isinstance(initial, dict) or set(initial) != expected_initial_fields:
                 raise ValueError("initial native fields changed")
             self._expected_input_json = _json_identity(expected_input)
             value, counters = self._validate_native(initial, "/do", 1)
+            if self.native_channels is not None and _json_identity(
+                initial.get("native_channels")
+            ) != _json_identity(self._initial_channel_values()):
+                raise ValueError("initial native channels differ from the admitted workflow")
             if (
                 counters != {"/do": 1}
                 or initial["next_node"] != END
@@ -729,6 +815,8 @@ class LangGraphScopeExecutor:
             bindings["receipts"],
             bindings["scopes"],
         ]
+        if "native_channels" in native:
+            value.insert(3, native["native_channels"])
         return hashlib.sha256(_json_identity(value).encode()).hexdigest()
 
     def _validate_receipts(
@@ -809,6 +897,15 @@ class LangGraphScopeExecutor:
             if not isinstance(native, dict) or reference not in self.scopes:
                 raise ValueError("native scope channels are invalid")
             value = _decode_snapshot(native["snapshot"])
+            channel_values = native.get("native_channels", {})
+            expected_channel_ids = set(self._channels_by_id) if reference == "/do" else set()
+            if (
+                not isinstance(channel_values, dict)
+                or set(channel_values) != expected_channel_ids
+                or (self.native_channels is not None and "native_channels" not in native)
+            ):
+                raise ValueError("native channel state does not match the workflow")
+            self._validate_channel_values(channel_values)
             counters = _native_json(native["counters"])
             if (
                 not isinstance(counters, dict)
@@ -876,6 +973,27 @@ class LangGraphScopeExecutor:
                 "native execution state is unavailable or inconsistent; recovery is required"
             ) from None
 
+    def _validate_channel_values(self, channel_values: dict[str, Any]) -> None:
+        """Enforce deterministic finite channel/checkpoint payloads."""
+        total_bytes = 0
+        for channel_id, channel_value in channel_values.items():
+            validate_expression_data(channel_value)
+            channel = self._channels_by_id[channel_id]
+            if channel.reducer == "append" and not isinstance(channel_value, list):
+                raise ValueError("native append channel state is invalid")
+            encoded = json.dumps(
+                channel_value,
+                ensure_ascii=False,
+                allow_nan=False,
+                separators=(",", ":"),
+                sort_keys=True,
+            ).encode("utf-8")
+            if len(encoded) > MAX_CHANNEL_VALUE_BYTES:
+                raise ValueError("native channel value exceeds its size limit")
+            total_bytes += len(encoded)
+            if total_bytes > MAX_CHANNEL_VALUE_TOTAL_BYTES:
+                raise ValueError("native channel state exceeds its size limit")
+
     async def _validate_saved_scopes(self) -> None:
         # Read only this invocation's derived scope keys through the SDK. This
         # traverses stored occurrences, including a child still pending beneath
@@ -905,7 +1023,7 @@ class LangGraphScopeExecutor:
             if observed.get(key) != (digest, END):
                 raise ValueError("native completed scope checkpoint is absent or inconsistent")
 
-    def _read(self, native: _GraphState, state: ExecutionState, reference: str) -> None:
+    def _read(self, native: _GraphState, state: ExecutionState, reference: str) -> dict[str, Any]:
         decoded, counters = self._validate_native(native, reference, self.counters[reference])
         _restore(native["snapshot"], state, decoded=decoded)
         for key, value in counters.items():
@@ -913,14 +1031,44 @@ class LangGraphScopeExecutor:
             # during parent replay. The parent checkpoint owns those cursors.
             if key == reference or key.startswith(reference + "/"):
                 self.counters[key] = max(self.counters.get(key, 0), value)
+        channel_values = native.get("native_channels")
+        return copy.deepcopy(channel_values) if isinstance(channel_values, dict) else {}
 
-    def _write(self, state: ExecutionState, next_node: str = END, *, reference: str) -> _GraphState:
-        native: _GraphState = {
+    def _write(
+        self,
+        state: ExecutionState,
+        next_node: str = END,
+        *,
+        reference: str,
+        native_channels: dict[str, Any] | None = None,
+        native_channel_updates: list[dict[str, Any]] | None = None,
+    ) -> _GraphState:
+        expected_channel_ids = set(self._channels_by_id) if reference == "/do" else set()
+        projected_channels = native_channels if native_channels is not None else {}
+        if set(projected_channels) != expected_channel_ids:
+            raise WorkflowExecutionError(
+                "native channel output is invalid or exceeds its size limit"
+            )
+        if projected_channels:
+            try:
+                self._validate_channel_values(projected_channels)
+            except Exception:
+                raise WorkflowExecutionError(
+                    "native channel output is invalid or exceeds its size limit"
+                ) from None
+        stored_channels = (
+            {_NATIVE_CHANNEL_UPDATES: native_channel_updates}
+            if native_channel_updates is not None
+            else projected_channels
+        )
+        native: dict[str, Any] = {
             "snapshot": _snapshot(state),
             "counters": json.dumps(self.counters),
             "next_node": next_node,
             "receipt_bindings": "",
         }
+        if self.native_channels is not None:
+            native["native_channels"] = stored_channels
         bindings = {
             "version": 2,
             "state_digest": "",
@@ -933,9 +1081,12 @@ class LangGraphScopeExecutor:
             ],
         }
         native["receipt_bindings"] = json.dumps(bindings, allow_nan=False)
-        bindings["state_digest"] = self._state_digest(dict(native))
+        digest_native = dict(native)
+        if self.native_channels is not None:
+            digest_native["native_channels"] = projected_channels
+        bindings["state_digest"] = self._state_digest(digest_native)
         native["receipt_bindings"] = json.dumps(bindings, allow_nan=False)
-        return native
+        return cast(_GraphState, native)
 
     def _record_completed_scope(self, native: _GraphState, reference: str, occurrence: int) -> None:
         key = (reference, occurrence)
@@ -948,16 +1099,28 @@ class LangGraphScopeExecutor:
     def compile_scope(
         self, scope: ScopePlan, executor: WorkflowExecutor, prototype: ExecutionState
     ) -> Any:
-        graph = StateGraph(_GraphState)
+        state_schema = (
+            _GraphStateWithNativeChannels if self.native_channels is not None else _GraphState
+        )
+        graph = StateGraph(state_schema)
         names = {task.name: _node_name(task) for task in scope.tasks}
 
         def node(task: TaskPlan, following: str) -> Any:
             async def execute(native: _GraphState) -> _GraphState:
                 state = executor._copy_state(prototype)
-                self._read(native, state, scope.reference)
+                channel_values = self._read(native, state, scope.reference)
                 if state.flow.ended.is_set():
                     state.stop = True
-                    return self._write(state, reference=scope.reference)
+                    return self._write(
+                        state,
+                        reference=scope.reference,
+                        native_channels=channel_values,
+                        native_channel_updates=(
+                            []
+                            if self.native_channels is not None and scope.reference == "/do"
+                            else None
+                        ),
+                    )
                 executor._token(state).checkpoint()
                 pending = self._resume_interrupts.get(
                     (scope.reference, self.counters[scope.reference], _node_name(task))
@@ -990,38 +1153,90 @@ class LangGraphScopeExecutor:
                         raise InvocationStateError(
                             "native interruption resume does not match its wake"
                         )
-                try:
-                    await executor._run_task_item(
-                        task.name,
-                        task.definition,
-                        state,
-                        task.reference,
-                        execution_reference=task.execution_reference,
-                    )
-                except (TimerSuspension, ChildSuspension) as suspension:
-                    kind = "child" if isinstance(suspension, ChildSuspension) else "timer"
-                    payload = {
-                        kind: suspension.as_value(),
-                        "receipts": json.loads(
-                            json.dumps(
-                                [asdict(self.receipts[key]) for key in sorted(self.receipts)],
-                                allow_nan=False,
-                            )
-                        ),
+                read = self._channel_reads.get(task.reference)
+                if read is not None:
+                    if NATIVE_CHANNEL_VARIABLE in state.variables:
+                        raise InvocationStateError("native channel variable collided at runtime")
+                    state.variables[NATIVE_CHANNEL_VARIABLE] = {
+                        channel_id: copy.deepcopy(channel_values[channel_id])
+                        for channel_id in read.channels
                     }
-                    self._native_interrupt(payload)
-                    interrupt(payload)
-                    # A validated wake must make the common timer consumable.
-                    # Never treat an unconsumed suspension as a task result.
-                    raise InvocationStateError(
-                        "native interruption wake did not complete its wait"
-                    ) from None
+                try:
+                    try:
+                        await executor._run_task_item(
+                            task.name,
+                            task.definition,
+                            state,
+                            task.reference,
+                            execution_reference=task.execution_reference,
+                        )
+                    except (TimerSuspension, ChildSuspension) as suspension:
+                        kind = "child" if isinstance(suspension, ChildSuspension) else "timer"
+                        payload = {
+                            kind: suspension.as_value(),
+                            "receipts": json.loads(
+                                json.dumps(
+                                    [asdict(self.receipts[key]) for key in sorted(self.receipts)],
+                                    allow_nan=False,
+                                )
+                            ),
+                        }
+                        self._native_interrupt(payload)
+                        interrupt(payload)
+                        # A validated wake must make the common timer consumable.
+                        # Never treat an unconsumed suspension as a task result.
+                        raise InvocationStateError(
+                            "native interruption wake did not complete its wait"
+                        ) from None
+                finally:
+                    if read is not None:
+                        state.variables.pop(NATIVE_CHANNEL_VARIABLE, None)
+
+                channel_updates: list[dict[str, Any]] = []
+                for channel in self._channel_writes.get(task.reference, ()):
+                    value = copy.deepcopy(state.data)
+                    try:
+                        validate_expression_data(value)
+                    except Exception:
+                        raise WorkflowExecutionError(
+                            "native channel output is invalid or exceeds its size limit",
+                            details={"task": task.reference},
+                        ) from None
+                    if channel.reducer == "append":
+                        if not isinstance(value, list):
+                            raise WorkflowExecutionError(
+                                "native channel output is invalid or exceeds its size limit",
+                                details={"task": task.reference},
+                            )
+                        channel_values[channel.channel_id] = [
+                            *channel_values[channel.channel_id],
+                            *value,
+                        ]
+                    else:
+                        channel_values[channel.channel_id] = value
+                    channel_updates.append(
+                        {
+                            "id": channel.channel_id,
+                            "reducer": channel.reducer,
+                            "value": value,
+                        }
+                    )
                 halted = state.stop or state.scope_exit or state.flow.ended.is_set()
                 target = END if halted else following
                 if state.jump_to is not None and not halted:
                     target = names[state.jump_to]
                 state.jump_to = None
-                return self._write(state, target, reference=scope.reference)
+                return self._write(
+                    state,
+                    target,
+                    reference=scope.reference,
+                    native_channels=channel_values,
+                    native_channel_updates=(
+                        channel_updates
+                        if self.native_channels is not None and scope.reference == "/do"
+                        else None
+                    ),
+                )
 
             return execute
 
@@ -1029,7 +1244,7 @@ class LangGraphScopeExecutor:
         for index, task in enumerate(scope.tasks):
             following = _node_name(scope.tasks[index + 1]) if index + 1 < len(scope.tasks) else END
             name = _node_name(task)
-            graph.add_node(name, node(task, following))
+            graph.add_node(name, node(task, following), input_schema=state_schema)
             graph.add_conditional_edges(
                 name, lambda state: state["next_node"], [*names.values(), END]
             )
@@ -1065,7 +1280,11 @@ class LangGraphScopeExecutor:
         self.counters[prefix] = occurrence
         config = self.checkpoint_config(prefix, occurrence)
         graph = self.compile_scope(scope, executor, state)
-        native_input: _GraphState | None = self._write(state, reference=prefix)
+        native_input: _GraphState | None = self._write(
+            state,
+            reference=prefix,
+            native_channels=self._initial_channel_values() if prefix == "/do" else None,
+        )
         if prefix != "/do" or self.resume:
             saved = await graph.aget_state(config)
             if saved.values:

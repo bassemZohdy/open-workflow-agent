@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,23 @@ from open_workflow_agent.workflow import WorkflowPlan
 
 from .agent import AdkAgentFactory
 from .native import ADK_AVAILABLE, AdkRecoveryContext, NativeAdkRunner
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _log_resume_failure(exc: Exception, stage: str) -> None:
+    """Log a stage and stable error identity without exception contents."""
+
+    _LOGGER.warning(
+        "ADK invocation resume failed",
+        extra={
+            "extra_fields": {
+                "stage": stage,
+                "error_type": type(exc).__name__,
+                "error_code": getattr(type(exc), "code", "workflow_execution_error"),
+            }
+        },
+    )
 
 
 class AdkWorkflowEngine(PortableWorkflowEngine):
@@ -216,8 +234,10 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
             return self._stored_result(handle)
         active = self._begin_active(handle)
         result: InvocationResult | None = None
+        resume_stage = "prepare_workflow_input"
         try:
             workflow_input = await self._prepare_workflow_input_owned(plan, handle, resume_input)
+            resume_stage = "native_resume"
             execution_completed = False
             execution_output: Any = None
             metadata = self._metadata(plan, handle, active)
@@ -251,7 +271,9 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
                 # calling the portable runner after restart. Recover through
                 # the same plan only when no callback completion was observed;
                 # a completed callback may validly return JSON null.
+                resume_stage = "workflow_fallback"
                 output = await execute_workflow(workflow_input)
+            resume_stage = "record_result"
             result = (
                 self._stored_result(handle)
                 if active.control.token.cancelled or handle.status == "cancelled"
@@ -268,6 +290,10 @@ class AdkWorkflowEngine(PortableWorkflowEngine):
             result = self._record_result(handle, status="cancelled", error=exc.as_dict())
             return result
         except Exception as exc:
+            # The public A2A/API result intentionally hides native exceptions.
+            # Preserve only bounded diagnostic fields so hosted failures can
+            # be localized without logging user input, native ids or messages.
+            _log_resume_failure(exc, resume_stage)
             error = (
                 exc.as_dict()
                 if isinstance(exc, OwaError)

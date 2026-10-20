@@ -2,7 +2,7 @@
 
 Historical attempts below remain distinct from qualification. S2-09's finite
 VM01-VM08 policy and S3-01's finite Python MCP01-MCP08 profile are verified.
-S3-02 through S3-08 remain open. The final S3-01 exact-source result is recorded
+S3-03 through S3-08 remain open. The final S3-01 exact-source result is recorded
 first; earlier attempts remain historical and superseded. Passing subsets and
 fresh builds do not replace complete qualification. Local `tmp/` evidence is
 ignored and retained in its originating worktree.
@@ -10,6 +10,46 @@ ignored and retained in its originating worktree.
 Scope note — 2026-10-20: durable A2A Task/receipt expiry is excluded from the
 finite S3-02 profile. Older entries that describe expiry as open or
 unqualified record prior scope and do not create an active acceptance gate.
+
+### Partial source — `c3ca7f1`
+
+The exact-source hosted batch for PR #64 was started at `c3ca7f1`:
+[CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39405483897),
+[PostgreSQL CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39405484080),
+[Agent Framework CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39405483987),
+[External Sandbox](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39405483937),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39405483913), and
+[Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39405483953).
+Docs, Security and External Sandbox passed. CI reported a Windows provider test
+failure because floating-point subtraction supplied LiteLLM with
+`30.00000000000003` for a configured 30-second bound. The provider now clamps
+the remaining time to the validated configured timeout; its focused suite
+passed locally (62 passed, 6 skipped), as did Ruff and formatting. CI also
+reported one ADK/SQLite HTTP+JSON skill-resume response with
+`invalid_invocation_state`; the JSON-RPC sibling passed, and a focused local
+rerun passed. The failed job was `118570817408` (`adk native lifecycle and
+version recovery`). Its log ends with the HTTP 500 and sanitized
+`owaCode=invalid_invocation_state`; it does not preserve the underlying Python
+exception, stage, or native error details. No specific source defect is
+established. CI, PostgreSQL and Agent Framework were cancelled while
+consolidating changes for the requested final batch. This is partial evidence
+only; S3-03 remains open and both the provider bound and ADK resume regression
+remain in final exact-source hosted validation.
+
+### ADK resume diagnostic follow-up — local working tree
+
+The ADK resume boundary now emits a structured warning with only the fixed
+execution stage, exception class name, and stable common error code. It omits
+exception messages, invocation/session/user identifiers, workflow input, and
+native references. The earlier helper-only sentinel test passed locally (1
+passed). It has been strengthened to inject a sentinel `InvocationStateError`
+through the actual `_resume_owned` call site, then assert the exact safe fields
+and absence of message, input, and identifier sentinels. This call-site
+regression is authored and unrun for the final batch. Previous Ruff lint and
+format checks cover the helper-only test version; the changed call-site test
+awaits final-batch validation. This diagnostic cannot explain the historical
+`c3ca7f1` failure, and it does not qualify or close S3-03; the exact resume
+regression remains in the final hosted validation batch.
 
 ### Exact-source qualification — `af4acd6`
 

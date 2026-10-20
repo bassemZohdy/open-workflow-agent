@@ -49,12 +49,15 @@ call; absent/corrupt proof cannot downgrade into the legacy approval profile.
 
 Authored inventories, not executed counts: common protected store/API cases 30
 across SQLite/PostgreSQL, expiry dispatcher 15, pure recovery/static admission 5,
-shared actual native/backend cases 56 and actual producer-stop/process cases 24.
-The 80 native cases span the two principal SDKs and both databases, with 20 per
-principal/backend. They require original expiry/input, genuine native checkpoints,
-actual separate process identities, exactly one observable business commit and no
-paid API. Windows and PostgreSQL selectors are added to existing mandatory jobs;
-their selectors, outer limits and image dependencies are retained.
+shared actual native/backend cases 56 and actual producer-stop/process cases 32.
+The 88 native/process cases span the two principal SDKs and both databases, with
+22 per principal/backend. Producer-stop cases retain approved, rejected and
+expired decisions and now also persist reassignment/escalation before process
+termination, then prove that only the recovered assignee can decide. They require
+original expiry/input, genuine native checkpoints, actual separate process
+identities, exactly one observable business commit and no paid API. Windows and
+PostgreSQL selectors are added to existing mandatory jobs; their selectors, outer
+limits and image dependencies are retained.
 
 Qualification requires a coherent unchanged-source batch, relevant complete suites,
 actual principal SQLite/PostgreSQL and process evidence, platform gates, fresh

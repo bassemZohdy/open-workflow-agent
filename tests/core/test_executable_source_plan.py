@@ -183,6 +183,17 @@ def test_mixed_inline_and_external_source_rejects_at_pure_capture():
         capture_script_resources(public, ExecutableSourceRegistry((artifact(),)))
 
 
+def test_unexpected_registry_failure_is_not_misreported_as_user_source_rejection(monkeypatch):
+    public = workflow([{"action": script()}])
+
+    def broken_registry(*args, **kwargs):
+        raise RuntimeError("internal source registry defect")
+
+    monkeypatch.setattr(ExecutableSourceRegistry, "resolve", broken_registry)
+    with pytest.raises(RuntimeError, match="internal source registry defect"):
+        capture_script_resources(public, ExecutableSourceRegistry((artifact(),)))
+
+
 def test_changed_capture_changes_fingerprint_but_keeps_original_public_document():
     public = workflow([{"action": script()}])
     original = compile_original(public)

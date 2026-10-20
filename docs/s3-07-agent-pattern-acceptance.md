@@ -16,6 +16,18 @@ The original assistant and pipeline recipes retain their 1.0.0 contracts; separa
 provider/model, instruction, tool and budget separation. No unlicensed
 predecessor implementation or old SDK API is a conformance oracle.
 
+A focused actual-native regression now configures a named role whose policy
+allows catalog admission but denies model completion. The ADK/SQLite and
+LangGraph/SQLite cases pass and prove that no provider is called and original
+invocation authority remains unchanged. The PostgreSQL parameters and full
+eight-family acceptance matrix remain pending; this does not close S3-07.
+
+An additional focused contract regression is authored but unrun: a role policy
+allows catalog/model dispatch while denying `tool.invoke` for a tool that is
+otherwise in the role's declared allowlist. The case requires the denial to
+occur before the external business request, while retaining original invocation
+authority. Its actual-native and PostgreSQL parameters remain unverified.
+
 ## Execution contract
 
 | Step | Executor | Guard and failure behavior |

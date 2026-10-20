@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from .definitions import resolve_reusable_components
-from .errors import UnsupportedWorkflowFeature, WorkflowSemanticError
+from .errors import OwaError, UnsupportedWorkflowFeature, WorkflowSemanticError
 from .executable_sources import ExecutableScriptBinding, ExecutableSourceRegistry
 
 
@@ -45,7 +45,7 @@ def capture_script_resources(
             raise WorkflowSemanticError("script source language must be declared")
         try:
             source = registry.resolve(script["source"], language=language)
-        except Exception:
+        except OwaError:
             raise UnsupportedWorkflowFeature(
                 "script source is not an exact approved executable binding",
                 details={"reference": reference},

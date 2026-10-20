@@ -268,6 +268,10 @@ class LiteLLMModel:
                     remaining = due - loop.time()
                     if remaining <= 0:
                         raise TimeoutError
+                    # Subtracting monotonic timestamps can round a few ULPs
+                    # above the configured duration (for example 30.00000000000003).
+                    # Keep the provider-side timeout within the explicit bound.
+                    remaining = min(remaining, timeout)
                     pending = acompletion(
                         model=self.name,
                         messages=messages,

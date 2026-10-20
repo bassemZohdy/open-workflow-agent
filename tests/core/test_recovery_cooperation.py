@@ -9,7 +9,7 @@ import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.engine import PortableWorkflowEngine
-from open_workflow_agent.errors import InvocationStateError
+from open_workflow_agent.errors import InvocationStateError, UnsupportedWorkflowFeature
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
@@ -139,3 +139,40 @@ async def test_profile_changed_between_yielding_stages_is_verified_again_before_
     assert services.invocations.get(handle.invocation_id)._persisted_payload == before
     assert services.invocations.read_input(handle) == {"original": None}
     assert services.model.calls == []
+
+
+@pytest.mark.asyncio
+async def test_required_native_extension_rejects_before_ownership_or_archive_mutation(recovery):
+    engine, services, plan, handle = recovery
+    unsupported = compile_workflow(
+        {
+            "document": {
+                "dsl": "1.0.3",
+                "namespace": "recovery-cooperation",
+                "name": "unsupported-native-feature",
+                "version": "1.0.0",
+                "metadata": {
+                    "owa": {
+                        "nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}]
+                    }
+                },
+            },
+            "do": [{"result": {"set": {"original": True}}}],
+        }
+    )
+    ownership_before = services.execution_ownership.connection.execute(
+        "SELECT * FROM invocation_ownership WHERE invocation_id=?", (handle.invocation_id,)
+    ).fetchall()
+    archived_before = services.recovery_definitions.resolve(handle)
+
+    with pytest.raises(UnsupportedWorkflowFeature, match="required native workflow extension"):
+        await engine._preflight_definition(handle, unsupported, initial=True)
+
+    assert (
+        services.execution_ownership.connection.execute(
+            "SELECT * FROM invocation_ownership WHERE invocation_id=?", (handle.invocation_id,)
+        ).fetchall()
+        == ownership_before
+    )
+    assert services.recovery_definitions.resolve(handle).fingerprint == archived_before.fingerprint
+    assert plan.fingerprint == archived_before.fingerprint

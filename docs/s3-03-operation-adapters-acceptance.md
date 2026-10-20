@@ -4,8 +4,24 @@ Status: the authored batch at exact source `923302f` passed its recorded local
 and hosted gates. Source `31ec0eb` has a separate recorded local follow-up;
 source `237f09f` adds two focused security regressions. Source `f89a154` fixes a
 Windows-only test-fixture deadline error discovered in the `0f16415` hosted
-batch; the focused supervisor suite passes locally and exact-source hosted
-requalification is pending. S3-03 remains unchecked because broader adapter,
+batch; the focused supervisor suite passes locally. At source `c3ca7f1`, the
+Windows provider test found timeout rounding just above its 30-second limit;
+the implementation now clamps the provider timeout and its focused 62-test
+suite passes locally (6 skipped). One ADK HTTP/JSON resume test returned
+`invalid_invocation_state` in hosted CI, while its JSON-RPC sibling passed; a
+focused local rerun passed. The hosted failure is recorded at run
+`39405483897`, job `118570817408`: the log contains only the sanitized A2A
+`500` response with `owaCode=invalid_invocation_state`, not the underlying
+exception. A later diagnostic follow-up logs only the ADK resume stage, stable
+error code, and exception type; it never logs exception text, input, or native
+identifiers. An earlier helper-only safety test passed locally; it has been
+strengthened to inject a sentinel failure through the actual `_resume_owned`
+call site and assert that no message, input, or identifier is logged. The
+call-site regression is authored and unrun for the final batch. This improves
+evidence on recurrence but does not identify or fix the original failure.
+The remaining CI, PostgreSQL and Agent Framework runs were cancelled while
+batching changes; Docs, Security and External Sandbox passed. Exact-source full
+requalification remains pending. S3-03 remains unchecked because broader adapter,
 backend, platform, packaging and deployment acceptance remains open.
 At exact source `923302f`, the scoped root selection passed (140 passed, 12 skipped),
 gRPC SQLite contract/process recovery (22 cases per principal engine), and

@@ -87,6 +87,132 @@ async def test_native_scope_has_individual_nodes_conditional_edges_and_private_j
     assert not hasattr(result, "snapshot")
 
 
+async def test_native_channel_reducer_is_a_private_langgraph_state_channel(services):
+    workflow = generate_default_workflow()
+    workflow["document"]["metadata"] = {
+        "owa": {
+            "nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}],
+            "nativeExtensionData": {
+                "langgraph.channels@1.0.0": {
+                    "channels": [
+                        {
+                            "id": "items",
+                            "reducer": "append",
+                            "initial": ["seed"],
+                            "writes": [{"task": "/do/1"}, {"task": "/do/0"}],
+                        }
+                    ],
+                    "reads": [
+                        {
+                            "task": "/do/2",
+                            "as": "owa_native_channels",
+                            "channels": ["items"],
+                        }
+                    ],
+                }
+            },
+        }
+    }
+    workflow["do"] = [
+        {"first": {"set": '${ ["first"] }'}},
+        {"second": {"set": '${ ["second"] }'}},
+        {"read_items": {"set": "${ $owa_native_channels.items }"}},
+    ]
+    plan = compile_workflow(workflow)
+    assert plan.native_channels is not None
+    assert plan.native_channels.channels[0].writers == ("/do/0/first", "/do/1/second")
+
+    engine = LangGraphWorkflowEngine()
+    await engine.initialize(services)
+    engine.native.database_path = None
+    handle = _handle(services, plan)
+    result = await engine.invoke(plan, handle, {})
+    assert result.status == "completed", result.error
+    assert result.output == ["seed", "first", "second"]
+    assert not hasattr(result, "native_channels")
+
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
+
+    driver = LangGraphScopeExecutor(plan, engine.native.checkpointer, handle.invocation_id)
+    checkpoints = list(engine.native.checkpointer.list(driver.checkpoint_config("/do", 1)))
+    values = [
+        checkpoint.checkpoint["channel_values"]
+        for checkpoint in checkpoints
+        if "native_channels" in checkpoint.checkpoint["channel_values"]
+    ]
+    assert values
+    assert any(
+        value["native_channels"] == {"items": ["seed", "first", "second"]} for value in values
+    )
+    snapshots = [json.loads(value["snapshot"]) for value in values]
+    assert all("native_channels" not in snapshot for snapshot in snapshots)
+    assert all("owa_native_channels" not in snapshot["variables"] for snapshot in snapshots)
+
+
+async def test_native_channel_reducer_replaces_last_value_and_appends_json_arrays():
+    from open_workflow_agent_langgraph.graph import (
+        _NATIVE_CHANNEL_UPDATES,
+        _reduce_native_channels,
+    )
+
+    state = _reduce_native_channels(
+        {"items": ["seed"], "status": "old"},
+        {
+            _NATIVE_CHANNEL_UPDATES: [
+                {"id": "items", "reducer": "append", "value": ["next"]},
+                {"id": "status", "reducer": "last_value", "value": "new"},
+            ]
+        },
+    )
+    assert state == {"items": ["seed", "next"], "status": "new"}
+
+
+async def test_native_channel_oversized_writer_fails_before_checkpoint(services):
+    workflow = generate_default_workflow()
+    workflow["document"]["metadata"] = {
+        "owa": {
+            "nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}],
+            "nativeExtensionData": {
+                "langgraph.channels@1.0.0": {
+                    "channels": [
+                        {
+                            "id": "value",
+                            "reducer": "last_value",
+                            "initial": None,
+                            "writes": [{"task": "/do/0"}],
+                        }
+                    ],
+                    "reads": [],
+                }
+            },
+        }
+    }
+    workflow["do"] = [{"write_value": {"set": "x" * 65537}}]
+    plan = compile_workflow(workflow)
+    engine = LangGraphWorkflowEngine()
+    await engine.initialize(services)
+    engine.native.database_path = None
+    handle = _handle(services, plan)
+
+    result = await engine.invoke(plan, handle, {})
+    assert result.status == "faulted"
+    assert result.error is not None
+    assert result.error["code"] == "workflow_execution_error"
+    assert result.error["message"] == "native channel output is invalid or exceeds its size limit"
+
+    from open_workflow_agent_langgraph.graph import LangGraphScopeExecutor
+
+    driver = LangGraphScopeExecutor(plan, engine.native.checkpointer, handle.invocation_id)
+    checkpoints = list(engine.native.checkpointer.list(driver.checkpoint_config("/do", 1)))
+    stored = [
+        checkpoint.checkpoint["channel_values"]["native_channels"]
+        for checkpoint in checkpoints
+        if "native_channels" in checkpoint.checkpoint["channel_values"]
+    ]
+    assert stored
+    assert all(value == {"value": None} for value in stored)
+
+
 @pytest.mark.parametrize("scope", ["root", "do", "for", "function", "import", "schema"])
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_restart_resumes_pending_native_task_without_replaying_completed_call(

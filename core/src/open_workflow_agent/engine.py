@@ -31,6 +31,7 @@ from .lifecycle import (
     ActiveInvocation,
     LifecycleControl,
 )
+from .native_extensions import verify_native_extension_requirements
 from .observability import WorkflowEvent
 from .ownership import ExecutionLease
 from .persistence import ExecutionHandle
@@ -66,6 +67,7 @@ class EngineCapabilities:
     waiting: bool = True
     native_task_nodes: bool = False
     native_scope_step_limit: int | None = None
+    native_extensions: tuple[str, ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -79,6 +81,7 @@ class EngineCapabilities:
             "protocols": list(self.protocols),
             "functions": list(self.functions),
             "policies": list(self.policies),
+            "nativeExtensions": list(self.native_extensions),
             "features": {
                 "nativeTaskExecution": {
                     "nodes": self.native_task_nodes,
@@ -383,10 +386,13 @@ class WorkflowEngine:
         )
 
     async def compile(self, plan: WorkflowPlan) -> WorkflowPlan:
-        self._verify_event_requirements(plan)
+        self._verify_workflow_capabilities(plan)
         return plan
 
-    def _verify_event_requirements(self, plan: WorkflowPlan) -> None:
+    def _verify_workflow_capabilities(self, plan: WorkflowPlan) -> None:
+        verify_native_extension_requirements(
+            plan.native_extensions, self.capabilities().native_extensions
+        )
         services = getattr(self, "services", None)
         if services is None:
             # Plans may be compiled before deployment services are bound;
@@ -428,13 +434,14 @@ class WorkflowEngine:
         plan = await self.services.recovery_definitions.resolve_owned(handle)
         await self.services.verify_executable_source_history(handle)
         self.services.verify_protected_approvals(handle)
-        self._verify_event_requirements(plan)
+        self._verify_workflow_capabilities(plan)
         await self._preflight_native_continuation(handle)
         return plan
 
     async def _preflight_definition(
         self, handle: ExecutionHandle, plan: WorkflowPlan, *, initial: bool = False
     ) -> None:
+        self._verify_workflow_capabilities(plan)
         await self.services.verify_executable_source_history(handle)
         self.services.execution_authorizations.verify_invocation(handle)
         self.services.verify_protected_approval_plan(plan)
@@ -1194,7 +1201,7 @@ class WorkflowEngine:
         self, workflow: WorkflowPlan, invocation: ExecutionHandle, input_data: Any
     ) -> Any:
         self.services.invocations.verify_fingerprint(invocation, workflow.fingerprint)
-        self._verify_event_requirements(workflow)
+        self._verify_workflow_capabilities(workflow)
         self.services.timers.verify_invocation(invocation.invocation_id, workflow.fingerprint)
         archive = self.services.recovery_definitions
         if archive.has_binding(invocation):
@@ -1222,7 +1229,7 @@ class WorkflowEngine:
         await self.services.recovery_definitions.verify_owned(handle, plan)
         await asyncio.sleep(0)
         self.services.verify_protected_approvals(handle)
-        self._verify_event_requirements(plan)
+        self._verify_workflow_capabilities(plan)
         self._verify_execution_engine(handle)
         self.services.invocations.verify_fingerprint(handle, plan.fingerprint)
         original_input = self.services.invocations.read_input(handle)

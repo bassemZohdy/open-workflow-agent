@@ -59,6 +59,11 @@ namespace isolation, database-clock expiry/takeover, cancellation/rollback,
 corruption and bounded multi-page explicit retention. Broker tests must include
 exact envelope round trips, committed receipt re-read, duplicate/mismatched input,
 ACK failure/rollback and known inbox/listen/model/outbox process boundaries.
+The newly authored conflicting-duplicate case uses actual native engine fixtures
+and both database selections; it rejects changed data for an already committed
+event identity, proves the first envelope remains unchanged, then retries the
+original event and requires the same admission receipt and valid selection proof.
+It is unrun and does not qualify the broker profile.
 
 Keep all earlier source/identity/approval/sandbox/recovery gates. Required hosted
 Windows, actual database, security, CTK and image gates still apply before task

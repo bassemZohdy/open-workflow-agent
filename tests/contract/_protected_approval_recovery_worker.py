@@ -25,7 +25,7 @@ from _protected_approval_fixtures import (
 )
 from _recovery_failure_artifact import failure_artifact
 from _version_recovery_worker import native_snapshot
-from open_workflow_agent.errors import OwaError
+from open_workflow_agent.errors import ApprovalAuthorizationError, OwaError
 from open_workflow_agent.protected_approval_store import REQUEST_POLICY
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.workflow import compile_workflow
@@ -87,17 +87,28 @@ async def run(directory, mode):
             task = asyncio.create_task(engine.invoke(plan, invocation, RAW))
             await waiting(services, invocation, task)
             if scenario["case"] != "expired":
-                status = "rejected" if scenario["case"] == "rejected" else "approved"
                 principal = actor(services, "reviewer-a")
-                await services.approvals.decide(
-                    scenario["subject"],
-                    decision=status,
-                    operator_id=principal.identity,
-                    actor=principal,
-                    value=None,
-                    revision=1,
-                    operation_key=scenario["subject"] + "-decision",
-                )
+                if scenario["case"] in {"reassign", "escalate"}:
+                    target = "reviewer-b" if scenario["case"] == "reassign" else "lead"
+                    await services.approvals.mutate_protected(
+                        scenario["subject"],
+                        action=scenario["case"],
+                        actor=principal,
+                        revision=1,
+                        operation_key=scenario["subject"] + "-assignment",
+                        assignee=target,
+                    )
+                else:
+                    status = "rejected" if scenario["case"] == "rejected" else "approved"
+                    await services.approvals.decide(
+                        scenario["subject"],
+                        decision=status,
+                        operator_id=principal.identity,
+                        actor=principal,
+                        value=None,
+                        revision=1,
+                        operation_key=scenario["subject"] + "-decision",
+                    )
                 await asyncio.wait_for(reached.wait(), 30)
             record = services.approvals.store.get(scenario["subject"])
             assert not ledger(directory)
@@ -163,6 +174,36 @@ async def run(directory, mode):
                 while time.time() < ready["expiry"]:
                     await asyncio.sleep(0.01)
             await services.start_protected_approvals()
+        if scenario["case"] in {"reassign", "escalate"}:
+            target = "reviewer-b" if scenario["case"] == "reassign" else "lead"
+            record = services.approvals.store.get(scenario["subject"])
+            assert record.status == "pending" and record.assignee == target
+            assert record.assignment_revision == 2
+            original_actor = actor(services, "reviewer-a")
+            target_actor = actor(services, target)
+            try:
+                await services.approvals.decide(
+                    scenario["subject"],
+                    decision="approved",
+                    operator_id=original_actor.identity,
+                    actor=original_actor,
+                    value=None,
+                    revision=2,
+                    operation_key=scenario["subject"] + "-wrong-actor",
+                )
+            except ApprovalAuthorizationError:
+                pass
+            else:
+                raise AssertionError("previous assignee retained decision authority after recovery")
+            await services.approvals.decide(
+                scenario["subject"],
+                decision="approved",
+                operator_id=target_actor.identity,
+                actor=target_actor,
+                value=None,
+                revision=2,
+                operation_key=scenario["subject"] + "-decision",
+            )
         if damaged:
             try:
                 await asyncio.wait_for(
@@ -203,7 +244,7 @@ async def run(directory, mode):
             )
             expected = (
                 "approved"
-                if scenario["case"] == "approved"
+                if scenario["case"] in {"approved", "reassign", "escalate"}
                 else "rejected"
                 if scenario["case"] == "rejected"
                 else "expired"

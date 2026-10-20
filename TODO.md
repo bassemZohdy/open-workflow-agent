@@ -184,25 +184,39 @@ treated as a deferred task or as additional feature completion.
   after 967 passed and 460 skipped: its five-second job deadline expired during
   test setup before the cancellation path ran. Correction `f89a154` uses
   separate bounded fixture windows; the focused supervisor suite passed all 15
-  tests locally. Full hosted requalification on `f89a154` is pending; S3-03
-  remains open. The background profile remains default-off pending full
-  qualification. Cross-adapter, backend, platform, lifetime, packaging and
-  broader hosted acceptance remain open.
+  tests locally. Source `c3ca7f1` included that correction, but its hosted batch
+  exposed a Windows provider timeout one-ULP overshoot (`30.00000000000003`
+  for a 30s bound) and one non-reproducible ADK HTTP/JSON resume failure
+  returning `invalid_invocation_state` (the equivalent JSON-RPC case passed).
+  The provider timeout is now clamped to its explicit bound; its focused suite
+  passed locally (62 passed, 6 skipped), with Ruff and formatting clean. The
+  ADK case passed in a focused local rerun; its hosted cause was not retained,
+  so it remains in the final batch as a required regression. The remaining
+  `c3ca7f1` CI, PostgreSQL, and Agent Framework runs were cancelled while
+  batching the remaining work; Docs, Security, and External Sandbox passed but
+  do not qualify this partial source. Full hosted requalification remains
+  pending; S3-03 remains open. The background profile remains default-off
+  pending full qualification. Cross-adapter, backend, platform, lifetime,
+  packaging and broader hosted acceptance remain open.
   The [acceptance plan](docs/s3-03-operation-adapters-acceptance.md) and
   [retained run evidence](docs/validation-history/pending-batch-results.md#hosted-postgresql-adk-operation-adapter-timeout-at-f235be4).
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
   Captured sources, recovery proofs and awaited internal process controls are
-  authored; the required profile and deployment acceptance remains open. See
-  the [acceptance plan](docs/s3-04-executable-source-acceptance.md).
+  authored; an unexpected registry defect now propagates instead of being
+  mislabeled as a source-policy rejection. The regression is authored and
+  unrun; required profile and deployment acceptance remains open. See the
+  [acceptance plan](docs/s3-04-executable-source-acceptance.md).
 - [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
   Protected actor identity, atomic decisions, expiry and native recovery
   controls are authored; cross-engine/backend acceptance remains open. See
   the [finite acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
   [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
-- [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and applicable delegated authorization.
+- [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and authorization within existing contracts. Delegated token exchange and consent remain conditional S4-11 work.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
   Eight finite recipe families and named role bindings are authored; hosted
-  acceptance remains open. See the
+  acceptance remains open. A focused real-native role-policy test passes on
+  SQLite for both principal engines, proving denial before provider dispatch;
+  PostgreSQL and the full eight-family matrix remain pending. See the
   [acceptance plan](docs/s3-07-agent-pattern-acceptance.md) and
   [timing evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
 - [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
@@ -212,8 +226,22 @@ treated as a deferred task or as additional feature completion.
 ## Stage 4 — Advanced features and full verification
 
 - [ ] **S4-01** (M) — Implement versioned native YAML metadata extensions with capability admission; reject unsupported requests.
+  The bounded declaration and exact engine-capability gate are authored in
+  standard `document.metadata` without changing the official schema; focused
+  core tests pass. S4-02's exact LangGraph channel extension is the first
+  capability using this gate; broader tracker coverage and hosted
+  qualification remain open.
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
+  The first scoped channel/reducer slice is authored for the exact
+  `langgraph.channels@1.0.0` extension using private reducer-backed LangGraph
+  state. Focused tests and the final validation batch remain pending; the
+  broader S4-02 features remain open. See
+  [the S4-02 acceptance record](docs/s4-02-native-channels-acceptance.md).
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
+  An optional pinned LangGraph/TypeScript scaffold and native smoke test now
+  exist under `engines/langgraph-js`; frozen predecessor sources remain
+  reference-only. The package does not load or execute OWS definitions yet;
+  implement the isolated engine and shared fixture tests before any parity claim.
 - [ ] **S4-04** (L) — Automate official CTK plus all proposed tests, schema constraints, parity and cross-engine outcome checks.
 - [ ] **S4-05** (M) — Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.
 - [ ] **S4-06** (M) — Run matched latency/CPU/memory/concurrency/persistence/recovery benchmarks; publish measured results.

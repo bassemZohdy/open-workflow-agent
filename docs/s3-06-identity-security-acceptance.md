@@ -40,15 +40,15 @@ identity. Existing independent admission and original-profile checks remain requ
 
 ## Concrete threats and proposed controls
 
-| Threat | Observed source gap | Control and required evidence |
+| Threat | Required control | Evidence still required |
 | --- | --- | --- |
-| S306-01 spoofing | Inbound bearer parsing accepts malformed shapes or raises on Unicode. | One bounded exact parser; malformed and duplicate headers reject before storage, lease, native or business mutation. |
-| S306-02 authority loss | Ingress reduces authenticated claims to a principal label. | Immutable private original authority; independent policy evidence verified before action and recovery; spoofed labels cannot grant roles. |
-| S306-03 foreign object access | Schedule read/cancel lacks the invocation ownership lookup. | Owner check with identical sanitized foreign/missing result, before read or cancellation. |
-| S306-04 privilege escalation | Tools and administrative calls lack common action/resource policy. | Default-disabled deployment profile; exact decisions precede model, tool, secret resolution and administrative mutation; activated unknown authority fails closed. |
-| S306-05 context leakage | Catalog metadata exposes private callbacks; tool/memory context is global or absent. | Narrow immutable metadata and task-local scopes with reset; actual concurrent same-correlation principals cannot share authority or protected memory. |
-| S306-06 credential disclosure | HTTP errors/headers and approved sandbox secret stdout can reach durable outputs. | Ephemeral credential-aware common response boundary; actual canary echo tests across journals, native state, model, logs and public projections. Literal redaction does not imply general information-flow or encoded-secret detection. |
-| S306-07 repudiation or replay | Lifecycle evidence lacks authenticated action decision provenance. | Bounded transactional audit/policy evidence; independent corruption, rollback, stale-owner and revocation witnesses; no uncertain-action resend. |
+| S306-01 spoofing | Parse bearer credentials with a bounded exact parser; reject malformed and duplicate headers before storage, lease, native or business mutation. | Actual malformed/duplicate/Unicode ingress cases and unchanged-state witnesses on required platforms. |
+| S306-02 authority loss | Preserve immutable private original authority; verify independent policy evidence before action and recovery; never grant roles from spoofed labels. | Cross-engine/backend propagation through tools, children, schedules and resume, including forged-label rejection. |
+| S306-03 foreign object access | Check invocation ownership before schedule reads or cancellation; return the same sanitized result for foreign and missing IDs. | Actual authenticated foreign/missing-object reads and cancellation with no mutation. |
+| S306-04 privilege escalation | Keep the deployment profile disabled by default; require exact decisions before model, tool, secret resolution and administrative mutation; fail closed on unknown authority. | Activation, denial, revocation and stale-policy recovery witnesses with no unauthorized side effect. |
+| S306-05 context leakage | Expose narrow immutable catalog metadata and task-local scopes with reset; isolate principals even when correlation IDs match. | Concurrent same-correlation principals, protected-memory isolation, and cleanup after errors/cancellation. |
+| S306-06 credential disclosure | Use an ephemeral credential-aware common response boundary and suppress sensitive sandbox output where configured. Literal redaction does not claim general information-flow or encoded-secret detection. | Actual canary echoes across journals, native state, model, logs and public projections, plus deployment acceptance. |
+| S306-07 repudiation or replay | Retain bounded transactional audit/policy evidence and prevent uncertain-action resend. | Independent corruption, rollback, stale-owner and revocation witnesses, including recovery after process stop. |
 
 ## Authored fixture inventory
 

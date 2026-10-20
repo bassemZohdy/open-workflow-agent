@@ -17,6 +17,7 @@ passes do not establish delivery or conformance.
 | Unfinished identity and security | [S3-06 scope and gates](s3-06-identity-security-acceptance.md) |
 | Unfinished agent patterns | [S3-07 scope and gates](s3-07-agent-pattern-acceptance.md) |
 | Selected adapter work | [S3-08 scope and gates](s3-08-selected-adapter-acceptance.md) |
+| Native extension work | [S4-01 gates](s4-01-native-extension-acceptance.md), [S4-02 channel slice and gates](s4-02-native-channels-acceptance.md) |
 | Sandbox boundary and deployment acceptance | [Sandbox execution](sandbox-execution.md), [verified cluster record](../PROJECT.md#verified-kubernetes-and-openshift-sandbox-acceptance--2026-09-12) |
 | Inventory and consolidation | [Implementation audit](current-implementation-audit.md), [consolidation](agent-runtime-consolidation.md), [full feature tracker](../resources/compatibility/feature-tracker.json) |
 | Historical validation | [Implementation evidence](validation-history/project-implementation-evidence.md), [backlog notes](validation-history/backlog-task-notes.md), [earlier delivery checkpoints](validation-history/backlog-delivery-2026-10-13.md), [unfinished batch results](validation-history/pending-batch-results.md) |

@@ -104,7 +104,17 @@ class ProducerIdentity:
 @pytest.mark.parametrize("engine_name,engine_type", ENGINES)
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 @pytest.mark.parametrize(
-    "case", ["approved", "rejected", "expired", "request-row", "policy", "audit"]
+    "case",
+    [
+        "approved",
+        "rejected",
+        "expired",
+        "reassign",
+        "escalate",
+        "request-row",
+        "policy",
+        "audit",
+    ],
 )
 def test_actual_stop_retains_original_protected_decision_or_rejects_damaged_proof(
     tmp_path, engine_name, engine_type, backend, case
@@ -139,11 +149,12 @@ def test_actual_stop_retains_original_protected_decision_or_rejects_damaged_proo
         result = json.loads((tmp_path / "result.json").read_text(encoding="utf-8"))
         assert result["pid"] != evidence["pid"] and result["producer_pid"] == evidence["pid"]
         assert result["expiry"] == evidence["expiry"]
-        assert result["business_count"] == (1 if case == "approved" else 0)
+        expected_status = "approved" if case in {"approved", "reassign", "escalate"} else case
+        assert result["business_count"] == (1 if expected_status == "approved" else 0)
         if case in {"request-row", "policy", "audit"}:
             assert result["rejected"] is True and result["before_unchanged"] is True
         else:
-            assert result["status"] == case
+            assert result["status"] == expected_status
             assert result["original_input"] == evidence["original_input"]
     finally:
         if identity is not None:

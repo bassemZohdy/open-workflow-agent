@@ -14,6 +14,7 @@ from open_workflow_agent.errors import (
     OwaError,
     WorkflowExecutionError,
 )
+from open_workflow_agent.native_extensions import LANGGRAPH_CHANNELS
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.workflow import WorkflowPlan
@@ -146,6 +147,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             native_scope_step_limit=NATIVE_SCOPE_STEP_LIMIT
             if self.native.task_nodes_available
             else None,
+            native_extensions=(LANGGRAPH_CHANNELS,) if self.native.task_nodes_available else (),
         )
 
     async def invoke(

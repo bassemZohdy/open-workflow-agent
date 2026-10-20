@@ -145,6 +145,44 @@ async def test_embedded_codec_preserves_null_extensions_scope_and_duplicate_firs
 
 @pytest.mark.parametrize("engine_name,engine_type", ENGINES)
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_embedded_ingress_rejects_conflicting_duplicate_without_replacing_first_event(
+    tmp_path, engine_name, engine_type, backend
+):
+    services = runtime(tmp_path, backend)
+    engine = engine_type()
+    actual_native(engine, engine_name)
+    await engine.initialize(services)
+    try:
+        original = message(services, "conflicting-duplicate", data={"value": "first"})
+        first_admission = admit(services, original)
+        conflict_data = original.as_dict()
+        conflict_data["data"] = {"value": "conflict"}
+        conflicting = services.event_transport.codec.capture(conflict_data)
+
+        with pytest.raises(EventValidationError):
+            admit(services, conflicting)
+
+        # A rejected conflicting replay must leave the original delivery
+        # retryable with the same committed receipt and consumer-selection proof.
+        replayed = admit(services, original)
+        assert replayed == first_admission
+        services.event_transport.verify(first_admission)
+        row = services.effect_journal.connection.execute(
+            "SELECT envelope,digest FROM event_inbox WHERE sequence=?",
+            (first_admission.sequence,),
+        ).fetchone()
+        assert row is not None
+        retained = services.event_transport.codec.encode(
+            services.event_store._decode_envelope(*row)
+        )
+        assert retained == original.encoded
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_embedded_outbox_emit_and_scoped_listener_share_one_committed_identity(
     tmp_path, engine_name, engine_type, backend
 ):

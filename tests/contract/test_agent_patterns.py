@@ -180,6 +180,41 @@ async def test_all_eight_declared_role_patterns_use_original_source_input_and_na
 @pytest.mark.asyncio
 @pytest.mark.parametrize("engine_name,engine_type", ENGINES)
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_native_pattern_role_policy_denies_model_before_provider_dispatch(
+    tmp_path, engine_name, engine_type, backend
+):
+    roles, models = providers("assistant")
+    roles["assistant"]["policy"] = {
+        "rules": [
+            {
+                "actions": ["catalog.call"],
+                "resources": ["*"],
+                "roles": ["worker"],
+                "scopes": ["execute"],
+                "audience": ["runtime"],
+            }
+        ]
+    }
+    services = runtime(tmp_path, backend, roles, models)
+    engine = engine_type()
+    actual_native(engine, engine_name)
+    await engine.initialize(services)
+    plan = compiled(services, "assistant")
+    handle = create(services, engine_name, plan)
+    authority = original_authority(services)
+    try:
+        result = await invoke(engine, services, plan, handle, QUESTION)
+        assert result.status == "faulted"
+        assert models["assistant"].calls == [] and services.model.calls == []
+        assert services.execution_authorizations.verify_invocation(handle) == authority
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
 async def test_perspectives_finish_in_reverse_order_but_synthesize_declaration_order(
     tmp_path, engine_name, engine_type, backend
 ):
@@ -383,6 +418,66 @@ async def test_native_role_uses_only_its_declared_tool_batch_before_any_business
                 {"name": "lookup", "result": {"result": "read"}}
             ]
         assert services.model.calls == []
+    finally:
+        await engine.shutdown()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+async def test_native_role_policy_denies_declared_tool_before_business_dispatch(
+    tmp_path, engine_name, engine_type, backend
+):
+    business = []
+
+    async def dispatch(request):
+        business.append(str(request.url))
+        return httpx.Response(200, json={"result": "read"})
+
+    roles, models = providers(
+        "assistant",
+        script={
+            "assistant": [
+                {"tool_call": {"name": "lookup", "arguments": {}}},
+                {"answer": "assistant"},
+            ]
+        },
+    )
+    roles["assistant"] = role_configuration(
+        "assistant",
+        tools=["lookup"],
+        policy={
+            "rules": [
+                {
+                    "actions": ["catalog.call", "model.complete"],
+                    "resources": ["*"],
+                    "roles": ["worker"],
+                    "scopes": ["execute"],
+                    "audience": ["runtime"],
+                }
+            ]
+        },
+    )
+    config = configuration(
+        backend,
+        roles,
+        tools=[deployed_openapi_tool("lookup", "GET")],
+    )
+    services = runtime(tmp_path, backend, roles, models, config=config, dispatch=dispatch)
+    engine = engine_type()
+    actual_native(engine, engine_name)
+    await engine.initialize(services)
+    plan = compiled(services, "assistant")
+    handle = create(services, engine_name, plan)
+    authority = original_authority(services)
+    try:
+        result = await invoke(engine, services, plan, handle, QUESTION)
+        assert result.status == "faulted" and result.error["code"] == "tool_error"
+        assert len(models["assistant"].calls) == 1
+        assert models["assistant"].calls[0]["tools"] == ["lookup"]
+        assert business == [] and services.model.calls == []
+        assert services.execution_authorizations.verify_invocation(handle) == authority
     finally:
         await engine.shutdown()
         services.close()

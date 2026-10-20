@@ -6,7 +6,9 @@ from pathlib import Path
 import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.engine import EngineCapabilities, WorkflowEngine
 from open_workflow_agent.errors import (
+    ExpressionError,
     UnsupportedWorkflowFeature,
     WorkflowExecutionError,
     WorkflowSchemaError,
@@ -76,6 +78,320 @@ def test_workflow_schema_and_capability_errors():
     }
     with pytest.raises(UnsupportedWorkflowFeature, match="external workflow catalogs"):
         compile_workflow(external_catalog)
+
+
+@pytest.mark.asyncio
+async def test_versioned_native_metadata_requires_exact_engine_capability():
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "x",
+            "name": "x",
+            "version": "1.0.0",
+            "metadata": {
+                "owa": {"nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}]}
+            },
+        },
+        "do": [{"finish": {"set": {"done": True}}}],
+    }
+    plan = compile_workflow(workflow)
+    assert plan.native_extensions[0].capability_id == "langgraph.channels@1.0.0"
+    assert "nativeExtensions" in EngineCapabilities("test").as_dict()
+
+    with pytest.raises(UnsupportedWorkflowFeature, match="required native workflow extension"):
+        await WorkflowEngine().compile(plan)
+
+    class ExtensionEngine(WorkflowEngine):
+        def capabilities(self) -> EngineCapabilities:
+            return EngineCapabilities(
+                engine="test", native_extensions=("langgraph.channels@1.0.0",)
+            )
+
+    assert await ExtensionEngine().compile(plan) is plan
+
+    class WrongVersionEngine(WorkflowEngine):
+        def capabilities(self) -> EngineCapabilities:
+            return EngineCapabilities(
+                engine="test", native_extensions=("langgraph.channels@2.0.0",)
+            )
+
+    with pytest.raises(UnsupportedWorkflowFeature):
+        await WrongVersionEngine().compile(plan)
+
+
+@pytest.mark.asyncio
+async def test_unsupported_optional_native_extension_is_inert_and_not_advertised():
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "x",
+            "name": "x",
+            "version": "1.0.0",
+            "metadata": {
+                "owa": {
+                    "nativeExtensions": [
+                        {
+                            "name": "langgraph.planning",
+                            "version": "9.0.0",
+                            "required": False,
+                        }
+                    ]
+                }
+            },
+        },
+        "do": [{"finish": {"set": {"done": True}}}],
+    }
+    plan = compile_workflow(workflow)
+    assert plan.native_extensions[0].required is False
+    assert EngineCapabilities("test").native_extensions == ()
+    assert await WorkflowEngine().compile(plan) is plan
+
+
+def test_native_metadata_rejects_malformed_and_unsupported_scope_declarations():
+    base = {
+        "document": {"dsl": "1.0.3", "namespace": "x", "name": "x", "version": "1.0.0"},
+        "do": [{"finish": {"set": {"done": True}}}],
+    }
+    malformed = {
+        **base,
+        "document": {
+            **base["document"],
+            "metadata": {"owa": {"nativeExtensions": [{"name": "channels", "version": "latest"}]}},
+        },
+    }
+    with pytest.raises(WorkflowSemanticError, match="namespaced identifier"):
+        compile_workflow(malformed)
+
+    scoped = {
+        **base,
+        "document": {
+            **base["document"],
+            "metadata": {
+                "owa": {
+                    "nativeExtensions": [
+                        {"name": "langgraph.channels", "version": "1.0.0", "scope": "/do/0"}
+                    ]
+                }
+            },
+        },
+    }
+    with pytest.raises(WorkflowSemanticError, match="only name, version and required"):
+        compile_workflow(scoped)
+
+    duplicate = {
+        **base,
+        "document": {
+            **base["document"],
+            "metadata": {
+                "owa": {
+                    "nativeExtensions": [
+                        {"name": "langgraph.channels", "version": "1.0.0"},
+                        {"name": "langgraph.channels", "version": "1.0.0"},
+                    ]
+                }
+            },
+        },
+    }
+    with pytest.raises(WorkflowSemanticError, match="duplicate native extension"):
+        compile_workflow(duplicate)
+
+    invalid_required = {
+        **base,
+        "document": {
+            **base["document"],
+            "metadata": {
+                "owa": {
+                    "nativeExtensions": [
+                        {"name": "langgraph.channels", "version": "1.0.0", "required": "yes"}
+                    ]
+                }
+            },
+        },
+    }
+    with pytest.raises(WorkflowSemanticError, match="required must be a boolean"):
+        compile_workflow(invalid_required)
+
+
+@pytest.mark.parametrize(
+    ("declarations", "message"),
+    [
+        (
+            [{"name": f"x.ext{i}", "version": "1.0.0"} for i in range(33)],
+            "limit of 32",
+        ),
+        (
+            [{"name": "a." + "x" * 127, "version": "1.0.0"}],
+            "namespaced identifier",
+        ),
+        (
+            [{"name": "langgraph.channels", "version": "1" * 62 + ".0.0"}],
+            "exact semantic version",
+        ),
+    ],
+)
+def test_native_metadata_enforces_finite_declaration_and_identifier_limits(
+    declarations: list[dict[str, object]], message: str
+):
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "x",
+            "name": "x",
+            "version": "1.0.0",
+            "metadata": {"owa": {"nativeExtensions": declarations}},
+        },
+        "do": [{"finish": {"set": {"done": True}}}],
+    }
+    with pytest.raises(WorkflowSemanticError, match=message):
+        compile_workflow(workflow)
+
+
+def _native_channel_workflow():
+    return {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "x",
+            "name": "channels",
+            "version": "1.0.0",
+            "metadata": {
+                "owa": {
+                    "nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}],
+                    "nativeExtensionData": {
+                        "langgraph.channels@1.0.0": {
+                            "channels": [
+                                {
+                                    "id": "items",
+                                    "reducer": "append",
+                                    "initial": [],
+                                    "writes": [{"task": "/do/0"}],
+                                }
+                            ],
+                            "reads": [
+                                {
+                                    "task": "/do/1",
+                                    "as": "owa_native_channels",
+                                    "channels": ["items"],
+                                }
+                            ],
+                        }
+                    },
+                }
+            },
+        },
+        "do": [
+            {"write_items": {"set": '${ ["first", "second"] }'}},
+            {"read_items": {"set": "${ $owa_native_channels.items }"}},
+        ],
+    }
+
+
+def test_native_channel_metadata_binds_final_task_outputs_and_reader_expression_scope():
+    plan = compile_workflow(_native_channel_workflow())
+    assert plan.native_channels is not None
+    channel = plan.native_channels.channels[0]
+    assert (channel.channel_id, channel.reducer, channel.initial, channel.writers) == (
+        "items",
+        "append",
+        [],
+        ("/do/0/write_items",),
+    )
+    assert plan.native_channels.reads[0].task == "/do/1/read_items"
+
+    workflow = _native_channel_workflow()
+    workflow["do"][0]["write_items"]["set"] = "${ $owa_native_channels.items }"
+    with pytest.raises(ExpressionError):
+        compile_workflow(workflow)
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (
+            lambda data: data["document"]["metadata"]["owa"].pop("nativeExtensions"),
+            "exact required",
+        ),
+        (
+            lambda data: data["document"]["metadata"]["owa"]["nativeExtensions"][0].update(
+                required=False
+            ),
+            "exact required",
+        ),
+        (
+            lambda data: data["document"]["metadata"]["owa"]["nativeExtensionData"][
+                "langgraph.channels@1.0.0"
+            ].update(extra=True),
+            "only channels and reads",
+        ),
+        (
+            lambda data: data["document"]["metadata"]["owa"]["nativeExtensionData"][
+                "langgraph.channels@1.0.0"
+            ]["channels"][0].update(reducer="custom.module:call"),
+            "reducer must be append or last_value",
+        ),
+        (
+            lambda data: data["document"]["metadata"]["owa"]["nativeExtensionData"][
+                "langgraph.channels@1.0.0"
+            ]["channels"][0]["writes"].append({"task": "/do/0"}),
+            "duplicate native channel writer",
+        ),
+        (
+            lambda data: data["document"]["metadata"]["owa"]["nativeExtensionData"][
+                "langgraph.channels@1.0.0"
+            ]["reads"][0].update(task="/do/0/nested"),
+            "direct root /do/<index>",
+        ),
+        (
+            lambda data: data["document"]["metadata"]["owa"]["nativeExtensionData"][
+                "langgraph.channels@1.0.0"
+            ]["channels"][0].update(initial=["x" * 65537]),
+            "65536 bytes",
+        ),
+        (
+            lambda data: data["document"]["metadata"]["owa"]["nativeExtensionData"][
+                "langgraph.channels@1.0.0"
+            ]["reads"].append(
+                {"task": "/do/1", "as": "owa_native_channels", "channels": ["items"]}
+            ),
+            "duplicate native channel reader",
+        ),
+    ],
+)
+def test_native_channel_metadata_rejects_unsupported_or_unsafe_declarations(mutate, message):
+    workflow = _native_channel_workflow()
+    mutate(workflow)
+    with pytest.raises(WorkflowSemanticError, match=message):
+        compile_workflow(workflow)
+
+
+def test_native_channel_reserved_variable_rejects_declared_alias_collision_only():
+    workflow = _native_channel_workflow()
+    workflow["do"] = [
+        {
+            "loop": {
+                "for": {
+                    "each": "owa_native_channels",
+                    "in": "${ [] }",
+                },
+                "do": [{"body": {"set": {"ok": True}}}],
+            }
+        }
+    ]
+    workflow["document"]["metadata"]["owa"]["nativeExtensionData"]["langgraph.channels@1.0.0"][
+        "reads"
+    ] = []
+    with pytest.raises(WorkflowSemanticError, match="reserved native channel variable"):
+        compile_workflow(workflow)
+
+    workflow = _native_channel_workflow()
+    workflow["document"]["metadata"]["owa"]["nativeExtensionData"]["langgraph.channels@1.0.0"][
+        "channels"
+    ][0]["initial"] = float("nan")
+    with pytest.raises(WorkflowSchemaError, match="finite JSON data"):
+        compile_workflow(workflow)
+
+    workflow = _native_channel_workflow()
+    workflow["output"] = {"as": "literal output name"}
+    assert compile_workflow(workflow).native_channels is not None
 
 
 def test_expression_evaluator_supports_paths_templates_and_conditions():
