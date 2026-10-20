@@ -171,7 +171,10 @@ treated as a deferred task or as additional feature completion.
   Durable Task/receipt expiry is explicitly outside the finite S3-02 profile;
   no expiry capability is claimed. See the [acceptance record](docs/s3-02-a2a-acceptance.md)
   for current gates and the [validation history](docs/validation-history/pending-batch-results.md)
-  for exact-source outcomes.
+  for exact-source outcomes. Security CI on `ef43ab7` found three fixable
+  `aiohttp` advisories; the five active locks now use `aiohttp 3.14.5` and
+  `yarl 1.25.1`, and the grouped local regression passes. Hosted requalification
+  is pending.
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected adapters and recovery fixtures are authored; cross-adapter,
   backend, platform, lifetime, packaging and hosted acceptance remain open.

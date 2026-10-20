@@ -1603,3 +1603,19 @@ the six JSON-RPC and six HTTP+JSON optional-operation rejection cases were in
 the full Linux root suite but not in the dedicated Windows common A2A suite.
 The current follow-up adds both test files to `windows-mcp` and its selector
 guard. The guard passed locally; the new exact-source hosted run is pending.
+
+## Exact-source security follow-up — `ef43ab7`
+
+Security workflow run [39349622796](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39349622796)
+found three fixable advisories in `aiohttp 3.14.3` in each of the root,
+standalone-core, ADK, LangGraph and Agent Framework resolved environments. The
+reported fixed release was 3.14.4. The unpublished correction updates every
+active lock to `aiohttp 3.14.5` and its compatible `yarl 1.25.1`; frozen
+migration reference lock sources remain unchanged.
+
+After the lock update, the grouped A2A/root selection again passed **344 tests
+with 2 backend-inapplicable skips**. Isolated ADK receipt corruption passed 4
+with 12 matrix skips; isolated LangGraph native/receipt corruption passed 6
+with 14 matrix skips. `uv lock --check` passed for all five active locks, as
+did Markdown link validation, Ruff lint/format, and `git diff --check`. Final
+hosted security and full CI qualification on the patched locks is pending.
