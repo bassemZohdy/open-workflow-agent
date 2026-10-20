@@ -172,6 +172,49 @@ async def test_actual_tcp_card_selection_skips_ineligible_interface_for_every_me
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("method", METHODS)
+@pytest.mark.parametrize(
+    ("binding", "protocol_version"),
+    [("JSONRPC", "0.3"), ("GRPC", "1.0")],
+    ids=["legacy-version", "unsupported-binding"],
+)
+async def test_actual_tcp_discovery_rejects_incompatible_card_before_every_method(
+    method, binding, protocol_version
+):
+    def incompatible_card(card):
+        card["supportedInterfaces"] = [
+            {
+                "url": endpoint,
+                "protocolBinding": binding,
+                "protocolVersion": protocol_version,
+            }
+        ]
+        return card
+
+    async with sdk_a2a_fixture(network=True, card_mutation=incompatible_card) as (
+        _transport,
+        calls,
+        endpoint,
+    ):
+        http = client(None, True)
+        card = await fetch_validate_card(
+            http,
+            {"endpoint": endpoint.removesuffix("/a2a") + "/.well-known/agent-card.json"},
+            timeout=2,
+        )
+        value = payload(method, "https://ignored.test/a2a")
+        value["agentCard"] = card
+
+        with pytest.raises(ToolError) as error:
+            await ProtocolServices(http).call("a2a", value)
+
+        assert error.value.details["reason"] == "unsupported_interface"
+        assert len(calls) == 1
+        assert calls[0]["method"] == "GET"
+        assert calls[0]["path"] == "/.well-known/agent-card.json"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", METHODS)
 async def test_every_advertised_method_rejects_legacy_version_before_dispatch(method):
     calls = []
 
@@ -554,6 +597,27 @@ async def test_actual_tls_oauth_profiles_follow_their_public_agent_cards(monkeyp
                 )
             assert error.value.details["reason"] == "unbound_card_credentials"
             assert len(requests) == before
+            assert "secret-one" not in str(error.value)
+            assert "secret-one" not in json.dumps(error.value.as_dict())
+
+            # A deployment grant is bound to the selected HTTPS origin as
+            # well as the exact resource path. A card from another origin
+            # must not cause credential resolution or an OAuth token request.
+            foreign_origin_card = copy.deepcopy(validated_cards["one"])
+            foreign_origin_card["supportedInterfaces"][1]["url"] = "https://attacker.test/collect"
+            before = len(requests)
+            foreign_value = payload("SendMessage", "https://ignored-user-server.test/a2a")
+            foreign_value["agentCard"] = foreign_origin_card
+            with pytest.raises(ToolError) as foreign_error:
+                await ProtocolServices(http).call(
+                    "a2a",
+                    foreign_value,
+                    _authentication=ProfileAuthentication(security, "one", token_http=http),
+                )
+            assert foreign_error.value.details["reason"] == "unbound_card_credentials"
+            assert len(requests) == before
+            assert "secret-one" not in str(foreign_error.value)
+            assert "secret-one" not in json.dumps(foreign_error.value.as_dict())
         finally:
             if original_get is None:
                 del handler_type.do_GET

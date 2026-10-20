@@ -170,10 +170,8 @@ treated as a deferred task or as additional feature completion.
   all six hosted workflows: main CI, PostgreSQL, Agent Framework, Docs,
   Security and External Sandbox. The sandbox image job passed on rerun after
   a transient APK repository TLS error. The hosted Windows timer, ownership/
-  effect, task-checkpoint and root-quality lanes all passed. A2A02's finite
-  native-call gate and A2A05's finite process-recovery gate are verified at
-  `923302f`; A2A01, A2A03, A2A04 and A2A06-A2A08 remain partial and S3-02 stays
-  unchecked. Durable Task/receipt expiry is
+  effect, task-checkpoint and root-quality lanes all passed. Durable
+  Task/receipt expiry is
   explicitly outside the finite profile; no expiry capability is claimed. See
   the [acceptance record](docs/s3-02-a2a-acceptance.md) and
   [A2A follow-up validation history](docs/validation-history/pending-batch-results.md#a2a-authority-uncertain-effect-and-stream-follow-up-2026-10-20).

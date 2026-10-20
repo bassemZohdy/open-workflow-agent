@@ -7,6 +7,7 @@ import copy
 import json
 import os
 
+import httpx
 import pytest
 from _a2a_sdk_fixture import sdk_a2a_fixture
 from engine_cases import engine_cases
@@ -550,9 +551,8 @@ async def test_known_receipt_recovery_never_refetches_mutable_agent_card(
         resumed = engine_type()
         try:
             await resumed.initialize(recovered)
-            result = await asyncio.wait_for(
-                resumed.resume(recovered.invocations.get(invocation.invocation_id), {}, plan), 15
-            )
+            recovered_handle = recovered.invocations.get(invocation.invocation_id)
+            result = await asyncio.wait_for(resumed.resume(recovered_handle, {}, plan), 15)
             assert result.status == "completed" and len(calls) == 2
             assert (
                 ReceiptDependency.capture(
@@ -561,6 +561,32 @@ async def test_known_receipt_recovery_never_refetches_mutable_agent_card(
                 == proof
             )
             assert recovered.model.calls == []
+
+            # Once the known receipt has produced a terminal invocation, later
+            # reads must return that exact outcome without consulting the peer.
+            network_attempts: list[str] = []
+
+            async def reject_network(request: httpx.Request) -> httpx.Response:
+                network_attempts.append(str(request.url))
+                raise AssertionError("terminal A2A recovery must not contact the peer")
+
+            recovered.protocols = ProtocolServices(
+                HttpClient(transport=httpx.MockTransport(reject_network))
+            )
+            recovered.tools.protocols = recovered.protocols
+            repeated = await asyncio.wait_for(
+                resumed.resume(recovered_handle, {"replacement": True}, plan), 15
+            )
+            assert repeated == result
+            assert network_attempts == [] and len(calls) == 2
+            assert recovered.invocations.read_input(recovered_handle) == {"original": True}
+            assert len(identities(recovered, invocation.invocation_id)) == 1
+            assert (
+                ReceiptDependency.capture(
+                    business[0], recovered.effect_journal.get(business[0])
+                ).receipt_digest
+                == proof
+            )
         finally:
             await resumed.shutdown()
             recovered.close()

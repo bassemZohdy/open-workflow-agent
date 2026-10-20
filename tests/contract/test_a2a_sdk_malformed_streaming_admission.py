@@ -7,6 +7,7 @@ import os
 import socket
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
@@ -14,7 +15,7 @@ import uvicorn
 from a2a.client.transports.jsonrpc import JsonRpcTransport
 from a2a.client.transports.rest import RestTransport
 from a2a.types.a2a_pb2 import AgentCard, SendMessageRequest
-from a2a.utils.errors import InvalidParamsError
+from a2a.utils.errors import ContentTypeNotSupportedError, InvalidParamsError
 from engine_cases import engine_cases
 from google.protobuf.json_format import ParseDict
 from open_workflow_agent.api import create_app
@@ -98,62 +99,73 @@ async def test_sdk_malformed_streaming_message_rejects_before_admission(
                 peer = (JsonRpcTransport if binding == "jsonrpc" else RestTransport)(
                     http, card, base + "/a2a"
                 )
-                request = ParseDict(
-                    {
-                        "message": {
-                            "messageId": "malformed-stream-request",
-                            "role": "ROLE_USER",
-                            "contextId": "malformed-stream-context",
-                            # An empty Part is representable by the official SDK protobuf,
-                            # but is invalid under the finite OWA message contract.
-                            "parts": [{}],
-                        }
-                    },
-                    SendMessageRequest(),
-                    ignore_unknown_fields=False,
-                )
-                invocation_count = services.invocations.connection.execute(
-                    "SELECT COUNT(*) FROM invocations"
-                ).fetchone()[0]
-                effect_count = services.effect_journal.connection.execute(
-                    "SELECT COUNT(*) FROM workflow_effects"
-                ).fetchone()[0]
-                effect_invocation_count = services.effect_journal.connection.execute(
-                    "SELECT COUNT(*) FROM workflow_effect_invocations"
-                ).fetchone()[0]
-                delivery_count = services.initial_deliveries.connection.execute(
-                    "SELECT COUNT(*) FROM initial_invocation_deliveries"
-                ).fetchone()[0]
-                subscribers = set(services.lifecycle_events._subscribers)
-                stream = peer.send_message_streaming(request)
-                with pytest.raises(InvalidParamsError) as rejected:
-                    await anext(stream)
-                assert "malformed-stream-request" not in str(rejected.value)
-                assert (
-                    services.invocations.connection.execute(
+
+                async def reject_before_admission(
+                    parts: list[dict[str, Any]], expected_error: type[Exception]
+                ) -> None:
+                    request = ParseDict(
+                        {
+                            "message": {
+                                "messageId": "malformed-stream-request",
+                                "role": "ROLE_USER",
+                                "contextId": "malformed-stream-context",
+                                "parts": parts,
+                            }
+                        },
+                        SendMessageRequest(),
+                        ignore_unknown_fields=False,
+                    )
+                    invocation_count = services.invocations.connection.execute(
                         "SELECT COUNT(*) FROM invocations"
                     ).fetchone()[0]
-                    == invocation_count
-                )
-                assert (
-                    services.effect_journal.connection.execute(
+                    effect_count = services.effect_journal.connection.execute(
                         "SELECT COUNT(*) FROM workflow_effects"
                     ).fetchone()[0]
-                    == effect_count
-                )
-                assert (
-                    services.effect_journal.connection.execute(
+                    effect_invocation_count = services.effect_journal.connection.execute(
                         "SELECT COUNT(*) FROM workflow_effect_invocations"
                     ).fetchone()[0]
-                    == effect_invocation_count
-                )
-                assert (
-                    services.initial_deliveries.connection.execute(
+                    delivery_count = services.initial_deliveries.connection.execute(
                         "SELECT COUNT(*) FROM initial_invocation_deliveries"
                     ).fetchone()[0]
-                    == delivery_count
+                    subscribers = set(services.lifecycle_events._subscribers)
+                    stream = peer.send_message_streaming(request)
+                    with pytest.raises(expected_error) as rejected:
+                        await anext(stream)
+                    assert "malformed-stream-request" not in str(rejected.value)
+                    assert "must-not-be-admitted" not in str(rejected.value)
+                    assert (
+                        services.invocations.connection.execute(
+                            "SELECT COUNT(*) FROM invocations"
+                        ).fetchone()[0]
+                        == invocation_count
+                    )
+                    assert (
+                        services.effect_journal.connection.execute(
+                            "SELECT COUNT(*) FROM workflow_effects"
+                        ).fetchone()[0]
+                        == effect_count
+                    )
+                    assert (
+                        services.effect_journal.connection.execute(
+                            "SELECT COUNT(*) FROM workflow_effect_invocations"
+                        ).fetchone()[0]
+                        == effect_invocation_count
+                    )
+                    assert (
+                        services.initial_deliveries.connection.execute(
+                            "SELECT COUNT(*) FROM initial_invocation_deliveries"
+                        ).fetchone()[0]
+                        == delivery_count
+                    )
+                    assert set(services.lifecycle_events._subscribers) == subscribers
+                    assert model.calls == []
+
+                # Keep the hosted selection matrix compact while exercising
+                # both a malformed DTO and a valid but unsupported Part shape.
+                await reject_before_admission([{}], InvalidParamsError)
+                await reject_before_admission(
+                    [{"data": {"secret": "must-not-be-admitted"}}],
+                    ContentTypeNotSupportedError,
                 )
-                assert set(services.lifecycle_events._subscribers) == subscribers
-                assert model.calls == []
     finally:
         services.close()

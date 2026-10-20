@@ -597,6 +597,7 @@ jobs:
             ../../tests/contract/test_a2a_sdk_inbound.py \
             ../../tests/contract/test_a2a_sdk_http_json_optional_methods.py \
             ../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
+            ../../tests/core/test_a2a_task_routes.py \
             ../../tests/contract/test_a2a_initial_delivery.py \
             ../../tests/contract/test_a2a_initial_delivery_process_race.py -vv --durations=20 -k postgresql
 
@@ -652,6 +653,7 @@ jobs:
             ../../tests/contract/test_a2a_sdk_inbound.py \
             ../../tests/contract/test_a2a_sdk_http_json_optional_methods.py \
             ../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
+            ../../tests/core/test_a2a_task_routes.py \
             ../../tests/contract/test_a2a_initial_delivery.py -vv --durations=20 -k postgresql
 
   postgres-adk-operations:

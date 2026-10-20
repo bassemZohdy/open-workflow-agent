@@ -107,7 +107,8 @@ def test_actual_postgresql_gate_selects_required_recovery_cases(
         ("test_a2a_sdk_inbound.py", 7),
         ("test_a2a_sdk_http_json_optional_methods.py", 1),
         ("test_a2a_sdk_malformed_streaming_admission.py", 2),
-        ("test_a2a_resume_context_rejection.py", 2),
+        ("test_a2a_task_routes.py", 2),
+        ("test_a2a_resume_context_rejection.py", 4),
         ("test_a2a_initial_delivery.py", 7),
     ],
 )
@@ -119,12 +120,17 @@ def test_actual_a2a_postgresql_lifecycle_gate_selects_all_principal_cases(
     )
     job = workflow["jobs"][f"postgres-{engine}-lifecycle"]
     command = next(step["run"] for step in job["steps"] if "pytest" in step.get("run", ""))
-    assert f"../../tests/contract/{fixture}" in command
+    test_area = "core" if fixture == "test_a2a_task_routes.py" else "contract"
+    assert f"../../tests/{test_area}/{fixture}" in command
     arguments = shlex.split(command)
     selector = arguments[arguments.index("-k") + 1]
     engine_selector = (
         f"({selector})"
-        if fixture == "test_a2a_sdk_http_json_optional_methods.py"
+        if fixture
+        in {
+            "test_a2a_sdk_http_json_optional_methods.py",
+            "test_a2a_task_routes.py",
+        }
         else f"({selector}) and {engine}"
     )
     collected = subprocess.run(
@@ -132,7 +138,7 @@ def test_actual_a2a_postgresql_lifecycle_gate_selects_all_principal_cases(
             sys.executable,
             "-m",
             "pytest",
-            str(ROOT / "tests/contract" / fixture),
+            str(ROOT / "tests" / test_area / fixture),
             "--collect-only",
             "-q",
             "-k",
@@ -149,7 +155,10 @@ def test_actual_a2a_postgresql_lifecycle_gate_selects_all_principal_cases(
     assert len(nodes) == expected, collected.stdout
     assert all(
         "postgresql" in node
-        and (fixture == "test_a2a_sdk_http_json_optional_methods.py" or engine in node.lower())
+        and (
+            fixture in {"test_a2a_sdk_http_json_optional_methods.py", "test_a2a_task_routes.py"}
+            or engine in node.lower()
+        )
         for node in nodes
     )
 

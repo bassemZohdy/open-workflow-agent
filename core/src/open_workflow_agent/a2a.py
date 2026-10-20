@@ -571,10 +571,8 @@ def mount_a2a(
             return False
         return True
 
-    def task_permitted(principal: Principal, action: str, task_id: str) -> bool:
-        return _permitted(
-            principal, config.authorization, action=action, resource=_TASK_RESOURCE
-        ) and ingress_permitted(action, "invocation:" + task_id)
+    def task_action_permitted(principal: Principal, action: str) -> bool:
+        return _permitted(principal, config.authorization, action=action, resource=_TASK_RESOURCE)
 
     def validate_message(
         params: Any, request_id: Any
@@ -868,7 +866,7 @@ def mount_a2a(
                 status=422,
                 rpc_code=JsonRpcError.INVALID_PARAMS,
             )
-        if not task_permitted(principal, "tasks.get", task_id):
+        if not task_action_permitted(principal, "tasks.get"):
             return forbidden(request_id)
         try:
             task_handle(principal, task_id)
@@ -880,6 +878,8 @@ def mount_a2a(
                 status=404,
                 rpc_code=error.code,
             )
+        if not ingress_permitted("tasks.get", "invocation:" + task_id):
+            return forbidden(request_id)
         return task_stream(task_id, request_id)
 
     def version_supported(request: Request, request_id: Any = None) -> JSONResponse | None:
@@ -960,21 +960,24 @@ def mount_a2a(
                         ) from None
                 if method == "GetTask":
                     task_id = _task_id(params)
-                    if not task_permitted(principal, "tasks.get", task_id):
+                    if not task_action_permitted(principal, "tasks.get"):
+                        return forbidden(request_id)
+                    handle = task_handle(principal, task_id)
+                    if not ingress_permitted("tasks.get", "invocation:" + task_id):
                         return forbidden(request_id)
                     return _jsonrpc_response(
                         request_id,
-                        project_a2a_task(
-                            task_handle(principal, task_id), services=app.state.services
-                        ),
+                        project_a2a_task(handle, services=app.state.services),
                     )
                 if method == "SubscribeToTask":
                     return handle_resubscribe(principal, params, request_id=request_id)
                 if method == "CancelTask":
                     task_id = _task_id(params)
-                    if not task_permitted(principal, "tasks.cancel", task_id):
+                    if not task_action_permitted(principal, "tasks.cancel"):
                         return forbidden(request_id)
                     task_handle(principal, task_id)
+                    if not ingress_permitted("tasks.cancel", "invocation:" + task_id):
+                        return forbidden(request_id)
                     return _jsonrpc_response(
                         request_id,
                         await _cancel_task(app, task_id),
@@ -1070,14 +1073,15 @@ def mount_a2a(
             if unauthorized is not None:
                 return unauthorized
             assert principal is not None
-            if not task_permitted(principal, "tasks.get", task_id):
-                return forbidden()
             if unsupported := version_supported(request):
                 return unsupported
             try:
-                return _http_json_response(
-                    project_a2a_task(task_handle(principal, task_id), services=app.state.services)
-                )
+                if not task_action_permitted(principal, "tasks.get"):
+                    return forbidden()
+                handle = task_handle(principal, task_id)
+                if not ingress_permitted("tasks.get", "invocation:" + task_id):
+                    return forbidden()
+                return _http_json_response(project_a2a_task(handle, services=app.state.services))
             except JsonRpcError as error:
                 return _http_json_response(
                     {"error": {"code": "task_not_found", "message": error.message}},
@@ -1090,12 +1094,14 @@ def mount_a2a(
             if unauthorized is not None:
                 return unauthorized
             assert principal is not None
-            if not task_permitted(principal, "tasks.cancel", task_id):
-                return forbidden()
             if unsupported := version_supported(request):
                 return unsupported
             try:
+                if not task_action_permitted(principal, "tasks.cancel"):
+                    return forbidden()
                 task_handle(principal, task_id)
+                if not ingress_permitted("tasks.cancel", "invocation:" + task_id):
+                    return forbidden()
                 return _http_json_response(await _cancel_task(app, task_id))
             except JsonRpcError as error:
                 if error.code == JsonRpcError.TASK_NOT_FOUND:

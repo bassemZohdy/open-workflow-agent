@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 from open_workflow_agent.api import create_app
 from open_workflow_agent.catalog import FakeModel
-from open_workflow_agent.config import A2AConfig, RuntimeConfig
+from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.effects import EffectIdentity, effect_request_digest
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
@@ -22,12 +23,23 @@ TASK_NOT_FOUND_INFO = {
 }
 
 
-def _runtime(tmp_path, *, transport: str):
-    config = RuntimeConfig(
-        model={"provider": "fake", "name": "fake/default"},
-        a2a=A2AConfig(enabled=True, transport=transport),
+def _runtime(tmp_path, *, transport: str, backend: str = "sqlite"):
+    datasource = os.getenv("OWA_TEST_POSTGRES_URL") if backend == "postgresql" else None
+    if backend == "postgresql" and not datasource:
+        pytest.skip("OWA_TEST_POSTGRES_URL is not configured")
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake", "name": "fake/default"},
+            "a2a": {"enabled": True, "transport": transport},
+            "persistence": {"datasource": datasource},
+        }
     )
-    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    services = RuntimeServices(
+        config,
+        model=FakeModel(),
+        database_root=None if datasource else tmp_path,
+    )
+    assert services.invocations.connection.kind == backend
     app = create_app(config=config, services=services)
     return app, services
 
@@ -311,11 +323,12 @@ def test_cancelled_task_get_projection_is_stable_and_read_only(tmp_path, transpo
 
 
 @pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"], ids=["sqlite", "postgresql"])
 def test_cross_worker_terminal_task_read_preserves_uncertain_effect_without_replay(
-    tmp_path, transport: str
+    tmp_path, transport: str, backend: str
 ) -> None:
     """A stale worker's GetTask sees a peer commit without retrying uncertain work."""
-    app, services = _runtime(tmp_path, transport=transport)
+    app, services = _runtime(tmp_path, transport=transport, backend=backend)
     handle = _create_handle(services)
     identity = EffectIdentity(
         invocation_id=handle.invocation_id,
@@ -331,7 +344,7 @@ def test_cross_worker_terminal_task_read_preserves_uncertain_effect_without_repl
     peer = RuntimeServices(
         services.config,
         model=FakeModel(),
-        database_root=tmp_path,
+        database_root=None if backend == "postgresql" else tmp_path,
     )
     try:
         peer_handle = peer.invocations.get(handle.invocation_id)
