@@ -12854,6 +12854,86 @@
         "Security": 38586728258,
         "Docs": 38586728332
       }
+    },
+    "a2a_finite": {
+      "outcome": "qualified_subset",
+      "observed": "Finite Python A2A behavior is verified at exact source 3b6b329 across ADK/LangGraph and SQLite/PostgreSQL for the pinned A2A SDK 1.2.2 / wire 1.0 profile and advertised JSON-RPC/HTTP+JSON bindings.",
+      "remaining_scope": "Full A2A/OWS conformance, all proposed T32/T33 criteria, JavaScript, push rows A164-A167, delegated identity, and durable Task/receipt expiry remain unqualified or excluded.",
+      "remediation_tasks": [
+        "S3-02",
+        "S4-03",
+        "S4-04"
+      ],
+      "code": [
+        {
+          "path": "core/src/open_workflow_agent/a2a_client.py",
+          "symbol": "call_a2a"
+        },
+        {
+          "path": "core/src/open_workflow_agent/a2a_client.py",
+          "symbol": "fetch_validate_card"
+        },
+        {
+          "path": "core/src/open_workflow_agent/a2a_client.py",
+          "symbol": "select_interface"
+        },
+        {
+          "path": "core/src/open_workflow_agent/protocols.py",
+          "symbol": "ProtocolServices.call"
+        },
+        {
+          "path": "core/src/open_workflow_agent/a2a.py",
+          "symbol": "mount_a2a"
+        },
+        {
+          "path": "core/src/open_workflow_agent/a2a_tasks.py",
+          "symbol": "project_a2a_task"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/core/test_a2a_sdk_http.py",
+          "symbol": "test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_business_dispatch"
+        },
+        {
+          "path": "tests/contract/test_a2a_workflow_calls.py",
+          "symbol": "test_native_workflow_operations_return_only_typed_sdk_results"
+        },
+        {
+          "path": "tests/contract/test_a2a_workflow_calls.py",
+          "symbol": "test_native_configured_agent_tool_calls_the_same_official_peer"
+        },
+        {
+          "path": "tests/contract/test_a2a_initial_delivery_process_race.py",
+          "symbol": "test_old_initial_delivery_process_cannot_write_after_takeover"
+        },
+        {
+          "path": "tests/contract/test_a2a_initial_delivery_process_race.py",
+          "symbol": "test_competing_initial_delivery_process_cannot_dispatch_while_owner_is_live"
+        },
+        {
+          "path": "tests/contract/test_a2a_initial_delivery_process_race.py",
+          "symbol": "test_simultaneous_initial_delivery_claimants_dispatch_once"
+        },
+        {
+          "path": "tests/contract/test_a2a_native_host_drain.py",
+          "symbol": "test_native_host_drain_late_provider_preserves_outbound_a2a_receipt"
+        },
+        {
+          "path": "tests/contract/test_a2a_resume_context_rejection.py",
+          "symbol": "test_a2a_resume_rejects_context_mismatch_before_native_or_delivery_mutation"
+        }
+      ],
+      "test_scope": "Finite Python profile only; exact-source hosted workflow run IDs are recorded in resources/compatibility/feature-tracker.json and docs/validation-history/pending-batch-results.md.",
+      "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+      "hosted_runs": {
+        "CI": 39393017610,
+        "PostgreSQL CI": 39393017712,
+        "Agent Framework CI": 39393017730,
+        "External Sandbox CI": 39393017638,
+        "Security": 39393017632,
+        "Docs": 39393017617
+      }
     }
   },
   "features": [
@@ -16091,8 +16171,8 @@
       "feature": "A2A AgentCard resolution",
       "construct": "with.agentCard",
       "category": "A2A",
-      "evidence_group": "a2a_card",
-      "python_outcome": "partial",
+      "evidence_group": "a2a_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A153 (A2A AgentCard resolution) at with.agentCard: bounded Python AgentCard fetch, pinned interface selection and immutable admission are covered; full protocol/security/backend qualification remains open.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16111,8 +16191,8 @@
       "feature": "A2A endpoint selection",
       "construct": "with.server",
       "category": "A2A",
-      "evidence_group": "a2a",
-      "python_outcome": "partial",
+      "evidence_group": "a2a_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A154 (A2A endpoint selection) at with.server: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16131,8 +16211,8 @@
       "feature": "A2A parameter defaults",
       "construct": "with.parameters",
       "category": "A2A",
-      "evidence_group": "a2a",
-      "python_outcome": "partial",
+      "evidence_group": "a2a_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A155 (A2A parameter defaults) at with.parameters: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16151,8 +16231,8 @@
       "feature": "A2A workflow exposure",
       "construct": "No inbound server construct",
       "category": "A2A",
-      "evidence_group": "a2a",
-      "python_outcome": "partial",
+      "evidence_group": "a2a_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A156 (A2A workflow exposure) at No inbound server construct: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16191,8 +16271,8 @@
       "feature": "A2A message/send",
       "construct": "call a2a with.method message/send",
       "category": "A2A",
-      "evidence_group": "a2a",
-      "python_outcome": "partial",
+      "evidence_group": "a2a_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A158 (A2A message/send) at call a2a with.method message/send: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16211,8 +16291,8 @@
       "feature": "A2A message/stream",
       "construct": "call a2a with.method message/stream",
       "category": "A2A",
-      "evidence_group": "a2a_stream",
-      "python_outcome": "partial",
+      "evidence_group": "a2a_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A159 (A2A message/stream) at call a2a with.method message/stream: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16231,8 +16311,8 @@
       "feature": "A2A tasks/get",
       "construct": "call a2a with.method tasks/get",
       "category": "A2A",
-      "evidence_group": "a2a",
-      "python_outcome": "partial",
+      "evidence_group": "a2a_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A160 (A2A tasks/get) at call a2a with.method tasks/get: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16251,8 +16331,8 @@
       "feature": "A2A tasks/list",
       "construct": "call a2a with.method tasks/list",
       "category": "A2A",
-      "evidence_group": "a2a",
-      "python_outcome": "partial",
+      "evidence_group": "a2a_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A161 (A2A tasks/list) at call a2a with.method tasks/list: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16271,8 +16351,8 @@
       "feature": "A2A tasks/cancel",
       "construct": "call a2a with.method tasks/cancel",
       "category": "A2A",
-      "evidence_group": "a2a",
-      "python_outcome": "partial",
+      "evidence_group": "a2a_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A162 (A2A tasks/cancel) at call a2a with.method tasks/cancel: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16291,8 +16371,8 @@
       "feature": "A2A tasks/resubscribe",
       "construct": "call a2a with.method tasks/resubscribe",
       "category": "A2A",
-      "evidence_group": "a2a_stream",
-      "python_outcome": "partial",
+      "evidence_group": "a2a_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A163 (A2A tasks/resubscribe) at call a2a with.method tasks/resubscribe: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -16395,8 +16475,8 @@
       "feature": "A2A agent/getAuthenticatedExtendedCard",
       "construct": "call a2a with.method agent/getAuthenticatedExtendedCard",
       "category": "A2A",
-      "evidence_group": "a2a",
-      "python_outcome": "partial",
+      "evidence_group": "a2a_finite",
+      "python_outcome": "qualified_subset",
       "javascript_outcome": "unimplemented",
       "review": "Review of A168 (A2A agent/getAuthenticatedExtendedCard) at call a2a with.method agent/getAuthenticatedExtendedCard: the group's bounded behavior and remaining scope apply to this construct, not its schema/category label alone.",
       "javascript_gap": "No independent JavaScript/TypeScript implementation or executed qualification exists in this repository.",
@@ -26968,10 +27048,10 @@
     }
   ],
   "outcome_counts": {
-    "qualified_subset": 261,
+    "qualified_subset": 272,
     "unimplemented": 61,
     "rejected": 178,
-    "partial": 100,
+    "partial": 89,
     "behavior_mismatch": 30,
     "inert": 19,
     "internal_only": 9
@@ -50867,7 +50947,7 @@
       }
     ]
   },
-  "s3_02_unqualified_progress": {
+  "s3_02_historical_unqualified_progress": {
     "task": "S3-02",
     "status": "Partial finite Python evidence recorded; A2A01-A2A08 are not fully accepted",
     "baseline_source": "325458af130cccc8d9d899dc09614f6e55cc48f5",
@@ -50941,5 +51021,22 @@
       },
       "record": "docs/s3-02-a2a-acceptance.md#current-evidence-checkpoint-not-task-qualification"
     }
+  },
+  "s3_02_finite_qualification": {
+    "task": "S3-02",
+    "status": "Finite Python profile verified; full A2A feature criteria remain unverified",
+    "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+    "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+    "hosted_runs": {
+      "CI": 39393017610,
+      "PostgreSQL CI": 39393017712,
+      "Agent Framework CI": 39393017730,
+      "External Sandbox CI": 39393017638,
+      "Security": 39393017632,
+      "Docs": 39393017617
+    },
+    "scope": "Pinned SDK 1.2.2 / wire 1.0; JSON-RPC and HTTP+JSON; ADK/LangGraph; SQLite/PostgreSQL. Durable Task/receipt expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+    "full_feature_verified": false,
+    "full_proposed_criteria_executed": false
   }
 }

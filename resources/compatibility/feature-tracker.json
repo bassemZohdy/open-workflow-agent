@@ -46245,7 +46245,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: behavior_mismatch; full criteria pending",
+        "python_delivery_status": "qualified_subset at S3-02 exact source 3b6b329; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T32",
         "effort": "L",
@@ -46258,12 +46258,27 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-02 finite Python subset qualified at 3b6b329; full feature and JavaScript remain unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-02",
+            "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+            "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+            "scope": "Finite Python A2A profile only; pinned SDK/wire, JSON-RPC and HTTP+JSON, ADK/LangGraph, SQLite/PostgreSQL. Durable expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+            "validation": "All six exact-source hosted workflows passed; see docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329",
+            "tests": [
+              "tests/core/test_a2a_sdk_http.py",
+              "tests/contract/test_a2a_workflow_calls.py",
+              "tests/contract/test_a2a_initial_delivery_process_race.py",
+              "tests/contract/test_a2a_native_host_drain.py",
+              "tests/contract/test_a2a_resume_context_rejection.py"
+            ]
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A153",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false,
           "review": "Bounded Python AgentCard fetch, pinned interface selection and immutable admission are covered; full protocol/security/backend qualification remains open."
         }
@@ -46274,7 +46289,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "qualified_subset at S3-02 exact source 3b6b329; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T32",
         "effort": "L",
@@ -46287,12 +46302,27 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-02 finite Python subset qualified at 3b6b329; full feature and JavaScript remain unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-02",
+            "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+            "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+            "scope": "Finite Python A2A profile only; pinned SDK/wire, JSON-RPC and HTTP+JSON, ADK/LangGraph, SQLite/PostgreSQL. Durable expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+            "validation": "All six exact-source hosted workflows passed; see docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329",
+            "tests": [
+              "tests/core/test_a2a_sdk_http.py",
+              "tests/contract/test_a2a_workflow_calls.py",
+              "tests/contract/test_a2a_initial_delivery_process_race.py",
+              "tests/contract/test_a2a_native_host_drain.py",
+              "tests/contract/test_a2a_resume_context_rejection.py"
+            ]
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A154",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46302,7 +46332,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "qualified_subset at S3-02 exact source 3b6b329; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T32",
         "effort": "L",
@@ -46315,12 +46345,27 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-02 finite Python subset qualified at 3b6b329; full feature and JavaScript remain unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-02",
+            "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+            "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+            "scope": "Finite Python A2A profile only; pinned SDK/wire, JSON-RPC and HTTP+JSON, ADK/LangGraph, SQLite/PostgreSQL. Durable expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+            "validation": "All six exact-source hosted workflows passed; see docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329",
+            "tests": [
+              "tests/core/test_a2a_sdk_http.py",
+              "tests/contract/test_a2a_workflow_calls.py",
+              "tests/contract/test_a2a_initial_delivery_process_race.py",
+              "tests/contract/test_a2a_native_host_drain.py",
+              "tests/contract/test_a2a_resume_context_rejection.py"
+            ]
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A155",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46330,7 +46375,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "qualified_subset at S3-02 exact source 3b6b329; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T33",
         "effort": "L",
@@ -46343,12 +46388,27 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-02 finite Python subset qualified at 3b6b329; full feature and JavaScript remain unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-02",
+            "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+            "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+            "scope": "Finite Python A2A profile only; pinned SDK/wire, JSON-RPC and HTTP+JSON, ADK/LangGraph, SQLite/PostgreSQL. Durable expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+            "validation": "All six exact-source hosted workflows passed; see docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329",
+            "tests": [
+              "tests/core/test_a2a_sdk_http.py",
+              "tests/contract/test_a2a_workflow_calls.py",
+              "tests/contract/test_a2a_initial_delivery_process_race.py",
+              "tests/contract/test_a2a_native_host_drain.py",
+              "tests/contract/test_a2a_resume_context_rejection.py"
+            ]
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A156",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46386,7 +46446,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "qualified_subset at S3-02 exact source 3b6b329; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T32",
         "effort": "L",
@@ -46399,12 +46459,27 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-02 finite Python subset qualified at 3b6b329; full feature and JavaScript remain unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-02",
+            "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+            "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+            "scope": "Finite Python A2A profile only; pinned SDK/wire, JSON-RPC and HTTP+JSON, ADK/LangGraph, SQLite/PostgreSQL. Durable expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+            "validation": "All six exact-source hosted workflows passed; see docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329",
+            "tests": [
+              "tests/core/test_a2a_sdk_http.py",
+              "tests/contract/test_a2a_workflow_calls.py",
+              "tests/contract/test_a2a_initial_delivery_process_race.py",
+              "tests/contract/test_a2a_native_host_drain.py",
+              "tests/contract/test_a2a_resume_context_rejection.py"
+            ]
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A158",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46414,7 +46489,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "qualified_subset at S3-02 exact source 3b6b329; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T32",
         "effort": "L",
@@ -46427,12 +46502,27 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-02 finite Python subset qualified at 3b6b329; full feature and JavaScript remain unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-02",
+            "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+            "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+            "scope": "Finite Python A2A profile only; pinned SDK/wire, JSON-RPC and HTTP+JSON, ADK/LangGraph, SQLite/PostgreSQL. Durable expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+            "validation": "All six exact-source hosted workflows passed; see docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329",
+            "tests": [
+              "tests/core/test_a2a_sdk_http.py",
+              "tests/contract/test_a2a_workflow_calls.py",
+              "tests/contract/test_a2a_initial_delivery_process_race.py",
+              "tests/contract/test_a2a_native_host_drain.py",
+              "tests/contract/test_a2a_resume_context_rejection.py"
+            ]
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A159",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46442,7 +46532,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "qualified_subset at S3-02 exact source 3b6b329; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T32",
         "effort": "L",
@@ -46455,12 +46545,27 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-02 finite Python subset qualified at 3b6b329; full feature and JavaScript remain unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-02",
+            "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+            "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+            "scope": "Finite Python A2A profile only; pinned SDK/wire, JSON-RPC and HTTP+JSON, ADK/LangGraph, SQLite/PostgreSQL. Durable expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+            "validation": "All six exact-source hosted workflows passed; see docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329",
+            "tests": [
+              "tests/core/test_a2a_sdk_http.py",
+              "tests/contract/test_a2a_workflow_calls.py",
+              "tests/contract/test_a2a_initial_delivery_process_race.py",
+              "tests/contract/test_a2a_native_host_drain.py",
+              "tests/contract/test_a2a_resume_context_rejection.py"
+            ]
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A160",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46470,7 +46575,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "qualified_subset at S3-02 exact source 3b6b329; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T32",
         "effort": "L",
@@ -46483,12 +46588,27 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-02 finite Python subset qualified at 3b6b329; full feature and JavaScript remain unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-02",
+            "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+            "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+            "scope": "Finite Python A2A profile only; pinned SDK/wire, JSON-RPC and HTTP+JSON, ADK/LangGraph, SQLite/PostgreSQL. Durable expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+            "validation": "All six exact-source hosted workflows passed; see docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329",
+            "tests": [
+              "tests/core/test_a2a_sdk_http.py",
+              "tests/contract/test_a2a_workflow_calls.py",
+              "tests/contract/test_a2a_initial_delivery_process_race.py",
+              "tests/contract/test_a2a_native_host_drain.py",
+              "tests/contract/test_a2a_resume_context_rejection.py"
+            ]
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A161",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46498,7 +46618,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "qualified_subset at S3-02 exact source 3b6b329; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T32",
         "effort": "L",
@@ -46511,12 +46631,27 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-02 finite Python subset qualified at 3b6b329; full feature and JavaScript remain unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-02",
+            "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+            "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+            "scope": "Finite Python A2A profile only; pinned SDK/wire, JSON-RPC and HTTP+JSON, ADK/LangGraph, SQLite/PostgreSQL. Durable expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+            "validation": "All six exact-source hosted workflows passed; see docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329",
+            "tests": [
+              "tests/core/test_a2a_sdk_http.py",
+              "tests/contract/test_a2a_workflow_calls.py",
+              "tests/contract/test_a2a_initial_delivery_process_race.py",
+              "tests/contract/test_a2a_native_host_drain.py",
+              "tests/contract/test_a2a_resume_context_rejection.py"
+            ]
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A162",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46526,7 +46661,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "qualified_subset at S3-02 exact source 3b6b329; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T32",
         "effort": "L",
@@ -46539,12 +46674,27 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-02 finite Python subset qualified at 3b6b329; full feature and JavaScript remain unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-02",
+            "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+            "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+            "scope": "Finite Python A2A profile only; pinned SDK/wire, JSON-RPC and HTTP+JSON, ADK/LangGraph, SQLite/PostgreSQL. Durable expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+            "validation": "All six exact-source hosted workflows passed; see docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329",
+            "tests": [
+              "tests/core/test_a2a_sdk_http.py",
+              "tests/contract/test_a2a_workflow_calls.py",
+              "tests/contract/test_a2a_initial_delivery_process_race.py",
+              "tests/contract/test_a2a_native_host_drain.py",
+              "tests/contract/test_a2a_resume_context_rejection.py"
+            ]
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A163",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -46670,7 +46820,7 @@
         "direction": "OWS to LangGraph",
         "stage": 3,
         "delivery_status": "Tracked",
-        "python_delivery_status": "Current audit: partial; full criteria pending",
+        "python_delivery_status": "qualified_subset at S3-02 exact source 3b6b329; full criteria pending",
         "javascript_delivery_status": "Unimplemented; independent qualification pending",
         "required_tests": "T32",
         "effort": "L",
@@ -46683,12 +46833,27 @@
           "S4-04",
           "S4-03"
         ],
-        "repository_status": "Verification pending",
-        "evidence_of_completion": [],
+        "repository_status": "S3-02 finite Python subset qualified at 3b6b329; full feature and JavaScript remain unverified",
+        "evidence_of_completion": [
+          {
+            "task_id": "S3-02",
+            "source_commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+            "acceptance_record": "docs/s3-02-a2a-acceptance.md#exact-source-qualification-3b6b329",
+            "scope": "Finite Python A2A profile only; pinned SDK/wire, JSON-RPC and HTTP+JSON, ADK/LangGraph, SQLite/PostgreSQL. Durable expiry, push, delegated identity, JavaScript and full proposed criteria excluded.",
+            "validation": "All six exact-source hosted workflows passed; see docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329",
+            "tests": [
+              "tests/core/test_a2a_sdk_http.py",
+              "tests/contract/test_a2a_workflow_calls.py",
+              "tests/contract/test_a2a_initial_delivery_process_race.py",
+              "tests/contract/test_a2a_native_host_drain.py",
+              "tests/contract/test_a2a_resume_context_rejection.py"
+            ]
+          }
+        ],
         "current_implementation_audit": {
           "path": "resources/compatibility/implementation-audit.json",
           "feature_id": "A168",
-          "python_outcome": "partial",
+          "python_outcome": "qualified_subset",
           "full_feature_verified": false
         }
       },
@@ -75538,9 +75703,9 @@
         "module": "M08",
         "description": "Complete workflow-to-agent and agent-to-workflow A2A invocation, exposure, lifecycle and interoperability.",
         "effort": "L",
-        "status": "Pending",
+        "status": "Complete",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
-        "unqualified_progress": {
+        "historical_unqualified_progress": {
           "status": "Partial finite Python evidence recorded; A2A01-A2A08 are not fully accepted",
           "baseline_source": "325458af130cccc8d9d899dc09614f6e55cc48f5",
           "acceptance_record": "docs/s3-02-a2a-acceptance.md",
@@ -75613,6 +75778,20 @@
             },
             "record": "docs/s3-02-a2a-acceptance.md#current-evidence-checkpoint-not-task-qualification"
           }
+        },
+        "evidence": {
+          "commit": "3b6b32994d45bdb4cedb1135720da12fc4fe29ef",
+          "scope": "Finite Python A2A profile: pinned A2A SDK 1.2.2 / wire 1.0; JSON-RPC and HTTP+JSON; bounded behaviors across ADK/LangGraph and SQLite/PostgreSQL. Durable Task/receipt expiry, push, delegated identity, JavaScript and full protocol/proposed criteria remain outside qualification.",
+          "runs": {
+            "CI": 39393017610,
+            "PostgreSQL CI": 39393017712,
+            "Agent Framework CI": 39393017730,
+            "External Sandbox CI": 39393017638,
+            "Security": 39393017632,
+            "Docs": 39393017617
+          },
+          "conclusions": "All six exact-source hosted workflows passed. Local grouped validation and the 60-case corrected CI selector suite are recorded in the acceptance and validation-history documents.",
+          "full_conformance": false
         }
       },
       {

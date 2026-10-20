@@ -1,31 +1,38 @@
 # S3-02 finite A2A invocation and interoperability acceptance
 
-Status: S3-02 remains open. S2-09's finite recovery policy and S3-01's finite
-Python MCP profile are verified. The last fully qualified source is `923302f`,
-which passed all six hosted workflows. Pushed candidate `980d9ca`
-(`980d9caff579a244780c1a7e3621f09901b26400`) adds terminal owner privacy,
-ADK route-history corruption, API-key/mTLS origin rejection, tenant-only
-actual-TCP rejection, and native late-provider/uncertain-receipt host-drain
-coverage. `980d9ca` passed its original local combined batch (271 core SDK HTTP
-tests). Follow-up `3a56878` passed 275 core SDK HTTP tests, 20 selected cases
-per native engine (56 backend/engine skips each), three CI selector tests,
-static/type checks, builds and docs validation. All six hosted workflows
-started for exact source `3a568784374539db341f2a9321dd35f9353f01e6`. As of
-2026-10-20 07:31 UTC, Docs and Security passed, External Sandbox was in
-progress, and CI, Agent Framework and PostgreSQL were pending. Their results are
-recorded in the [validation history](validation-history/pending-batch-results.md#exact-source-follow-up-3a56878).
-A2A02's finite native-call gate and A2A05's finite process-recovery gate are
-verified at `923302f`; A2A01, A2A03-A2A04 and A2A06-A2A08 remain partial because
-cross-method, authority, failure, backend or recovery controls still lack
-complete evidence. Durable Task/receipt expiry remains outside the accepted
-profile. Earlier regressions, their corrections, and the transient External
-Sandbox image retry are preserved in the validation history.
-Local gRPC and background recovery evidence belongs to S3-03. Suite totals
-alone do not complete the remaining seven A2A gates.
-A2A01-A2A08 remain open wherever cross-method, authority, failure, backend or
-recovery controls have not been directly evidenced.
+Status: the finite Python S3-02 profile is verified at exact source
+`3b6b32994d45bdb4cedb1135720da12fc4fe29ef`. All six hosted workflows passed:
+[CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017610),
+[PostgreSQL CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017712),
+[Agent Framework CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017730),
+[External Sandbox CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017638),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017632),
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017617).
+The [exact-source validation record](validation-history/pending-batch-results.md#exact-source-qualification-3b6b329)
+contains the local evidence, hosted run links, correction history and scope.
 
-## Candidate additions — local pass, exact-source hosted qualification pending
+The finite profile is pinned to A2A SDK 1.2.2 / wire 1.0, advertises
+JSON-RPC and HTTP+JSON, and qualifies the named Python behaviors across ADK and
+LangGraph with SQLite and PostgreSQL. It includes SDK method and card selection,
+workflow/tool calls, inbound task exposure and ownership, terminal/lifecycle
+projection, process-stop initial-delivery recovery, archive/authority integrity,
+credential/TLS boundaries, and bounded streaming/resubscription. It does not
+claim full A2A or OWS conformance, full T32/T33 criteria, or independent
+JavaScript support. Durable Task/receipt expiry is explicitly excluded by the
+user's 2026-10-20 scope decision; no expiry capability is advertised. Push and
+delegated grants remain separate gates.
+
+S2-09 and S3-01 are verified prerequisites. S3-03 protocol adapters,
+S3-06/S4-11 delegated identity and consent, S4-10 push callbacks, and
+S4-03/S4-04 JavaScript and full proposed criteria remain independently gated.
+The detailed pre-qualification table below is retained as historical evidence;
+its pending language describes the earlier checkpoint and is superseded by the
+exact-source qualification above.
+
+<a id="exact-source-qualification-3b6b329"></a>
+
+
+## Historical candidate additions — superseded by exact-source qualification `3b6b329`
 
 Follow-up `3a56878` adds five bounded witnesses and closes outbound actual-SDK
 request and response assertion gaps. The all-method socket case checks ordered
@@ -150,7 +157,7 @@ the aggregate CI workflow did not pass. PostgreSQL LangGraph also failed one
 unrelated S3-03 selected-adapter recovery case. Neither outcome is evidence for
 or against the A2A gates; both are recorded in the [validation history](validation-history/pending-batch-results.md#follow-up-at-4014874).
 
-| Gate | Current evidence state | Remaining proof before this gate closes |
+| Gate | Evidence at the historical pre-3b checkpoint | Then-remaining proof (superseded by the exact-source qualification above) |
 | --- | --- | --- |
 | A2A01 | Partial: `923302f` passed all six hosted workflows for the reviewed socket, card-selection, typed-error and method witnesses. Candidate `980d9ca` adds tenant-only actual-TCP card rejection. The combined local follow-up passed: all seven methods assert expected request parameters and result shapes; streaming asserts ordered Task/artifact/status frames; Task/Message alternatives pass over ASGI and actual TCP with preserved IDs and one dispatch. The independent official SDK client path remains covered. | Run the combined assertions on the exact hosted source and complete the remaining finite inbound/outbound method matrix. |
 | A2A02 | Verified finite Python profile: `test_native_workflow_operations_return_only_typed_sdk_results` and `test_native_configured_agent_tool_calls_the_same_official_peer` passed both principal SQLite selections (26 cases each). The ADK and LangGraph PostgreSQL lifecycle jobs also passed all seven native operation-method cases and the configured-tool case for their engine. | Keep the claim to these tested engines, methods, deterministic tools and generated default workflow. |
@@ -187,9 +194,9 @@ Representative executed witnesses for the partial gates include:
 - **A2A07:** `tests/core/test_a2a_sdk_http.py::test_actual_tls_a2a_call_uses_named_mtls_credential[method]`, `::test_actual_tls_a2a_call_uses_named_http_credential[kind-method]` and `::test_actual_tls_a2a_call_uses_named_oauth_credential_for_card_endpoint[method]` passed locally across the seven advertised methods and four named TLS credential profiles. Bearer, API-key and OAuth cases use the fetched AgentCard-selected endpoint and assert public discovery has no business credential. `::test_card_cannot_redirect_protected_tool_credentials_to_another_endpoint[method]` and `::test_oauth_card_requires_exact_resource_endpoint_before_issuer_dispatch[method]` reject all seven methods before network or issuer dispatch when endpoint/resource authority is missing. The complete SDK HTTP test file passed 133 cases locally; hosted requalification remains pending. `::test_public_card_fetch_has_no_inherited_business_credentials_and_uses_pinned_selection`, `::test_exact_deployment_credential_grant_reaches_selected_sdk_peer` and `tests/core/test_secret_safety.py::test_a2a_surfaces_never_expose_the_resolved_secret` cover adjacent policy and secret surfaces.
 - **A2A08:** `tests/core/test_a2a_streaming.py::test_resubscribe_streams_existing_task_and_rejects_unknown` and `::test_stream_disconnect_does_not_cancel_invocation`; `tests/core/test_a2a_inbound_v1.py::test_a2a_stream_event_limit_keeps_initial_snapshot_and_closes`, `::test_a2a_stream_backpressure_closes_without_leaking_subscription`, `::test_a2a_stream_timeout_closes_after_snapshot`, `::test_a2a_stream_of_terminal_task_contains_only_snapshot_and_closes`, `::test_public_subscription_reads_another_services_terminal_commit_without_local_event` and `::test_malformed_streaming_message_rejects_without_invocation_or_subscription`; `tests/core/test_a2a_sdk_http.py::test_each_method_uses_actual_v1_sdk_envelopes_identity_and_single_business_dispatch`, `::test_actual_tcp_streaming_lost_response_is_uncertain_without_reconnect`, `::test_actual_tcp_streaming_partial_response_loss_is_uncertain_without_reconnect`, `::test_actual_tcp_subscribe_partial_response_loss_is_uncertain_without_replay`, `::test_stream_limits_identity_and_completion_are_checked_without_reconnect` (including malformed JSON, unsupported SSE event and malformed framing), `::test_subscribe_rejects_foreign_first_task_even_when_later_events_match_it` and `::test_actual_tcp_card_matrix_keeps_malformed_business_result_pending` witness one-shot dispatch, uncertain loss and explicit resubscription. The official SDK `ListTasks` rejection is reachable in `tests/contract/test_a2a_sdk_inbound.py` for both bindings, engines and backends; its SQLite engine cases passed. `tests/contract/test_a2a_sdk_http_json_optional_methods.py::test_public_http_json_list_tasks_is_rejected_before_workflow_invocation` checks exact HTTP+JSON error text and zero invocation/model calls. `tests/core/test_a2a.py::test_jsonrpc_rejects_unimplemented_optional_v1_methods_before_work` and `tests/core/test_a2a_http_json_optional_methods.py::test_http_json_optional_operations_reject_before_workflow_dispatch` witness precise rejection for all six unimplemented JSON-RPC and HTTP+JSON methods before workflow dispatch. Durable Task/receipt expiry stays outside this finite profile and is not advertised; remaining binding/backend matrices remain open.
 
-These named tests demonstrate individual branches. The remaining table entries
-identify the cross-products, backend, process-stop and failure interactions that
-still need direct evidence before any partial gate advances.
+These named tests document representative branches from the earlier checkpoint.
+The exact-source qualification above records the subsequently completed finite
+profile; broader full-feature and proposed-criteria claims remain open.
 
 The authored inventory currently includes common initial-delivery controls
 (26 SQLite/PostgreSQL nodes), actual native workflow/tool calls (64), official
@@ -206,17 +213,17 @@ source/input/identity/clock under v2 and has no paid model calls.
 Exact-source validation at `923302f` passed all six workflows, including the
 main CI, PostgreSQL, Agent Framework, Docs, Security and External Sandbox
 workflows. The main CI and PostgreSQL process-recovery suites qualified the
-A2A05 finite matrix, which is now closed in the gate table. Other A2A gates and
-the S3-02 task remain open. The preceding `bd934ee` failures, correction
+A2A05 finite matrix, which is now closed in the gate table. At that historical checkpoint, other A2A gates and
+the S3-02 task remained open; exact-source finite qualification followed at
+`3b6b329`. The preceding `bd934ee` failures, correction
 evidence, and transient External Sandbox image-registry failure/rerun are
 recorded in the [A2A validation history](validation-history/pending-batch-results.md#a2a-authority-uncertain-effect-and-stream-follow-up-2026-10-20).
 The prior `a77678a` and `18123a6` hosted failures and their corrections remain
 documented in the validation history.
 SDK version 1.2.2 is required before enabled inbound exposure; sanitized
 capabilities retain configured enabled separately from effective SDK
-availability and do not claim full conformance. S3-02 stays open until the
-remaining gate gaps are directly evidenced and the grouped change batch passes
-its focused regressions, independent suites, builds and hosted gates. Mandatory
+availability and do not claim full conformance. The finite S3-02 profile is accepted at `3b6b329`; broader protocol, language,
+push and delegated-identity criteria remain independently gated as stated above. Mandatory
 actual principal/backend cases cannot qualify through foreign SDK or database
 skips. Retain failed attempts and finite supervisor/source hashes.
 
@@ -231,16 +238,15 @@ migration, remote rollback and general exactly-once guarantees are not claimed.
 
 Retain predecessor LC184, VM68, MCP64, common security/platform controls, seven
 audits, two native benchmarks, 26 canonical CTK feature hashes and four runtime
-image gates. All six hosted workflows must qualify the final combined source.
+image gates. All six hosted workflows qualified exact source `3b6b329`; any broader publication
+claim remains subject to its independent gates.
 Update TODO/PROJECT and only proven tracker/audit subsets after acceptance;
 proposed inventory tests and independent gaps remain visible and unverified.
 
 The S3-02 implementation baseline was authored from
 `325458af130cccc8d9d899dc09614f6e55cc48f5`; that provenance is not A2A
-acceptance. With S2-09 and S3-01 prerequisites now verified, S3-02 is
-actionable. Continue with the grouped peer/native/backend gates, preserve the
-bounded semantics above, then run the frozen focused and full validation
-profiles. No blocker is recorded.
+acceptance. This historical planning note preceded the finite profile
+qualification recorded above. No task was deferred.
 
 
 ## Retained first combined batch
@@ -257,8 +263,8 @@ nonexistent child dispatcher start hook, incomplete modern messages, empty
 optional parameters) and stale typed-error/structured-Task assertions. They also
 exposed a real terminal queue settlement early-return defect, now corrected.
 The correction retains owner/input/identity assertions and adds stop-window
-coverage within the existing counts. The full corrected batch remains pending;
-S3-02 and its feature criteria stay unchecked and unqualified.
+coverage within the existing counts. At that checkpoint the full corrected batch remained pending and S3-02 stayed
+unchecked; later exact-source acceptance is recorded above.
 
 
 ## Retained second combined batch
@@ -278,8 +284,8 @@ correction publishes strict SDK-parsed v1 `httpAuthSecurityScheme` and
 `securityRequirements` while retaining the bearer scheme identifier and excluding
 secrets. The existing positive card test now parses the complete response through
 the official SDK. The stream fixture uses its actual `subscribe` SPI. Counts
-remain unchanged; the complete correction batch and full qualification remain
-pending, with S3-02 and its feature criteria unchecked.
+remained unchanged; at that checkpoint the complete correction batch and full
+qualification were pending, with S3-02 unchecked.
 
 ## Retained third correction focus
 
@@ -299,8 +305,8 @@ type/value before inspecting any result, including live ASGI and disconnect read
 The remaining producer fixtures identified a worker receipt-serialization mismatch
 and the selected LangGraph partial-native stop boundary. Their correction retains
 the same required identities, outcomes, native-history and no-repeat-dispatch
-assertions. Fixture counts remain unchanged. S3-02 and its criteria remain unchecked;
-the complete corrected batch and final qualification are pending.
+assertions. Fixture counts remained unchanged. At that checkpoint S3-02 remained unchecked;
+its later finite acceptance is recorded above.
 
 The fourth frozen correction at `0c5eec0` passed 55 common wire controls
 (13 backend skips), all 10 actual SDK/socket/process-stop cases per principal

@@ -9,30 +9,25 @@
 
 ## Current backlog delivery mode — 2026-10-20
 
-**19 of 37 backlog tasks are verified; 18 remain open. No task is deferred.**
-S2-09’s finite VM01-VM08 policy and S3-01’s finite Python MCP01-MCP08 profile are verified.
-S3-02's last fully qualified source is `923302f`. Pushed candidate `980d9ca`
-passed its grouped local batch. Follow-up `3a56878` adds all-method outbound
-parameter checks, full stream-frame assertions, actual-TCP Task/Message
-alternatives, and documentation cleanup; its local tests, static checks,
-builds and docs validation passed. As of 2026-10-20 07:31 UTC, all six hosted
-workflows had started for `3a568784374539db341f2a9321dd35f9353f01e6`; Docs was
-in progress, Docs/Security passed, and CI/Agent Framework/PostgreSQL were pending. A2A02 and A2A05 remain
-the only verified finite S3-02 gates. Durable Task/receipt expiry is excluded
-from the finite profile and is not advertised.
+**20 of 37 backlog tasks are verified; 17 remain open. No task is deferred.**
+S2-09's finite VM01-VM08 policy, S3-01's finite Python MCP01-MCP08 profile,
+and S3-02's finite Python A2A profile are verified. S3-02 passed all six
+hosted workflows at exact source `3b6b32994d45bdb4cedb1135720da12fc4fe29ef`.
+Its bounded scope is the pinned A2A SDK 1.2.2 / wire 1.0 profile, advertised
+JSON-RPC and HTTP+JSON, ADK/LangGraph and SQLite/PostgreSQL. Durable Task/receipt
+expiry, push, delegated identity, JavaScript and full protocol/proposed criteria
+remain outside the qualification. See the [A2A acceptance record](docs/s3-02-a2a-acceptance.md)
+and [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329).
 JavaScript MCP, A145/full protocol coverage, proposed T29/T30/T31 criteria,
-and broader MCP extensions remain unqualified. See the
-[exact-source qualification record](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6),
-[S3-01 acceptance](docs/s3-01-mcp-acceptance.md), and
-[S2-09 acceptance](docs/s2-09-version-recovery-acceptance.md). Earlier failed,
-partial and superseded runs remain historical in the [validation history](docs/validation-history/pending-batch-results.md).
+and broader MCP extensions remain unqualified. Earlier failed, partial and
+superseded runs remain historical in the [validation history](docs/validation-history/pending-batch-results.md).
 
 | Work | Current state | Acceptance record |
 | --- | --- | --- |
 | S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at 6b23e5d / 96ce610. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
 | S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
-| S3-02 | `923302f` is the last fully qualified source. Follow-up `3a56878` passed combined local A2A/native tests, static/type checks, builds and docs validation. At the 2026-10-20 07:31 UTC snapshot, Docs and Security passed, External Sandbox was in progress, and CI/Agent Framework/PostgreSQL were pending. A2A02 and A2A05 are verified; the other six finite gates remain partial. Durable Task/receipt expiry is excluded. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [candidate validation history](docs/validation-history/pending-batch-results.md#exact-source-follow-up-3a56878) |
+| S3-02 | Finite Python A2A profile verified at exact source `3b6b329`; all six hosted workflows passed. Durable Task/receipt expiry, push, delegated identity, JavaScript and full proposed criteria remain outside this qualification. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329) |
 | S3-04 | Captured sources and awaited controls remain authored. Four late source-worker takeover cases cover the ADK/LangGraph × SQLite/PostgreSQL matrix; exact-source behavioral, platform and publication qualification remain pending. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
 | S3-05 | Protected actor assignments, decisions, expiry and native recovery are authored. The PostgreSQL `REAL`-to-`DOUBLE PRECISION` migration is implemented and f9 PostgreSQL protected-approval cases passed. The f9 Windows timer lane exposed a request-row process-recovery fixture race before its durable barrier; a five-second renewal lease plus natural database-clock wait passes the local LangGraph/SQLite suite. The formerly failing hosted Windows case passed at `8183776`; the expired-approval fixture now keeps invocation ownership independent from the short approval deadline and awaits independent-SDK/hosted requalification. Broader S3-05 gates remain open. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |
 | S3-06 | Identity, action policy, isolation and credential safeguards remain authored; full qualification remains open. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
@@ -683,7 +678,7 @@ The CI source-integrity gate caught three ignored predecessor reference files mi
 
 S2-09's finite original-definition continuation and bounded recovery policy is
 verified; successful in-place version mapping and full native history remain
-unsupported. Its S2-09/S3-01 prerequisites are satisfied; S3-02's own grouped
-peer/native/backend A2A acceptance remains open. See the [S2-09 record](docs/s2-09-version-recovery-acceptance.md),
+unsupported. Its S2-09/S3-01 prerequisites were met before the finite S3-02
+Python A2A profile qualified at exact source `3b6b329`. See the [S2-09 record](docs/s2-09-version-recovery-acceptance.md),
 [A2A record](docs/s3-02-a2a-acceptance.md), status table above and
 [validation history](docs/validation-history/pending-batch-results.md).

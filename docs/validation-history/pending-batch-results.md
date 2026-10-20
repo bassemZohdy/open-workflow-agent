@@ -2020,3 +2020,31 @@ and [Agent Framework CI](https://github.com/bassemZohdy/open-workflow-agent/acti
 were pending. No S3-02 gate advances before required workflows and
 actual PostgreSQL selections pass. Durable Task/receipt expiry remains
 excluded from the finite profile.
+
+
+<a id="exact-source-qualification-3b6b329"></a>
+
+## Exact-source finite S3-02 qualification — `3b6b329` (2026-10-20)
+
+Source: `3b6b32994d45bdb4cedb1135720da12fc4fe29ef`. The finite Python A2A
+profile passed all six hosted workflows: [CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017610),
+[PostgreSQL CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017712),
+[Agent Framework CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017730),
+[External Sandbox CI](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017638),
+[Security](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017632),
+and [Docs](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39393017617).
+The grouped local CI-selector file passed 60 tests. Earlier grouped local
+validation at the feature source included 275 core A2A SDK HTTP tests, 20
+selected cases per principal engine (56 backend/engine skips each), three CI
+selector tests, Ruff lint/format, mypy for CI and 133 packages, root/core
+builds, documentation-link validation, and `git diff --check`. The 60-test
+selector rerun followed a correction to stale expected collection counts (16→17
+and 4→8); the prior CI failure at `05f5c74` was confined to those count guards.
+The corrected source passed the exact-source hosted CI and all other hosted
+workflows listed above.
+
+Accepted scope: pinned A2A SDK 1.2.2 / wire 1.0, advertised JSON-RPC and
+HTTP+JSON, bounded Python behavior across ADK/LangGraph and SQLite/PostgreSQL.
+Durable Task/receipt expiry is excluded by the user's 2026-10-20 decision.
+Push, delegated identity, JavaScript, and full protocol/proposed-test coverage
+remain unqualified. No other backlog item is deferred by this result.

@@ -112,8 +112,8 @@ def test_audit_preserves_unexecuted_full_criteria_and_specific_hidden_gaps():
     assert rows["AS138"]["evidence_group"] == "mcp_inert"
     assert rows["AS180"]["evidence_group"] == "container_inert"
     assert rows["AS305"]["evidence_group"] == "extensions"
-    assert rows["A161"]["evidence_group"] == "a2a"  # Outbound ListTasks exists.
-    assert rows["A159"]["evidence_group"] == "a2a_stream"  # Inbound != outbound.
+    assert rows["A161"]["evidence_group"] == "a2a_finite"  # Finite Python A2A qualification is separately bounded.
+    assert rows["A159"]["evidence_group"] == "a2a_finite"  # Bounded stream behavior is covered by the finite A2A profile.
     assert rows["B043"]["python_outcome"] == "unimplemented"  # Saver != public history.
     assert rows["B078"]["python_outcome"] == "partial"  # Bounded scope restart only.
     assert audit["gap_probes"]["unexpected_passes"] == 0
