@@ -2096,21 +2096,24 @@ remain unqualified. No other backlog item is deferred by this result.
 The hosted Agent Framework workflow for source `9d4d3ec1bf141281acdd5844c49b308330c03d21`
 ([run 39412175159](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39412175159))
 failed 36 cases in `test_nondurable_backend_rejects_advanced_listener_before_earlier_dispatch`;
-1,670 passed and 2,554 were skipped. The failures were one shared admission-order
-gap across ADK, LangGraph and Agent Framework: initial invoke let an
-`UnsupportedWorkflowFeature` escape from preflight instead of recording the
-expected faulted result before input binding, and resume rejected the event
-capability before the read-only native-continuation preflight. The remaining
+1,670 passed and 2,554 were skipped. The event regression expected a faulted
+result where the common engine rejects unsupported capabilities with
+`UnsupportedWorkflowFeature` before execution ownership or input binding. Resume
+also reached that rejection before its read-only native-continuation preflight. The remaining
 workflow gates at that source included passing Docs, Security, External Sandbox
 and PostgreSQL runs; main CI was still running when this note was written.
 
-The unpushed common-engine correction records unsupported capability admission
-as a faulted invocation before storing input or dispatching tasks, and orders
-resume's read-only native-continuation check before the capability gate. The
-Agent Framework environment's complete event-backend admission selection passes
-**72 tests** after that correction. Root error-contract cases pass **72 tests**;
-ADK and LangGraph selected contract suites each pass **50 tests** with 150
-cross-engine/optional skips. Ruff format, Ruff lint and mypy for all four
-packages pass. Exact-source hosted qualification and full-workflow outcomes for
-the corrected source remain pending; no S2-05 checkbox advances from this
+An initial correction moved invoke preflight inside execution ownership to
+record a faulted result. Exact-source commit `e5f9eb2` exposed that this violated
+the pre-ownership contract: both Windows gRPC selectors failed and PostgreSQL
+CI failed protected-approval admission cases. The implementation change was
+reverted. The event regression now expects rejection before input/ownership,
+while resume retains the read-only native-continuation check before its
+capability gate. After this correction, the Agent Framework environment's event
+admission selection passes **72 tests**, and the ADK and LangGraph gRPC
+admission selectors each pass **2 tests** (6 cross-engine/backend skips).
+Earlier root error-contract cases passed **72 tests**; ADK/LangGraph selected
+contract suites each passed **50 tests** with 150 cross-engine/optional skips.
+Ruff format, Ruff lint and mypy for all four packages pass. Fresh exact-source
+hosted qualification remains pending; no S2-05 checkbox advances from this
 follow-up alone.

@@ -95,9 +95,11 @@ async def test_nondurable_backend_rejects_advanced_listener_before_earlier_dispa
             saved = services.invocations.get(handle.invocation_id)
             assert saved is not None and saved._persisted_payload == before
         elif operation == "invoke":
-            result = await engine.invoke(plan, handle, {"private": "must-not-be-bound"})
-            assert result.status == "faulted" and result.error
-            assert result.error["code"] == "unsupported_workflow_feature"
+            before = handle._persisted_payload
+            with pytest.raises(UnsupportedWorkflowFeature):
+                await engine.invoke(plan, handle, {"private": "must-not-be-bound"})
+            saved = services.invocations.get(handle.invocation_id)
+            assert saved is not None and saved._persisted_payload == before
         else:
             original = {"original": "must-remain"}
             lease = services.execution_ownership.acquire(handle, seconds=60)

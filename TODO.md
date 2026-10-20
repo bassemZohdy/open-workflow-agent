@@ -100,12 +100,14 @@ treated as a deferred task or as additional feature completion.
   `143d38a` and publication `58de90e`. All fourteen finite requirements pass;
   embedded capability reports are verified. See
   [acceptance evidence](PROJECT.md#s2-05-embedded-event-work--2026-10-12-verified).
-  Regression requalification at source `9d4d3ec` found that unsupported
-  nondurable event listeners escaped invoke admission and resume rejected them
-  before its read-only native-continuation check. The shared-engine correction
-  now records a faulted result before input binding and checks native continuation
-  first; all 72 event-backend matrix cases pass locally. Exact-source hosted
-  requalification remains pending; see the [run record](docs/validation-history/pending-batch-results.md#event-backend-admission-order-follow-up-at-9d4d3ec).
+  Regression requalification at source `9d4d3ec` found the nondurable-listener
+  test expected a faulted result where the common engine rejects unsupported
+  capabilities before execution ownership. It now asserts the common rejection
+  and unchanged input/state; resume checks native continuation before that
+  rejection. A first invoke reorder broke Windows gRPC and PostgreSQL
+  protected-approval pre-ownership gates, so it was reverted. Corrected local
+  event/gRPC selectors pass; exact-source hosted requalification remains
+  pending. See the [run record](docs/validation-history/pending-batch-results.md#event-backend-admission-order-follow-up-at-9d4d3ec).
 - [x] **S2-06** (L) — Add durable timers and missing schedule/event-trigger semantics; avoid keeping waits in sleeping tasks.
   Verified at `3f568e5`: common timer decisions, native nonresident suspension,
   fenced schedule slots, bounded calendars and atomic embedded event-created

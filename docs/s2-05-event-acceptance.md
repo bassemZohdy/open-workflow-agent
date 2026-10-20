@@ -2,13 +2,15 @@
 
 Decision: **complete finite S2-05 profile qualified at `58de90e`**.
 
-Current-source regression requalification at `9d4d3ec` later found an admission
-ordering gap for advanced listeners on nondurable event buses: invoke raised the
-capability error instead of recording the common faulted result, and resume
-returned the capability rejection before checking native continuation state.
-The shared-engine correction records rejection before binding input and runs the
-read-only native preflight first. All 72 local event-backend admission cases
-pass after the correction. Exact-source hosted requalification remains pending;
+Current-source regression requalification at `9d4d3ec` later found that the
+nondurable-listener test expected a faulted result, while common admission
+rejects unsupported capabilities before execution ownership. The regression now
+asserts `UnsupportedWorkflowFeature` and unchanged invocation input/state.
+Resume performs its read-only native-continuation check before returning the
+capability rejection. A first invoke reorder was reverted after Windows gRPC
+and PostgreSQL protected-approval gates proved that deployment rejection must
+remain before execution ownership. The corrected local event-backend matrix
+passes all 72 cases. Exact-source hosted requalification remains pending;
 see the [validation history](validation-history/pending-batch-results.md#event-backend-admission-order-follow-up-at-9d4d3ec).
 All four frozen local suites and all seven configured workflows passed. The
 task in [TODO.md](../TODO.md) is complete after final publication source
