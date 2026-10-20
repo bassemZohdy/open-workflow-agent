@@ -16,6 +16,7 @@ from open_workflow_agent.api import create_app
 from open_workflow_agent.approvals import APPROVAL_DECISION_EVENT, APPROVAL_REQUEST_EVENT
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.engine import PortableWorkflowEngine
 from open_workflow_agent.security import Principal
 from open_workflow_agent.services import RuntimeServices
 
@@ -193,6 +194,7 @@ async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
     )
     services = RuntimeServices(config, model=FakeModel(slow_model), database_root=tmp_path)
     app = create_app(config=config, services=services)
+    reader: RuntimeServices | None = None
     try:
         async with app.router.lifespan_context(app):
             client_transport = httpx.ASGITransport(app=app)
@@ -250,8 +252,41 @@ async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
                 assert second == first
                 assert services.invocations.get(task_id)._persisted_payload == persisted
                 assert services.model.calls == model_calls_after_drain
+
+                reader_model = FakeModel()
+                reader = RuntimeServices(config, model=reader_model, database_root=tmp_path)
+                reader_app = create_app(
+                    config=config, services=reader, engine=PortableWorkflowEngine()
+                )
+
+                async def forbidden(*_args, **_kwargs):
+                    raise AssertionError("a late-result GetTask must not replay workflow work")
+
+                async with reader_app.router.lifespan_context(reader_app):
+                    reader_app.state.engine.invoke = forbidden
+                    reader_app.state.engine.resume = forbidden
+                    async with httpx.AsyncClient(
+                        transport=httpx.ASGITransport(app=reader_app),
+                        base_url="http://test",
+                    ) as reader_client:
+                        worker_task = await _poll_task_state(
+                            reader_client,
+                            task_id,
+                            "TASK_STATE_WORKING",
+                            transport=transport,
+                        )
+
+                    reader_handle = reader.invocations.get(task_id)
+                    assert reader_handle is not None and reader_handle.status == "running"
+                    assert worker_task == first
+                    assert reader_handle._persisted_payload == persisted
+                    assert services.invocations.get(task_id)._persisted_payload == persisted
+                    assert reader_model.calls == []
+                    assert services.model.calls == model_calls_after_drain
     finally:
         release.set()
+        if reader is not None:
+            reader.close()
         services.close()
 
 

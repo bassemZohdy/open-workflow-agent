@@ -214,6 +214,7 @@ def test_windows_mcp_controls_include_real_transport_and_cleanup_boundaries():
         "test_mcp_capabilities.py",
         "test_mcp_stdio_integration.py",
         "test_a2a_sdk_http.py",
+        "test_a2a_async.py",
         "test_a2a_inbound_v1.py",
         "test_a2a.py",
         "test_a2a_http_json_optional_methods.py",

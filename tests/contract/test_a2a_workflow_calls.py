@@ -32,6 +32,15 @@ PARAMS = {
     "tasks/resubscribe": {"id": "task-id"},
     "agent/getAuthenticatedExtendedCard": {},
 }
+WIRE_METHODS = {
+    "message/send": "SendMessage",
+    "message/stream": "SendStreamingMessage",
+    "tasks/get": "GetTask",
+    "tasks/list": "ListTasks",
+    "tasks/cancel": "CancelTask",
+    "tasks/resubscribe": "SubscribeToTask",
+    "agent/getAuthenticatedExtendedCard": "GetExtendedAgentCard",
+}
 
 
 def runtime(path, backend, engine_name, *, model=None, options=None):
@@ -132,7 +141,14 @@ async def test_native_workflow_operations_return_only_typed_sdk_results(
             result = await engine.invoke(await engine.compile(plan), invocation, {"original": True})
             assert result.status == "completed", result.error
             assert len(calls) == 1 and calls[0]["method"] == "POST"
-            assert calls[0]["headers"][b"a2a-version"] == b"1.0"
+            call = calls[0]
+            request = call["body"]
+            assert call["headers"][b"a2a-version"] == b"1.0"
+            # Compare stable wire semantics across both actual engines while
+            # correlating the generated JSON-RPC ID instead of fixing its value.
+            assert request["method"] == WIRE_METHODS[method]
+            assert request["params"] == PARAMS[method]
+            assert call["headers"][b"idempotency-key"] == str(request["id"]).encode()
             if isinstance(result.output, list):
                 assert result.output and "statusUpdate" in result.output[-1]
             else:
@@ -141,7 +157,7 @@ async def test_native_workflow_operations_return_only_typed_sdk_results(
             assert len(keys) == 1 and keys[0].task_reference == "/do/0/peer"
             receipt = services.effect_journal.get(keys[0])
             assert receipt.status == "completed" and receipt.output == result.output
-            assert receipt.operation_id == calls[0]["body"]["id"]
+            assert receipt.operation_id == request["id"]
             assert services.model.calls == []
     finally:
         await engine.shutdown()
@@ -185,14 +201,21 @@ async def test_native_configured_agent_tool_calls_the_same_official_peer(
             await engine.initialize(services)
             assert "peer" in {getattr(tool, "name", "") for tool in engine.agent.tools}
             plan = compile_workflow()
-            result = await engine.invoke(
-                await engine.compile(plan), handle(services, engine_name, plan), {}
-            )
+            invocation = handle(services, engine_name, plan)
+            result = await engine.invoke(await engine.compile(plan), invocation, {})
             assert result.status == "completed" and result.output == {
                 "response": "tool-result-used"
             }
-            assert len(calls) == 1 and calls[0]["body"]["method"] == "SendMessage"
-            assert len(model.calls) == 2
+            assert len(calls) == 1
+            call = calls[0]
+            request = call["body"]
+            assert request["method"] == "SendMessage"
+            assert request["params"] == {"message": MESSAGE}
+            assert call["headers"][b"idempotency-key"] == str(request["id"]).encode()
+            # Native agent tools are direct agent calls, not workflow call
+            # operations, so they do not create a workflow-effect receipt.
+            assert identities(services, invocation.invocation_id) == []
+            assert len(model.calls) == 2 and model.response == []
         finally:
             await engine.shutdown()
             services.close()

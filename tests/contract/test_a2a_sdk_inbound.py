@@ -17,10 +17,13 @@ from a2a.client.transports.rest import RestTransport
 from a2a.types.a2a_pb2 import (
     AgentCard,
     CancelTaskRequest,
+    GetExtendedAgentCardRequest,
     GetTaskRequest,
+    ListTasksRequest,
     SendMessageRequest,
     SubscribeToTaskRequest,
 )
+from a2a.utils.errors import MethodNotFoundError
 from engine_cases import engine_cases
 from google.protobuf.json_format import MessageToDict, ParseDict
 from open_workflow_agent.api import create_app
@@ -50,9 +53,18 @@ async def listening(app):
 
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("explicit_workflow_delivery")
-@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
 @pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
-@pytest.mark.parametrize("mode", ["complete", "cancel_stream"])
+@pytest.mark.parametrize(
+    ("binding", "mode"),
+    [
+        ("jsonrpc", "complete"),
+        ("http_json", "complete"),
+        ("jsonrpc", "cancel_stream"),
+        ("http_json", "cancel_stream"),
+        ("jsonrpc", "list_tasks_rejected"),
+        ("jsonrpc", "extended_card"),
+    ],
+)
 @pytest.mark.parametrize(
     "engine_name,engine_type", [case for case in engine_cases() if case[0] in {"adk", "langgraph"}]
 )
@@ -156,6 +168,27 @@ async def test_official_sdk_client_discovers_sends_and_reads_native_task(
                     ignore_unknown_fields=False,
                 )
                 async with bounded_task():
+                    if mode == "extended_card":
+                        extended = await peer.get_extended_agent_card(GetExtendedAgentCardRequest())
+                        assert isinstance(extended, AgentCard)
+                        assert extended.name == card.name
+                        assert extended.version == card.version
+                        assert len(extended.supported_interfaces) == 1
+                        interface = extended.supported_interfaces[0]
+                        assert interface.protocol_binding == "JSONRPC"
+                        assert interface.protocol_version == "1.0"
+                        return
+                        if mode == "list_tasks_rejected":
+                            with pytest.raises(MethodNotFoundError):
+                                await peer.list_tasks(ListTasksRequest())
+                            assert (
+                                services.invocations.connection.execute(
+                                    "SELECT COUNT(*) FROM invocations"
+                                ).fetchone()[0]
+                                == 0
+                            )
+                            assert model.calls == []
+                            return
                     if mode == "cancel_stream":
                         updates = peer.send_message_streaming(request)
                         first = await anext(updates)

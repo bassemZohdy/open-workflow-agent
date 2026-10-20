@@ -1549,10 +1549,10 @@ LangGraph lifecycle jobs passed with APSW installed; PostgreSQL CI, Agent
 Framework CI, External Sandbox CI, Security and Docs also passed. Main CI
 failed its root suite only because a selector guard still expected one
 PostgreSQL process-race test after the second witness was added. Its Windows
-timer lane was cancelled at 45 minutes after reaching 95% progress. The current
-unpublished batch updates the selector guard, extends that job bound to 60
-minutes, and adds A2A06 corruption/terminal-projection selections with explicit
-workflow guards. At the time this record was prepared, Docs
+timer lane was cancelled at 45 minutes after reaching 95% progress. The
+follow-up batch, later pushed as `8f70acd`, updates the selector guard, extends
+that job bound to 60 minutes, and adds A2A06 corruption/terminal-projection
+selections with explicit workflow guards. At the time this record was prepared, Docs
 ([run](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39080070098))
 and Security
 ([run](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39080070121))
@@ -1569,9 +1569,9 @@ recovery failure remains subject to hosted confirmation. On 2026-10-20 the
 finite S3-02 scope decision explicitly excluded durable Task/receipt expiry;
 no expiry capability is advertised.
 
-## Unpublished grouped S3-02 acceptance batch — 2026-10-20
+## Initial grouped S3-02 acceptance batch — pushed as `8f70acd` on 2026-10-20
 
-The current working-tree batch adds a seven-method correlated JSON-RPC error
+The `8f70acd` batch added a seven-method correlated JSON-RPC error
 matrix and a seven-method legacy-version/unsupported-card-binding rejection
 matrix; strengthens `returnImmediately` identity, structured-output and
 single-dispatch assertions on both inbound bindings; adds protected-approval
@@ -1594,22 +1594,22 @@ acceptance; PostgreSQL and complete engine matrices remain in hosted CI.
 
 Markdown relative links passed. Ruff lint passed and all 549 Python files passed
 format checking after formatting the two touched A2A test files. `git diff
---check` passed. These local results do not qualify the unpublished source;
+--check` passed. These local results did not qualify the then-current source;
 exact-source hosted checks and review of their full engine/backend matrices are
 pending. S3-02 remains open. No task is deferred.
 
 After that grouped batch was pushed, the post-push selector audit found that
 the six JSON-RPC and six HTTP+JSON optional-operation rejection cases were in
 the full Linux root suite but not in the dedicated Windows common A2A suite.
-The current follow-up adds both test files to `windows-mcp` and its selector
-guard. The guard passed locally; the new exact-source hosted run is pending.
+Commit `ef43ab7` adds both test files to `windows-mcp` and its selector
+guard. The guard passed locally; exact-source hosted results are recorded below.
 
 ## Exact-source security follow-up — `ef43ab7`
 
 Security workflow run [39349622796](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39349622796)
 found three fixable advisories in `aiohttp 3.14.3` in each of the root,
 standalone-core, ADK, LangGraph and Agent Framework resolved environments. The
-reported fixed release was 3.14.4. The unpublished correction updates every
+reported fixed release was 3.14.4. Commit `a7176a0` updates every
 active lock to `aiohttp 3.14.5` and its compatible `yarl 1.25.1`; frozen
 migration reference lock sources remain unchanged.
 
@@ -1617,5 +1617,79 @@ After the lock update, the grouped A2A/root selection again passed **344 tests
 with 2 backend-inapplicable skips**. Isolated ADK receipt corruption passed 4
 with 12 matrix skips; isolated LangGraph native/receipt corruption passed 6
 with 14 matrix skips. `uv lock --check` passed for all five active locks, as
-did Markdown link validation, Ruff lint/format, and `git diff --check`. Final
-hosted security and full CI qualification on the patched locks is pending.
+did Markdown link validation, Ruff lint/format, and `git diff --check`. The
+exact-source security audit passed for all five active runtime environments
+and both controllers in run
+[39350449842](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39350449842).
+The exact-source full CI requalification is tracked in the `bd5cf79` record
+below.
+
+
+## Exact-source A2A expansion — `bd5cf79`
+
+The batch extends the A2A01 card/version matrix with a legacy-first positive
+fallback case; covers A2A03 deployed-skill routing and fail-closed unknown or
+missing skills on JSON-RPC and HTTP+JSON; drives the A2A04/A2A08 cross-worker
+terminal stream through both public SubscribeToTask routes; and proves A2A07
+rejects an unapproved card-selected endpoint before authentication preparation
+or business send. HTTP+JSON skill errors now map `skill_not_found` to
+`INVALID_PARAMS` (code 3) instead of the generic internal code. A2A05's live
+owner process-race test is selected in Windows native lifecycle CI, while its
+PostgreSQL helper is included in the PostgreSQL workflow path filter. Durable
+Task/receipt expiry remains outside the finite S3-02 profile by the user's
+2026-10-20 scope decision.
+
+The combined local regression batch passed **265 tests with 25
+backend-inapplicable skips** in 104.83 seconds. It included the A2A SDK HTTP,
+inbound v1, skill, bounded-memory and process-race tests plus CI selection
+checks. Ruff lint passed; six touched Python files passed format checks, and
+`git diff --check` passed. The A2A SDK suite reported 63 existing httpx TLS
+`verify=<str>` deprecation warnings. PostgreSQL was unavailable locally, so its
+process-race parameter skipped.
+
+Exact-source hosted runs were started for this commit: CI
+[39353140943](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39353140943),
+PostgreSQL CI
+[39353140881](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39353140881),
+Agent Framework CI
+[39353141210](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39353141210),
+External Sandbox CI
+[39353140879](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39353140879),
+Security
+[39353141134](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39353141134),
+and Docs
+[39353140886](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39353140886).
+At record creation, Docs passed and the remaining hosted workflows were queued
+or running. These results do not close S3-02; record final outcomes here after
+the exact-source batch finishes.
+
+## Grouped A2A gate coverage follow-up — 2026-10-20
+
+The `bd5cf79` exact-source main CI run completed its Windows common MCP/A2A
+selection with 537 passed and 43 skipped, but one TCP streaming loss case failed
+because the three-second outer test wait expired at the same boundary as the
+client's three-second network timeout while Windows TLS cancellation was still
+finishing. The client timeout remains three seconds; the test now gives the
+result assertion a ten-second observation window. The same focused test passed
+on the local Windows host.
+
+The grouped follow-up adds a second-process public `GetTask` check for completed
+and faulted projections, bounded cross-worker subscriptions, exact native A2A
+tool request/receipt distinctions, official SDK checks for `GetExtendedAgentCard`
+and the profile's pre-dispatch `ListTasks` rejection, a simultaneous
+initial-delivery process claim race, and CI selector guards. Durable Task/receipt
+expiry remains excluded from the finite S3-02 profile by the user's 2026-10-20
+scope decision. No acceptance gate or backlog item is marked complete.
+
+The common local batch passed **263 tests** with 69 expected httpx TLS
+`verify=<str>` deprecation warnings. The ADK and LangGraph contract batches each
+passed **25 tests** with 69 matrix skips; PostgreSQL was not configured locally,
+so the hosted PostgreSQL lane remains required. Ruff lint passed, all 467 Python
+files passed formatting, Markdown link validation passed, and `git diff --check`
+passed. The focused Windows timeout-boundary regression also passed.
+
+The timeout correction and grouped coverage follow-up are awaiting exact-source
+hosted CI, PostgreSQL, security, documentation, Agent Framework and external
+sandbox results. The prior `bd5cf79` Security, Docs, Agent Framework, External
+Sandbox and PostgreSQL workflows passed; those results do not substitute for
+requalification of the follow-up source.

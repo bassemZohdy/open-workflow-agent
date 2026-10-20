@@ -506,6 +506,191 @@ async def test_public_subscription_reads_another_services_terminal_commit_withou
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+async def test_public_subscription_byte_limit_closes_after_ordered_snapshot_without_cancelling(
+    tmp_path, monkeypatch, binding
+):
+    import open_workflow_agent.a2a as a2a_module
+    import open_workflow_agent.a2a_streaming as streaming_module
+
+    monkeypatch.setattr(a2a_module, "StreamLimits", lambda: StreamLimits(max_bytes=1024))
+    app, services, model = runtime(tmp_path, binding)
+    handle = shell(services)
+    initial_projection = asyncio.Event()
+    project = streaming_module.project_a2a_task
+
+    def observe_initial_projection(*args, **kwargs):
+        task = project(*args, **kwargs)
+        initial_projection.set()
+        return task
+
+    monkeypatch.setattr(streaming_module, "project_a2a_task", observe_initial_projection)
+
+    try:
+        async with app.router.lifespan_context(app):
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                request = asyncio.create_task(
+                    stream_or_subscribe(client, binding, "subscribe", handle.invocation_id)
+                )
+                await asyncio.wait_for(initial_projection.wait(), timeout=3)
+
+                current = services.invocations.get(handle.invocation_id)
+                assert current is not None
+                services.invocations.update(
+                    current,
+                    status="completed",
+                    output={"oversized": "x" * 4096},
+                )
+                services.lifecycle_events.emit(
+                    WorkflowEvent(
+                        "WorkflowStatusChanged",
+                        invocation_id=handle.invocation_id,
+                        event_id="oversized-terminal-event",
+                        status="completed",
+                    )
+                )
+
+                response = await asyncio.wait_for(request, timeout=5)
+                assert response.status_code == 200, response.text
+                assert response.headers["content-type"].startswith("text/event-stream")
+                frames = [
+                    json.loads(line.removeprefix("data: "))
+                    for line in response.text.splitlines()
+                    if line.startswith("data: ")
+                ]
+                if binding == "jsonrpc":
+                    assert len(frames) == 1
+                    assert frames[0]["jsonrpc"] == "2.0"
+                    assert frames[0]["id"] == "call-1"
+                    assert set(frames[0]) == {"jsonrpc", "id", "result"}
+                    events = [frames[0]["result"]]
+                else:
+                    events = frames
+
+                assert [set(event) for event in events] == [{"task"}]
+                snapshot = events[0]["task"]
+                assert snapshot["id"] == handle.invocation_id
+                assert snapshot["contextId"] == "original-context"
+                assert snapshot["status"]["state"] == "TASK_STATE_WORKING"
+                assert services.invocations.get(handle.invocation_id).status == "completed"
+                assert services.lifecycle_events._subscribers == {}
+                assert model.calls == []
+    finally:
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("binding", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize(
+    ("status", "output", "error", "expected_state"),
+    [
+        ("completed", {"answer": "durable result", "count": 3}, None, "TASK_STATE_COMPLETED"),
+        ("completed", None, None, "TASK_STATE_COMPLETED"),
+        (
+            "faulted",
+            None,
+            {"code": "workflow_execution_error", "message": "private engine detail"},
+            "TASK_STATE_FAILED",
+        ),
+    ],
+)
+async def test_public_get_task_projects_another_services_terminal_commit_read_only(
+    tmp_path, monkeypatch, binding, status, output, error, expected_state
+):
+    """Public GetTask reads a terminal SQLite commit without dispatching work."""
+    _source_app, source, source_model = runtime(tmp_path, binding)
+    handle = shell(source)
+    source.invocations.update(handle, status=status, output=output, error=error)
+
+    reader_model = FakeModel()
+    reader = RuntimeServices(source.config, model=reader_model, database_root=tmp_path)
+    app = create_app(config=source.config, services=reader, engine=PortableWorkflowEngine())
+    expected = project_a2a_task(reader.invocations.get(handle.invocation_id), services=reader)
+    persisted_before = reader.invocations.get(handle.invocation_id)._persisted_payload
+    assert expected["id"] == handle.invocation_id
+    assert expected["contextId"] == "original-context"
+    assert expected["status"]["state"] == expected_state
+    if status == "completed":
+        assert expected["artifacts"] == [
+            {
+                "artifactId": f"{handle.invocation_id}:output",
+                "name": "workflow-output",
+                "parts": [
+                    {
+                        "data": output,
+                        "mediaType": "application/json",
+                    }
+                ],
+            }
+        ]
+    else:
+        assert expected["status"]["message"] == {
+            "messageId": f"{handle.invocation_id}:error",
+            "contextId": "original-context",
+            "taskId": handle.invocation_id,
+            "role": "ROLE_AGENT",
+            "parts": [
+                {
+                    "text": "workflow failed: workflow_execution_error",
+                    "mediaType": "text/plain",
+                }
+            ],
+        }
+        assert "private engine detail" not in json.dumps(expected)
+
+    async def forbidden(*_args, **_kwargs):
+        raise AssertionError("terminal GetTask must not dispatch or resume workflow work")
+
+    try:
+        async with app.router.lifespan_context(app):
+            monkeypatch.setattr(app.state.engine, "invoke", forbidden)
+            monkeypatch.setattr(app.state.engine, "resume", forbidden)
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                responses = []
+                for request_id in ("terminal-read-1", "terminal-read-2"):
+                    if binding == "jsonrpc":
+                        response = await client.post(
+                            "/a2a",
+                            headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                            json={
+                                "jsonrpc": "2.0",
+                                "id": request_id,
+                                "method": "GetTask",
+                                "params": {"id": handle.invocation_id},
+                            },
+                        )
+                        assert response.status_code == 200, response.text
+                        body = response.json()
+                        assert body["id"] == request_id
+                        task = body["result"]
+                    else:
+                        response = await client.get(
+                            f"/a2a/tasks/{handle.invocation_id}",
+                            headers={"A2A-Version": A2A_PROTOCOL_VERSION},
+                        )
+                        assert response.status_code == 200, response.text
+                        task = response.json()
+                    responses.append(task)
+
+                assert responses == [expected, expected]
+                assert reader.invocations.get(handle.invocation_id)._persisted_payload == (
+                    persisted_before
+                )
+                assert source.invocations.get(handle.invocation_id)._persisted_payload == (
+                    persisted_before
+                )
+                assert source_model.calls == []
+                assert reader_model.calls == []
+    finally:
+        reader.close()
+        source.close()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("status", "expected"),
     [

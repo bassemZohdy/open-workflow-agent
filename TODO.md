@@ -162,19 +162,19 @@ treated as a deferred task or as additional feature completion.
   interoperability, lifecycle, authority, recovery, streaming and backend
   gates are not closed. Outbound calls are not automatically replayed after
   possible acceptance; callers may explicitly resubscribe to a known task.
-  The grouped current batch corrects the `bc5f551` selector guard, gives the
-  Windows timer lane a 60-minute bound, and schedules A2A06 corruption and
-  terminal-projection witnesses in hosted CI. Its complete local and hosted
-  qualification is pending. The earlier `a77678a` Windows operation-adapter
-  recovery failure (`InvocationStateConflict`) and the original Windows
-  deadline scenario still need hosted confirmation of their focused fixes.
-  Durable Task/receipt expiry is explicitly outside the finite S3-02 profile;
-  no expiry capability is claimed. See the [acceptance record](docs/s3-02-a2a-acceptance.md)
-  for current gates and the [validation history](docs/validation-history/pending-batch-results.md)
-  for exact-source outcomes. Security CI on `ef43ab7` found three fixable
-  `aiohttp` advisories; the five active locks now use `aiohttp 3.14.5` and
-  `yarl 1.25.1`, and the grouped local regression passes. Hosted requalification
-  is pending.
+  Pushed source `bd5cf79` adds public cross-worker streaming on both bindings,
+  skill routing parity, pre-credential-preparation rejection, legacy-interface
+  fallback and Windows/PostgreSQL process-race selection. The combined local
+  batch passed 265 tests with 25 backend-inapplicable skips; exact-source hosted
+  Security, Docs, Agent Framework, External Sandbox and PostgreSQL workflows
+  passed. Main CI exposed a Windows timeout-boundary failure in one TCP A2A
+  test; the focused local correction passes, and exact-source hosted
+  requalification is pending. The current grouped core and both native-engine
+  batches pass locally. The five active locks use `aiohttp 3.14.5` and
+  `yarl 1.25.1`; all seven security audit scopes passed on `a7176a0`. Durable
+  Task/receipt expiry is explicitly outside the finite S3-02 profile; no expiry
+  capability is claimed. See the [acceptance record](docs/s3-02-a2a-acceptance.md)
+  and [validation history](docs/validation-history/pending-batch-results.md#exact-source-a2a-expansion-bd5cf79).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Selected adapters and recovery fixtures are authored; cross-adapter,
   backend, platform, lifetime, packaging and hosted acceptance remain open.

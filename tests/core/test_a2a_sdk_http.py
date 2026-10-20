@@ -145,7 +145,9 @@ async def test_actual_tcp_streaming_lost_response_is_uncertain_without_reconnect
         try:
             await asyncio.wait_for(accepted.wait(), 5)
             with pytest.raises(_A2AOutcomeUncertain) as error:
-                await asyncio.wait_for(running, 3)
+                # Keep headroom after the client's three-second timeout for
+                # Windows TLS stream cancellation to finish.
+                await asyncio.wait_for(running, 10)
             assert error.value.details["reason"] == "timeout"
         finally:
             if not running.done():
@@ -288,6 +290,204 @@ async def test_actual_tls_a2a_call_uses_named_oauth_credential_for_card_endpoint
             assert b"authorization" not in calls[0]["headers"]
             assert calls[1]["body"]["method"] == method
             assert calls[1]["headers"][b"authorization"] == b"Bearer real-issued-token"
+
+
+@pytest.mark.asyncio
+async def test_actual_tls_oauth_profiles_follow_their_public_agent_cards(monkeypatch, tmp_path):
+    """Keep issuer claims and bearer tokens bound to each card-selected endpoint."""
+    from urllib.parse import parse_qs
+
+    monkeypatch.setenv("A2A_TEST_ID_ONE", "client-one")
+    monkeypatch.setenv("A2A_TEST_SECRET_ONE", "secret-one")
+    monkeypatch.setenv("A2A_TEST_ID_TWO", "client-two")
+    monkeypatch.setenv("A2A_TEST_SECRET_TWO", "secret-two")
+
+    with auth_tls_receiver(tmp_path) as tls:
+        monkeypatch.setenv("A2A_TEST_CA", tls.ca_bundle)
+        endpoints = {
+            "one": tls.origin + "/peer-one",
+            "two": tls.origin + "/peer-two",
+        }
+        cards = {
+            name: json_format.MessageToDict(peer_card(endpoint))
+            for name, endpoint in endpoints.items()
+        }
+        for name, card in cards.items():
+            card["supportedInterfaces"].insert(
+                0,
+                {
+                    "url": tls.origin + "/legacy-" + name,
+                    "protocolBinding": "JSONRPC",
+                    "protocolVersion": "0.3",
+                },
+            )
+        requests = []
+        tokens = {"/token-one": "token-for-one", "/token-two": "token-for-two"}
+        expected_forms = {
+            "/token-one": {
+                "grant_type": "client_credentials",
+                "client_id": "client-one",
+                "client_secret": "secret-one",
+                "audience": "audience-one",
+                "resource": tls.origin + "/resource-one",
+            },
+            "/token-two": {
+                "grant_type": "client_credentials",
+                "client_id": "client-two",
+                "client_secret": "secret-two",
+                "audience": "audience-two",
+                "resource": tls.origin + "/resource-two",
+            },
+        }
+        handler_type = tls.server.RequestHandlerClass
+        original_get = getattr(handler_type, "do_GET", None)
+        original_post = handler_type.do_POST
+
+        def write_json(handler, value, status=200):
+            content = json.dumps(value).encode()
+            handler.send_response(status)
+            handler.send_header("Content-Type", "application/json")
+            handler.send_header("Content-Length", str(len(content)))
+            handler.end_headers()
+            handler.wfile.write(content)
+
+        def do_get(handler):
+            if handler.path not in {"/card-one", "/card-two"}:
+                handler.send_error(404)
+                return
+            name = handler.path.removeprefix("/card-")
+            headers = {key.lower(): value for key, value in handler.headers.items()}
+            requests.append(("card", handler.path, headers, None))
+            write_json(handler, cards[name])
+
+        def do_post(handler):
+            length = min(int(handler.headers.get("Content-Length", "0")), 65_536)
+            body = handler.rfile.read(length)
+            headers = {key.lower(): value for key, value in handler.headers.items()}
+            if handler.path in expected_forms:
+                form = parse_qs(body.decode())
+                requests.append(("issuer", handler.path, headers, form))
+                expected = {key: [value] for key, value in expected_forms[handler.path].items()}
+                if form != expected:
+                    return write_json(handler, {"error": "unexpected_profile_values"}, 401)
+                return write_json(
+                    handler,
+                    {
+                        "access_token": tokens[handler.path],
+                        "token_type": "Bearer",
+                        "expires_in": 60,
+                    },
+                )
+            selected = (
+                "/peer-one" if handler.path == endpoints["one"][len(tls.origin) :] else "/peer-two"
+            )
+            requests.append(("business", handler.path, headers, body))
+            expected_token = tokens["/token-one" if selected == "/peer-one" else "/token-two"]
+            if headers.get("authorization") != "Bearer " + expected_token:
+                return write_json(handler, {"error": "wrong_profile_token"}, 403)
+            request = json.loads(body)
+            return write_json(
+                handler,
+                {
+                    "jsonrpc": "2.0",
+                    "id": request["id"],
+                    "result": {
+                        "task": {
+                            "id": "task-" + selected.removeprefix("/"),
+                            "contextId": "context-id",
+                            "status": {"state": "TASK_STATE_COMPLETED"},
+                            "artifacts": [{"artifactId": "result", "parts": [{"text": "hello"}]}],
+                        }
+                    },
+                },
+            )
+
+        handler_type.do_GET = do_get
+        handler_type.do_POST = do_post
+        try:
+            http = client(None, True, verify_tls=tls.ca_bundle)
+            # Discovery is intentionally public: it must not carry either profile.
+            validated_cards = {}
+            for name in ("one", "two"):
+                validated_cards[name] = await fetch_validate_card(
+                    http,
+                    {"endpoint": tls.origin + "/card-" + name},
+                    timeout=2,
+                )
+            assert all(
+                "authorization" not in request[2] for request in requests if request[0] == "card"
+            )
+
+            profile_specs = {
+                "one": {
+                    "token_url": tls.origin + "/token-one",
+                    "client_id": {"from_env": "A2A_TEST_ID_ONE"},
+                    "client_secret": {"from_env": "A2A_TEST_SECRET_ONE"},
+                    "audience": "audience-one",
+                    "resource": tls.origin + "/resource-one",
+                    "allowed_resource_endpoints": [endpoints["one"]],
+                    "ca_bundle": {"from_env": "A2A_TEST_CA"},
+                },
+                "two": {
+                    "token_url": tls.origin + "/token-two",
+                    "client_id": {"from_env": "A2A_TEST_ID_TWO"},
+                    "client_secret": {"from_env": "A2A_TEST_SECRET_TWO"},
+                    "audience": "audience-two",
+                    "resource": tls.origin + "/resource-two",
+                    "allowed_resource_endpoints": [endpoints["two"]],
+                    "ca_bundle": {"from_env": "A2A_TEST_CA"},
+                },
+            }
+            security = SecurityConfig.model_validate(
+                {
+                    "profiles": {
+                        name: {"type": "oauth2_client_credentials", **spec}
+                        for name, spec in profile_specs.items()
+                    }
+                }
+            )
+            for name in ("one", "two"):
+                value = payload("SendMessage", "https://ignored-user-server.test/a2a")
+                value["agentCard"] = validated_cards[name]
+                value["endpoint"] = endpoints[name]
+                result = await ProtocolServices(http).call(
+                    "a2a",
+                    value,
+                    _authentication=ProfileAuthentication(security, name, token_http=http),
+                )
+                assert result["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
+
+            issuer_requests = [request for request in requests if request[0] == "issuer"]
+            business_requests = [request for request in requests if request[0] == "business"]
+            assert [(request[1], request[3]) for request in issuer_requests] == [
+                (path, {key: [value] for key, value in form.items()})
+                for path, form in expected_forms.items()
+            ]
+            assert [(request[1], request[2]["authorization"]) for request in business_requests] == [
+                ("/peer-one", "Bearer token-for-one"),
+                ("/peer-two", "Bearer token-for-two"),
+            ]
+
+            # A same-origin path is still outside profile one's exact endpoint grant.
+            wrong_card = copy.deepcopy(validated_cards["one"])
+            wrong_card["supportedInterfaces"][1]["url"] = tls.origin + "/peer-one/other"
+            before = len(requests)
+            wrong_value = payload("SendMessage", "https://ignored-user-server.test/a2a")
+            wrong_value["agentCard"] = wrong_card
+            with pytest.raises(ToolError) as error:
+                await ProtocolServices(http).call(
+                    "a2a",
+                    wrong_value,
+                    _authentication=ProfileAuthentication(security, "one", token_http=http),
+                )
+            assert error.value.details["reason"] == "unbound_card_credentials"
+            assert len(requests) == before
+        finally:
+            if original_get is None:
+                del handler_type.do_GET
+            else:
+                handler_type.do_GET = original_get
+            handler_type.do_POST = original_post
 
 
 @pytest.mark.asyncio
@@ -702,6 +902,45 @@ async def test_card_selection_skips_legacy_interface_and_dispatches_only_to_v1()
         assert result["status"]["state"] == "TASK_STATE_WORKING"
         assert dispatched_urls == [endpoint]
         assert len(calls) == 1 and calls[0]["body"]["method"] == "GetTask"
+
+
+def test_card_selection_skips_tenant_interface_for_unscoped_v1_peer():
+    card = json_format.MessageToDict(peer_card("https://ignored.test/a2a"))
+    card["supportedInterfaces"] = [
+        {
+            "url": "https://tenant.test/a2a",
+            "protocolBinding": "JSONRPC",
+            "protocolVersion": "1.0",
+            "tenant": "acme",
+        },
+        {
+            "url": "https://public.test/a2a",
+            "protocolBinding": "JSONRPC",
+            "protocolVersion": "1.0",
+        },
+    ]
+
+    selection = select_interface(card)
+
+    assert selection.endpoint == "https://public.test/a2a"
+    assert selection.protocol_version == "1.0"
+
+
+def test_card_selection_rejects_tenant_only_v1_peer():
+    card = json_format.MessageToDict(peer_card("https://ignored.test/a2a"))
+    card["supportedInterfaces"] = [
+        {
+            "url": "https://tenant.test/a2a",
+            "protocolBinding": "JSONRPC",
+            "protocolVersion": "1.0",
+            "tenant": "acme",
+        }
+    ]
+
+    with pytest.raises(ToolError) as error:
+        select_interface(card)
+
+    assert error.value.details["reason"] == "unsupported_interface"
 
 
 @pytest.mark.parametrize(

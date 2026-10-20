@@ -283,6 +283,7 @@ jobs:
           tests/core/test_mcp_deployment_admission.py
           tests/core/test_mcp_capabilities.py
           tests/core/test_a2a_sdk_http.py
+          tests/core/test_a2a_async.py
           tests/core/test_a2a_inbound_v1.py
           tests/core/test_a2a_task_routes.py
           tests/core/test_a2a_child_projection.py
