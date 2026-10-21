@@ -15,7 +15,13 @@ from typing import Any, Literal, Protocol
 SandboxKind = Literal["script", "shell", "container"]
 SandboxStatus = Literal["completed"]
 
-RESERVED_ENVIRONMENT = frozenset({"PATH", "HOME", "TMPDIR"})
+RESERVED_ENVIRONMENT = frozenset({"PATH", "HOME", "TMPDIR", "TEMP", "TMP"})
+_RESERVED_ENVIRONMENT_CASEFOLD = frozenset(name.casefold() for name in RESERVED_ENVIRONMENT)
+
+
+def is_reserved_environment_name(name: str) -> bool:
+    """Check runtime isolation names portably across case-sensitive and insensitive hosts."""
+    return name.casefold() in _RESERVED_ENVIRONMENT_CASEFOLD
 
 
 @dataclass(frozen=True, slots=True)

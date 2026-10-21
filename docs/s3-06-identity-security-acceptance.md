@@ -9,9 +9,10 @@ reject DEL and unpaired-surrogate values before a profile can be selected. The
 focused configuration regressions are authored and unrun; full S3-06
 qualification remains pending.
 The common credential guard now extracts the token from case-insensitive Bearer
-authorization schemes before projecting responses; a deterministic lowercase-
-scheme echo regression is authored and unrun. This narrows direct literal-echo
-redaction behavior and does not claim broader information-flow protection.
+authorization schemes with one or more spaces before projecting responses; a
+deterministic lowercase-scheme and repeated-space echo regression is authored and
+unrun. This narrows direct literal-echo behavior and does not claim broader
+information-flow protection.
 Project Definition sections 11 and 22–25 govern this work. TODO.md retains the
 unchecked task. Source-only audits identify gaps; they do not establish behavioral
 failure or delivery. The preceding combined batch at `ebc2694` is tested separately.
@@ -82,6 +83,13 @@ External-catalog credentials are now bound to the HTTPS origin (scheme, host and
 effective port) of the selected catalog resource. Same-host requests to a different
 port or scheme receive no catalog credential. Focused resolver tests cover origin
 matching; full behavioral and deployment qualification remains pending.
+
+The API's global lifecycle snapshot and SSE reads now pass through the configured
+execution-authorization policy as `events.read` on `events:lifecycle`. When that
+policy is enabled, an authenticated profile without an explicit matching rule is
+denied before snapshot access or stream setup; a matching reader rule retains
+access. These regressions are authored for the consolidated batch and are not yet
+validated.
 
 ## Required qualification
 

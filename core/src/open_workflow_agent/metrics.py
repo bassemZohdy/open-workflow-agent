@@ -122,14 +122,11 @@ class Metrics:
             "WorkflowFaulted",
             "WorkflowCancelled",
         }:
-            status = (
-                event.status
-                or {
-                    "WorkflowCompleted": "completed",
-                    "WorkflowFaulted": "faulted",
-                    "WorkflowCancelled": "cancelled",
-                }[event.event_type]
-            )
+            status = {
+                "WorkflowCompleted": "completed",
+                "WorkflowFaulted": "faulted",
+                "WorkflowCancelled": "cancelled",
+            }[event.event_type]
             self.increment(
                 "owa_workflow_finished_total",
                 labels={"engine": engine, "status": status},

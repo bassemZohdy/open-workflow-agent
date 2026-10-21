@@ -127,11 +127,15 @@ def capture_authentication_headers(headers: Mapping[str, str]) -> None:
     values: list[str] = []
     for name, value in headers.items():
         values.append(value)
-        if (
-            name.lower() in {"authorization", "proxy-authorization"}
-            and value[:7].lower() == "bearer "
-        ):
-            values.append(value[7:])
+        if name.lower() in {"authorization", "proxy-authorization"}:
+            scheme, separator, credential = value.partition(" ")
+            if scheme.lower() == "bearer" and separator:
+                # RFC bearer credentials permit one or more spaces after the
+                # scheme. Capture the bare token as well as the full header so
+                # an echoed token is covered when the separator repeats.
+                credential = credential.lstrip(" ")
+                if credential:
+                    values.append(credential)
     capture_credentials(*values)
 
 

@@ -97,6 +97,18 @@ async def run(directory, mode):
         ]
     roles, _ = providers(pattern)
     tool_binding_change = scenario["boundary"] == "tool-change"
+    if scenario["boundary"] == "policy-broaden":
+        roles["drafter"]["policy"] = {
+            "rules": [
+                {
+                    "actions": ["catalog.call", "model.complete"],
+                    "resources": ["*"],
+                    "roles": ["worker"],
+                    "scopes": ["execute"],
+                    "audience": ["runtime"],
+                }
+            ]
+        }
     if scenario["boundary"] in {"openapi-pending", "openapi-known", "tool-change"}:
         roles["assistant"] = role_configuration("assistant", tools=["lookup"])
     services = None
@@ -229,6 +241,18 @@ async def run(directory, mode):
                     }
                 ]
             }
+        elif scenario["boundary"] == "policy-broaden":
+            role.policy = {
+                "rules": [
+                    {
+                        "actions": ["catalog.call", "model.complete", "tool.invoke"],
+                        "resources": ["*"],
+                        "roles": ["worker"],
+                        "scopes": ["execute"],
+                        "audience": ["runtime"],
+                    }
+                ]
+            }
         elif scenario["boundary"] == "model-change":
             role.model.name += "-changed"
         elif tool_binding_change:
@@ -322,6 +346,7 @@ async def run(directory, mode):
             if scenario["boundary"] in {
                 "role-change",
                 "policy-change",
+                "policy-broaden",
                 "model-change",
                 "tool-change",
             }:

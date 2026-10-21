@@ -37,6 +37,13 @@ common/native state before resume and requires rejection without provider
 dispatch or lease/state mutation. These actual-native ADK/LangGraph ×
 SQLite/PostgreSQL cases are authored and await the final batch.
 
+The recovery matrix now also covers a policy expansion: the producer's drafter
+may call the catalog and model, while recovery adds `tool.invoke`. Resume must
+reject the changed role descriptor before provider dispatch or common/native
+state mutation, across both engines and database backends. This complements
+the existing policy-narrowing case; the new matrix cell is authored and awaits
+the final batch.
+
 An additional focused contract regression is authored but unrun: a role policy
 allows catalog/model dispatch while denying `tool.invoke` for a tool that is
 otherwise in the role's declared allowlist. The case requires the denial to

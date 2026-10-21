@@ -3,7 +3,8 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 import { Validator } from "@cfworker/json-schema";
-import { parse } from "yaml";
+import { isAlias, isMap, isNode, isPair, isScalar, isSeq, parse, parseDocument } from "yaml";
+import type { Node as YamlNode, Scalar as YamlScalar } from "yaml";
 
 export const OPEN_WORKFLOW_DSL = "1.0.3";
 export const MAX_WORKFLOW_SOURCE_BYTES = 1_048_576;
@@ -23,6 +24,124 @@ export class WorkflowDefinitionError extends Error {
 const defaultSchemaPath = fileURLToPath(
   new URL("../../../../resources/open-workflow/1.0.3/workflow.yaml", import.meta.url),
 );
+
+function collectAnchors(node: YamlNode | null, anchors: Map<string, YamlNode>, depth = 0): void {
+  if (node === null) return;
+  if (depth > 64) {
+    throw new WorkflowDefinitionError("workflow must be acyclic JSON data with depth at most 64");
+  }
+  if (isAlias(node)) return;
+  const anchor = (node as YamlNode & { anchor?: string }).anchor;
+  if (anchor) anchors.set(anchor, node);
+  if (isMap(node)) {
+    for (const item of node.items) {
+      if (isPair(item)) {
+        if (isNode(item.key)) collectAnchors(item.key, anchors, depth + 1);
+        if (isNode(item.value)) collectAnchors(item.value, anchors, depth + 1);
+      }
+    }
+  } else if (isSeq(node)) {
+    for (const item of node.items) {
+      if (isNode(item)) collectAnchors(item, anchors, depth + 1);
+    }
+  }
+}
+
+function containsPlainTimestamp(
+  node: YamlNode | null,
+  anchors: Map<string, YamlNode>,
+  ancestors = new Set<YamlNode>(),
+  visited = new Set<YamlNode>(),
+  depth = 0,
+): boolean {
+  if (node === null) return false;
+  if (depth > 64) {
+    throw new WorkflowDefinitionError("workflow must be acyclic JSON data with depth at most 64");
+  }
+  if (isAlias(node)) {
+    const target = anchors.get(node.source);
+    if (target === undefined) return false;
+    if (ancestors.has(target)) {
+      throw new WorkflowDefinitionError("workflow document could not be parsed");
+    }
+    return visited.has(target)
+      ? false
+      : containsPlainTimestamp(target, anchors, ancestors, visited, depth + 1);
+  }
+  if (visited.has(node)) return false;
+  if (ancestors.has(node)) {
+    throw new WorkflowDefinitionError("workflow document could not be parsed");
+  }
+  const active = new Set(ancestors);
+  active.add(node);
+  if (isScalar(node)) {
+    const scalar = node as YamlScalar.Parsed;
+    const timestamp = scalar.type === "PLAIN" && typeof scalar.value === "string" && (
+      /^\d{4}-\d{1,2}-\d{1,2}$/.test(scalar.source) ||
+      /^\d{4}-\d{1,2}-\d{1,2}(?:[Tt]|[ \t]+)\d{1,2}:\d{2}:\d{2}(?:\.\d*)?(?:[ \t]*(?:Z|[-+]\d{1,2}(?::?\d{2})?))?$/.test(
+        scalar.source,
+      )
+    );
+    visited.add(node);
+    return timestamp;
+  }
+  let found = false;
+  if (isMap(node)) {
+    for (const item of node.items) {
+      if (
+        isPair(item) &&
+        ((isNode(item.key) && containsPlainTimestamp(item.key, anchors, active, visited, depth + 1)) ||
+          (isNode(item.value) && containsPlainTimestamp(item.value, anchors, active, visited, depth + 1)))
+      ) {
+        found = true;
+        break;
+      }
+    }
+  }
+  if (!found && isSeq(node)) {
+    for (const item of node.items) {
+      if (isNode(item) && containsPlainTimestamp(item, anchors, active, visited, depth + 1)) {
+        found = true;
+        break;
+      }
+    }
+  }
+  visited.add(node);
+  return found;
+}
+
+function assertFiniteJsonValue(value: unknown, ancestors = new Set<object>(), depth = 0): void {
+  if (depth > 64) {
+    throw new WorkflowDefinitionError("workflow must be acyclic JSON data with depth at most 64");
+  }
+  if (value === null || typeof value === "string" || typeof value === "boolean") return;
+  if (typeof value === "number") {
+    if (Number.isFinite(value)) return;
+    throw new WorkflowDefinitionError("workflow values must be finite JSON data");
+  }
+  if (typeof value !== "object") {
+    throw new WorkflowDefinitionError("workflow values must be finite JSON data");
+  }
+  if (ancestors.has(value)) {
+    throw new WorkflowDefinitionError("workflow must be acyclic JSON data with depth at most 64");
+  }
+
+  const active = new Set(ancestors);
+  active.add(value);
+  if (Array.isArray(value)) {
+    for (const item of value) assertFiniteJsonValue(item, active, depth + 1);
+    return;
+  }
+  if (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) {
+    throw new WorkflowDefinitionError("workflow values must be finite JSON data");
+  }
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof key !== "string") {
+      throw new WorkflowDefinitionError("workflow mapping keys must be strings");
+    }
+    assertFiniteJsonValue(item, active, depth + 1);
+  }
+}
 
 async function loadOfficialSchema(schemaPath: string): Promise<JsonSchema> {
   let raw: string;
@@ -64,12 +183,28 @@ export async function loadWorkflowDefinition(
     throw new WorkflowDefinitionError("workflow document exceeds the 1 MiB source limit");
   }
 
-  let definition: unknown;
+  let yamlDocument: ReturnType<typeof parseDocument>;
   try {
-    definition = parse(source);
+    yamlDocument = parseDocument(source);
   } catch {
     throw new WorkflowDefinitionError("workflow document could not be parsed");
   }
+  if (yamlDocument.errors.length > 0) {
+    throw new WorkflowDefinitionError("workflow document could not be parsed");
+  }
+  const anchors = new Map<string, YamlNode>();
+  collectAnchors(yamlDocument.contents, anchors);
+  if (containsPlainTimestamp(yamlDocument.contents, anchors)) {
+    throw new WorkflowDefinitionError("workflow document contains a YAML timestamp scalar");
+  }
+
+  let definition: unknown;
+  try {
+    definition = yamlDocument.toJS();
+  } catch {
+    throw new WorkflowDefinitionError("workflow document could not be parsed");
+  }
+  assertFiniteJsonValue(definition);
   if (typeof definition !== "object" || definition === null || Array.isArray(definition)) {
     throw new WorkflowDefinitionError("workflow root must be an object");
   }

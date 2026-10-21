@@ -15,6 +15,15 @@ and engine/service reinitialization plus resume. Recovery must complete without 
 model or the side-effect receiver, and the operation identity must remain
 stable.
 
+The concurrent wave is a bounded observation of eight simultaneous runtime
+invocations, with per-invocation latency and wave throughput. The harness
+rejects concurrency settings above 16 so an accidental CLI override cannot
+turn this hosted check into an unbounded load test. The fixed workload uses the
+same deterministic fake model and workflow in each of the four cells. This is a
+runner-specific comparison at the selected concurrency; it does not establish
+production capacity, saturation behavior, or a deployment limit. Runner CPU,
+database service sizing, and scheduling can affect the observed numbers.
+
 The required PostgreSQL CI workflow runs the four cells on named Ubuntu
 runners and assembles one `s4-06-matched-performance-report` artifact. The JSON
 records the commit, Python version, engine lockfile SHA-256, selected engine and

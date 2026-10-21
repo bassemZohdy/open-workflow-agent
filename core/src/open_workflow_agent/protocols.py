@@ -72,6 +72,7 @@ A2A_METHODS = frozenset(
     }
 )
 OUTPUT_MODES = frozenset({"raw", "content", "response"})
+_HTTP_METHOD_TOKEN = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+\Z", re.ASCII)
 PROTOCOL_DATA_FIELDS = frozenset(
     {
         "body",
@@ -205,6 +206,8 @@ class HttpClient:
         _allow_redirect_status: bool = False,
         **kwargs: Any,
     ) -> Any:
+        if not isinstance(method, str) or _HTTP_METHOD_TOKEN.fullmatch(method) is None:
+            raise ToolError("HTTP method must be a valid token")
         self._check_endpoint(endpoint)
         destination_policy = _DESTINATION_POLICY.get()
         if destination_policy is not None:
@@ -634,11 +637,16 @@ class ProtocolServices:
             endpoint = _endpoint_value(payload.get("endpoint") or payload.get("url"))
             if not endpoint:
                 raise ToolError("http call requires endpoint")
+            method = payload.get("method", "GET")
+            if not isinstance(method, str) or not method:
+                raise ToolError("http method must be a non-empty string")
+            if _HTTP_METHOD_TOKEN.fullmatch(method) is None:
+                raise ToolError("http method must be a valid token")
             redirect = payload.get("redirect", False)
             if not isinstance(redirect, bool):
                 raise ToolError("http redirect must be a boolean")
             return await self.http.request(
-                str(payload.get("method", "GET")),
+                method,
                 str(endpoint),
                 headers=payload.get("headers"),
                 params=payload.get("query"),

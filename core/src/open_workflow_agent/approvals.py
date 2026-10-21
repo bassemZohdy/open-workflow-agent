@@ -238,6 +238,12 @@ class ApprovalStore:
             and isinstance(data := json.loads(original[0]).get("data"), dict)
             and "approvalPolicy" in data
         )
+        privately_indexed = (
+            original is not None
+            and self.protected is not None
+            and self.protected.contains(approval_id)
+        )
+        protected_request = protected_request or privately_indexed
         if not protected_request:
             self._expire_due(commit=commit)
         lock = " FOR UPDATE" if self.connection.is_postgresql and not commit else ""
@@ -250,8 +256,7 @@ class ApprovalStore:
         if row is None:
             return None
         record = self._decode(row)
-        data = record.request_event.get("data")
-        if isinstance(data, dict) and "approvalPolicy" in data:
+        if protected_request:
             if self.protected is None:
                 raise ApprovalAuthorizationError("protected approval authority is unavailable")
             _, state = self.protected.inspect(approval_id)
@@ -279,7 +284,12 @@ class ApprovalStore:
                 "FROM approvals WHERE status = ? ORDER BY requested_at DESC LIMIT ?",
                 (status, limit),
             ).fetchall()
-        return [self._decode(row) for row in rows]
+        records = [self._decode(row) for row in rows]
+        if self.protected is not None:
+            records = [
+                record for record in records if not self.protected.contains(record.approval_id)
+            ]
+        return records
 
     def status_counts(self) -> dict[str, int]:
         self._expire_due()

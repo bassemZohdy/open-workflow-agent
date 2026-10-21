@@ -338,13 +338,14 @@ async def test_real_environment_stdin_argv_and_inheritable_fd_boundary(tmp_path,
         os.set_inheritable(source.fileno(), True)
         identity = os.fstat(source.fileno())
         code = (
-            "import os,sys,json\n"
+            "import os,sys,json,tempfile\n"
             "try:\n"
             f" s=os.fstat({source.fileno()})\n"
             f" inherited=(s.st_dev,s.st_ino)==({identity.st_dev},{identity.st_ino})\n"
             "except OSError: inherited=False\n"
             "print(json.dumps({'cwd':os.getcwd(),'stdin':sys.stdin.read(),'argv':sys.argv[1:],"
             "'ambient':os.getenv('UNDECLARED_RUNTIME_SECRET'),'approved':os.getenv('TOKEN')=='controlled-secret',"
+            "'temp':os.getenv('TEMP'),'tmp':os.getenv('TMP'),'tempfile':tempfile.gettempdir(),"
             "'inherited_fd':inherited}))\n"
         )
         result = await selected.execute(
@@ -362,11 +363,25 @@ async def test_real_environment_stdin_argv_and_inheritable_fd_boundary(tmp_path,
         "argv": ["one argument"],
         "ambient": None,
         "approved": True,
+        "temp": value["cwd"],
+        "tmp": value["cwd"],
+        "tempfile": value["cwd"],
         "inherited_fd": False,
     }
     assert Path(value["cwd"]).parent == Path(selected.config.workspace_root)
     assert not Path(value["cwd"]).exists()
     assert "controlled-secret" not in result.stdout and "must-not-inherit" not in result.stdout
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "name", ["PATH", "HOME", "TMPDIR", "TEMP", "TMP", "path", "home", "tmpdir", "temp", "tmp"]
+)
+async def test_runtime_isolation_environment_cannot_be_overridden(tmp_path, name):
+    selected = backend(tmp_path)
+    with pytest.raises(SandboxPolicyError, match="cannot override runtime isolation variables"):
+        await selected.execute(script("print('not-started')", environment=((name, "C:/outside"),)))
+    assert list(Path(selected.config.workspace_root).iterdir()) == []
 
 
 @pytest.mark.asyncio
@@ -435,7 +450,11 @@ async def test_windows_assignment_failure_never_runs_script_and_reaps_suspended_
 @pytest.mark.parametrize("limit", ["cpu", "memory", "process-count"])
 async def test_actual_windows_requested_job_resources_are_enforced(tmp_path, limit):
     if limit == "cpu":
-        selected = backend(tmp_path, cpu_seconds=1, timeout_seconds=8)
+        # Hosted Windows runners can take several wall seconds to accrue one
+        # process CPU second under the full test matrix. Keep the operation
+        # deadline much longer than the Job CPU quota so the assertion proves
+        # CPU enforcement rather than a wall-clock timeout.
+        selected = backend(tmp_path, cpu_seconds=1, timeout_seconds=20)
         marker = tmp_path / "cpu-started"
         code = (
             "from pathlib import Path\n"
@@ -443,7 +462,7 @@ async def test_actual_windows_requested_job_resources_are_enforced(tmp_path, lim
             "while True: pass\n"
         )
         with pytest.raises(SandboxError) as failure:
-            await asyncio.wait_for(selected.execute(script(code)), 10)
+            await asyncio.wait_for(selected.execute(script(code)), 25)
         assert not isinstance(failure.value, SandboxTimeoutError), (
             "CPU proof must not be a wall timeout"
         )

@@ -78,6 +78,8 @@ class BoundedModel:
         return getattr(self._model, "calls", None)
 
     async def complete(self, prompt: Any, *, options: dict[str, Any] | None = None) -> Any:
+        if options is not None and type(options) is not dict:
+            raise ModelError("model options must be an object")
         due = _completion_due(self.bounds.timeout_seconds)
         bounded_model_json(prompt, limit=self.bounds.max_input_bytes)
         bounded_model_json(options or {}, limit=65_536)
@@ -185,6 +187,8 @@ class LiteLLMModel:
         )
 
     async def complete(self, prompt: Any, *, options: dict[str, Any] | None = None) -> Any:
+        if options is not None and type(options) is not dict:
+            raise ModelError("model options must be an object")
         loop = asyncio.get_running_loop()
         started = loop.time()
         due = _completion_due(self.bounds.timeout_seconds, started=started)

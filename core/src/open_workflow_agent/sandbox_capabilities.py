@@ -7,6 +7,7 @@ identifiers so engine adapters and public lifecycle state remain portable.
 
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath, PureWindowsPath
 from typing import Literal
@@ -120,6 +121,20 @@ class SandboxExecutionRequirements:
     requires_secret_references: bool = False
     resources: SandboxResourceRequirements = field(default_factory=SandboxResourceRequirements)
     isolation: SandboxIsolationRequirements = field(default_factory=SandboxIsolationRequirements)
+
+    def __post_init__(self) -> None:
+        # Two distinct POSIX paths can refer to one destination on a
+        # case-insensitive or Unicode-normalizing filesystem. Reject aliases
+        # at the portable request boundary before a backend stages either
+        # file and silently overwrites the other.
+        destinations: set[str] = set()
+        for input_file in self.input_files:
+            destination = unicodedata.normalize(
+                "NFC", PurePosixPath(input_file.path).as_posix()
+            ).casefold()
+            if destination in destinations:
+                raise ValueError("sandbox input file paths must not alias on portable filesystems")
+            destinations.add(destination)
 
 
 @dataclass(frozen=True, slots=True)

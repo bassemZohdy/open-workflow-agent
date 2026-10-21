@@ -27,7 +27,7 @@ from ..workflow import (
     validate_schema,
 )
 from . import background_qualification
-from .contract import RESERVED_ENVIRONMENT
+from .contract import is_reserved_environment_name
 from .stdio_policy import validate_stdio_transport
 
 
@@ -366,20 +366,21 @@ def _validate_environment(value: Any, sandbox: SandboxConfig, reference: str) ->
     if not isinstance(value, Mapping):
         raise WorkflowSemanticError(f"sandbox environment must be an object at {reference}")
     for name, raw in value.items():
-        if str(name) in RESERVED_ENVIRONMENT:
+        environment_name = str(name)
+        if is_reserved_environment_name(environment_name):
             raise UnsupportedWorkflowFeature(
                 "sandbox environment cannot override runtime isolation variables",
-                details={"reference": reference, "name": str(name)},
+                details={"reference": reference, "name": environment_name},
             )
         if isinstance(raw, Mapping) and set(raw) == {"fromEnv"}:
-            environment_name = raw.get("fromEnv")
+            referenced_environment = raw.get("fromEnv")
             if (
-                not isinstance(environment_name, str)
-                or environment_name not in sandbox.secret_environment
+                not isinstance(referenced_environment, str)
+                or referenced_environment not in sandbox.secret_environment
             ):
                 raise UnsupportedWorkflowFeature(
                     "sandbox secret reference is not deployment-approved",
-                    details={"reference": reference, "name": environment_name},
+                    details={"reference": reference, "name": referenced_environment},
                 )
 
 

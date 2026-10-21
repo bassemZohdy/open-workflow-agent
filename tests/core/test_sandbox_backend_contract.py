@@ -58,6 +58,27 @@ def test_input_files_reject_windows_device_and_alias_paths(path: str) -> None:
         SandboxInputFile(path=path, content=b"")
 
 
+@pytest.mark.parametrize(
+    ("first_path", "second_path"),
+    [
+        ("input/Config.json", "input/config.json"),
+        ("input/caf\u00e9.txt", "input/cafe\u0301.txt"),
+        ("input//config.json", "input/config.json"),
+    ],
+)
+def test_execution_requirements_reject_input_destination_aliases(
+    first_path: str, second_path: str
+) -> None:
+    with pytest.raises(ValueError, match="must not alias"):
+        SandboxExecutionRequirements(
+            kind="script",
+            input_files=(
+                SandboxInputFile(path=first_path, content=b"first"),
+                SandboxInputFile(path=second_path, content=b"second"),
+            ),
+        )
+
+
 def test_internal_backend_maps_to_honest_portable_capabilities(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
         SandboxConfig(

@@ -18,6 +18,13 @@ rejected as sanitized common `ModelError` responses rather than leaking raw
 encoding exceptions. The broader selected-adapter and backend qualification
 remains open.
 
+Both the LiteLLM adapter and the selected-model bounds wrapper now reject
+non-object per-call options before provider/model dispatch. This keeps the
+declared optional mapping contract from silently treating falsey inputs as
+empty options or leaking container/type errors from provider preparation. The
+regression cases are authored and await the consolidated validation batch; this
+does not establish vendor qualification.
+
 ## Finite selected scope
 
 | Area | Adaptation | Limits and remaining gates |

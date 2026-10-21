@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import errno
+import logging
 import math
 import os
 import signal
@@ -22,6 +24,19 @@ from ..errors import (
 )
 from .contract import SandboxExecutionRequest, SandboxSecretReference, SandboxStdioRequest
 from .stdio_policy import validate_stdio_transport
+
+_LOGGER = logging.getLogger(__name__)
+
+
+def _process_start_error_category(error: OSError) -> str:
+    if error.errno in {errno.EAGAIN, errno.EMFILE, errno.ENFILE, errno.ENOMEM}:
+        return "resource_limit"
+    if error.errno == errno.ENOENT:
+        return "executable_unavailable"
+    if error.errno in {errno.EACCES, errno.EPERM}:
+        return "permission_denied"
+    return "other_os_error"
+
 
 if TYPE_CHECKING:
     from ._windows_job import WindowsProcessJob
@@ -316,21 +331,33 @@ async def open_internal_stdio(
             remaining = deadline - asyncio.get_running_loop().time()
             if remaining <= 0:
                 raise SandboxTimeoutError("MCP stdio operation deadline expired")
-            async with asyncio.timeout(remaining):
-                process = await asyncio.create_subprocess_exec(
-                    server.command,
-                    *request.arguments,
-                    cwd=workspace,
-                    env=child_environment,
-                    stdin=asyncio.subprocess.PIPE,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    start_new_session=os.name == "posix",
-                    close_fds=True,
-                    preexec_fn=backend._resource_limiter(),
-                    creationflags=0x00000004 if os.name == "nt" else 0,  # CREATE_SUSPENDED
-                    limit=backend.config.mcp_stdio.max_frame_bytes + 1,
+            try:
+                async with asyncio.timeout(remaining):
+                    process = await asyncio.create_subprocess_exec(
+                        server.command,
+                        *request.arguments,
+                        cwd=workspace,
+                        env=child_environment,
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                        start_new_session=os.name == "posix",
+                        close_fds=True,
+                        preexec_fn=backend._resource_limiter(),
+                        creationflags=0x00000004 if os.name == "nt" else 0,  # CREATE_SUSPENDED
+                        limit=backend.config.mcp_stdio.max_frame_bytes + 1,
+                    )
+            except OSError as error:
+                # Retain only a fixed errno category for operations diagnosis.
+                # Paths, arguments, environment values, and native error text
+                # can contain deployment secrets and must not enter logs.
+                _LOGGER.warning(
+                    "MCP stdio process could not be started",
+                    extra={
+                        "extra_fields": {"error_category": _process_start_error_category(error)}
+                    },
                 )
+                raise SandboxProcessError("MCP stdio process could not be started") from None
             if job is not None:
                 job.assign_and_resume(process.pid)
             session = _StdioSession(backend, process, workspace, deadline, job)
@@ -341,7 +368,7 @@ async def open_internal_stdio(
                 raise SandboxPolicyError("MCP stdio sandbox is shutting down")
             yield session
         except OSError:
-            raise SandboxProcessError("MCP stdio process could not be started") from None
+            raise SandboxProcessError("MCP stdio operation failed") from None
         except TimeoutError:
             raise SandboxTimeoutError("MCP stdio operation deadline expired") from None
         finally:

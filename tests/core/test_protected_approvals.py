@@ -8,7 +8,7 @@ import json
 import os
 import sqlite3
 import threading
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
@@ -39,7 +39,11 @@ from open_workflow_agent.protected_approval_recovery import (
     verify_protected_approval_business_receipt,
 )
 from open_workflow_agent.protected_approval_service import mutate_protected
-from open_workflow_agent.protected_approval_store import REQUEST_POLICY
+from open_workflow_agent.protected_approval_store import (
+    MUTATION_POLICY,
+    REQUEST_POLICY,
+    _known,
+)
 from open_workflow_agent.recovery_definitions import RecoveryDefinitionArchive
 from open_workflow_agent.security import Principal
 from open_workflow_agent.services import RuntimeServices
@@ -699,6 +703,81 @@ async def test_escalation_keeps_original_expiry_and_immutable_assignment_audit(a
             operation_key=str(uuid4()),
             assignee=principals["outsider"],
         )
+
+
+@pytest.mark.asyncio
+async def test_reassignment_audit_after_original_expiry_fails_even_with_rehashed_proof(
+    approval_runtime,
+):
+    services, _, principals = approval_runtime
+    subject, handle, origin = await seed(approval_runtime)
+    await services.approvals.mutate_protected(
+        subject,
+        action="reassign",
+        actor=Principal(principals["a"]),
+        revision=1,
+        operation_key="assignment-before-expiry-" + subject,
+        assignee=principals["b"],
+    )
+    before = snapshot(services, subject)
+    store = services.approvals.protected_store
+    connection = store.connection
+    audit_row = connection.execute(
+        f"SELECT payload,digest FROM {store.audit} WHERE approval_id=? AND revision=2",
+        (subject,),
+    ).fetchone()
+    item = json.loads(audit_row[0])
+    request, _ = store.inspect(subject)
+    original_expiry_at = request["expires_at"]
+    item["recorded_at"] = original_expiry_at + 1
+    proof = _known(item, MUTATION_POLICY)
+    proof_payload = json.dumps(asdict(proof), sort_keys=True, ensure_ascii=False, allow_nan=False)
+    mutation_identity = replace(
+        origin,
+        operation=MUTATION_POLICY,
+        occurrence=origin.occurrence
+        + ((origin.task_reference + "/@approval-revision", item["revision"]),),
+    )
+    original_request = connection.execute(
+        f"SELECT audit_digest FROM {store.requests} WHERE approval_id=?", (subject,)
+    ).fetchone()[0]
+    original_receipt = connection.execute(
+        "SELECT payload FROM workflow_effects WHERE identity=?", (mutation_identity.key,)
+    ).fetchone()[0]
+    try:
+        connection.execute(
+            f"UPDATE {store.audit} SET payload=?,digest=? WHERE approval_id=? AND revision=2",
+            (
+                json.dumps(item, sort_keys=True, ensure_ascii=False, allow_nan=False),
+                proof.request_digest,
+                subject,
+            ),
+        )
+        connection.execute(
+            "UPDATE workflow_effects SET payload=? WHERE identity=?",
+            (proof_payload, mutation_identity.key),
+        )
+        connection.execute(
+            f"UPDATE {store.requests} SET audit_digest=? WHERE approval_id=?",
+            (proof.request_digest, subject),
+        )
+        connection.commit()
+        with pytest.raises(WorkflowExecutionError, match="protected approval evidence"):
+            store.inspect(subject)
+    finally:
+        connection.execute(
+            f"UPDATE {store.audit} SET payload=?,digest=? WHERE approval_id=? AND revision=2",
+            (audit_row[0], audit_row[1], subject),
+        )
+        connection.execute(
+            "UPDATE workflow_effects SET payload=? WHERE identity=?",
+            (original_receipt, mutation_identity.key),
+        )
+        connection.execute(
+            f"UPDATE {store.requests} SET audit_digest=? WHERE approval_id=?",
+            (original_request, subject),
+        )
+        connection.commit()
     assert snapshot(services, subject) == before
     services.verify_protected_approvals(handle)
 
@@ -861,6 +940,56 @@ async def test_deleted_protected_request_never_downgrades_get_or_expiry_to_legac
             f"INSERT INTO {protected.requests} VALUES({','.join('?' for _ in saved)})", tuple(saved)
         )
         protected.connection.commit()
+
+
+@pytest.mark.asyncio
+async def test_corrupt_projection_cannot_downgrade_protected_approval_to_legacy_api(
+    approval_runtime,
+):
+    services, config, _ = approval_runtime
+    subject, _, _ = await seed(approval_runtime)
+    protected = services.approvals.protected_store
+    assert protected is not None
+    connection = protected.connection
+    row = connection.execute(
+        f"SELECT request_event FROM {services.approvals.store._table} WHERE approval_id=?",
+        (subject,),
+    ).fetchone()
+    original = row[0]
+    projection = json.loads(original)
+    del projection["data"]["approvalPolicy"]
+    connection.execute(
+        f"UPDATE {services.approvals.store._table} SET request_event=? WHERE approval_id=?",
+        (json.dumps(projection, separators=(",", ":")), subject),
+    )
+    connection.commit()
+    before = snapshot(services, subject)
+    app = create_app(config=config, services=services)
+    try:
+        with pytest.raises(OwaError, match="protected approval evidence"):
+            services.approvals.store.get(subject)
+        assert subject not in {
+            record.approval_id for record in services.approvals.store.list(limit=1000)
+        }
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            legacy_view = await client.get(
+                f"/v1/approvals/{subject}",
+                headers={
+                    "Authorization": "Bearer api-controlled-token",
+                    "X-Operator-Id": "legacy-operator",
+                },
+            )
+            assert legacy_view.status_code != 200
+            assert "continue?" not in legacy_view.text
+        assert snapshot(services, subject) == before
+    finally:
+        connection.execute(
+            f"UPDATE {services.approvals.store._table} SET request_event=? WHERE approval_id=?",
+            (original, subject),
+        )
+        connection.commit()
 
 
 @pytest.mark.asyncio

@@ -75940,7 +75940,7 @@
         "id": "S4-09",
         "stage": 4,
         "module": "M12",
-        "description": "Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; require its own native acceptance.",
+        "description": "Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; activate only after an explicit support decision and require isolated native durability, security, and release acceptance.",
         "effort": "L",
         "status": "Pending",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
@@ -75949,7 +75949,7 @@
         "id": "S4-10",
         "stage": 4,
         "module": "M06",
-        "description": "Preserve EVENT-1 through EVENT-5; add optional external brokers, AsyncAPI and A2A push only with delivery/security contracts.",
+        "description": "Preserve EVENT-1 through EVENT-5 as conditional external event integration; select a real consumer and transport plus delivery, security, and operational contracts before broker, AsyncAPI, or push implementation.",
         "effort": "L",
         "status": "Pending",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
@@ -75958,7 +75958,7 @@
         "id": "S4-11",
         "stage": 4,
         "module": "M10",
-        "description": "Keep multi-tenancy and RFC 8693/consent as tracked conditional work; do not invent a security protocol.",
+        "description": "Track multi-tenancy and RFC 8693/delegated consent as conditional identity-platform work; start only on concrete requirements and use standards-based trust without making OWA an identity provider.",
         "effort": "L",
         "status": "Pending",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"

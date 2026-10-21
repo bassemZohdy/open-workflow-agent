@@ -22,7 +22,9 @@ resolve deployment credentials or trusted external catalogs and does not apply
 engine-specific capability or runtime configuration. A workflow that depends
 on those settings still needs validation in its target deployment. The command
 and its focused tests are authored but have not yet been run; this does not
-complete S4-08.
+complete S4-08. The [developer guide](development.md#validate-a-workflow-locally)
+documents source-checkout installation and use, its default-profile limits, and
+the fact that validation performs no model invocation or credential resolution.
 
 Before publishing a future Python distribution, resolve the distribution-name
 collision explicitly. Both package metadata records use the normalized

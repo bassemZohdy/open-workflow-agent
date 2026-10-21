@@ -86,10 +86,23 @@ def test_coverage_bridge_exhaustively_tracks_proposed_tests_and_schema_constrain
         f"SC{index:04d}" for index in range(1, len(constraints) + 1)
     ]
     assert [
-        (item["pointer"], item["keyword"], item["value"], item["reference"])
+        (
+            item["pointer"],
+            item["keyword"],
+            item["value"],
+            item["reference"],
+            item["verification"],
+        )
         for item in mapped_constraints
     ] == [
-        (item["pointer"], item["keyword"], item["value"], item["reference"]) for item in constraints
+        (
+            item["pointer"],
+            item["keyword"],
+            item["value"],
+            item["reference"],
+            item["verification"],
+        )
+        for item in constraints
     ]
     for item in mapped_constraints:
         assert item["status"] in {"unmapped", "mapped_not_executed", "executed", "verified"}
@@ -117,10 +130,16 @@ def _assert_coverage_bridge_claim(item):
         assert path_text.startswith("tests/") and path.suffix == ".py"
         assert (ROOT / path).is_file()
         tree = ast.parse((ROOT / path).read_text(encoding="utf-8"))
-        assert any(
-            isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == symbol
-            for node in ast.walk(tree)
+        test_node = next(
+            (
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == symbol
+            ),
+            None,
         )
+        assert test_node is not None
+        assert not _has_nonexecuting_pytest_marker(tree, test_node)
 
     for reference in evidence:
         path_text, separator, anchor = reference.partition("#")
@@ -130,6 +149,82 @@ def _assert_coverage_bridge_claim(item):
         assert path_text.startswith(("docs/", "tests/"))
         assert (ROOT / path).is_file()
         assert anchor in (ROOT / path).read_text(encoding="utf-8")
+
+
+def _has_nonexecuting_pytest_marker(tree: ast.Module, test_node: ast.AST) -> bool:
+    """Reject selectors that pytest will skip or treat as expected failures."""
+    markers = ("skip", "skipif", "xfail")
+
+    def matches_marker(node: ast.AST) -> bool:
+        name = ast.unparse(node.func if isinstance(node, ast.Call) else node)
+        return any(
+            name == f"pytest.mark.{marker}" or name.startswith(f"pytest.mark.{marker}.")
+            for marker in markers
+        )
+
+    decorators = getattr(test_node, "decorator_list", ())
+    if any(matches_marker(decorator) for decorator in decorators):
+        return True
+
+    for statement in tree.body:
+        if isinstance(statement, ast.Assign):
+            targets = statement.targets
+            value = statement.value
+        elif isinstance(statement, ast.AnnAssign):
+            targets = [statement.target]
+            value = statement.value
+        else:
+            continue
+        if value is None or not any(
+            isinstance(target, ast.Name) and target.id == "pytestmark" for target in targets
+        ):
+            continue
+        values = value.elts if isinstance(value, (ast.List, ast.Tuple)) else [value]
+        if any(matches_marker(marker) for marker in values):
+            return True
+    return False
+
+
+def test_coverage_bridge_rejects_skipped_or_expected_failure_selectors():
+    tree = ast.parse(
+        """
+import pytest
+
+@pytest.mark.skip(reason='not run')
+def test_skipped():
+    pass
+
+@pytest.mark.xfail
+async def test_expected_failure():
+    pass
+
+def test_active():
+    pass
+"""
+    )
+    selected = {
+        node.name: node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    assert _has_nonexecuting_pytest_marker(tree, selected["test_skipped"])
+    assert _has_nonexecuting_pytest_marker(tree, selected["test_expected_failure"])
+    assert not _has_nonexecuting_pytest_marker(tree, selected["test_active"])
+
+    module_skipped = ast.parse(
+        """
+import pytest
+pytestmark = pytest.mark.skipif(True, reason='not run')
+def test_module_skipped():
+    pass
+"""
+    )
+    function = next(
+        node
+        for node in ast.walk(module_skipped)
+        if isinstance(node, ast.FunctionDef) and node.name == "test_module_skipped"
+    )
+    assert _has_nonexecuting_pytest_marker(module_skipped, function)
 
 
 def test_apache_snapshot_exact_bytes_and_generic_source_boundary():

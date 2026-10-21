@@ -52,6 +52,62 @@ test("rejects malformed YAML and non-object roots", async () => {
   await assert.rejects(loadWorkflowDefinition("- workflow"), /workflow root must be an object/);
 });
 
+test("rejects duplicate YAML and JSON mapping keys", async () => {
+  const documentYaml = "document:\n  dsl: 1.0.3\n  namespace: example\n  name: js-loader\n  version: 1.0.0";
+  const duplicateYaml = `${documentYaml}\ndocument:\n  dsl: 1.0.3\n  namespace: example\n  name: js-loader\n  version: 1.0.0\ndo:\n  - respond:\n      call: agent:1.0.0@default\n`;
+  const validDocument =
+    '{"dsl":"1.0.3","namespace":"example","name":"js-loader","version":"1.0.0"}';
+  const duplicateJson = `{"document":${validDocument},"document":${validDocument},"do":[{"respond":{"call":"agent:1.0.0@default"}}]}`;
+
+  await assert.rejects(loadWorkflowDefinition(duplicateYaml), /could not be parsed/);
+  await assert.rejects(loadWorkflowDefinition(duplicateJson), /could not be parsed/);
+});
+
+test("rejects cyclic YAML aliases", async () => {
+  const source = minimalDefinition.replace(
+    "  name: js-loader",
+    "  name: js-loader\n  metadata: &cycle\n    self: *cycle",
+  );
+
+  await assert.rejects(loadWorkflowDefinition(source), /could not be parsed/);
+});
+
+test("allows repeated acyclic aliases outside their active ancestry", async () => {
+  const source = minimalDefinition.replace(
+    "  version: 1.0.0",
+    "  version: 1.0.0\n  metadata:\n    shared: &shared\n      label: safe\n    first: *shared\n    second: *shared",
+  );
+
+  const definition = await loadWorkflowDefinition(source);
+  const metadata = (definition["document"] as Record<string, unknown>)["metadata"];
+  assert.deepEqual(metadata, {
+    shared: { label: "safe" },
+    first: { label: "safe" },
+    second: { label: "safe" },
+  });
+});
+
+test("rejects plain YAML timestamps before schema validation", async () => {
+  const source = minimalDefinition.replace(
+    "  version: 1.0.0",
+    "  version: 1.0.0\n  title: 2026-10-11",
+  );
+
+  await assert.rejects(
+    loadWorkflowDefinition(source),
+    /workflow document contains a YAML timestamp scalar/,
+  );
+});
+
+test("rejects non-finite YAML numbers before schema validation", async () => {
+  const source = minimalDefinition.replace(
+    "  version: 1.0.0",
+    "  version: 1.0.0\n  title: .nan",
+  );
+
+  await assert.rejects(loadWorkflowDefinition(source), /values must be finite JSON data/);
+});
+
 test("does not expose malformed YAML source excerpts in parse errors", async () => {
   const sentinel = "malformed-workflow-secret-7f8c";
   await assert.rejects(

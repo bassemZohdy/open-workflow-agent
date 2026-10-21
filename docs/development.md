@@ -87,6 +87,29 @@ The `knowledge` extra is included in the development and root CI environments
 because the common suite exercises the local embedding provider; it remains
 optional for runtime installations that do not mount or query knowledge.
 
+## Validate a workflow locally
+
+The root package installs the canonical `owa` command into the project
+environment. From the repository root, after syncing dependencies, validate a
+workflow against the default OWA portable profile:
+
+```bash
+uv run owa validate examples/workflow.yaml
+```
+
+On success, the command prints that the workflow is valid. On failure, it
+prints a safe common error and exits nonzero. It loads and compiles the file;
+it does not start an engine or invoke a model, so this example needs no API
+credentials or network access.
+
+This is a local admission check for the default profile. It does not resolve
+deployment credentials, trusted external catalogs, engine-specific capability
+settings, or the target runtime's configuration. Validate again in the target
+deployment when a workflow relies on those settings. The command reports no
+internal execution-plan details. The canonical CLI is not a compatibility
+alias for the archived predecessor's `owf-adk` or `spec-drift-check` commands;
+see the [S4-08 compatibility decision](s4-08-compatibility-decision.md).
+
 Run the common test suite:
 
 ```bash

@@ -18,6 +18,15 @@ exact limit and one byte above it. This admission bound does not qualify runtime
 request limits, execution behavior, or cross-language parity; the slice awaits
 the final validation batch.
 
+A second authored loader slice mirrors the Python definition-admission
+rejections for duplicate YAML/JSON mapping keys, cyclic aliases, implicit
+timestamp scalars, and non-finite numeric values. These checks apply only to
+definition parsing and JSON-compatible input admission. Duplicate keys and
+cyclic aliases receive the same bounded parse-error surface; repeated acyclic
+aliases remain allowed. These checks do not implement workflow semantics or
+establish independent engine parity, and the cases await the final validation
+batch.
+
 Initial local smoke evidence is recorded after running the pinned package's
 `npm ci` and `npm test` commands on Node 24.16.0 / npm 12.0.2. `npm ci`
 installed from the committed lockfile, TypeScript compilation succeeded, and

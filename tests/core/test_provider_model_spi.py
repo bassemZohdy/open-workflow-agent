@@ -113,6 +113,25 @@ async def test_provider_text_and_null_keep_old_shape_and_have_no_transparent_ret
     assert 0 < calls[0]["timeout"] <= 30
 
 
+@pytest.mark.parametrize("options", [[], "foreign", True, 1])
+@pytest.mark.asyncio
+async def test_provider_rejects_nonobject_call_options_before_provider_attempt(provider, options):
+    calls, _ = provider
+    with pytest.raises(ModelError, match="options must be an object"):
+        await LiteLLMModel("provider/unit").complete("original", options=options)
+    assert calls == []
+
+
+@pytest.mark.parametrize("options", [[], "foreign", True, 1])
+@pytest.mark.asyncio
+async def test_injected_model_guard_rejects_nonobject_options_before_model_call(options):
+    model = FakeModel()
+    guarded = BoundedModel(model, ProviderBoundsConfig())
+    with pytest.raises(ModelError, match="options must be an object"):
+        await guarded.complete("original", options=options)
+    assert model.calls == []
+
+
 @pytest.mark.parametrize("legacy", [False, True])
 def test_provider_function_requests_remain_ordered_finite_neutral_dtos(legacy):
     first = _call()

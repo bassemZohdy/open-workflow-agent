@@ -19,7 +19,12 @@ from open_workflow_agent.execution_authority import (
     authority_scope,
     current_authority,
 )
-from open_workflow_agent.security import SecurityConfig, static_principal
+from open_workflow_agent.security import (
+    AuthorizationPolicy,
+    AuthorizationRule,
+    SecurityConfig,
+    static_principal,
+)
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 from test_protected_approvals import approval_runtime as approval_runtime
@@ -333,6 +338,61 @@ async def test_activated_api_policy_denies_admin_and_invocation_before_state_or_
         == before
     )
     assert calls == [] and services.model.calls == []
+
+
+@pytest.mark.asyncio
+async def test_lifecycle_snapshot_and_stream_require_explicit_read_authority(
+    api_storage, monkeypatch
+):
+    services, config = api_storage
+    config.execution_authorization.enabled = True
+    config.execution_authorization.id = "lifecycle-read"
+    calls = []
+
+    def denied_snapshot(*_args, **_kwargs):
+        calls.append("snapshot")
+        pytest.fail("denied lifecycle read reached the event snapshot")
+
+    def denied_stream(*_args, **_kwargs):
+        calls.append("stream")
+        pytest.fail("denied lifecycle read opened a stream")
+
+    monkeypatch.setattr(services.lifecycle_events, "snapshot", denied_snapshot)
+    monkeypatch.setattr("open_workflow_agent.api.lifecycle_sse_stream", denied_stream)
+    app = create_app(config=config, services=services)
+    headers = {"Authorization": "Bearer controlled-b-token"}
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        snapshot = await client.get("/v1/events/lifecycle?limit=10", headers=headers)
+        stream = await client.get("/v1/events/lifecycle/stream", headers=headers)
+    assert snapshot.status_code == stream.status_code == 403
+    assert calls == [] and services.model.calls == []
+
+
+@pytest.mark.asyncio
+async def test_lifecycle_read_authority_allows_explicitly_granted_policy(api_storage):
+    services, config = api_storage
+    config.execution_authorization.enabled = True
+    config.execution_authorization.id = "lifecycle-read-allowed"
+    config.execution_authorization.policy = AuthorizationPolicy(
+        rules=[
+            AuthorizationRule(
+                actions=["events.read"],
+                resources=["events:lifecycle"],
+                roles=["reader"],
+            )
+        ]
+    )
+    app = create_app(config=config, services=services)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/v1/events/lifecycle?limit=10",
+            headers={"Authorization": "Bearer controlled-b-token"},
+        )
+    assert response.status_code == 200 and response.json() == []
 
 
 @pytest.mark.asyncio

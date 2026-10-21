@@ -57,3 +57,33 @@ async def test_invalid_redirect_setting_rejects_before_transport():
     with pytest.raises(ToolError, match="redirect must be a boolean"):
         await service.call("http", {"endpoint": "https://http.test", "redirect": "true"})
     assert seen == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", [None, 7, {"value": "GET"}, ""])
+async def test_invalid_http_method_rejects_before_transport(method):
+    seen = []
+
+    def respond(request):
+        seen.append(request)
+        return httpx.Response(200)
+
+    service = ProtocolServices(HttpClient(transport=httpx.MockTransport(respond)))
+    with pytest.raises(ToolError, match="method must be a non-empty string"):
+        await service.call("http", {"endpoint": "https://http.test", "method": method})
+    assert seen == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["GET ", "GET\r\nX-Injected: yes", "two words", "méthod"])
+async def test_http_method_must_be_ascii_token_before_transport(method):
+    seen = []
+
+    def respond(request):
+        seen.append(request)
+        return httpx.Response(200)
+
+    service = ProtocolServices(HttpClient(transport=httpx.MockTransport(respond)))
+    with pytest.raises(ToolError, match="method must be a valid token"):
+        await service.call("http", {"endpoint": "https://http.test", "method": method})
+    assert seen == []

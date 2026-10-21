@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -287,6 +288,13 @@ def _request_value(
             ):
                 raise ValueError
             bounded_json(item, 524_288)
+            recorded_at = item["recorded_at"]
+            if (
+                type(recorded_at) not in {int, float}
+                or (type(recorded_at) is float and not math.isfinite(recorded_at))
+                or recorded_at <= 0
+            ):
+                raise ValueError
             proof = _known(item, MUTATION_POLICY)
             identity = replace(
                 origin,
@@ -309,6 +317,7 @@ def _request_value(
                     item["request"]["actor"] != assignee
                     or item["request"]["assignee"] not in targets
                     or item["event"] is not None
+                    or recorded_at >= value["expires_at"]
                 ):
                     raise ValueError
                 assignee = item["request"]["assignee"]

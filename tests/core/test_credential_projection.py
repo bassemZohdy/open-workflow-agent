@@ -224,10 +224,11 @@ def test_short_credential_cannot_reappear_in_the_redaction_marker_or_conflicting
     assert "private-credential" not in repr(another)
 
 
-def test_bearer_scheme_case_does_not_change_credential_projection():
+@pytest.mark.parametrize("header", ["bearer {secret}", "BEARER   {secret}"])
+def test_bearer_scheme_case_and_separator_do_not_change_credential_projection(header):
     secret = "case-insensitive-bearer-secret-592"
     with credential_scope() as guard:
-        capture_authentication_headers({"authorization": "bearer " + secret})
+        capture_authentication_headers({"authorization": header.format(secret=secret)})
         assert guard.contains_literal(secret)
         assert guard.text("peer echoed " + secret) == "peer echoed [REDACTED]"
     assert active_projection_guard() is None

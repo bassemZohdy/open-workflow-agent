@@ -14,6 +14,12 @@ all three terminal outcomes, a nonterminal event, negative duration, rendered
 histogram samples, and identifier exclusion. API and configuration docs
 describe the metric as in-process and runtime-local.
 
+An additional bounded metrics correction derives workflow terminal status from
+the fixed lifecycle event type instead of trusting the event's status field.
+This keeps `owa_workflow_finished_total` at the three canonical outcomes even
+if malformed event data supplies arbitrary status strings; the regression is
+authored and awaits the final batch.
+
 This source batch also propagates a child's persisted parent invocation and
 canonical parent task reference on an operator-issued `WorkflowCancelled`
 event when the child has no active worker. A focused regression asserts the

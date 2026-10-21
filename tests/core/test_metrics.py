@@ -137,6 +137,27 @@ def test_task_duration_histogram_clamps_negative_duration_and_ignores_nontermina
     assert 'owa_task_duration_seconds_sum{engine="portable",status="completed"} 0.0' in rendered
 
 
+def test_workflow_terminal_metric_status_comes_from_the_event_type() -> None:
+    metrics = Metrics()
+    metrics.observe_lifecycle(
+        WorkflowEvent(
+            event_type="WorkflowFaulted",
+            engine="portable",
+            status="untrusted-high-cardinality-status",
+        )
+    )
+
+    rendered = metrics.render()
+    workflow_finished = "\n".join(
+        line for line in rendered.splitlines() if line.startswith("owa_workflow_finished_total")
+    )
+
+    assert workflow_finished == (
+        'owa_workflow_finished_total{engine="portable",status="faulted"} 1.0'
+    )
+    assert "untrusted-high-cardinality-status" not in workflow_finished
+
+
 def test_metrics_endpoint_exposes_runtime_and_http_metrics(tmp_path) -> None:
     config = RuntimeConfig.model_validate({"model": {"provider": "fake"}, "a2a": {"enabled": True}})
     services = RuntimeServices(config, database_root=tmp_path)

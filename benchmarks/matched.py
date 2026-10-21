@@ -41,6 +41,7 @@ ENGINE_MODULES = {
 }
 ENGINE_EXTRAS = {"adk": "native", "langgraph": "sqlite"}
 BACKENDS = ("sqlite", "postgresql")
+MAX_CONCURRENT_INVOCATIONS = 16
 WORKFLOW: dict[str, Any] = {
     "document": {
         "dsl": "1.0.3",
@@ -105,6 +106,17 @@ def latency_summary(samples_seconds: list[float]) -> dict[str, float | int]:
         "p95_seconds": percentile(samples_seconds, 95),
         "mean_seconds": sum(samples_seconds) / len(samples_seconds),
     }
+
+
+def validate_concurrency(concurrency: int) -> None:
+    """Keep hosted concurrency probes bounded to a small fixed workload."""
+
+    if (
+        not isinstance(concurrency, int)
+        or isinstance(concurrency, bool)
+        or not 1 <= concurrency <= MAX_CONCURRENT_INVOCATIONS
+    ):
+        raise ValueError("profile concurrency must be an integer in [1, 16]")
 
 
 def _engine_type(engine_name: str) -> type[Any]:
@@ -318,10 +330,11 @@ async def run_profile(
     _require_linux_rss()
     if engine_name not in ENGINE_MODULES or backend not in BACKENDS:
         raise ValueError("unsupported engine or persistence backend")
-    if iterations < 2 or warmups < 1 or concurrency < 1 or recovery_samples < 2:
+    if iterations < 2 or warmups < 1 or recovery_samples < 2:
         raise ValueError(
-            "profile requires iterations>=2, warmups>=1, concurrency>=1, recovery_samples>=2"
+            "profile requires iterations>=2, warmups>=1, recovery_samples>=2"
         )
+    validate_concurrency(concurrency)
     parameters = {
         "iterations": iterations,
         "warmups": warmups,

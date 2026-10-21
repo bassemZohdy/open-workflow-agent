@@ -500,6 +500,7 @@ def create_app(
     async def lifecycle_events(
         limit: int = Query(default=100, ge=1, le=1000),
     ) -> JSONResponse:
+        _authorize_request("events.read", "events:lifecycle")
         return JSONResponse(
             content=[
                 event.as_dict() for event in runtime_services.lifecycle_events.snapshot(limit)
@@ -515,6 +516,7 @@ def create_app(
         queue_size: int = Query(default=64, ge=1, le=1000),
         last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
     ) -> Any:
+        _authorize_request("events.read", "events:lifecycle")
         limits = StreamLimits(
             max_events=max_events,
             max_bytes=max_bytes,

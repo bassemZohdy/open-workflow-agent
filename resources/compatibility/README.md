@@ -25,6 +25,13 @@ bridge is a coverage guard and migration scaffold; it does not run the 443
 proposed tests, validate all 774 constraints, expand the selected CTK subset,
 or claim Python/JavaScript parity or full conformance.
 
+The selector guard also rejects pytest functions marked `skip`, `skipif`, or
+`xfail`, including module-level skip markers, so an unexecuted/expected-failure
+case cannot be promoted by selector existence alone. This syntax check does not
+prove that an active test asserts every proposed criterion; reviewers still
+need criterion-specific selectors and retained run evidence before changing a
+bridge status. CTK artifacts establish only the named Portable Profile subset.
+
 The bridge now records the current mapping blockers and CI checks their counts
 against the row statuses. The proposed test rows require their full stated
 multi-runtime scope, including Python and JS/TS comparisons where listed; no
@@ -33,3 +40,8 @@ likewise require evidence for the precise constraint in its enclosing
 operation/property context, not just a general schema-validation test. These
 counts describe the current audit, not a claim that the work is impossible;
 update the blocker summary as exact selectors and evidence are added.
+The bridge integrity check also preserves each extracted constraint's
+verification guidance alongside its pointer, keyword, value, and source
+reference. This keeps the enclosing-operation/property fixture requirement
+from silently disappearing during inventory updates; it does not validate the
+constraint against the runtime schema or count it as executed.

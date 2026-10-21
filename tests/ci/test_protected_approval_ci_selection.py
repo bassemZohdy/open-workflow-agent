@@ -113,7 +113,7 @@ def test_actual_postgresql_selectors_retain_all_approval_nodes_per_principal(
 @pytest.mark.parametrize(
     "filename,expected",
     [
-        ("test_protected_approvals.py", 67),
+        ("test_protected_approvals.py", 71),
         ("test_approval_dispatcher.py", 15),
         ("test_protected_approval_recovery.py", 5),
     ],

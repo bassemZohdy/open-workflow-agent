@@ -9,7 +9,7 @@ import pytest
 import yaml
 
 from benchmarks.aggregate_matched import aggregate_profiles
-from benchmarks.matched import latency_summary, percentile
+from benchmarks.matched import latency_summary, percentile, validate_concurrency
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -29,7 +29,16 @@ def _profile(engine: str, backend: str, *, commit: str = "a" * 40) -> dict[str, 
                 "recovery_samples": 3,
             },
         },
-        "measurements": {},
+        "measurements": {
+            "concurrent_invocation_seconds": {
+                "count": 8,
+                "p50_seconds": 0.2,
+                "p95_seconds": 0.3,
+                "mean_seconds": 0.25,
+            },
+            "concurrent_wave_seconds": 2.0,
+            "concurrent_throughput_per_second": 4.0,
+        },
         "acceptance": {
             "all_invocations_completed": True,
             "recovery_replayed_side_effect_once": True,
@@ -47,6 +56,19 @@ def test_percentile_and_summary_use_deterministic_nearest_rank() -> None:
         "p95_seconds": 4.0,
         "mean_seconds": 2.5,
     }
+
+
+@pytest.mark.parametrize("concurrency", [1, 8, 16])
+def test_concurrency_validation_accepts_small_bounded_values(concurrency: int) -> None:
+    validate_concurrency(concurrency)
+
+
+@pytest.mark.parametrize("concurrency", [0, 17, True, 1.5])
+def test_concurrency_validation_rejects_unbounded_or_noninteger_values(
+    concurrency: Any,
+) -> None:
+    with pytest.raises(ValueError):
+        validate_concurrency(concurrency)
 
 
 @pytest.mark.parametrize(
@@ -96,6 +118,53 @@ def test_aggregate_rejects_profile_without_replay_assertions() -> None:
         for backend in ("sqlite", "postgresql")
     ]
     profiles[0]["acceptance"]["recovery_replayed_side_effect_once"] = False
+
+    with pytest.raises(ValueError):
+        aggregate_profiles(profiles)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda measurements, metadata: measurements.pop("concurrent_invocation_seconds"),
+        lambda measurements, metadata: measurements.update(concurrent_wave_seconds=0),
+        lambda measurements, metadata: measurements.update(concurrent_throughput_per_second=999),
+        lambda measurements, metadata: metadata["parameters"].update(concurrency=17),
+    ],
+)
+def test_aggregate_rejects_missing_or_unbounded_concurrent_measurement(
+    mutation: Any,
+) -> None:
+    profiles = [
+        _profile(engine, backend)
+        for engine in ("adk", "langgraph")
+        for backend in ("sqlite", "postgresql")
+    ]
+    mutation(profiles[0]["measurements"], profiles[0]["metadata"])
+
+    with pytest.raises(ValueError):
+        aggregate_profiles(profiles)
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda summary: summary.pop("mean_seconds"),
+        lambda summary: summary.update(p50_seconds=float("nan")),
+        lambda summary: summary.update(mean_seconds=float("inf")),
+        lambda summary: summary.update(p95_seconds=-0.1),
+        lambda summary: summary.update(p50_seconds=0.4, p95_seconds=0.3),
+    ],
+)
+def test_aggregate_rejects_malformed_concurrent_latency_summary(
+    mutation: Any,
+) -> None:
+    profiles = [
+        _profile(engine, backend)
+        for engine in ("adk", "langgraph")
+        for backend in ("sqlite", "postgresql")
+    ]
+    mutation(profiles[0]["measurements"]["concurrent_invocation_seconds"])
 
     with pytest.raises(ValueError):
         aggregate_profiles(profiles)

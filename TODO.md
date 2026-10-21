@@ -197,7 +197,9 @@ treated as a deferred task or as additional feature completion.
   and PostgreSQL qualification is pending. A credentialed redirect regression
   now verifies that a named bearer credential reaches only the selected source
   and never the redirect Location; it awaits final-batch validation. S3-03
-  remains open.
+  remains open. Generic HTTP methods now reject malformed ASCII token values
+  (including whitespace, CRLF and non-ASCII) before endpoint resolution or
+  transport; type and token-boundary regressions await the consolidated batch.
   Background execution stays default-off, and cross-adapter, backend, platform,
   lifetime, packaging and broader hosted acceptance remain open.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
@@ -208,7 +210,16 @@ treated as a deferred task or as additional feature completion.
   unchanged. Portable sandbox input paths now reject Windows drive, UNC and
   backslash-traversal forms, reserved Windows device names, alternate data
   streams, invalid characters and trailing-dot/space aliases before
-  cross-platform consumption. New cases await final-batch validation. Required
+  cross-platform consumption. New cases reject staged destination aliases after
+  case folding, Unicode normalization or redundant separators. Stdio startup
+  failures now log only a fixed OS error category while keeping the public error
+  sanitized; its privacy regression awaits final-batch validation. Awaited
+  child processes now bind `TEMP` and `TMP` to their execution workspace, and
+  workflow attempts to override reserved runtime names (`PATH`, `HOME`,
+  `TMPDIR`, `TEMP`, and `TMP`) are rejected case-insensitively; admission and
+  actual-child regressions cover lowercase spellings and await final-batch
+  validation. Stdio startup categories are logged only for process creation.
+  Required
   profile and deployment acceptance remains
   open. See the
   [acceptance plan](docs/s3-04-executable-source-acceptance.md).
@@ -226,7 +237,13 @@ treated as a deferred task or as additional feature completion.
   expired terminal decisions with their original actor, key, revision and
   value, then checks the complete durable approval snapshot remains unchanged;
   this is authored and awaits the final batch. Independent-SDK and hosted
-  requalification remain pending. See the
+  requalification remain pending. A new downgrade regression uses the
+  independent protected-request index to prevent a corrupted common projection
+  from exposing a protected approval through legacy GET or list APIs; it is
+  authored and awaits the batch. Audit reconstruction now rejects non-positive
+  or non-finite action timestamps and reassignment/escalation at or after the
+  immutable request expiry, even when proof digests are coherently rehashed; a
+  tampering regression awaits the same batch. See the
   [acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
   [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and authorization within existing contracts. Delegated token exchange and consent remain conditional S4-11 work.
@@ -238,7 +255,9 @@ treated as a deferred task or as additional feature completion.
   port/scheme denial and default-port equivalence. Full qualification remains
   open. Credential projection now extracts Bearer values regardless of
   authorization-scheme casing; its lowercase-scheme echo regression is authored
-  and awaits final-batch validation.
+  and awaits final-batch validation. Lifecycle snapshot and SSE reads now pass
+  through the configured `events.read` authorization gate before snapshot or
+  stream access; denial and explicitly granted cases await final-batch validation.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
   Eight finite recipe families and named role bindings are authored; hosted
   acceptance remains open. A focused real-native role-policy test passes on
@@ -290,9 +309,11 @@ treated as a deferred task or as additional feature completion.
   SHA-256-pinned official OWS 1.0.3 schema and sanitizes malformed-YAML errors;
   local Node tests and the production dependency audit pass. The loader now
   rejects source above 1 MiB measured as UTF-8 before parsing, with boundary
-  and multibyte cases authored for the final batch. CI now runs the isolated
-  check. The package does not compile or execute OWS definitions and
-  has no shared-fixture parity; implement the engine adapter and independent
+  and multibyte cases authored for the final batch. A second loader slice now
+  mirrors Python admission rejection for duplicate YAML/JSON keys, cyclic
+  aliases, implicit timestamps and non-finite values; those cases also await
+  the batch. CI runs the isolated check. The package does not compile or
+  execute OWS definitions and has no shared-fixture parity; implement the engine adapter and independent
   acceptance before any parity claim. Frozen predecessor sources remain
   reference-only.
 - [ ] **S4-04** (L) — Automate official CTK plus all proposed tests, schema constraints, parity and cross-engine outcome checks.
@@ -302,7 +323,11 @@ treated as a deferred task or as additional feature completion.
   coverage. An integrity test checks exhaustive IDs and requires live selectors
   and retained evidence before any row can be promoted. The bridge now includes
   reasoned blocker counts (443 tests, 774 constraints) guarded against row
-  status drift; the local integrity tests pass.
+  status drift. A new integrity assertion also retains the source verification
+  guidance on all 774 schema rows; it awaits the final batch and does not count
+  as schema coverage. Selector promotion now rejects `skip`, `skipif`, and
+  `xfail` markers, including module-level skip markers; its AST regression also
+  awaits the final batch and does not establish criterion coverage.
   Full CTK automation and parity qualification remain open. See
   [the coverage bridge](resources/compatibility/README.md).
 - [ ] **S4-05** (M) — Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.
@@ -312,21 +337,29 @@ treated as a deferred task or as additional feature completion.
   causation propagation, richer provenance, and replay diagnostics remain open.
   An idle-child operator cancellation now also carries the persisted parent
   invocation and task reference into its lifecycle event; its correlation test
-  is authored for final-batch validation.
+  is authored for final-batch validation. Terminal workflow metrics derive the
+  outcome from the fixed event type rather than an untrusted status field, with
+  a high-cardinality-label regression awaiting the same batch.
   See the [observability acceptance slice](docs/s4-05-observability-acceptance.md).
 - [ ] **S4-06** (M) — Run matched latency/CPU/memory/concurrency/persistence/recovery benchmarks; publish measured results.
   A separate matched-profile harness now records ADK/LangGraph × SQLite/
   PostgreSQL samples, nearest-rank p50/p95, invocation-phase CPU, Linux
   process-lifetime peak RSS, invocation-record creation latency, persistence
-  footprint, and timed engine and service reinitialization plus resume with
-  stable operation-id and single-dispatch assertions. PostgreSQL CI is wired to
+  footprint, an eight-invocation concurrent wave with p50/p95 and throughput,
+  and timed engine and service reinitialization plus resume with stable
+  operation-id and single-dispatch assertions. Concurrent settings are capped
+  at 16 and the aggregate rejects missing or inconsistent latency summaries.
+  PostgreSQL CI is wired to
   aggregate the four exact-source profile JSON files into one artifact. Harness
   tests pass locally. The first hosted four-cell report passed at exact source
   `4b22e801f4f7f01d475caa03a754dd3ac45bf64a`; retained measurements are in the
   [benchmark record](docs/benchmarks.md#retained-exact-source-measurements) and
   [GitHub run artifact](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39459079488).
-  The broader exact-source root and required gates are still running; full
-  qualification remains pending. Measurements document their runner and scope
+  On the later pushed source `0d812b2`, PostgreSQL CI and all four companion
+  workflows passed, while CI failed in one Windows CPU-quota timing case and
+  one Linux stdio child start; details and the current requalification are in
+  the [validation history](docs/validation-history/pending-batch-results.md#hosted-outcome-for-source-0d812b2).
+  Full qualification remains pending. Measurements document their runner and scope
   limits; PostgreSQL reports whole fresh service-database size, database I/O
   remains included in invocation latency rather than isolated by operation, and
   recovery reinitializes services in one process rather than forcing an OS stop.
@@ -341,8 +374,14 @@ treated as a deferred task or as additional feature completion.
   controller packages; its test guards metadata agreement and workflow
   coverage. Publication now waits for exact-head CI, PostgreSQL, External
   Sandbox, Security and Docs results; Agent Framework remains optional. These
-  guards and revised main-push triggers pass local workflow tests; exact-head
-  hosted results remain pending. CI now includes a Node 24 job for the isolated
+  guards and revised main-push triggers pass local workflow tests. At pushed
+  source `0d812b2`, PostgreSQL, Agent Framework, External Sandbox, Security and
+  Docs passed; CI failed the Windows CPU-quota timing case and one Linux stdio
+  child start. The CPU fixture now has a 20-second operation budget and
+  25-second outer bound. The stdio failure was sanitized before its underlying
+  OS error was retained, so current-source hosted requalification remains
+  pending; see the [validation history](docs/validation-history/pending-batch-results.md#hosted-outcome-for-source-0d812b2).
+  CI now includes a Node 24 job for the isolated
   JavaScript schema loader. A regression now guards source/version/exact-commit
   OCI labels and retained SBOM/provenance generation on both release image
   paths; it awaits final-batch validation. The older root-quality run also
@@ -362,9 +401,17 @@ treated as a deferred task or as additional feature completion.
   external catalogs, and engine-specific capability/runtime configuration
   remain outside its scope. External release-name or consumer-migration
   decisions also remain open; this task is not complete.
-- [ ] **S4-09** (L) — Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; require its own native acceptance.
-- [ ] **S4-10** (L) — Preserve EVENT-1 through EVENT-5; add optional external brokers, AsyncAPI and A2A push only with delivery/security contracts.
-- [ ] **S4-11** (L) — Keep multi-tenancy and RFC 8693/consent as tracked conditional work; do not invent a security protocol.
+- [ ] **S4-09** (L) — Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; activate only after an explicit support decision and require isolated native durability, security, and release acceptance.
+  Activation needs a named user need, deployment target, compatibility promise,
+  and rollback owner. Until then, keep the adapter optional and CI/evaluation
+  only; see the [production-readiness plan](docs/agent-framework-production-readiness.md).
+- [ ] **S4-10** (L) — Preserve EVENT-1 through EVENT-5 as conditional external event integration; select a real consumer and transport plus delivery, security, and operational contracts before broker, AsyncAPI, or push implementation.
+  The event track is not a runtime task until a consumer and deployment
+  requirements are recorded; see the [event integration readiness plan](docs/event-integration-readiness.md).
+- [ ] **S4-11** (L) — Track multi-tenancy and RFC 8693/delegated consent as conditional identity-platform work; start only on concrete requirements and use standards-based trust without making OWA an identity provider.
+  Multi-tenant isolation and delegated-user identity remain deployment/identity
+  platform responsibilities until a concrete use case defines owners and trust
+  boundaries; see [security decisions](docs/protocol-security-decisions.md).
 
 ## Completion rule
 

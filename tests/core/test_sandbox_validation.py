@@ -181,3 +181,12 @@ def test_sandbox_validation_rewrites_nested_runs_and_environment_policy():
     with pytest.raises(UnsupportedWorkflowFeature, match="not deployment-approved"):
         _validate_environment({"TOKEN": {"fromEnv": "MISSING"}}, config, "/run")
     _validate_environment({"TOKEN": {"fromEnv": "TOKEN"}}, config, "/run")
+
+
+@pytest.mark.parametrize(
+    "name", ["PATH", "HOME", "TMPDIR", "TEMP", "TMP", "path", "home", "tmpdir", "temp", "tmp"]
+)
+def test_workflow_cannot_override_runtime_isolation_environment(name):
+    config = SandboxConfig(enabled=True, backend="internal", secret_environment=["TOKEN"])
+    with pytest.raises(UnsupportedWorkflowFeature, match="isolation variables"):
+        _validate_environment({name: "outside-workspace"}, config, "/run")

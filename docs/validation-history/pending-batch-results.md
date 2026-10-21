@@ -2181,3 +2181,39 @@ Markdown relative links, root/core package builds, the Node 24 package tests
 (10 passed), and the production npm audit (zero vulnerabilities) passed.
 Fresh exact-source hosted requalification for the resulting pushed batch remains
 required; no unchecked task is closed by these local results.
+
+### Hosted outcome for source `0d812b2`
+
+At exact source `0d812b2a7af5415664355ec983dea9278e47bcf0`, Docs
+(`39482167375`), Security (`39482167884`), External Sandbox
+(`39482167484`), Agent Framework (`39482167457`) and PostgreSQL CI
+(`39482167564`) passed. CI (`39482168044`) failed two tests. The Windows
+operation-adapter job (`118833231091`) passed 974 tests and skipped 463, but
+`test_actual_windows_requested_job_resources_are_enforced[cpu]` reached its
+eight-second wall deadline before the one-second Windows Job CPU quota fired.
+The fixture now allows a 20-second operation budget and a 25-second outer
+timeout, preserving the distinction between CPU enforcement and wall timeout;
+exact-source hosted requalification remains pending.
+
+Root Quality (`118833231575`) passed 4,914 tests, skipped 3,199 and reported
+90.10% coverage, but
+`test_complete_response_remains_available_after_process_exit` failed because
+the MCP stdio child could not be started. The implementation intentionally
+returned a sanitized `SandboxProcessError` and the log does not retain the
+underlying `OSError` type or errno. The other root quality gates passed. This
+single process-start failure has not established a reproducible runtime defect;
+the current source batch adds a fixed, safe OS error category to runtime logs
+while keeping the public error sanitized, with a regression that excludes path
+and native error text. The exact-source rerun must determine whether the spawn
+failure recurs. No backlog task is marked complete from this failed run.
+
+### Consolidated local validation for current worktree batch
+
+The full root suite passed after correcting an aggregate benchmark parameter
+shadowing defect: **4,982 passed, 3,203 skipped, 90.55% coverage** in
+48m05s. The run used the required 90% coverage threshold and included the
+current S3/S4 regressions. Formatting, Ruff, strict mypy, docs validation,
+package builds and recovery-build provenance checks, lock checks, Node package
+tests and the production dependency audit also passed for this batch. This is
+local evidence only; no unchecked backlog task is closed by it. Exact-source
+GitHub workflows remain required after the batch is pushed.

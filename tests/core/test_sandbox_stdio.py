@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+import errno
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -115,6 +117,30 @@ async def test_complete_response_remains_available_after_process_exit(tmp_path):
             await session.receive_frame()
     assert not backend._stdio_sessions
     assert list(Path(config.workspace_root).iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_stdio_start_failure_logs_only_safe_os_error_category(tmp_path, monkeypatch, caplog):
+    _, backend, manager = configured(tmp_path)
+
+    async def reject_start(*_args, **_kwargs):
+        raise OSError(errno.EAGAIN, "private startup detail", "private/path/token")
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", reject_start)
+    with caplog.at_level(logging.WARNING, logger="open_workflow_agent.sandbox.stdio"):
+        with pytest.raises(SandboxProcessError) as failure:
+            async with manager.open_stdio(request(backend.config)):
+                pytest.fail("stdio session must not open when process startup fails")
+
+    assert str(failure.value) == "MCP stdio process could not be started"
+    records = [
+        record for record in caplog.records if record.name == "open_workflow_agent.sandbox.stdio"
+    ]
+    assert len(records) == 1
+    assert records[0].extra_fields == {"error_category": "resource_limit"}
+    assert "private startup detail" not in caplog.text
+    assert "private/path/token" not in caplog.text
+    assert not backend._stdio_starting and not backend._stdio_sessions
 
 
 @pytest.mark.asyncio

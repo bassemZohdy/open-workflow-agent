@@ -8,11 +8,27 @@ aliases are rejected as well, including when nested below a directory. Focused
 regressions cover these forms; the full cross-platform and deployment
 acceptance gates remain unchanged.
 
+Sandbox requests now also reject two staged files whose destinations collapse
+to one path under portable filesystem rules: case-folded names, Unicode
+canonical equivalents, and redundant POSIX separators. This prevents backend
+staging from silently replacing one supplied file with another on
+case-insensitive or Unicode-normalizing filesystems. The request-level contract
+remains framework-neutral and does not expand runtime capability claims.
+
 Status: source authored, unqualified. S3-04 remains unchecked. Registry
 configuration/execution errors now propagate without being mislabeled as source
 policy rejection. Only the dedicated expected source-policy exception is
 translated; unrelated common unsupported-feature errors propagate unchanged.
 New regression cases are authored and await the final batch.
+The Windows CI source run `0d812b2` hit the eight-second wall deadline before
+the one-second Job CPU quota fired; the fixture now gives that quota 20 seconds
+with a 25-second outer bound. Exact-source hosted requalification remains
+pending.
+The same source's Linux root suite had one stdio child-start failure. The
+public error remains sanitized; a follow-up records only a fixed OS error
+category in runtime diagnostics so a recurrence can distinguish resource
+exhaustion from an unavailable executable or permission denial. The safe-log
+regression awaits the consolidated batch.
 No new executable operation, platform, backend or hard-isolation capability is
 advertised by this record. S3-03 corrections must be integrated before freezing
 this batch.
@@ -46,12 +62,18 @@ creation. Normal leader exit closes owned descendants before inherited pipes can
 hold output draining open; cancellation, shutdown and original wall deadline keep
 their existing common outcomes. Workspace/FD/environment/output controls remain
 a controlled execution boundary, not container, pod, VM or microVM isolation.
+Reserved runtime environment names are rejected case-insensitively across
+platforms, including `PATH`, `HOME`, `TMPDIR`, `TEMP`, and `TMP`; child temporary
+directory variables are bound to the execution workspace. Actual-process and
+admission regressions cover lowercase Windows spellings. Stdio startup errno
+categories are logged only around process creation, while later OS failures
+retain a sanitized operation error.
 Docker and Kubernetes remain deployment-selected and subject to existing gates;
 this batch does not replace real-cluster DEPLOY-1 acceptance.
 
 Authored inventories are not passing counts: registry 114 cases, compiler/archive
 30, imported-source rejection 24, independent source admission 114 across SQLite
-and PostgreSQL, awaited process controls 21, shared actual native/source calls 28
+and PostgreSQL, awaited process controls 27, shared actual native/source calls 28
 and process-stop/recovery 24 across the two principal engines and both databases.
 The compiler/archive group includes a new regression that ensures unexpected
 registry implementation failures are not mislabeled as workflow source-policy

@@ -31,13 +31,15 @@ from ...errors import (
     SandboxTimeoutError,
 )
 from ..contract import (
-    RESERVED_ENVIRONMENT,
     SandboxExecutionRequest,
     SandboxExecutionResult,
     SandboxSecretReference,
     SandboxStdioRequest,
     SandboxStdioSession,
+    is_reserved_environment_name,
 )
+
+WORKSPACE_TEMPORARY_ENVIRONMENT = frozenset({"TEMP", "TMP"})
 
 
 class _OutputBudget:
@@ -424,7 +426,7 @@ class InternalSandboxBackend:
             self._prepare_command(request, Path())
         for name, value in request.environment:
             if (
-                name in RESERVED_ENVIRONMENT
+                is_reserved_environment_name(name)
                 or not isinstance(value, SandboxSecretReference)
                 or value.name not in self.config.secret_environment
             ):
@@ -472,8 +474,12 @@ class InternalSandboxBackend:
             inherited_value = os.getenv(name)
             if inherited_value is not None:
                 environment[name] = inherited_value
+        # Python and Windows native tools prefer TEMP/TMP over TMPDIR. Bind
+        # all standard temporary-directory variables back to this execution's
+        # workspace after deployment allowlisted values have been applied.
+        environment.update({name: str(workspace) for name in WORKSPACE_TEMPORARY_ENVIRONMENT})
         for name, configured_value in request.environment:
-            if name in RESERVED_ENVIRONMENT:
+            if is_reserved_environment_name(name):
                 raise SandboxPolicyError(
                     "sandbox environment cannot override runtime isolation variables",
                     details={"name": name},

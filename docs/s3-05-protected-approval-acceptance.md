@@ -68,6 +68,18 @@ snapshot (including revisioned audit and inbox evidence) to remain unchanged.
 This adds coverage to the existing engine/backend matrix; it is authored and
 unqualified until the full batch passes.
 
+Legacy approval reads and lists now consult the independent protected-request
+index, so removing `approvalPolicy` from the common projection cannot expose a
+protected request through the legacy API. A regression corrupts that projection
+and verifies direct reads fail closed, lists omit the protected row, and the
+legacy API does not return it; authored, unqualified.
+
+Audit reconstruction also validates positive finite action timestamps and
+rejects reassignment or escalation recorded at or after the request's original
+absolute expiry, even when the audit digest and mutation receipt are coherently
+rehashable. A deterministic corruption regression covers this invariant;
+authored, unqualified pending batch validation.
+
 Qualification requires a coherent unchanged-source batch, relevant complete suites,
 actual principal SQLite/PostgreSQL and process evidence, platform gates, fresh
 package/image/security/provenance evidence, API snapshot validation and source-linked
