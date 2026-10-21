@@ -25,5 +25,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/open_workflow_agent_langgraph"]
 
+[tool.hatch.build.hooks.custom]
+
+[tool.uv]
+override-dependencies = ["pillow>=13.0.0,<14"]
+
 [tool.uv.sources]
 open-workflow-agent = { path = "../..", editable = true }

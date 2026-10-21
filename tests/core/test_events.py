@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 import pytest
-from open_workflow_agent.errors import UnsupportedWorkflowFeature
+from open_workflow_agent.errors import WorkflowSchemaError, WorkflowSemanticError
 from open_workflow_agent.events import InMemoryEventBus
 from open_workflow_agent.workflow import compile_workflow
 
@@ -54,23 +55,57 @@ async def test_event_bus_subscription_is_active_when_receive_returns() -> None:
     assert event.data == {"ready": True}
 
 
-def test_listen_rejects_unimplemented_strategies() -> None:
+@pytest.mark.parametrize(
+    "strategy",
+    [
+        {"one": {"with": {"type": "one"}}},
+        {"all": [{"with": {"type": "one"}}, {"with": {"type": "two"}}]},
+        {"any": [{"with": {"type": "one"}}]},
+        {"any": []},
+        {"any": [], "until": "${ .stop == true }"},
+        {"any": [], "until": {"one": {"with": {"type": "stop"}}}},
+    ],
+)
+def test_listen_admits_the_supported_durable_consumption_strategies(
+    strategy: dict[str, Any],
+) -> None:
     workflow = {
         "document": {
             "dsl": "1.0.3",
             "namespace": "tests",
-            "name": "unsupported-listen",
+            "name": "durable-listen",
             "version": "1.0.0",
         },
         "do": [
             {
                 "events": {
                     "listen": {
-                        "to": {"any": [{"with": {"type": "one"}}]},
+                        "to": strategy,
                     }
                 }
             }
         ],
     }
-    with pytest.raises(UnsupportedWorkflowFeature):
+    assert compile_workflow(workflow).uses_durable_events
+
+
+@pytest.mark.parametrize(
+    "strategy",
+    [
+        {"one": {"with": {}}},
+        {"one": {"with": {"type": "one"}}, "any": []},
+        {"any": [{"with": {"type": "one"}}], "until": 42},
+    ],
+)
+def test_listen_rejects_invalid_strategy_definitions(strategy: dict[str, Any]) -> None:
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "tests",
+            "name": "invalid-listen",
+            "version": "1.0.0",
+        },
+        "do": [{"events": {"listen": {"to": strategy}}}],
+    }
+    with pytest.raises((WorkflowSchemaError, WorkflowSemanticError)):
         compile_workflow(workflow)

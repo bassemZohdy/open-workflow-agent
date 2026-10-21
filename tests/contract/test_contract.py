@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import httpx
@@ -11,6 +12,7 @@ from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
+from openapi_fixtures import operation_document
 
 
 @pytest.mark.asyncio
@@ -52,6 +54,49 @@ async def test_portable_fixture_has_same_result_on_each_engine(
     if fixture_name == "protocol-calls":
 
         async def handler(request: httpx.Request) -> httpx.Response:
+            if request.url.path == "/openapi" and request.url.params.get("value") is None:
+                assert request.method == "GET"
+                return httpx.Response(
+                    200,
+                    json=operation_document(
+                        "https://service.test", parameters=(("value", "query", "string"),)
+                    ),
+                )
+            if request.url.path == "/mcp":
+                body = json.loads(request.content)
+                assert body["jsonrpc"] == "2.0" and body["method"] == "tools/call"
+                assert body["params"]["name"] == "lookup"
+                assert body["params"]["arguments"] == {"value": "mcp"}
+                return httpx.Response(
+                    200,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": body["id"],
+                        "result": {
+                            "resultType": "complete",
+                            "content": [{"type": "text", "text": "lookup-result"}],
+                        },
+                    },
+                )
+            if request.url.path == "/a2a":
+                body = json.loads(request.content)
+                assert body["jsonrpc"] == "2.0" and body["method"] == "SendMessage"
+                assert body["params"]["message"]["role"] == "ROLE_USER"
+                assert body["params"]["message"]["parts"] == [{"text": "a2a"}]
+                return httpx.Response(
+                    200,
+                    json={
+                        "jsonrpc": "2.0",
+                        "id": body["id"],
+                        "result": {
+                            "message": {
+                                "messageId": "fixture-response",
+                                "role": "ROLE_AGENT",
+                                "parts": [{"text": "a2a"}],
+                            }
+                        },
+                    },
+                )
             return httpx.Response(200, json={"path": request.url.path})
 
         services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
@@ -98,7 +143,7 @@ def _expected(fixture_name: str, input_data: dict[str, object]) -> object:
     if fixture_name == "for":
         return {"last": 2}
     if fixture_name == "fork":
-        return {**input_data, "left": True, "right": True}
+        return [{"left": True}, {"right": True}]
     if fixture_name == "sequence":
         return {"answer": "hello"}
     if fixture_name == "data-transform":

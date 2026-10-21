@@ -75,10 +75,17 @@ async def test_a2a_surfaces_never_expose_the_resolved_secret(tmp_path, monkeypat
                     "jsonrpc": "2.0",
                     "id": 1,
                     "method": "SendMessage",
-                    "params": {"message": {"role": "ROLE_USER", "parts": [{"text": "hi"}]}},
+                    "params": {
+                        "message": {
+                            "messageId": "secret-safety-message",
+                            "role": "ROLE_USER",
+                            "parts": [{"text": "hi"}],
+                        }
+                    },
                 },
             )
             assert accepted.status_code == 200
+            assert "error" not in accepted.json()
             task_id = accepted.json()["result"]["message"]["messageId"]
             assert not _contains(accepted.json(), _SECRET)
 

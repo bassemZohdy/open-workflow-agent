@@ -16,7 +16,7 @@ Feature: Try Catch Tasks
           try:
             - fail:
                 raise:
-                  error: controlled failure
+                  error: {type: 'urn:test:controlled', status: 500, detail: 'controlled failure'}
           catch:
             do:
               - recover:

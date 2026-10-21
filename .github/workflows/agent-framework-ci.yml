@@ -1,10 +1,16 @@
 name: Agent Framework CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
+      - "core/**"
+      - "tests/contract/**"
+      - "tests/ctk/**"
+      - "tests/conftest.py"
+      - "tests/engine_cases.py"
       - "engines/agent-framework/**"
       - "tests/agent_framework/**"
       - ".github/workflows/agent-framework-ci.yml"
@@ -14,6 +20,11 @@ on:
     branches:
       - main
     paths:
+      - "core/**"
+      - "tests/contract/**"
+      - "tests/ctk/**"
+      - "tests/conftest.py"
+      - "tests/engine_cases.py"
       - "engines/agent-framework/**"
       - "tests/agent_framework/**"
       - ".github/workflows/agent-framework-ci.yml"
@@ -23,10 +34,14 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: agent-framework-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   native:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 50
     defaults:
       run:
         working-directory: engines/agent-framework
@@ -40,8 +55,11 @@ jobs:
         run: uv python install 3.12
       - name: Check committed engine lock
         run: uv lock --check
+      # The complete selection reached 36% before the previous ten-minute
+      # job limit. Keep every suite and a bounded whole-command deadline.
       - name: Run native, shared contract, and CTK suites
         run: >-
+          timeout --signal=TERM --kill-after=30s 40m
           uv run --locked --extra knowledge --extra native --with pytest --with pytest-asyncio
           pytest ../../tests/agent_framework ../../tests/contract ../../tests/ctk -vv
       - name: Build adapter wheel

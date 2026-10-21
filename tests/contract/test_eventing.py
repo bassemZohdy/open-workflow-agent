@@ -35,11 +35,15 @@ def _handle(services, engine_name, plan):
     )
 
 
-async def _until(predicate):
-    for _ in range(200):
+async def _until(predicate, task=None):
+    deadline = asyncio.get_running_loop().time() + 30
+    while asyncio.get_running_loop().time() < deadline:
         if predicate():
             return
-        await asyncio.sleep(0.005)
+        if task is not None and task.done():
+            await task
+            raise AssertionError("eventing invocation completed before reaching the expected state")
+        await asyncio.sleep(0.01)
     raise AssertionError("eventing condition was not reached")
 
 
@@ -68,13 +72,13 @@ async def test_emit_and_listen_have_equivalent_common_results(tmp_path, engine_n
                             }
                         }
                     },
-                    {"finish": {"set": {"approved": "${ .approved }"}}},
+                    {"finish": {"set": {"approved": "${ .[0].approved }"}}},
                 ]
             )
         )
         handle = _handle(services, engine_name, listen_plan)
         invocation = asyncio.create_task(engine.invoke(listen_plan, handle, {}))
-        await _until(lambda: handle.status == "waiting")
+        await _until(lambda: handle.status == "waiting", invocation)
         published = await services.event_bus.publish(
             {
                 "id": "approval-1",
@@ -115,7 +119,20 @@ async def test_emit_and_listen_have_equivalent_common_results(tmp_path, engine_n
         emit_result = await engine.invoke(emit_plan, emit_handle, {"case": "case-1"})
         assert emit_result.status == "completed"
         assert emit_result.output == {"done": True}
-        assert services.event_bus.published[-1].as_dict()["data"] == {"case": "case-1"}
+        assert services.event_store is not None
+        accepted = services.event_store.connection.execute(
+            "SELECT identity FROM event_outbox WHERE invocation_id = ?",
+            (emit_handle.invocation_id,),
+        ).fetchall()
+        assert len(accepted) == 1
+        services.event_store.verify_invocation(emit_handle.invocation_id, emit_plan.fingerprint)
+        assert services.event_store.deliver_outbox() == 1
+        created = [
+            envelope
+            for _, envelope in services.event_store.arrivals()
+            if envelope.id == "created-1"
+        ]
+        assert len(created) == 1 and created[0].data == {"case": "case-1"}
         assert any(event.event_type == "EventEmitted" for event in services.events.events)
     finally:
         await engine.shutdown()

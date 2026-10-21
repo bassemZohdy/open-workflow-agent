@@ -1,5 +1,11 @@
 # Third-party source attribution
 
+The runtime depends on [jq.py 1.12.0](https://github.com/mwilliamson/jq.py/tree/1.12.0),
+licensed under BSD-2-Clause. Its wheels bundle [jq 1.8.2](https://github.com/jqlang/jq/tree/jq-1.8.2)
+(MIT with bundled component notices) and Oniguruma (BSD-2-Clause).
+Those dependency distributions retain their own licenses; no jq source is
+copied into this repository. All dependency environments pin the same binding.
+
 The canonical runtime keeps its existing MIT license. Material imported from
 `bassemZohdy/open-workflow-agent-adk` at revision
 `48db0cf5e1a1d3202cbbec6021736e1d89e94cd0` retains Apache-2.0:

@@ -16,7 +16,7 @@ Feature: Data Flow
     do:
       - setPlayerId:
           input:
-            from: .user.claims.subject
+            from: '${ .user.claims.subject }'
           set:
             playerId: ${ . }
     """
@@ -50,7 +50,7 @@ Feature: Data Flow
             endpoint:
               uri: https://petstore.swagger.io/v2/pet/{petId}
           output:
-            as: .id
+            as: '${ .id }'
     """
     And given the workflow input is:
     """yaml
@@ -80,7 +80,7 @@ Feature: Data Flow
             endpoint:
               uri: https://petstore.swagger.io/v2/pet/{petId}
           output:
-            as: .id
+            as: '${ .id }'
       - getPetById2:
           call: http
           with:
@@ -88,7 +88,7 @@ Feature: Data Flow
             endpoint:
               uri: https://petstore.swagger.io/v2/pet/2
           output:
-            as: '{ ids: [ $input, .id ] }'
+            as: '${ { ids: [ $input, .id ] } }'
     """
     And given the workflow input is:
     """yaml

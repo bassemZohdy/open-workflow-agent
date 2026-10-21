@@ -1,0 +1,141 @@
+[
+  {
+    "id": "minimal-yaml",
+    "source": "document:\n  dsl: '1.0.3'\n  namespace: parity\n  name: minimal\n  version: '1.0.0'\ndo:\n  - respond:\n      call: agent:1.0.0@default\n",
+    "outcome": "accept",
+    "expected": {
+      "document": {
+        "dsl": "1.0.3",
+        "namespace": "parity",
+        "name": "minimal",
+        "version": "1.0.0"
+      },
+      "do": [
+        { "respond": { "call": "agent:1.0.0@default" } }
+      ]
+    }
+  },
+  {
+    "id": "minimal-json",
+    "source": "{\"document\":{\"dsl\":\"1.0.3\",\"namespace\":\"parity\",\"name\":\"minimal-json\",\"version\":\"1.0.0\"},\"do\":[{\"respond\":{\"call\":\"agent:1.0.0@default\"}}]}",
+    "outcome": "accept",
+    "expected": {
+      "document": {
+        "dsl": "1.0.3",
+        "namespace": "parity",
+        "name": "minimal-json",
+        "version": "1.0.0"
+      },
+      "do": [
+        { "respond": { "call": "agent:1.0.0@default" } }
+      ]
+    }
+  },
+  {
+    "id": "json-string-valued-metadata-keys",
+    "source": "{\"document\":{\"dsl\":\"1.0.3\",\"namespace\":\"parity\",\"name\":\"json-metadata-keys\",\"version\":\"1.0.0\",\"metadata\":{\"1\":\"numeric-looking\",\"true\":\"boolean-looking\"}},\"do\":[{\"respond\":{\"call\":\"agent:1.0.0@default\"}}]}",
+    "outcome": "accept",
+    "expected": {
+      "document": {
+        "dsl": "1.0.3",
+        "namespace": "parity",
+        "name": "json-metadata-keys",
+        "version": "1.0.0",
+        "metadata": {
+          "1": "numeric-looking",
+          "true": "boolean-looking"
+        }
+      },
+      "do": [
+        { "respond": { "call": "agent:1.0.0@default" } }
+      ]
+    }
+  },
+  {
+    "id": "reused-acyclic-alias",
+    "source": "document:\n  dsl: '1.0.3'\n  namespace: parity\n  name: aliases\n  version: '1.0.0'\n  metadata:\n    shared: &shared\n      label: safe\n    first: *shared\n    second: *shared\ndo:\n  - respond:\n      call: agent:1.0.0@default\n",
+    "outcome": "accept",
+    "expected": {
+      "document": {
+        "dsl": "1.0.3",
+        "namespace": "parity",
+        "name": "aliases",
+        "version": "1.0.0",
+        "metadata": {
+          "shared": { "label": "safe" },
+          "first": { "label": "safe" },
+          "second": { "label": "safe" }
+        }
+      },
+      "do": [
+        { "respond": { "call": "agent:1.0.0@default" } }
+      ]
+    }
+  },
+  {
+    "id": "malformed-yaml",
+    "source": "document: [\n",
+    "outcome": "reject",
+    "category": "invalid_document"
+  },
+  {
+    "id": "duplicate-yaml-key",
+    "source": "document:\n  dsl: '1.0.3'\n  namespace: parity\n  name: first\n  version: '1.0.0'\ndocument:\n  dsl: '1.0.3'\n  namespace: parity\n  name: second\n  version: '1.0.0'\ndo:\n  - respond:\n      call: agent:1.0.0@default\n",
+    "outcome": "reject",
+    "category": "invalid_document"
+  },
+  {
+    "id": "duplicate-json-key",
+    "source": "{\"document\":{\"dsl\":\"1.0.3\",\"namespace\":\"parity\",\"name\":\"duplicate\",\"version\":\"1.0.0\"},\"document\":{\"dsl\":\"1.0.3\",\"namespace\":\"parity\",\"name\":\"duplicate\",\"version\":\"1.0.0\"},\"do\":[{\"respond\":{\"call\":\"agent:1.0.0@default\"}}]}",
+    "outcome": "reject",
+    "category": "invalid_document"
+  },
+  {
+    "id": "numeric-yaml-mapping-key",
+    "source": "document:\n  dsl: '1.0.3'\n  namespace: parity\n  name: numeric-key\n  version: '1.0.0'\n  metadata:\n    1: numeric\ndo:\n  - respond:\n      call: agent:1.0.0@default\n",
+    "outcome": "reject",
+    "category": "invalid_document"
+  },
+  {
+    "id": "boolean-yaml-mapping-key",
+    "source": "document:\n  dsl: '1.0.3'\n  namespace: parity\n  name: boolean-key\n  version: '1.0.0'\n  metadata:\n    true: boolean\ndo:\n  - respond:\n      call: agent:1.0.0@default\n",
+    "outcome": "reject",
+    "category": "invalid_document"
+  },
+  {
+    "id": "cyclic-yaml-alias",
+    "source": "document:\n  dsl: '1.0.3'\n  namespace: parity\n  name: cycle\n  version: '1.0.0'\n  metadata: &cycle\n    self: *cycle\ndo:\n  - respond:\n      call: agent:1.0.0@default\n",
+    "outcome": "reject",
+    "category": "invalid_document"
+  },
+  {
+    "id": "implicit-yaml-timestamp",
+    "source": "document:\n  dsl: '1.0.3'\n  namespace: parity\n  name: timestamp\n  version: '1.0.0'\n  title: 2026-10-21\ndo:\n  - respond:\n      call: agent:1.0.0@default\n",
+    "outcome": "reject",
+    "category": "non_json_value"
+  },
+  {
+    "id": "non-finite-yaml-number",
+    "source": "document:\n  dsl: '1.0.3'\n  namespace: parity\n  name: non-finite\n  version: '1.0.0'\n  title: .nan\ndo:\n  - respond:\n      call: agent:1.0.0@default\n",
+    "outcome": "reject",
+    "category": "non_json_value"
+  },
+  {
+    "id": "non-object-root",
+    "source": "- workflow\n",
+    "outcome": "reject",
+    "category": "root_not_object"
+  },
+  {
+    "id": "schema-invalid",
+    "source": "document: { dsl: '1.0.3', namespace: parity, name: missing-do, version: '1.0.0' }\n",
+    "outcome": "reject",
+    "category": "schema_invalid"
+  },
+  {
+    "id": "unsupported-dsl-version",
+    "source": "document:\n  dsl: '1.0.2'\n  namespace: parity\n  name: old-dsl\n  version: '1.0.0'\ndo:\n  - respond:\n      call: agent:1.0.0@default\n",
+    "outcome": "reject",
+    "category": "unsupported_version"
+  }
+]

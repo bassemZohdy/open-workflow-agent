@@ -586,10 +586,12 @@ shared security profiles
   -> interoperability/conformance gates
 ```
 
-The path above is complete for the advertised bounded profile. A2A Tasks,
-resume, cancellation, approvals, and lifecycle events continue to reuse the
-common invocation and persistence services; they are not a second workflow
-runtime or checkpoint store.
+The path above defines the implementation boundary for the advertised bounded
+profile. Direct acceptance qualification remains gated by the unchecked S3-02
+task in `TODO.md` and its A2A gate record. A2A Tasks, resume, cancellation,
+approvals, and lifecycle events continue to reuse the common invocation and
+persistence services; they are not a second workflow runtime or checkpoint
+store.
 
 ---
 
@@ -984,6 +986,12 @@ The detailed verified record lives in `docs/protocol-baselines.md`.
 
 Current reviewed baselines:
 
+Open Workflow 1.0.3 is an explicit exception to the stable-release policy:
+upstream marks its tag as prerelease. OWA preserves the existing public DSL
+and the unmodified reviewed schema snapshot, whose commit and SHA-256 are
+recorded in `resources/protocol-baselines.yaml`. The snapshot differs from
+the release tag; no full conformance claim follows from either pin.
+
 ```text
 Open Workflow Specification  1.0.3
 A2A Protocol                 1.0.1
@@ -1050,7 +1058,8 @@ The active ordered backlog is maintained only in `TODO.md`.
 # 37. Bounded A2A Profile State
 
 The A2A transport/server blocker and the protocol-level lifecycle/security
-projection are complete for the advertised bounded profile.
+projection are implemented for the advertised bounded profile; direct
+acceptance qualification remains governed by S3-02 in `TODO.md`.
 
 Implemented completion path:
 
@@ -1073,6 +1082,12 @@ streaming/resubscription. It does not claim broad/full A2A conformance or
 implement push notifications.
 
 This sequence keeps A2A in core and reuses common invocation/durability semantics rather than implementing engine-specific A2A code.
+
+The completion statement above applies to the previously released bounded
+inbound profile. The ordered backlog tracks additional workflow-to-agent and
+agent-to-workflow integration and fresh peer/native/backend qualification under
+S3-02; those gates remain open until their evidence passes. See
+[`TODO.md`](TODO.md) and the [S3-02 acceptance plan](docs/s3-02-a2a-acceptance.md).
 
 The post-release native-depth decision is settled for the current product
 scope: retain ADK and LangGraph as native execution envelopes around the

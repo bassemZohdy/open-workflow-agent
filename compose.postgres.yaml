@@ -1,0 +1,37 @@
+# Optional local PostgreSQL bootstrap. Embedded storage remains the default.
+# Usage:
+#   docker compose -f compose.yaml -f compose.postgres.yaml --profile langgraph up --build
+# Select --profile adk instead to use the ADK runtime.
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-owa}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-owa-local-only}
+      POSTGRES_DB: ${POSTGRES_DB:-owa}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  adk:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      OWA__PERSISTENCE__DATASOURCE: postgresql://${POSTGRES_USER:-owa}:${POSTGRES_PASSWORD:-owa-local-only}@postgres:5432/${POSTGRES_DB:-owa}
+  langgraph:
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      OWA__PERSISTENCE__DATASOURCE: postgresql://${POSTGRES_USER:-owa}:${POSTGRES_PASSWORD:-owa-local-only}@postgres:5432/${POSTGRES_DB:-owa}
+
+volumes:
+  postgres_data:

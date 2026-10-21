@@ -11,16 +11,226 @@ on:
   pull_request:
     paths:
       - ".github/workflows/postgres-ci.yml"
+      - "benchmarks/**"
+      - "tests/ci/test_s4_06_benchmark.py"
+      - "docs/benchmarks.md"
+      - "core/src/open_workflow_agent/**"
+      - "engines/adk/**"
+      - "engines/langgraph/**"
+      - "core/src/open_workflow_agent/openapi*.py"
+      - "core/src/open_workflow_agent/grpc*.py"
+      - "core/src/open_workflow_agent/asyncapi*.py"
+      - "core/src/open_workflow_agent/executable_source*.py"
+      - "core/src/open_workflow_agent/sandbox/**"
+      - "tests/core/test_openapi*.py"
+      - "tests/core/test_grpc*.py"
+      - "tests/core/test_sandbox_job*.py"
+      - "tests/core/test_background*.py"
+      - "tests/core/test_executable_source*.py"
+      - "tests/core/test_internal_awaited_process_controls.py"
+      - "tests/core/test_engine_shutdown_initialization.py"
+      - "tests/contract/test_executable_source*.py"
+      - "tests/contract/_executable_source*.py"
+      - "tests/contract/test_openapi*.py"
+      - "tests/contract/test_grpc*.py"
+      - "tests/contract/_openapi*.py"
+      - "tests/contract/_grpc*.py"
       - "core/src/open_workflow_agent/persistence.py"
       - "core/src/open_workflow_agent/storage.py"
       - "core/src/open_workflow_agent/services.py"
+      - "core/src/open_workflow_agent/external_recovery.py"
+      - "core/src/open_workflow_agent/recovery_definitions.py"
+      - "core/src/open_workflow_agent/recovery_diagnostics.py"
+      - "core/src/open_workflow_agent/api.py"
+      - "core/src/open_workflow_agent/a2a_server.py"
+      - "core/src/open_workflow_agent/a2a*.py"
+      - "core/src/open_workflow_agent/_a2a_types.py"
+      - "core/src/open_workflow_agent/initial_delivery*.py"
+      - "core/src/open_workflow_agent/_native_sqlite_inspection.py"
+      - "tests/core/test_a2a*.py"
+      - "tests/core/_a2a_sdk_fixture.py"
+      - "tests/core/test_initial_delivery.py"
+      - "tests/core/test_native_sqlite_inspection.py"
+      - "tests/contract/test_a2a*.py"
+      - "tests/contract/test_a2a_sdk_http_json_optional_methods.py"
+      - "tests/contract/test_a2a_sdk_malformed_streaming_admission.py"
+      - "tests/contract/test_a2a_workflow_calls.py"
+      - "tests/contract/test_a2a_sdk_inbound.py"
+      - "tests/contract/test_a2a_initial_delivery.py"
+      - "tests/contract/_a2a_initial_delivery_worker.py"
+      - "tests/contract/_a2a_initial_delivery_race_worker.py"
+      - "tests/core/test_recovery_definitions.py"
+      - "tests/core/test_recovery_sdk_inventory.py"
+      - "tests/core/test_recovery_cooperation.py"
+      - "tests/core/test_grpc_completion_fence.py"
+      - "tests/core/test_recovery_diagnostics.py"
+      - "tests/core/test_protected_approval_dynamic.py"
+      - "tests/core/test_timer_archive_preflight.py"
+      - "tests/core/test_schedule_archive_preflight.py"
+      - "tests/contract/test_workflow_version_recovery.py"
+      - "tests/contract/test_a2a_resume_context_rejection.py"
+      - "tests/contract/test_workflow_version_process_recovery.py"
+      - "tests/contract/_version_recovery_worker.py"
+      - "core/src/open_workflow_agent/protocols.py"
+      - "core/src/open_workflow_agent/security.py"
+      - "core/src/open_workflow_agent/execution_author*.py"
+      - "core/src/open_workflow_agent/execution_context.py"
+      - "core/src/open_workflow_agent/credential_guard.py"
+      - "tests/core/test_execution_author*.py"
+      - "tests/core/test_execution_context_isolation.py"
+      - "tests/core/test_memory_namespaces.py"
+      - "tests/core/test_credential_projection.py"
+      - "tests/core/test_api_execution_authority.py"
+      - "tests/core/test_authenticated_catalog_metadata.py"
+      - "tests/core/_credential_catalog_peer.py"
+      - "tests/contract/test_execution_author*.py"
+      - "tests/contract/_execution_authority_recovery_worker.py"
+      - "core/src/open_workflow_agent/_authentication.py"
+      - "core/src/open_workflow_agent/mcp*.py"
+      - "core/src/open_workflow_agent/sandbox/**"
+      - "core/uv.lock"
+      - "tests/contract/test_mcp_sdk_calls.py"
+      - "tests/contract/test_mcp_stdio_integration.py"
+      - "tests/contract/_mcp_stdio_sdk_server.py"
+      - "tests/_mcp_sdk_fixture.py"
+      - "hatch_build.py"
+      - "core/hatch_build.py"
+      - "engines/adk/hatch_build.py"
+      - "engines/langgraph/hatch_build.py"
+      - "core/src/open_workflow_agent/lifecycle.py"
+      - "tests/core/test_external_recovery.py"
+      - "tests/core/test_invocation_cancellation_controls.py"
+      - "tests/contract/test_external_operation_keys.py"
+      - "tests/contract/test_external_recovery_process.py"
+      - "tests/contract/test_external_recovery_native_corruption.py"
+      - "tests/contract/test_host_drain_child_controls.py"
+      - "tests/contract/test_explicit_compensation.py"
+      - "tests/contract/_external_receiver.py"
+      - "tests/contract/_external_recovery_worker.py"
+      - "tests/contract/_host_drain_child_worker.py"
+      - "core/src/open_workflow_agent/children.py"
+      - "core/src/open_workflow_agent/child_dispatcher.py"
+      - "core/src/open_workflow_agent/child_waits.py"
+      - "core/src/open_workflow_agent/child_wait_dispatcher.py"
+      - "core/src/open_workflow_agent/child_suspension.py"
+      - "core/src/open_workflow_agent/child_rescan.py"
+      - "core/src/open_workflow_agent/engine.py"
+      - "core/src/open_workflow_agent/forks.py"
+      - "core/src/open_workflow_agent/effects.py"
       - "core/src/open_workflow_agent/config.py"
       - "core/src/open_workflow_agent/approvals.py"
+      - "core/src/open_workflow_agent/approval_dispatcher.py"
+      - "core/src/open_workflow_agent/protected_approval*.py"
+      - "tests/core/test_protected_approval*.py"
+      - "tests/core/test_approval_dispatcher.py"
+      - "tests/contract/test_protected_approval*.py"
+      - "tests/contract/_protected_approval*.py"
+      - "tests/ci/test_protected_approval_ci_selection.py"
+      - "tests/ci/test_execution_authority_ci_selection.py"
+      - "core/src/open_workflow_agent/agent_roles.py"
+      - "core/src/open_workflow_agent/bounded_memory.py"
+      - "core/src/open_workflow_agent/memory.py"
+      - "core/src/open_workflow_agent/model_responses.py"
+      - "core/src/open_workflow_agent/catalog.py"
+      - "core/src/open_workflow_agent/event_transport.py"
+      - "tests/core/test_bounded_memory.py"
+      - "tests/core/test_provider_model_spi.py"
+      - "tests/core/test_provider_service_composition.py"
+      - "tests/core/test_event_transport.py"
+      - "tests/contract/test_selected_adapter*.py"
+      - "tests/contract/_selected_adapter*.py"
+      - "tests/ci/test_selected_adapter_ci_selection.py"
+      - "resources/patterns/**"
+      - "tests/core/test_agent_role*.py"
+      - "tests/contract/*agent_pattern*.py"
+      - "tests/ci/test_agent_pattern_ci_selection.py"
+      - "core/src/open_workflow_agent/events.py"
+      - "core/src/open_workflow_agent/event_store.py"
+      - "core/src/open_workflow_agent/durable_events.py"
+      - "core/src/open_workflow_agent/event_matching.py"
+      - "core/src/open_workflow_agent/_effect_storage.py"
       - "core/src/open_workflow_agent/scheduling.py"
+      - "core/src/open_workflow_agent/timers.py"
+      - "core/src/open_workflow_agent/timer_dispatcher.py"
+      - "core/src/open_workflow_agent/schedule_profile.py"
+      - "core/src/open_workflow_agent/_schedule_store.py"
+      - "core/src/open_workflow_agent/_schedule_storage.py"
+      - "core/src/open_workflow_agent/_event_triggers.py"
       - "engines/adk/src/open_workflow_agent_adk/__init__.py"
       - "engines/adk/src/open_workflow_agent_adk/native.py"
       - "engines/langgraph/src/open_workflow_agent_langgraph/__init__.py"
       - "engines/langgraph/src/open_workflow_agent_langgraph/native.py"
+      - "engines/langgraph/src/open_workflow_agent_langgraph/graph.py"
+      - "engines/agent-framework/src/open_workflow_agent_agent_framework/__init__.py"
+      - "engines/agent-framework/src/open_workflow_agent_agent_framework/native.py"
+      - "core/src/open_workflow_agent/workflow.py"
+      - "core/src/open_workflow_agent/definitions.py"
+      - "core/src/open_workflow_agent/versions.py"
+      - "core/src/open_workflow_agent/external_catalog.py"
+      - "core/src/open_workflow_agent/resources.py"
+      - "core/src/open_workflow_agent/workflow_catalog.py"
+      - "tests/langgraph/test_native_task_graph.py"
+      - "tests/contract/test_native_channel_process_recovery.py"
+      - "tests/contract/test_schema_resources.py"
+      - "tests/contract/test_competitive_forks.py"
+      - "tests/contract/test_checkpoint_recovery.py"
+      - "tests/contract/test_recovery_admission.py"
+      - "tests/contract/test_process_crash_recovery.py"
+      - "tests/contract/_process_recovery_worker.py"
+      - "tests/contract/test_effect_recovery.py"
+      - "tests/contract/test_invocation_writes.py"
+      - "tests/core/test_invocation_store_writes.py"
+      - "tests/core/test_execution_ownership.py"
+      - "tests/core/test_execution_ownership_fences.py"
+      - "tests/core/test_action_progress_ownership.py"
+      - "tests/contract/test_action_execution_authority.py"
+      - "tests/contract/test_runtime_execution_ownership.py"
+      - "tests/contract/test_native_checkpoint_fencing.py"
+      - "tests/contract/test_native_state_consistency.py"
+      - "tests/contract/test_adk_native_event_consistency.py"
+      - "tests/contract/test_native_receipt_consistency.py"
+      - "tests/contract/test_native_receipt_fork_consistency.py"
+      - "tests/contract/test_native_scope_dependencies.py"
+      - "tests/contract/test_sandbox_effect_recovery.py"
+      - "tests/contract/test_event_child_effect_recovery.py"
+      - "tests/contract/test_child_invocation_dependencies.py"
+      - "tests/contract/test_detached_children.py"
+      - "tests/contract/test_recursive_children.py"
+      - "tests/contract/test_synchronous_child_waits.py"
+      - "tests/contract/test_child_lifecycle_acceptance.py"
+      - "tests/contract/_child_wait_recovery_worker.py"
+      - "tests/contract/test_detached_child_process_recovery.py"
+      - "tests/contract/_detached_child_recovery_worker.py"
+      - "tests/contract/test_retry_error_context.py"
+      - "tests/contract/test_retry_timing.py"
+      - "tests/contract/test_deadline_recovery.py"
+      - "tests/contract/test_retry_schedule_recovery.py"
+      - "tests/contract/test_timing_process_recovery.py"
+      - "tests/contract/_timing_recovery_worker.py"
+      - "tests/contract/test_durable_events.py"
+      - "tests/contract/test_durable_event_process_recovery.py"
+      - "tests/contract/_durable_event_recovery_worker.py"
+      - "tests/contract/test_durable_timers.py"
+      - "tests/contract/test_durable_timer_forks.py"
+      - "tests/contract/test_durable_timer_process_recovery.py"
+      - "tests/contract/_durable_timer_recovery_worker.py"
+      - "tests/contract/test_durable_scheduling.py"
+      - "tests/contract/test_schedule_event_triggers.py"
+      - "tests/core/test_timer_store.py"
+      - "tests/core/test_child_workflow_budgets.py"
+      - "tests/core/test_child_delivery_guards.py"
+      - "tests/core/test_child_wait_store.py"
+      - "tests/core/test_child_control_validation.py"
+      - "tests/core/test_child_rescan.py"
+      - "tests/core/test_child_event_dependencies.py"
+      - "tests/core/test_child_terminal_provenance.py"
+      - "tests/core/test_timer_dispatcher_ownership.py"
+      - "tests/core/test_schedule_store.py"
+      - "tests/core/test_event_triggers.py"
+      - "tests/core/test_event_store.py"
+      - "tests/core/test_durable_event_api.py"
+      - "tests/core/test_durable_event_approvals.py"
+      - "tests/core/test_policy_decisions.py"
       - "tests/core/test_postgres_persistence.py"
       - "docker/Dockerfile.adk"
       - "docker/Dockerfile.langgraph"
@@ -28,9 +238,11 @@ on:
       - "core/pyproject.toml"
       - "engines/adk/pyproject.toml"
       - "engines/langgraph/pyproject.toml"
+      - "engines/agent-framework/pyproject.toml"
       - "uv.lock"
       - "engines/adk/uv.lock"
       - "engines/langgraph/uv.lock"
+      - "engines/agent-framework/uv.lock"
 
 permissions:
   contents: read
@@ -46,7 +258,8 @@ jobs:
   postgres-core:
     name: PostgreSQL common-store integration
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16
@@ -63,6 +276,8 @@ jobs:
           --health-retries 12
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
@@ -76,16 +291,515 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 12m \
+            uv run --locked --extra knowledge --extra postgres pytest tests/core/test_postgres_persistence.py \
+            tests/core/test_effect_journal.py \
+            tests/core/test_external_recovery.py \
+            tests/core/test_recovery_definitions.py \
+            tests/core/test_recovery_sdk_inventory.py \
+            tests/core/test_recovery_cooperation.py \
+            tests/core/test_grpc_completion_fence.py \
+            tests/core/test_recovery_diagnostics.py \
+            tests/core/test_timer_archive_preflight.py \
+            tests/core/test_schedule_archive_preflight.py \
+            tests/core/test_initial_delivery.py \
+            tests/core/test_openapi_admission.py \
+            tests/core/test_executable_source_admission.py \
+            tests/core/test_sandbox_jobs.py \
+            tests/core/test_sandbox_job_dispatcher.py \
+            tests/core/test_background_job_runtime.py \
+            tests/core/test_a2a_card_admission.py \
+            tests/core/test_invocation_cancellation_controls.py \
+            tests/core/test_policy_decisions.py \
+            tests/core/test_event_store.py \
+            tests/core/test_durable_event_api.py \
+            tests/core/test_durable_event_approvals.py \
+            tests/core/test_protected_approval_dynamic.py \
+            tests/core/test_protected_approvals.py \
+            tests/core/test_approval_dispatcher.py \
+            tests/core/test_protected_approval_recovery.py \
+            tests/core/test_execution_authority.py \
+            tests/core/test_execution_authorization.py \
+            tests/core/test_execution_context_isolation.py \
+            tests/core/test_memory_namespaces.py \
+            tests/core/test_credential_projection.py \
+            tests/core/test_api_execution_authority.py \
+            tests/core/test_authenticated_catalog_metadata.py \
+            tests/core/test_agent_roles.py \
+            tests/core/test_agent_role_boundaries.py \
+            tests/core/test_bounded_memory.py \
+            tests/core/test_provider_model_spi.py \
+            tests/core/test_provider_service_composition.py \
+            tests/core/test_event_transport.py \
+            tests/core/test_timer_store.py \
+            tests/core/test_child_workflow_budgets.py \
+            tests/core/test_child_delivery_guards.py \
+            tests/core/test_child_wait_store.py \
+            tests/core/test_child_control_validation.py \
+            tests/core/test_child_rescan.py \
+            tests/core/test_child_event_dependencies.py \
+            tests/core/test_child_terminal_provenance.py \
+            tests/core/test_timer_dispatcher_ownership.py \
+            tests/core/test_schedule_store.py \
+            tests/core/test_event_triggers.py \
+            tests/core/test_execution_ownership.py tests/core/test_execution_ownership_fences.py \
+            tests/core/test_action_progress_ownership.py -vv --durations=20
+  postgres-langgraph:
+    name: PostgreSQL LangGraph native recovery
+    runs-on: ubuntu-latest
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Verify native LangGraph task checkpoints and interrupted restart
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
           timeout --signal=TERM --kill-after=30s 5m \
-            uv run --locked --extra knowledge --extra postgres pytest tests/core/test_postgres_persistence.py -vv --durations=20
+            uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/langgraph/test_native_task_graph.py \
+            ../../tests/contract/test_native_channel_process_recovery.py -vv --durations=20
+      - name: Verify competitive fork and invocation recovery on native LangGraph with PostgreSQL
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 30m \
+            uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
+            ../../tests/contract/test_checkpoint_recovery.py \
+            ../../tests/contract/test_recovery_admission.py \
+            ../../tests/contract/test_runtime_execution_ownership.py \
+            ../../tests/contract/test_action_execution_authority.py \
+            ../../tests/contract/test_native_checkpoint_fencing.py \
+            ../../tests/contract/test_native_state_consistency.py \
+            ../../tests/contract/test_native_receipt_consistency.py \
+            ../../tests/contract/test_native_receipt_fork_consistency.py \
+            ../../tests/contract/test_native_scope_dependencies.py \
+            ../../tests/contract/test_sandbox_effect_recovery.py \
+            ../../tests/contract/test_event_child_effect_recovery.py \
+            ../../tests/contract/test_child_invocation_dependencies.py \
+            ../../tests/contract/test_detached_children.py \
+            ../../tests/contract/test_recursive_children.py \
+            ../../tests/contract/test_synchronous_child_waits.py \
+            ../../tests/contract/test_child_lifecycle_acceptance.py \
+            ../../tests/contract/test_detached_child_process_recovery.py \
+            ../../tests/contract/test_retry_error_context.py \
+            ../../tests/contract/test_retry_timing.py \
+            ../../tests/contract/test_deadline_recovery.py \
+            ../../tests/contract/test_retry_schedule_recovery.py \
+            ../../tests/contract/test_timing_process_recovery.py \
+            ../../tests/contract/test_durable_events.py \
+            ../../tests/contract/test_durable_event_process_recovery.py \
+            ../../tests/contract/test_durable_timers.py \
+            ../../tests/contract/test_durable_timer_forks.py \
+            ../../tests/contract/test_durable_timer_process_recovery.py \
+            ../../tests/contract/test_durable_scheduling.py \
+            ../../tests/contract/test_schedule_event_triggers.py \
+            ../../tests/contract/test_process_crash_recovery.py \
+            ../../tests/contract/test_effect_recovery.py \
+            ../../tests/contract/test_invocation_writes.py \
+            -k 'postgresql and (langgraph or completed_native_scope_dependencies)' -vv --durations=20
+  postgres-adk:
+    name: PostgreSQL ADK native recovery
+    runs-on: ubuntu-latest
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Verify competitive fork and invocation recovery on native ADK with PostgreSQL
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 30m \
+            uv run --directory engines/adk --locked --exact --extra native --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
+            ../../tests/contract/test_checkpoint_recovery.py \
+            ../../tests/contract/test_recovery_admission.py \
+            ../../tests/contract/test_adk_native_event_consistency.py \
+            ../../tests/contract/test_native_receipt_consistency.py \
+            ../../tests/contract/test_native_receipt_fork_consistency.py \
+            ../../tests/contract/test_runtime_execution_ownership.py \
+            ../../tests/contract/test_action_execution_authority.py \
+            ../../tests/contract/test_native_checkpoint_fencing.py \
+            ../../tests/contract/test_process_crash_recovery.py \
+            ../../tests/contract/test_effect_recovery.py \
+            ../../tests/contract/test_invocation_writes.py \
+            ../../tests/contract/test_sandbox_effect_recovery.py \
+            ../../tests/contract/test_event_child_effect_recovery.py \
+            ../../tests/contract/test_child_invocation_dependencies.py \
+            ../../tests/contract/test_detached_children.py \
+            ../../tests/contract/test_recursive_children.py \
+            ../../tests/contract/test_synchronous_child_waits.py \
+            ../../tests/contract/test_child_lifecycle_acceptance.py \
+            ../../tests/contract/test_detached_child_process_recovery.py \
+            ../../tests/contract/test_retry_error_context.py \
+            ../../tests/contract/test_retry_timing.py \
+            ../../tests/contract/test_deadline_recovery.py \
+            ../../tests/contract/test_retry_schedule_recovery.py \
+            ../../tests/contract/test_timing_process_recovery.py \
+            ../../tests/contract/test_durable_events.py \
+            ../../tests/contract/test_durable_event_process_recovery.py \
+            ../../tests/contract/test_durable_timers.py \
+            ../../tests/contract/test_durable_timer_forks.py \
+            ../../tests/contract/test_durable_timer_process_recovery.py \
+            ../../tests/contract/test_durable_scheduling.py \
+            ../../tests/contract/test_schedule_event_triggers.py \
+            -k 'postgresql and adk' -vv --durations=20
+  postgres-agent-framework:
+    name: PostgreSQL optional Agent Framework native recovery
+    runs-on: ubuntu-latest
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Verify competitive fork and invocation recovery on optional Agent Framework with PostgreSQL
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 12m \
+            uv run --directory engines/agent-framework --locked --exact --extra native --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_competitive_forks.py \
+            ../../tests/contract/test_checkpoint_recovery.py \
+            ../../tests/contract/test_recovery_admission.py \
+            ../../tests/contract/test_runtime_execution_ownership.py \
+            ../../tests/contract/test_action_execution_authority.py \
+            ../../tests/contract/test_process_crash_recovery.py \
+            ../../tests/contract/test_effect_recovery.py \
+            ../../tests/contract/test_invocation_writes.py \
+            ../../tests/contract/test_sandbox_effect_recovery.py \
+            ../../tests/contract/test_event_child_effect_recovery.py \
+            ../../tests/contract/test_child_invocation_dependencies.py \
+            ../../tests/contract/test_detached_children.py \
+            ../../tests/contract/test_recursive_children.py \
+            ../../tests/contract/test_synchronous_child_waits.py \
+            ../../tests/contract/test_child_lifecycle_acceptance.py \
+            ../../tests/contract/test_detached_child_process_recovery.py \
+            -k 'postgresql and agent-framework' -vv --durations=20
+
+  postgres-adk-lifecycle:
+    name: PostgreSQL ADK lifecycle recovery
+    runs-on: ubuntu-latest
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Verify native PostgreSQL lifecycle and trusted receiver recovery
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 14m \
+            uv run --directory engines/adk --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_external_operation_keys.py \
+            ../../tests/contract/test_external_recovery_process.py \
+            ../../tests/contract/test_external_recovery_native_corruption.py \
+            ../../tests/contract/test_host_drain_child_controls.py \
+            ../../tests/contract/test_explicit_compensation.py \
+            ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_a2a_resume_context_rejection.py \
+            ../../tests/contract/test_a2a_resume_adk_native_corruption.py \
+            ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py \
+            ../../tests/contract/test_workflow_version_process_recovery.py \
+            ../../tests/contract/test_mcp_sdk_calls.py \
+            ../../tests/contract/test_mcp_stdio_integration.py \
+            ../../tests/contract/test_a2a_workflow_calls.py \
+            ../../tests/contract/test_a2a_sdk_inbound.py \
+            ../../tests/contract/test_a2a_sdk_http_json_optional_methods.py \
+            ../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
+            ../../tests/core/test_a2a_task_routes.py \
+            ../../tests/contract/test_a2a_initial_delivery.py \
+            ../../tests/contract/test_a2a_initial_delivery_process_race.py \
+            ../../tests/contract/test_a2a_native_host_drain.py -vv --durations=20 -k postgresql
+
+  postgres-langgraph-lifecycle:
+    name: PostgreSQL LangGraph lifecycle recovery
+    runs-on: ubuntu-latest
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Verify native PostgreSQL lifecycle and trusted receiver recovery
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 14m \
+            uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_external_operation_keys.py \
+            ../../tests/contract/test_external_recovery_process.py \
+            ../../tests/contract/test_external_recovery_native_corruption.py \
+            ../../tests/contract/test_host_drain_child_controls.py \
+            ../../tests/contract/test_explicit_compensation.py \
+            ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_a2a_resume_context_rejection.py \
+            ../../tests/contract/test_a2a_resume_native_corruption.py \
+            ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py \
+            ../../tests/contract/test_workflow_version_process_recovery.py \
+            ../../tests/contract/test_mcp_sdk_calls.py \
+            ../../tests/contract/test_mcp_stdio_integration.py \
+            ../../tests/contract/test_a2a_workflow_calls.py \
+            ../../tests/contract/test_a2a_sdk_inbound.py \
+            ../../tests/contract/test_a2a_sdk_http_json_optional_methods.py \
+            ../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
+            ../../tests/core/test_a2a_task_routes.py \
+            ../../tests/contract/test_a2a_initial_delivery.py \
+            ../../tests/contract/test_a2a_native_host_drain.py -vv --durations=20 -k postgresql
+
+  postgres-adk-operations:
+    name: PostgreSQL ADK operation adapter recovery
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON_PREFERENCE: only-system
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Pin uv to the hosted Python with pidfd support
+        shell: bash
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
+      - name: Verify native PostgreSQL operation adapters and process recovery
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run --directory engines/adk --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio python -c "import os, signal; assert callable(getattr(os, 'pidfd_open', None)); assert callable(getattr(signal, 'pidfd_send_signal', None)); fd = os.pidfd_open(os.getpid()); os.close(fd)"
+          timeout --signal=TERM --kill-after=30s 25m \
+            uv run --directory engines/adk --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \
+            ../../tests/contract/test_openapi_process_recovery.py \
+            ../../tests/contract/test_grpc_calls.py \
+            ../../tests/contract/test_grpc_process_recovery.py \
+            ../../tests/contract/test_protected_approval_workflows.py \
+            ../../tests/contract/test_protected_approval_process_recovery.py \
+            ../../tests/contract/test_execution_authority_isolation.py \
+            ../../tests/contract/test_execution_authority_process_recovery.py \
+            ../../tests/contract/test_agent_patterns.py \
+            ../../tests/contract/test_agent_pattern_process_recovery.py \
+            ../../tests/contract/test_selected_adapter_contracts.py \
+            ../../tests/contract/test_selected_adapter_process_recovery.py \
+            ../../tests/core/test_executable_source_admission.py \
+            ../../tests/contract/test_executable_source_calls.py \
+            ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql
+
+  postgres-langgraph-operations:
+    name: PostgreSQL LangGraph operation adapter recovery
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON_PREFERENCE: only-system
+    # Each SDK has a fresh database and bounded independent recovery job.
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Pin uv to the hosted Python with pidfd support
+        shell: bash
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
+      - name: Verify native PostgreSQL operation adapters and process recovery
+        env:
+          OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+          PYTHONUNBUFFERED: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio python -c "import os, signal; assert callable(getattr(os, 'pidfd_open', None)); assert callable(getattr(signal, 'pidfd_send_signal', None)); fd = os.pidfd_open(os.getpid()); os.close(fd)"
+          timeout --signal=TERM --kill-after=30s 20m \
+            uv run --directory engines/langgraph --locked --exact --extra knowledge --extra postgres \
+            --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \
+            ../../tests/contract/test_openapi_process_recovery.py \
+            ../../tests/contract/test_grpc_calls.py \
+            ../../tests/contract/test_grpc_process_recovery.py \
+            ../../tests/contract/test_protected_approval_workflows.py \
+            ../../tests/contract/test_protected_approval_process_recovery.py \
+            ../../tests/contract/test_execution_authority_isolation.py \
+            ../../tests/contract/test_execution_authority_process_recovery.py \
+            ../../tests/contract/test_agent_patterns.py \
+            ../../tests/contract/test_agent_pattern_process_recovery.py \
+            ../../tests/contract/test_selected_adapter_contracts.py \
+            ../../tests/contract/test_selected_adapter_process_recovery.py \
+            ../../tests/core/test_executable_source_admission.py \
+            ../../tests/contract/test_executable_source_calls.py \
+            ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql
 
   postgres-runtime:
     name: PostgreSQL persistence ${{ matrix.engine }} acceptance
     runs-on: ubuntu-latest
-    needs: postgres-core
+    needs: [postgres-core, postgres-langgraph, postgres-adk, postgres-agent-framework, postgres-adk-lifecycle, postgres-langgraph-lifecycle, postgres-adk-operations, postgres-langgraph-operations]
     timeout-minutes: 25
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - engine: adk
@@ -180,6 +894,8 @@ jobs:
             sleep 1
           done
           curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/health/ready" >/dev/null
+          capabilities="$(curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/v1/capabilities")"
+          python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["engine"] == sys.argv[2]; assert d["workflowDsl"] == "1.0.3"; assert d["features"]["scheduling"] == {"after": True, "every": True, "cron": True, "on": True, "durable": True, "owner": "fenced_workers"}' "$capabilities" "${{ matrix.engine }}"
           curl --fail --silent --request POST --header 'content-type: application/json' \
             --data '{"input":{"question":"postgres-after-restart"}}' \
             "http://127.0.0.1:${{ matrix.port }}/v1/invoke" \
@@ -191,3 +907,100 @@ jobs:
           name: docker-${{ matrix.engine }}-postgres-logs
           path: ${{ runner.temp }}/owa-${{ matrix.engine }}-postgres*.log
           if-no-files-found: ignore
+
+  s4-06-matched-benchmark:
+    name: S4-06 matched ${{ matrix.engine }} measurements
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - engine: adk
+            extra: native
+          - engine: langgraph
+            extra: sqlite
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: owa
+          POSTGRES_PASSWORD: owa
+          POSTGRES_DB: owa
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U owa -d owa"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      OWA_TEST_POSTGRES_URL: postgresql://owa:owa@127.0.0.1:5432/owa
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Run matched SQLite and PostgreSQL profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          uv run --directory engines/${{ matrix.engine }} --locked --exact \
+            --extra knowledge --extra ${{ matrix.extra }} --extra postgres \
+            python ../../benchmarks/matched.py --engine ${{ matrix.engine }} --backend sqlite \
+            --iterations 30 --warmups 5 --concurrency 8 --recovery-samples 3 \
+            --output "$RUNNER_TEMP/matched-${{ matrix.engine }}-sqlite.json"
+          timeout --signal=TERM --kill-after=30s 12m \
+            uv run --directory engines/${{ matrix.engine }} --locked --exact \
+            --extra knowledge --extra ${{ matrix.extra }} --extra postgres \
+            python ../../benchmarks/matched.py --engine ${{ matrix.engine }} --backend postgresql \
+            --iterations 30 --warmups 5 --concurrency 8 --recovery-samples 3 \
+            --output "$RUNNER_TEMP/matched-${{ matrix.engine }}-postgresql.json"
+      - name: Upload matched engine profiles
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: matched-benchmark-${{ matrix.engine }}
+          path: ${{ runner.temp }}/matched-${{ matrix.engine }}-*.json
+          if-no-files-found: error
+
+  s4-06-benchmark-report:
+    name: S4-06 aggregate benchmark report
+    runs-on: ubuntu-latest
+    needs: [s4-06-matched-benchmark]
+    if: needs.s4-06-matched-benchmark.result == 'success'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Download all four engine/backend profiles
+        uses: actions/download-artifact@v7
+        with:
+          pattern: matched-benchmark-*
+          path: ${{ runner.temp }}/matched-profiles
+          merge-multiple: true
+      - name: Validate and aggregate matched measurements
+        run: |
+          set -euo pipefail
+          uv run --locked python benchmarks/aggregate_matched.py \
+            --inputs ${{ runner.temp }}/matched-profiles/matched-*.json \
+            --output "$RUNNER_TEMP/s4-06-matched-report.json"
+      - name: Upload aggregate S4-06 report
+        uses: actions/upload-artifact@v7
+        with:
+          name: s4-06-matched-performance-report
+          path: ${{ runner.temp }}/s4-06-matched-report.json
+          if-no-files-found: error

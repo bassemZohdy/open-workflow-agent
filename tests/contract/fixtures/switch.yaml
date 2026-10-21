@@ -7,7 +7,7 @@ do:
   - route:
       switch:
         - priority:
-            when: ${ .kind == 'priority' }
+            when: ${ .kind == "priority" }
             then: continue
         - default:
             then: continue

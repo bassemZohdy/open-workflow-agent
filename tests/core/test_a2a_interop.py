@@ -399,12 +399,20 @@ async def test_agent_card_advertises_bearer_security_when_configured(tmp_path) -
                 # Card should advertise security schemes
                 assert "securitySchemes" in card
                 assert "bearer" in card["securitySchemes"]
-                assert card["securitySchemes"]["bearer"]["type"] == "http"
-                assert card["securitySchemes"]["bearer"]["scheme"] == "bearer"
+                assert card["securitySchemes"]["bearer"] == {
+                    "httpAuthSecurityScheme": {"scheme": "bearer"}
+                }
+                assert card["securityRequirements"] == [{"schemes": {"bearer": {"list": []}}}]
+                assert "security" not in card
+                assert "partner-token" not in str(card)
+                from a2a.types.a2a_pb2 import AgentCard
+                from google.protobuf.json_format import ParseDict
 
-                # Card should have security requirements
-                assert "security" in card
-                assert len(card["security"]) > 0
+                typed = ParseDict(card, AgentCard(), ignore_unknown_fields=False)
+                assert typed.security_schemes["bearer"].http_auth_security_scheme.scheme == "bearer"
+                assert "bearer" in typed.security_requirements[0].schemes
+                assert list(typed.security_requirements[0].schemes["bearer"].list) == []
+
     finally:
         monkeypatch.undo()
 

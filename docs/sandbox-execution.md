@@ -87,14 +87,11 @@ class SandboxBackend(Protocol):
     async def execute(
         self,
         request: SandboxExecutionRequest,
-    ) -> SandboxExecutionResult:
-        ...
+    ) -> SandboxExecutionResult: ...
 
-    async def cancel(self, execution_id: str) -> None:
-        ...
+    async def cancel(self, execution_id: str) -> None: ...
 
-    def capabilities(self) -> SandboxCapabilities:
-        ...
+    def capabilities(self) -> SandboxCapabilities: ...
 ```
 
 A request should carry only engine-neutral execution information, for example:
@@ -147,6 +144,10 @@ Minimum behavior:
 - use an argument-vector API rather than implicit shell interpolation whenever the Open Workflow operation permits it;
 - do not inherit the complete runtime environment by default;
 - provide an explicit environment allowlist/injection model;
+- bind `TMPDIR`, `TEMP`, and `TMP` to the execution workspace so language
+  runtimes do not place temporary files in a host default directory;
+- reject runtime isolation environment names without case sensitivity so
+  Windows casing cannot bypass the workspace boundary;
 - create a dedicated temporary working directory for each execution;
 - do not inherit the runtime's current working directory as an execution workspace;
 - bound stdin size, stdout size, stderr size, and total captured output;

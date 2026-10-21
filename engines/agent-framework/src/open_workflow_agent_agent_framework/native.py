@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from open_workflow_agent.expressions import validate_expression_data
+
+_NULL_INPUT = b"owa/null-input/v1"
+
 try:
     from agent_framework import Executor, WorkflowBuilder, WorkflowContext, handler
 
@@ -43,6 +47,8 @@ class AgentFrameworkNativeAdapter:
     ) -> Any:
         if not self.available:
             return await runner(input_data)
+        if isinstance(input_data, bytes) and input_data == _NULL_INPUT:
+            validate_expression_data(input_data)
 
         executor_base = Executor
         workflow_builder = WorkflowBuilder
@@ -58,6 +64,8 @@ class AgentFrameworkNativeAdapter:
 
             @handler_decorator
             async def process(self, value: Any, ctx: WorkflowContext[Any]) -> None:
+                if isinstance(value, bytes) and value == _NULL_INPUT:
+                    value = None
                 await ctx.yield_output(await runner(value))
 
         executor = OpenWorkflowExecutor()
@@ -65,7 +73,7 @@ class AgentFrameworkNativeAdapter:
             start_executor=executor,
             name="open-workflow-agent-portable-bridge",
         ).build()
-        events = await workflow.run(input_data)
+        events = await workflow.run(_NULL_INPUT if input_data is None else input_data)
         outputs = events.get_outputs()
         if not outputs:
             raise RuntimeError("Agent Framework workflow completed without an output")

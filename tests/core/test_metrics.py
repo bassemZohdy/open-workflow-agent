@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from fastapi.testclient import TestClient
 from open_workflow_agent.api import create_app
 from open_workflow_agent.config import RuntimeConfig
@@ -76,6 +77,93 @@ def test_metrics_registry_renders_lifecycle_and_histogram_samples() -> None:
         in rendered
     )
     assert 'owa_workflow_duration_seconds_count{engine="portable",status="completed"} 1' in rendered
+
+
+@pytest.mark.parametrize(
+    ("event_type", "status"),
+    [
+        ("TaskCompleted", "completed"),
+        ("TaskFaulted", "faulted"),
+        ("TaskCancelled", "cancelled"),
+    ],
+)
+def test_task_duration_histogram_uses_only_engine_and_terminal_status_labels(
+    event_type: str, status: str
+) -> None:
+    metrics = Metrics()
+    metrics.observe_lifecycle(
+        WorkflowEvent(
+            event_type=event_type,
+            invocation_id="private-invocation-id",
+            session_id="private-session-id",
+            task_reference="/private/task/reference",
+            operation_id="private-operation-id",
+            engine="langgraph",
+            status="untrusted-status-is-ignored",
+            duration=0.02,
+        )
+    )
+
+    rendered = metrics.render()
+
+    assert (
+        f'owa_task_duration_seconds_bucket{{engine="langgraph",status="{status}",le="0.025"}} 1'
+        in rendered
+    )
+    assert f'owa_task_duration_seconds_count{{engine="langgraph",status="{status}"}} 1' in rendered
+    assert f'owa_task_duration_seconds_sum{{engine="langgraph",status="{status}"}} 0.02' in rendered
+    assert "private-invocation-id" not in rendered
+    assert "private-session-id" not in rendered
+    assert "private-operation-id" not in rendered
+    assert "/private/task/reference" not in rendered
+    task_duration_metrics = "\n".join(
+        line for line in rendered.splitlines() if line.startswith("owa_task_duration_seconds_")
+    )
+    assert "untrusted-status-is-ignored" not in task_duration_metrics
+    task_event_metrics = "\n".join(
+        line for line in rendered.splitlines() if line.startswith("owa_task_events_total")
+    )
+    assert (
+        task_event_metrics
+        == f'owa_task_events_total{{engine="langgraph",event="{event_type}",status="unknown"}} 1.0'
+    )
+    assert "untrusted-status-is-ignored" not in task_event_metrics
+
+
+def test_task_duration_histogram_clamps_negative_duration_and_ignores_nonterminal_tasks() -> None:
+    metrics = Metrics()
+    metrics.observe_lifecycle(
+        WorkflowEvent(event_type="TaskProgress", engine="portable", duration=2.0)
+    )
+    metrics.observe_lifecycle(
+        WorkflowEvent(event_type="TaskCompleted", engine="portable", duration=-1.0)
+    )
+
+    rendered = metrics.render()
+
+    assert 'owa_task_duration_seconds_count{engine="portable",status="completed"} 1' in rendered
+    assert 'owa_task_duration_seconds_sum{engine="portable",status="completed"} 0.0' in rendered
+
+
+def test_workflow_terminal_metric_status_comes_from_the_event_type() -> None:
+    metrics = Metrics()
+    metrics.observe_lifecycle(
+        WorkflowEvent(
+            event_type="WorkflowFaulted",
+            engine="portable",
+            status="untrusted-high-cardinality-status",
+        )
+    )
+
+    rendered = metrics.render()
+    workflow_finished = "\n".join(
+        line for line in rendered.splitlines() if line.startswith("owa_workflow_finished_total")
+    )
+
+    assert workflow_finished == (
+        'owa_workflow_finished_total{engine="portable",status="faulted"} 1.0'
+    )
+    assert "untrusted-high-cardinality-status" not in workflow_finished
 
 
 def test_metrics_endpoint_exposes_runtime_and_http_metrics(tmp_path) -> None:

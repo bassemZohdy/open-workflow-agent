@@ -1,6 +1,29 @@
 {
   "components": {
     "schemas": {
+      "ApprovalAssignmentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "assignee": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Assignee",
+            "type": "string"
+          },
+          "revision": {
+            "maximum": 128.0,
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assignee",
+          "revision"
+        ],
+        "title": "ApprovalAssignmentRequest",
+        "type": "object"
+      },
       "ApprovalDecisionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -11,6 +34,19 @@
             ],
             "title": "Decision",
             "type": "string"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "maximum": 129.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision"
           },
           "value": {
             "title": "Value"
@@ -284,6 +320,22 @@
               ],
               "title": "X-Operator-Id"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-Approval-Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Approval-Authorization"
+            }
           }
         ],
         "responses": {
@@ -359,6 +411,22 @@
                 }
               ],
               "title": "X-Operator-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Approval-Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Approval-Authorization"
             }
           }
         ],
@@ -449,6 +517,22 @@
               ],
               "title": "Idempotency-Key"
             }
+          },
+          {
+            "in": "header",
+            "name": "X-Approval-Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Approval-Authorization"
+            }
           }
         ],
         "requestBody": {
@@ -486,6 +570,204 @@
           }
         },
         "summary": "Decide Approval"
+      }
+    },
+    "/v1/approvals/{approval_id}/escalate": {
+      "post": {
+        "operationId": "change_approval_assignment_v1_approvals__approval_id__escalate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "title": "Approval Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Approval-Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Approval-Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Operator-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Operator-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalAssignmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Change Approval Assignment V1 Approvals  Approval Id  Escalate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Approval Assignment"
+      }
+    },
+    "/v1/approvals/{approval_id}/reassign": {
+      "post": {
+        "operationId": "change_approval_assignment_v1_approvals__approval_id__reassign_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "approval_id",
+            "required": true,
+            "schema": {
+              "title": "Approval Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Approval-Authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Approval-Authorization"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Operator-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Operator-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApprovalAssignmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Change Approval Assignment V1 Approvals  Approval Id  Reassign Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Approval Assignment"
       }
     },
     "/v1/capabilities": {
@@ -735,6 +1017,47 @@
           }
         },
         "summary": "Cancel"
+      }
+    },
+    "/v1/invocations/{invocation_id}/recovery": {
+      "get": {
+        "operationId": "inspect_recovery_v1_invocations__invocation_id__recovery_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invocation_id",
+            "required": true,
+            "schema": {
+              "title": "Invocation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Inspect Recovery V1 Invocations  Invocation Id  Recovery Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Inspect Recovery"
       }
     },
     "/v1/invocations/{invocation_id}/resume": {

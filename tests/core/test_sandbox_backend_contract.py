@@ -15,6 +15,7 @@ from open_workflow_agent.sandbox_capabilities import (
     internal_backend_capabilities,
     validate_backend_compatibility,
 )
+from sandbox_fixture_policy import supported_process_limits
 
 
 def test_input_files_are_relative_and_traversal_free() -> None:
@@ -25,9 +26,63 @@ def test_input_files_are_relative_and_traversal_free() -> None:
         SandboxInputFile(path="../secret", content=b"")
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        r"..\secret",
+        r"input\..\secret",
+        r"C:\Windows\system.ini",
+        "C:/Windows/system.ini",
+        r"\\server\share\secret",
+    ],
+)
+def test_input_files_reject_windows_absolute_and_traversal_paths(path: str) -> None:
+    with pytest.raises(ValueError, match="relative and traversal-free"):
+        SandboxInputFile(path=path, content=b"")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "input/NUL",
+        "input/CON.txt",
+        "input/Lpt1.log",
+        "input/data.json:alternate",
+        "input/trailing-dot.",
+        "input/trailing-space ",
+        "input/question?.txt",
+    ],
+)
+def test_input_files_reject_windows_device_and_alias_paths(path: str) -> None:
+    with pytest.raises(ValueError, match="not portable to Windows"):
+        SandboxInputFile(path=path, content=b"")
+
+
+@pytest.mark.parametrize(
+    ("first_path", "second_path"),
+    [
+        ("input/Config.json", "input/config.json"),
+        ("input/caf\u00e9.txt", "input/cafe\u0301.txt"),
+        ("input//config.json", "input/config.json"),
+    ],
+)
+def test_execution_requirements_reject_input_destination_aliases(
+    first_path: str, second_path: str
+) -> None:
+    with pytest.raises(ValueError, match="must not alias"):
+        SandboxExecutionRequirements(
+            kind="script",
+            input_files=(
+                SandboxInputFile(path=first_path, content=b"first"),
+                SandboxInputFile(path=second_path, content=b"second"),
+            ),
+        )
+
+
 def test_internal_backend_maps_to_honest_portable_capabilities(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
         SandboxConfig(
+            **supported_process_limits(),
             enabled=True,
             allow_shell=True,
             workspace_root=str(tmp_path / "sandbox"),
@@ -52,7 +107,12 @@ def test_internal_backend_maps_to_honest_portable_capabilities(tmp_path: Path) -
 
 def test_internal_backend_accepts_only_requirements_it_can_enforce(tmp_path: Path) -> None:
     backend = InternalSandboxBackend(
-        SandboxConfig(enabled=True, workspace_root=str(tmp_path / "sandbox"), memory_bytes=None)
+        SandboxConfig(
+            **supported_process_limits(),
+            enabled=True,
+            workspace_root=str(tmp_path / "sandbox"),
+            memory_bytes=None,
+        )
     )
     capabilities = internal_backend_capabilities(backend.capabilities())
 
@@ -118,7 +178,12 @@ def test_internal_backend_fails_closed_for_stronger_requirements(
     expected_requirement: str,
 ) -> None:
     backend = InternalSandboxBackend(
-        SandboxConfig(enabled=True, workspace_root=str(tmp_path / "sandbox"), memory_bytes=None)
+        SandboxConfig(
+            **supported_process_limits(),
+            enabled=True,
+            workspace_root=str(tmp_path / "sandbox"),
+            memory_bytes=None,
+        )
     )
     capabilities = internal_backend_capabilities(backend.capabilities())
 
