@@ -2207,13 +2207,39 @@ while keeping the public error sanitized, with a regression that excludes path
 and native error text. The exact-source rerun must determine whether the spawn
 failure recurs. No backlog task is marked complete from this failed run.
 
-### Consolidated local validation for current worktree batch
+### Local consolidated validation for source 52abe1f before hosted requalification
 
 The full root suite passed after correcting an aggregate benchmark parameter
 shadowing defect: **4,982 passed, 3,203 skipped, 90.55% coverage** in
-48m05s. The run used the required 90% coverage threshold and included the
-current S3/S4 regressions. Formatting, Ruff, strict mypy, docs validation,
-package builds and recovery-build provenance checks, lock checks, Node package
-tests and the production dependency audit also passed for this batch. This is
-local evidence only; no unchecked backlog task is closed by it. Exact-source
-GitHub workflows remain required after the batch is pushed.
+48m05s. This local run applies to source `52abe1f` before the currently
+authored, uncommitted S3/S4 additions and dependency remediation; it does not
+validate the current worktree. The run used the required 90% coverage threshold.
+Formatting, Ruff, strict mypy, docs validation, package builds and
+recovery-build provenance checks, lock checks, Node package tests and the
+production dependency audit also passed for that earlier batch. This is local
+evidence only; no unchecked backlog task is closed by it. Current exact-source
+GitHub workflows are required after the current batch is pushed.
+
+## Corrected working-tree batch — local validation before hosted requalification
+
+The first consolidated run after adding the S3/S4 regressions completed with
+4,997 passed, 3,206 skipped, and 7 failures in 48m27s. The failures exposed two
+test-expectation mismatches (bounded task status labels and the intentionally
+removed duplicate Windows selector), one protected-approval capacity-counting
+bug, a stale local Pillow 12.3.0 environment despite the lock pinning 13.0.0,
+and two Windows sandbox fixture issues (an inherited launch deadline and a
+PID-file read during its truncate-before-write window). The queue count now
+excludes the request currently being admitted; metrics and CI assertions check
+the intended behavior; the local environment was synchronized to the locked
+Pillow version; and the sandbox fixtures now allow startup headroom and retry
+the brief empty PID-file state. Focused checks passed for each correction.
+
+The corrected consolidated run passed **5,004 tests, skipped 3,206, and
+reported 90.54% core coverage** in 47m14s with the required 90% threshold.
+Formatting (483 files), Ruff, strict mypy (135 source files), Markdown links,
+all six uv lock checks, and root/core wheel and source builds passed. The
+Node.js package tests and production audit had already passed for this same
+source batch before the fixture-only rerun. Exact-source hosted CI, PostgreSQL,
+Agent Framework, External Sandbox, Security, and Docs requalification is still
+required; no backlog checkbox or feature is marked complete from this local
+run.

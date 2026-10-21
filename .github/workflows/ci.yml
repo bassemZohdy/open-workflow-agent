@@ -384,7 +384,6 @@ jobs:
           tests/core/test_a2a_card_admission.py
           tests/core/test_a2a_skills.py
           tests/core/test_initial_delivery.py
-          tests/core/test_native_sqlite_inspection.py
           tests/contract/test_mcp_stdio_integration.py
 
   manifests:

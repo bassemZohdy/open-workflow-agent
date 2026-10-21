@@ -728,7 +728,10 @@ def create_app(
             and record.owner_principal is None
         )
         if record is None or (record.owner_principal != principal and not ownerless_anonymous):
-            raise ScheduleNotFound("schedule not found", details={"schedule_id": schedule_id})
+            # Do not echo an identifier from a lookup that may refer to a
+            # foreign object. A fixed response keeps foreign and missing IDs
+            # indistinguishable at the API boundary.
+            raise ScheduleNotFound("schedule not found")
         return record
 
     @app.get("/v1/schedules/{schedule_id}")
@@ -748,9 +751,7 @@ def create_app(
         try:
             record = await scheduler.cancel(schedule_id, operation_id=idempotency_key)
         except KeyError as exc:
-            raise ScheduleNotFound(
-                "schedule not found", details={"schedule_id": schedule_id}
-            ) from exc
+            raise ScheduleNotFound("schedule not found") from exc
         return record.as_dict()
 
     @app.post("/v1/invoke")

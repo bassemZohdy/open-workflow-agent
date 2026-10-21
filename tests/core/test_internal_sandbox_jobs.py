@@ -78,7 +78,7 @@ def supervisor(tmp_path):
             {
                 "sandbox": {
                     "enabled": True,
-                    "timeout_seconds": 30,
+                    "timeout_seconds": max(30, seconds),
                     "workspace_root": str(root / "workspace"),
                     "executable_search_path": str(Path(sys.executable).parent),
                     "file_size_bytes": None,
@@ -274,7 +274,11 @@ async def test_stale_signed_control_does_not_disable_later_authorized_cancel(sup
 
 
 async def test_actual_job_owner_takeover_fences_old_control_before_ipc(supervisor):
-    _, store, old_lease, backend, _, old_launch = supervisor("import time\ntime.sleep(60)\n")
+    # Leave room for cold supervisor startup and the second owner's admission
+    # under a loaded test runner; the test is about fencing, not deadline expiry.
+    _, store, old_lease, backend, _, old_launch = supervisor(
+        "import time\ntime.sleep(60)\n", seconds=120
+    )
     observed = await backend.submit(old_launch)
     assert observed.state == "running" and observed.binding is not None
     store.record_accepted(old_lease, observed.binding)
@@ -336,9 +340,13 @@ async def test_actual_resource_failure_is_unknown_without_invented_exit_or_relau
     child_pid = None
     if failure == "workspace":
         async with asyncio.timeout(20):
-            while not child_marker.exists():
-                await asyncio.sleep(0.025)
-        child_pid = int(child_marker.read_text())
+            while child_pid is None:
+                try:
+                    child_pid = int(child_marker.read_text())
+                except (FileNotFoundError, ValueError):
+                    # The child's write can make the path visible before its
+                    # PID bytes have been flushed to the filesystem.
+                    await asyncio.sleep(0.025)
     value = (
         observed
         if observed.state == "unknown"

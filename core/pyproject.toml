@@ -39,3 +39,6 @@ build-backend = "hatchling.build"
 packages = ["src/open_workflow_agent"]
 
 [tool.hatch.build.hooks.custom]
+
+[tool.uv]
+override-dependencies = ["pillow>=13.0.0,<14"]

@@ -210,6 +210,57 @@ async def test_native_last_value_channel_is_admitted_written_and_read_by_a_later
     assert not hasattr(result, "native_channels")
 
 
+async def test_required_native_channel_capability_runs_and_resumes_across_wait(services):
+    workflow = generate_default_workflow()
+    workflow["document"]["metadata"] = {
+        "owa": {
+            "nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}],
+            "nativeExtensionData": {
+                "langgraph.channels@1.0.0": {
+                    "channels": [
+                        {
+                            "id": "phase",
+                            "reducer": "last_value",
+                            "initial": "initial",
+                            "writes": [{"task": "/do/0"}],
+                        }
+                    ],
+                    "reads": [
+                        {
+                            "task": "/do/2",
+                            "as": "owa_native_channels",
+                            "channels": ["phase"],
+                        }
+                    ],
+                }
+            },
+        }
+    }
+    workflow["do"] = [
+        {"write_phase": {"set": "ready"}},
+        {"pause": {"wait": {"seconds": 300}}},
+        {"read_phase": {"set": {"observed": "${ $owa_native_channels.phase }"}}},
+    ]
+    plan = compile_workflow(workflow)
+    engine = LangGraphWorkflowEngine()
+    await engine.initialize(services)
+    engine.native.database_path = None
+    handle = _handle(services, plan)
+    try:
+        assert "langgraph.channels@1.0.0" in engine.capabilities().native_extensions
+        assert await engine.compile(plan) is plan
+
+        waiting = await engine.invoke(plan, handle, {})
+        assert waiting.status == "waiting", waiting.error
+
+        resumed = await engine.resume(handle, {"resume": True}, plan)
+        assert resumed.status == "completed", resumed.error
+        assert resumed.output == {"observed": "ready"}
+        assert not hasattr(resumed, "native_channels")
+    finally:
+        await engine.shutdown()
+
+
 async def test_native_channel_oversized_writer_fails_before_checkpoint(services):
     workflow = generate_default_workflow()
     workflow["document"]["metadata"] = {

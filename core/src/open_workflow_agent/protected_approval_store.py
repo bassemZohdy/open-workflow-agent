@@ -563,9 +563,10 @@ class ProtectedApprovalStore:
             )
             return
         pending = self.store._execute(
-            "SELECT COUNT(*) FROM approvals WHERE status='pending'"
+            "SELECT COUNT(*) FROM approvals WHERE status='pending' AND approval_id<>?",
+            (record.approval_id,),
         ).fetchone()[0]
-        if pending > self.max_pending:
+        if pending >= self.max_pending:
             raise ApprovalConflict("protected approval queue is full")
         self.connection.execute(
             f"INSERT INTO {self.requests} VALUES(?,?,?,?,?,?,?,?)",

@@ -229,6 +229,33 @@ async def seed(runtime, *, expired=False, assignee="a"):
     return subject, handle, identity
 
 
+@pytest.mark.asyncio
+async def test_protected_approval_queue_enforces_exact_pending_capacity(approval_runtime):
+    services, _, _ = approval_runtime
+    protected = services.approvals.protected_store
+    assert protected is not None
+    protected.max_pending = 1
+    existing, _, _ = await seed(approval_runtime)
+    before = snapshot(services, existing)
+
+    with pytest.raises(ApprovalConflict, match="protected approval queue is full"):
+        await seed(approval_runtime)
+
+    assert snapshot(services, existing) == before
+    assert (
+        services.approvals.store._execute(
+            f"SELECT COUNT(*) FROM {services.approvals.store._table} WHERE status='pending'"
+        ).fetchone()[0]
+        == 1
+    )
+    assert (
+        services.effect_journal.connection.execute(
+            f"SELECT COUNT(*) FROM {protected.requests}"
+        ).fetchone()[0]
+        == 1
+    )
+
+
 def snapshot(services, subject, *, original=None):
     protected = services.approvals.protected_store
     connection = services.effect_journal.connection

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 import httpx
 import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.errors import UnsupportedWorkflowFeature
 from open_workflow_agent.protocols import HttpClient, ProtocolServices
 from open_workflow_agent.services import RuntimeServices
-from open_workflow_agent.workflow import compile_workflow
+from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
 from open_workflow_agent_adk import AdkWorkflowEngine
 from open_workflow_agent_adk.native import ADK_AVAILABLE
 
@@ -75,6 +77,71 @@ async def test_native_adk_dynamic_plan_invocation(tmp_path):
     resumed = await restarted_engine.resume(persisted, {"question": "again"}, plan)
     assert resumed.status == "completed"
     restarted_services.close()
+
+
+@pytest.mark.asyncio
+async def test_adk_rejects_required_langgraph_channel_extension_before_native_mutation(tmp_path):
+    if not ADK_AVAILABLE:
+        pytest.skip("google-adk optional extra is not installed")
+
+    workflow = generate_default_workflow()
+    workflow["document"]["metadata"] = {
+        "owa": {
+            "nativeExtensions": [{"name": "langgraph.channels", "version": "1.0.0"}],
+            "nativeExtensionData": {
+                "langgraph.channels@1.0.0": {
+                    "channels": [
+                        {
+                            "id": "phase",
+                            "reducer": "last_value",
+                            "initial": "initial",
+                            "writes": [{"task": "/do/0"}],
+                        }
+                    ],
+                    "reads": [
+                        {
+                            "task": "/do/1",
+                            "as": "owa_native_channels",
+                            "channels": ["phase"],
+                        }
+                    ],
+                }
+            },
+        }
+    }
+    workflow["do"] = [
+        {"write_phase": {"set": "ready"}},
+        {"read_phase": {"set": "${ $owa_native_channels.phase }"}},
+    ]
+    plan = compile_workflow(workflow)
+    services = RuntimeServices(
+        RuntimeConfig(), model=FakeModel({"response": "must-not-run"}), database_root=tmp_path
+    )
+    engine = AdkWorkflowEngine()
+    await engine.initialize(services)
+    handle = services.invocations.create(
+        engine="adk",
+        session_id="native-extension-session",
+        user_id="native-extension-user",
+        workflow_name=plan.name,
+        workflow_version=plan.version,
+        workflow_fingerprint=plan.fingerprint,
+    )
+    native_path = Path(services.engine_database_path("adk", create_namespace=False))
+    try:
+        assert engine.capabilities().native_extensions == ()
+        with pytest.raises(UnsupportedWorkflowFeature, match="required native workflow extension"):
+            await engine.compile(plan)
+        with pytest.raises(UnsupportedWorkflowFeature, match="required native workflow extension"):
+            await engine.invoke(plan, handle, {})
+
+        assert services.model.calls == []
+        persisted = services.invocations.get(handle.invocation_id)
+        assert persisted is not None and persisted.status == "created"
+        assert not native_path.exists()
+    finally:
+        await engine.shutdown()
+        services.close()
 
 
 @pytest.mark.asyncio

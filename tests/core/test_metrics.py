@@ -120,6 +120,14 @@ def test_task_duration_histogram_uses_only_engine_and_terminal_status_labels(
         line for line in rendered.splitlines() if line.startswith("owa_task_duration_seconds_")
     )
     assert "untrusted-status-is-ignored" not in task_duration_metrics
+    task_event_metrics = "\n".join(
+        line for line in rendered.splitlines() if line.startswith("owa_task_events_total")
+    )
+    assert (
+        task_event_metrics
+        == f'owa_task_events_total{{engine="langgraph",event="{event_type}",status="unknown"}} 1.0'
+    )
+    assert "untrusted-status-is-ignored" not in task_event_metrics
 
 
 def test_task_duration_histogram_clamps_negative_duration_and_ignores_nonterminal_tasks() -> None:

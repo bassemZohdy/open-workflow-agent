@@ -11,6 +11,9 @@ from typing import Any
 from .observability import EventSink, WorkflowEvent
 
 _HISTOGRAM_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+_TASK_METRIC_STATUSES = frozenset(
+    {"running", "waiting", "completed", "faulted", "cancelled", "retrying"}
+)
 
 _HELP = {
     "owa_workflow_started_total": "Workflow executions started.",
@@ -143,12 +146,17 @@ class Metrics:
                     self._set_active_gauge_locked()
 
         if event.event_type.startswith("Task"):
+            task_status = (
+                event.status
+                if isinstance(event.status, str) and event.status in _TASK_METRIC_STATUSES
+                else "unknown"
+            )
             self.increment(
                 "owa_task_events_total",
                 labels={
                     "engine": engine,
                     "event": event.event_type,
-                    "status": event.status or "unknown",
+                    "status": task_status,
                 },
             )
             terminal_task_status = {

@@ -33,7 +33,7 @@ from _agent_pattern_fixtures import (
 )
 from _process_recovery_worker import write_json
 from open_workflow_agent.catalog import FakeModel
-from open_workflow_agent.errors import OwaError
+from open_workflow_agent.errors import InvocationStateError, OwaError
 from open_workflow_agent.execution_authority import authority_scope, current_authority
 from open_workflow_agent.execution_context import current_action_context
 from open_workflow_agent.workflow import compile_workflow
@@ -352,8 +352,9 @@ async def run(directory, mode):
             }:
                 plan = compiled(services, pattern)
                 before = snapshot(services, handle, backend)
-                with pytest.raises(OwaError):
+                with pytest.raises(InvocationStateError) as rejected:
                     await engine.resume(handle, {"question": "replacement"}, plan)
+                assert rejected.value.details["reason"] == "runtime_profile_changed"
                 assert snapshot(services, handle, backend) == before
                 assert all(model.calls == [] for model in models.values())
                 write_json(

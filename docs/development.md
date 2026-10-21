@@ -379,6 +379,16 @@ after platform or controller security changes.
 
 Dependabot opens weekly update PRs for GitHub Actions versions, every `uv.lock`, and the base images in `docker/`; the Security workflow (pip-audit over every locked environment) and the release Trivy gate block publication on known fixable `CRITICAL`/`HIGH` image advisories. When a base bump does not clear an advisory because the upstream image has not been rebuilt yet, the finding is recorded with a dated rationale in `.trivyignore` and must be re-checked on every base refresh; findings in our own code or Python dependencies are never suppressed.
 
+The root, standalone-core, ADK, LangGraph, and Agent Framework uv projects
+override FastEmbed's Pillow upper bound to require patched Pillow `>=13.0.0,<14`.
+OWA only calls FastEmbed's `TextEmbedding.embed([text])`; FastEmbed eagerly
+imports Pillow for its image API, which OWA does not expose or use. This narrow
+override is scoped to the supported text embedding path. A package-import smoke
+and exact-source dependency audit must pass before that compatibility is
+qualified; they do not establish ONNX inference or FastEmbed image compatibility.
+FastEmbed image embedding remains unsupported; if OWA adds image input, revisit
+this override and establish compatibility for the image path before advertising it.
+
 ## Documentation rule
 
 When changing public configuration, API behavior, supported workflow semantics, deployment requirements, or capabilities, update the corresponding file under `docs/` and keep README quick-start examples valid.

@@ -24,5 +24,8 @@ packages = ["src/open_workflow_agent_adk"]
 
 [tool.hatch.build.hooks.custom]
 
+[tool.uv]
+override-dependencies = ["pillow>=13.0.0,<14"]
+
 [tool.uv.sources]
 open-workflow-agent = { path = "../..", editable = true }

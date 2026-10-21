@@ -352,16 +352,18 @@ class SandboxWorkflowExecutor(WorkflowExecutor):
             raise WorkflowSemanticError("sandbox environment must be an object")
         result: list[tuple[str, str | SandboxSecretReference]] = []
         for name, raw in value.items():
+            if not isinstance(name, str):
+                raise WorkflowSemanticError("sandbox environment variable names must be strings")
             if isinstance(raw, Mapping) and set(raw) == {"fromEnv"}:
                 reference = raw.get("fromEnv")
                 if not isinstance(reference, str):
                     raise WorkflowSemanticError("sandbox fromEnv reference must be a string")
-                result.append((str(name), SandboxSecretReference(reference)))
+                result.append((name, SandboxSecretReference(reference)))
                 continue
             evaluated = self._expressions(state).evaluate(
                 raw, state.data, variables=state.variables
             )
-            result.append((str(name), expression_string(evaluated)))
+            result.append((name, expression_string(evaluated)))
         return tuple(result)
 
     def _execution_id(self, state: ExecutionState, kind: str) -> str:

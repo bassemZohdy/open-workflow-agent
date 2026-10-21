@@ -648,6 +648,73 @@ async def test_explicit_oauth_client_credentials_satisfy_declared_operation_scop
     assert "private-oauth-client-secret" not in json.dumps(selected.as_value())
 
 
+@pytest.mark.asyncio
+async def test_oauth_client_credentials_scope_mismatch_rejects_before_secret_resolution_or_io(
+    monkeypatch,
+):
+    token_url = "https://issuer.test/token"
+    document = source()
+    document["components"] = {
+        "securitySchemes": {
+            "oauth": {
+                "type": "oauth2",
+                "flows": {
+                    "clientCredentials": {
+                        "tokenUrl": token_url,
+                        "scopes": {"items:read": "Read items"},
+                    }
+                },
+            }
+        }
+    }
+    operation(document)["security"] = [{"oauth": ["items:read"]}]
+    resolved = []
+    calls = []
+
+    def resolve_secret(reference):
+        resolved.append(reference)
+        return "must-not-be-resolved"
+
+    def receiver(request):
+        calls.append(request)
+        return httpx.Response(200, json={"unexpected": True})
+
+    monkeypatch.setattr(security_module, "resolve_secret", resolve_secret)
+    client = HttpClient(transport=httpx.MockTransport(receiver))
+    auth = ProfileAuthentication(
+        SecurityConfig.model_validate(
+            {
+                "profiles": {
+                    "named": {
+                        "type": "oauth2_client_credentials",
+                        "token_url": token_url,
+                        "issuer": "https://issuer.test",
+                        "resource": TARGET,
+                        "allowed_resource_endpoints": [TARGET],
+                        "scopes": ["items:write"],
+                        "client_id": {"from_env": "OPENAPI_OAUTH_ID"},
+                        "client_secret": {"from_env": "OPENAPI_OAUTH_SECRET"},
+                    }
+                }
+            }
+        ),
+        "named",
+        token_http=client,
+    )
+
+    with pytest.raises(ToolError) as rejected:
+        await call_openapi(
+            client,
+            payload(),
+            selection=selection(document, "named"),
+            timeout=1,
+            authentication=auth,
+        )
+
+    assert rejected.value.details["reason"] == "security_requirement_unsatisfied"
+    assert resolved == [] and calls == []
+
+
 @pytest.mark.parametrize("redirect", [False, True])
 @pytest.mark.asyncio
 async def test_ows_redirect_controls_status_without_forwarding_credentials(redirect, monkeypatch):

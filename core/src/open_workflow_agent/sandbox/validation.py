@@ -366,7 +366,11 @@ def _validate_environment(value: Any, sandbox: SandboxConfig, reference: str) ->
     if not isinstance(value, Mapping):
         raise WorkflowSemanticError(f"sandbox environment must be an object at {reference}")
     for name, raw in value.items():
-        environment_name = str(name)
+        if not isinstance(name, str):
+            raise WorkflowSemanticError(
+                f"sandbox environment variable names must be strings at {reference}"
+            )
+        environment_name = name
         if is_reserved_environment_name(environment_name):
             raise UnsupportedWorkflowFeature(
                 "sandbox environment cannot override runtime isolation variables",

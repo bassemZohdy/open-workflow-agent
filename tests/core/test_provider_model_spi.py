@@ -178,6 +178,15 @@ def test_unpaired_surrogates_in_provider_tool_fields_become_safe_model_errors(fi
     assert "\ud800" not in str(caught.value)
 
 
+@pytest.mark.parametrize("arguments", ['{"value":"\\ud800"}', '{"\\ud800":"value"}'])
+def test_escaped_unpaired_surrogates_in_decoded_provider_arguments_are_sanitized(arguments):
+    with pytest.raises(ModelError) as caught:
+        _project(_reply(calls=[_call(arguments=arguments)]))
+
+    assert "\ud800" not in str(caught.value)
+    assert "\\ud800" not in json.dumps(caught.value.as_dict())
+
+
 @pytest.mark.parametrize(
     "damage",
     [

@@ -76,6 +76,16 @@ def test_request_helpers_evaluate_values_and_keep_secret_references_typed() -> N
         ("_environment", {"environment": []}, "environment must be an object"),
         (
             "_environment",
+            {"environment": {1: "value"}},
+            "environment variable names must be strings",
+        ),
+        (
+            "_environment",
+            {"environment": {True: "value"}},
+            "environment variable names must be strings",
+        ),
+        (
+            "_environment",
             {"environment": {"TOKEN": {"fromEnv": 7}}},
             "fromEnv reference must be a string",
         ),

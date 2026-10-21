@@ -176,6 +176,9 @@ def test_sandbox_validation_rewrites_nested_runs_and_environment_policy():
 
     with pytest.raises(WorkflowSemanticError, match="environment must be an object"):
         _validate_environment([], config, "/run")
+    for name in (1, True):
+        with pytest.raises(WorkflowSemanticError, match="variable names must be strings"):
+            _validate_environment({name: "value"}, config, "/run")
     with pytest.raises(UnsupportedWorkflowFeature, match="isolation variables"):
         _validate_environment({"PATH": "unsafe"}, config, "/run")
     with pytest.raises(UnsupportedWorkflowFeature, match="not deployment-approved"):

@@ -253,7 +253,22 @@ async def test_schedule_foreign_and_missing_object_are_indistinguishable_without
             owner_principal=principal.identity,
             event_scope=principal.identity,
         )
-    before = services.schedules.get(record.schedule_id).as_dict()
+    before_record = services.schedules.get(record.schedule_id)
+    assert before_record is not None
+    before = before_record.as_dict()
+    before_owner_state = (before_record.owner_principal, before_record.event_scope)
+    before_schedule_row = services.schedules.connection.execute(
+        "SELECT payload,status,next_run_at,lease_until FROM schedules WHERE schedule_id=?",
+        (record.schedule_id,),
+    ).fetchone()
+    before_definition = services.schedules.connection.execute(
+        "SELECT payload FROM schedule_definitions WHERE schedule_id=?", (record.schedule_id,)
+    ).fetchone()
+    before_slots = services.schedules.connection.execute(
+        "SELECT slot_key,state,owner,generation,lease_until,invocation_id,input_payload "
+        "FROM schedule_slots WHERE schedule_id=? ORDER BY slot_key",
+        (record.schedule_id,),
+    ).fetchall()
     app = create_app(config=config, services=services)
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -270,15 +285,42 @@ async def test_schedule_foreign_and_missing_object_are_indistinguishable_without
                 headers={"Authorization": "Bearer controlled-b-token"},
             )
             assert foreign.status_code == missing.status_code == 404
+            assert foreign.json() == missing.json()
+            assert foreign.json() == {
+                "error": {
+                    "code": "schedule_not_found",
+                    "message": "schedule not found",
+                    "details": {},
+                }
+            }
+            after_record = services.schedules.get(record.schedule_id)
+            assert after_record is not None
+            assert after_record.as_dict() == before
+            assert (after_record.owner_principal, after_record.event_scope) == before_owner_state
             assert (
-                foreign.json()["error"]["code"]
-                == missing.json()["error"]["code"]
-                == "schedule_not_found"
+                services.schedules.connection.execute(
+                    "SELECT payload,status,next_run_at,lease_until FROM schedules "
+                    "WHERE schedule_id=?",
+                    (record.schedule_id,),
+                ).fetchone()
+                == before_schedule_row
             )
             assert (
-                services.schedules.get(record.schedule_id).as_dict() == before
-                and services.model.calls == []
+                services.schedules.connection.execute(
+                    "SELECT payload FROM schedule_definitions WHERE schedule_id=?",
+                    (record.schedule_id,),
+                ).fetchone()
+                == before_definition
             )
+            assert (
+                services.schedules.connection.execute(
+                    "SELECT slot_key,state,owner,generation,lease_until,invocation_id,"
+                    "input_payload FROM schedule_slots WHERE schedule_id=? ORDER BY slot_key",
+                    (record.schedule_id,),
+                ).fetchall()
+                == before_slots
+            )
+            assert services.model.calls == []
     # Separate trusted API binding to the same actual common store: this is
     # an ownership unit witness, not an SDK/native deployment qualification.
     owner_config = config.model_copy(deep=True)

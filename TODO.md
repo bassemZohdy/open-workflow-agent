@@ -168,7 +168,9 @@ treated as a deferred task or as additional feature completion.
   LangGraph, SQLite and PostgreSQL, bounded lifecycle/recovery, and the named
   authenticated interoperability cases. Durable Task/receipt expiry, push,
   delegated identity, JavaScript and full protocol/proposed criteria remain
-  outside this qualification. See the [finite acceptance record](docs/s3-02-a2a-acceptance.md)
+  outside this qualification. The finite S3-02 profile explicitly excludes
+  durable Task/receipt expiry; no retention duration is selected. See the
+  [finite acceptance record](docs/s3-02-a2a-acceptance.md)
   and [exact-source validation](docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329).
 - [ ] **S3-03** (L) — Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.
   Finite and partial results for sources `923302f`, `31ec0eb`, `237f09f`,
@@ -200,6 +202,8 @@ treated as a deferred task or as additional feature completion.
   remains open. Generic HTTP methods now reject malformed ASCII token values
   (including whitespace, CRLF and non-ASCII) before endpoint resolution or
   transport; type and token-boundary regressions await the consolidated batch.
+  An OpenAPI client-credentials scope-mismatch regression now requires denial
+  before secret resolution and network access; it awaits the same batch.
   Background execution stays default-off, and cross-adapter, backend, platform,
   lifetime, packaging and broader hosted acceptance remain open.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
@@ -218,7 +222,9 @@ treated as a deferred task or as additional feature completion.
   workflow attempts to override reserved runtime names (`PATH`, `HOME`,
   `TMPDIR`, `TEMP`, and `TMP`) are rejected case-insensitively; admission and
   actual-child regressions cover lowercase spellings and await final-batch
-  validation. Stdio startup categories are logged only for process creation.
+  validation. YAML admission and runtime setup now reject non-string sandbox
+  environment names; their regressions await the consolidated validation.
+  Stdio startup categories are logged only for process creation.
   Required
   profile and deployment acceptance remains
   open. See the
@@ -243,7 +249,10 @@ treated as a deferred task or as additional feature completion.
   authored and awaits the batch. Audit reconstruction now rejects non-positive
   or non-finite action timestamps and reassignment/escalation at or after the
   immutable request expiry, even when proof digests are coherently rehashed; a
-  tampering regression awaits the same batch. See the
+  tampering regression awaits the same batch. The durable `max_pending` limit
+  now rejects a new item when capacity is exactly full; a SQLite/PostgreSQL-
+  parameterized regression verifies rejection and unchanged persisted state.
+  This case awaits consolidated validation. See the
   [acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
   [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
 - [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and authorization within existing contracts. Delegated token exchange and consent remain conditional S4-11 work.
@@ -258,6 +267,11 @@ treated as a deferred task or as additional feature completion.
   and awaits final-batch validation. Lifecycle snapshot and SSE reads now pass
   through the configured `events.read` authorization gate before snapshot or
   stream access; denial and explicitly granted cases await final-batch validation.
+  Foreign and missing schedule IDs now use the same fixed `ScheduleNotFound`
+  response for reads and cancellation. A regression compares complete
+  responses and verifies schedule records, owner/event scope, SQL rows,
+  definitions, slots and model-call counts remain unchanged; it awaits the
+  consolidated batch.
 - [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
   Eight finite recipe families and named role bindings are authored; hosted
   acceptance remains open. A focused real-native role-policy test passes on
@@ -268,7 +282,9 @@ treated as a deferred task or as additional feature completion.
   model binding and tool allowlist and require rejection before provider or
   state mutation; a new recovery case also rejects a changed role authorization
   policy before provider or state mutation across the native engine/database
-  matrix. These additions are authored and await final-batch validation.
+  matrix. Process-recovery drift cases also assert the exact
+  `InvocationStateError` reason `runtime_profile_changed`. These additions are
+  authored and await final-batch validation.
   PostgreSQL and the full eight-family matrix remain pending. See the
   [acceptance plan](docs/s3-07-agent-pattern-acceptance.md) and
   [timing evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
@@ -277,8 +293,10 @@ treated as a deferred task or as additional feature completion.
   cross-engine/backend regression checks direct LLM tool-request pass-through
   without dispatching an undeployed tool. Unpaired surrogate characters in
   provider tool IDs, function names or arguments now map to sanitized
-  `ModelError`s; the function-name regression is authored and awaits validation,
-  while the other focused DTO regressions pass locally. Broader adapter/backend qualification remains
+  `ModelError`s. Escaped lone-surrogate argument and object-key cases now
+  require sanitized `ModelError` handling; these regressions await consolidated
+  validation. The function-name regression is also authored and awaits
+  validation, while the other focused DTO regressions pass locally. Broader adapter/backend qualification remains
   pending. See the
   [acceptance plan](docs/s3-08-selected-adapter-acceptance.md).
 
@@ -291,7 +309,10 @@ treated as a deferred task or as additional feature completion.
   capability using this gate. A new regression withdraws the exact extension
   after an initial successful capability check and verifies a subsequent check
   rejects it; authored, awaiting final-batch validation. Broader tracker
-  coverage and hosted qualification remain open.
+  coverage and hosted qualification remain open. Native regressions now assert
+  that LangGraph's declared channel capability is accepted while ADK rejects
+  it before provider calls, invocation-state changes or native database
+  creation; both await final-batch validation.
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
   The first scoped channel/reducer slice is authored for the exact
   `langgraph.channels@1.0.0` extension using private reducer-backed LangGraph
@@ -301,7 +322,8 @@ treated as a deferred task or as additional feature completion.
   selection passes locally and the PostgreSQL selection awaits hosted CI.
   A `last_value` integration regression now exercises exact extension
   admission, a writer task, and a later reader binding; it is authored and
-  awaits final-batch validation. Broader S4-02 features remain open. See
+  awaits final-batch validation. A native run/pause/resume regression also
+  checks channel values across a wait boundary. Broader S4-02 features remain open. See
   [the S4-02 acceptance record](docs/s4-02-native-channels-acceptance.md).
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
   An optional pinned LangGraph/TypeScript scaffold and native smoke test now
@@ -312,9 +334,13 @@ treated as a deferred task or as additional feature completion.
   and multibyte cases authored for the final batch. A second loader slice now
   mirrors Python admission rejection for duplicate YAML/JSON keys, cyclic
   aliases, implicit timestamps and non-finite values; those cases also await
-  the batch. CI runs the isolated check. The package does not compile or
-  execute OWS definitions and has no shared-fixture parity; implement the engine adapter and independent
-  acceptance before any parity claim. Frozen predecessor sources remain
+  the batch. Python and TypeScript now consume shared admission fixtures,
+  including rejection of numeric/boolean YAML mapping keys and acceptance of
+  equivalent string-keyed JSON, with error-category parity cases. These are
+  authored but unvalidated. CI runs the isolated check. The package does not
+  compile or execute OWS definitions and has no execution-adapter parity;
+  implement those and independently qualify the engine before claiming full
+  parity. Frozen predecessor sources remain
   reference-only.
 - [ ] **S4-04** (L) — Automate official CTK plus all proposed tests, schema constraints, parity and cross-engine outcome checks.
   `resources/compatibility/coverage-bridge.json` now inventories all 443
@@ -339,7 +365,10 @@ treated as a deferred task or as additional feature completion.
   invocation and task reference into its lifecycle event; its correlation test
   is authored for final-batch validation. Terminal workflow metrics derive the
   outcome from the fixed event type rather than an untrusted status field, with
-  a high-cardinality-label regression awaiting the same batch.
+  a high-cardinality-label regression awaiting the same batch. Arbitrary or
+  non-string task event statuses now map to the fixed `unknown` label, with a
+  regression proving no user-controlled metric series is created; it awaits
+  the same batch.
   See the [observability acceptance slice](docs/s4-05-observability-acceptance.md).
 - [ ] **S4-06** (M) — Run matched latency/CPU/memory/concurrency/persistence/recovery benchmarks; publish measured results.
   A separate matched-profile harness now records ADK/LangGraph × SQLite/
@@ -387,6 +416,19 @@ treated as a deferred task or as additional feature completion.
   paths; it awaits final-batch validation. The older root-quality run also
   exposed a hosted child-start timeout in a sandbox control-fence test; its
   startup/deadline margin is widened and the focused two-case regression passes.
+  At source `52abe1f`, Docs passed (run `39525850419`) while Security failed
+  (run `39525850472`) because pip-audit found fixable certifi and Pillow
+  advisories across Python environments. The current authored remediation
+  updates certifi and constrains FastEmbed environments to Pillow
+  `>=13.0.0,<14`; an import-only compatibility smoke test and exact-source
+  security requalification remain pending. External Sandbox (`39525850438`)
+  also passed. CI (`39525850490`), Agent Framework (`39525850489`) and
+  PostgreSQL (`39525850501`) were still in progress at the latest check; these
+  exact-source statuses are a snapshot. Do not treat the old source result or
+  current unvalidated remediation as a green gate.
+  CI now removes only the duplicate `test_native_sqlite_inspection` invocation
+  from the `windows-mcp` lane; that check remains in `windows-expressions` and
+  `native`. This workflow cleanup awaits consolidated validation.
   Remaining S4-07 release/rollback and broader capability/version acceptance
   stay open. See the [release gate record](docs/s4-07-release-gates-acceptance.md).
 - [ ] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.

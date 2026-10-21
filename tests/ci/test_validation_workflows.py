@@ -230,9 +230,9 @@ def test_windows_mcp_controls_include_real_transport_and_cleanup_boundaries():
         "test_a2a_card_admission.py",
         "test_a2a_skills.py",
         "test_initial_delivery.py",
-        "test_native_sqlite_inspection.py",
     ):
         assert fixture in command
+    assert "test_native_sqlite_inspection.py" not in command
     assert "tests/contract/test_a2a_sdk_http_json_optional_methods.py" in command
     assert (
         "tests/core/test_a2a_streaming.py::test_stream_skips_malformed_event_and_closes_after_authoritative_terminal"

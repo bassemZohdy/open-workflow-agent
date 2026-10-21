@@ -47,6 +47,57 @@ function collectAnchors(node: YamlNode | null, anchors: Map<string, YamlNode>, d
   }
 }
 
+function isStringMappingKey(
+  node: YamlNode,
+  anchors: Map<string, YamlNode>,
+  visited = new Set<YamlNode>(),
+): boolean {
+  if (isAlias(node)) {
+    const target = anchors.get(node.source);
+    if (target === undefined || visited.has(target)) return false;
+    const active = new Set(visited);
+    active.add(target);
+    return isStringMappingKey(target, anchors, active);
+  }
+  return isScalar(node) && typeof (node as YamlScalar.Parsed).value === "string";
+}
+
+function assertStringMappingKeys(
+  node: YamlNode | null,
+  anchors: Map<string, YamlNode>,
+  ancestors = new Set<YamlNode>(),
+  depth = 0,
+): void {
+  if (node === null) return;
+  if (depth > 64) {
+    throw new WorkflowDefinitionError("workflow must be acyclic JSON data with depth at most 64");
+  }
+  if (isAlias(node)) {
+    const target = anchors.get(node.source);
+    if (target === undefined || ancestors.has(target)) return;
+    const active = new Set(ancestors);
+    active.add(target);
+    assertStringMappingKeys(target, anchors, active, depth + 1);
+    return;
+  }
+  if (ancestors.has(node)) return;
+  const active = new Set(ancestors);
+  active.add(node);
+  if (isMap(node)) {
+    for (const item of node.items) {
+      if (!isPair(item)) continue;
+      if (!isNode(item.key) || !isStringMappingKey(item.key, anchors)) {
+        throw new WorkflowDefinitionError("workflow mapping keys must be strings");
+      }
+      if (isNode(item.value)) assertStringMappingKeys(item.value, anchors, active, depth + 1);
+    }
+  } else if (isSeq(node)) {
+    for (const item of node.items) {
+      if (isNode(item)) assertStringMappingKeys(item, anchors, active, depth + 1);
+    }
+  }
+}
+
 function containsPlainTimestamp(
   node: YamlNode | null,
   anchors: Map<string, YamlNode>,
@@ -194,6 +245,7 @@ export async function loadWorkflowDefinition(
   }
   const anchors = new Map<string, YamlNode>();
   collectAnchors(yamlDocument.contents, anchors);
+  assertStringMappingKeys(yamlDocument.contents, anchors);
   if (containsPlainTimestamp(yamlDocument.contents, anchors)) {
     throw new WorkflowDefinitionError("workflow document contains a YAML timestamp scalar");
   }
