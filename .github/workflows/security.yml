@@ -80,7 +80,7 @@ jobs:
             set +e
             uvx --with 'urllib3>=2.8.0' "pip-audit==$PIP_AUDIT_VERSION" \
               --requirement "${{ runner.temp }}/requirements.txt" \
-              --no-deps --strict --format json --desc off --aliases off \
+              --no-deps --disable-pip --strict --format json --desc off --aliases off \
               --progress-spinner off --timeout 60 \
               --output "${{ runner.temp }}/audit.json"
             status=$?
