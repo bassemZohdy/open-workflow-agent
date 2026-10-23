@@ -1,4 +1,4 @@
-FROM docker:29.8.0-cli@sha256:eccaacfeed644c7de222ff047483568cb988dde95476fbaaf10ea2d04921bb66
+FROM docker:29.9.1-cli@sha256:6fae2214c3121a28d5aa639d09032f61310b7c9c75ffbad1025f261a1b621800
 
 # Security upgrade at build time: the pinned base image ships Alpine packages
 # (openssl, libexpat) that the Alpine security team has since fixed. Upgrading
