@@ -19,8 +19,9 @@ async function main() {
   const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => ["PATH", "SYSTEMROOT", "WINDIR"].includes(key.toUpperCase())));
   const actual = execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, env, encoding: "utf8", timeout: 5000, maxBuffer: 1024, stdio: ["ignore", "pipe", "ignore"] }).trim();
   if (actual !== values["source-commit"]) throw new Error("capture source differs from checkout");
-  const changed = execFileSync("git", ["status", "--porcelain", "--untracked-files=normal"], { cwd: root, env, encoding: "utf8", timeout: 5000, maxBuffer: 4096, stdio: ["ignore", "pipe", "ignore"] });
-  if (changed !== "") throw new Error("capture requires a clean source checkout");
+  execFileSync("git", ["-c", "core.autocrlf=true", "diff", "--quiet", "HEAD", "--"], { cwd: root, env, encoding: "utf8", timeout: 5000, maxBuffer: 4096, stdio: ["ignore", "pipe", "ignore"] });
+  const untracked = execFileSync("git", ["ls-files", "--others", "--exclude-standard", "--", "ci", "core", "engines", "resources", "runtime-catalog", "tests", ".github"], { cwd: root, env, encoding: "utf8", timeout: 5000, maxBuffer: 4096, stdio: ["ignore", "pipe", "ignore"] });
+  if (untracked !== "") throw new Error("capture has untracked runtime or evidence inputs");
   const hashes: Record<string, string> = {};
   const records: Record<string, unknown>[] = [];
   for (const [index, filename] of fixtures.entries()) {

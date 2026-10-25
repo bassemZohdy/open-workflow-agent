@@ -209,8 +209,36 @@ async def capture(engine_name: str, source: str) -> dict[str, Any]:
     ).stdout.strip()
     if actual != source:
         raise ParityError("literal capture source does not match its checkout")
-    changed = subprocess.run(
-        ["git", "status", "--porcelain", "--untracked-files=normal"],
+    subprocess.run(
+        ["git", "-c", "core.autocrlf=true", "diff", "--quiet", "HEAD", "--"],
+        cwd=ROOT,
+        env={
+            name: os.environ[name]
+            for name in ("PATH", "SYSTEMROOT", "WINDIR")
+            if name in os.environ
+        },
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+        check=True,
+        timeout=5,
+    )
+    untracked = subprocess.run(
+        [
+            "git",
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            "--",
+            "ci",
+            "core",
+            "engines",
+            "resources",
+            "runtime-catalog",
+            "tests",
+            ".github",
+        ],
         cwd=ROOT,
         env={
             name: os.environ[name]
@@ -224,8 +252,8 @@ async def capture(engine_name: str, source: str) -> dict[str, Any]:
         check=True,
         timeout=5,
     ).stdout
-    if changed:
-        raise ParityError("literal capture requires a clean source checkout")
+    if untracked:
+        raise ParityError("literal capture has untracked runtime or evidence inputs")
     module_name, class_name, sdk_name = (
         ("open_workflow_agent_adk", "AdkWorkflowEngine", "google-adk")
         if engine_name == "adk"
