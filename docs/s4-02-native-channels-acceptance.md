@@ -1,5 +1,10 @@
 # S4-02 Native channels and bounded Command routing
 
+Current integration: see the [main checkpoint](validation-history/main-integration-2026-10-25.md)
+for current results, the final hosted-fixture repair and remaining gates.
+The full task stays open. Earlier counts and pending statements below are
+retained development history, not additional current acceptance claims.
+
 Status: implementation authored; S4-02 remains open. The focused core
 admission/normalization tests pass (10 cases), as do the native LangGraph
 channel tests (3 cases). A real process-stop regression now exercises this

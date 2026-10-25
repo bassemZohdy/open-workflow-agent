@@ -21,33 +21,23 @@ are unchanged.
 ## What remains missing
 
 The initial review counted 20 checked tasks and 17 open tasks. The later
-`d72781f` qualification closes eight finite scopes; the authoritative
-[backlog](../TODO.md) now has 28 checked tasks and nine open tasks (six ready,
-three conditional).
-Task counts describe accepted scopes, not full protocol conformance. Work already
-authored but awaiting qualification must not be mistaken for missing source code.
+`d72781f` and `f66cd23` qualifications verify eleven finite scopes. The
+[backlog](../TODO.md) now has **31 checked and six open tasks**: three ready and
+three user-kept conditional tracks. These counts are accepted task scopes,
+not full protocol or inventory conformance.
 
 | Scope | Remaining work or evidence |
 | --- | --- |
-| S3-03, next ordered task | Finish operation-adapter acceptance: HTTP/OpenAPI/gRPC, functions and background-operation platform/backend recovery. Retain and diagnose intermittent native resume failures. |
-| S3-04–S3-06 | Qualify executable sandbox portability, protected-approval recovery/queue limits and identity/security boundaries across required adapters and backends. |
-| S3-07–S3-08 | Qualify all eight agent patterns and selected migrated adapters; consolidate unrun or partially run regressions. |
-| S4-01–S4-02 | Complete native extension coverage and advanced channels/reducers, Command/Send, streams, updates, replay and time travel. Current channel slices are narrower than this scope. |
-| S4-03 | Implement JavaScript workflow compilation/execution and independently prove parity. Its schema loader/native scaffold is not an OWS execution adapter. |
-| S4-04 | Map and execute official CTK/proposed coverage: the bridge retains 443 proposed tests and 774 schema constraints as unmapped/unexecuted. Integrity checks are not conformance evidence. |
-| S4-05–S4-07 | Complete durable history/tracing/provenance, benchmark qualification and versioned release/rollback acceptance. Local success does not replace skipped or pending hosted/backend gates. |
-| S4-08 | The later canonical/no-shim, separate-environment migration decision and disabled index-publication policy are now recorded. Full-source qualification remains required; future index publication still needs verified ownership/version/consumer evidence. |
-| S4-09–S4-11 | Conditional work: Agent Framework production hardening, external event delivery and multi-tenancy/delegated identity need concrete requirements before activation. |
+| S4-02 | Native memory, streams, state updates, replay and time travel; retain the finite channel/Command/Send and fork-recovery evidence. |
+| S4-03 | Full JavaScript engine identity, durability, expressions, calls and services; the literal component is narrower. |
+| S4-04 | Full CTK/proposed/schema/parity mapping and execution; all 443 proposed and 774 schema rows remain unverified. |
+| S4-09–S4-11 | Framework production, external event consumer/transport and delegation/multi-tenancy remain conditional. |
 
-The existing working-tree records describe a 5,004-pass local batch, with 3,206
-skips and 90.54% core coverage. Those are historical records, not results from
-this cleanup. Fresh exact-source qualification remains necessary. Continue
-S3-03 first, using its [acceptance plan](s3-03-operation-adapters-acceptance.md);
-do not restart completed milestones or mark conditional work as a blocker.
-
-Automation settings only affect GitHub after these changes are pushed. Repository
-variables and branch protection were not changed remotely, and existing runs
-were not cancelled.
+The [main integration record](validation-history/main-integration-2026-10-25.md)
+separates the completed task baseline from current partial hosted qualification
+and the final process-fixture repair. Next work is S4-02 native memory.
+Repository variables and branch protection were not changed. Automatic validation
+and publication remain separately opt-in.
 
 ## Progress-audit actions
 

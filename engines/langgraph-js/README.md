@@ -43,7 +43,7 @@ common invocation identity is qualified by these cases.
 
 Four additional shared fault fixtures cover inline errors, detail/title/type
 message precedence, nested propagation and escaped canonical task references.
-The current package suite passes 48 tests; each actual Python SDK passes all
+The current package suite passes 49 tests; each actual Python SDK passes all
 13 shared success/fault cases. This finite comparison does not establish full
 schema or runtime parity. The pinned JS validator checks JSON Pointer formats;
 Python's current default schema validator treats `format` as an annotation.
@@ -63,3 +63,7 @@ foundation and the bounded literal component, not full JavaScript execution pari
 
 `Dockerfile.tests` builds an optional Node test image with dependencies and
 compiled code installed at build time. It is not a production/release target.
+
+See the [current integration record](../../docs/validation-history/main-integration-2026-10-25.md)
+for hosted validation status. The finite actual-native outcome comparison does
+not qualify the full engine or promote proposed/schema criteria.

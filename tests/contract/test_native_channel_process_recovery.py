@@ -13,7 +13,6 @@ from pathlib import Path
 import pytest
 from test_process_crash_recovery import _environment
 from test_protected_approval_process_recovery import (
-    ProducerIdentity,
     failure,
     stop_owned_launcher,
 )
@@ -66,7 +65,7 @@ def test_process_stop_preserves_committed_native_channel_delta(
         ),
         encoding="utf-8",
     )
-    producer = recovery = identity = None
+    producer = recovery = None
     try:
         producer = launch(tmp_path, "start")
         deadline = time.monotonic() + 45
@@ -80,14 +79,17 @@ def test_process_stop_preserves_committed_native_channel_delta(
         assert evidence["channel_values"] == {"items": ["seed", "first"]}
         assert evidence["snapshots_checked"] > 0
         assert evidence["checkpoint_scopes"] == (2 if nested_reader else 1)
-        identity = ProducerIdentity(evidence["pid"])
+        # This launcher starts the actual Python worker directly. Its retained
+        # child handle is the stop authority, including on Python builds that
+        # do not expose pidfd_open. Never signal an unrelated reported PID.
+        assert evidence["pid"] == producer.pid
         (tmp_path / "ack.json").write_text(json.dumps({"pid": evidence["pid"]}), encoding="utf-8")
         deadline = time.monotonic() + 15
         while not (tmp_path / "acknowledged.json").exists():
             assert producer.poll() is None, "producer exited before stop barrier"
             assert time.monotonic() < deadline, "producer did not acknowledge stop barrier"
             time.sleep(0.02)
-        identity.kill()
+        producer.kill()
         assert producer.wait(timeout=15) != 0
         assert not (tmp_path / "start-cleaned.json").exists()
 
@@ -100,7 +102,5 @@ def test_process_stop_preserves_committed_native_channel_delta(
         assert result["output"] == {"items": ["seed", "first", "second"]}
         assert result["duplicate_output"] == result["output"]
     finally:
-        if identity is not None:
-            identity.close()
         stop_owned_launcher(producer)
         stop_owned_launcher(recovery)

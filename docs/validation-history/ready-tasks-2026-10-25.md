@@ -711,3 +711,14 @@ Later `381b2c0` passes its frozen Linux selections: **323 ADK / 404 LangGraph**,
   Remaining S4-07 release/rollback and broader capability/version acceptance
   stay open. See the [release gate record](../s4-07-release-gates-acceptance.md).
 ```
+
+## Main integration and next work
+
+The [integration checkpoint](main-integration-2026-10-25.md) records PR #64,
+the accepted 31/37 task baseline, the partial `5310f5a` hosted run and the
+corrected owned-child stop fixture. Earlier frozen source results and failed
+attempts above remain unchanged. The
+[pre-integration task notes](pre-integration-open-tasks-2026-10-25.md) preserve
+the detailed unchecked S4-02/S4-03/S4-04 progress notes after the active backlog
+was condensed. Next work is S4-02 native memory; three conditional tracks remain
+inactive and no inventory/proposed/schema row is promoted.

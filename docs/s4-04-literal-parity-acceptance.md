@@ -1,5 +1,10 @@
 # S4-04 finite native outcome comparison candidate
 
+Current integration: see the [main checkpoint](validation-history/main-integration-2026-10-25.md)
+for current results, the final hosted-fixture repair and remaining gates.
+The full task stays open. Earlier counts and pending statements below are
+retained development history, not additional current acceptance claims.
+
 Status: authored; full S4-04 remains open. This candidate compares the 13 exact
 shared literal success/fault fixtures across actual ADK, LangGraph Python and
 LangGraph JS. It does not run all proposed tests, establish public identity or

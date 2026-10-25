@@ -1,5 +1,10 @@
 # S4-03 experimental JavaScript literal execution
 
+Current integration: see the [main checkpoint](validation-history/main-integration-2026-10-25.md)
+for current results, the final hosted-fixture repair and remaining gates.
+The full task stays open. Earlier counts and pending statements below are
+retained development history, not additional current acceptance claims.
+
 Status: authored and locally tested; S4-03 remains open. This is an execution
 component in the isolated private Node package, not a production engine adapter
 or a public invocation API. The official OWS 1.0.3 schema and its pin are unchanged.

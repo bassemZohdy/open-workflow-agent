@@ -12,9 +12,9 @@
 Automatic validation jobs now require `OWA_AUTOMATIC_CI=true`; manual validation
 remains available. Automatic publication separately requires
 `OWA_AUTOMATIC_RELEASES=true` and retains its existing exact-source release gates.
-These defaults apply after the workflow changes are pushed; remote settings and
-running jobs were not modified. No backlog task or feature is promoted by this
-cleanup. See the [review and remaining gaps](docs/development-cleanup-2026-10-25.md)
+Repository variables and branch protection were not changed. Manual qualification
+uses frozen branches so later development pushes do not cancel its runs. The
+automation change itself does not promote any task or feature. See the [review and remaining gaps](docs/development-cleanup-2026-10-25.md)
 and [automation controls](docs/development.md#fast-development-and-optional-automation).
 
 ## Current backlog delivery mode
@@ -30,23 +30,23 @@ history/tracing/metrics/provenance and S4-07 release/rollback gates. Its CI atte
 Root has 5,197 passes and 90.26% coverage; all six workflows pass. See the
 [qualification record](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-f66cd23).
 
-S4-02 is the next ordered ready task. Later bounded Send implementation has
-focused physical/store proof and frozen default-fork checks; PostgreSQL-only
-test setup and an owned wait/end race are corrected locally and await frozen
-qualification. Native memory,
-streams, state updates, replay and time travel remain open.
+The [main integration record](docs/validation-history/main-integration-2026-10-25.md)
+tracks PR #64 and keeps accepted task evidence separate from later candidates.
+At `5310f5a`, Framework, External Sandbox, Security and Docs pass; CI and
+PostgreSQL remain partial at integration time. The PostgreSQL native fixture
+assumed a missing hosted process API. Its owned-child repair passes all eight
+Linux store/routing/scope cases without that API and four Windows PostgreSQL
+cases. This is not a full green hosted result for the repaired source.
 
-The follow-up frozen Linux checks pass 129 ADK cases and 176 LangGraph cases.
-Skip review uncovered four incorrectly skipped PostgreSQL channel-recovery
-cells; the corrected Windows run and frozen `9aa44ae` Linux run each pass all
-four with zero skips. Hosted qualification remains open. Docker metadata
-caching is measured and verified; source labels still identify the exact build.
+S4-02 remains the next ordered ready task, beginning with native memory. Bounded
+Send, the owned wait/end repair and Docker cache ordering have focused evidence.
+Memory, streams, public state updates, replay and time travel remain open.
 
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with
 source/SDK/runtime/fixture/schema checks; broader CTK/proposed/schema coverage
-remains unverified. These later candidates do not qualify the current branch
+remains unverified. These later candidates do not qualify the integration
 for release or change any research row into a shipped capability.
 
 After the progress audit, development uses one active feature, focused local

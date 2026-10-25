@@ -93,8 +93,11 @@ gates still apply; manually dispatched validation cannot trigger publication.
 Restore normal automation by setting both variables to `true` in repository
 Settings > Secrets and variables > Actions > Variables. Run fresh validation
 on the intended main source before release. These changes take effect on GitHub
-after the workflow files are pushed; they do not cancel existing runs or change
-branch-protection settings. Required skipped checks may still block merging.
+through the repository workflow files; they do not change repository variables
+or branch-protection settings. Existing workflow concurrency rules still apply:
+use a dedicated frozen qualification branch to avoid cancelling a manual run
+when later work is pushed to the development branch. Required skipped checks
+may still block merging.
 
 For a quick local feedback loop:
 
