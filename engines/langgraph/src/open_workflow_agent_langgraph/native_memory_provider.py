@@ -99,6 +99,9 @@ async def open_native_memory_provider(
                 Path(path).parent.mkdir(parents=True, exist_ok=True)
             store = await stack.enter_async_context(store_type.from_conn_string(path))
             await store.setup()
+            from .native_memory_mutations import prepare_mutation_storage
+
+            await prepare_mutation_storage(store, postgresql=postgresql)
     except BaseException as error:
         try:
             await _close(stack, setup_timeout_seconds)
