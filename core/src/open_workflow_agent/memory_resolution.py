@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import asdict, dataclass, replace
 from typing import Any, Literal
@@ -65,7 +64,7 @@ def resolution_receipt(
 ) -> EffectReceipt:
     value = {
         "profile": PROFILE,
-        "mutation": json.loads(json.dumps(asdict(request.identity))),
+        "mutation_key": request.identity.key,
         "request_digest": request.request_digest,
         "storage_identity": storage_identity,
         "resolution": resolution.descriptor,

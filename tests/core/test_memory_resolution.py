@@ -292,3 +292,19 @@ async def test_lease_expiry_at_final_guard_rolls_back_resolution_and_outcome(wri
     assert coordinator.journal.get(mutation.identity).status == "pending"
     assert coordinator.journal.get(resolution_identity(mutation.identity)) is None
     await coordinator.resolve(handle, mutation, choice())
+
+
+@pytest.mark.asyncio
+async def test_resolution_preserves_long_original_context_accepted_by_write_profile(writes):
+    coordinator, handle, mutation, evidence, *_ = writes
+    reference = "/do/" + "nested" * 1500
+    mutation = replace(
+        mutation,
+        parent=replace(mutation.parent, task_reference=reference, occurrence=((reference, 1),)),
+    )
+    evidence.fail = "before"
+    with pytest.raises(InvocationStateError):
+        await coordinator.mutate(handle, mutation)
+    assert phase(coordinator, mutation) == "dispatched"
+    await coordinator.resolve(handle, mutation, choice())
+    coordinator.journal.verify_invocation(handle.invocation_id, handle.workflow_fingerprint)

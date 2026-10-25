@@ -201,7 +201,9 @@ class MemoryWrites:
             raise mutation_error("binding_changed")
         index = self.connection.execute(
             "SELECT invocation_id,fingerprint,"
-            + _bounded_column(self.connection, "payload", 131_072)
+            + _bounded_column(
+                self.connection, "payload", 131_072 + len(RESOLUTION_PREFIX) - len(PREFIX)
+            )
             + " FROM workflow_effect_invocations WHERE identity=?",
             (identity.key,),
         ).fetchone()
@@ -250,7 +252,7 @@ class MemoryWrites:
         ).fetchone()
         index = self.connection.execute(
             "SELECT invocation_id,fingerprint,"
-            + _bounded_column(self.connection, "payload", 8192)
+            + _bounded_column(self.connection, "payload", 131_072)
             + " FROM workflow_effect_invocations WHERE identity=?",
             (identity.key,),
         ).fetchone()
