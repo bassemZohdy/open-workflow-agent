@@ -71,6 +71,7 @@ from .security import BearerSecurityProfile, ProfileAuthentication, static_princ
 from .storage import (
     StorageConnection,
     ensure_storage_namespace,
+    is_postgresql_datasource,
     namespaced_datasource,
     resolve_datasource,
 )
@@ -830,6 +831,24 @@ class RuntimeServices:
             )
             self._event_triggers[engine] = store
         return store
+
+    def memory_provider_database_path(self, provider: str, *, create_namespace: bool = True) -> str:
+        """Deployment-side long-term memory storage, separate from checkpoints."""
+        if type(provider) is not str or not re.fullmatch(r"[a-z][a-z0-9_]{0,31}", provider):
+            raise ConfigurationError("memory provider storage binding is invalid")
+        if self.database_root:
+            return str(self.database_root / f"{provider}-memory.sqlite3")
+        datasource = self.datasource or resolve_datasource(self.config.memory.database)
+        if datasource and is_postgresql_datasource(datasource):
+            namespace = f"owa_{provider}_memory"
+            if create_namespace:
+                ensure_storage_namespace(datasource, namespace)
+            return namespaced_datasource(datasource, namespace)
+        if datasource == ":memory:":
+            return datasource
+        return str(
+            Path(datasource or self.config.memory.database).with_name(f"{provider}-memory.sqlite3")
+        )
 
     def engine_database_path(self, engine: str, *, create_namespace: bool = True) -> str:
         """Return the native persistence path without exposing engine state publicly."""

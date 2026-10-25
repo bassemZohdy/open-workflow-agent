@@ -44,6 +44,26 @@ S4-02 remains the next ordered ready task, beginning with native memory. Bounded
 Send, the owned wait/end repair and Docker cache ordering have focused evidence.
 Memory, streams, public state updates, replay and time travel remain open.
 
+After the `f013a2e` main integration, the active S4-02 branch adds private native
+memory readers and SQLite/optional PostgreSQL provider factories. Bound readers
+retain the first committed value, including absence, in owned common receipts
+and recheck original authority before reuse. The read profile caps observations
+at 64 per invocation and detects inconsistent observations/indexes/receipts.
+The follow-up adds private fenced native put/delete transactions and atomic
+retry markers, reusing pinned SDK SQL and the common ownership fence. Repeating
+an old committed operation cannot overwrite a later writer's value. Source
+`f76fed9` passes 169 focused cases with zero skips on both Windows and frozen
+Linux, including actual stores, rollback, cancellation, quota races and abrupt
+process exit. Core-only request checks pass without SDK installation, and eight
+shared LangGraph SQLite/PostgreSQL isolation/denial checks pass. The earlier
+read/provider cohort remains recorded at `0268ea1`.
+Existing effect/ownership regressions previously passed all 99 cases with
+PostgreSQL enabled. Required native memory admission stays closed. Native
+markers are not common completion receipts; common write intents/completions,
+public authorization/bindings, retention and broader recovery qualification
+remain open. See the
+[native memory scope](docs/s4-02-native-memory-acceptance.md).
+
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with
