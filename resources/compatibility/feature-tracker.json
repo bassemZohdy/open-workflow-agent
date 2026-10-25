@@ -75992,7 +75992,7 @@
         "description": "Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.",
         "effort": "L",
         "status": "Pending",
-        "progress_record": "docs/s4-02-native-channels-acceptance.md#bounded-native-send-candidate--2026-10-25",
+        "progress_record": "docs/s4-02-native-channels-acceptance.md#owned-waitend-and-optional-store-follow-up--2026-10-25",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
       },
       {

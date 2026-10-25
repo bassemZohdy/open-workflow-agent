@@ -49,6 +49,20 @@ Automation settings only affect GitHub after these changes are pushed. Repositor
 variables and branch protection were not changed remotely, and existing runs
 were not cancelled.
 
+## Progress-audit actions
+
+The development loop now keeps one feature active, runs focused checks before
+one coherent full qualification, and freezes runtime source during recovery
+tests. The owned fork wait/end fix has deterministic regression coverage; its
+optional-store test profiles are explicit. Earlier failures remain in the
+[native acceptance record](s4-02-native-channels-acceptance.md#owned-waitend-and-optional-store-follow-up--2026-10-25).
+
+Both principal Dockerfiles now declare source/version labels after filesystem
+preparation. Previously changing `VCS_REF` invalidated the OS upgrade layer:
+the `bc87e0d` build spent about 119 seconds repeating it. Security updates,
+version/source labels and publication gates remain required. Actual cache reuse
+and final image checks must pass before recording this optimization as verified.
+
 ## Cleanup validation
 
 - The broader `tests/ci` suite passed: 182 tests.

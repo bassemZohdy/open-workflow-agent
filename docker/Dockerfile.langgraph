@@ -46,14 +46,8 @@ FROM ${PYTHON_IMAGE} AS runtime
 
 COPY --from=javascript /usr/local/bin/node /usr/local/bin/node
 
-ARG OWA_VERSION=0.2.0
-ARG VCS_REF=unknown
 # Refresh Debian security fixes in the pinned base before publication scanning.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
-LABEL org.opencontainers.image.title="open-workflow-agent-langgraph" \
-      org.opencontainers.image.version="$OWA_VERSION" \
-      org.opencontainers.image.revision="$VCS_REF" \
-      org.opencontainers.image.source="https://github.com/bassemZohdy/open-workflow-agent"
 
 ENV VIRTUAL_ENV=/opt/venv \
     PATH=/opt/venv/bin:$PATH \
@@ -72,6 +66,14 @@ COPY docker/entrypoint.sh /usr/local/bin/owa-entrypoint
 RUN install -d -o 10001 -g 0 -m 0770 /config /knowledge /data \
     && chmod 0555 /usr/local/bin/owa-entrypoint \
     && chmod -R a+rX /opt/models
+
+# Source labels must not invalidate OS updates or filesystem preparation.
+ARG OWA_VERSION=0.2.0
+ARG VCS_REF=unknown
+LABEL org.opencontainers.image.title="open-workflow-agent-langgraph" \
+      org.opencontainers.image.version="$OWA_VERSION" \
+      org.opencontainers.image.revision="$VCS_REF" \
+      org.opencontainers.image.source="https://github.com/bassemZohdy/open-workflow-agent"
 
 EXPOSE 8080
 STOPSIGNAL SIGTERM
