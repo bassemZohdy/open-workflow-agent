@@ -10,17 +10,17 @@ requires-python = ">=3.12"
 dependencies = [
   "croniter==6.2.4",
   "tzdata==2026.5",
-  "fastapi==0.141.1",
+  "fastapi==0.159.1",
   "httpx==0.28.1",
   "mcp==2.3.0",
-  "a2a-sdk==1.2.2",
+  "a2a-sdk==1.2.3",
   "grpcio==1.84.0",
   "jsonschema==4.26.0",
   "referencing==0.37.0",
-  "jq==1.12.0",
-  "pydantic==2.13.5",
+  "jq==1.13.0",
+  "pydantic==2.14.1",
   "PyYAML==6.0.3",
-  "uvicorn==0.53.0",
+  "uvicorn==0.54.0",
 ]
 
 [project.scripts]
@@ -28,12 +28,12 @@ owa = "open_workflow_agent.cli:main"
 
 [dependency-groups]
 dev = [
-  "apsw==3.54.0.0",
+  "apsw==3.54.1.0",
   "pytest==9.1.1",
   "pytest-asyncio==1.4.0",
-  "ruff==0.16.7",
-  "mypy==2.3.1",
-  "types-jsonschema==4.26.0.20260518",
+  "ruff==0.17.1",
+  "mypy==2.4.0",
+  "types-jsonschema==4.26.0.20261006",
   "types-PyYAML==6.0.12.20260815",
   "pytest-cov>=7.1.0",
 ]
@@ -44,11 +44,11 @@ mutation = [
 [project.optional-dependencies]
 model = ["litellm==1.101.0"]
 knowledge = [
-  "fastembed==0.8.0",
-  "numpy==2.5.3",
+  "fastembed==0.9.0",
+  "numpy==2.5.4",
   "pypdf==6.21.2",
 ]
-postgres = ["psycopg[binary]==3.3.5"]
+postgres = ["psycopg[binary]==3.3.6"]
 
 [build-system]
 requires = ["hatchling"]
