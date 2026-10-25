@@ -73,12 +73,15 @@ expired records on both stores. Historical observations and retry evidence
 remain available; retries do not renew the deadline. This is logical record
 expiry, not physical purge or workflow-history deletion. Source `810c723` passes
 355 selected memory/journal/ownership cases on each of Windows and frozen Linux
-with zero skips. Source `6a0ac8c` adds fixed namespace record and
+with zero skips. PR #79 merged namespace capacity/cleanup at `3187cfe` after its
+required hosted Docs check passed. Source `6a0ac8c` adds fixed namespace record and
 serialized-value byte limits plus bounded authorized expiry cleanup. Native
 namespace locks serialize quotas and cleanup with new writes, and common/native
 receipts survive physical record removal. Its 399-case cohort passes on Windows
 and frozen Linux with zero skips and 1,192 unchanged Linux source inputs.
-Public bindings, explicit uncertain
+Source `738b393` fixes concurrent first-use migrations and passes 415 cases with
+zero skips on each platform, including setup wait cancellation, shutdown
+error/timeout handling and process-exit lock recovery. Public bindings, explicit uncertain
 outcome resolution and broader qualification remain open; native memory
 admission stays closed. See the
 [native memory scope](docs/s4-02-native-memory-acceptance.md).

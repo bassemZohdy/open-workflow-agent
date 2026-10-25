@@ -251,6 +251,25 @@ writes in one catalog action reuse the same principal-scope permission; each
 write's contents remain independently bound by its common intent and native
 marker. Changed contents for the same logical record slot still reject.
 
+## Private store setup and shutdown follow-up
+
+The provider factory serializes the complete pinned SDK setup plus OWA metadata
+setup across workers. PostgreSQL uses a schema-scoped advisory session lock on
+the factory's unpooled connection. Short nonblocking probes avoid holding a
+waiting snapshot while the SDK runs `CREATE INDEX CONCURRENTLY`; a transaction
+cannot wrap that SDK migration. SQLite uses a separate adjacent
+`<native-database>.setup.sqlite3` lock database, so SDK `executescript()` commits
+cannot release exclusion early. The lock file persists but connection/process
+exit releases the database lock. Separate `:memory:` stores need no shared lock.
+These are deployment setup controls, not new workflow execution paths.
+
+The existing setup deadline bounds lock contention. Cancellation and timeout
+close the contender's connection, and process exit releases either backend's
+lock. Setup continues to use SDK migration code and version rows; no migrations
+or dependency installation are performed by workflow calls. Normal shutdown
+failures remain sanitized and bounded. When the caller is already failing or
+cancelled, cleanup preserves that original exception.
+
 ## Verification scope
 
 The focused tests use actual pinned LangGraph stores (in-memory and optional
@@ -452,6 +471,35 @@ per-write immutable intent checks. Earlier failed reports remain alongside the
 successful results. This is finite private-component evidence, not full
 repository/release qualification or S4-02 completion.
 
+### Provider setup and lifecycle qualification — `738b393`
+
+Source `738b3935fb59442c82e8e4171717ec4e2b7da47d` passes **415 cases with zero
+skips on each of Windows and frozen Linux**, comprising the prior 399-case cohort and 16 new
+lifecycle cases on actual SQLite/PostgreSQL. These include three simultaneous
+first-use connections, successful reopen with all records, bounded contended
+setup and cancellation, abrupt child-process exit while holding the setup lock,
+and shutdown error/timeout injection after real connection closure. Caller
+errors and cancellation preserve their original identity. These are finite
+component witnesses; they do not establish every migration-fault, deployment
+filesystem or shutdown-resource-failure scenario.
+
+The original first-use test failed on PostgreSQL with two of three starts
+rejected. Wrapping SDK setup with a blocking advisory query still failed; short
+nonblocking probes avoid retaining a waiting snapshot during concurrent index
+creation. The original failure and follow-up reports remain under
+`tmp/merge-20261025/`, alongside `memory-lifecycle-final-focused.xml`.
+
+Linux reuses the immutable image and controls recorded above, with matching
+locks, a fresh `owa_memory_738b393` PostgreSQL database and **1,194 unchanged
+source inputs**. Reports, XML, logs and manifest are in the `738b393/` evidence
+directory; Windows uses `memory-lifecycle-qualified-windows.xml`. The core-only
+policy/request selection passes 56 cases and skips one
+optional SDK module; four inventory/tracking checks and Markdown links pass.
+Ruff, formatting and strict typing pass. Eight shared LangGraph SQLite/PostgreSQL
+authority isolation/denial checks pass, with 44 unrelated cases deselected; see
+`memory-lifecycle-shared-contract.xml`. Public memory admission remains closed and
+S4-02 remains open.
+
 ## Remaining work before enabling the capability
 
 - Define and validate the versioned workflow bindings, logical record/schema and
@@ -464,9 +512,10 @@ repository/release qualification or S4-02 completion.
   writes. The private authorized writer now connects native transactions to
   common intents, completed receipts, native receipt observation and missing
   evidence rejection; versioned public workflow bindings remain open.
-- Complete native-checkpoint/crash recovery, changed authority/policy,
-  concurrent first-use/provider setup and shutdown-failure qualification on the
-  required engines/stores/platforms before updating capability metadata.
+- Complete the public profile's native-checkpoint/crash recovery and changed
+  authority/policy qualification on the required engines/stores/platforms.
+  The finite first-use/provider setup and shutdown witnesses above do not
+  replace complete public workflow qualification before capability changes.
 
 Core remains responsible for common memory semantics, identity, loading,
 expressions, admission and errors. Framework APIs and provider dependencies stay
