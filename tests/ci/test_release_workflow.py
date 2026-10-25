@@ -88,7 +88,7 @@ def test_formal_release_waits_for_runtime_and_controller_publication() -> None:
         (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     )
     release = workflow["jobs"]["github-release"]
-    assert set(release["needs"]) == {"prepare", "publish", "publish-controllers"}
+    assert set(release["needs"]) == {"prepare", "publish", "publish-controllers", "release-record"}
     assert "needs.publish.result == 'success'" in release["if"]
     assert "needs.publish-controllers.result == 'success'" in release["if"]
 

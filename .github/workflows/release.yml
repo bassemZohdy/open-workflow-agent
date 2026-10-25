@@ -333,6 +333,26 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Retain immutable runtime image record
+        env:
+          IMAGE: open-workflow-agent-${{ matrix.engine }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+        run: |
+          python -m ci.release_manifest image --image "$IMAGE" --sha "$SOURCE_SHA" \
+            --version "$VERSION" --digest "$DIGEST" \
+            --repository "$REGISTRY/$REGISTRY_NAMESPACE/$IMAGE" \
+            --repository "docker.io/$DOCKERHUB_USERNAME/$IMAGE" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --output "release-records/$IMAGE.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-image-${{ matrix.engine }}
+          path: release-records/*.json
+          if-no-files-found: error
+
   publish-controllers:
     name: Publish sandbox controller images
     needs: [prepare, preflight]
@@ -425,15 +445,64 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
+      - name: Retain immutable controller image record
+        env:
+          IMAGE: ${{ matrix.image }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+        run: |
+          python -m ci.release_manifest image --image "$IMAGE" --sha "$SOURCE_SHA" \
+            --version "$VERSION" --digest "$DIGEST" \
+            --repository "$REGISTRY/$REGISTRY_NAMESPACE/$IMAGE" \
+            --repository "docker.io/$DOCKERHUB_USERNAME/$IMAGE" \
+            --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            --output "release-records/$IMAGE.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-image-${{ matrix.cache_image }}
+          path: release-records/*.json
+          if-no-files-found: error
+
+  release-record:
+    name: Retain matched immutable release manifest
+    needs: [prepare, publish, publish-controllers]
+    if: >-
+      needs.prepare.outputs.should_publish == 'true' &&
+      needs.publish.result == 'success' && needs.publish-controllers.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: release-image-*
+          merge-multiple: true
+          path: release-records
+      - name: Validate the complete image set
+        run: python -m ci.release_manifest assemble --directory release-records --output owa-release-manifest.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-manifest
+          path: owa-release-manifest.json
+          if-no-files-found: error
+
   github-release:
     name: Create GitHub Release
-    needs: [prepare, publish, publish-controllers]
+    needs: [prepare, publish, publish-controllers, release-record]
     if: >-
       needs.prepare.outputs.should_create_release == 'true' &&
       needs.publish.result == 'success' &&
-      needs.publish-controllers.result == 'success'
+      needs.publish-controllers.result == 'success' && needs.release-record.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: release-manifest
       - name: Create release with pull instructions
         shell: bash
         env:
@@ -464,9 +533,11 @@ jobs:
           \`\`\`
 
           Both registries receive the same release build and tags: \`${RELEASE_VERSION}\`, \`${RELEASE_VERSION%.*}\`, \`latest\`, and the verified commit SHA. Release builds include OCI SBOM/provenance metadata; GitHub build provenance attestations are published with the canonical GHCR image.
+
+          The attached \`owa-release-manifest.json\` records immutable references for the matched runtime/controller image set. For rollback, retain a previously qualified manifest with its compatible configuration, secret bindings and persistence snapshot. Rolling tags are not rollback references; no automatic checkpoint migration is offered.
           EOF
 
-          gh release create "$RELEASE_TAG" \
+          gh release create "$RELEASE_TAG" owa-release-manifest.json \
             --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --title "Open Workflow Agent $RELEASE_TAG" \

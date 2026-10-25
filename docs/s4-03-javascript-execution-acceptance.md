@@ -44,5 +44,7 @@ plus the final prototype case); root fallback checks remain separate evidence.
 The optional `Dockerfile.tests` installs pinned dependencies and compiles at
 build time. CI runs it as an arbitrary UID with read-only root, no network and
 finite memory/CPU/PID controls. It is not a production image or release target.
-Linux/container and coherent hosted qualification of this component remain
+The frozen `b9b72ee20d7184a91fe7f92860f14048707df80c` test image passes all
+43 cases on Linux under those controls, with no skips. Its source input manifest
+contains 1,151 files. Coherent hosted qualification of this component remains
 pending. Local reports are retained under `tmp/javascript-sandbox-20261025/`.

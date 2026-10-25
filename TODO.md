@@ -460,6 +460,10 @@ treated as a deferred task or as additional feature completion.
   recovery reinitializes services in one process rather than forcing an OS stop.
   See the [S4-06 profile and limits](docs/benchmarks.md).
 - [ ] **S4-07** (M) — Keep CI, builds, releases, capability reports and rollback tied to verified versions and acceptance gates.
+  A new release-record candidate combines actual pushed runtime/controller
+  digests into one source/version/run-matched manifest, rejects incomplete or
+  mutable sets, and requires it before attaching a GitHub Release asset. Local
+  validator/workflow checks pass; no publication or rollback is performed.
   User-requested cleanup is verified at `3f568e5`: PR/main trigger separation, independent
   Windows/native/image checks, one root contract execution, optional Framework
   coverage for common changes, and stale-PR cancellation. Required release

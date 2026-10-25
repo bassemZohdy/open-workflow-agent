@@ -33,7 +33,7 @@ authored but awaiting qualification must not be mistaken for missing source code
 | S4-03 | Implement JavaScript workflow compilation/execution and independently prove parity. Its schema loader/native scaffold is not an OWS execution adapter. |
 | S4-04 | Map and execute official CTK/proposed coverage: the bridge retains 443 proposed tests and 774 schema constraints as unmapped/unexecuted. Integrity checks are not conformance evidence. |
 | S4-05–S4-07 | Complete durable history/tracing/provenance, benchmark qualification and versioned release/rollback acceptance. Local success does not replace skipped or pending hosted/backend gates. |
-| S4-08 | Resolve predecessor package-name ownership and consumer migration before Python publication. The local validation CLI does not resolve that decision. |
+| S4-08 | The later canonical/no-shim, separate-environment migration decision and disabled index-publication policy are now recorded. Full-source qualification remains required; future index publication still needs verified ownership/version/consumer evidence. |
 | S4-09–S4-11 | Conditional work: Agent Framework production hardening, external event delivery and multi-tenancy/delegated identity need concrete requirements before activation. |
 
 The existing working-tree records describe a 5,004-pass local batch, with 3,206

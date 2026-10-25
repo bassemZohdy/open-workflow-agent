@@ -87,3 +87,13 @@ SDK's two database restart cases and the three API tests. Both freshly rebuilt
 production images pass the JavaScript packaged gate; all 1,145 frozen inputs
 remain byte-identical. This is focused Linux evidence, not the pending complete
 hosted gate. Reports are retained in `tmp/javascript-sandbox-20261025/3520349/`.
+
+The later corruption/error suite passes 43 common SQLite/PostgreSQL cases.
+It checks counter damage, invalid envelope/schema/type fields, unexpected error
+or progress data, SSE ID injection, storage loss, invalid writes and closed
+observers without leaking raw diagnostics or repairing evidence. The
+SQLite/streaming-API coverage selection passes 25 cases with 21 unconfigured
+PostgreSQL skips and covers 97.11% of the new history module. Its initial focused
+coverage result was 84.39%; meaningful error-path tests close that gap without
+lowering the existing root coverage gate. These later tests are separate from
+the frozen `3520349` selection and still need the next Linux/full-source batch.

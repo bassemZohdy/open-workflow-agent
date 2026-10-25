@@ -38,6 +38,34 @@ to the report.
 
 ## Retained exact-source measurements
 
+### Follow-up at `d72781f` — 2026-10-25
+
+All four matched cells and aggregation passed at
+`d72781f86053a7fd77e7b9df7c3a74c262923136`. The unchanged
+[raw report](benchmark-results/d72781f-matched.json) is retained from the
+[hosted artifact](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40178378766).
+The ZIP matches GitHub's SHA-256 digest
+`3c90ac05ea6af3dc88fcca2200670f3ad9732eebb694ad479d22221c51b9550d`,
+and the repository aggregator validates its complete source/workflow/parameter
+matrix. Corrected runner names identify `GitHub Actions 1000028672` (ADK) and
+`GitHub Actions 1000028681` (LangGraph); both are Linux x86_64, Python 3.12.13.
+Parameters remain 30 sequential measurements, five warm-ups, concurrency eight
+and three recovery samples per cell.
+
+| Engine | Backend | Sequential p50 / p95 (s) | Concurrent throughput (/s) | CPU (s) | Peak RSS (MiB) | Persistence delta (bytes) | Resume p50 (s) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| ADK | SQLite | 0.340 / 0.380 | 2.09 | 14.84 | 184.40 | 1,187,840 | 0.498 |
+| ADK | PostgreSQL | 0.851 / 1.121 | 1.11 | 27.40 | 253.56 | 2,670,592 | 1.505 |
+| LangGraph | SQLite | 0.299 / 0.316 | 2.46 | 12.97 | 159.46 | 2,121,728 | 0.409 |
+| LangGraph | PostgreSQL | 0.547 / 0.781 | 1.72 | 17.16 | 125.45 | 3,473,408 | 0.963 |
+
+All twelve recovery samples complete with one fake-model call, one side effect
+and one operation identity each. The fresh complete PostgreSQL workflow also
+passes both operation suites and runtime-image persistence acceptance. Full
+source CI remains pending at this recording point. Runner-specific, footprint,
+RSS and same-process recovery limitations below remain applicable; these numbers
+are not production capacity or cross-run performance rankings.
+
 ### Follow-up at `88ca0f5` — 2026-10-25
 
 The four matched cells and aggregate passed at

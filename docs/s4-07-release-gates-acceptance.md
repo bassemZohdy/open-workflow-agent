@@ -2,13 +2,15 @@
 
 Status: local workflow guards and release metadata checks passed in the
 corrected consolidated batch; S4-07 remains open pending exact-source hosted
-qualification. Publication follows successful main-push CI and
+qualification. Automatic validation requires `OWA_AUTOMATIC_CI=true`; publication
+also requires `OWA_AUTOMATIC_RELEASES=true`. Manual validation remains available.
+When enabled, publication follows successful main-push CI and
 requires successful PostgreSQL, External Sandbox, Security, and Docs runs for
 the same commit. Missing runs remain pending until timeout; failed runs stop
 publication. Agent Framework remains an optional evaluation adapter and is not
 a production image or release gate.
 
-Security and Docs run on every main push so an exact-head result is available
+With automatic CI enabled, Security and Docs run on every main push so an exact-head result is available
 to the gate. Their pull-request triggers remain scoped to their normal
 validation needs. A documentation-only main commit does not start publication
 by itself because Release is triggered by successful CI.
@@ -44,3 +46,29 @@ This record does not claim a release, production
 deployment, or successful qualification for the current source. It does not
 change repository rulesets, environment protection, support policy, or public
 isolation guarantees.
+
+## Immutable release-record candidate — 2026-10-25
+
+The publication workflow now retains one validated record per actual pushed
+runtime/controller digest. A required assembly job accepts exactly four unique
+images from the same commit, version and publication run, with both registry
+references and the two declared platform targets. Mutable tags, mismatched
+digests, foreign fields, missing/duplicate images and mixed source/run identity
+reject before a combined record is written. The GitHub Release job requires
+that assembly and attaches `owa-release-manifest.json`; non-tagged published
+main builds retain the same manifest as a workflow artifact.
+
+The records use build-push's actual manifest digest, independently of rolling
+tags. They preserve the existing SBOM/provenance and exact-source gates; they do
+not independently verify registry contents or execute a rollback. Operators
+retain a previously qualified matched manifest, compatible configuration and
+committed recovery evidence. No credentials, automatic database restoration or
+checkpoint migration are included. Earlier releases need their original verified
+digest records; this candidate does not invent historical manifests.
+
+The initial manifest/workflow/gate/automation selection passes 33 local tests,
+including real CLI file output, unchanged output on malformed input and synthetic
+metadata rejection. These are validator tests, not actual publication. Strict
+typing and formatting pass. The complete local CI-guard suite passes 213 tests.
+Coherent hosted qualification remains pending; no release or deployment was
+performed.

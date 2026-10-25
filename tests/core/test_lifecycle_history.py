@@ -224,3 +224,97 @@ def test_enabled_history_requires_persistent_storage():
     )
     with pytest.raises(ConfigurationError, match="persistent common storage"):
         RuntimeServices(config)
+
+
+@pytest.mark.parametrize(
+    "damage",
+    [
+        "counter-negative",
+        "counter-mismatch",
+        "size",
+        "envelope",
+        "schema",
+        "error-details",
+        "progress-fields",
+        "subject",
+        "status",
+        "duration",
+        "attempt",
+        "id-newline",
+    ],
+)
+def test_damaged_history_metadata_rejects_read_only(selected_history, damage):
+    _, _, create = selected_history
+    history = create()
+    history.append(event("retained"))
+    if damage.startswith("counter-"):
+        history.connection.execute(
+            "UPDATE lifecycle_history_counter SET value=?",
+            (-1 if damage == "counter-negative" else 2,),
+        )
+    else:
+        payload = event("retained").as_dict()
+        if damage == "envelope":
+            payload = {"id": "retained"}
+        elif damage == "schema":
+            payload["dataschema"] = "urn:wrong"
+        elif damage == "error-details":
+            payload["data"]["error"] = {"code": "controlled", "message": "must-not-disclose"}
+        elif damage == "progress-fields":
+            payload["data"]["progress"] = {"private": "must-not-disclose"}
+        elif damage == "subject":
+            payload["subject"] = {"private": "must-not-disclose"}
+        elif damage == "status":
+            payload["data"]["status"] = {"private": "must-not-disclose"}
+        elif damage == "duration":
+            payload["data"]["duration"] = "must-not-disclose"
+        elif damage == "attempt":
+            payload["data"]["attempt"] = True
+        elif damage == "id-newline":
+            payload["id"] = payload["data"]["event_id"] = "retained\ninjected"
+        encoded = json.dumps(payload)
+        history.connection.execute(
+            "UPDATE lifecycle_history SET payload=?,payload_bytes=?",
+            (encoded, len(encoded.encode()) + (damage == "size")),
+        )
+    history.connection.commit()
+    before = rows(history)
+    with pytest.raises(LifecycleHistoryError) as raised:
+        history.snapshot(1)
+    assert "must-not-disclose" not in str(raised.value)
+    assert rows(history) == before
+
+
+def test_invalid_write_storage_failure_and_closed_history_are_sanitized(selected_history):
+    _, _, create = selected_history
+    history = create()
+    before = rows(history)
+    with pytest.raises(LifecycleHistoryError):
+        history.append(event("nonfinite", duration=float("nan")))
+    assert rows(history) == before
+    with pytest.raises(ValueError):
+        history.snapshot(0)
+    history.connection.execute("DROP TABLE lifecycle_history_counter")
+    history.connection.commit()
+    with pytest.raises(LifecycleHistoryError, match="storage is unavailable"):
+        history.snapshot(1)
+    history.close()
+    with pytest.raises(LifecycleHistoryError, match="history is closed"):
+        history.snapshot(1)
+
+
+@pytest.mark.asyncio
+async def test_durable_observer_timeout_and_capacity_release(selected_history):
+    _, _, create = selected_history
+    history = create()
+    sink = LifecycleCloudEventSink(InMemoryEventSink(), history=history, max_subscribers=1)
+    stream = lifecycle_sse_stream(sink, limits=StreamLimits(timeout_seconds=0.01))
+    with pytest.raises(RuntimeError, match="maximum lifecycle"):
+        sink.subscribe()
+    assert b'"reason":"timeout"' in await anext(stream)
+    await stream.aclose()
+    assert sink._history_subscribers == set()
+    _, subscription = sink.subscribe()
+    subscription.close()
+    with pytest.raises(RuntimeError, match="subscription is closed"):
+        await subscription.receive(timeout=1)

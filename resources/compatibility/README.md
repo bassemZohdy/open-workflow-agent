@@ -32,6 +32,11 @@ prove that an active test asserts every proposed criterion; reviewers still
 need criterion-specific selectors and retained run evidence before changing a
 bridge status. CTK artifacts establish only the named Portable Profile subset.
 
+Later task `progress_record` links describe candidate native Command routing,
+bounded literal JavaScript execution and durable diagnostic history. They do
+not rewrite the dated implementation audit or promote full inventory/proposed
+criteria merely because focused tests pass.
+
 The bridge now records the current mapping blockers and CI checks their counts
 against the row statuses. The proposed test rows require their full stated
 multi-runtime scope, including Python and JS/TS comparisons where listed; no

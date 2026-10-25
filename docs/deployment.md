@@ -43,6 +43,19 @@ sha-<sha>    source-addressed main build; tag can be republished
 
 For production, pin an exact SemVer tag (`0.2.0` or newer) or an image digest rather than `latest`. Use a digest when immutability is required; a rerun can republish `sha-<sha>`. Both registries receive the same verified build and tags.
 
+The release-workflow candidate retains `owa-release-manifest.json` with a matched
+set of digest-pinned runtime and controller references, source commit, version
+and publication-run identity. Future GitHub Releases attach it; qualified main
+publication runs retain it as an artifact. Earlier releases may only have their
+original digest records. Keep the prior qualified set before changing a deployment.
+
+For rollback, select the previous matched digest set and its compatible runtime
+configuration. Retain current committed business/recovery evidence; selecting an
+older binary does not authorize discarding newer transactions or migrating native
+checkpoints. Existing invocations still require their originally admitted runtime
+profile and current authorization checks. Restoring storage or moving a consumer
+is an explicit deployment operation, outside generation of this manifest.
+
 Images are published only after CI and the same-commit External Sandbox and PostgreSQL acceptance runs succeed. All four images are scanned on both target platforms before any push. OCI SBOM/provenance metadata is generated for the published build, and GitHub build provenance attestations are attached to the canonical GHCR image. A registry failure during publication can still leave some rolling tags updated; pin the recorded digests when deploying a matched image set.
 
 Release runs are serialized across `main` commits. The workflow skips a

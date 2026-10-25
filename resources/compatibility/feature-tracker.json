@@ -75913,6 +75913,7 @@
         "description": "Keep CI, builds, releases, capability reports and rollback tied to verified versions and acceptance gates.",
         "effort": "M",
         "status": "Pending",
+        "progress_record": "docs/s4-07-release-gates-acceptance.md#immutable-release-record-candidate--2026-10-25",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "working_cleanup": {
           "status": "Verified cleanup subset; full S4-07 acceptance remains open",
