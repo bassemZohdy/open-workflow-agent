@@ -131,3 +131,22 @@ flags changed. S4-02 remains open and the verified count stays 31/37.
 
 Work continues on `codex/s4-02-memory-capacity`: namespace record/value budgets,
 bounded authorized physical cleanup, and retention of common/native proof.
+
+## PR #79 integration — 2026-10-26 Asia/Dubai
+
+[PR #79](https://github.com/bassemZohdy/open-workflow-agent/pull/79) merged at
+`3187cfe4e9728a419829a38fab04de5a76221a01`, preserving head
+`bba47b3bc442510bb7c4edd5b12464deff45ca0f`. GitHub records the merge at
+2026-10-25T22:29:15Z (2026-10-26 locally). Local `main` was fast-forwarded and its
+push confirmed GitHub was up to date. Its required exact-head check passed in
+[Docs run 40240383097](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40240383097).
+
+The finite namespace-capacity/physical-cleanup evidence remains the 399-case
+Windows/frozen-Linux cohort at `6a0ac8c`, with eight shared authority contracts.
+Public native memory admission remains closed; this merge does not qualify a
+full repository/release or complete S4-02. The task count stays 31/37 verified,
+and no protections or automatic CI/release flags changed.
+
+Work continues from this main commit on `codex/s4-02-memory-provider-lifecycle`
+with simultaneous first-use migration, bounded setup waits, shutdown errors and
+cleanup after cancellation or abrupt process exit.

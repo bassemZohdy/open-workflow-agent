@@ -232,9 +232,13 @@ treated as a deferred task or as additional feature completion.
   cohort on both Windows and frozen Linux with zero skips. A typed policy uses
   database time to commit the record deadline with its value and native marker;
   fresh get reads omit expired records while replay retains past observations.
-  Retries do not renew expiry. Capacity/cleanup source `6a0ac8c` passes 399 cases
+  Retries do not renew expiry. PR #79 merged capacity/cleanup at `3187cfe`.
+  Capacity/cleanup source `6a0ac8c` passes 399 cases
   on each platform with zero skips. Fixed namespace record/serialized-value byte
   budgets and authorized bounded physical expiry cleanup retain recovery proof.
+  Provider lifecycle source `738b393` passes 415 cases per platform with zero
+  skips, adding concurrent first-use migration exclusion and setup/shutdown
+  cancellation, timeout and process-exit witnesses.
   Native memory admission stays closed. Next complete versioned public bindings,
   explicit uncertain-outcome resolution and remaining provider/recovery gates.
   See the [memory scope](docs/s4-02-native-memory-acceptance.md).
