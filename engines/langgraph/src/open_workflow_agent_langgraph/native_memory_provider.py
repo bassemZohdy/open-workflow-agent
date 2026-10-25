@@ -20,6 +20,7 @@ from open_workflow_agent.storage import is_postgresql_datasource
 
 from .native_memory import NativeMemoryReadBounds, NativeMemoryReader
 from .native_memory_expiry import expiry_filtered_store
+from .native_memory_setup import memory_setup_lock
 from .native_memory_writes import NativeMemoryWriter, mutation_backend, mutation_storage_identity
 
 
@@ -125,10 +126,11 @@ async def open_native_memory_provider(
             if not postgresql:
                 Path(path).parent.mkdir(parents=True, exist_ok=True)
             store = await stack.enter_async_context(store_type.from_conn_string(path))
-            await store.setup()
             from .native_memory_mutations import prepare_mutation_storage
 
-            await prepare_mutation_storage(store, postgresql=postgresql)
+            async with memory_setup_lock(store, path, postgresql=postgresql):
+                await store.setup()
+                await prepare_mutation_storage(store, postgresql=postgresql)
             services.memory_writes.register(
                 mutation_backend(services, path, binding, retention, namespace_limits)
             )
