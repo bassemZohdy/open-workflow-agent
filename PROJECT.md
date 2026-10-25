@@ -66,15 +66,20 @@ an authorized private writer. A committed native marker can finish an
 interrupted common completion; dispatched writes with missing markers fail as
 uncertain and are never blindly dispatched again. Source `54103b9` passes a
 322-case memory/journal/ownership cohort on Windows and frozen Linux with zero
-skips, including the combined abrupt-process-exit recovery path. The active
-retention follow-up adds a typed opt-in record expiry policy: database time
-sets a deadline atomically with the native write, and fresh get reads omit
+skips, including the combined abrupt-process-exit recovery path. PR #78 merged
+record expiry at `b344058` after its hosted Docs check passed. Its typed opt-in policy
+uses database time to set a deadline atomically with the native write; fresh reads omit
 expired records on both stores. Historical observations and retry evidence
 remain available; retries do not renew the deadline. This is logical record
 expiry, not physical purge or workflow-history deletion. Source `810c723` passes
 355 selected memory/journal/ownership cases on each of Windows and frozen Linux
-with zero skips. Namespace bounds,
-bounded cleanup, public bindings and broader qualification remain open; native memory
+with zero skips. Source `6a0ac8c` adds fixed namespace record and
+serialized-value byte limits plus bounded authorized expiry cleanup. Native
+namespace locks serialize quotas and cleanup with new writes, and common/native
+receipts survive physical record removal. Its 399-case cohort passes on Windows
+and frozen Linux with zero skips and 1,192 unchanged Linux source inputs.
+Public bindings, explicit uncertain
+outcome resolution and broader qualification remain open; native memory
 admission stays closed. See the
 [native memory scope](docs/s4-02-native-memory-acceptance.md).
 

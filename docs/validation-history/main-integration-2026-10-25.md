@@ -114,3 +114,20 @@ The backlog stays 31/37 verified and S4-02 remains open.
 The next ready work starts from this main commit on
 `codex/s4-02-memory-retention`, adding database-timed record expiry while
 preserving common observations and native/common completion evidence.
+
+## PR #78 integration — 2026-10-26 Asia/Dubai
+
+[PR #78](https://github.com/bassemZohdy/open-workflow-agent/pull/78) merged at
+`b3440589c64388aab4f14129fb014276cd71da1f`, preserving head
+`f350c34f8ffbb49f5b98111ebedb3621ad15a20a`. GitHub records the merge at
+2026-10-25T21:50:13Z (2026-10-26 locally). Local `main` was fast-forwarded and its
+push confirmed GitHub was up to date. The exact-head required check passed in
+[Docs run 40237052018](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/40237052018).
+
+The retained finite evidence is the 355-case Windows/frozen-Linux cohort at
+`810c723`. This does not establish full repository/release qualification or
+enable public native memory admission. No protections or automatic CI/release
+flags changed. S4-02 remains open and the verified count stays 31/37.
+
+Work continues on `codex/s4-02-memory-capacity`: namespace record/value budgets,
+bounded authorized physical cleanup, and retention of common/native proof.
