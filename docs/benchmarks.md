@@ -1,5 +1,13 @@
 # Matched performance measurements
 
+## Exact-source qualification d72781f
+
+S4-06 is verified for its finite profile at `d72781f86053a7fd77e7b9df7c3a74c262923136`. Retained matched ADK/LangGraph x SQLite/PostgreSQL 30/5/8/3 benchmark report with latency, invocation CPU, lifetime peak RSS, concurrency, creation/footprint and timed service restart/resume correctness.
+
+Runner-specific measurements are not capacity guarantees; persistence I/O is included in latency, PostgreSQL size is whole-service and recovery timings use same-process reinitialization. Physical-stop proof remains separate.
+
+All six source-matched workflows pass; [the retained results](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f) include actual principal SDKs, both databases, platform/process, image, security and packaging checks. This is not full OWS/proposed-test conformance.
+
 The S4-06 matched profile is separate from the quick runtime and engine smoke
 probes documented in [development](development.md). It runs the same
 deterministic fake-model workflow for ADK and LangGraph with SQLite and actual

@@ -65156,7 +65156,7 @@
       "3": 261
     },
     "baseline_inventory_sha256": "df2c203de28783604b489e6fd0468117a37d01dddd61a4bd3b76ca12b6dfb9c4",
-    "status_note": "S3-01 bounded Python MCP profile is qualified at the exact hosted source recorded in its task evidence. All other delivery statuses remain individually evidence-gated; the 658-feature inventory, 443 proposed tests, 774 schema constraints, JavaScript and full conformance are not implied complete.",
+    "status_note": "Qualified finite task profiles are recorded individually in repository_tracking.tasks. Full 658-feature, 443-proposed-test, 774-schema-constraint and independent JavaScript/conformance outcomes remain separately evidence-gated; no research row is promoted by whole-suite success.",
     "authoring_notes": {
       "S3-04": {
         "status": "Authored; qualification pending",
@@ -75651,8 +75651,15 @@
         "module": "M05",
         "description": "Define compatible workflow-version migration, crash/replay behavior and recovery diagnostics.",
         "effort": "L",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "957845969b39fbaa6698ff1cf150931c7947d2ba",
+          "acceptance_record": "docs/s2-09-version-recovery-acceptance.md#final-finite-qualification-status",
+          "scope": "Previously verified finite VM01-VM08 continuation/recovery policy; synchronize the stale tracker with the existing checked TODO and PROJECT record.",
+          "conclusions": "Historical six-workflow qualification is recorded at docs/validation-history/pending-batch-results.md#hosted-checkpoint-pr-head-9578459; this is not a new task completion.",
+          "full_conformance": false
+        }
       },
       {
         "id": "S3-01",
@@ -75809,9 +75816,26 @@
         "module": "M07",
         "description": "Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.",
         "effort": "M",
-        "status": "Pending",
+        "status": "Complete",
         "progress_record": "docs/s3-04-executable-source-acceptance.md#javascript-portability-candidate--2026-10-25",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "d72781f86053a7fd77e7b9df7c3a74c262923136",
+          "acceptance_record": "docs/s3-04-executable-source-acceptance.md#exact-source-qualification-d72781f",
+          "scope": "Finite Python captured-source registry/admission/recovery and common awaited Python/JavaScript/shell execution, return projections, process controls, source identity and existing selected external sandbox boundaries.",
+          "exclusions": "Background activation remains S3-03; captured-source/background JavaScript, wider container policies, unsupported platform controls and independent JS workflow parity remain excluded.",
+          "runs": {
+            "CI": 40178378634,
+            "PostgreSQL CI": 40178378766,
+            "Agent Framework CI": 40178378700,
+            "External Sandbox CI": 40178378759,
+            "Security": 40178378721,
+            "Docs": 40178378740
+          },
+          "conclusions": "All six exact-source hosted workflows passed; see docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f",
+          "full_conformance": false,
+          "full_feature_verified": false
+        }
       },
       {
         "id": "S3-05",
@@ -75819,17 +75843,51 @@
         "module": "M09",
         "description": "Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.",
         "effort": "M",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "d72781f86053a7fd77e7b9df7c3a74c262923136",
+          "acceptance_record": "docs/s3-05-protected-approval-acceptance.md#exact-source-qualification-d72781f",
+          "scope": "Finite default-disabled protected-approval v1: authenticated assignee/reassignment/escalation, revisioned denial/expiry/response validation, immutable audit/proof and native/process recovery on both principal engines and databases.",
+          "exclusions": "Delegated consent/identity-platform work remains conditional S4-11; full proposed and independent JS criteria remain separate.",
+          "runs": {
+            "CI": 40178378634,
+            "PostgreSQL CI": 40178378766,
+            "Agent Framework CI": 40178378700,
+            "External Sandbox CI": 40178378759,
+            "Security": 40178378721,
+            "Docs": 40178378740
+          },
+          "conclusions": "All six exact-source hosted workflows passed; see docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f",
+          "full_conformance": false,
+          "full_feature_verified": false
+        }
       },
       {
         "id": "S3-06",
         "stage": 3,
         "module": "M10",
-        "description": "Complete identity propagation, credential references, policy/audit/isolation and applicable delegated authorization.",
+        "description": "Complete identity propagation, credential references, policy/audit/isolation and authorization within existing contracts; delegated identity and consent remain conditional S4-11.",
         "effort": "L",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "d72781f86053a7fd77e7b9df7c3a74c262923136",
+          "acceptance_record": "docs/s3-06-identity-security-acceptance.md#exact-source-qualification-d72781f",
+          "scope": "Existing-contract identity propagation, strict bearer/API-key ingress, original authority, exact policy/resource/credential decisions, task scopes, memory isolation, audit/recovery fences and direct literal credential projection.",
+          "exclusions": "Multi-tenancy, delegated token exchange/consent, encoded-secret taint analysis and hard process isolation are excluded; S4-11 stays conditional.",
+          "runs": {
+            "CI": 40178378634,
+            "PostgreSQL CI": 40178378766,
+            "Agent Framework CI": 40178378700,
+            "External Sandbox CI": 40178378759,
+            "Security": 40178378721,
+            "Docs": 40178378740
+          },
+          "conclusions": "All six exact-source hosted workflows passed; see docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f",
+          "full_conformance": false,
+          "full_feature_verified": false
+        }
       },
       {
         "id": "S3-07",
@@ -75837,8 +75895,25 @@
         "module": "M03",
         "description": "Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.",
         "effort": "M",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "d72781f86053a7fd77e7b9df7c3a74c262923136",
+          "acceptance_record": "docs/s3-07-agent-pattern-acceptance.md#exact-source-qualification-d72781f",
+          "scope": "All eight bounded OWS recipe families with named roles, original caller/role policy intersection, quotas/tool bindings, protected approval/coordinator lineage and known/uncertain process recovery.",
+          "exclusions": "Arbitrary dynamic teams, recursive autonomous planners, provider-specific native APIs and full proposed/JS coverage are excluded.",
+          "runs": {
+            "CI": 40178378634,
+            "PostgreSQL CI": 40178378766,
+            "Agent Framework CI": 40178378700,
+            "External Sandbox CI": 40178378759,
+            "Security": 40178378721,
+            "Docs": 40178378740
+          },
+          "conclusions": "All six exact-source hosted workflows passed; see docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f",
+          "full_conformance": false,
+          "full_feature_verified": false
+        }
       },
       {
         "id": "S3-08",
@@ -75846,8 +75921,25 @@
         "module": "M12",
         "description": "Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.",
         "effort": "L",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "d72781f86053a7fd77e7b9df7c3a74c262923136",
+          "acceptance_record": "docs/s3-08-selected-adapter-acceptance.md#exact-source-qualification-d72781f",
+          "scope": "Selected independently adapted compiler/provider DTO and service patterns, bounded common memory, embedded event codec/admission/ACK seams and original-source/native process recovery.",
+          "exclusions": "Remote broker/vendor interoperability and transport selection guarantees beyond the recorded finite profile remain excluded; frozen predecessor code is not runtime code.",
+          "runs": {
+            "CI": 40178378634,
+            "PostgreSQL CI": 40178378766,
+            "Agent Framework CI": 40178378700,
+            "External Sandbox CI": 40178378759,
+            "Security": 40178378721,
+            "Docs": 40178378740
+          },
+          "conclusions": "All six exact-source hosted workflows passed; see docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f",
+          "full_conformance": false,
+          "full_feature_verified": false
+        }
       },
       {
         "id": "S4-01",
@@ -75855,8 +75947,25 @@
         "module": "M01",
         "description": "Implement versioned native YAML metadata extensions with capability admission; reject unsupported requests.",
         "effort": "M",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "d72781f86053a7fd77e7b9df7c3a74c262923136",
+          "acceptance_record": "docs/s4-01-native-extension-acceptance.md#exact-source-qualification-d72781f",
+          "scope": "Versioned native metadata declaration and exact capability admission, required/optional semantics and engine/backend checks with unsupported required requests rejected before mutation; real channel/Command witnesses and ADK rejection.",
+          "exclusions": "This qualifies the declaration/admission boundary, not the wider S4-02 native features or independent JavaScript engine.",
+          "runs": {
+            "CI": 40178378634,
+            "PostgreSQL CI": 40178378766,
+            "Agent Framework CI": 40178378700,
+            "External Sandbox CI": 40178378759,
+            "Security": 40178378721,
+            "Docs": 40178378740
+          },
+          "conclusions": "All six exact-source hosted workflows passed; see docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f",
+          "full_conformance": false,
+          "full_feature_verified": false
+        }
       },
       {
         "id": "S4-02",
@@ -75903,8 +76012,25 @@
         "module": "M12",
         "description": "Run matched latency/CPU/memory/concurrency/persistence/recovery benchmarks; publish measured results.",
         "effort": "M",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "d72781f86053a7fd77e7b9df7c3a74c262923136",
+          "acceptance_record": "docs/benchmarks.md#exact-source-qualification-d72781f",
+          "scope": "Retained matched ADK/LangGraph x SQLite/PostgreSQL 30/5/8/3 benchmark report with latency, invocation CPU, lifetime peak RSS, concurrency, creation/footprint and timed service restart/resume correctness.",
+          "exclusions": "Runner-specific measurements are not capacity guarantees; persistence I/O is included in latency, PostgreSQL size is whole-service and recovery timings use same-process reinitialization. Physical-stop proof remains separate.",
+          "runs": {
+            "CI": 40178378634,
+            "PostgreSQL CI": 40178378766,
+            "Agent Framework CI": 40178378700,
+            "External Sandbox CI": 40178378759,
+            "Security": 40178378721,
+            "Docs": 40178378740
+          },
+          "conclusions": "All six exact-source hosted workflows passed; see docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f",
+          "full_conformance": false,
+          "full_feature_verified": false
+        }
       },
       {
         "id": "S4-07",
@@ -75938,9 +76064,26 @@
         "module": "M12",
         "description": "Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.",
         "effort": "M",
-        "status": "Pending",
+        "status": "Complete",
         "progress_record": "docs/s4-08-compatibility-decision.md",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "d72781f86053a7fd77e7b9df7c3a74c262923136",
+          "acceptance_record": "docs/s4-08-compatibility-decision.md#exact-source-qualification-d72781f",
+          "scope": "Canonical package/import and CLI policy, no predecessor shims, source/qualified-OCI delivery, disabled Python index publication, separate-environment manual migration and real owa validate schema/compiler checks.",
+          "exclusions": "No package transfer/index publication, managed consumer migration or checkpoint migration was performed; future publication requires ownership/version/consumer evidence.",
+          "runs": {
+            "CI": 40178378634,
+            "PostgreSQL CI": 40178378766,
+            "Agent Framework CI": 40178378700,
+            "External Sandbox CI": 40178378759,
+            "Security": 40178378721,
+            "Docs": 40178378740
+          },
+          "conclusions": "All six exact-source hosted workflows passed; see docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f",
+          "full_conformance": false,
+          "full_feature_verified": false
+        }
       },
       {
         "id": "S4-09",

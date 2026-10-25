@@ -19,11 +19,10 @@ and [automation controls](docs/development.md#fast-development-and-optional-auto
 
 ## Current backlog delivery mode
 
-Updated 2026-10-25. **20 of 37 tasks are verified; 17 remain open. None is deferred.**
-The user kept S4-09/S4-10/S4-11 conditional; work continues on the 14 ready tasks.
-The next S4-02 candidate repairs nested-reader checkpoint privacy and adds
-bounded native Command routing through existing OWS transitions. Focused local
-recovery tests pass; this does not complete the wider native-feature task.
+Updated 2026-10-25. **28 of 37 tasks are verified; 9 remain open. None is deferred.**
+The user kept S4-09/S4-10/S4-11 conditional; work continues on the six ready tasks.
+The S4-02 channel/Command subset passes its recorded source-matched checks;
+Send, memory, streams, state updates, replay and time travel remain open.
 An additional S4-05 candidate adds opt-in bounded diagnostic history on the
 common database, with local physical-stop, real API and principal-engine/backend
 restart checks. Full-source qualification and broader tracing/provenance remain
@@ -34,10 +33,13 @@ identity, durable engine services and broader execution remain unimplemented.
 See the [JavaScript acceptance record](docs/s4-03-javascript-execution-acceptance.md).
 The [ready-task qualification record](docs/validation-history/ready-tasks-2026-10-25.md)
 tracks the frozen baseline, corrected test expectation and newly repaired
-dependency advisories. No focused scan or adapter result closes a task.
+dependency advisories. The full green `d72781f` checkpoint closes eight finite
+task scopes. Later history, JS and release-record candidates remain unqualified
+as complete tasks.
 S3-03 is the next ordered open task. Its remaining work includes current-source
-qualification and the wider operation-adapter inventory; its background profile
-remains disabled. Local checks do not waive hosted, security or release gates.
+qualification of background-profile publication. The candidate enables the
+verified internal profile, while deployment opt-in remains false by default.
+Local checks do not waive hosted, security or release gates.
 
 The encoded-reference follow-up fixes URI decoding in OpenAPI/pure AsyncAPI and
 rejects an unsupported Windows LangGraph/PostgreSQL loop before starting engine
@@ -70,20 +72,20 @@ JavaScript conformance.
 | S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
 | S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
 | S3-02 | Finite Python A2A profile verified at exact source `3b6b329`; all six hosted workflows passed. Durable Task/receipt expiry, push, delegated identity, JavaScript and full proposed criteria remain outside this qualification. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329) |
-| S3-03 | Local Docker/native/SQLite/PostgreSQL and Windows recovery selections pass. Current-source full/hosted qualification and wider adapter scope remain open; background execution stays disabled. | [Operation adapters](docs/s3-03-operation-adapters-acceptance.md), [validation history](docs/validation-history/pending-batch-results.md#partial-source-c3ca7f1) |
-| S3-04 | Captured sources and bounded process controls are authored; local native source/recovery and Docker probes pass. Remaining platform, complete-suite and deployment qualification is open. | [Executable sources](docs/s3-04-executable-source-acceptance.md) |
-| S3-05 | Protected approval decisions, expiry and recovery are authored; common PostgreSQL and repeat-run fixture checks pass. Full independent-SDK/process/backend qualification remains open. | [Protected approvals](docs/s3-05-protected-approval-acceptance.md), [recovery evidence](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f) |
-| S3-06 | Identity, credential, authorization and isolation safeguards are authored. Broader qualification and the later model-credential logging canary remain open. | [Security scope and gates](docs/s3-06-identity-security-acceptance.md) |
-| S3-07 | Eight recipe families and role-binding safeguards are authored; selected native and recovery checks pass. Broader family/backend/hosted qualification remains open. | [Pattern scope and gates](docs/s3-07-agent-pattern-acceptance.md), [timing-run evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776) |
-| S3-08 | Selected provider, memory, compiler and embedded-event adaptations are authored; integrated qualification remains open. | [Selected scope and gates](docs/s3-08-selected-adapter-acceptance.md) |
-| S4-01 | Versioned native metadata declarations and exact capability admission are authored; broader tracker/native/hosted qualification remains open. | [Native extension admission](docs/s4-01-native-extension-acceptance.md) |
+| S3-03 | Finite runtime gates pass at `d72781f`. The background-profile publication candidate and subsequent source qualification remain open; deployment opt-in stays disabled by default. | [Operation adapters](docs/s3-03-operation-adapters-acceptance.md), [qualification](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f) |
+| S3-04 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-04-executable-source-acceptance.md#exact-source-qualification-d72781f) |
+| S3-05 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-05-protected-approval-acceptance.md#exact-source-qualification-d72781f) |
+| S3-06 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-06-identity-security-acceptance.md#exact-source-qualification-d72781f) |
+| S3-07 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-07-agent-pattern-acceptance.md#exact-source-qualification-d72781f) |
+| S3-08 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-08-selected-adapter-acceptance.md#exact-source-qualification-d72781f) |
+| S4-01 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s4-01-native-extension-acceptance.md#exact-source-qualification-d72781f) |
 | S4-02 | The bounded LangGraph channel/reducer slice has local evidence. Wider native state, streaming, replay/time-travel and backend qualification remain open. | [Native channel scope and gates](docs/s4-02-native-channels-acceptance.md) |
 | S4-03 | TypeScript schema admission is implemented and locally checked. Workflow compilation/execution and independent parity are still missing. | [JavaScript engine scaffold](engines/langgraph-js/README.md) |
 | S4-04 | The bridge inventories 443 proposed tests and 774 schema constraints as unmapped/unexecuted. Full CTK/schema/parity qualification remains open. | [Coverage bridge](resources/compatibility/README.md) |
 | S4-05 | Bounded task metrics and correlation have local evidence. Durable history, trace/causation propagation, richer provenance and replay diagnostics remain open. | [Observability acceptance](docs/s4-05-observability-acceptance.md) |
-| S4-06 | Matched benchmark harness and historical measurements are retained. Fresh qualification and documented measurement/recovery limitations remain open. | [Matched benchmark profile and limits](docs/benchmarks.md) |
+| S4-06 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/benchmarks.md#exact-source-qualification-d72781f) |
 | S4-07 | Publication guards remain fail-closed; automatic CI/release are opt-in. Fresh exact-source gates, security, rollback and broader version/capability acceptance remain open. | [Release gate acceptance](docs/s4-07-release-gates-acceptance.md), [hosted result](docs/validation-history/pending-batch-results.md#hosted-outcome-for-source-0d812b2), [corrected local batch](docs/validation-history/pending-batch-results.md#corrected-working-tree-batch--local-validation-before-hosted-requalification) |
-| S4-08 | Canonical names, source/OCI delivery, disabled index publication and manual migration in separate environments are decided. Metadata and real CLI checks pass; full qualification remains open. | [Compatibility decision](docs/s4-08-compatibility-decision.md) |
+| S4-08 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s4-08-compatibility-decision.md#exact-source-qualification-d72781f) |
 
 Historical source outcomes, full commands, hashes and correction details are
 retained in the [validation history](docs/validation-history/pending-batch-results.md).

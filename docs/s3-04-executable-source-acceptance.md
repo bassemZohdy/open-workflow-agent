@@ -1,5 +1,17 @@
 # S3-04 executable portability: authored acceptance plan
 
+## Exact-source qualification d72781f
+
+S3-04 is verified for its finite profile at `d72781f86053a7fd77e7b9df7c3a74c262923136`. Finite Python captured-source registry/admission/recovery and common awaited Python/JavaScript/shell execution, return projections, process controls, source identity and existing selected external sandbox boundaries.
+
+Background activation remains S3-03; captured-source/background JavaScript, wider container policies, unsupported platform controls and independent JS workflow parity remain excluded.
+
+All six source-matched workflows pass; [the retained results](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f) include actual principal SDKs, both databases, platform/process, image, security and packaging checks. This is not full OWS/proposed-test conformance.
+
+## Historical progress and acceptance design
+
+The notes below predate the qualification above; their prior pending/failed states are preserved.
+
 ## JavaScript portability candidate — 2026-10-25
 
 The missing JavaScript runtime now has an awaited candidate through the existing

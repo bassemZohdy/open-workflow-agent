@@ -1,5 +1,17 @@
 # S4-01 native metadata extensions
 
+## Exact-source qualification d72781f
+
+S4-01 is verified for its finite profile at `d72781f86053a7fd77e7b9df7c3a74c262923136`. Versioned native metadata declaration and exact capability admission, required/optional semantics and engine/backend checks with unsupported required requests rejected before mutation; real channel/Command witnesses and ADK rejection.
+
+This qualifies the declaration/admission boundary, not the wider S4-02 native features or independent JavaScript engine.
+
+All six source-matched workflows pass; [the retained results](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f) include actual principal SDKs, both databases, platform/process, image, security and packaging checks. This is not full OWS/proposed-test conformance.
+
+## Historical progress and acceptance design
+
+The notes below predate the qualification above; their prior pending/failed states are preserved.
+
 S4-01 establishes a versioned declaration and engine admission boundary for
 future native features. It keeps the pinned Open Workflow 1.0.3 schema
 unchanged and uses its ordinary `document.metadata` object. The internal

@@ -1,5 +1,17 @@
 # S3-06 identity and security acceptance
 
+## Exact-source qualification d72781f
+
+S3-06 is verified for its finite profile at `d72781f86053a7fd77e7b9df7c3a74c262923136`. Existing-contract identity propagation, strict bearer/API-key ingress, original authority, exact policy/resource/credential decisions, task scopes, memory isolation, audit/recovery fences and direct literal credential projection.
+
+Multi-tenancy, delegated token exchange/consent, encoded-secret taint analysis and hard process isolation are excluded; S4-11 stays conditional.
+
+All six source-matched workflows pass; [the retained results](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f) include actual principal SDKs, both databases, platform/process, image, security and packaging checks. This is not full OWS/proposed-test conformance.
+
+## Historical progress and acceptance design
+
+The notes below predate the qualification above; their prior pending/failed states are preserved.
+
 Status: authored; behavioral, native, platform, database and publication
 qualification pending. New descriptor regressions reject unpaired Unicode in
 principal identity/role/scope/audience and named security-profile references as

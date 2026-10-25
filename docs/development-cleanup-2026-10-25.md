@@ -20,7 +20,10 @@ are unchanged.
 
 ## What remains missing
 
-The authoritative [backlog](../TODO.md) has 20 checked tasks and 17 open tasks.
+The initial review counted 20 checked tasks and 17 open tasks. The later
+`d72781f` qualification closes eight finite scopes; the authoritative
+[backlog](../TODO.md) now has 28 checked tasks and nine open tasks (six ready,
+three conditional).
 Task counts describe accepted scopes, not full protocol conformance. Work already
 authored but awaiting qualification must not be mistaken for missing source code.
 

@@ -17,7 +17,7 @@ from _recovery_failure_artifact import failure_artifact
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import OwaError
-from open_workflow_agent.sandbox import background_qualification, compile_sandbox_workflow
+from open_workflow_agent.sandbox import compile_sandbox_workflow
 from open_workflow_agent.sandbox._job_ipc import read_frame, read_key
 from open_workflow_agent.services import RuntimeServices
 from test_native_checkpoint_fencing import _snapshot as raw_native_snapshot
@@ -34,11 +34,6 @@ connection.execute('INSERT INTO commits(value) VALUES (?)', (sys.stdin.read(),))
 connection.commit()
 print('real independent job completed')
 """
-
-# This isolated test worker exercises the authored profile behind a test-only
-# qualification override. Production activation remains hard-gated.
-background_qualification.BACKGROUND_EXECUTION_PROFILE_QUALIFIED = True
-
 
 def _independent_job_timeout(services, job_id: str) -> AssertionError:
     """Return a timeout with bounded, value-free state for the parent artifact."""
@@ -200,6 +195,11 @@ async def run(directory, mode):
     )
     try:
         if mode == "start":
+            # Attest the actual SDK/artifacts before the deliberately short
+            # producer lease begins. The operation clock and lease stay intact.
+            await asyncio.wait_for(
+                services.recovery_definitions.prepare_profile(scenario["engine"]), timeout=60
+            )
             handle = services.invocations.create(
                 engine=scenario["engine"],
                 session_id="original",

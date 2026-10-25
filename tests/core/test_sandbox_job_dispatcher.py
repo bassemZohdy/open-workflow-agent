@@ -84,8 +84,8 @@ def dispatcher(tree, *, behavior="accepted", **options):
 @pytest.fixture(autouse=True)
 def qualify_fake_delivery_profile(monkeypatch):
     # These protocol-fake tests exercise post-admission delivery only. The
-    # production profile remains unqualified and is covered by the fail-closed
-    # manager test in test_background_job_runtime.py.
+    # production capability gate is covered independently by both the published
+    # profile and forced-unqualified manager tests in test_background_job_runtime.py.
     monkeypatch.setattr(background_qualification, "BACKGROUND_EXECUTION_PROFILE_QUALIFIED", True)
 
 

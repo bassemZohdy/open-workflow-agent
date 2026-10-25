@@ -233,131 +233,38 @@ treated as a deferred task or as additional feature completion.
   before secret resolution and network access; it passes the same selections.
   Background execution stays default-off, and cross-adapter, backend, platform,
   lifetime, packaging and broader hosted acceptance remain open.
-- [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
-  JavaScript follow-up (2026-10-25): awaited Node 24 execution is authored on
-  the common sandbox path, with physical interpreter recovery identity and
-  pinned image components. Windows checks pass; Linux, image and exact-source
-  qualification remain open. See the [candidate record](docs/s3-04-executable-source-acceptance.md#javascript-portability-candidate--2026-10-25).
-  Captured sources, recovery proofs and awaited internal process controls are
-  authored; only the dedicated expected source-policy rejection is translated
-  into a user-facing policy error, while registry configuration/execution
-  defects (including unrelated common unsupported-feature errors) propagate
-  unchanged. Portable sandbox input paths now reject Windows drive, UNC and
-  backslash-traversal forms, reserved Windows device names, alternate data
-  streams, invalid characters and trailing-dot/space aliases before
-  cross-platform consumption. New cases reject staged destination aliases after
-  case folding, Unicode normalization or redundant separators. Stdio startup
-  failures now log only a fixed OS error category while keeping the public error
-  sanitized; its privacy regression awaits final-batch validation. Awaited
-  child processes now bind `TEMP` and `TMP` to their execution workspace, and
-  workflow attempts to override reserved runtime names (`PATH`, `HOME`,
-  `TMPDIR`, `TEMP`, and `TMP`) are rejected case-insensitively; admission and
-  actual-child regressions cover lowercase spellings and await final-batch
-  validation. YAML admission and runtime setup now reject non-string sandbox
-  environment names; their regressions await the consolidated validation.
-  Stdio startup categories are logged only for process creation.
-  Required
-  profile and deployment acceptance remains
-  open. See the
-  [acceptance plan](docs/s3-04-executable-source-acceptance.md).
-- [ ] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
-  Docker-backed PostgreSQL follow-up (2026-10-25) fixed two actor-test fixture
-  collisions on populated databases using subject-bound operation keys and
-  unique legacy IDs. Both repeat checks and the 195-case common PostgreSQL
-  selection pass; production conflict/idempotency rules and task status stay
-  unchanged. See the [Docker record](docs/s3-03-operation-adapters-acceptance.md#docker-and-postgresql-follow-up--2026-10-25).
-  Protected actor identity, atomic decisions, expiry and native recovery are
-  authored. The PostgreSQL timestamp migration and f9 database cases passed;
-  its Windows timer lane exposed a request-row recovery race before the durable
-  barrier. A five-second renewal lease and natural database-clock wait pass
-  locally, and the formerly failing hosted Windows case passed at `8183776`.
-  The new producer-stop witness replays reassignment/escalation after restart
-  and checks the record/audit remain unchanged; its ADK/LangGraph × SQLite/
-  PostgreSQL matrix and hosted requalification remain pending. The expired-
-  approval fixture now decouples invocation ownership from its short approval
-  deadline. The actual-process worker now replays approved, rejected and
-  expired terminal decisions with their original actor, key, revision and
-  value, then checks the complete durable approval snapshot remains unchanged;
-  this is authored and awaits the final batch. Independent-SDK and hosted
-  requalification remain pending. A new downgrade regression uses the
-  independent protected-request index to prevent a corrupted common projection
-  from exposing a protected approval through legacy GET or list APIs; it is
-  authored and awaits the batch. Audit reconstruction now rejects non-positive
-  or non-finite action timestamps and reassignment/escalation at or after the
-  immutable request expiry, even when proof digests are coherently rehashed; a
-  tampering regression awaits the same batch. The durable `max_pending` limit
-  now rejects a new item when capacity is exactly full; a SQLite/PostgreSQL-
-  parameterized regression verifies rejection and unchanged persisted state.
-  At exact hosted source `5900c02`, PostgreSQL CI reported 1 failure, 1,987
-  passed and 3 skipped: `test_protected_approval_queue_enforces_exact_pending_capacity[postgresql]`.
-  The test fixture assumed an empty queue and request table; it now measures
-  their pre-existing baselines and asserts capacity and persistence relative to
-  those counts. The corrected fixture is authored and awaits consolidated
-  revalidation. See the
-  [acceptance plan](docs/s3-05-protected-approval-acceptance.md) and
-  [recovery history](docs/validation-history/pending-batch-results.md#protected-approval-recovery-lease-boundary-at-f9cb76f).
-- [ ] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and authorization within existing contracts. Delegated token exchange and consent remain conditional S4-11 work.
-  Unpaired Unicode in principal and named-profile references now fails as a
-  bounded-reference `ValueError` instead of leaking an encoding exception;
-  descriptor regressions cover identity, role, scope, audience and profile.
-  External-catalog credentials are restricted to the normalized HTTPS origin
-  (scheme, host and effective port), with focused resolver coverage for cross-
-  port/scheme denial and default-port equivalence. Core identity/security
-  regressions passed in the corrected consolidated local batch and documented
-  focused selections. Full qualification remains open. Credential projection
-  now extracts Bearer values regardless of authorization-scheme casing;
-  lifecycle snapshot and SSE reads now pass through the configured
-  `events.read` authorization gate before snapshot or stream access. A new
-  native regression also asserts the actual model-credential canary is absent
-  from captured logs alongside existing output, archive, receipt and lifecycle
-  checks; this caplog assertion was authored after the consolidated run and
-  remains unrun. Exact-source hosted and skipped backend qualification also
-  remain pending.
-  Foreign and missing schedule IDs now use the same fixed `ScheduleNotFound`
-  response for reads and cancellation. A regression compares complete
-  responses and verifies schedule records, owner/event scope, SQL rows,
-  definitions, slots and model-call counts remain unchanged; its local
-  regression is included in the consolidated batch where runnable.
-- [ ] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
-  Eight finite recipe families and named role bindings are authored; hosted
-  acceptance remains open. A focused real-native role-policy test passes on
-  SQLite for both principal engines, proving denial before provider dispatch;
-  a new ADK/LangGraph × SQLite/PostgreSQL credential regression checks archived
-  `from_env` references without a known environment canary. Its injected fake
-  model does not resolve the credential. Recovery regressions also vary the
-  model binding and tool allowlist and require rejection before provider or
-  state mutation; a new recovery case also rejects a changed role authorization
-  policy before provider or state mutation across the native engine/database
-  matrix. Process-recovery drift cases also assert the exact
-  `InvocationStateError` reason `runtime_profile_changed`. These additions are
-  authored and await final-batch validation.
-  PostgreSQL and the full eight-family matrix remain pending. See the
-  [acceptance plan](docs/s3-07-agent-pattern-acceptance.md) and
-  [timing evidence](docs/validation-history/pending-batch-results.md#windows-timing-suite-follow-up-at-8183776).
-- [ ] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
-  Selected finite adapters and grouped corrections are authored. A new
-  cross-engine/backend regression checks direct LLM tool-request pass-through
-  without dispatching an undeployed tool. Unpaired surrogate characters in
-  provider tool IDs, function names or arguments now map to sanitized
-  `ModelError`s. Escaped lone-surrogate argument and object-key cases now
-  require sanitized `ModelError` handling; these regressions await consolidated
-  validation. The function-name regression is also authored and awaits
-  validation, while the other focused DTO regressions pass locally. Broader adapter/backend qualification remains
-  pending. See the
-  [acceptance plan](docs/s3-08-selected-adapter-acceptance.md).
+- [x] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
+  Verified finite profile at `d72781f`: Finite Python captured-source registry/admission/recovery and common awaited Python/JavaScript/shell execution, return projections, process controls, source identity and existing selected external sandbox boundaries.
+  Background activation remains S3-03; captured-source/background JavaScript, wider container policies, unsupported platform controls and independent JS workflow parity remain excluded.
+  See [acceptance](docs/s3-04-executable-source-acceptance.md#exact-source-qualification-d72781f) and [the source-matched results](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f).
+
+- [x] **S3-05** (M) — Reuse durable protected approvals; add reassignment, escalation, waiting, denial/expiry and resume tests.
+  Verified finite profile at `d72781f`: Finite default-disabled protected-approval v1: authenticated assignee/reassignment/escalation, revisioned denial/expiry/response validation, immutable audit/proof and native/process recovery on both principal engines and databases.
+  Delegated consent/identity-platform work remains conditional S4-11; full proposed and independent JS criteria remain separate.
+  See [acceptance](docs/s3-05-protected-approval-acceptance.md#exact-source-qualification-d72781f) and [the source-matched results](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f).
+
+- [x] **S3-06** (L) — Complete identity propagation, credential references, policy/audit/isolation and authorization within existing contracts. Delegated token exchange and consent remain conditional S4-11 work.
+  Verified finite profile at `d72781f`: Existing-contract identity propagation, strict bearer/API-key ingress, original authority, exact policy/resource/credential decisions, task scopes, memory isolation, audit/recovery fences and direct literal credential projection.
+  Multi-tenancy, delegated token exchange/consent, encoded-secret taint analysis and hard process isolation are excluded; S4-11 stays conditional.
+  See [acceptance](docs/s3-06-identity-security-acceptance.md#exact-source-qualification-d72781f) and [the source-matched results](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f).
+
+- [x] **S3-07** (M) — Finish all eight legacy agent patterns as bounded OWS workflows or explicit native extensions.
+  Verified finite profile at `d72781f`: All eight bounded OWS recipe families with named roles, original caller/role policy intersection, quotas/tool bindings, protected approval/coordinator lineage and known/uncertain process recovery.
+  Arbitrary dynamic teams, recursive autonomous planners, provider-specific native APIs and full proposed/JS coverage are excluded.
+  See [acceptance](docs/s3-07-agent-pattern-acceptance.md#exact-source-qualification-d72781f) and [the source-matched results](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f).
+
+- [x] **S3-08** (L) — Port selected ADK compiler/provider/broker/memory patterns and fixtures against canonical contracts.
+  Verified finite profile at `d72781f`: Selected independently adapted compiler/provider DTO and service patterns, bounded common memory, embedded event codec/admission/ACK seams and original-source/native process recovery.
+  Remote broker/vendor interoperability and transport selection guarantees beyond the recorded finite profile remain excluded; frozen predecessor code is not runtime code.
+  See [acceptance](docs/s3-08-selected-adapter-acceptance.md#exact-source-qualification-d72781f) and [the source-matched results](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f).
 
 ## Stage 4 — Advanced features and full verification
 
-- [ ] **S4-01** (M) — Implement versioned native YAML metadata extensions with capability admission; reject unsupported requests.
-  The bounded declaration and exact engine-capability gate are authored in
-  standard `document.metadata` without changing the official schema; focused
-  core tests pass. S4-02's exact LangGraph channel extension is the first
-  capability using this gate. A new regression withdraws the exact extension
-  after an initial successful capability check and verifies a subsequent check
-  rejects it; this regression passed in the consolidated local suite. Broader
-  tracker coverage remains open. Adapter capability and native
-  acceptance/rejection regressions are authored; engine-specific and exact-head
-  hosted qualification remain pending.
+- [x] **S4-01** (M) — Implement versioned native YAML metadata extensions with capability admission; reject unsupported requests.
+  Verified finite profile at `d72781f`: Versioned native metadata declaration and exact capability admission, required/optional semantics and engine/backend checks with unsupported required requests rejected before mutation; real channel/Command witnesses and ADK rejection.
+  This qualifies the declaration/admission boundary, not the wider S4-02 native features or independent JavaScript engine.
+  See [acceptance](docs/s4-01-native-extension-acceptance.md#exact-source-qualification-d72781f) and [the source-matched results](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f).
+
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
   A bounded required `langgraph.command@1.0.0` candidate now uses real SDK
   Command updates and per-scope transitions without a new public payload.
@@ -437,28 +344,11 @@ treated as a deferred task or as additional feature completion.
   consolidated local suite passes. Exact-head hosted qualification remains
   pending.
   See the [observability acceptance slice](docs/s4-05-observability-acceptance.md).
-- [ ] **S4-06** (M) — Run matched latency/CPU/memory/concurrency/persistence/recovery benchmarks; publish measured results.
-  A separate matched-profile harness now records ADK/LangGraph × SQLite/
-  PostgreSQL samples, nearest-rank p50/p95, invocation-phase CPU, Linux
-  process-lifetime peak RSS, invocation-record creation latency, persistence
-  footprint, an eight-invocation concurrent wave with p50/p95 and throughput,
-  and timed engine and service reinitialization plus resume with stable
-  operation-id and single-dispatch assertions. Concurrent settings are capped
-  at 16 and the aggregate rejects missing or inconsistent latency summaries.
-  PostgreSQL CI is wired to aggregate the four exact-source profile JSON files
-  into one artifact. Harness tests and aggregate guards pass locally. The first hosted four-cell report passed at exact source
-  `4b22e801f4f7f01d475caa03a754dd3ac45bf64a`; retained measurements are in the
-  [benchmark record](docs/benchmarks.md#retained-exact-source-measurements) and
-  [GitHub run artifact](https://github.com/bassemZohdy/open-workflow-agent/actions/runs/39459079488).
-  On the later pushed source `0d812b2`, PostgreSQL CI and all four companion
-  workflows passed, while CI failed in one Windows CPU-quota timing case and
-  one Linux stdio child start; details and the current requalification are in
-  the [validation history](docs/validation-history/pending-batch-results.md#hosted-outcome-for-source-0d812b2).
-  Full qualification remains pending. Measurements document their runner and scope
-  limits; PostgreSQL reports whole fresh service-database size, database I/O
-  remains included in invocation latency rather than isolated by operation, and
-  recovery reinitializes services in one process rather than forcing an OS stop.
-  See the [S4-06 profile and limits](docs/benchmarks.md).
+- [x] **S4-06** (M) — Run matched latency/CPU/memory/concurrency/persistence/recovery benchmarks; publish measured results.
+  Verified finite profile at `d72781f`: Retained matched ADK/LangGraph x SQLite/PostgreSQL 30/5/8/3 benchmark report with latency, invocation CPU, lifetime peak RSS, concurrency, creation/footprint and timed service restart/resume correctness.
+  Runner-specific measurements are not capacity guarantees; persistence I/O is included in latency, PostgreSQL size is whole-service and recovery timings use same-process reinitialization. Physical-stop proof remains separate.
+  See [acceptance](docs/benchmarks.md#exact-source-qualification-d72781f) and [the source-matched results](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f).
+
 - [ ] **S4-07** (M) — Keep CI, builds, releases, capability reports and rollback tied to verified versions and acceptance gates.
   A new release-record candidate combines actual pushed runtime/controller
   digests into one source/version/run-matched manifest, rejects incomplete or
@@ -506,17 +396,11 @@ treated as a deferred task or as additional feature completion.
   Security workflow's pip-audit resolver adjustment, remains pending.
   Remaining S4-07 release/rollback and broader capability/version acceptance
   stay open. See the [release gate record](docs/s4-07-release-gates-acceptance.md).
-- [ ] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.
-  [The S4-08 decision](docs/s4-08-compatibility-decision.md) retains canonical
-  metadata/import names, delivers through pinned source and qualified OCI
-  images, disables Python index publication, and requires separate environments
-  plus an explicit workflow port for consumers. No compatibility aliases or
-  automatic checkpoint migration are offered. The machine-readable policy and
-  real package/entry-point/publisher guards pass locally, as do four CLI cases
-  including actual official-schema/compiler admission. `owa validate PATH`
-  checks the default portable profile; target deployment settings still need
-  their own admission. A future index publisher requires verified ownership,
-  version and consumer evidence. Current-source full qualification remains open.
+- [x] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.
+  Verified finite profile at `d72781f`: Canonical package/import and CLI policy, no predecessor shims, source/qualified-OCI delivery, disabled Python index publication, separate-environment manual migration and real owa validate schema/compiler checks.
+  No package transfer/index publication, managed consumer migration or checkpoint migration was performed; future publication requires ownership/version/consumer evidence.
+  See [acceptance](docs/s4-08-compatibility-decision.md#exact-source-qualification-d72781f) and [the source-matched results](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f).
+
 - [ ] **S4-09** (L) — Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; activate only after an explicit support decision and require isolated native durability, security, and release acceptance.
   Activation needs a named user need, deployment target, compatibility promise,
   and rollback owner. Until then, keep the adapter optional and CI/evaluation

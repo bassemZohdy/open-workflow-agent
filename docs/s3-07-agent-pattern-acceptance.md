@@ -1,5 +1,17 @@
 # S3-07 agent pattern scope and required gates
 
+## Exact-source qualification d72781f
+
+S3-07 is verified for its finite profile at `d72781f86053a7fd77e7b9df7c3a74c262923136`. All eight bounded OWS recipe families with named roles, original caller/role policy intersection, quotas/tool bindings, protected approval/coordinator lineage and known/uncertain process recovery.
+
+Arbitrary dynamic teams, recursive autonomous planners, provider-specific native APIs and full proposed/JS coverage are excluded.
+
+All six source-matched workflows pass; [the retained results](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f) include actual principal SDKs, both databases, platform/process, image, security and packaging checks. This is not full OWS/proposed-test conformance.
+
+## Historical progress and acceptance design
+
+The notes below predate the qualification above; their prior pending/failed states are preserved.
+
 S3-07 remains unchecked. All eight independently authored recipe families and
 named deployment role bindings are staged source. Repository Ruff and formatting
 passed across 513 files; strict typing passed across 132 source files. All 12

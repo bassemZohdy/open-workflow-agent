@@ -131,6 +131,7 @@ class SandboxManager:
                         "backend": "internal",
                         "storage": "embedded-sqlite",
                         "kinds": ["script", "shell"],
+                        "scriptRuntimes": ["python"],
                         "lifetime": "independent",
                         "returns": "transformed-task-input",
                         "environment": "secret-references",

@@ -61,7 +61,8 @@ def test_background_runtime_rejects_unqualified_profile_before_store_or_native_s
 
 @pytest.fixture(params=["sqlite", "postgresql"])
 def admission(tmp_path, request, monkeypatch):
-    # Exercise the authored runtime behind a test-only release-gate override.
+    # Isolate the common-ledger seam from future release-gate changes. Physical
+    # native recovery workers exercise the actual published flag without override.
     monkeypatch.setattr(background_qualification, "BACKGROUND_EXECUTION_PROFILE_QUALIFIED", True)
     datasource = os.getenv("OWA_TEST_POSTGRES_URL") if request.param == "postgresql" else None
     if request.param == "postgresql" and datasource is None:
@@ -168,6 +169,37 @@ def test_configured_background_capability_stays_hidden_before_qualification(tmp_
         assert not (tmp_path / "workspace" / ".owa-job-supervisors").exists()
     finally:
         services.close()
+
+
+def test_qualified_background_profile_still_requires_explicit_deployment_opt_in(tmp_path):
+    assert background_qualification.BACKGROUND_EXECUTION_PROFILE_QUALIFIED is True
+    for enabled in (False, True):
+        config = RuntimeConfig.model_validate(
+            {
+                "sandbox": {
+                    "enabled": True,
+                    "allow_shell": True,
+                    "background": {"enabled": enabled},
+                    "file_size_bytes": None,
+                    "process_count": None,
+                    "workspace_root": str(tmp_path / "workspace"),
+                }
+            }
+        )
+        services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path / str(enabled))
+        try:
+            value = services.sandbox.capabilities()
+            assert value["backgroundExecution"] is enabled
+            if enabled:
+                assert value["backgroundProfile"]["scriptRuntimes"] == ["python"]
+                assert value["backgroundProfile"]["storage"] == "embedded-sqlite"
+                assert value["backgroundProfile"]["automaticAmbiguousRelaunch"] is False
+                assert value["backgroundProfile"]["hardIsolation"] is False
+            else:
+                assert "backgroundProfile" not in value
+            assert not (tmp_path / "workspace" / ".owa-job-supervisors").exists()
+        finally:
+            services.close()
 
 
 def accept(tree, **changes):

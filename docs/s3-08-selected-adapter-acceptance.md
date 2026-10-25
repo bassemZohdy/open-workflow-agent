@@ -1,5 +1,17 @@
 # S3-08 selected ADK patterns and required gates
 
+## Exact-source qualification d72781f
+
+S3-08 is verified for its finite profile at `d72781f86053a7fd77e7b9df7c3a74c262923136`. Selected independently adapted compiler/provider DTO and service patterns, bounded common memory, embedded event codec/admission/ACK seams and original-source/native process recovery.
+
+Remote broker/vendor interoperability and transport selection guarantees beyond the recorded finite profile remain excluded; frozen predecessor code is not runtime code.
+
+All six source-matched workflows pass; [the retained results](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f) include actual principal SDKs, both databases, platform/process, image, security and packaging checks. This is not full OWS/proposed-test conformance.
+
+## Historical progress and acceptance design
+
+The notes below predate the qualification above; their prior pending/failed states are preserved.
+
 S3-08 remains unchecked. This source batch independently adapts selected
 compiler, provider, memory and broker behavior descriptions from the frozen
 Apache-2.0 ADK reference at

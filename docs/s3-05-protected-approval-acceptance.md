@@ -1,5 +1,17 @@
 # S3-05 protected approvals: authored acceptance plan
 
+## Exact-source qualification d72781f
+
+S3-05 is verified for its finite profile at `d72781f86053a7fd77e7b9df7c3a74c262923136`. Finite default-disabled protected-approval v1: authenticated assignee/reassignment/escalation, revisioned denial/expiry/response validation, immutable audit/proof and native/process recovery on both principal engines and databases.
+
+Delegated consent/identity-platform work remains conditional S4-11; full proposed and independent JS criteria remain separate.
+
+All six source-matched workflows pass; [the retained results](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f) include actual principal SDKs, both databases, platform/process, image, security and packaging checks. This is not full OWS/proposed-test conformance.
+
+## Historical progress and acceptance design
+
+The notes below predate the qualification above; their prior pending/failed states are preserved.
+
 Status: source authored, unqualified. S3-05 remains unchecked. The PostgreSQL
 approval timestamp precision migration is implemented, and the f9 PostgreSQL
 protected-approval cases passed. The same checkpoint's Windows timer lane found

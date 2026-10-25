@@ -1,5 +1,13 @@
 # S4-08: predecessor import, CLI, and package compatibility
 
+## Exact-source qualification d72781f
+
+S4-08 is verified for its finite profile at `d72781f86053a7fd77e7b9df7c3a74c262923136`. Canonical package/import and CLI policy, no predecessor shims, source/qualified-OCI delivery, disabled Python index publication, separate-environment manual migration and real owa validate schema/compiler checks.
+
+No package transfer/index publication, managed consumer migration or checkpoint migration was performed; future publication requires ownership/version/consumer evidence.
+
+All six source-matched workflows pass; [the retained results](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f) include actual principal SDKs, both databases, platform/process, image, security and packaging checks. This is not full OWS/proposed-test conformance.
+
 ## Decision
 
 The canonical adapter does not promise source, command-line, or install-time
