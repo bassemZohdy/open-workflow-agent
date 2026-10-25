@@ -42,6 +42,14 @@ S4-02 remains the next ordered ready task, beginning with native memory. Bounded
 Send, the owned wait/end repair and Docker cache ordering have focused evidence.
 Memory, streams, public state updates, replay and time travel remain open.
 
+After the `f013a2e` main integration, the active S4-02 branch adds a private
+read-only native store component. It uses original common authority and access
+decisions, projects finite JSON and keeps required native memory admission
+closed. The first Windows reader/admission selection passes 41 cases. Provider
+factories, durable read/write receipts, quotas/retention, recovery and public
+workflow bindings remain open. See the
+[native memory scope](docs/s4-02-native-memory-acceptance.md).
+
 S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
 cases; public identity, durable services, expressions and full engine behavior
 remain missing. S4-04 has a new 13-case actual native outcome comparison with

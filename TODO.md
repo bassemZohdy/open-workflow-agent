@@ -220,7 +220,11 @@ treated as a deferred task or as additional feature completion.
   profiles are corrected. The final direct-child stop fixture passes eight
   Linux SQLite/PostgreSQL routing/scope cases without pidfd APIs and four
   Windows PostgreSQL cases. Hosted qualification of that repair remains open.
-  Next: bounded native memory, then streams, public state updates, replay and
+  Active: a private native memory reader has 41 focused Windows checks; it does
+  not enable a workflow capability. Complete provider/workflow bindings and
+  durable read/write ownership, quotas, retention and recovery before admission.
+  See the [memory scope](docs/s4-02-native-memory-acceptance.md).
+  Then continue streams, public state updates, replay and
   time travel. Preserve common authority, ownership, receipts and private
   checkpoint boundaries. See [acceptance](docs/s4-02-native-channels-acceptance.md)
   and the [integration record](docs/validation-history/main-integration-2026-10-25.md).
