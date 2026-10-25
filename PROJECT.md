@@ -24,6 +24,10 @@ The user kept S4-09/S4-10/S4-11 conditional; work continues on the 14 ready task
 The next S4-02 candidate repairs nested-reader checkpoint privacy and adds
 bounded native Command routing through existing OWS transitions. Focused local
 recovery tests pass; this does not complete the wider native-feature task.
+An additional S4-05 candidate adds opt-in bounded diagnostic history on the
+common database, with local physical-stop, real API and principal-engine/backend
+restart checks. Full-source qualification and broader tracing/provenance remain
+open; see the [history acceptance record](docs/s4-05-observability-acceptance.md#durable-diagnostic-history-candidate--2026-10-25).
 The [ready-task qualification record](docs/validation-history/ready-tasks-2026-10-25.md)
 tracks the frozen baseline, corrected test expectation and newly repaired
 dependency advisories. No focused scan or adapter result closes a task.

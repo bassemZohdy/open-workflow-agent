@@ -7,8 +7,11 @@ import json
 import re
 from dataclasses import asdict, dataclass, field, replace
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 from uuid import uuid4
+
+if TYPE_CHECKING:
+    from .lifecycle_history import LifecycleHistory
 
 CLOUD_EVENTS_SPECVERSION = "1.0"
 LIFECYCLE_CLOUD_EVENT_SCHEMA = "urn:open-workflow-agent:schema:lifecycle:1"
@@ -188,6 +191,7 @@ class LifecycleCloudEventSink:
         *,
         max_events: int = 1000,
         max_subscribers: int = 32,
+        history: LifecycleHistory | None = None,
     ) -> None:
         self.downstream = downstream
         self.max_events = max_events
@@ -195,6 +199,8 @@ class LifecycleCloudEventSink:
         self.events: list[CloudEvent] = []
         self._subscribers: dict[int, asyncio.Queue[CloudEvent | object]] = {}
         self._next_subscriber_id = 1
+        self.history = history
+        self._history_subscribers: set[int] = set()
 
     def emit(self, event: WorkflowEvent) -> None:
         if (
@@ -208,8 +214,10 @@ class LifecycleCloudEventSink:
                 status="cancelled",
                 reason="cancelled",
             )
-        self.downstream.emit(event)
         cloud_event = event.to_cloud_event()
+        if self.history is not None:
+            self.history.append(cloud_event)
+        self.downstream.emit(event)
         self.events.append(cloud_event)
         if len(self.events) > self.max_events:
             del self.events[: len(self.events) - self.max_events]
@@ -228,6 +236,8 @@ class LifecycleCloudEventSink:
                     pass
 
     def snapshot(self, limit: int = 100) -> list[CloudEvent]:
+        if self.history is not None:
+            return self.history.snapshot(min(limit, self.history.config.max_events))
         return list(self.events[-limit:])
 
     def subscribe(
@@ -240,8 +250,22 @@ class LifecycleCloudEventSink:
 
         if queue_size < 1:
             raise ValueError("lifecycle stream queue_size must be greater than zero")
-        if len(self._subscribers) >= self.max_subscribers:
+        if len(self._subscribers) + len(self._history_subscribers) >= self.max_subscribers:
             raise RuntimeError("maximum lifecycle stream subscribers reached")
+
+        if self.history is not None:
+            from .lifecycle_history import HistorySubscription
+
+            replay_events, cursor = self.history.replay(last_event_id)
+            subscriber_id = self._next_subscriber_id
+            self._next_subscriber_id += 1
+            self._history_subscribers.add(subscriber_id)
+            return replay_events, HistorySubscription(
+                self.history,
+                cursor,
+                queue_size,
+                lambda: self._history_subscribers.discard(subscriber_id),
+            )
 
         backlog: list[CloudEvent]
         if last_event_id is None:

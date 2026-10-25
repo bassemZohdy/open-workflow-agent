@@ -1175,10 +1175,27 @@ class ServerConfig(StrictModel):
     security_headers: SecurityHeadersConfig = Field(default_factory=SecurityHeadersConfig)
 
 
+class LifecycleHistoryConfig(StrictModel):
+    """Opt-in diagnostic history; never execution or recovery authority."""
+
+    enabled: bool = False
+    max_events: int = Field(default=1000, ge=1, le=100_000)
+    max_event_bytes: int = Field(default=65_536, ge=256, le=1_048_576)
+    max_retained_bytes: int = Field(default=16_777_216, ge=256, le=1_073_741_824)
+    poll_interval_seconds: float = Field(default=0.05, ge=0.01, le=5)
+
+    @model_validator(mode="after")
+    def validate_history_capacity(self) -> LifecycleHistoryConfig:
+        if self.max_event_bytes > self.max_retained_bytes:
+            raise ValueError("history event bound exceeds retained byte capacity")
+        return self
+
+
 class ObservabilityConfig(StrictModel):
     log_level: str = "INFO"
     structured_logging: bool = False
     log_format: str = "json"  # "json" or "text"
+    history: LifecycleHistoryConfig = Field(default_factory=LifecycleHistoryConfig)
 
 
 class EventConfig(StrictModel):

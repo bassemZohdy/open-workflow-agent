@@ -208,3 +208,28 @@ The first `4866840` local image run built both images but rejected before
 invocation because the new fixture asserted quota 32 without selecting it (the
 real default is 64). The image fixture now selects 32 explicitly. The earlier
 failed logs remain retained; this correction changes no application default.
+
+## Frozen source d72781f local Docker follow-up
+
+Both freshly rebuilt production images at
+`d72781f86053a7fd77e7b9df7c3a74c262923136` pass the packaged JavaScript gate
+with an explicitly selected process quota of 32, dedicated arbitrary UID,
+read-only root, no network and independent Docker memory/CPU/PID bounds. Both
+OCI revisions contain the full source commit. Independent test images built
+from these production images pass 25 ADK cases (nine opposite-SDK/platform
+skips) and 117 LangGraph cases (13 explicit skips). The LangGraph selection
+includes real Command/default routing, nested reader privacy, actual SDK
+checkpoint damage, and all eight routing/reader/database physical-stop cells.
+The JavaScript selection covers both real databases, original-source recovery,
+uncertain-action non-relaunch, interpreter drift and common physical controls.
+All 1,140 frozen inputs remain byte-identical. Local JUnit, logs and the final
+input report are retained under `tmp/javascript-sandbox-20261025/d72781f/`.
+
+The final preceding `df6b725` CI outcome is 18 successful jobs and three failed
+jobs, all attributable to the four JavaScript witnesses in root and each native
+suite. ADK has 1,451 passes, four failures and 1,527 skips, completing within
+41 minutes rather than timing out. Its exact-source PostgreSQL operation
+failures are recorded above. No new aggregate green result is inferred.
+The `4866840` checkpoint was superseded after the explicit image-quota correction;
+its cancelled jobs do not qualify it. All six `d72781f` workflows are dispatched
+against the full matching commit; their final outcomes remain pending.

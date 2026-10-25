@@ -471,7 +471,9 @@ def create_app(
         value.setdefault("features", {})["grpc"] = grpc
         if grpc["enabled"] and "grpc" not in value["protocols"]:
             value["protocols"].append("grpc")
-        value.setdefault("features", {})["lifecycleStreaming"] = streaming_capabilities()
+        value.setdefault("features", {})["lifecycleStreaming"] = streaming_capabilities(
+            durable_history=runtime_services.lifecycle_history is not None
+        )
         value.setdefault("features", {})["a2a"] = a2a_capabilities(runtime_config.a2a)
         value.setdefault("features", {})["trafficPolicy"] = traffic_policy_capabilities(
             runtime_config.traffic_policy

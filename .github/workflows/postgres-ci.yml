@@ -31,6 +31,9 @@ on:
       - "tests/core/test_engine_shutdown_initialization.py"
       - "tests/contract/test_executable_source*.py"
       - "tests/contract/test_javascript_sandbox_contract.py"
+      - "tests/contract/test_lifecycle_history_contract.py"
+      - "tests/core/test_lifecycle_history.py"
+      - "tests/_lifecycle_history_writer.py"
       - "tests/core/test_javascript_sandbox.py"
       - "tests/javascript_fixture_policy.py"
       - "tests/contract/_javascript_sandbox_recovery_worker.py"
@@ -299,6 +302,7 @@ jobs:
           timeout --signal=TERM --kill-after=30s 12m \
             uv run --locked --extra knowledge --extra postgres pytest tests/core/test_postgres_persistence.py \
             tests/core/test_effect_journal.py \
+            tests/core/test_lifecycle_history.py \
             tests/core/test_external_recovery.py \
             tests/core/test_recovery_definitions.py \
             tests/core/test_recovery_sdk_inventory.py \
@@ -737,6 +741,7 @@ jobs:
             ../../tests/contract/test_protected_approval_workflows.py \
             ../../tests/contract/test_protected_approval_process_recovery.py \
             ../../tests/contract/test_execution_authority_isolation.py \
+            ../../tests/contract/test_lifecycle_history_contract.py \
             ../../tests/contract/test_execution_authority_process_recovery.py \
             ../../tests/contract/test_agent_patterns.py \
             ../../tests/contract/test_agent_pattern_process_recovery.py \
@@ -807,6 +812,7 @@ jobs:
             ../../tests/contract/test_protected_approval_workflows.py \
             ../../tests/contract/test_protected_approval_process_recovery.py \
             ../../tests/contract/test_execution_authority_isolation.py \
+            ../../tests/contract/test_lifecycle_history_contract.py \
             ../../tests/contract/test_execution_authority_process_recovery.py \
             ../../tests/contract/test_agent_patterns.py \
             ../../tests/contract/test_agent_pattern_process_recovery.py \

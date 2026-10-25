@@ -45,6 +45,7 @@ from .grpc_client import GrpcRegistry
 from .grpc_client import verify_sdk as verify_grpc_sdk
 from .initial_delivery import InitialDeliveryStore
 from .knowledge import FastEmbedEmbeddingProvider, KnowledgeService
+from .lifecycle_history import LifecycleHistory
 from .memory import MemoryService
 from .metrics import Metrics, MetricsEventSink
 from .observability import EventSink, InMemoryEventSink, LifecycleCloudEventSink
@@ -112,6 +113,15 @@ class RuntimeServices:
                 "embedded transport requires the actual durable common event store"
             )
         self._bounded_memory = config.memory.bounds is not None and config.memory.bounds.enabled
+        if config.observability.history.enabled:
+            history_database = (
+                Path(database_root) / "runtime.sqlite3"
+                if database_root
+                else resolve_datasource(config.persistence.datasource)
+                or config.persistence.database
+            )
+            if str(history_database) == ":memory:":
+                raise ConfigurationError("lifecycle history requires persistent common storage")
         if self._bounded_memory and (
             config.memory.enabled is False or "database" in config.memory.model_fields_set
         ):
@@ -170,7 +180,6 @@ class RuntimeServices:
         self.datasource = resolve_datasource(config.persistence.datasource)
         self.metrics = Metrics()
         self.events = event_sink or InMemoryEventSink()
-        self.lifecycle_events = LifecycleCloudEventSink(MetricsEventSink(self.events, self.metrics))
         self.workflow_catalog = WorkflowCatalog()
         self.external_catalogs = ExternalCatalogResolver(
             config.workflow.external_catalogs,
@@ -231,6 +240,15 @@ class RuntimeServices:
             memory_path = config.memory.database
             invocation_path = config.persistence.database
         self.invocations = InvocationStore(invocation_path)
+        self.lifecycle_history = (
+            LifecycleHistory(invocation_path, config.observability.history)
+            if config.observability.history.enabled
+            else None
+        )
+        self.lifecycle_events = LifecycleCloudEventSink(
+            MetricsEventSink(self.events, self.metrics),
+            history=self.lifecycle_history,
+        )
         self.execution_ownership = ExecutionOwnershipStore(invocation_path)
         self.fork_decisions = ForkDecisionStore(invocation_path)
         self.effect_journal = EffectJournal(invocation_path, invocations=self.invocations)
@@ -1187,6 +1205,8 @@ class RuntimeServices:
         self.knowledge.close()
         self.memory.close()
         self.schedules.close()
+        if self.lifecycle_history is not None:
+            self.lifecycle_history.close()
         self.invocations.close()
         self.execution_ownership.close()
         self.fork_decisions.close()

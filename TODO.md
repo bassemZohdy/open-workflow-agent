@@ -413,6 +413,11 @@ treated as a deferred task or as additional feature completion.
   coverage. Full CTK automation and parity qualification remain open. See
   [the coverage bridge](resources/compatibility/README.md).
 - [ ] **S4-05** (M) — Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.
+  Opt-in bounded persistent lifecycle history is now authored with local
+  SQLite/PostgreSQL physical-stop, concurrent-writer and real API replay/privacy
+  checks. Four actual principal-engine/backend restart cases retain original
+  events with one business dispatch. Linux and full-source qualification remain
+  required; this diagnostic history is not recovery authority or an atomic audit.
   The current batch adds a bounded task-duration histogram labeled only by
   engine and terminal outcome, with privacy/outcome tests passing locally and
   API/configuration docs validated. Durable cross-process history, trace-context and

@@ -212,6 +212,7 @@ jobs:
           uv run --directory engines/${{ matrix.engine }} --locked --extra ${{ matrix.extra }}
           --with pytest --with pytest-asyncio pytest -vv
           ../../tests/contract/test_javascript_sandbox_contract.py
+          ../../tests/contract/test_lifecycle_history_contract.py
           ../../tests/contract/test_grpc_calls.py
           ../../tests/contract/test_grpc_process_recovery.py
           -k sqlite

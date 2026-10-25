@@ -447,6 +447,31 @@ The common client is pinned to MCP `2026-07-28` and A2A `1.0` wire semantics. Op
 
 Lifecycle records use CloudEvents `1.0` structured JSON semantics and expose common identifiers plus sanitized error information. Engine-native checkpoint state and secrets are never part of the public lifecycle contract.
 
+Optional diagnostic history uses the configured persistent common SQLite or
+PostgreSQL database. The default lifecycle window remains process-local.
+
+```yaml
+observability:
+  history:
+    enabled: true
+    max_events: 1000
+    max_event_bytes: 65536
+    max_retained_bytes: 16777216
+    poll_interval_seconds: 0.05
+```
+
+The selected history retains sanitized lifecycle projections, original event IDs
+and timestamps across process restarts. It contains no workflow input, output,
+native checkpoint payload, or error message/details. Count and byte limits evict
+oldest records in commit order. Persistent storage is required; an in-memory
+datasource rejects this option. A record exceeding its bound fails with the
+common `lifecycle_history_error`; it is never silently truncated. Store failures
+also fail the selected history write, so an operation can have committed before
+its later diagnostic emission fails. This is diagnostic history, not an atomic
+business audit or execution/recovery authority. Metrics remain process-local.
+The candidate and remaining qualification are recorded in
+[S4-05](s4-05-observability-acceptance.md#durable-diagnostic-history-candidate--2026-10-25).
+
 ## Recommended deployment pattern
 
 Keep non-secret behavior in mounted YAML and inject sensitive/environment-specific values separately:

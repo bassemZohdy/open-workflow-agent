@@ -246,6 +246,16 @@ Last-Event-ID    optional replay cursor
 
 This stream carries common lifecycle events only. It is not general output/token streaming and is not itself an A2A binding.
 
+When `observability.history.enabled` is selected, snapshot and `Last-Event-ID`
+replay use bounded persistent diagnostic history. Capabilities report
+`ordering=commit_order_in_shared_history` and
+`replay=bounded_durable_history_by_last_event_id`. Other processes using the same
+history store become visible through bounded polling. A retained cursor replays
+only newer records; an expired or unknown cursor returns 409. Retention overtaking
+a live observer, or unread records exceeding its queue bound, ends that stream
+with `backpressure`. The existing `events.read` policy guards both endpoints.
+History does not certify native resume readiness or authorize workflow actions.
+
 The transport-neutral rules for event identity, schema evolution, idempotency,
 replay, security, and any future AsyncAPI binding are documented in the [event
 integration readiness plan](event-integration-readiness.md). The current API
