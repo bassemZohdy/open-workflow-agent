@@ -19,42 +19,34 @@ and [automation controls](docs/development.md#fast-development-and-optional-auto
 
 ## Current backlog delivery mode
 
-Updated 2026-10-25. **28 of 37 tasks are verified; 9 remain open. None is deferred.**
-The user kept S4-09/S4-10/S4-11 conditional; work continues on the six ready tasks.
-The S4-02 channel/Command subset passes its recorded source-matched checks;
-Send, memory, streams, state updates, replay and time travel remain open.
-A later Send candidate adds bounded native fan-out for non-competing forks;
-focused actual SDK and physical SQLite/PostgreSQL recovery cases pass. Its
-frozen regression, Linux and full-source gates remain open.
-An additional S4-05 candidate adds opt-in bounded diagnostic history on the
-common database, with local physical-stop, real API and principal-engine/backend
-restart checks. Full-source qualification and broader tracing/provenance remain
-open; see the [history acceptance record](docs/s4-05-observability-acceptance.md#durable-diagnostic-history-candidate--2026-10-25).
-The later tracing candidate adds bounded invocation/task spans, generated
-lifecycle/optional HTTP contexts and verified digest provenance. Native
-SQLite/PostgreSQL and API restart/privacy checks pass locally; full-source and
-Linux qualification remain required.
-The isolated JavaScript package now has a bounded literal-only native execution
-component. Its nine shared cases pass on Node and the actual Python SDKs; public
-identity, durable engine services and broader execution remain unimplemented.
-See the [JavaScript acceptance record](docs/s4-03-javascript-execution-acceptance.md).
-The later literal-fault candidate adds inline raised errors and four shared
-fault cases; all 13 success/fault cases pass each actual Python SDK and the Node
-package passes 48 tests. Full JavaScript services, identity and durability remain
-open, and the current format-validation difference remains explicit.
-An S4-04 candidate now captures and compares the 13 actual native outcomes from
-the three independent environments. It retains source/SDK/runtime/fixture/schema
-provenance and rejects incomplete/mismatched reports. Actual capture and hosted
-qualification remain pending; full proposed/schema criteria remain unverified.
-The [ready-task qualification record](docs/validation-history/ready-tasks-2026-10-25.md)
-tracks the frozen baseline, corrected test expectation and newly repaired
-dependency advisories. The full green `d72781f` checkpoint closes eight finite
-task scopes. Later history, JS and release-record candidates remain unqualified
-as complete tasks.
-S3-03 is the next ordered open task. Its remaining work includes current-source
-qualification of background-profile publication. The candidate enables the
-verified internal profile, while deployment opt-in remains false by default.
-Local checks do not waive hosted, security or release gates.
+Updated 2026-10-25. **31 of 37 tasks are verified; 6 remain open. None is deferred.**
+Eleven of the original 17 open tasks are verified. The user kept S4-09/S4-10/S4-11
+conditional. The three ready tasks are S4-02, S4-03 and S4-04.
+
+The full green `d72781f` checkpoint verifies eight finite task scopes. The full
+green `f66cd23` checkpoint adds S3-03 operation/background adapters, S4-05 bounded
+history/tracing/metrics/provenance and S4-07 release/rollback gates. Its CI attempt
+2 retains the original Windows file-read failure and successful targeted retry.
+Root has 5,197 passes and 90.26% coverage; all six workflows pass. See the
+[qualification record](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-f66cd23).
+
+S4-02 is the next ordered ready task. Later bounded Send implementation has
+focused physical/store proof and frozen default-fork checks; PostgreSQL-only
+test setup and an owned wait/end race are being corrected. Native memory,
+streams, state updates, replay and time travel remain open.
+
+S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
+cases; public identity, durable services, expressions and full engine behavior
+remain missing. S4-04 has a new 13-case actual native outcome comparison with
+source/SDK/runtime/fixture/schema checks; broader CTK/proposed/schema coverage
+remains unverified. These later candidates do not qualify the current branch
+for release or change any research row into a shipped capability.
+
+After the progress audit, development uses one active feature, focused local
+checks and one full qualification per locally green batch. Runtime source must
+remain frozen during recovery validation. Update task records immediately after
+qualification; keep supporting-tool work bounded. Automatic CI remains off by
+default, and running/failed checks do not establish task deferral.
 
 The encoded-reference follow-up fixes URI decoding in OpenAPI/pure AsyncAPI and
 rejects an unsupported Windows LangGraph/PostgreSQL loop before starting engine

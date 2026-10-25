@@ -1,5 +1,13 @@
 # S4-05 observability and recovery: authored acceptance slice
 
+## Exact-source qualification f66cd23
+
+The finite task profile is verified at `f66cd23b399a707fda0683e180c9f34c7b6d6408`. All six source-matched hosted workflows pass, including CI attempt 2 after the retained Windows file-handoff failure. Bounded persistent sanitized lifecycle history/replay, opt-in invocation/task spans and generated contexts, optional HTTP propagation, low-cardinality metrics and authorized common provenance/recovery diagnostics. History is diagnostic, not an atomic audit or resume authority. Incoming trace propagation, vendor exporters, durable spans and native checkpoint readiness inspection are not implemented.
+
+See the [complete qualification and prior failures](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-f66cd23). Full research/proposed/schema criteria remain separately unverified. Later native Send and parity changes retain their own gates.
+
+## Earlier authored history
+
 Status: S4-05 remains open. The corrected consolidated local batch and focused
 metrics/correlation selections pass; exact-source hosted qualification remains
 pending. The runtime exposes bounded in-process lifecycle events, low-cardinality

@@ -1,5 +1,13 @@
 # S3-03 operation adapters: finite acceptance plan
 
+## Exact-source qualification f66cd23
+
+The finite task profile is verified at `f66cd23b399a707fda0683e180c9f34c7b6d6408`. All six source-matched hosted workflows pass, including CI attempt 2 after the retained Windows file-handoff failure. Admitted shared HTTP/OpenAPI/gRPC and pure AsyncAPI operations, supported functions and published opt-in internal SQLite Python background jobs, with common source/receipt/ownership/deadline controls. External broker delivery remains conditional; PostgreSQL/external background supervisors, background JavaScript and unadvertised executable/container profiles remain unsupported.
+
+See the [complete qualification and prior failures](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-f66cd23). Full research/proposed/schema criteria remain separately unverified. Later native Send and parity changes retain their own gates.
+
+## Earlier authored history
+
 Status: the authored batch at exact source `923302f` passed its recorded local
 and hosted gates. Source `31ec0eb` has a separate recorded local follow-up;
 source `237f09f` adds two focused security regressions. Source `f89a154` fixes a

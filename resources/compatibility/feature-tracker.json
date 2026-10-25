@@ -75807,8 +75807,26 @@
         "module": "M07",
         "description": "Complete HTTP/OpenAPI/gRPC/AsyncAPI, function and background-operation adapters as required by the inventory.",
         "effort": "L",
-        "status": "Pending",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "progress_record": "docs/s3-03-operation-adapters-acceptance.md#exact-source-qualification-f66cd23",
+        "evidence": {
+          "commit": "f66cd23b399a707fda0683e180c9f34c7b6d6408",
+          "acceptance_record": "docs/s3-03-operation-adapters-acceptance.md#exact-source-qualification-f66cd23",
+          "scope": "Admitted shared HTTP/OpenAPI/gRPC and pure AsyncAPI operations, supported functions and published opt-in internal SQLite Python background jobs, with common source/receipt/ownership/deadline controls.",
+          "exclusions": "External broker delivery remains conditional; PostgreSQL/external background supervisors, background JavaScript and unadvertised executable/container profiles remain unsupported.",
+          "runs": {
+            "CI": 40184938386,
+            "PostgreSQL CI": 40184940224,
+            "Agent Framework CI": 40184942463,
+            "External Sandbox CI": 40184944582,
+            "Security": 40184946225,
+            "Docs": 40184947964
+          },
+          "conclusions": "All six exact-source hosted workflows passed; CI attempt 2 retains the initial Windows handoff failure and successful single-job retry.",
+          "full_conformance": false,
+          "full_feature_verified": false
+        }
       },
       {
         "id": "S3-04",
@@ -76003,9 +76021,26 @@
         "module": "M11",
         "description": "Complete execution history, tracing, lifecycle metrics, correlation, provenance and replay diagnostics.",
         "effort": "M",
-        "status": "Pending",
-        "progress_record": "docs/s4-05-observability-acceptance.md#bounded-tracing-correlation-and-provenance-candidate--2026-10-25",
-        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
+        "status": "Complete",
+        "progress_record": "docs/s4-05-observability-acceptance.md#exact-source-qualification-f66cd23",
+        "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
+        "evidence": {
+          "commit": "f66cd23b399a707fda0683e180c9f34c7b6d6408",
+          "acceptance_record": "docs/s4-05-observability-acceptance.md#exact-source-qualification-f66cd23",
+          "scope": "Bounded persistent sanitized lifecycle history/replay, opt-in invocation/task spans and generated contexts, optional HTTP propagation, low-cardinality metrics and authorized common provenance/recovery diagnostics.",
+          "exclusions": "History is diagnostic, not an atomic audit or resume authority. Incoming trace propagation, vendor exporters, durable spans and native checkpoint readiness inspection are not implemented.",
+          "runs": {
+            "CI": 40184938386,
+            "PostgreSQL CI": 40184940224,
+            "Agent Framework CI": 40184942463,
+            "External Sandbox CI": 40184944582,
+            "Security": 40184946225,
+            "Docs": 40184947964
+          },
+          "conclusions": "All six exact-source hosted workflows passed; CI attempt 2 retains the initial Windows handoff failure and successful single-job retry.",
+          "full_conformance": false,
+          "full_feature_verified": false
+        }
       },
       {
         "id": "S4-06",
@@ -76039,8 +76074,8 @@
         "module": "M12",
         "description": "Keep CI, builds, releases, capability reports and rollback tied to verified versions and acceptance gates.",
         "effort": "M",
-        "status": "Pending",
-        "progress_record": "docs/s4-07-release-gates-acceptance.md#immutable-release-record-candidate--2026-10-25",
+        "status": "Complete",
+        "progress_record": "docs/s4-07-release-gates-acceptance.md#exact-source-qualification-f66cd23",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion",
         "working_cleanup": {
           "status": "Verified cleanup subset; full S4-07 acceptance remains open",
@@ -76057,6 +76092,23 @@
           "verified_source": "3f568e591309e1a6321ed44452d6e710cd6d326b",
           "qualification": "All six exact-source configured workflows pass; original selectors retained, four bounded Windows jobs, four independent PostgreSQL profiles and both gated database images",
           "release_workflow": "Unchanged; no merge/deployment/publication performed"
+        },
+        "evidence": {
+          "commit": "f66cd23b399a707fda0683e180c9f34c7b6d6408",
+          "acceptance_record": "docs/s4-07-release-gates-acceptance.md#exact-source-qualification-f66cd23",
+          "scope": "Source/version matched validation and image gates, immutable matched release-image manifest generation and required assembly, explicit operator rollback policy and separately opt-in automation.",
+          "exclusions": "No publication, deployment, registry/index ownership claim, automatic rollback/checkpoint migration or optional-engine production target is performed or qualified.",
+          "runs": {
+            "CI": 40184938386,
+            "PostgreSQL CI": 40184940224,
+            "Agent Framework CI": 40184942463,
+            "External Sandbox CI": 40184944582,
+            "Security": 40184946225,
+            "Docs": 40184947964
+          },
+          "conclusions": "All six exact-source hosted workflows passed; CI attempt 2 retains the initial Windows handoff failure and successful single-job retry.",
+          "full_conformance": false,
+          "full_feature_verified": false
         }
       },
       {

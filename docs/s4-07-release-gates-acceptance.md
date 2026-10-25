@@ -1,5 +1,13 @@
 # S4-07 release gates and publication evidence
 
+## Exact-source qualification f66cd23
+
+The finite task profile is verified at `f66cd23b399a707fda0683e180c9f34c7b6d6408`. All six source-matched hosted workflows pass, including CI attempt 2 after the retained Windows file-handoff failure. Source/version matched validation and image gates, immutable matched release-image manifest generation and required assembly, explicit operator rollback policy and separately opt-in automation. No publication, deployment, registry/index ownership claim, automatic rollback/checkpoint migration or optional-engine production target is performed or qualified.
+
+See the [complete qualification and prior failures](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-f66cd23). Full research/proposed/schema criteria remain separately unverified. Later native Send and parity changes retain their own gates.
+
+## Earlier authored history
+
 Status: local workflow guards and release metadata checks passed in the
 corrected consolidated batch; S4-07 remains open pending exact-source hosted
 qualification. Automatic validation requires `OWA_AUTOMATIC_CI=true`; publication
