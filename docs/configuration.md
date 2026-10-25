@@ -94,7 +94,7 @@ sandbox:
   enabled: false
   backend: internal
   allow_shell: false
-  script_runtimes: [python]
+  script_runtimes: [python] # optional JavaScript candidate: [python, javascript]
   timeout_seconds: 30.0
   max_input_bytes: 1048576
   max_output_bytes: 1048576

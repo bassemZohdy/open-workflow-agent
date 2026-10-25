@@ -11,7 +11,11 @@ cleanup and reference/admission fixes. Full independent ADK/LangGraph contract,
 adapter and selected CTK suites run against its immutable Linux source, with
 actual PostgreSQL and complete Git history for archived-source recovery tests.
 The Windows root suite uses its own source copy and locked environment. Results
-remain pending until each process exits and its report is verified.
+remain pending until each process exits and its report is verified. The frozen
+Windows root run subsequently exits zero with 5,072 passes, 3,226 expected
+environment/platform skips and 90.56% coverage. Its input manifest remains
+unchanged. This qualifies that historical root source only; it predates the
+dependency, credential-fixture and JavaScript corrections below.
 
 Two initial Windows runs were deliberately stopped: the first used the live
 working directory; the second used the frozen source with installed editable

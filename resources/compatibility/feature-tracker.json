@@ -75810,6 +75810,7 @@
         "description": "Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.",
         "effort": "M",
         "status": "Pending",
+        "progress_record": "docs/s3-04-executable-source-acceptance.md#javascript-portability-candidate--2026-10-25",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
       },
       {

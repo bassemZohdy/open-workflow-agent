@@ -656,6 +656,14 @@ class RuntimeServices:
             }
             for source in self.executable_sources.sources
         ]
+        if (
+            self.config.sandbox.enabled
+            and self.config.sandbox.backend == "internal"
+            and "javascript" in self.config.sandbox.script_runtimes
+        ):
+            policy["sandbox"]["script_interpreters"] = InternalSandboxBackend(
+                self.config.sandbox
+            ).script_runtime_snapshot()
         policy["catalogs"] = {
             name: ExternalCatalogConfig.model_validate(declaration).model_dump(mode="json")
             for name, declaration in self.external_catalogs.policies.items()

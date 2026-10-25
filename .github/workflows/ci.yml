@@ -126,10 +126,15 @@ jobs:
     name: Windows operation adapters and supervised process recovery
     runs-on: windows-latest
     timeout-minutes: 40
+    env:
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
@@ -142,6 +147,7 @@ jobs:
         run: >-
           uv run --directory engines/langgraph --locked --extra sqlite
           --with pytest --with pytest-asyncio pytest -vv --durations=20
+          ../../tests/core/test_javascript_sandbox.py
           ../../tests/core/test_openapi_client.py
           ../../tests/core/test_openapi_admission.py
           ../../tests/core/test_openapi_protocol_bindings.py
@@ -173,7 +179,7 @@ jobs:
 
   windows-grpc-sqlite-matrix:
     if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
-    name: Windows gRPC SQLite contract (${{ matrix.engine }})
+    name: Windows gRPC and JavaScript SQLite contract (${{ matrix.engine }})
     runs-on: windows-latest
     timeout-minutes: 25
     strategy:
@@ -185,11 +191,15 @@ jobs:
           - engine: langgraph
             extra: sqlite
     env:
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
       OWA_TEST_REQUIRED_ENGINE: ${{ matrix.engine }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
@@ -200,6 +210,7 @@ jobs:
         run: >-
           uv run --directory engines/${{ matrix.engine }} --locked --extra ${{ matrix.extra }}
           --with pytest --with pytest-asyncio pytest -vv
+          ../../tests/contract/test_javascript_sandbox.py
           ../../tests/contract/test_grpc_calls.py
           ../../tests/contract/test_grpc_process_recovery.py
           -k sqlite
@@ -442,6 +453,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
       UV_PYTHON_PREFERENCE: only-system
     steps:
       - uses: actions/checkout@v7
@@ -449,6 +461,9 @@ jobs:
         id: python
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
@@ -576,6 +591,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
       UV_PYTHON_PREFERENCE: only-system
     strategy:
       fail-fast: false
@@ -598,6 +614,9 @@ jobs:
         id: python
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
@@ -814,6 +833,13 @@ jobs:
             bash tests/ci/container_sandbox_image_acceptance.sh \
             "${{ matrix.engine }}" "owa-${{ matrix.engine }}:${{ github.sha }}" \
             "${{ matrix.sandbox_port }}"
+      - name: JavaScript sandbox acceptance inside release image
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 5m \
+            bash tests/ci/javascript_sandbox_image_acceptance.sh \
+            "${{ matrix.engine }}" "owa-${{ matrix.engine }}:${{ github.sha }}"
       - name: One-container embedded defaults without configuration or credentials
         shell: bash
         run: |

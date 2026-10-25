@@ -232,6 +232,12 @@ def _validate_executable_run(
                 "background container execution is not qualified",
                 details={"reference": reference},
             )
+        script = run.get("script")
+        if isinstance(script, Mapping) and script.get("language") != "python":
+            raise UnsupportedWorkflowFeature(
+                "background scripts require the qualified Python job profile",
+                details={"reference": reference},
+            )
         for kind in ("script", "shell"):
             configuration = run.get(kind)
             environment = (

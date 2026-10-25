@@ -30,6 +30,9 @@ on:
       - "tests/core/test_internal_awaited_process_controls.py"
       - "tests/core/test_engine_shutdown_initialization.py"
       - "tests/contract/test_executable_source*.py"
+      - "tests/contract/test_javascript_sandbox.py"
+      - "tests/core/test_javascript_sandbox.py"
+      - "tests/javascript_fixture_policy.py"
       - "tests/contract/_executable_source*.py"
       - "tests/contract/test_openapi*.py"
       - "tests/contract/test_grpc*.py"
@@ -695,6 +698,8 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
+    env:
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -703,6 +708,9 @@ jobs:
         id: python
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
@@ -734,6 +742,7 @@ jobs:
             ../../tests/contract/test_selected_adapter_contracts.py \
             ../../tests/contract/test_selected_adapter_process_recovery.py \
             ../../tests/core/test_executable_source_admission.py \
+            ../../tests/contract/test_javascript_sandbox.py \
             ../../tests/contract/test_executable_source_calls.py \
             ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql
 
@@ -759,6 +768,8 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
+    env:
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -767,6 +778,9 @@ jobs:
         id: python
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
@@ -798,6 +812,7 @@ jobs:
             ../../tests/contract/test_selected_adapter_contracts.py \
             ../../tests/contract/test_selected_adapter_process_recovery.py \
             ../../tests/core/test_executable_source_admission.py \
+            ../../tests/contract/test_javascript_sandbox.py \
             ../../tests/contract/test_executable_source_calls.py \
             ../../tests/contract/test_executable_source_process_recovery.py -vv --durations=20 -k postgresql
 

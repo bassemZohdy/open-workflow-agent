@@ -234,6 +234,10 @@ treated as a deferred task or as additional feature completion.
   Background execution stays default-off, and cross-adapter, backend, platform,
   lifetime, packaging and broader hosted acceptance remain open.
 - [ ] **S3-04** (M) — Complete executable-operation portability through the existing SandboxManager and proven isolation profiles.
+  JavaScript follow-up (2026-10-25): awaited Node 24 execution is authored on
+  the common sandbox path, with physical interpreter recovery identity and
+  pinned image components. Windows checks pass; Linux, image and exact-source
+  qualification remain open. See the [candidate record](docs/s3-04-executable-source-acceptance.md#javascript-portability-candidate--2026-10-25).
   Captured sources, recovery proofs and awaited internal process controls are
   authored; only the dedicated expected source-policy rejection is translated
   into a user-facing policy error, while registry configuration/execution

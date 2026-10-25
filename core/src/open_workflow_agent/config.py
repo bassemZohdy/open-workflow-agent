@@ -804,7 +804,7 @@ class SandboxConfig(StrictModel):
             raise ValueError("script_runtimes must contain at least one runtime")
         if len(set(runtimes)) != len(runtimes):
             raise ValueError("script_runtimes must not contain duplicates")
-        unsupported = sorted(set(runtimes) - {"python"})
+        unsupported = sorted(set(runtimes) - {"python", "javascript"})
         if unsupported:
             raise ValueError(f"unsupported internal script runtimes: {unsupported}")
         return runtimes

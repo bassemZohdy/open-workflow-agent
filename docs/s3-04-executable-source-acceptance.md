@@ -1,5 +1,28 @@
 # S3-04 executable portability: authored acceptance plan
 
+## JavaScript portability candidate — 2026-10-25
+
+The missing JavaScript runtime now has an awaited candidate through the existing
+common sandbox backend. It retains deployment opt-in, explicit approved binary
+resolution, private `.cjs` source, UTF-8 arguments/stdin, filtered environment and
+all existing process controls. Physical interpreter bytes join the enabled
+profile's recovery identity. Background and captured-source JavaScript remain
+unsupported. Digest-pinned Node 24 is copied into each runtime image at build
+time; there is no startup/package installation or engine-specific process path.
+
+The initial Windows physical probe identified Node's explicit `SYSTEMROOT`
+requirement. Its deployment test policy now allows only that additional host
+variable. The physical/control and existing sandbox/configuration regression
+selection passes 153 cases, with four inapplicable POSIX skips; three CI selection
+guards also pass. Actual ADK and
+LangGraph SQLite return/projection and changed-interpreter recovery checks pass
+two cases each; ADK PostgreSQL passes the same two. They retain actual native
+snapshots and unchanged common state after drift rejection. Linux PostgreSQL,
+packaged images and exact-source hosted acceptance remain required. The
+[runtime constraints](sandbox-execution.md#script-execution) include the selected
+V8 memory policy and Windows event-loop distinction. This candidate does not
+close S3-04 or qualify independent JavaScript workflow execution under S4-03.
+
 Portable `SandboxInputFile` requests now validate path syntax under both POSIX
 and Windows grammars. Drive-qualified paths, UNC paths and backslash traversal
 are rejected before a request reaches a different platform. Windows device

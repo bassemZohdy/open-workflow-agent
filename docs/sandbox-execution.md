@@ -244,6 +244,33 @@ The implementation prefers direct executable/argument execution for operations t
 
 The runtime never dynamically installs interpreters or packages during startup or execution. Script runtimes must already exist in the selected release image or be provided by an external sandbox image.
 
+The JavaScript portability candidate accepts `javascript` as an explicit member
+of `sandbox.script_runtimes`. It uses a preinstalled Node executable from the
+approved executable search path and the same SandboxManager, workspace,
+environment, output, timeout, process-group/Windows Job and cleanup machinery as
+Python. Source is written as a CommonJS `.cjs` file; arguments follow the filename
+and cannot become interpreter flags. It does not enable executable background
+JavaScript or captured external JavaScript sources. The production image candidate
+copies only the Node 24 binary from a digest-pinned official image, without npm.
+Linux/image and exact-source qualification remain pending; this is not a release.
+
+The selected JavaScript test profile sets `memory_bytes: null`: V8 reserves a
+large virtual address range, so the existing small POSIX address-space limit is
+not a portable JavaScript memory budget. The image acceptance separately enforces
+a Docker memory limit. Capabilities report only the controls actually selected;
+this does not turn the internal process boundary into hard isolation. Windows
+deployments explicitly allow `SYSTEMROOT` through `inherited_environment` and
+use a Proactor event loop for child processes. Selector-loop awaited execution
+fails closed; Windows LangGraph/PostgreSQL's Selector-only profile therefore
+does not provide awaited executable operations.
+
+For an enabled internal JavaScript profile, recovery includes the resolved
+interpreter path, physical binary SHA-256 and byte count. A changed interpreter
+rejects continuation before ownership/native/common mutation. No interpreter is
+launched to generate that identity, and unselected JavaScript adds no profile
+field to an existing Python-only invocation. Replacing a Node installation is
+not an in-place migration of saved JavaScript invocations.
+
 Arbitrary dependency installation initiated by workflow input is outside the internal sandbox profile.
 
 ## External sandbox backends

@@ -9,6 +9,7 @@ paths.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import math
 import os
 import shutil
@@ -97,13 +98,18 @@ class InternalSandboxBackend:
                 )
             except (SandboxPolicyError, IndexError):
                 stdio_enabled = False
+        runtimes = [
+            name
+            for name in self.config.script_runtimes
+            if name != "javascript" or shutil.which("node", path=self._effective_search_path())
+        ]
         return {
             "enabled": awaited,
             "backend": "internal",
             "internalProcess": awaited,
             "script": {
-                "enabled": awaited,
-                "runtimes": list(self.config.script_runtimes),
+                "enabled": awaited and bool(runtimes),
+                "runtimes": runtimes,
                 "externalSource": False,
             },
             "shell": {"enabled": awaited and self.config.allow_shell},
@@ -153,6 +159,13 @@ class InternalSandboxBackend:
         if os.name == "nt":
             if self.config.file_size_bytes is not None:
                 raise SandboxPolicyError("Windows awaited file-size enforcement is unavailable")
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            proactor = getattr(asyncio, "ProactorEventLoop", None)
+            if loop is not None and (proactor is None or not isinstance(loop, proactor)):
+                raise SandboxPolicyError("Windows awaited processes require a Proactor event loop")
             return
         if os.name != "posix":
             raise SandboxPolicyError("awaited sandbox process controls are unavailable")
@@ -443,23 +456,30 @@ class InternalSandboxBackend:
                     "sandbox script runtime is not enabled",
                     details={"runtime": request.script_language},
                 )
-            if request.script_language != "python" or request.script_code is None:
-                raise SandboxPolicyError("only inline Python scripts are supported")
-            path = workspace / "main.py"
+            if request.script_code is None:
+                raise SandboxPolicyError("sandbox script requires inline source")
+            if request.script_language == "python":
+                executable, filename = sys.executable, "main.py"
+            elif request.script_language == "javascript":
+                executable = self._javascript_executable()
+                filename = "main.cjs"
+            else:
+                raise SandboxPolicyError("sandbox script runtime is unsupported")
+            path = workspace / filename
             path.write_text(request.script_code, encoding="utf-8")
-            return sys.executable, (str(path), *request.arguments)
+            return executable, (str(path), *request.arguments)
         if not self.config.allow_shell:
             raise SandboxPolicyError("sandbox shell execution is disabled")
         command = request.command or ""
         if not command or "/" in command or (os.altsep and os.altsep in command):
             raise SandboxPolicyError("shell command must be a direct executable name")
-        executable = shutil.which(command, path=self._effective_search_path())
-        if executable is None:
+        resolved_executable = shutil.which(command, path=self._effective_search_path())
+        if resolved_executable is None:
             raise SandboxPolicyError(
                 "shell executable is not available in the approved search path",
                 details={"command": command},
             )
-        return executable, request.arguments
+        return resolved_executable, request.arguments
 
     def _build_environment(
         self, request: SandboxExecutionRequest, workspace: Path
@@ -499,7 +519,7 @@ class InternalSandboxBackend:
                 environment[name] = resolved
             else:
                 environment[name] = configured_value
-        if request.kind == "script":
+        if request.kind == "script" and request.script_language == "python":
             # The admitted Python source/input are UTF-8 on every host. This
             # controlled interpreter binding overrides a requested host codec;
             # no ambient locale/environment is inherited for encoding identity.
@@ -514,6 +534,27 @@ class InternalSandboxBackend:
                 details={"max_input_bytes": self.config.max_input_bytes},
             )
         return environment
+
+    def _javascript_executable(self) -> str:
+        executable = shutil.which("node", path=self._effective_search_path())
+        if executable is None:
+            raise SandboxPolicyError("JavaScript interpreter is unavailable in the approved path")
+        return executable
+
+    def script_runtime_snapshot(self) -> dict[str, Any]:
+        """Bind optional interpreters to recovery without executing host commands."""
+        if "javascript" not in self.config.script_runtimes:
+            return {}
+        path = Path(self._javascript_executable()).resolve(strict=True)
+        digest = hashlib.sha256()
+        size = 0
+        with path.open("rb") as source:
+            while chunk := source.read(1_048_576):
+                size += len(chunk)
+                if size > 268_435_456:
+                    raise SandboxPolicyError("JavaScript interpreter exceeds the attestation bound")
+                digest.update(chunk)
+        return {"javascript": {"path": str(path), "sha256": digest.hexdigest(), "bytes": size}}
 
     def _effective_search_path(self) -> str:
         values = [
