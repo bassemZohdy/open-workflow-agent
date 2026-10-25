@@ -1,4 +1,4 @@
-"""Wait for exact-commit companion acceptance before publishing images."""
+"""Wait for exact-commit publication acceptance before publishing images."""
 
 from __future__ import annotations
 

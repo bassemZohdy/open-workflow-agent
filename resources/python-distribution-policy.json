@@ -1,0 +1,17 @@
+{
+  "profile": "owa/python-distribution-policy/v1",
+  "canonical_adk": {
+    "distribution": "open-workflow-agent-adk",
+    "import": "open_workflow_agent_adk",
+    "project": "engines/adk",
+    "compatibility_shims": false
+  },
+  "predecessor": {
+    "import": "openworkflow_adk",
+    "commands": ["owf-adk", "spec-drift-check"],
+    "reference": "migration/reference/open-workflow-agent-adk"
+  },
+  "delivery": ["pinned_source_checkout", "qualified_oci_images"],
+  "package_index_publication": "disabled",
+  "consumer_migration": "separate_environment_and_explicit_workflow_port"
+}

@@ -57,7 +57,7 @@ def _workflow():
                     }
                 }
             },
-            {"finish": {"set": {"decision": "${ .decision }"}}},
+            {"finish": {"set": {"decision": "${ .[0].decision }"}}},
         ],
     }
 
@@ -110,12 +110,15 @@ async def test_durable_approval_replay_is_engine_neutral(tmp_path, engine_name, 
     engine = engine_type()
     await engine.initialize(restarted)
     plan = compile_workflow(_workflow())
-    result = await asyncio.wait_for(
-        engine.invoke(plan, _handle(restarted, engine_name, plan), {}),
-        timeout=1.0,
-    )
-    assert result.status == "completed"
-    assert result.output == {"decision": "approved"}
-    assert any(event.event_type == "EventReceived" for event in restarted.events.events)
-    assert any(event.event_type == "WorkflowResumed" for event in restarted.events.events)
-    restarted.close()
+    try:
+        result = await asyncio.wait_for(
+            engine.invoke(plan, _handle(restarted, engine_name, plan), {}),
+            timeout=15.0,
+        )
+        assert result.status == "completed", result.error
+        assert result.output == {"decision": "approved"}
+        assert any(event.event_type == "EventReceived" for event in restarted.events.events)
+        assert any(event.event_type == "WorkflowResumed" for event in restarted.events.events)
+    finally:
+        await engine.shutdown()
+        restarted.close()

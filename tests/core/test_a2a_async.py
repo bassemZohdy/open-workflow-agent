@@ -7,6 +7,8 @@ and resuming sends over the common resume contract (A2A-6).
 from __future__ import annotations
 
 import asyncio
+from contextlib import AsyncExitStack
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -15,6 +17,8 @@ from open_workflow_agent.api import create_app
 from open_workflow_agent.approvals import APPROVAL_DECISION_EVENT, APPROVAL_REQUEST_EVENT
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
+from open_workflow_agent.engine import PortableWorkflowEngine
+from open_workflow_agent.security import Principal
 from open_workflow_agent.services import RuntimeServices
 
 HEADERS = {"a2a-version": V1}
@@ -29,7 +33,11 @@ def _send(message: dict[str, object], **params: object) -> dict[str, object]:
 
 
 def _text_message(text: str = "hello", **extra: object) -> dict[str, object]:
-    message: dict[str, object] = {"role": "ROLE_USER", "parts": [{"text": text}]}
+    message: dict[str, object] = {
+        "messageId": "fixture-message",
+        "role": "ROLE_USER",
+        "parts": [{"text": text}],
+    }
     message.update(extra)
     return message
 
@@ -74,25 +82,267 @@ async def _poll_task_state(
 
 
 @pytest.mark.asyncio
-async def test_return_immediately_returns_task_and_completes(tmp_path) -> None:
-    config = RuntimeConfig.model_validate({"a2a": {"enabled": True}})
-    app, _services = _make_app(tmp_path, config)
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+async def test_return_immediately_returns_task_and_completes(tmp_path, transport: str) -> None:
+    config = RuntimeConfig.model_validate({"a2a": {"enabled": True, "transport": transport}})
+    app, services = _make_app(tmp_path, config)
     async with app.router.lifespan_context(app):
-        transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post(
-                "/a2a",
-                headers=HEADERS,
-                json=_send(_text_message(), configuration={"returnImmediately": True}),
+        asgi_transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=asgi_transport, base_url="http://test") as client:
+            message = _text_message(
+                "complete exactly once",
+                messageId="return-immediately-message",
+                contextId="return-immediately-context",
             )
+            if config.a2a.transport == "jsonrpc":
+                response = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(message, configuration={"returnImmediately": True}),
+                )
+            else:
+                response = await client.post(
+                    "/a2a/message:send",
+                    headers=HEADERS,
+                    json={"message": message, "configuration": {"returnImmediately": True}},
+                )
             assert response.status_code == 200
-            body = response.json()["result"]
+            body = (
+                response.json()["result"] if config.a2a.transport == "jsonrpc" else response.json()
+            )
             assert "task" in body
             assert "message" not in body
             task_id = body["task"]["id"]
+            assert body["task"]["contextId"] == "return-immediately-context"
+            handle = services.invocations.get(task_id)
+            assert handle is not None
+            assert handle.invocation_id == task_id
+            assert handle.session_id == body["task"]["contextId"]
 
-            final = await _poll_task_state(client, task_id, "TASK_STATE_COMPLETED")
+            final = await _poll_task_state(
+                client,
+                task_id,
+                "TASK_STATE_COMPLETED",
+                transport=config.a2a.transport,
+            )
+            assert final["id"] == task_id
+            assert final["contextId"] == body["task"]["contextId"]
             assert final["artifacts"][0]["parts"][0]["data"] == {"response": "a2a-reply"}
+            assert len(services.model.calls) == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("transport", ["jsonrpc", "http_json"])
+@pytest.mark.parametrize(
+    ("suppress_cancellation", "late_outcome"),
+    [(False, "value"), (True, "value"), (True, "fault")],
+)
+async def test_host_drain_keeps_inflight_task_authoritative_in_later_reads(
+    tmp_path, transport: str, suppress_cancellation: bool, late_outcome: str
+) -> None:
+    entered = asyncio.Event()
+    interrupted = asyncio.Event()
+    suppressed = asyncio.Event()
+    late_provider_finished = asyncio.Event()
+    release = asyncio.Event()
+
+    async def slow_model(_prompt):
+        def late_result():
+            late_provider_finished.set()
+            if late_outcome == "fault":
+                raise RuntimeError("late provider failure")
+            return {"response": "late-result"}
+
+        entered.set()
+        try:
+            await release.wait()
+        except asyncio.CancelledError:
+            if suppress_cancellation:
+                suppressed.set()
+                await asyncio.shield(release.wait())
+                return late_result()
+            interrupted.set()
+            raise
+        return late_result()
+
+    config = RuntimeConfig.model_validate(
+        {
+            "model": {"provider": "fake"},
+            "workflow": {
+                "catalog": [
+                    {
+                        "document": {
+                            "dsl": "1.0.3",
+                            "namespace": "a2a-host-drain",
+                            "name": "slow",
+                            "version": "1.0.0",
+                        },
+                        "do": [
+                            {
+                                "wait": {
+                                    "call": "llm:1.0.0@default",
+                                    "with": {"prompt": "wait for host drain"},
+                                }
+                            }
+                        ],
+                    }
+                ]
+            },
+            "a2a": {
+                "enabled": True,
+                "transport": transport,
+                "skills": [{"id": "slow", "workflow": "slow"}],
+            },
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(slow_model), database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    reader: RuntimeServices | None = None
+    reader_stack = AsyncExitStack()
+    try:
+        async with app.router.lifespan_context(app):
+            client_transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(
+                transport=client_transport, base_url="http://test"
+            ) as client:
+                if transport == "jsonrpc":
+                    started = await client.post(
+                        "/a2a",
+                        headers=HEADERS,
+                        json=_send(
+                            _text_message("start the slow task", metadata={"skillId": "slow"}),
+                            configuration={"returnImmediately": True},
+                        ),
+                    )
+                    assert started.status_code == 200, started.text
+                    task_id = started.json()["result"]["task"]["id"]
+                else:
+                    started = await client.post(
+                        "/a2a/message:send",
+                        headers=HEADERS,
+                        json={
+                            "message": _text_message(
+                                "start the slow task", metadata={"skillId": "slow"}
+                            ),
+                            "configuration": {"returnImmediately": True},
+                        },
+                    )
+                    assert started.status_code == 200, started.text
+                    task_id = started.json()["task"]["id"]
+
+                await asyncio.wait_for(entered.wait(), timeout=30)
+                before_drain = services.invocations.get(task_id)
+                assert before_drain is not None and before_drain.status == "running"
+
+                reader_model = FakeModel()
+                reader = RuntimeServices(config, model=reader_model, database_root=tmp_path)
+                reader_app = create_app(
+                    config=config, services=reader, engine=PortableWorkflowEngine()
+                )
+                await reader_stack.enter_async_context(
+                    reader_app.router.lifespan_context(reader_app)
+                )
+
+                async def forbidden(*_args, **_kwargs):
+                    raise AssertionError("a late-result GetTask must not replay workflow work")
+
+                reader_app.state.engine.invoke = forbidden
+                reader_app.state.engine.resume = forbidden
+                reader_client_context = httpx.AsyncClient(
+                    transport=httpx.ASGITransport(app=reader_app),
+                    base_url="http://test",
+                )
+                reader_client = await reader_stack.enter_async_context(reader_client_context)
+
+                def effect_rows(services_: RuntimeServices) -> list[tuple[object, ...]]:
+                    rows = services_.effect_journal.connection.execute(
+                        "SELECT identity, owner, status, payload FROM workflow_effects "
+                        "ORDER BY identity"
+                    ).fetchall()
+                    return [tuple(row) for row in rows]
+
+                effects_before_drain = effect_rows(services)
+
+                shutdown = asyncio.create_task(app.state.engine.shutdown())
+                if suppress_cancellation:
+                    await asyncio.wait_for(suppressed.wait(), timeout=5)
+                    assert not shutdown.done()
+
+                    # While the original provider is still holding the cancelled
+                    # invocation open, a separate worker must observe stable task
+                    # state without invoking or resuming workflow work.
+                    reader_first = await _poll_task_state(
+                        reader_client,
+                        task_id,
+                        "TASK_STATE_WORKING",
+                        transport=transport,
+                    )
+                    reader_second = await _poll_task_state(
+                        reader_client,
+                        task_id,
+                        "TASK_STATE_WORKING",
+                        transport=transport,
+                    )
+                    assert reader_second == reader_first
+                    assert reader.invocations.get(task_id)._persisted_payload == (
+                        before_drain._persisted_payload
+                    )
+                    assert services.invocations.get(task_id)._persisted_payload == (
+                        before_drain._persisted_payload
+                    )
+                    assert effect_rows(reader) == effects_before_drain
+                    assert effect_rows(services) == effects_before_drain
+                    assert reader_model.calls == []
+                    assert len(services.model.calls) == 1
+                    release.set()
+                else:
+                    await asyncio.wait_for(interrupted.wait(), timeout=5)
+                await asyncio.wait_for(shutdown, timeout=5)
+                if suppress_cancellation:
+                    assert late_provider_finished.is_set()
+                after_drain = services.invocations.get(task_id)
+                assert after_drain is not None and after_drain.status == "running"
+                persisted = after_drain._persisted_payload
+                model_calls_after_drain = list(services.model.calls)
+
+                first = await _poll_task_state(
+                    client, task_id, "TASK_STATE_WORKING", transport=transport
+                )
+                second = await _poll_task_state(
+                    client, task_id, "TASK_STATE_WORKING", transport=transport
+                )
+                assert second == first
+                assert services.invocations.get(task_id)._persisted_payload == persisted
+                assert services.model.calls == model_calls_after_drain
+                effects_after_late_provider = effect_rows(services)
+                worker_task = await _poll_task_state(
+                    reader_client,
+                    task_id,
+                    "TASK_STATE_WORKING",
+                    transport=transport,
+                )
+                reader_after_late_result = await _poll_task_state(
+                    reader_client,
+                    task_id,
+                    "TASK_STATE_WORKING",
+                    transport=transport,
+                )
+                reader_handle = reader.invocations.get(task_id)
+                assert reader_handle is not None and reader_handle.status == "running"
+                assert worker_task == first
+                assert reader_after_late_result == first
+                assert reader_handle._persisted_payload == persisted
+                assert services.invocations.get(task_id)._persisted_payload == persisted
+                assert effect_rows(reader) == effects_after_late_provider
+                assert effect_rows(services) == effects_after_late_provider
+                assert reader_model.calls == []
+                assert services.model.calls == model_calls_after_drain
+    finally:
+        release.set()
+        await reader_stack.aclose()
+        if reader is not None:
+            reader.close()
+        services.close()
 
 
 @pytest.mark.asyncio
@@ -192,6 +442,365 @@ async def test_approval_wait_projects_input_required_and_completes(tmp_path) -> 
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("outcome", ["cross_worker_decision", "expiry_recovery"])
+async def test_protected_approval_terminal_outcome_survives_a2a_recovery(
+    tmp_path, monkeypatch, outcome: str
+) -> None:
+    """A2A observes durable approval decisions, including expiry after dispatcher restart."""
+    monkeypatch.setenv("OWA_TEST_A2A_APPROVAL_ACTOR", "approval-secret")
+    subject = f"protected-a2a-recovery-{outcome}"
+    expiry = (
+        datetime.now(UTC) - timedelta(seconds=1)
+        if outcome == "expiry_recovery"
+        else datetime.now(UTC) + timedelta(minutes=5)
+    )
+    expires_at = expiry.isoformat().replace("+00:00", "Z")
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "a2a-async",
+            "name": "protected-recovery-flow",
+            "version": "1.0.0",
+        },
+        "do": [
+            {
+                "request": {
+                    "emit": {
+                        "event": {
+                            "with": {
+                                "id": subject,
+                                "source": "urn:a2a-async:protected-recovery",
+                                "type": APPROVAL_REQUEST_EVENT,
+                                "subject": subject,
+                                "approvalexpiresat": expires_at,
+                                "data": {
+                                    "approvalPolicy": {
+                                        "profile": "owa/protected-approval/v1",
+                                        "assignee": "reviewer-a",
+                                        "reassignmentTargets": [],
+                                        "escalationTargets": [],
+                                    },
+                                    "question": "continue?",
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "decision": {
+                    "listen": {
+                        "to": {
+                            "one": {
+                                "with": {
+                                    "type": APPROVAL_DECISION_EVENT,
+                                    "subject": subject,
+                                }
+                            }
+                        },
+                        "read": "data",
+                    }
+                }
+            },
+            {"finish": {"set": {"approved": True}}},
+        ],
+    }
+    config = RuntimeConfig.model_validate(
+        {
+            "approvals": {
+                "enabled": True,
+                "protected": True,
+                "actor_security_profiles": ["approval-actor"],
+            },
+            "security": {
+                "profiles": {
+                    "approval-actor": {
+                        "type": "bearer",
+                        "token": {"from_env": "OWA_TEST_A2A_APPROVAL_ACTOR"},
+                        "principal": "reviewer-a",
+                    }
+                }
+            },
+            "workflow": {"catalog": [workflow]},
+            "a2a": {
+                "enabled": True,
+                "skills": [{"id": "approve", "workflow": "protected-recovery-flow"}],
+            },
+        }
+    )
+    services = RuntimeServices(config, model=FakeModel(), database_root=tmp_path)
+    app = create_app(config=config, services=services)
+    other_worker: RuntimeServices | None = None
+    try:
+        async with app.router.lifespan_context(app):
+            if outcome == "expiry_recovery":
+                # Hold the durable expiry observer down while the Task and approval
+                # are persisted. Restarting it must reconcile the already-due row.
+                await services.stop_protected_approvals()
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+                started = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(
+                        _text_message(metadata={"skillId": "approve"}),
+                        configuration={"returnImmediately": True},
+                    ),
+                )
+                assert started.status_code == 200, started.text
+                task_id = started.json()["result"]["task"]["id"]
+                await _poll_task_state(client, task_id, "TASK_STATE_INPUT_REQUIRED")
+
+                pending = services.approvals.store.get(subject)
+                assert pending is not None and pending.status == "pending"
+                assert pending.expires_at is not None
+                if outcome == "expiry_recovery":
+                    await services.start_protected_approvals()
+                    expected_decision = "expired"
+                else:
+                    other_worker = RuntimeServices(
+                        config, model=FakeModel(), database_root=tmp_path
+                    )
+                    await other_worker.approvals.decide(
+                        subject,
+                        decision="approved",
+                        operator_id="reviewer-a",
+                        actor=Principal("reviewer-a"),
+                        value={"approved": True},
+                        revision=1,
+                        operation_key=f"{subject}:decision",
+                    )
+                    expected_decision = "approved"
+
+                final = await _poll_task_state(client, task_id, "TASK_STATE_COMPLETED")
+                assert final["artifacts"][0]["parts"][0]["data"] == {"approved": True}
+                assert services.approvals.store.get(subject).status == expected_decision
+                # Terminal observation is read-only: repeated A2A reads return the
+                # same committed result and cannot replay the approval or workflow.
+                repeated = await _poll_task_state(client, task_id, "TASK_STATE_COMPLETED")
+                assert repeated == final
+                assert services.approvals.store.get(subject).status == expected_decision
+                resumed = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(_text_message(taskId=task_id, contextId=final["contextId"])),
+                )
+                assert resumed.status_code == 200
+                assert resumed.json()["error"]["code"] == -32004
+                after_rejected_resume = await _poll_task_state(
+                    client, task_id, "TASK_STATE_COMPLETED"
+                )
+                assert after_rejected_resume == final
+                assert services.model.calls == []
+    finally:
+        if other_worker is not None:
+            other_worker.close()
+        services.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("transport_name", ["jsonrpc", "http_json"])
+async def test_a2a_resume_cannot_bypass_protected_approval_wait(
+    tmp_path, monkeypatch, transport_name
+) -> None:
+    monkeypatch.setenv("OWA_TEST_A2A_APPROVAL_ACTOR", "approval-secret")
+    subject = f"protected-a2a-{transport_name}"
+    expires_at = (datetime.now(UTC) + timedelta(minutes=5)).isoformat().replace("+00:00", "Z")
+    workflow = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "a2a-async",
+            "name": "protected-approval-flow",
+            "version": "1.0.0",
+        },
+        "do": [
+            {
+                "request": {
+                    "emit": {
+                        "event": {
+                            "with": {
+                                "id": subject,
+                                "source": "urn:a2a-async:protected-approval",
+                                "type": APPROVAL_REQUEST_EVENT,
+                                "subject": subject,
+                                "approvalexpiresat": expires_at,
+                                "data": {
+                                    "approvalPolicy": {
+                                        "profile": "owa/protected-approval/v1",
+                                        "assignee": "reviewer-a",
+                                        "reassignmentTargets": [],
+                                        "escalationTargets": [],
+                                    },
+                                    "question": "continue?",
+                                },
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                "decision": {
+                    "listen": {
+                        "to": {
+                            "one": {
+                                "with": {
+                                    "type": APPROVAL_DECISION_EVENT,
+                                    "subject": subject,
+                                }
+                            }
+                        },
+                        "read": "data",
+                    }
+                }
+            },
+            {"finish": {"set": {"approved": True}}},
+        ],
+    }
+    config = RuntimeConfig.model_validate(
+        {
+            "approvals": {
+                "enabled": True,
+                "protected": True,
+                "actor_security_profiles": ["approval-actor"],
+            },
+            "security": {
+                "profiles": {
+                    "approval-actor": {
+                        "type": "bearer",
+                        "token": {"from_env": "OWA_TEST_A2A_APPROVAL_ACTOR"},
+                        "principal": "reviewer-a",
+                    }
+                }
+            },
+            "workflow": {"catalog": [workflow]},
+            "a2a": {
+                "enabled": True,
+                "transport": transport_name,
+                "skills": [{"id": "approve", "workflow": "protected-approval-flow"}],
+            },
+        }
+    )
+    app, services = _make_app(tmp_path, config)
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            if transport_name == "jsonrpc":
+                started = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(
+                        _text_message(metadata={"skillId": "approve"}),
+                        configuration={"returnImmediately": True},
+                    ),
+                )
+            else:
+                started = await client.post(
+                    "/a2a/message:send",
+                    headers=HEADERS,
+                    json={
+                        "message": _text_message(metadata={"skillId": "approve"}),
+                        "configuration": {"returnImmediately": True},
+                    },
+                )
+            assert started.status_code == 200, started.text
+            started_body = started.json()
+            task_id = (
+                started_body["result"]["task"]["id"]
+                if transport_name == "jsonrpc"
+                else started_body["task"]["id"]
+            )
+            await _poll_task_state(
+                client, task_id, "TASK_STATE_INPUT_REQUIRED", transport=transport_name
+            )
+
+            handle = services.invocations.get(task_id)
+            assert handle is not None and handle.status == "waiting"
+            input_before = services.invocations.read_input(handle)
+            payload_before = handle._persisted_payload
+            delivery_before = services.initial_deliveries.get(handle)
+            assert delivery_before is not None
+            approval_before = services.approvals.protected_store.inspect(subject)
+            request_before = services.approvals.store.get(subject)
+            assert request_before is not None and request_before.status == "pending"
+            inputs_before = services.invocations.connection.execute(
+                "SELECT invocation_id,fingerprint,payload FROM invocation_inputs "
+                "WHERE invocation_id=?",
+                (task_id,),
+            ).fetchall()
+            effects_before = services.effect_journal.connection.execute(
+                "SELECT i.identity,i.fingerprint,i.payload,e.owner,e.status,e.payload "
+                "FROM workflow_effect_invocations i LEFT JOIN workflow_effects e "
+                "ON e.identity=i.identity WHERE i.invocation_id=? ORDER BY i.identity",
+                (task_id,),
+            ).fetchall()
+            inbox_before = services.event_store.connection.execute(
+                "SELECT sequence,scope,source,event_id,envelope,digest,submitted_digest "
+                "FROM event_inbox ORDER BY sequence"
+            ).fetchall()
+
+            resume_message = _text_message(
+                "unauthorized approval answer",
+                taskId=task_id,
+                contextId=handle.session_id,
+            )
+            if transport_name == "jsonrpc":
+                resumed = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(resume_message),
+                )
+            else:
+                resumed = await client.post(
+                    "/a2a/message:send",
+                    headers=HEADERS,
+                    json={"message": resume_message},
+                )
+            if transport_name == "jsonrpc":
+                assert resumed.status_code == 200, resumed.text
+                assert resumed.json()["error"]["code"] == -32000
+                assert resumed.json()["error"]["message"] == "task is not accepting input"
+            else:
+                assert resumed.status_code == 409, resumed.text
+                assert resumed.json()["error"]["details"][0]["metadata"]["owaCode"] == (
+                    "task_not_resumeable"
+                )
+
+            current = services.invocations.get(task_id)
+            assert current is not None and current.status == "waiting"
+            assert current._persisted_payload == payload_before
+            assert services.invocations.read_input(current) == input_before
+            assert services.initial_deliveries.get(current) == delivery_before
+            assert services.approvals.protected_store.inspect(subject) == approval_before
+            assert services.approvals.store.get(subject) == request_before
+            assert services.approvals.store.get(subject).status == "pending"
+            assert (
+                services.invocations.connection.execute(
+                    "SELECT invocation_id,fingerprint,payload FROM invocation_inputs "
+                    "WHERE invocation_id=?",
+                    (task_id,),
+                ).fetchall()
+                == inputs_before
+            )
+            assert (
+                services.effect_journal.connection.execute(
+                    "SELECT i.identity,i.fingerprint,i.payload,e.owner,e.status,e.payload "
+                    "FROM workflow_effect_invocations i LEFT JOIN workflow_effects e "
+                    "ON e.identity=i.identity WHERE i.invocation_id=? ORDER BY i.identity",
+                    (task_id,),
+                ).fetchall()
+                == effects_before
+            )
+            assert (
+                services.event_store.connection.execute(
+                    "SELECT sequence,scope,source,event_id,envelope,digest,submitted_digest "
+                    "FROM event_inbox ORDER BY sequence"
+                ).fetchall()
+                == inbox_before
+            )
+            assert services.model.calls == []
+
+
+@pytest.mark.asyncio
 async def test_resuming_send_on_unknown_task_fails_closed(tmp_path) -> None:
     config = RuntimeConfig.model_validate({"a2a": {"enabled": True}})
     app, _services = _make_app(tmp_path, config)
@@ -233,12 +842,13 @@ async def test_resuming_send_on_terminal_task_is_rejected(tmp_path) -> None:
             )
             assert response.status_code == 200
             error = response.json()["error"]
-            assert error["code"] == -32000
+            assert error["code"] == -32004
             assert error["message"] == "task is not accepting input"
 
 
 @pytest.mark.asyncio
-async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
+@pytest.mark.parametrize("transport_name", ["jsonrpc", "http_json"])
+async def test_resuming_send_restarts_persisted_waiting_task(tmp_path, transport_name) -> None:
     config = RuntimeConfig.model_validate(
         {
             "workflow": {
@@ -250,12 +860,16 @@ async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
                             "name": "echo-flow",
                             "version": "1.0.0",
                         },
-                        "do": [{"mark": {"set": {"resumed": True}}}],
+                        "do": [
+                            {"pause": {"wait": {"seconds": 300}}},
+                            {"mark": {"set": {"resumed": True}}},
+                        ],
                     }
                 ]
             },
             "a2a": {
                 "enabled": True,
+                "transport": transport_name,
                 "skills": [{"id": "echo", "workflow": "echo-flow"}],
             },
         }
@@ -264,28 +878,85 @@ async def test_resuming_send_restarts_persisted_waiting_task(tmp_path) -> None:
     async with app.router.lifespan_context(app):
         plan = app.state.a2a_skill_plans["echo"]
         handle = services.invocations.create(
-            engine="adk",
-            session_id=None,
+            engine=app.state.engine.engine_name,
+            session_id="original-context",
             user_id=None,
             workflow_name=plan.name,
             workflow_version=plan.version,
             workflow_fingerprint=plan.fingerprint,
         )
-        services.invocations.update(handle, status="waiting")
+        original_input = {"original": "first message"}
+        waiting = await asyncio.wait_for(
+            app.state.engine.invoke(plan, handle, original_input), timeout=10
+        )
+        assert waiting.status == "waiting", waiting.error
+        assert handle.status == "waiting"
+        assert handle.invocation_id not in app.state.engine._active
+        assert handle._execution_lease is None
+        assert services.invocations.read_input(handle) == original_input
+        assert not any(
+            event.invocation_id == handle.invocation_id and event.task_name == "mark"
+            for event in services.events.events
+        )
 
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            response = await client.post(
-                "/a2a",
-                headers=HEADERS,
-                json=_send(_text_message("continue", taskId=handle.invocation_id)),
+            message = _text_message(
+                "continue",
+                taskId=handle.invocation_id,
+                contextId=handle.session_id,
             )
+            if transport_name == "jsonrpc":
+                response = await client.post(
+                    "/a2a",
+                    headers=HEADERS,
+                    json=_send(message),
+                )
+                body = response.json()["result"]
+            else:
+                response = await client.post(
+                    "/a2a/message:send",
+                    headers=HEADERS,
+                    json={"message": message},
+                )
+                body = response.json()
             assert response.status_code == 200
-            body = response.json()["result"]
-            assert body["message"]["parts"][0]["text"] == '{"resumed": true}'
+            assert body["task"]["id"] == handle.invocation_id
+            assert body["task"]["contextId"] == "original-context"
+            assert body["task"]["status"]["state"] == "TASK_STATE_COMPLETED"
+            assert body["task"]["artifacts"][0]["parts"][0]["data"] == {"resumed": True}
 
-            final = await _poll_task_state(client, handle.invocation_id, "TASK_STATE_COMPLETED")
+            final = await _poll_task_state(
+                client,
+                handle.invocation_id,
+                "TASK_STATE_COMPLETED",
+                transport=transport_name,
+            )
             assert final["id"] == handle.invocation_id
+            assert final["contextId"] == "original-context"
+            assert final["artifacts"][0]["parts"][0]["data"] == {"resumed": True}
+            assert services.invocations.read_input(handle) == original_input
+            events = [
+                event
+                for event in services.events.events
+                if event.invocation_id == handle.invocation_id
+            ]
+            assert sum(event.event_type == "WorkflowResumed" for event in events) == 1
+            assert (
+                sum(
+                    event.event_type == "TaskStarted" and event.task_name == "mark"
+                    for event in events
+                )
+                == 1
+            )
+            assert (
+                sum(
+                    event.event_type == "TaskCompleted" and event.task_name == "mark"
+                    for event in events
+                )
+                == 1
+            )
+            assert services.model.calls == []
 
 
 @pytest.mark.asyncio
@@ -312,15 +983,18 @@ async def test_http_json_return_immediately_and_resume_rejections(tmp_path) -> N
                 json={"message": _text_message(taskId="missing-task")},
             )
             assert missing.status_code == 404
-            assert missing.json()["error"]["code"] == "task_not_found"
+            assert missing.json()["error"]["details"][0]["metadata"]["owaCode"] == "task_not_found"
 
             terminal = await client.post(
                 "/a2a/message:send",
                 headers=HEADERS,
                 json={"message": _text_message(taskId=handle.invocation_id)},
             )
-            assert terminal.status_code == 409
-            assert terminal.json()["error"]["code"] == "task_not_accepting_input"
+            assert terminal.status_code == 400
+            assert (
+                terminal.json()["error"]["details"][0]["metadata"]["owaCode"]
+                == "task_not_accepting_input"
+            )
 
             started = await client.post(
                 "/a2a/message:send",

@@ -1,0 +1,131 @@
+document:
+  dsl: 1.0.3
+  namespace: patterns
+  name: plan-and-execute
+  version: 1.0.0
+  title: Plan And Execute
+  summary: Bounded canonical OWS recipe. Named roles are immutable deployment bindings;
+    model output never grants authority.
+input:
+  schema:
+    format: json
+    document:
+      type: object
+      required:
+      - question
+      properties:
+        question:
+          type: string
+          maxLength: 65536
+      additionalProperties: false
+timeout:
+  after:
+    seconds: 120
+do:
+- plan:
+    call: agent-planner:1.0.0@default
+    with:
+      input: ${ .question }
+    timeout:
+      after:
+        seconds: 30
+    output:
+      schema:
+        format: json
+        document:
+          type: object
+          required:
+          - actions
+          properties:
+            actions:
+              type: array
+              minItems: 1
+              maxItems: 3
+              items:
+                type: object
+                required:
+                - action
+                - input
+                properties:
+                  action:
+                    type: string
+                    enum:
+                    - research
+                    - finance
+                  input:
+                    type: string
+                    maxLength: 65536
+                additionalProperties: false
+          additionalProperties: false
+    export:
+      as: ${ $context + {actions:.actions,results:[]} }
+- execute:
+    for:
+      each: action
+      in: ${ $context.actions }
+    do:
+    - route:
+        switch:
+        - research:
+            when: ${ $action.action == "research" }
+            then: research
+        - finance:
+            when: ${ $action.action == "finance" }
+            then: finance
+        - unknown:
+            then: reject
+    - reject:
+        raise:
+          error:
+            type: https://open-workflow-specification.org/spec/1.0.0/errors/validation
+            status: 422
+            title: Plan contains an unsupported action
+    - research:
+        call: agent-researcher:1.0.0@default
+        with:
+          input: ${ $action.input }
+        timeout:
+          after:
+            seconds: 30
+        output:
+          schema:
+            format: json
+            document:
+              type: object
+              required:
+              - answer
+              properties:
+                answer:
+                  type: string
+                  maxLength: 65536
+              additionalProperties: false
+        export:
+          as: ${ $context + {results:($context.results + [{action:$action.action,output:.}])}
+            }
+        then: exit
+    - finance:
+        call: agent-finance:1.0.0@default
+        with:
+          input: ${ $action.input }
+        timeout:
+          after:
+            seconds: 30
+        output:
+          schema:
+            format: json
+            document:
+              type: object
+              required:
+              - answer
+              properties:
+                answer:
+                  type: string
+                  maxLength: 65536
+              additionalProperties: false
+        export:
+          as: ${ $context + {results:($context.results + [{action:$action.action,output:.}])}
+            }
+        then: exit
+- finish:
+    set:
+      results: ${ $context.results }

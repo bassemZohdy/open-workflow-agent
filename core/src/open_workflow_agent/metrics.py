@@ -11,11 +11,15 @@ from typing import Any
 from .observability import EventSink, WorkflowEvent
 
 _HISTOGRAM_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+_TASK_METRIC_STATUSES = frozenset(
+    {"running", "waiting", "completed", "faulted", "cancelled", "retrying"}
+)
 
 _HELP = {
     "owa_workflow_started_total": "Workflow executions started.",
     "owa_workflow_finished_total": "Workflow executions finished by outcome.",
     "owa_workflow_duration_seconds": "Workflow execution duration in seconds.",
+    "owa_task_duration_seconds": "Workflow task duration in seconds by terminal outcome.",
     "owa_active_invocations": "Invocations currently running or waiting.",
     "owa_task_events_total": "Workflow task lifecycle events.",
     "owa_sandbox_executions_total": "Sandbox executions by lifecycle event and outcome.",
@@ -121,14 +125,11 @@ class Metrics:
             "WorkflowFaulted",
             "WorkflowCancelled",
         }:
-            status = (
-                event.status
-                or {
-                    "WorkflowCompleted": "completed",
-                    "WorkflowFaulted": "faulted",
-                    "WorkflowCancelled": "cancelled",
-                }[event.event_type]
-            )
+            status = {
+                "WorkflowCompleted": "completed",
+                "WorkflowFaulted": "faulted",
+                "WorkflowCancelled": "cancelled",
+            }[event.event_type]
             self.increment(
                 "owa_workflow_finished_total",
                 labels={"engine": engine, "status": status},
@@ -145,14 +146,30 @@ class Metrics:
                     self._set_active_gauge_locked()
 
         if event.event_type.startswith("Task"):
+            task_status = (
+                event.status
+                if isinstance(event.status, str) and event.status in _TASK_METRIC_STATUSES
+                else "unknown"
+            )
             self.increment(
                 "owa_task_events_total",
                 labels={
                     "engine": engine,
                     "event": event.event_type,
-                    "status": event.status or "unknown",
+                    "status": task_status,
                 },
             )
+            terminal_task_status = {
+                "TaskCompleted": "completed",
+                "TaskFaulted": "faulted",
+                "TaskCancelled": "cancelled",
+            }.get(event.event_type)
+            if terminal_task_status is not None and event.duration is not None:
+                self.observe(
+                    "owa_task_duration_seconds",
+                    max(0.0, event.duration),
+                    labels={"engine": engine, "status": terminal_task_status},
+                )
 
         if event.event_type.startswith("SandboxExecution"):
             action = event.event_type.removeprefix("SandboxExecution").lower()

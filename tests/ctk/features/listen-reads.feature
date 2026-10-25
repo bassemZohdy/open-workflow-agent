@@ -22,9 +22,9 @@ Feature: Event Read Modes
             read: envelope
       - finish:
           set:
-            eventType: ${ .type }
-            eventSource: ${ .source }
-            eventValue: ${ .data.value }
+            eventType: ${ .[0].type }
+            eventSource: ${ .[0].source }
+            eventValue: ${ .[0].data.value }
     """
     And an event should be delivered after the workflow waits:
     """yaml

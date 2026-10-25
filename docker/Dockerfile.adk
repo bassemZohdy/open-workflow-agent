@@ -1,6 +1,9 @@
 # syntax=docker/dockerfile:1
 
 ARG PYTHON_IMAGE=python:3.12-slim@sha256:09f7da3bc104798d0afb40bc08d23ab2da20a76130cec1f2ef170848f5d85217
+ARG NODE_IMAGE=node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
+FROM ${NODE_IMAGE} AS javascript
+
 FROM ${PYTHON_IMAGE} AS builder
 
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv \
@@ -14,12 +17,17 @@ WORKDIR /build
 # Install the locked third-party dependency graph before copying application
 # source so normal code changes can reuse the expensive dependency layer.
 # Package metadata (readme/license) files are required by the wheel builds.
-COPY pyproject.toml README.md LICENSE ./
-COPY engines/adk/pyproject.toml engines/adk/uv.lock engines/adk/README.md ./engines/adk/
+COPY pyproject.toml uv.lock hatch_build.py README.md LICENSE ./
+COPY engines/adk/pyproject.toml engines/adk/uv.lock engines/adk/hatch_build.py engines/adk/README.md ./engines/adk/
 RUN pip install --no-cache-dir "uv==0.11.26" \
     && uv sync --directory /build/engines/adk --locked --no-dev --no-editable \
        --extra native --extra knowledge --extra model --extra postgres \
        --no-install-project --no-install-package open-workflow-agent
+
+# Model assets depend on the locked dependencies, so source edits reuse this layer.
+RUN mkdir -p /build/opt/models \
+    && FASTEMBED_CACHE_PATH=/build/opt/models \
+       /opt/venv/bin/python -c "from fastembed import TextEmbedding; model = TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2', cache_dir='/build/opt/models'); next(iter(model.embed(['warmup'])))"
 
 COPY core ./core
 COPY engines/adk/src ./engines/adk/src
@@ -31,22 +39,15 @@ RUN uv sync --directory /build/engines/adk --locked --no-dev --no-editable \
     && /opt/venv/bin/uvicorn --version \
     && rm -rf /tmp/uv-cache /root/.cache
 
-RUN mkdir -p /build/opt/models \
-    && FASTEMBED_CACHE_PATH=/build/opt/models \
-       /opt/venv/bin/python -c "from fastembed import TextEmbedding; model = TextEmbedding(model_name='sentence-transformers/all-MiniLM-L6-v2', cache_dir='/build/opt/models'); next(iter(model.embed(['warmup'])))" \
-    && find /opt/venv -type d -name __pycache__ -prune -exec rm -rf {} + \
+RUN find /opt/venv -type d -name __pycache__ -prune -exec rm -rf {} + \
     && find /opt/venv -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
 
 FROM ${PYTHON_IMAGE} AS runtime
 
-ARG OWA_VERSION=0.2.0
-ARG VCS_REF=unknown
+COPY --from=javascript /usr/local/bin/node /usr/local/bin/node
+
 # Refresh Debian security fixes in the pinned base before publication scanning.
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --no-install-recommends && rm -rf /var/lib/apt/lists/*
-LABEL org.opencontainers.image.title="open-workflow-agent-adk" \
-      org.opencontainers.image.version="$OWA_VERSION" \
-      org.opencontainers.image.revision="$VCS_REF" \
-      org.opencontainers.image.source="https://github.com/bassemZohdy/open-workflow-agent"
 
 ENV VIRTUAL_ENV=/opt/venv \
     PATH=/opt/venv/bin:$PATH \
@@ -65,6 +66,14 @@ COPY docker/entrypoint.sh /usr/local/bin/owa-entrypoint
 RUN install -d -o 10001 -g 0 -m 0770 /config /knowledge /data \
     && chmod 0555 /usr/local/bin/owa-entrypoint \
     && chmod -R a+rX /opt/models
+
+# Source labels must not invalidate OS updates or filesystem preparation.
+ARG OWA_VERSION=0.2.0
+ARG VCS_REF=unknown
+LABEL org.opencontainers.image.title="open-workflow-agent-adk" \
+      org.opencontainers.image.version="$OWA_VERSION" \
+      org.opencontainers.image.revision="$VCS_REF" \
+      org.opencontainers.image.source="https://github.com/bassemZohdy/open-workflow-agent"
 
 EXPOSE 8080
 STOPSIGNAL SIGTERM

@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 from typing import Any
 
 import yaml
 
 ROOT = Path(__file__).parents[2]
+RELEASED_PACKAGES = (
+    "core/pyproject.toml",
+    "engines/adk/pyproject.toml",
+    "engines/langgraph/pyproject.toml",
+    "sandbox-controller/pyproject.toml",
+    "kubernetes-sandbox-controller/pyproject.toml",
+)
 
 
 def _steps(job: dict[str, Any]) -> list[dict[str, Any]]:
@@ -61,7 +69,13 @@ def test_release_waits_for_exact_head_companions_triggered_by_main_push() -> Non
     gate = next(step for step in _steps(release["jobs"]["prepare"]) if step.get("id") == "gate")
     assert "python -m ci.release_gate" in gate["run"]
     assert '--sha "$RELEASE_SHA"' in gate["run"]
-    for name in ("external-sandbox-ci.yml", "postgres-ci.yml"):
+    for name in (
+        "external-sandbox-ci.yml",
+        "postgres-ci.yml",
+        "security.yml",
+        "docs.yml",
+    ):
+        assert name in gate["run"]
         companion: dict[str, Any] = yaml.load(
             (workflows / name).read_text(encoding="utf-8"), Loader=yaml.BaseLoader
         )
@@ -74,7 +88,7 @@ def test_formal_release_waits_for_runtime_and_controller_publication() -> None:
         (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     )
     release = workflow["jobs"]["github-release"]
-    assert set(release["needs"]) == {"prepare", "publish", "publish-controllers"}
+    assert set(release["needs"]) == {"prepare", "publish", "publish-controllers", "release-record"}
     assert "needs.publish.result == 'success'" in release["if"]
     assert "needs.publish-controllers.result == 'success'" in release["if"]
 
@@ -95,6 +109,23 @@ def test_rolling_release_serializes_commits_and_skips_superseded_head() -> None:
     assert "steps.initial_head.outputs.current_head == 'true'" in steps["gate"]["if"]
     assert "steps.gate.outputs.companions_ok == 'true'" in steps["final_head"]["if"]
     assert "steps.final_head.outputs.current_head == 'true'" in prepare["outputs"]["should_publish"]
+
+
+def test_release_checks_versions_for_every_published_package() -> None:
+    root_version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"][
+        "version"
+    ]
+    release: dict[str, Any] = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    )
+    version_check = next(
+        step for step in _steps(release["jobs"]["prepare"]) if step.get("id") == "release"
+    )["run"]
+
+    for package_path in RELEASED_PACKAGES:
+        package = tomllib.loads((ROOT / package_path).read_text(encoding="utf-8"))
+        assert package["project"]["version"] == root_version, package_path
+        assert f"'{package_path}'" in version_check
 
 
 def test_release_publishes_runtime_images_for_both_architectures() -> None:
@@ -129,6 +160,57 @@ def test_release_publishes_controller_images_for_both_architectures() -> None:
     ]
     assert len(published) == 1
     assert set(published[0]["platforms"].split(",")) == {"linux/amd64", "linux/arm64"}
+
+
+def test_every_published_image_carries_verified_source_version_and_revision() -> None:
+    workflow: dict[str, Any] = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    )
+    expected_labels = {
+        "org.opencontainers.image.source=https://github.com/${{ github.repository }}",
+        "org.opencontainers.image.version=${{ needs.prepare.outputs.version }}",
+        "org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}",
+    }
+
+    for job_name in ("publish", "publish-controllers"):
+        steps = _steps(workflow["jobs"][job_name])
+        metadata = next(step for step in steps if step.get("uses") == "docker/metadata-action@v6")
+        published_build = next(
+            step
+            for step in steps
+            if step.get("uses") == "docker/build-push-action@v7"
+            and step.get("with", {}).get("push") is True
+        )
+        labels = set(metadata["with"]["labels"].splitlines())
+        assert expected_labels <= labels
+        assert published_build["with"]["labels"] == "${{ steps.meta.outputs.labels }}"
+        assert published_build["with"]["provenance"] == "mode=max"
+        assert published_build["with"]["sbom"] is True
+
+
+def test_controller_publication_reuses_the_preflight_cache_scopes() -> None:
+    workflow: dict[str, Any] = yaml.safe_load(
+        (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+    )
+    jobs = workflow["jobs"]
+    preflight_scopes = {
+        f"release-{entry['image']}-{entry['arch']}"
+        for entry in jobs["preflight"]["strategy"]["matrix"]["include"]
+        if entry["image"] in {"sandbox-controller", "kubernetes-sandbox-controller"}
+    }
+    publication = next(
+        step
+        for step in _steps(jobs["publish-controllers"])
+        if step.get("uses") == "docker/build-push-action@v7"
+        and step.get("with", {}).get("push") is True
+    )
+    publication_scopes = {
+        f"release-{entry['cache_image']}-{architecture}"
+        for entry in jobs["publish-controllers"]["strategy"]["matrix"]["include"]
+        for architecture in ("amd64", "arm64")
+    }
+    assert publication_scopes == preflight_scopes
+    assert "${{ matrix.cache_image }}" in publication["with"]["cache-from"]
 
 
 def test_docker_controller_removes_unused_cli_plugins_from_base_paths() -> None:

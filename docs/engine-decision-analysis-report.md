@@ -5,6 +5,14 @@
 **Commit audited:** `37fcd9e` (`main`)
 **Decision scope:** implementation fit for the current Open Workflow Agent architecture
 
+## Current roadmap status — 2026-10-11
+
+The accepted consolidation roadmap supersedes the earlier deferral below.
+Native LangGraph task lowering is now implemented with recorded acceptance;
+see [the compiler and recovery boundaries](native-task-execution.md). The
+comparison scores below describe the audited September implementation and
+have not been recalculated for this change.
+
 ## Post-release status — 2026-09-12
 
 The analysis below remains the evidence base for the engine comparison. The

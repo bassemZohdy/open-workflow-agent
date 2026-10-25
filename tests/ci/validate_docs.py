@@ -29,7 +29,9 @@ def local_link_targets(path: Path) -> Iterator[str]:
 def main() -> int:
     errors: list[str] = []
     for path in sorted(REPOSITORY_ROOT.rglob("*.md")):
-        if any(part in {".git", ".venv", "__pycache__", "tmp"} for part in path.parts):
+        if any(
+            part in {".git", ".venv", "__pycache__", "node_modules", "tmp"} for part in path.parts
+        ):
             continue
         for target in local_link_targets(path):
             resolved = (path.parent / target).resolve()

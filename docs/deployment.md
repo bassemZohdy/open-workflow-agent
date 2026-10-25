@@ -43,6 +43,19 @@ sha-<sha>    source-addressed main build; tag can be republished
 
 For production, pin an exact SemVer tag (`0.2.0` or newer) or an image digest rather than `latest`. Use a digest when immutability is required; a rerun can republish `sha-<sha>`. Both registries receive the same verified build and tags.
 
+The release-workflow candidate retains `owa-release-manifest.json` with a matched
+set of digest-pinned runtime and controller references, source commit, version
+and publication-run identity. Future GitHub Releases attach it; qualified main
+publication runs retain it as an artifact. Earlier releases may only have their
+original digest records. Keep the prior qualified set before changing a deployment.
+
+For rollback, select the previous matched digest set and its compatible runtime
+configuration. Retain current committed business/recovery evidence; selecting an
+older binary does not authorize discarding newer transactions or migrating native
+checkpoints. Existing invocations still require their originally admitted runtime
+profile and current authorization checks. Restoring storage or moving a consumer
+is an explicit deployment operation, outside generation of this manifest.
+
 Images are published only after CI and the same-commit External Sandbox and PostgreSQL acceptance runs succeed. All four images are scanned on both target platforms before any push. OCI SBOM/provenance metadata is generated for the published build, and GitHub build provenance attestations are attached to the canonical GHCR image. A registry failure during publication can still leave some rolling tags updated; pin the recorded digests when deploying a matched image set.
 
 Release runs are serialized across `main` commits. The workflow skips a
@@ -318,6 +331,8 @@ For Kubernetes/OpenShift, use the Ollama service URL reachable from the pod inst
 
 For other LiteLLM providers, set `model.name` to the provider prefix/model identifier and inject the provider-specific environment variables required by LiteLLM. For custom/OpenAI-compatible endpoints, `model.options` can carry `api_key`, `api_base`, and `api_version`; prefer supplying those through `OWA__MODEL__OPTIONS__...` environment variables/secrets rather than committed YAML.
 
+Repository Compose builds use embedded SQLite and start only the selected engine by default. Optional local PostgreSQL uses `-f compose.yaml -f compose.postgres.yaml`; existing PostgreSQL deployments must keep that override and their original volumes. See [bootstrap/default boundaries](embedded-bootstrap.md).
+
 Repository-local Compose usage is documented by `.env.example`. It passes the local `.env` through to the runtime container so provider-specific LiteLLM environment variables are available:
 
 ```bash
@@ -348,7 +363,7 @@ Reference manifests that follow this guidance are provided in the repository and
 - `deploy/openshift/runtime.yaml` — the same layout for the LangGraph image without a pinned UID (OpenShift's restricted-v2 SCC allocates an arbitrary non-root UID, which the images support).
 - `deploy/kubernetes/sandbox-boundary.yaml` and `deploy/openshift/sandbox-boundary.yaml` — the restricted sandbox-controller namespace, ServiceAccounts, and RBAC boundary (see [sandbox-execution.md](sandbox-execution.md)).
 
-`replicas: 1` with a `Recreate` strategy is intentional: the scheduler uses single-runtime ownership and the default deployment keeps durable state on one `ReadWriteOnce` volume. Horizontal scale-out requires external coordination of scheduler ownership and state and is not part of the bounded profile.
+`replicas: 1` with a `Recreate` strategy keeps the default durable state on one `ReadWriteOnce` volume. Scheduler claims are fenced across workers sharing the tested SQLite/PostgreSQL store. Broader horizontal deployment and storage acceptance remains separately gated.
 
 Use either published registry in the workload specification. Docker Hub is shown below for consistency with end-user examples; replace it with the corresponding GHCR image if your organization prefers the canonical provenance registry.
 
@@ -510,9 +525,9 @@ CI also validates:
 
 Current bounded features should not be interpreted as broader infrastructure guarantees:
 
-- generic event delivery is process-local and non-durable (durable approval state/replay is a separate bounded mechanism); future external event integrations must follow the [event integration readiness plan](event-integration-readiness.md);
+- embedded event delivery has the verified SQLite/PostgreSQL durable inbox/outbox profile; memory and custom buses retain their declared limits, and external integrations follow the [event integration readiness plan](event-integration-readiness.md);
 - lifecycle CloudEvents are a bounded snapshot and the SSE endpoint is bounded to lifecycle events, not a general output stream/broker;
-- scheduling uses single-runtime ownership rather than distributed scheduler ownership;
+- scheduling uses fenced claims over the configured common store; the default deployment remains one container, with broader scale-out acceptance separately gated;
 - external workflow catalogs are disabled unless a deployment explicitly configures catalog trust policy (HTTPS-only, pinned, allowlisted; see the external catalog section above);
 - shell/script execution uses the internal sandbox only when enabled by deployment configuration and is not a hard isolation boundary; container execution uses the selected external backend (Docker and the verified Kubernetes/OpenShift profile accepted);
 - authentication is expected at the deployment boundary unless another trusted layer is introduced.

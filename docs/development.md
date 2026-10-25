@@ -79,6 +79,38 @@ The sandbox implementation is a framework-neutral core package (`core/src/open_w
 
 ## Local setup
 
+### Fast development and optional automation
+
+Automatic CI jobs are paused by default. Pushes, pull requests and the weekly
+security schedule retain their triggers but skip jobs unless the GitHub Actions
+repository variable `OWA_AUTOMATIC_CI` is exactly `true`. The six validation
+workflows can still be started manually from Actions using **Run workflow**.
+Skipped jobs are not acceptance evidence.
+
+Automatic publication is separately paused unless `OWA_AUTOMATIC_RELEASES` and
+`OWA_AUTOMATIC_CI` are both exactly `true`. Its successful-main-push and exact-source companion
+gates still apply; manually dispatched validation cannot trigger publication.
+Restore normal automation by setting both variables to `true` in repository
+Settings > Secrets and variables > Actions > Variables. Run fresh validation
+on the intended main source before release. These changes take effect on GitHub
+through the repository workflow files; they do not change repository variables
+or branch-protection settings. Existing workflow concurrency rules still apply:
+use a dedicated frozen qualification branch to avoid cancelling a manual run
+when later work is pushed to the development branch. Required skipped checks
+may still block merging.
+
+For a quick local feedback loop:
+
+```bash
+uv run --locked ruff check .
+uv run --locked pytest tests/core/<changed-test-file>.py -q
+uv run --locked python tests/ci/validate_docs.py
+```
+
+Run the relevant full contract/native/backend acceptance before claiming a
+feature complete. See the [cleanup review](development-cleanup-2026-10-25.md)
+for the remaining project gaps.
+
 ```bash
 uv sync --locked --extra knowledge
 ```
@@ -86,6 +118,29 @@ uv sync --locked --extra knowledge
 The `knowledge` extra is included in the development and root CI environments
 because the common suite exercises the local embedding provider; it remains
 optional for runtime installations that do not mount or query knowledge.
+
+## Validate a workflow locally
+
+The root package installs the canonical `owa` command into the project
+environment. From the repository root, after syncing dependencies, validate a
+workflow against the default OWA portable profile:
+
+```bash
+uv run owa validate examples/workflow.yaml
+```
+
+On success, the command prints that the workflow is valid. On failure, it
+prints a safe common error and exits nonzero. It loads and compiles the file;
+it does not start an engine or invoke a model, so this example needs no API
+credentials or network access.
+
+This is a local admission check for the default profile. It does not resolve
+deployment credentials, trusted external catalogs, engine-specific capability
+settings, or the target runtime's configuration. Validate again in the target
+deployment when a workflow relies on those settings. The command reports no
+internal execution-plan details. The canonical CLI is not a compatibility
+alias for the archived predecessor's `owf-adk` or `spec-drift-check` commands;
+see the [S4-08 compatibility decision](s4-08-compatibility-decision.md).
 
 Run the common test suite:
 
@@ -159,6 +214,20 @@ uv run --directory engines/langgraph --locked --extra sqlite --extra knowledge -
 ```
 
 Do not combine engine dependency locks into one environment just for convenience.
+
+LangGraph PostgreSQL hosts on Windows must select a compatible selector event
+loop before runtime initialization. The default Proactor loop is unsupported by
+[Psycopg's async driver](https://www.psycopg.org/psycopg3/docs/advanced/async.html#asynchronous-operations).
+The adapter rejects that combination before starting background services, with
+the common `configuration_error` and `reason=unsupported_event_loop`. SQLite and
+the Linux Docker images do not need this Windows setting. The runtime does not
+change the host's event-loop policy.
+
+If a local adapter install was built while the erroneous `/src/` ignore was
+present, rebuild that local package with `uv sync --reinstall-package` and the
+same extras used above. Removing the ignore does not repair an already-installed
+metadata-only wheel. Verify the adapter import from its own environment, without
+relying on pytest's source paths.
 
 ## Contract tests define portability
 
@@ -300,7 +369,7 @@ docker compose --profile langgraph up --build
 
 Remote CI additionally validates image metadata/size, container acceptance, PostgreSQL persistence, selected CTK coverage, and stop/restart/resume behavior.
 
-Container acceptance verifies internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container. Docker external-sandbox acceptance runs on the self-hosted Docker runner; Kubernetes/OpenShift real-cluster acceptance is recorded separately in `PROJECT.md` under `DEPLOY-1`.
+Container acceptance verifies internal sandbox behavior under arbitrary UID, read-only root filesystem, bounded `/tmp`, graceful SIGTERM, and secret-safe retained logs without requiring a Docker daemon or Kubernetes cluster inside the test container. Docker external-sandbox acceptance runs on GitHub-hosted Ubuntu; Kubernetes/OpenShift real-cluster acceptance is recorded separately in `PROJECT.md` under `DEPLOY-1`. See [CI runners and validation](ci-runners.md) for current triggers and publication gates.
 
 ### Native engine benchmark evidence
 
@@ -355,6 +424,16 @@ disposable OpenShift 4.22.1 (CRC). Repeat the run with digest-pinned images
 after platform or controller security changes.
 
 Dependabot opens weekly update PRs for GitHub Actions versions, every `uv.lock`, and the base images in `docker/`; the Security workflow (pip-audit over every locked environment) and the release Trivy gate block publication on known fixable `CRITICAL`/`HIGH` image advisories. When a base bump does not clear an advisory because the upstream image has not been rebuilt yet, the finding is recorded with a dated rationale in `.trivyignore` and must be re-checked on every base refresh; findings in our own code or Python dependencies are never suppressed.
+
+The root, standalone-core, ADK, LangGraph, and Agent Framework uv projects
+override FastEmbed's Pillow upper bound to require patched Pillow `>=13.0.0,<14`.
+OWA only calls FastEmbed's `TextEmbedding.embed([text])`; FastEmbed eagerly
+imports Pillow for its image API, which OWA does not expose or use. This narrow
+override is scoped to the supported text embedding path. A package-import smoke
+and exact-source dependency audit must pass before that compatibility is
+qualified; they do not establish ONNX inference or FastEmbed image compatibility.
+FastEmbed image embedding remains unsupported; if OWA adds image input, revisit
+this override and establish compatibility for the image path before advertising it.
 
 ## Documentation rule
 

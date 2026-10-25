@@ -22,7 +22,7 @@ Feature: Event Tasks
             read: data
       - finish:
           set:
-            received: ${ .value }
+            received: ${ .[0].value }
     """
     And an event should be delivered after the workflow waits:
     """yaml

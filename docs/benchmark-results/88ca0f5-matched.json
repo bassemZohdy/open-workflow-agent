@@ -1,0 +1,475 @@
+{
+  "commit": "88ca0f515a3f00bf44e896bac621cf62cb32179a",
+  "generated_at_utc": "2026-10-25T06:40:21.532476+00:00",
+  "interpretation": "Matched workload measurements on named GitHub-hosted runners; compare only within this report and do not treat them as portable performance claims.",
+  "parameters": {
+    "concurrency": 8,
+    "iterations": 30,
+    "recovery_samples": 3,
+    "warmups": 5
+  },
+  "profiles": [
+    {
+      "acceptance": {
+        "all_invocations_completed": true,
+        "fake_model_not_replayed": true,
+        "recovery_replayed_side_effect_once": true
+      },
+      "measurements": {
+        "compile_seconds": {
+          "count": 30,
+          "mean_seconds": 8.586633333133402e-06,
+          "p50_seconds": 6.50200000507084e-06,
+          "p95_seconds": 2.081899999950565e-05
+        },
+        "concurrent_invocation_seconds": {
+          "count": 8,
+          "mean_seconds": 8.751784557999994,
+          "p50_seconds": 8.768121412,
+          "p95_seconds": 8.848911984999987
+        },
+        "concurrent_throughput_per_second": 0.9040548695906503,
+        "concurrent_wave_seconds": 8.84902041800001,
+        "initial_suspend_seconds": {
+          "count": 3,
+          "mean_seconds": 1.4185111523333376,
+          "p50_seconds": 1.383267453000002,
+          "p95_seconds": 1.5054133110000123
+        },
+        "invocation_cpu_seconds": 33.348642866,
+        "invocation_record_create_seconds": {
+          "count": 38,
+          "mean_seconds": 0.0005047533421048163,
+          "p50_seconds": 0.0004933919999956515,
+          "p95_seconds": 0.0005841509999982009
+        },
+        "invocation_seconds": {
+          "count": 38,
+          "mean_seconds": 2.6772332794210505,
+          "p50_seconds": 1.0375125839999981,
+          "p95_seconds": 8.801921330999988
+        },
+        "persistence_bytes_after": 10476567,
+        "persistence_bytes_before": 7699479,
+        "persistence_bytes_delta": 2777088,
+        "persistence_footprint_scope": "whole PostgreSQL service database; fresh service per engine job",
+        "process_lifetime_peak_rss_bytes": 268636160,
+        "recovery_samples": [
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 1.5054133110000123,
+            "restart_resume_seconds": 1.8463661319999858,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          },
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 1.3668526929999985,
+            "restart_resume_seconds": 1.81572170299998,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          },
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 1.383267453000002,
+            "restart_resume_seconds": 2.291711169000024,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          }
+        ],
+        "restart_resume_seconds": {
+          "count": 3,
+          "mean_seconds": 1.9845996679999967,
+          "p50_seconds": 1.8463661319999858,
+          "p95_seconds": 2.291711169000024
+        },
+        "sequential_invocation_seconds": {
+          "count": 30,
+          "mean_seconds": 1.0573529384666656,
+          "p50_seconds": 1.0302374299999997,
+          "p95_seconds": 1.2902968819999927
+        }
+      },
+      "metadata": {
+        "backend": "postgresql",
+        "commit": "88ca0f515a3f00bf44e896bac621cf62cb32179a",
+        "engine": "adk",
+        "engine_lock_sha256": "c988064b9d6cfe110ab3be635cfef96631f2f0c3eaca584cd04056a361820a45",
+        "measured_at_utc": "2026-10-25T06:33:27.724619+00:00",
+        "memory_metric": "process_lifetime_peak_rss_bytes (Linux ru_maxrss)",
+        "parameters": {
+          "concurrency": 8,
+          "iterations": 30,
+          "recovery_samples": 3,
+          "warmups": 5
+        },
+        "provider": "deterministic_fake_model",
+        "python": "3.12.13",
+        "runner": {
+          "machine": "x86_64",
+          "name": "local",
+          "os": "Linux",
+          "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+          "processor": "x86_64"
+        },
+        "selected_extras": [
+          "native",
+          "knowledge",
+          "postgres"
+        ],
+        "workflow_fingerprint": "a239469e40219930b0c1e0f0fe0b8f164ddc86f10baeccc9360bda6a9bd321f1"
+      },
+      "profile": "owa/s4-06-matched-performance/v1"
+    },
+    {
+      "acceptance": {
+        "all_invocations_completed": true,
+        "fake_model_not_replayed": true,
+        "recovery_replayed_side_effect_once": true
+      },
+      "measurements": {
+        "compile_seconds": {
+          "count": 30,
+          "mean_seconds": 8.805166667021543e-06,
+          "p50_seconds": 6.652999999801068e-06,
+          "p95_seconds": 1.3515000006236733e-05
+        },
+        "concurrent_invocation_seconds": {
+          "count": 8,
+          "mean_seconds": 4.698400951999998,
+          "p50_seconds": 4.910315706999995,
+          "p95_seconds": 4.948743395999998
+        },
+        "concurrent_throughput_per_second": 1.6112536039012544,
+        "concurrent_wave_seconds": 4.965078111000011,
+        "initial_suspend_seconds": {
+          "count": 3,
+          "mean_seconds": 0.46177108266667233,
+          "p50_seconds": 0.45471190100001024,
+          "p95_seconds": 0.4768196119999999
+        },
+        "invocation_cpu_seconds": 19.429783399999998,
+        "invocation_record_create_seconds": {
+          "count": 38,
+          "mean_seconds": 0.0010228608421044034,
+          "p50_seconds": 0.0009409159999904659,
+          "p95_seconds": 0.001493555999999785
+        },
+        "invocation_seconds": {
+          "count": 38,
+          "mean_seconds": 1.329969154421052,
+          "p50_seconds": 0.42853222100001176,
+          "p95_seconds": 4.948530738999992
+        },
+        "persistence_bytes_after": 1187840,
+        "persistence_bytes_before": 0,
+        "persistence_bytes_delta": 1187840,
+        "persistence_footprint_scope": "temporary common and native SQLite files",
+        "process_lifetime_peak_rss_bytes": 192536576,
+        "recovery_samples": [
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 0.4768196119999999,
+            "restart_resume_seconds": 0.8964993769999978,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          },
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 0.45378173500000685,
+            "restart_resume_seconds": 0.5973516269999948,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          },
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 0.45471190100001024,
+            "restart_resume_seconds": 0.5854474900000071,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          }
+        ],
+        "restart_resume_seconds": {
+          "count": 3,
+          "mean_seconds": 0.6930994979999999,
+          "p50_seconds": 0.5973516269999948,
+          "p95_seconds": 0.8964993769999978
+        },
+        "sequential_invocation_seconds": {
+          "count": 30,
+          "mean_seconds": 0.4317206750666661,
+          "p50_seconds": 0.4206545639999888,
+          "p95_seconds": 0.4762101079999894
+        }
+      },
+      "metadata": {
+        "backend": "sqlite",
+        "commit": "88ca0f515a3f00bf44e896bac621cf62cb32179a",
+        "engine": "adk",
+        "engine_lock_sha256": "c988064b9d6cfe110ab3be635cfef96631f2f0c3eaca584cd04056a361820a45",
+        "measured_at_utc": "2026-10-25T06:32:28.152683+00:00",
+        "memory_metric": "process_lifetime_peak_rss_bytes (Linux ru_maxrss)",
+        "parameters": {
+          "concurrency": 8,
+          "iterations": 30,
+          "recovery_samples": 3,
+          "warmups": 5
+        },
+        "provider": "deterministic_fake_model",
+        "python": "3.12.13",
+        "runner": {
+          "machine": "x86_64",
+          "name": "local",
+          "os": "Linux",
+          "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+          "processor": "x86_64"
+        },
+        "selected_extras": [
+          "native",
+          "knowledge",
+          "postgres"
+        ],
+        "workflow_fingerprint": "a239469e40219930b0c1e0f0fe0b8f164ddc86f10baeccc9360bda6a9bd321f1"
+      },
+      "profile": "owa/s4-06-matched-performance/v1"
+    },
+    {
+      "acceptance": {
+        "all_invocations_completed": true,
+        "fake_model_not_replayed": true,
+        "recovery_replayed_side_effect_once": true
+      },
+      "measurements": {
+        "compile_seconds": {
+          "count": 30,
+          "mean_seconds": 8.681200002532326e-06,
+          "p50_seconds": 5.8990000013636745e-06,
+          "p95_seconds": 1.1617000012620338e-05
+        },
+        "concurrent_invocation_seconds": {
+          "count": 8,
+          "mean_seconds": 3.0072298092499956,
+          "p50_seconds": 3.0057090819999814,
+          "p95_seconds": 3.025238194000025
+        },
+        "concurrent_throughput_per_second": 2.640246715794962,
+        "concurrent_wave_seconds": 3.0300198660000035,
+        "initial_suspend_seconds": {
+          "count": 3,
+          "mean_seconds": 0.3786248853333329,
+          "p50_seconds": 0.3825372430000016,
+          "p95_seconds": 0.38455333199999586
+        },
+        "invocation_cpu_seconds": 8.40414966,
+        "invocation_record_create_seconds": {
+          "count": 38,
+          "mean_seconds": 0.0006417082105245024,
+          "p50_seconds": 0.0002942469999993591,
+          "p95_seconds": 0.0004548240000019632
+        },
+        "invocation_seconds": {
+          "count": 38,
+          "mean_seconds": 0.8512501600263167,
+          "p50_seconds": 0.27017200500000627,
+          "p95_seconds": 3.022155827000006
+        },
+        "persistence_bytes_after": 11205655,
+        "persistence_bytes_before": 7699479,
+        "persistence_bytes_delta": 3506176,
+        "persistence_footprint_scope": "whole PostgreSQL service database; fresh service per engine job",
+        "process_lifetime_peak_rss_bytes": 134594560,
+        "recovery_samples": [
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 0.36878408100000115,
+            "restart_resume_seconds": 0.4796405489999813,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          },
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 0.3825372430000016,
+            "restart_resume_seconds": 0.48007148700000357,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          },
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 0.38455333199999586,
+            "restart_resume_seconds": 0.48233495399998105,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          }
+        ],
+        "restart_resume_seconds": {
+          "count": 3,
+          "mean_seconds": 0.48068232999998867,
+          "p50_seconds": 0.48007148700000357,
+          "p95_seconds": 0.48233495399998105
+        },
+        "sequential_invocation_seconds": {
+          "count": 30,
+          "mean_seconds": 0.276322253566669,
+          "p50_seconds": 0.264155895000016,
+          "p95_seconds": 0.3165478900000096
+        }
+      },
+      "metadata": {
+        "backend": "postgresql",
+        "commit": "88ca0f515a3f00bf44e896bac621cf62cb32179a",
+        "engine": "langgraph",
+        "engine_lock_sha256": "7c2f93f8c4a99a5cb926d5f21fa5dc3510ea5f9028f179e546df8d7aef31941b",
+        "measured_at_utc": "2026-10-25T06:39:36.502701+00:00",
+        "memory_metric": "process_lifetime_peak_rss_bytes (Linux ru_maxrss)",
+        "parameters": {
+          "concurrency": 8,
+          "iterations": 30,
+          "recovery_samples": 3,
+          "warmups": 5
+        },
+        "provider": "deterministic_fake_model",
+        "python": "3.12.13",
+        "runner": {
+          "machine": "x86_64",
+          "name": "local",
+          "os": "Linux",
+          "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+          "processor": "x86_64"
+        },
+        "selected_extras": [
+          "sqlite",
+          "knowledge",
+          "postgres"
+        ],
+        "workflow_fingerprint": "a239469e40219930b0c1e0f0fe0b8f164ddc86f10baeccc9360bda6a9bd321f1"
+      },
+      "profile": "owa/s4-06-matched-performance/v1"
+    },
+    {
+      "acceptance": {
+        "all_invocations_completed": true,
+        "fake_model_not_replayed": true,
+        "recovery_replayed_side_effect_once": true
+      },
+      "measurements": {
+        "compile_seconds": {
+          "count": 30,
+          "mean_seconds": 7.535833334297119e-06,
+          "p50_seconds": 5.518000008919444e-06,
+          "p95_seconds": 1.1266999990766635e-05
+        },
+        "concurrent_invocation_seconds": {
+          "count": 8,
+          "mean_seconds": 1.4820358436250007,
+          "p50_seconds": 1.515425258999997,
+          "p95_seconds": 1.5884706129999984
+        },
+        "concurrent_throughput_per_second": 4.987522947632065,
+        "concurrent_wave_seconds": 1.6040026449999942,
+        "initial_suspend_seconds": {
+          "count": 3,
+          "mean_seconds": 0.19299388299999976,
+          "p50_seconds": 0.19504421699998886,
+          "p95_seconds": 0.19672756200000663
+        },
+        "invocation_cpu_seconds": 6.607629089,
+        "invocation_record_create_seconds": {
+          "count": 38,
+          "mean_seconds": 0.0009818918947362334,
+          "p50_seconds": 0.0008563800000018773,
+          "p95_seconds": 0.002510803000006945
+        },
+        "invocation_seconds": {
+          "count": 38,
+          "mean_seconds": 0.43912790015789527,
+          "p50_seconds": 0.1567882810000043,
+          "p95_seconds": 1.5862956080000004
+        },
+        "persistence_bytes_after": 2121728,
+        "persistence_bytes_before": 0,
+        "persistence_bytes_delta": 2121728,
+        "persistence_footprint_scope": "temporary common and native SQLite files",
+        "process_lifetime_peak_rss_bytes": 169832448,
+        "recovery_samples": [
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 0.19672756200000663,
+            "restart_resume_seconds": 0.3532322650000026,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          },
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 0.18720987000000378,
+            "restart_resume_seconds": 0.22453376499998967,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          },
+          {
+            "fake_model_calls": 1,
+            "initial_suspend_seconds": 0.19504421699998886,
+            "restart_resume_seconds": 0.23025396799999953,
+            "side_effect_calls": 1,
+            "status": "completed",
+            "unique_operation_ids": 1
+          }
+        ],
+        "restart_resume_seconds": {
+          "count": 3,
+          "mean_seconds": 0.2693399993333306,
+          "p50_seconds": 0.23025396799999953,
+          "p95_seconds": 0.3532322650000026
+        },
+        "sequential_invocation_seconds": {
+          "count": 30,
+          "mean_seconds": 0.16101911523333381,
+          "p50_seconds": 0.15593834899999592,
+          "p95_seconds": 0.21755442300000993
+        }
+      },
+      "metadata": {
+        "backend": "sqlite",
+        "commit": "88ca0f515a3f00bf44e896bac621cf62cb32179a",
+        "engine": "langgraph",
+        "engine_lock_sha256": "7c2f93f8c4a99a5cb926d5f21fa5dc3510ea5f9028f179e546df8d7aef31941b",
+        "measured_at_utc": "2026-10-25T06:39:19.794205+00:00",
+        "memory_metric": "process_lifetime_peak_rss_bytes (Linux ru_maxrss)",
+        "parameters": {
+          "concurrency": 8,
+          "iterations": 30,
+          "recovery_samples": 3,
+          "warmups": 5
+        },
+        "provider": "deterministic_fake_model",
+        "python": "3.12.13",
+        "runner": {
+          "machine": "x86_64",
+          "name": "local",
+          "os": "Linux",
+          "platform": "Linux-6.17.0-1022-azure-x86_64-with-glibc2.39",
+          "processor": "x86_64"
+        },
+        "selected_extras": [
+          "sqlite",
+          "knowledge",
+          "postgres"
+        ],
+        "workflow_fingerprint": "a239469e40219930b0c1e0f0fe0b8f164ddc86f10baeccc9360bda6a9bd321f1"
+      },
+      "profile": "owa/s4-06-matched-performance/v1"
+    }
+  ],
+  "report": "owa/s4-06-matched-performance-report/v1",
+  "workflow_fingerprint": "a239469e40219930b0c1e0f0fe0b8f164ddc86f10baeccc9360bda6a9bd321f1"
+}

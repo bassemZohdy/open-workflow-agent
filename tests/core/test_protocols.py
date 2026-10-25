@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import socket
 
@@ -22,6 +23,7 @@ from open_workflow_agent.protocols import (
 )
 from open_workflow_agent.security import SecurityConfig
 from open_workflow_agent.workflow import compile_workflow
+from openapi_fixtures import operation_document
 
 
 def _bearer_security(monkeypatch: pytest.MonkeyPatch, *, token: str = "secret") -> SecurityConfig:
@@ -43,13 +45,27 @@ async def test_protocol_services_build_mcp_json_rpc_request():
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.update(json.loads(request.content))
         headers.update(request.headers)
-        return httpx.Response(200, json={"result": {"ok": True}})
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": seen["id"],
+                "result": {
+                    "resultType": "complete",
+                    "content": [],
+                    "structuredContent": {"ok": True},
+                },
+            },
+        )
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
     result = await services.call(
         "mcp", {"endpoint": "https://mcp.test", "name": "lookup", "arguments": {"q": "x"}}
     )
-    assert result["result"]["ok"] is True
+    assert result["structuredContent"]["ok"] is True
+    assert (
+        seen["params"]["_meta"]["io.modelcontextprotocol/protocolVersion"] == MCP_PROTOCOL_VERSION
+    )
     assert seen["method"] == "tools/call"
     assert headers["mcp-protocol-version"] == MCP_PROTOCOL_VERSION
     assert headers["mcp-method"] == "tools/call"
@@ -62,7 +78,19 @@ async def test_official_protocol_shapes_and_operation_headers(monkeypatch):
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
-        return httpx.Response(200, json={"ok": True})
+        body = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={
+                "jsonrpc": "2.0",
+                "id": body["id"],
+                "result": {
+                    "resultType": "complete",
+                    "content": [],
+                    "structuredContent": {"ok": True},
+                },
+            },
+        )
 
     security = _bearer_security(monkeypatch)
     from open_workflow_agent.security import ProfileAuthentication
@@ -150,7 +178,7 @@ async def test_protocol_baselines_reject_legacy_versions_and_streaming_aliases()
             "a2a",
             {
                 "server": "https://agent.test/a2a",
-                "method": "SendStreamingMessage",
+                "method": "CreateTaskPushNotificationConfig",
                 "message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]},
             },
         )
@@ -211,6 +239,45 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
 
     async def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request)
+        if request.url.path == "/openapi" and request.url.params.get("query") is None:
+            assert request.method == "GET"
+            return httpx.Response(
+                200,
+                json=operation_document(
+                    "https://service.test", parameters=(("query", "query", "string"),)
+                ),
+            )
+        if request.url.path == "/mcp":
+            body = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {
+                        "resultType": "complete",
+                        "tools": [],
+                        "ttlMs": 0,
+                        "cacheScope": "public",
+                    },
+                },
+            )
+        if request.url.path == "/a2a":
+            body = json.loads(request.content)
+            return httpx.Response(
+                200,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": body["id"],
+                    "result": {
+                        "message": {
+                            "messageId": "peer-response",
+                            "role": "ROLE_AGENT",
+                            "parts": [{"data": {"path": request.url.path}}],
+                        }
+                    },
+                },
+            )
         return httpx.Response(200, json={"path": request.url.path})
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
@@ -224,7 +291,7 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
             "transport": {"http": {"endpoint": "https://service.test/mcp"}},
             "parameters": {},
         },
-    ) == {"path": "/mcp"}
+    ) == {"resultType": "complete", "tools": [], "ttlMs": 0, "cacheScope": "public"}
     assert await services.call(
         "a2a",
         {
@@ -232,7 +299,13 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
             "method": "SendMessage",
             "message": {"role": "ROLE_USER", "parts": [{"text": "hello"}]},
         },
-    ) == {"path": "/a2a"}
+    ) == {
+        "message": {
+            "messageId": "peer-response",
+            "role": "ROLE_AGENT",
+            "parts": [{"data": {"path": "/a2a"}}],
+        }
+    }
     assert await services.call(
         "openapi",
         {
@@ -241,7 +314,14 @@ async def test_shared_protocol_contracts_cover_http_mcp_a2a_and_openapi():
             "parameters": {"query": "hello"},
         },
     ) == {"path": "/openapi"}
-    assert [request.url.path for request in seen] == ["/http", "/mcp", "/a2a", "/openapi"]
+    assert [request.url.path for request in seen] == [
+        "/http",
+        "/mcp",
+        "/a2a",
+        "/openapi",
+        "/openapi",
+    ]
+    assert seen[3].method == seen[4].method == "GET" and seen[4].url.params["query"] == "hello"
 
     mcp_request = seen[1]
     assert mcp_request.headers["Mcp-Protocol-Version"] == MCP_PROTOCOL_VERSION
@@ -261,7 +341,7 @@ async def test_http_contract_exposes_bounded_output_modes():
 
     services = ProtocolServices(HttpClient(transport=httpx.MockTransport(handler)))
     assert await services.call("http", {"endpoint": "https://service.test", "output": "raw"}) == (
-        '{"created":true}'
+        base64.b64encode(b'{"created":true}').decode("ascii")
     )
     response = await services.call(
         "http", {"endpoint": "https://service.test", "output": "response"}
@@ -414,7 +494,7 @@ def test_protocol_response_formatting_and_pinned_transport_validation():
     assert _format_response(json_response, "response")["headers"]["x-test"] == "yes"
     text_response = httpx.Response(200, text="plain")
     assert _format_response(text_response, "content") == "plain"
-    assert _format_response(text_response, "raw") == "plain"
+    assert _format_response(text_response, "raw") == base64.b64encode(b"plain").decode("ascii")
 
     with pytest.raises(ToolError, match="no approved"):
         _pinned_transport(verify_tls=True, endpoint="https://service.test", addresses=())

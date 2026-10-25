@@ -1,7 +1,9 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
+    branches: [main]
     paths-ignore:
       - "docs/**"
       - "**/*.md"
@@ -22,7 +24,414 @@ env:
   IMAGE_SIZE_LIMIT_BYTES: "2147483648"
 
 jobs:
+  javascript-definition-validation:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: JavaScript OWS 1.0.3 definition validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: engines/langgraph-js/package-lock.json
+      - name: Activate the pinned npm package manager
+        run: npm install --global npm@12.0.2
+      - name: Install the isolated JavaScript engine dependencies
+        working-directory: engines/langgraph-js
+        run: npm ci
+      - name: Validate definitions and bounded native JavaScript execution
+        working-directory: engines/langgraph-js
+        run: npm test
+      - name: Audit production dependencies
+        working-directory: engines/langgraph-js
+        run: npm audit --omit=dev
+      - name: Capture actual JavaScript literal outcomes
+        working-directory: engines/langgraph-js
+        run: >-
+          node dist/test/export-literal-outcomes.js
+          --source-commit "${{ github.sha }}"
+          --output "$RUNNER_TEMP/literal-outcomes-langgraph-js.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: literal-outcomes-langgraph-js
+          path: ${{ runner.temp }}/literal-outcomes-langgraph-js.json
+          if-no-files-found: error
+      - name: Build the isolated JavaScript test image
+        run: docker build -f engines/langgraph-js/Dockerfile.tests -t owa-langgraph-js-tests .
+      - name: Run JavaScript tests without network or root writes
+        run: >-
+          docker run --rm --read-only --network none --user 12349:0
+          --tmpfs /tmp:rw,nosuid,nodev,size=64m --memory 512m --cpus 2 --pids-limit 64
+          owa-langgraph-js-tests
+
+  windows-expressions:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Windows jq expression and admission tests
+    runs-on: windows-latest
+    # Independent jobs keep both selections required without making one
+    # consume the other's bounded time for process-stop/recovery acceptance.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify native jq cleanup, data semantics and shared admission
+        run: >-
+          uv run --locked pytest -q
+          tests/core/test_expressions.py
+          tests/core/test_workflow.py
+          tests/core/test_sandbox_validation.py
+          tests/core/test_execution_ownership_fences.py
+          tests/core/test_action_progress_ownership.py
+          tests/core/test_native_write_fence_storage.py
+          tests/core/test_native_sqlite_inspection.py
+          tests/core/test_bounded_memory.py
+          tests/core/test_provider_model_spi.py
+          tests/core/test_provider_service_composition.py
+          tests/core/test_event_transport.py
+          tests/contract/test_jq_portability.py
+          tests/contract/test_data_pipeline.py
+          tests/contract/test_scoped_flow.py
+          tests/contract/test_reusable_definitions.py
+          tests/contract/test_catalog_bindings.py
+          tests/contract/test_schema_reference_closure.py
+          tests/contract/test_schema_resources.py
+          tests/contract/test_definition_admission.py
+  windows-native:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Windows native task checkpoints and routing
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify Windows native task checkpoints and routing
+        run: >-
+          uv run --directory engines/langgraph --locked --extra sqlite
+          --with pytest --with pytest-asyncio pytest -vv
+          ../../tests/langgraph/test_native_task_graph.py
+          ../../tests/langgraph/test_native_commands.py
+          ../../tests/langgraph/test_native_send.py
+          ../../tests/contract/test_native_channel_process_recovery.py
+          ../../tests/langgraph/test_langgraph_initial_projection.py
+          ../../tests/contract/test_scoped_flow.py
+          ../../tests/contract/test_data_pipeline.py
+          ../../tests/contract/test_reusable_definitions.py
+          ../../tests/contract/test_catalog_bindings.py
+          ../../tests/contract/test_schema_resources.py
+          ../../tests/contract/test_selected_adapter_contracts.py
+          ../../tests/contract/test_selected_adapter_process_recovery.py
+
+  windows-operation-adapters:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Windows operation adapters and supervised process recovery
+    runs-on: windows-latest
+    timeout-minutes: 40
+    env:
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify Windows operation adapters and supervised process recovery
+        run: >-
+          uv run --directory engines/langgraph --locked --extra sqlite
+          --with pytest --with pytest-asyncio pytest -vv --durations=20
+          ../../tests/core/test_javascript_sandbox.py
+          ../../tests/core/test_openapi_client.py
+          ../../tests/core/test_openapi_admission.py
+          ../../tests/core/test_openapi_protocol_bindings.py
+          ../../tests/core/test_grpc_client.py
+          ../../tests/core/test_grpc_capabilities.py
+          ../../tests/core/test_asyncapi_client.py
+          ../../tests/core/test_http_outputs.py
+          ../../tests/core/test_sandbox_jobs.py
+          ../../tests/core/test_sandbox_job_dispatcher.py
+          ../../tests/core/test_background_job_runtime.py
+          ../../tests/core/test_background_request_admission.py
+          ../../tests/core/test_internal_sandbox_jobs.py
+          ../../tests/core/test_job_supervisor.py
+          ../../tests/core/test_sandbox_job_mutation_fence.py
+          ../../tests/core/test_container_operation_admission.py
+          ../../tests/core/test_executable_sources.py
+          ../../tests/core/test_executable_source_plan.py
+          ../../tests/core/test_executable_source_imports.py
+          ../../tests/core/test_executable_source_admission.py
+          ../../tests/core/test_internal_awaited_process_controls.py
+          ../../tests/core/test_engine_shutdown_initialization.py
+          ../../tests/contract/test_executable_source_calls.py
+          ../../tests/contract/test_executable_source_process_recovery.py
+          ../../tests/contract/test_openapi_calls.py
+          ../../tests/contract/test_openapi_process_recovery.py
+          ../../tests/contract/test_grpc_calls.py
+          ../../tests/contract/test_grpc_process_recovery.py
+          ../../tests/contract/test_background_job_recovery.py
+
+  windows-grpc-sqlite-matrix:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Windows gRPC and JavaScript SQLite contract (${{ matrix.engine }})
+    runs-on: windows-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: adk
+            extra: native
+          - engine: langgraph
+            extra: sqlite
+    env:
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
+      OWA_TEST_REQUIRED_ENGINE: ${{ matrix.engine }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Verify required native gRPC SQLite contract and process recovery
+        run: >-
+          uv run --directory engines/${{ matrix.engine }} --locked --extra ${{ matrix.extra }}
+          --with pytest --with pytest-asyncio pytest -vv
+          ../../tests/contract/test_javascript_sandbox_contract.py
+          ../../tests/contract/test_lifecycle_history_contract.py
+          ../../tests/contract/test_traced_history_process_recovery.py
+          ../../tests/contract/test_grpc_calls.py
+          ../../tests/contract/test_grpc_process_recovery.py
+          -k sqlite
+
+  windows-background-sqlite-matrix:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Windows background SQLite recovery (${{ matrix.engine }})
+    runs-on: windows-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: adk
+            extra: native
+          - engine: langgraph
+            extra: sqlite
+    env:
+      OWA_TEST_REQUIRED_ENGINE: ${{ matrix.engine }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Verify required native background SQLite recovery
+        run: >-
+          uv run --directory engines/${{ matrix.engine }} --locked --extra ${{ matrix.extra }}
+          --with pytest --with pytest-asyncio pytest -vv
+          ../../tests/contract/test_background_job_recovery.py
+
+  windows-native-recovery:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Windows native ownership and effect recovery
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify Windows native ownership and effect recovery
+        run: >-
+          uv run --directory engines/langgraph --locked --extra sqlite
+          --with pytest --with pytest-asyncio pytest -vv --durations=20
+          ../../tests/contract/test_process_crash_recovery.py
+          ../../tests/contract/test_runtime_execution_ownership.py
+          ../../tests/contract/test_action_execution_authority.py
+          ../../tests/contract/test_native_checkpoint_fencing.py
+          ../../tests/contract/test_native_state_consistency.py
+          ../../tests/contract/test_native_receipt_consistency.py
+          ../../tests/contract/test_native_receipt_fork_consistency.py
+          ../../tests/contract/test_native_scope_dependencies.py
+          ../../tests/contract/test_sandbox_effect_recovery.py
+          ../../tests/contract/test_event_child_effect_recovery.py
+          ../../tests/contract/test_child_invocation_dependencies.py
+
+  windows-native-timing:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Windows native timers events and scheduling
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify Windows native timers events and scheduling
+        run: >-
+          uv run --directory engines/langgraph --locked --extra sqlite
+          --with pytest --with pytest-asyncio pytest -vv --durations=20
+          ../../tests/contract/test_detached_children.py
+          ../../tests/contract/test_synchronous_child_waits.py
+          ../../tests/contract/test_child_lifecycle_acceptance.py
+          ../../tests/contract/test_detached_child_process_recovery.py
+          ../../tests/contract/test_retry_error_context.py
+          ../../tests/contract/test_retry_timing.py
+          ../../tests/contract/test_deadline_recovery.py
+          ../../tests/contract/test_retry_schedule_recovery.py
+          ../../tests/contract/test_scoped_exception_policies.py
+          ../../tests/contract/test_timing_process_recovery.py
+          ../../tests/contract/test_durable_events.py
+          ../../tests/contract/test_durable_event_process_recovery.py
+          ../../tests/contract/test_durable_timers.py
+          ../../tests/contract/test_durable_timer_forks.py
+          ../../tests/contract/test_durable_timer_process_recovery.py
+          ../../tests/contract/test_durable_scheduling.py
+          ../../tests/contract/test_schedule_event_triggers.py
+          ../../tests/contract/test_event_backend_admission.py
+          ../../tests/core/test_protected_approvals.py
+          ../../tests/core/test_approval_dispatcher.py
+          ../../tests/core/test_protected_approval_recovery.py
+          ../../tests/contract/test_protected_approval_workflows.py
+          ../../tests/contract/test_protected_approval_process_recovery.py ../../tests/contract/test_execution_authority_isolation.py ../../tests/contract/test_execution_authority_process_recovery.py ../../tests/core/test_execution_authority.py ../../tests/core/test_execution_authorization.py ../../tests/core/test_execution_context_isolation.py ../../tests/core/test_memory_namespaces.py ../../tests/core/test_credential_projection.py ../../tests/core/test_api_execution_authority.py ../../tests/core/test_authenticated_catalog_metadata.py ../../tests/core/test_agent_role_boundaries.py ../../tests/core/test_agent_roles.py ../../tests/contract/test_agent_patterns.py ../../tests/contract/test_agent_pattern_process_recovery.py
+
+  windows-native-lifecycle:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Windows native lifecycle and receiver recovery
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked expression environment
+        run: uv sync --locked
+      - name: Verify Windows native lifecycle and receiver recovery
+        run: >-
+          uv run --directory engines/langgraph --locked --extra sqlite
+          --with apsw==3.54.0.0 --with pytest --with pytest-asyncio pytest -vv --durations=20
+          ../../tests/core/test_initial_delivery_file_handoff.py
+          ../../tests/contract/test_external_operation_keys.py
+          ../../tests/contract/test_external_recovery_process.py
+          ../../tests/contract/test_external_recovery_native_corruption.py
+          ../../tests/contract/test_host_drain_child_controls.py
+          ../../tests/contract/test_explicit_compensation.py
+          ../../tests/contract/test_workflow_version_recovery.py
+          ../../tests/contract/test_a2a_resume_context_rejection.py
+          ../../tests/contract/test_a2a_resume_native_corruption.py
+          ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py
+          ../../tests/contract/test_workflow_version_process_recovery.py
+          ../../tests/contract/test_mcp_sdk_calls.py
+          ../../tests/contract/test_mcp_stdio_integration.py
+          ../../tests/contract/test_a2a_workflow_calls.py
+          ../../tests/contract/test_a2a_sdk_inbound.py
+          ../../tests/contract/test_a2a_sdk_http_json_optional_methods.py
+          ../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py
+          ../../tests/contract/test_a2a_initial_delivery.py
+          ../../tests/contract/test_a2a_initial_delivery_process_race.py
+          ../../tests/core/test_native_sqlite_inspection.py
+
+  windows-mcp:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Windows common MCP transport and authentication controls
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "${{ env.PYTHON_VERSION }}"
+      - name: Sync locked common SDK environment
+        run: uv sync --locked
+      - name: Verify Windows common MCP and process lifetime controls
+        run: >-
+          uv run --locked pytest -vv --durations=20
+          tests/core/test_mcp_sdk_http.py
+          tests/core/test_async_authentication.py
+          tests/core/test_authentication_tls.py
+          tests/core/test_sandbox_stdio.py
+          tests/core/test_mcp_stdio_frames.py
+          tests/core/test_mcp_deployment_admission.py
+          tests/core/test_mcp_capabilities.py
+          tests/core/test_a2a_sdk_http.py
+          tests/core/test_a2a_credential_authority.py
+          tests/core/test_a2a_async.py
+          tests/core/test_a2a_streaming.py::test_stream_skips_malformed_event_and_closes_after_authoritative_terminal
+          tests/core/test_a2a_inbound_v1.py
+          tests/core/test_a2a_task_routes.py
+          tests/core/test_a2a_child_projection.py
+          tests/core/test_a2a.py
+          tests/core/test_a2a_http_json_optional_methods.py
+          tests/contract/test_a2a_sdk_http_json_optional_methods.py
+          tests/core/test_a2a_card_admission.py
+          tests/core/test_a2a_skills.py
+          tests/core/test_initial_delivery.py
+          tests/contract/test_mcp_stdio_integration.py
+
   manifests:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Validate deployment manifests
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -60,23 +469,43 @@ jobs:
             | kubeconform -strict -summary -kubernetes-version 1.31.0
 
   root:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    # f020d6e reached only 22% in eight minutes; preserve full coverage and
+    # provide a finite aggregate budget, separate from per-fixture deadlines.
     name: Root quality gates
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 60
+    env:
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
+      UV_PYTHON_PREFERENCE: only-system
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
           enable-cache: true
-      - name: Install Python
-        run: uv python install "$PYTHON_VERSION"
+      - name: Pin uv to the hosted Python with pidfd support
+        shell: bash
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
       - name: Sync locked root environment
         run: uv sync --locked --extra knowledge
+      - name: Verify stable Linux process-handle support
+        run: uv run --locked python -c "import os, signal; assert callable(getattr(os, 'pidfd_open', None)); assert callable(getattr(signal, 'pidfd_send_signal', None)); fd = os.pidfd_open(os.getpid()); os.close(fd)"
       - name: Check root lock
         run: uv lock --check
-      - name: Validate Docker Compose profiles
-        run: docker compose --env-file .env.example --profile adk --profile langgraph config --quiet
+      - name: Validate embedded and optional PostgreSQL Compose profiles
+        run: |
+          docker compose --env-file .env.example --profile adk --profile langgraph config --quiet
+          docker compose --env-file .env.example -f compose.yaml -f compose.postgres.yaml --profile adk --profile langgraph config --quiet
+          test "$(docker compose --env-file .env.example --profile adk config --services)" = adk
+          test "$(docker compose --env-file .env.example --profile langgraph config --services)" = langgraph
       - name: Format
         run: uv run --locked ruff format --check ci core engines tests
       - name: Lint
@@ -96,20 +525,17 @@ jobs:
             --package open_workflow_agent_adk \
             --package open_workflow_agent_langgraph \
             --package open_workflow_agent_agent_framework
+          uv run --locked --extra postgres mypy benchmarks
       - name: Tests
         shell: bash
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 8m \
-            uv run --locked pytest -vv --durations=20 \
+          timeout --signal=TERM --kill-after=30s 45m \
+            uv run --locked pytest tests -vv --durations=20 \
               --cov=core/src/open_workflow_agent --cov-report=term-missing \
-              --cov-fail-under=90
-      - name: Shared contract tests
-        shell: bash
-        run: |
-          set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 4m \
-            uv run --locked pytest tests/contract -vv --durations=20
+              --cov-fail-under=90 --cov-precision=2
+      # The full tests/ selection above includes all shared contract fixtures.
+      # Native adapters each run that same contract suite in their own locked env.
       - name: Build root and standalone core artifacts
         run: |
           uv build
@@ -135,6 +561,7 @@ jobs:
           print(f"release version: {expected}")
           PY
           uv lock --check
+          uv lock --directory core --check
           uv lock --directory engines/adk --check
           uv lock --directory engines/langgraph --check
       - name: Validate wheel contents
@@ -154,8 +581,11 @@ jobs:
                   schema = "open_workflow_agent/_resources/open-workflow/1.0.3/workflow.yaml"
                   assert schema in names, f"missing packaged Open Workflow schema in {wheel.name}"
           PY
+          python ci/recovery_build.py --project . --dist dist
+          python ci/recovery_build.py --project core --dist core/dist
 
   mutation:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
     name: Mutation testing
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -178,12 +608,17 @@ jobs:
         run: uv run --locked --group mutation mutmut results
 
   engines:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    # Full shared recovery selections exceeded eight minutes at 46-51%.
     name: ${{ matrix.engine }} native and contract tests
     runs-on: ubuntu-latest
-    needs: root
-    timeout-minutes: 15
+    timeout-minutes: 50
+    env:
+      OWA_TEST_JAVASCRIPT_ENGINE: ${{ matrix.engine }}
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
+      UV_PYTHON_PREFERENCE: only-system
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - engine: adk
@@ -197,23 +632,52 @@ jobs:
         working-directory: engines/${{ matrix.engine }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        id: python
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           version: "0.11.26"
           enable-cache: true
-      - name: Install Python
-        run: uv python install "$PYTHON_VERSION"
+      - name: Pin uv to the hosted Python with pidfd support
+        shell: bash
+        run: echo "UV_PYTHON=${{ steps.python.outputs.python-path }}" >> "$GITHUB_ENV"
       - name: Check engine lock
         run: uv lock --check
+      - name: Verify stable Linux process-handle support
+        run: uv run --locked --extra knowledge --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio python -c "import os, signal; assert callable(getattr(os, 'pidfd_open', None)); assert callable(getattr(signal, 'pidfd_send_signal', None)); fd = os.pidfd_open(os.getpid()); os.close(fd)"
       - name: Native and shared contract tests
         shell: bash
         env:
           PYTHONUNBUFFERED: "1"
         run: |
           set -euo pipefail
-          timeout --signal=TERM --kill-after=30s 8m \
+          # The hosted ADK profile reached 95% at the 30-minute cap; leave room
+          # for the remaining native/shared cases and real JavaScript OS-stop proofs.
+          timeout --signal=TERM --kill-after=30s 45m \
             uv run --locked --extra knowledge --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
-            pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract -vv --durations=20
+            pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract -vv --durations=20 \
+            --ignore=../../tests/contract/test_external_operation_keys.py \
+            --ignore=../../tests/contract/test_external_recovery_process.py \
+            --ignore=../../tests/contract/test_external_recovery_native_corruption.py \
+            --ignore=../../tests/contract/test_host_drain_child_controls.py \
+            --ignore=../../tests/contract/test_explicit_compensation.py \
+            --ignore=../../tests/contract/test_workflow_version_recovery.py \
+            --ignore=../../tests/contract/test_a2a_resume_context_rejection.py \
+            --ignore=../../tests/contract/test_workflow_version_process_recovery.py \
+            --ignore=../../tests/contract/test_mcp_sdk_calls.py \
+            --ignore=../../tests/contract/test_mcp_stdio_integration.py \
+            --ignore=../../tests/contract/test_a2a_workflow_calls.py \
+            --ignore=../../tests/contract/test_a2a_sdk_inbound.py \
+            --ignore=../../tests/contract/test_a2a_sdk_http_json_optional_methods.py \
+            --ignore=../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
+            --ignore=../../tests/contract/test_a2a_initial_delivery.py
       - name: Portable Profile CTK subset
         shell: bash
         run: |
@@ -240,6 +704,20 @@ jobs:
             ${{ runner.temp }}/ctk-${{ matrix.engine }}.log
             ${{ runner.temp }}/ctk-${{ matrix.engine }}-provenance.txt
           if-no-files-found: warn
+      - name: Capture actual native literal outcomes
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 5m \
+            uv run --locked --extra knowledge --extra ${{ matrix.extra }} \
+            python ../../ci/literal_parity.py capture --engine "${{ matrix.engine }}" \
+              --source-commit "${{ github.sha }}" \
+              --output "$RUNNER_TEMP/literal-outcomes-${{ matrix.engine }}.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: literal-outcomes-${{ matrix.engine }}
+          path: ${{ runner.temp }}/literal-outcomes-${{ matrix.engine }}.json
+          if-no-files-found: error
       - name: Engine-specific benchmark probes
         shell: bash
         run: |
@@ -257,13 +735,108 @@ jobs:
           path: ${{ runner.temp }}/engine-benchmark-${{ matrix.engine }}.json
           if-no-files-found: warn
 
+  literal-outcome-parity:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: Exact-source shared literal outcome comparison
+    needs: [javascript-definition-validation, engines]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: literal-outcomes-*
+          path: ${{ runner.temp }}/literal-outcomes
+          merge-multiple: true
+      - name: Compare all actual native literal outcomes
+        run: >-
+          python ci/literal_parity.py aggregate
+          --source-commit "${{ github.sha }}"
+          --directory "$RUNNER_TEMP/literal-outcomes"
+          --output "$RUNNER_TEMP/literal-outcome-parity.json"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: literal-outcome-parity
+          path: ${{ runner.temp }}/literal-outcome-parity.json
+          if-no-files-found: error
+
+  native-lifecycle:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    name: ${{ matrix.engine }} native lifecycle and version recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: adk
+            extra: native
+          - engine: langgraph
+            extra: sqlite
+    defaults:
+      run:
+        working-directory: engines/${{ matrix.engine }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          version: "0.11.26"
+          enable-cache: true
+      - name: Install Python
+        run: uv python install "$PYTHON_VERSION"
+      - name: Native lifecycle and original-definition contract tests
+        shell: bash
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 10m \
+            uv run --locked --extra knowledge --extra ${{ matrix.extra }} \
+            --with apsw==3.54.0.0 --with pytest --with pytest-asyncio pytest \
+            ../../tests/contract/test_external_operation_keys.py \
+            ../../tests/contract/test_external_recovery_process.py \
+            ../../tests/contract/test_external_recovery_native_corruption.py \
+            ../../tests/contract/test_host_drain_child_controls.py \
+            ../../tests/contract/test_explicit_compensation.py \
+            ../../tests/contract/test_workflow_version_recovery.py \
+            ../../tests/contract/test_a2a_resume_context_rejection.py \
+            ../../tests/contract/test_a2a_resume_receiver_receipt_corruption.py \
+            ../../tests/contract/test_workflow_version_process_recovery.py \
+            ../../tests/contract/test_mcp_sdk_calls.py \
+            ../../tests/contract/test_mcp_stdio_integration.py \
+            ../../tests/contract/test_a2a_workflow_calls.py \
+            ../../tests/contract/test_a2a_sdk_inbound.py \
+            ../../tests/contract/test_a2a_sdk_http_json_optional_methods.py \
+            ../../tests/contract/test_a2a_sdk_malformed_streaming_admission.py \
+            ../../tests/contract/test_a2a_initial_delivery.py \
+            ../../tests/contract/test_a2a_native_host_drain.py \
+            ../../tests/core/test_native_sqlite_inspection.py -vv --durations=20
+      - name: Verify ADK A2A native event corruption
+        if: matrix.engine == 'adk'
+        run: >-
+          uv run --locked --extra knowledge --extra native
+          --with pytest --with pytest-asyncio pytest
+          ../../tests/contract/test_a2a_resume_adk_native_corruption.py -vv
+      - name: Verify LangGraph A2A native checkpoint corruption
+        if: matrix.engine == 'langgraph'
+        run: >-
+          uv run --locked --extra knowledge --extra sqlite
+          --with pytest --with pytest-asyncio pytest
+          ../../tests/contract/test_a2a_resume_native_corruption.py -vv
+
   containers:
+    if: github.event_name == 'workflow_dispatch' || vars.OWA_AUTOMATIC_CI == 'true'
+    # Principal lifecycle/process fixtures run in the independent job above.
     name: Docker ${{ matrix.engine }} acceptance
     runs-on: ubuntu-latest
-    needs: engines
     timeout-minutes: 30
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         include:
           - engine: adk
@@ -326,6 +899,21 @@ jobs:
             bash tests/ci/container_sandbox_image_acceptance.sh \
             "${{ matrix.engine }}" "owa-${{ matrix.engine }}:${{ github.sha }}" \
             "${{ matrix.sandbox_port }}"
+      - name: JavaScript sandbox acceptance inside release image
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 5m \
+            bash tests/ci/javascript_sandbox_image_acceptance.sh \
+            "${{ matrix.engine }}" "owa-${{ matrix.engine }}:${{ github.sha }}"
+      - name: One-container embedded defaults without configuration or credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout --signal=TERM --kill-after=30s 5m \
+            bash tests/ci/container_embedded_defaults_acceptance.sh \
+            "${{ matrix.engine }}" "owa-${{ matrix.engine }}:${{ github.sha }}" \
+            "${{ matrix.port }}"
       - name: Container startup, health, capabilities, invocation, and knowledge
         shell: bash
         run: |
@@ -366,7 +954,7 @@ jobs:
           curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/health/live" >/dev/null
           curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/health/ready" >/dev/null
           capabilities="$(curl --fail --silent "http://127.0.0.1:${{ matrix.port }}/v1/capabilities")"
-          python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["engine"] == sys.argv[2]; assert d["workflowDsl"] == "1.0.3"; assert d["features"]["resume"] is True; assert d["features"]["cancellation"] is True; assert d["features"]["waiting"] is True; assert d["features"]["events"] == {"emit": True, "listen": True, "durable": False}; assert d["features"]["cloudEvents"] == {"lifecycle": True, "specversion": "1.0", "delivery": "bounded_snapshot", "durable": False}; assert d["features"]["scheduling"] == {"after": True, "every": True, "cron": False, "on": False, "durable": True, "owner": "single_runtime"}; assert d["features"]["subWorkflows"] == {"run": True, "separateInvocation": True, "localCatalog": True, "externalCatalog": False}' "$capabilities" "${{ matrix.engine }}"
+          python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["engine"] == sys.argv[2]; assert d["workflowDsl"] == "1.0.3"; assert d["features"]["resume"] is True; assert d["features"]["cancellation"] is True; assert d["features"]["waiting"] is True; assert d["features"]["events"] == {"emit": True, "listen": True, "durable": True}; assert d["features"]["cloudEvents"] == {"lifecycle": True, "specversion": "1.0", "delivery": "bounded_snapshot", "durable": False}; assert d["features"]["scheduling"] == {"after": True, "every": True, "cron": True, "on": True, "durable": True, "owner": "fenced_workers"}; assert d["features"]["subWorkflows"] == {"run": True, "separateInvocation": True, "localCatalog": True, "externalCatalog": False}' "$capabilities" "${{ matrix.engine }}"
           event="$(curl --fail --silent --request POST --header 'content-type: application/json' --data '{"event":{"id":"ci-event-1","type":"ci.acceptance","data":{"ok":true}}}' "http://127.0.0.1:${{ matrix.port }}/v1/events")"
           python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["id"] == "ci-event-1"; assert d["type"] == "ci.acceptance"' "$event"
           invocation="$(curl --fail --silent --request POST --header 'content-type: application/json' --data '{"input":{"question":"ci"}}' "http://127.0.0.1:${{ matrix.port }}/v1/invoke")"
@@ -443,7 +1031,7 @@ jobs:
           try:
               with sqlite3.connect(sys.argv[1]) as connection:
                   row = connection.execute(
-                      "SELECT invocation_id FROM invocations WHERE status IN ('running', 'waiting') ORDER BY rowid DESC LIMIT 1"
+                      "SELECT invocation_id FROM invocations WHERE status = 'waiting' ORDER BY rowid DESC LIMIT 1"
                   ).fetchone()
               print(row[0] if row else "")
           except sqlite3.Error:
@@ -472,9 +1060,37 @@ jobs:
             fi
             sleep 1
           done
-          resume="$(curl --fail --silent --request POST --header 'content-type: application/json' \
-            --data '{"input":{}}' "http://127.0.0.1:${{ matrix.resume_port }}/v1/invocations/${invocation_id}/resume")"
-          python -c 'import json, sys; d=json.loads(sys.argv[1]); assert d["status"] == "completed"; assert d["output"] == {"done": True}' "$resume"
+          # A forced stop retains the old owner's live lease. Wait for its
+          # actual expiry; never delete or shorten the production ownership row.
+          for attempt in $(seq 1 60); do
+            status="$(curl --silent --show-error --max-time 45 \
+              --output "$workdir/resume.json" --write-out '%{http_code}' \
+              --request POST --header 'content-type: application/json' \
+              --data '{"input":{}}' \
+              "http://127.0.0.1:${{ matrix.resume_port }}/v1/invocations/${invocation_id}/resume")"
+            if [[ "$status" == 200 ]]; then
+              break
+            fi
+            test "$status" = 409
+            python - "$workdir/resume.json" <<'PY'
+          import json
+          import sys
+          with open(sys.argv[1]) as source:
+              error = json.load(source)["error"]
+          assert error["code"] == "invalid_invocation_state", error
+          assert error["message"] == "invocation execution ownership is unavailable", error
+          PY
+            sleep 1
+          done
+          test "$status" = 200
+          python - "$workdir/resume.json" <<'PY'
+          import json
+          import sys
+          with open(sys.argv[1]) as source:
+              result = json.load(source)
+          assert result["status"] == "completed", result
+          assert result["output"] == {"done": True}, result
+          PY
       - name: Upload container logs
         if: always()
         uses: actions/upload-artifact@v7

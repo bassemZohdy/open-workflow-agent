@@ -9,6 +9,7 @@ env/
 .ruff_cache/
 .mypy_cache/
 .pyright/
+node_modules/
 
 # Build and coverage output
 build/
@@ -18,6 +19,9 @@ dist/
 .coverage.*
 coverage.xml
 htmlcov/
+# Mutation output (do not ignore /src/: nested package builds use that layout)
+/mutants/
+.mutmut-cache/
 
 # Local configuration and secrets
 .env

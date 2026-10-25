@@ -1,0 +1,769 @@
+# S3-03 operation adapters: finite acceptance plan
+
+## Exact-source qualification f66cd23
+
+The finite task profile is verified at `f66cd23b399a707fda0683e180c9f34c7b6d6408`. All six source-matched hosted workflows pass, including CI attempt 2 after the retained Windows file-handoff failure. Admitted shared HTTP/OpenAPI/gRPC and pure AsyncAPI operations, supported functions and published opt-in internal SQLite Python background jobs, with common source/receipt/ownership/deadline controls. External broker delivery remains conditional; PostgreSQL/external background supervisors, background JavaScript and unadvertised executable/container profiles remain unsupported.
+
+See the [complete qualification and prior failures](validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-f66cd23). Full research/proposed/schema criteria remain separately unverified. Later native Send and parity changes retain their own gates.
+
+## Earlier authored history
+
+Status: the authored batch at exact source `923302f` passed its recorded local
+and hosted gates. Source `31ec0eb` has a separate recorded local follow-up;
+source `237f09f` adds two focused security regressions. Source `f89a154` fixes a
+Windows-only test-fixture deadline error discovered in the `0f16415` hosted
+batch; the focused supervisor suite passes locally. At source `c3ca7f1`, the
+Windows provider test found timeout rounding just above its 30-second limit;
+the implementation now clamps the provider timeout and its focused 62-test
+suite passes locally (6 skipped). One ADK HTTP/JSON resume test returned
+`invalid_invocation_state` in hosted CI, while its JSON-RPC sibling passed; a
+focused local rerun passed. The hosted failure is recorded at run
+`39405483897`, job `118570817408`: the log contains only the sanitized A2A
+`500` response with `owaCode=invalid_invocation_state`, not the underlying
+exception. A later diagnostic follow-up logs only the ADK resume stage, stable
+error code, and exception type; it never logs exception text, input, or native
+identifiers. An earlier helper-only safety test passed locally; it has been
+strengthened to inject a sentinel failure through the actual `_resume_owned`
+call site and assert that no message, input, or identifier is logged. The
+call-site regression now passes locally, as recorded below. This improves
+evidence on recurrence but does not identify or fix the original failure.
+The remaining CI, PostgreSQL and Agent Framework runs were cancelled while
+batching changes; Docs, Security and External Sandbox passed. Exact-source full
+requalification remains pending. S3-03 remains unchecked because broader adapter,
+backend, platform, packaging and deployment acceptance remains open.
+At exact source `923302f`, the scoped root selection passed (140 passed, 12 skipped),
+gRPC SQLite contract/process recovery (22 cases per principal engine), and
+background process recovery (13 cases per principal engine). Ruff lint and
+format checks, mypy (131 source files), documentation validation and diff
+checks pass; the optional Agent Framework host-drain selection passed 20 tests
+with 36 expected skips. These are local results. In GitHub run `39370261789`,
+the main CI passed, as did both Windows gRPC and both
+Windows background matrices, the Windows operation-adapter suite, Agent
+Framework, and all PostgreSQL CI jobs. Remaining Windows native/timer, engine
+contract and root-quality lanes passed at exact source `923302f`. The External
+Sandbox run `39370261833` initially hit a transient APK repository TLS/index
+failure; its failed image job passed on rerun. This validates the scoped batch
+but does not complete the broader S3-03 inventory. The embedded background
+profile remains disabled by a default-false internal qualification gate until
+its acceptance is complete.
+AsyncAPI network activation and broader function/sandbox responsibilities
+remain pending.
+
+### Local reference correction — 2026-10-25
+
+The selected OpenAPI local-reference resolver previously accepted malformed
+tilde escapes and Python-style array indexes (`-1`, `+0`, leading zeros,
+whitespace and Unicode digits). A malformed reference could therefore select
+an existing parameter and reach the business receiver. Regression-first checks
+reproduced 16 core failures across OAS 3.0.3/3.2.0 and two actual native
+LangGraph/SQLite workflow failures before the fix.
+
+Resolution now enforces the escape and array-index rules in
+[RFC 6901 sections 3–4](https://www.rfc-editor.org/rfc/rfc6901.html#section-3)
+and rejects with the existing sanitized `invalid_reference_target` reason.
+Valid escaped names, single-pass `~01` decoding, array index zero and numeric
+object keys retain their bindings. The shared native rejection witnesses
+require only a metadata GET, no business receipt and no provider request.
+The official workflow schema and public adapter contracts are unchanged.
+
+The first local native baseline passed 55 LangGraph/SQLite cases; ADK passed
+54 and failed one test when cold SDK source attestation exhausted its outer
+15-second synchronization timeout before workflow execution. Its isolated
+rerun passed. That authority fixture now prepares the real recovery profile
+under a separate 60-second setup bound before creating the invocation,
+preserving the original 15-second operation bound and all source/lease proofs.
+No production timeout or durability check was relaxed.
+
+Package-content inspection also caught a cleanup regression: the root `/src/`
+ignore caused nested Hatch builds to omit their actual package code. It is
+removed. The recovery build verifier now requires the package initializer as
+well as valid provenance, and a metadata-only wheel has a dedicated rejection
+regression. Corrected builds retain the real adapter source and packaged schema.
+
+Final local selections passed:
+
+| Selection | Result |
+| --- | --- |
+| Common HTTP/OpenAPI/gRPC/AsyncAPI | 436 passed, 51 native/backend configuration skips |
+| Actual ADK/SQLite OpenAPI + gRPC calls and process stops | 57 passed, 57 PostgreSQL cases deselected, no skips |
+| Actual LangGraph/SQLite same shared selection | 57 passed, 57 PostgreSQL cases deselected, no skips |
+| Configured OpenAPI tool pending/known process stops + JSON-RPC/HTTP+JSON archived skill resume | 4 passed per principal engine, no skips |
+| ADK safe resume diagnostic call-site regression | 1 passed |
+| Build provenance, validation/release workflows and development automation guards | 29 passed |
+
+Strict mypy passed for 124 core/CI source files; Ruff, changed-file formatting
+and Markdown links passed. Root, standalone core, all three adapters and both
+controllers built wheel/source artifacts. Every package's source code/resources
+were compared byte-for-byte against its wheel, including both copies of the
+official schema. Provenance verification passed for the five runtime packages;
+the two controller packages do not use that runtime recovery-build hook. The
+earlier empty core wheel is retained locally and the new verifier rejects it.
+Optional Framework package inspection does not qualify its native runtime or
+production support.
+
+Logs, JUnit reports and input hashes are retained locally under
+`tmp/s3-03-local-20261025/`. The 594 tracked code/test/dependency inputs were
+captured before the native batch; its runtime/contract inputs stayed unchanged.
+The subsequent CI verifier/test changes are recorded separately in the final
+manifest and covered by the 29-test selection. These are working-tree local
+results, not an exact-commit hosted gate or full S3-03 qualification. Actual
+PostgreSQL, Linux/container/deployment and hosted gates remain open; Docker's
+local daemon was unavailable and no PostgreSQL test datasource was configured.
+
+### Docker and PostgreSQL follow-up — 2026-10-25
+
+The local acceptance environment now uses Docker 29.7.2 in the Linux runner,
+PostgreSQL 16.15, separately built ADK/LangGraph production images and the
+restricted Docker controller. PostgreSQL is bound to host loopback port 25432;
+each principal engine and integration selection has its own test database.
+The source snapshot and results are retained under
+`tmp/docker-acceptance-20261025/`. These are working-tree Linux/amd64 results,
+not a release or an exact-commit hosted checkpoint.
+
+| Selection | Verified result |
+| --- | --- |
+| Linux ADK common adapters, both database backends, native/process recovery, embedded jobs and captured executable sources | 663 passed; 4 Windows-only skips |
+| Linux LangGraph identical shared selection | 663 passed; the same 4 Windows-only skips |
+| OpenAPI/gRPC native call/process grid within each selection | All 114 mandatory cases passed per engine: 57 SQLite and 57 actual PostgreSQL, with no skips |
+| Inline/reusable awaited return modes, nonzero exits and receipt recovery | 77 passed per principal engine |
+| PostgreSQL configured OpenAPI tool pending/known OS stops and both A2A archived-skill resume transports | 4 passed per principal engine |
+| Windows native embedded background OS-stop/recovery | 13 passed per principal engine, no skips |
+| Windows common PostgreSQL admission, fences, job ledger and protected approvals | 195 passed; 2 deliberately inapplicable SQLite variants skipped |
+| Windows IPC/DACL observations skipped by the Linux suites | All 4 passed on Windows |
+| Packaged embedded startup/restart, catalog and internal sandbox scripts | All three scripts passed against each production engine image |
+| Restricted external Docker sandbox | Passed for both production engines, including exact controller dependency inventory, non-root/arbitrary-UID operation, absent runtime Docker socket, network/root/workspace/secret probes, timeout/output/cancel controls and cleanup |
+
+The 77-test selection separates physical internal script/shell execution from
+common fake-backend receipt checks. Real external-container behavior is proved
+by its separate acceptance script. Neither establishes arbitrary container
+lifetime, Kubernetes/OpenShift or general background-execution qualification.
+The background production qualification constant remains false.
+
+The controller build previously resolved dependencies outside its own lock
+(including Starlette 1.10.0 instead of locked 1.6.0). It now exports its own
+unchanged lock with pinned uv, installs hashed requirements without dependency
+re-resolution, and removes build tooling. The real external-sandbox gate compares
+the installed distribution inventory to all 14 locked packages and rejects extra
+pip/uv/setuptools. Both engine runs passed that check and actual execution.
+
+The first Windows PostgreSQL run retained one setup connection-close error
+(194 passed, 2 skipped); PostgreSQL had no restart/OOM event and the isolated
+case passed. Its full rerun found two fixed-identity test collisions in the
+already-populated database. The actor decision's operation key now includes
+its original subject, and the legacy-denial fixture has a unique approval ID.
+Both cases passed twice against the same database, followed by the clean
+195-pass selection above. Production conflict and idempotency rules are unchanged.
+All earlier failed logs remain retained. The local catalog shell checkout was
+also normalized to the existing LF rule before Bash execution.
+
+Fresh whole-source/hosted, security and remaining broader inventory qualification
+remain open. No task checkbox or feature status is promoted by these local results.
+
+### Encoded reference and host admission follow-up — 2026-10-25
+
+The OpenAPI and pure AsyncAPI local-reference resolvers previously looked up URI
+fragments without decoding percent escapes. A valid escaped reference could
+therefore select a literal raw-percent decoy instead of the intended definition.
+Regression-first checks reproduced 29 failures. A shared private helper now
+decodes the URI layer once, with strict UTF-8 and percent validation, before
+pointer tokenization and the existing single-pass tilde decoding. This follows
+[RFC 6901 section 6](https://www.rfc-editor.org/rfc/rfc6901.html#section-6).
+External/root-reference support and AsyncAPI network activation remain unchanged.
+Correlation expressions retain their separate raw-pointer semantics.
+
+The fixtures cover spaces, literal percent signs, Unicode, double encoding,
+encoded pointer delimiters/array indexes and malformed percent/UTF-8/tilde input.
+Native workflow witnesses require the intended business route, exactly one
+business receipt, actual private native history and zero model requests.
+
+The first Windows ADK witness hit cold artifact attestation inside its operation
+timeout. That fixture now prepares the real recovery profile separately under a
+60-second setup bound, before creating the invocation; the original 15-second
+operation bound is unchanged. All four Windows ADK SQLite/PostgreSQL cases pass.
+Windows LangGraph passed both SQLite cases but its default Proactor loop failed
+both PostgreSQL cases. A direct pinned Psycopg 3.3.5 probe confirmed the
+[documented Windows async-loop restriction](https://www.psycopg.org/psycopg3/docs/advanced/async.html#asynchronous-operations).
+The adapter now rejects that combination before starting common background
+services, using the sanitized common configuration error with
+`reason=unsupported_event_loop`. It does not change the host loop policy.
+An actual Windows Proactor startup rejection and all four native
+SQLite/PostgreSQL cases under a deployment-selected Selector loop pass.
+Earlier failed logs remain retained.
+
+The common client/protocol/build selection passes 309 tests. Adapter admission,
+development-automation and recovery-build guards pass 16 tests. Strict mypy passes
+all 136 source modules; Ruff and formatting pass. Fresh root, standalone core and
+LangGraph wheel/source builds pass provenance and 250 byte-for-byte
+source/resource comparisons, including the new helper. Stale metadata-only
+local adapter installs left by the earlier `/src/` ignore were rebuilt in their
+separate environments; direct installed ADK/LangGraph imports now pass without
+pytest source paths.
+
+Both production Dockerfiles now warm the embedding model after installing locked
+dependencies and before copying application source, so source edits reuse that
+expensive layer. A real source-copy perturbation rebuilt the application layer
+while retaining the model cache. Dependency locks, final cleanup and non-root
+runtime behavior are retained.
+
+The first frozen Linux image candidate passes 74 OpenAPI call/process checks on
+ADK and the same 74 plus seven adapter checks on LangGraph, without skips. Each
+principal engine runs all 50 shared native call cases and 24 real process-stop
+cases across SQLite and PostgreSQL. A final correction for strict typing uses
+an explicit optional saver lookup. Its rebuilt LangGraph image passes all 50
+native call cases and seven adapter checks again (57 passed, no skips).
+The first candidate's process results remain tied to its own source manifest;
+they are not represented as a second process run on the final typing correction.
+
+Both final production images pass embedded startup/restart, packaged catalogs,
+internal sandbox and restricted external Docker sandbox acceptance. The final
+LangGraph image repeats all four scripts after its rebuild. Installed copies of
+the three changed common modules and the LangGraph adapter are compared by hash
+to the delivered source. First/final image IDs, candidate source manifests,
+build logs, exit records and JUnit results are retained under the evidence root's
+`docker/` directory, alongside the Windows and package reports. Evidence-only
+documentation updates follow those snapshots; this is working-tree local
+qualification, not an exact-commit or whole-source hosted/security gate.
+
+Current evidence is under `tmp/reference-qualification-20261025/`; the Docker
+qualification and its source manifests are recorded there separately. No task or
+feature completion is inferred from these local selections.
+
+### Prior code-source follow-up — `31ec0eb`
+
+The follow-up adds a production qualification guard to background job profile
+validation and regression coverage that rejects dispatch while the profile is
+unqualified. It also strengthens gRPC cancellation/deadline and uncertain
+outcome witnesses, and adds OpenAPI process-recovery coverage proving a
+dispatched cancellation keeps its pending intent without refetch or replay.
+These additions do not qualify the background profile or close S3-03.
+
+Local grouped results at `31ec0eb`: core gRPC/background/dispatcher, 116 passed
+and 26 skipped; ADK OpenAPI calls/process recovery, 32 passed and 96 skipped;
+LangGraph OpenAPI calls/process recovery, 32 passed and 96 skipped (one warning).
+Formatting, lint and diff checks passed. At inspection, exact-source hosted
+results were Docs [39400114997], Security [39400114979] and External Sandbox
+[39400114886] passed; CI [39400115602], PostgreSQL [39400115146] and Agent
+Framework [39400114914] remained in progress when this source was superseded.
+These runs do not qualify later source.
+
+### Source `237f09f` adapter regressions and `0f16415` Windows fixture result
+
+This source adds a real local-mTLS negative test proving a wrong endpoint grant
+rejects before certificate resolution or a receiver request, and a PostgreSQL-
+only regression proving the internal SQLite supervisor rejects a PostgreSQL
+store before creating supervisor state. The mTLS test passed locally; the
+PostgreSQL case runs against the hosted PostgreSQL service. On exact source
+`0f16415`, the Windows operation-adapter suite reported 967 passed, 460 skipped,
+and one setup error: the cancellation case's five-second deadline expired in
+`store.begin_submit` before its test body ran. This is a test synchronization
+failure, not a production dispatch result. Correction `f89a154` gives the
+ordinary supervisor fixtures a 25-second deadline and the deadline-specific
+case a 15-second window; its focused local supervisor suite passed all 15 tests.
+The full `f89a154` hosted batch remains pending. The background profile remains
+default-off; no partial result closes S3-03.
+
+Earlier hosted checkpoint `f9cb76f` failed the PostgreSQL LangGraph operation
+adapter job on the selected-adapter `inbox-before-ack` recovery case (220
+passed, 158 skipped, 1 failed). Review found a fixture race: after durable
+inbox commit, the blocked ACK callback yielded the event loop, allowing
+LangGraph to advance before the parent stopped the producer. The fixture now
+holds that loop at the intended pre-ACK boundary; local Windows ADK/SQLite and
+LangGraph/SQLite selections pass. At `8183776`, both the PostgreSQL
+LangGraph operation-adapter job and Windows operation-adapter recovery lane
+passed with the fixture correction. This resolves that recorded recurrence,
+while the wider S3-03 adapter, backend, platform and deployment gates remain
+open.
+
+The public DSL remains the unmodified Open Workflow 1.0.3 schema. Core owns the
+common adapter; ADK and LangGraph use their own existing native checkpoints.
+
+## HTTP and pure OpenAPI profile
+
+| Construct | Authored finite behavior | Qualification still required |
+| --- | --- | --- |
+| HTTP output | Exact bytes become ASCII base64 for `raw`; JSON/text and response projections retain existing semantics, including explicit null. | Empty/binary/UTF-8/null and all output modes in common/shared suites. |
+| HTTP method input | The generic HTTP adapter accepts an omitted method as `GET`, requires any supplied method to be a non-empty string, and enforces the ASCII HTTP token grammar before endpoint resolution or transport; malformed dynamic values are never coerced with `str()`. | Type and token-boundary regressions are authored for consolidated-batch validation; the broader HTTP profile remains part of the shared acceptance inventory. |
+| HTTP redirect | OWS status acceptance (`200–299`, or `200–399` when true) does not imply an automatic request to Location. | Known status errors and no redirected credential/destination access remain required; a credentialed redirect regression now asserts the source receives its bearer token and the Location is never requested. It is authored and awaits final-batch validation. |
+| OpenAPI version | Exact OAS `3.0.3` and `3.2.0`, finite selected-operation profile. Other versions reject; this is not full parser/conformance support. | Both versions, valid and negative schemas, document provenance. |
+| Description | Bounded strict UTF-8 JSON/YAML; public GET has no inherited business auth or client certificate. No aliases, anchors, arbitrary tags, duplicate keys, nonfinite values, opaque SSLContext or custom TLS transport. | Deterministic negative controls and actual description/business listener. |
+| Bounds | Description/canonical data at most 1 MiB, 10,000 nodes, depth32; up to32 selected local references; up to64 parameters per scope and8 security alternatives. | Exact edge/overflow cases and total original deadline/cancellation. |
+| References | Selected local JSON Pointer closure; malformed, external and recursive selected schema references reject. Unused references are not fetched. | Local reference binding and independent immutable corruption evidence. |
+| Operation | Unique case-sensitive operationId; operation/path/root server precedence; relative server and OAS3.2 `$self` base; finite declared server-variable defaults/enums. | Exact captured method/path/endpoint and duplicate/unsafe routing rejection. |
+| Parameters | Path/header `simple`; query/cookie `form`; scalar and flat array/object encoding; scalar cookies; explicit required/unknown/type constraints; path overrides. Ambiguous names across locations reject. | Slash/reserved-value encoding, structural delimiters, array/object/null, no unsafe header values. |
+| Schemas | Bounded selected primitive/object/array JSON Schema validation; OAS3.0.3 nullable and boolean exclusive bounds translated internally. Unsupported schema keywords, composition, regex, formats and recursive models reject. | Finite typed cases for both versions; no claim of arbitrary JSON Schema support. |
+| Responses | Declared matching media/JSON schemas validated before projection; other accepted HTTP statuses retain common projection. Text/plain and binary projection need no declared response schema; unsupported selected codec/schema profiles reject. Invalid dispatched JSON replies remain uncertain. | Typed/null/duplicate/mismatched replies and known status faults. |
+| Request body | Rejected before business dispatch until an authoritative OWS parameter-to-requestBody mapping is reviewed. No invented public `with.body`, method or server override. | Remains explicitly pending; no pass-through JSON-body substitution. |
+| Security | Named deployment bearer/API-key/mTLS or explicit OAuth client-credential binding; exact actual prepared endpoint grant/private tool binding; declared security requirements must match current profile. | Actual mTLS and missing/revoked/wrong endpoint/scope checks before secret resolution. |
+| Business transport | Same common HttpClient, original remaining deadline, logical operation key, TLS/DNS/host/byte bounds, known validated HTTP status faults. Timeout/connection/oversize failure after dispatch is uncertain, with no implicit business replay. | Root workflow uncertainty integration and real process-stop/recovery evidence. |
+
+## Private immutable selection and integration gates
+
+`OpenApiDescription` retains original canonical document JSON, retrieval URI and
+SHA-256. `OpenApiOperationSelection` uses `owa/openapi-operation/v1` and exact
+derived fields; `from_value` re-resolves the captured document and requires equality.
+It stores credential references only and excludes its transient remaining timeout.
+`prepare_request` constructs the actual encoded endpoint/query/headers from original
+parameters. Business credential grants apply to that actual endpoint, not the
+unexpanded route template. A description or securityScheme grants no credential
+authority.
+
+The independent durable-admission owner must atomically bind the real call identity,
+original input/principal/definition/transport/source/budget to completed
+`policy:openapi-operation:v1` receipt, decision row and index before business
+dispatch. Existing known receipts must retain this independent proof and never
+refetch mutable descriptions. Missing/changed proof, stale/lost generation and
+interrupted publication fail closed. Pending foreign-owner intents are never
+adopted. Native checkpoint skips must verify the policy dependency independently.
+
+RuntimeServices/ToolRegistry and imported-catalog forwarding are separate root-owned
+integration gates. Catalog transformation/trust must be preserved when forwarding
+private selections; mutable discovery without genuine admission context is not a
+qualified configured-tool recovery profile. Reusable OWS authentication remains
+its existing pending capability, distinct from named deployment security profiles.
+
+The registered-import regression in `tests/contract/test_openapi_calls.py`
+now observes the immutable selection forwarded from durable OpenAPI admission
+through the transformed catalog binding into `ExternalCatalogResolver`, and
+checks it against the persisted admission receipt as well as its operation,
+description digest, and pinned catalog reference alongside the existing parent
+invocation/principal proof. Its ADK/SQLite selected case passed locally.
+Imported workflow calls dispatch through the resolver and common
+`ProtocolServices`; they do not enter `ToolRegistry`, which remains a separate
+configured-agent-tool path. This source-level evidence does not close either
+integration gate or qualify imported recovery.
+
+The resolver also forwards the invocation's named OpenAPI authentication profile
+and exact endpoint grants to its protocol adapter. Catalog credentials remain
+host-bound to catalog requests, while an imported operation uses the separately
+admitted business endpoint authority. The focused native ADK/SQLite regression
+proves the business receiver gets the granted bearer credential; the complete
+ADK/LangGraph × SQLite/PostgreSQL selection remains part of the final batch.
+
+The existing agent-role call has an outer versioned agent-function effect
+receipt (`call:agent…`), so an interrupted role execution remains pending and
+is not automatically replayed.
+The agent tool step does not yet have its own durable transcript/result checkpoint;
+therefore a dispatched tool outcome cannot be independently resumed after a stop.
+Treat configured agent-tool recovery as unqualified until an actual native-process
+test proves the selected binding and explicit pending-versus-known outcome behavior
+across both engines and databases. This is fail-closed uncertainty, not an
+exactly-once guarantee.
+
+Required shared evidence covers actual ADK/LangGraph with SQLite/actual PostgreSQL,
+changed/deleted descriptions after reopen, value/null/fault known-receipt replay,
+distinct loop keys, original task deadlines, concurrent/stale workers and genuine
+OS stops before dispatch/after business commit/after receipt. Core tests and authored
+tables cannot substitute for those native/process/backend witnesses. Fixture counts
+will be pinned only after final source authoring and collection, then passing actual
+logs must show no mandatory skips/errors. Existing CTK/security/build/image/source
+hash and all six hosted acceptance gates remain independent.
+
+## Reviewed sources
+
+Scoped-batch OpenAPI evidence is recorded above; the following inventory also
+includes authored and unexecuted acceptance beyond that batch:
+
+- `tests/core/test_openapi_client.py`: 66 manually enumerated cases, including
+  host-drain cancellation propagating after the response stream closes. Ordinary
+  post-dispatch timeout/connection/oversize errors remain uncertain.
+- `tests/contract/test_openapi_calls.py`: 19 cases per principal/backend, 76 in
+  the authored ADK/LangGraph and SQLite/PostgreSQL grid. Includes registered
+  compatibility imports retaining the original parent lease/context and native
+  observer, immutable captured imports replaying with deleted catalog/description,
+  and uncertain imported actions bypassing catch/retry. The compatibility path
+  has an inner common action receipt; no separate outer receipt is assumed.
+- `tests/contract/test_openapi_process_recovery.py`: 12 cases per principal/backend,
+  48 in the authored grid. An actual verified HTTPS/mTLS peer commits a durable
+  operation ledger; a separate producer is killed before dispatch, after business
+  commit, after value/null/fault receipt, or after terminal finalization. Recovery
+  uses another PID, actual native history and natural lease expiry. Changed/deleted
+  descriptions must not be fetched again; known outcomes retain their original
+  policy/business proofs. A committed action without a receipt stays pending and
+  is never sent again. This finite proof does not grant generic receiver
+  reconciliation or an exactly-once guarantee.
+
+`tests/contract/test_agent_pattern_process_recovery.py` also authors a focused
+OpenAPI agent-tool boundary for ADK/LangGraph on SQLite/PostgreSQL. In the
+pending case, a configured assistant role calls the adapter against a
+non-deduplicating mock receiver, which commits one request to its independent
+ledger while the outer `call:agent-assistant:1.0.0@default` receipt remains
+pending. The producer is stopped and a separate process must fail closed after
+restart without another model or business request. In the known case, the receiver
+commits, the outer `call:agent-assistant:1.0.0@default` role receipt completes,
+and the invocation reaches a durable timer wait and returns its native
+suspended checkpoint before the producer is stopped. Recovery resumes from that
+wait without another model or business request, and a duplicate terminal resume
+leaves both ledgers unchanged. These
+eight ADK/LangGraph × SQLite/PostgreSQL cases are authored but unrun and do not
+qualify OpenAPI recovery.
+
+These are source inventories, not passing test counts. Backend/native presence,
+original identity/input/principal/deadline, zero extra metadata/business requests,
+cleanup, and mandatory no-skip execution remain required before qualification.
+
+[Pinned OWS 1.0.3 DSL reference](https://raw.githubusercontent.com/open-workflow-specification/specification/v1.0.3/dsl-reference.md)
+defines HTTP/OpenAPI raw and redirect behavior and the unchanged OpenAPI arguments.
+[OAS 3.0.3](https://spec.openapis.org/oas/v3.0.3.html) and
+[OAS 3.2.0](https://spec.openapis.org/oas/v3.2.0.html) define the reviewed finite
+operation/server/parameter/security rules. OAS3.2.1 is an explicit future review,
+not silently admitted by this finite implementation. Vendored OWS schema provenance
+remains in `resources/open-workflow/1.0.3/SCHEMA_SOURCE.md`.
+
+## Pure AsyncAPI description profile
+
+Status: authored, unqualified, transport inactive. `asyncapi_client.py` performs
+no description retrieval, broker connection, credential resolution, message send,
+poll, offset commit or acknowledgment. S3-03 remains unchecked. Existing workflow
+admission continues to reject `call: asyncapi`; these private descriptors do not
+enable it. The unchanged OWS `document`, `channel`/`operation`, `server`, `protocol`,
+`message`/`subscription` and `authentication` fields remain the public contract.
+
+`AsyncApiDescription` captures strict JSON or YAML and original document URI.
+Compact JSON preserves source object order: OWS chooses the first eligible server,
+so sorting server keys would alter routing. The exact captured bytes receive a
+SHA-256 digest. Frozen `AsyncApiOperationSelection` retains this original source,
+version, selector and derived channel/address/server/message/schema/binding/security
+strings. Its `owa/asyncapi-operation/v1` reconstruction re-resolves the source and
+requires equality. No private selector or broker configuration enters user JSON.
+
+| Area | Authored finite behavior | Required qualification or excluded behavior |
+| --- | --- | --- |
+| Versions | Exact `2.6.0`, `3.0.0`, `3.1.0`; version2 uses channel publish/subscribe; version3 uses operation send/receive with a matching caller mode. | Other versions reject. This is selected-operation parsing, not full AsyncAPI conformance or inversion of another application's API. |
+| Description bounds | 1 MiB raw/canonical document, 10,000 nodes, depth32; strict UTF-8/JSON values; duplicate/nonstring keys, nonfinite numbers, YAML tags/aliases/anchors reject. | Common HTTP metadata fetch, deployment trust and durable operation admission remain separate work. |
+| References | Selected local JSON Pointer closure, at most64 references; escaped pointer segments supported. | Missing, malformed, recursive or external selected references reject. Unused definitions are not fetched. |
+| Routing | Version-specific channel/message references, channel server subset, explicit server or first eligible original declaration, protocol filter, declared server-variable defaults/enums. Static version3 channel-parameter defaults are supported. | Unknown/unsafe variables, dynamic/ambiguous channel routing, unsupported protocols and foreign messages reject. A URI or description grants no network/credential authority. |
+| Messages | At most16 candidate JSON messages; finite Draft7 scalar/object/array constraints and local schema references; headers are objects; the message must match exactly one candidate. | Avro/Protobuf codecs, schema composition/regex/formats, traits and request/reply interactions reject. Tests must prove unique/ambiguous schemas and type/null behavior. |
+| Correlation | Declared `$message.header` or `$message.payload` JSON Pointer; typed nonempty string ID; an inbound supplied correlationId must agree. | No ambient expression evaluation or generated correlation identity. Broker delivery identity/deduplication is a separate gate. |
+| Bindings | HTTP0.3.0 and Kafka0.5.0 selected declarations parsed; HTTP method/query/header schemas, Kafka topic/group/client/key schema and bounded topic metadata retained. | No automatic HTTP POST, schema-registry lookup, topic creation, producer/consumer configuration or broker qualification. Unreviewed binding versions/fields reject. |
+| Security | Declared server and operation alternatives remain independent; named v2 schemes and local v3 scheme references, bounded client-credential OAuth descriptions and finite HTTP/Kafka mechanism declarations. | No secret resolution or credentials in descriptions; inline credential fields and unsupported flows reject. Parsing a mechanism does not enable its authentication implementation. |
+| Subscription descriptor | Original filtered consumption amount/while/until, filter, foreach and duration retained; while is after a filtered message, until before. Fixed day/time and integer-unit durations remain original inputs. | No consumer loop or second execution engine. Original absolute deadline, foreach native checkpoints, durable registration/inbox and offset ACK semantics remain unimplemented here. Calendar/unresolved duration profiles reject. |
+
+`tests/core/test_asyncapi_client.py` covers description/order/immutability,
+JSON/YAML, selected references, messages/correlation, server/security/binding,
+consumption-position and rejection witnesses; the focused local suite passed
+**134 tests**. This is pure descriptor evidence only. It does not establish
+actual broker, native, SQLite/PostgreSQL, cross-worker, process-stop or hosted
+CI behavior.
+
+External broker activation remains conditional on the concrete consumer/transport/
+deployment requirements in `Project Definition.md` section36 and
+`docs/event-integration-readiness.md`, with independent EVENT/S4-10 gates. A future
+Kafka network boundary must enforce the actual advertised broker destinations and
+credential authority; a configuration flag or a bootstrap-host allowlist alone
+does not prove that. Durable publication needs actual delivery acknowledgment;
+subscription needs durable inbox admission before a fenced explicit offset ACK,
+crash redelivery/deduplication and the existing native foreach executor. Source
+parsing, a producer's enqueue return and process-local events prove none of these.
+
+Reviewed official sources are [AsyncAPI2.6.0](https://raw.githubusercontent.com/asyncapi/spec/v2.6.0/spec/asyncapi.md),
+[AsyncAPI3.0.0](https://raw.githubusercontent.com/asyncapi/spec/v3.0.0/spec/asyncapi.md)
+and [AsyncAPI3.1.0](https://raw.githubusercontent.com/asyncapi/spec/v3.1.0/spec/asyncapi.md).
+The declared binding profiles follow immutable source
+[HTTP0.3.0](https://raw.githubusercontent.com/asyncapi/bindings/1f418fe7077096cc8f25d0c6518df617f7c303f3/http/README.md)
+and [Kafka0.5.0](https://raw.githubusercontent.com/asyncapi/bindings/1f418fe7077096cc8f25d0c6518df617f7c303f3/kafka/README.md).
+The [OWS1.0.3 AsyncAPI call reference](https://raw.githubusercontent.com/open-workflow-specification/specification/v1.0.3/dsl-reference.md)
+defines the unchanged selectors and filtered consumption timing.
+
+## Awaited executable return selection (authored, unqualified)
+
+The unchanged [OWS1.0.3 Run and processResult reference](https://raw.githubusercontent.com/open-workflow-specification/specification/v1.0.3/dsl-reference.md#run)
+requires default `stdout`, explicit `stderr`/`code`/`all`/`none`, and `all`
+with the public `code`, `stdout` and `stderr` fields. The existing private
+execution receipt retains the complete bounded SandboxExecutionResult before
+projection; return selection cannot erase outcome evidence or trigger a new
+execution on replay. Explicit `none` projects JSON null, and exit code zero
+remains an integer. Non-zero exits retain the existing common error contract;
+selecting `code` does not silently convert an execution failure into success.
+
+The common sandbox executor and admission now author these awaited modes.
+Script/shell/container backend opt-ins, exact image policies, workspace,
+resource/output/time bounds and cancellation remain prerequisites. Invalid
+return modes reject before dispatch. Executable `await:false` still rejects
+until the independent job/store/supervisor lifetime profile is implemented and
+qualified. This change does not activate background work or weaken isolation.
+
+`test_sandbox_contract.py` authors 48 actual native SDK/internal script/shell
+mode/reusable-function cases, including nonempty stderr, plus existing retry
+and lifecycle checks. `test_sandbox_effect_recovery.py` adds 20 principal/backend
+mode cases with actual native persistence and common outcome retention across
+interruption before native commit; its fake backend proves common receipt
+semantics, not a physical restart or selected container execution. Existing
+container fake contracts now expect default stdout. Eleven admission witnesses
+check all declared modes, deployment rejection, background rejection and invalid
+selectors. These fixtures remain unexecuted during authoring. Actual backend,
+process-stop, platform, packaging and hosted qualification remain outstanding.
+
+OpenAPI's `operationId` is solely its description selector. Both standalone
+protocol calls and workflow calls now keep it separate from business logical
+operation identity. The authored standalone identity witness and shared loop
+witness require distinct calls/occurrences to use distinct action keys while
+retaining an explicitly stamped/recovered key. No test execution is claimed.
+
+## Selected container field admission (authored, unqualified)
+
+The restricted Docker controller's existing fixed pull policy is `never`; the
+Kubernetes controller constructs pods with `IfNotPresent`. Explicit OWS
+`pullPolicy` now must match the selected controller's implemented policy, so
+`always` and other mismatching explicit policies reject before action admission.
+The historical Docker profile remains limited to deployment-approved preloaded
+images; this does not qualify general registry pulling or default-policy behavior
+for an uncached image. Neither controller qualifies arbitrary container lifetime
+settings: explicit `lifetime` now rejects instead of being discarded by the
+request builder. The Kubernetes backend does not implement stdin, so present
+stdin (including empty or dynamic values) rejects during workflow admission;
+Docker's existing stdin boundary retains separate acceptance.
+
+Thirty source-level compiler witnesses cover all three official policy values,
+both selected controllers, inline/reusable functions, declared lifetime modes,
+input-source immutability and Kubernetes stdin. They launch no controller and
+remain unexecuted. Existing DEPLOY-1/Docker acceptance is not proof of new
+lifetime, pulling, mappings, language or background profiles. Public schema and
+controller execution APIs remain unchanged. Real selected-backend proof and the
+full proposed T40/T41 inventories stay separately required.
+
+
+## Authored embedded background executable profile, unqualified
+
+The implementation is held behind the internal constant
+`BACKGROUND_EXECUTION_PROFILE_QUALIFIED`, which is false until this profile's
+acceptance gates pass. While false, deployment configuration cannot advertise
+`backgroundExecution` or admit `run.await: false`. Tests may override the
+constant inside an isolated test process only to exercise the authored runtime;
+there is no environment or deployment setting that enables the production path.
+
+The explicit deployment switch is `sandbox.background.enabled`, false by default.
+Activation requires an enabled internal sandbox and a persistent common SQLite
+file. PostgreSQL and external/container background activation reject before engine
+ownership, native execution or process launch. PostgreSQL job-ledger fixtures prove
+only the common store; they do not qualify a PostgreSQL supervisor.
+
+Executable `run.await: false` atomically retains a completed logical run acceptance
+and independent `policy:sandbox-job-admission:v1` receipt under the real original
+invocation lease. Both receipts enter the engine's native dependency lane. Its
+output is exactly the transformed task input, including explicit nulls; no job ID,
+exit/result projection or future completion is substituted. Admissions retain the
+original archived source/raw input/principal, transformed request/input, deployment
+profile and original task/root absolute budget. Missing/changed/index-orphaned
+proofs and foreign pending intents reject; no ambiguous submit is retried.
+The read-only continuation preflight bounds per-invocation job proof enumeration
+at 10,000 rows and rejects overflow; it never silently skips later evidence.
+
+A common observer uses an independent fenced job lease and the common manager to
+contact the bundled authenticated supervisor. Parent completion, cancellation,
+END or runtime drain does not implicitly cancel an independent job. Runtime start
+and stop only start/stop this observer. Explicit job controls are separately
+immutable; actual known exit and control ACK are not interchangeable. A verified
+original-deadline outcome has its own independent receipt so an earlier cancel
+intent can remain immutable without relabeling the actual deadline exit.
+
+This is a controlled internal execution boundary, not hard isolation. A living
+supervisor enforces the original absolute wall-time budget; supervisor loss remains
+uncertain and cannot authorize PID adoption, outcome fabrication or relaunch.
+POSIX supervisor loss does not prove orphan wall-time termination. Durable
+background environment values currently require deployment-approved secret
+references; synchronous literal environment semantics are unchanged. No resolved
+secrets are persisted in ordinary admission, receipt or supervisor bootstrap.
+
+`tests/contract/test_background_job_recovery.py` passed 13 local SQLite cases
+for each principal engine. This includes four real native OS-stop boundaries
+(receipt, parent completion, cancellation, and runtime drain) and native
+nonterminal proof failures before submit. The remaining acceptance includes
+actual PostgreSQL atomic ledger/control/corruption fixtures, broader embedded
+supervisor cases, and hosted evidence. Rejection witnesses require unchanged
+parent owner generation and native snapshot, no supervisor launch and no
+business commit. Those workers publish actual producer/supervisor/child/recovery
+PIDs, kill the producer through its real OS handle, preserve the original
+deadline and receipt identities, and require exactly one real business commit.
+No backend qualification or task checkbox is claimed from the local selection.
+
+Hosted Windows SQLite recovery uses a dedicated ADK/native and LangGraph/SQLite
+matrix with `OWA_TEST_REQUIRED_ENGINE`; an unavailable selected SDK fails the
+job instead of turning its recovery cases into skips. The existing broad
+operation-adapter lane remains supplemental and cannot stand in for either
+required engine lane.
+
+## Authored unary gRPC profile, unqualified
+
+The default `protocols.grpc_bindings` registry is empty and `call: grpc` remains
+disabled unless an explicit deployment profile passes admission. The authored
+client pins `grpcio==1.84.0` and `protobuf==7.36.1`; installed SDK versions and
+physical binary/source fingerprints are retained in the recovery profile. The
+reviewed gRPC source is commit
+`3252a89f10d8e92997862167ca7d095ecda85973`, the immutable v1.84.0 release.
+Core owns `grpc.aio` unary transport; adapters retain existing native tasks and
+checkpoints and do not construct another execution or subprocess path.
+
+A named deployment binding contains original UTF-8 proto text, its SHA-256,
+a bounded compiled FileDescriptorSet and its SHA-256, declared document URI,
+destination/service/method, limits, and an exact credential endpoint grant.
+Raw descriptors are bounded to 1 MiB and at most128 registry entries. Registry
+validation occurs before invocation ownership or business dispatch. No runtime
+protoc, descriptor reflection, arbitrary generated-code imports, untrusted paths,
+remote descriptor fetch or automatic registration is used.
+
+The finite closed descriptor/ProtoJSON profile validates fields, oneofs, enums,
+bytes, int64 values, request/response limits and the selected service/method.
+Streaming RPCs and unsupported descriptor constructs reject before connection.
+Root google.protobuf Value/ListValue response codecs reject at descriptor
+admission; a declared response message may contain supported nested Value/null
+data. Whole-list/root-null projection is not silently lost after dispatch.
+Channel construction preserves explicit DNS destination policy, TLS authority and
+certificate verification, exact prepared authentication grants, stable logical
+operation metadata and the original remaining deadline. Transparent retry,
+proxy and service-config-driven retry are disabled.
+
+A validated declared remote application-status trailer provides a known fault.
+A client-generated/transport failure after sending instead raises the private
+uncertain-outcome control: the common action stays pending and workflow catch or
+retry cannot resend it. Host interruption propagates cancellation while closing
+the call. Known value/null/fault receipts retain original policy/source/input,
+clock and native dependency proofs and recover without a second business call.
+Activated profile drift or damaged admission fails before lease/native/receiver
+mutation. Captured imported workflows retain their original common service and
+owner context; mutable catalog content is not substituted during replay.
+
+Authored inventories and latest local results:
+
+- `tests/core/test_grpc_client.py`: 77 authored client/registry/type/security cases;
+  the focused local run passed all 77 on 2026-10-18. This does not qualify the
+  cross-engine/backend workflow matrix or source-frozen hosted acceptance.
+- `tests/contract/test_grpc_calls.py`: 17 per principal/backend, 68 across actual
+  ADK/LangGraph and SQLite/PostgreSQL, including imported workflows, null/value/
+  fault recovery, logical loop identity, deadline, uncertainty and ownership.
+  Local SQLite selections passed 22 cases for each principal engine; PostgreSQL
+  and hosted execution remain required.
+- `tests/contract/test_grpc_process_recovery.py`: 5 per principal/backend, 20
+  across the same grid. An independent pinned grpc.aio peer retains a no-dedup
+  business ledger. Actual producer termination and a different recovery PID
+  preserve original v1 source/input/action key/absolute deadline/native session.
+  Committed calls lacking a receipt remain pending without resend; known value/
+  fault outcomes recover across the native-commit gap without another call.
+  Missing archived binding and changed descriptors fail before mutation.
+- Windows hosted SQLite qualification uses a required ADK/native and
+  LangGraph/SQLite matrix; missing native SDKs fail rather than disappear as
+  skipped cases.
+- `tests/core/test_internal_sandbox_jobs.py`: 21 authored supervisor/IPC/platform
+  cases authored separately, including a real independently living supervisor,
+  real exit codes, manager drain, original deadline/late-cancel race, stale
+  controls, resource uncertainty, supervisor loss and no ambiguous relaunch.
+
+Actual native SDK availability, persistent SQLite/actual PostgreSQL selection,
+zero unexpected receiver/model calls, complete cleanup, source-frozen full-suite,
+packaging/image/security and hosted evidence remain mandatory gates. These
+profiles remain unchecked and unqualified; no broad gRPC conformance, streaming,
+generic reconciliation, external supervisor or PostgreSQL background lifetime is
+claimed.
+
+[Pinned gRPC AsyncIO channel implementation](https://github.com/grpc/grpc/blob/3252a89f10d8e92997862167ca7d095ecda85973/src/python/grpcio/grpc/aio/_channel.py),
+[official gRPC v1.84.0 release](https://github.com/grpc/grpc/releases/tag/v1.84.0),
+and [ProtoJSON rules](https://protobuf.dev/programming-guides/json/) define the
+reviewed client and encoding boundaries.
+
+## Review corrections before the first behavioral batch
+
+Independent source review found and corrected unsafe OpenAPI authority/framing
+headers, HTTPX dot-segment route normalization, orphan business action indexes,
+configured endpoint forwarding and original timeout propagation. Description
+selection grants no permission to override the actual wire authority or endpoint.
+The reviewed OWS1.0.3 OpenAPI table defines named parameters but no requestBody
+mapping; required requestBody profiles remain explicitly rejected pending a
+reviewed mapping, rather than receiving an invented public argument.
+
+gRPC now rejects permissive protobuf byte/enum coercions in scalar, repeated and
+map values, and rejects packed Any in the selected descriptor closure. Pure
+evaluated-request validation precedes the business intent; dispatch repeats it.
+The client's own named authentication retains its configured CA, while a foreign
+profile cannot inherit that trust. IPC publication failures remove only the
+owned temporary file and preserve original frames and one-time bootstrap history.
+
+Background identity/dependency serialization normalizes only private dataclass
+occurrence arrays, retaining strict validation of untrusted task input. Actual
+manager/backend request validation checks transformed input sizes, operation,
+runtime, executable availability and approved references before job acceptance.
+Transient queue-scan failures retain bounded diagnostic categories and leave the
+observer polling; an uncertain submission remains inspect-only.
+
+The embedded supervisor retains read-only ordinary inspection. Physical launch,
+Windows suspended-process resume and explicit control termination use a bounded
+write reservation on the already-selected existing SQLite database, with no
+adoption, bootstrap or evidence updates. Guards recheck the current generation,
+DB clock, original source/input/deadline, submit nonce and control. Rejected
+control does not terminate an independent live job; autonomous original deadline
+remains effective after observer expiry. New gated real-process/SQLite tests
+require these properties. The internal process boundary remains controlled,
+and does not provide container/VM hard isolation.
+
+All corrections and their authored tests remain unqualified until the coherent
+source is frozen and every required behavioral, native, process, platform,
+database, package, image, security and publication gate finishes successfully.
+No source review, inventory count, parser or fake backend proves those gates.
+
+[Pinned OWS1.0.3 OpenAPI call contract](https://github.com/open-workflow-specification/specification/blob/v1.0.3/dsl-reference.md#openapi-call)
+is the public argument authority.
+
+## First frozen batch and grouped corrections
+
+Source `f2220334c90e0d853fb348817fea5cbb3f08b218` retained 979 unchanged tracked
+inputs throughout its four local profiles. Root ended with 44 failures, 716
+passes, 140 skips and two setup/teardown errors; ADK and LangGraph each ended
+with 20 failures, 115 passes and 246 skips; optional Agent Framework ended with
+59 passes and 358 skips. Five independent fresh builds passed. These results
+do not qualify any unfinished profile. Original logs, commands, source manifest
+and exit records are retained under `tmp/operation-batch-f222033-*` locally.
+
+The coherent correction set preserves those failures. AsyncAPI positive fixtures
+now avoid accidental YAML anchors, and oversize cases keep their actual sizes
+with bounded parameter identifiers. Pure job fixtures use an available executable;
+Kubernetes admission fixtures declare the network-policy prerequisite they are
+testing. A genuine SQL NULL control remains NULL instead of being classified as
+malformed; cancellation, malformed and oversize controls retain independent
+read-only rejection witnesses. Corruptible shared PostgreSQL definition fixtures
+have unique public source identities rather than damaging another fixture's
+archive. Native checkpoint snapshots retain bytes through a typed SHA/length
+representation and preserve before/after equality checks.
+
+OpenAPI fixtures use valid public function arguments and an actual JSON null
+response. Unknown dispatched outcomes retain structured pending assertions.
+Shutdown after failed initialization is safe and has dedicated coverage. The
+repository-owned CTK A2A listener now emits a correlated pinned typed Task wire
+response; its expected public result follows that response. Upstream CTK material
+and provenance remain unchanged, and fresh current-source CTK evidence is still
+required. The corrected batch must finish before any passing claim replaces this
+failed history.
+
+The exact-source `67aa724` hosted checkpoint also failed: root had three failing
+cases (one secret-safety A2A request missing its required message ID and two CTK
+wire fixtures), both shared principal suites each had one legacy-scalar event
+worker startup failure, PostgreSQL ADK had that same failure, PostgreSQL LangGraph
+had that failure plus 16 manual invocation-state cases, optional Framework had
+three CTK failures, and Windows timing had the legacy worker failure. Both standard
+images, PostgreSQL common store, both PostgreSQL lifecycle suites, optional
+Framework PostgreSQL recovery, other Windows profiles, audits, docs and external
+controller checks passed; the aggregate checkpoint remains failed.
+
+The legacy producer accidentally imported a current test helper that imports
+TimerDispatcher, absent from its intentionally archived runtime. A local standard
+library atomic writer removes that dependency; mode-specific sanitized diagnostics
+retain original deadlines and checkpoints. Manual invocation-state tests opt into
+the existing explicit delivery fixture so automatic dispatch cannot consume earlier
+shared-database timers with a different test's model. Premature terminal execution
+now reports bounded safe categories within the original ten-second fixture gate.
+The secret-safety positive request supplies the pinned required message ID and
+asserts a successful response before its original no-secret checks. All changes
+require the next frozen behavioral and hosted batch.
+
+The correction batch at `9570557316014542fe10bfbd2361f70e2968df05` froze
+980 inputs. Root ended with 22 failures, 755 passes and 140 skips; optional
+Framework ended with three failures, 251 passes and 429 skips. Both retained
+unchanged-source evidence. Principal native profiles are still running; no
+aggregate success is claimed. Five fresh independent builds passed again.
+
+The next grouped source fixes add the missing process-limit prerequisite in the
+pure Kubernetes policy fixture and finish the repository-owned A2A wire fixture
+migration to `SendMessage` and version-1 text Parts. Actual supervisor handling
+now distinguishes an early asyncio timer wake from a signaled control request,
+preserving the same original autonomous deadline and independent process. Windows
+supervisor-loss cleanup accepts stale-PID error 87 only after a fresh limited
+process query proves absence or actual exit; live-process and unrelated errors
+still fail. Real early-wake continuity and live-PID negative witnesses are authored.
+These corrections remain unqualified until the next coherent batch.

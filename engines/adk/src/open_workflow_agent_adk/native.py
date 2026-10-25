@@ -2,15 +2,42 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
-from collections.abc import Awaitable, Callable
+import os
+import sqlite3
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import aclosing, asynccontextmanager, closing
+from dataclasses import asdict, dataclass, replace
+from importlib import import_module
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunsplit
 
+from open_workflow_agent.child_rescan import child_rescan_wake, verify_child_rescan_wake
+from open_workflow_agent.child_suspension import ChildSuspension
+from open_workflow_agent.effects import (
+    EffectIdentity,
+    EffectJournal,
+    EffectReceipt,
+    ReceiptDependency,
+)
+from open_workflow_agent.errors import InvocationStateConflict, InvocationStateError
+from open_workflow_agent.execution_authorization import AUTHORITY_OPERATION
+from open_workflow_agent.expressions import validate_expression_data
+from open_workflow_agent.ownership import (
+    NativeWriteFence,
+    install_sqlite_native_fence,
+    run_native_storage_write,
+    translate_native_fence_error,
+)
 from open_workflow_agent.storage import is_postgresql_datasource
+from open_workflow_agent.timers import TimerSuspension
+from open_workflow_agent.timing import root_clock_identity
 
 try:
     from google.adk.agents.context import Context
+    from google.adk.events.request_input import RequestInput
     from google.adk.runners import Runner
     from google.adk.sessions import InMemorySessionService
     from google.adk.sessions.sqlite_session_service import SqliteSessionService
@@ -20,6 +47,7 @@ try:
     ADK_AVAILABLE = True
 except ImportError:  # pragma: no cover - exercised in the core-only environment
     Context = None  # type: ignore[assignment]
+    RequestInput = None  # type: ignore[assignment]
     Runner = None  # type: ignore[assignment]
     InMemorySessionService = None  # type: ignore[assignment]
     SqliteSessionService = None  # type: ignore[assignment]
@@ -39,6 +67,430 @@ except ImportError:  # pragma: no cover - optional ADK db extra
 # honors the propagated idempotency key.
 ADK_RESUME_STRATEGY = "replay_with_stable_operation_ids"
 
+_RECEIPT_AUTHOR = "owa_receipt_dependencies"
+
+
+def _timer_wake_matches(suspension: TimerSuspension, wake: Any) -> bool:
+    return bool(
+        isinstance(wake, dict)
+        and set(wake) == {"timer_key", "due_at", "reason"}
+        and wake["timer_key"] == suspension.timer_key
+        and type(wake["due_at"]) in {int, float}
+        and wake["due_at"] == suspension.due_at
+        and isinstance(wake["reason"], str)
+        and wake["reason"] in {"timer_due", "resume_requested"}
+    )
+
+
+def _child_wake_matches(suspension: ChildSuspension, wake: Any) -> bool:
+    return bool(
+        isinstance(wake, dict)
+        and set(wake) == {"child_key", "child_id", "request_digest", "deadline_at", "reason"}
+        and wake["child_key"] == suspension.identity.key
+        and wake["child_id"] == suspension.child_id
+        and wake["request_digest"] == suspension.request_digest
+        and wake["deadline_at"] == suspension.deadline_at
+        and (wake["deadline_at"] is None or type(wake["deadline_at"]) in {int, float})
+        and isinstance(wake["reason"], str)
+        and wake["reason"] in {"child_terminal", "deadline"}
+    )
+
+
+def _child_admission(
+    context: AdkRecoveryContext, suspension: ChildSuspension
+) -> tuple[EffectIdentity, EffectReceipt]:
+    identity = suspension.identity
+    if (
+        context.child_waits is None
+        or identity.invocation_id != context.invocation_id
+        or identity.workflow_fingerprint != context.workflow_fingerprint
+        or identity.task_reference not in context.task_references
+    ):
+        raise InvocationStateError("native child admission identity is inconsistent")
+    registration = context.child_waits.registration(identity)
+    policy_identity = replace(identity, operation="policy:child-await:v1")
+    receipt = context.journal.get(policy_identity)
+    if (
+        registration is None
+        or registration.identity != identity
+        or registration.suspension.as_value() != suspension.as_value()
+        or receipt is None
+        or receipt.status != "completed"
+        or receipt != registration.receipt
+    ):
+        raise InvocationStateError("native child admission evidence is inconsistent")
+    return policy_identity, receipt
+
+
+def _timer_requests(
+    session: Any, invocation_id: str, context: AdkRecoveryContext | None = None
+) -> dict[str, TimerSuspension | ChildSuspension]:
+    """Validate native request/response history before re-entering the runner."""
+    pending: dict[str, TimerSuspension | ChildSuspension] = {}
+    checkpointed_receipts: dict[str, ReceiptDependency] = {}
+    for event in session.events:
+        if event.invocation_id != invocation_id:
+            continue
+        if event.author == _RECEIPT_AUTHOR and isinstance(event.custom_metadata, dict):
+            dependencies = [
+                ReceiptDependency.from_value(value)
+                for value in event.custom_metadata.get("receipts", ())
+            ]
+            checkpointed_receipts = {value.identity.key: value for value in dependencies}
+        for part in event.content.parts if event.content and event.content.parts else ():
+            call = part.function_call
+            if call is not None and call.name == "adk_request_input":
+                payload = (call.args or {}).get("payload")
+                suspension: TimerSuspension | ChildSuspension
+                if (
+                    isinstance(payload, dict)
+                    and payload.get("profile") == "owa/child-suspension/v1"
+                ):
+                    suspension = ChildSuspension.from_value(payload)
+                    prefix, key = "owa-child:", suspension.identity.key
+                else:
+                    suspension = TimerSuspension.from_value(payload)
+                    prefix, key = "owa-timer:", suspension.timer_key
+                identity = suspension.identity
+                if (
+                    call.id != prefix + key
+                    or identity.invocation_id
+                    != (context.invocation_id if context is not None else invocation_id)
+                    or call.id in pending
+                ):
+                    raise InvocationStateError("native timer request identity is inconsistent")
+                if isinstance(suspension, ChildSuspension):
+                    if context is None:
+                        raise InvocationStateError("native child recovery context is absent")
+                    _child_admission(context, suspension)
+                elif context is not None:
+                    armed = context.journal.get(identity)
+                    if (
+                        identity.workflow_fingerprint != context.workflow_fingerprint
+                        or identity.task_reference not in context.task_references
+                        or armed is None
+                        or armed.status != "completed"
+                        or not isinstance(armed.output, dict)
+                        or armed.output.get("due_at") != suspension.due_at
+                    ):
+                        raise InvocationStateError("native timer arming evidence is inconsistent")
+                pending[call.id] = suspension
+            response = part.function_response
+            if response is not None:
+                requested = pending.get(response.id or "")
+                rescan = (
+                    isinstance(response.response, dict)
+                    and response.response.get("profile") == "owa/child-rescan/v1"
+                )
+                if rescan:
+                    if (
+                        response.name != "adk_request_input"
+                        or not isinstance(requested, ChildSuspension)
+                        or context is None
+                        or context.child_waits is None
+                    ):
+                        raise InvocationStateError("native child rescan response is inconsistent")
+                    verify_child_rescan_wake(
+                        response.response,
+                        requested,
+                        child_waits=context.child_waits,
+                        journal=context.journal,
+                        dependencies=checkpointed_receipts,
+                        invocation_id=context.invocation_id,
+                        workflow_fingerprint=context.workflow_fingerprint,
+                    )
+                    del pending[response.id]
+                    continue
+                matches = (
+                    _child_wake_matches(requested, response.response)
+                    if isinstance(requested, ChildSuspension)
+                    else requested is not None and _timer_wake_matches(requested, response.response)
+                )
+                if response.name != "adk_request_input" or requested is None or not matches:
+                    raise InvocationStateError("native timer response is inconsistent")
+                if isinstance(requested, ChildSuspension):
+                    if context is None or context.child_waits is None:
+                        raise InvocationStateError("native child recovery context is absent")
+                    known = context.child_waits.known_wakes(
+                        context.invocation_id, context.workflow_fingerprint
+                    )
+                    if known.get(requested.identity.key) != response.response:
+                        raise InvocationStateError("native child response evidence is inconsistent")
+                del pending[response.id]
+    return pending
+
+
+@dataclass(frozen=True, slots=True)
+class AdkRecoveryContext:
+    """Private common identity and receipt service; the SDK owns saved events."""
+
+    invocation_id: str
+    workflow_fingerprint: str
+    task_references: frozenset[str]
+    journal: EffectJournal
+    metadata: dict[str, Any]
+    require_waiting: bool = False
+    uses_timing: bool = False
+    child_waits: Any = None
+    authority_admission: EffectIdentity | None = None
+
+
+class _ReceiptEvents:
+    def __init__(self, context: AdkRecoveryContext) -> None:
+        self.context = context
+        self.sequence = 0
+        self.dependencies: dict[str, ReceiptDependency] = {}
+        self.lock = asyncio.Lock()
+
+    def restore(self, session: Any, invocation_id: str) -> None:
+        frames = [
+            event.custom_metadata
+            for event in session.events
+            if event.invocation_id == invocation_id and event.author == _RECEIPT_AUTHOR
+        ]
+        if not frames:
+            raise ValueError("native receipt events are absent")
+        waiting = False
+        for frame in sorted(frames, key=lambda item: item["sequence"]):
+            if not isinstance(frame, dict) or set(frame) != {
+                "version",
+                "invocation_id",
+                "workflow_fingerprint",
+                "sequence",
+                "phase",
+                "receipts",
+            }:
+                raise ValueError("native receipt event fields are invalid")
+            if (
+                type(frame["version"]) is not int
+                or frame["version"] != 1
+                or type(frame["sequence"]) is not int
+                or frame["sequence"] != self.sequence + 1
+                or frame["invocation_id"] != self.context.invocation_id
+                or frame["workflow_fingerprint"] != self.context.workflow_fingerprint
+                or frame["phase"] not in {"running", "receipt", "waiting"}
+                or not isinstance(frame["receipts"], list)
+            ):
+                raise ValueError("native receipt event identity is invalid")
+            dependencies: dict[str, ReceiptDependency] = {}
+            for raw in frame["receipts"]:
+                dependency = ReceiptDependency.from_value(raw)
+                identity = dependency.identity
+                authority_admission = (
+                    identity.operation == AUTHORITY_OPERATION
+                    and identity == self.context.authority_admission
+                )
+                if authority_admission:
+                    # The adapter supplies the exact common handle identity.
+                    # Reading this policy receipt independently verifies its
+                    # retained authority and original definition binding.
+                    dependency.verify(self.context.journal)
+                if (
+                    identity.invocation_id != self.context.invocation_id
+                    or identity.workflow_fingerprint != self.context.workflow_fingerprint
+                    or (
+                        identity.task_reference not in self.context.task_references
+                        and not authority_admission
+                        and not (
+                            self.context.uses_timing
+                            and identity
+                            == root_clock_identity(
+                                self.context.invocation_id, self.context.workflow_fingerprint
+                            )
+                        )
+                    )
+                    or identity.key in dependencies
+                ):
+                    raise ValueError("native receipt dependency identity is invalid")
+                dependencies[identity.key] = dependency
+            if any(dependencies.get(key) != value for key, value in self.dependencies.items()):
+                raise ValueError("native receipt dependency history disagrees")
+            self.dependencies = dependencies
+            self.sequence = frame["sequence"]
+            if frame["phase"] == "running":
+                waiting = False
+            elif frame["phase"] == "waiting":
+                waiting = True
+        # An independent fork branch may finish an action after a sibling
+        # enters a durable wait. Its later receipt preserves that wait.
+        if self.context.require_waiting and not waiting:
+            raise ValueError("native waiting event is absent")
+        for dependency in self.dependencies.values():
+            dependency.verify(self.context.journal)
+        for suspension in _timer_requests(session, invocation_id, self.context).values():
+            if isinstance(suspension, ChildSuspension):
+                identity, receipt = _child_admission(self.context, suspension)
+                if self.dependencies.get(identity.key) != ReceiptDependency.capture(
+                    identity, receipt
+                ):
+                    raise ValueError("native child admission dependency is absent")
+
+    async def publish(
+        self,
+        sessions: Any,
+        session: Any,
+        invocation_id: str,
+        phase: str,
+        identity: EffectIdentity | None = None,
+        receipt: EffectReceipt | None = None,
+    ) -> None:
+        async with self.lock:
+            if identity is not None and receipt is not None:
+                dependency = ReceiptDependency.capture(identity, receipt)
+                existing = self.dependencies.get(identity.key)
+                if existing is not None and existing != dependency:
+                    raise InvocationStateError("native receipt dependency changed")
+                self.dependencies[identity.key] = dependency
+            frame = {
+                "version": 1,
+                "invocation_id": self.context.invocation_id,
+                "workflow_fingerprint": self.context.workflow_fingerprint,
+                "sequence": self.sequence + 1,
+                "phase": phase,
+                "receipts": [asdict(self.dependencies[key]) for key in sorted(self.dependencies)],
+            }
+            event = import_module("google.adk.events").Event(
+                invocation_id=invocation_id,
+                author=_RECEIPT_AUTHOR,
+                custom_metadata=frame,
+            )
+            await sessions.append_event(session=session, event=event)
+            self.sequence += 1
+
+
+def _native_input_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate native input field")
+        result[key] = value
+    return result
+
+
+if SqliteSessionService is not None:
+
+    class _ClosingSqliteSessionService(SqliteSessionService):  # type: ignore[misc]
+        """Bound the pinned SDK migration probe's synchronous connection lifetime.
+
+        The upstream probe uses sqlite3's transaction context manager, which
+        does not close its connection. On Windows that retains a file handle
+        until garbage collection and prevents deterministic storage cleanup.
+        All session/checkpoint operations remain native ADK behavior.
+        """
+
+        _execution_fence: NativeWriteFence | None = None
+
+        async def get_session(self, *args: Any, **kwargs: Any) -> Any:
+            # A native read can hold a SQLite reader lock across awaits. Drain
+            # it independently of synchronous common-store writes on the main
+            # loop, so a fenced native commit can obtain its final write lock.
+            original = super().get_session
+            return await run_native_storage_write(lambda: original(*args, **kwargs))
+
+        async def create_session(self, *args: Any, **kwargs: Any) -> Any:
+            original = super().create_session
+            if self._execution_fence is None:
+                return await original(*args, **kwargs)
+            return await run_native_storage_write(lambda: original(*args, **kwargs))
+
+        async def append_event(self, *args: Any, **kwargs: Any) -> Any:
+            original = super().append_event
+            if self._execution_fence is None:
+                return await original(*args, **kwargs)
+            return await run_native_storage_write(lambda: original(*args, **kwargs))
+
+        async def delete_session(self, *args: Any, **kwargs: Any) -> Any:
+            original = super().delete_session
+            if self._execution_fence is None:
+                return await original(*args, **kwargs)
+            return await run_native_storage_write(lambda: original(*args, **kwargs))
+
+        @asynccontextmanager
+        async def _get_db_connection(self) -> AsyncIterator[Any]:
+            async with super()._get_db_connection() as db:
+                if self._execution_fence is not None:
+                    await install_sqlite_native_fence(
+                        db,
+                        self._execution_fence,
+                        native_database=self._db_path,
+                        tables=("app_states", "user_states", "sessions", "events"),
+                    )
+                try:
+                    yield db
+                except BaseException as exc:
+                    await db.rollback()
+                    translate_native_fence_error(exc)
+                    raise
+
+        def _is_migration_needed(self) -> bool:
+            if not os.path.exists(self._db_path):
+                return False
+            try:
+                with closing(
+                    sqlite3.connect(self._db_connect_path, uri=self._db_connect_uri)
+                ) as db:
+                    exists = db.execute(
+                        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='events'"
+                    ).fetchone()
+                    if not exists:
+                        return False
+                    columns = [row[1] for row in db.execute("PRAGMA table_info(events)").fetchall()]
+                    return "event_data" not in columns
+            except sqlite3.Error as exc:
+                raise RuntimeError("unable to inspect ADK session schema") from exc
+
+
+if _DatabaseSessionService is not None:
+
+    class _FencedDatabaseSessionService(_DatabaseSessionService):  # type: ignore[misc]
+        _execution_fence: NativeWriteFence | None = None
+        _native_write_factory: Callable[[], Any] | None = None
+
+        async def _write(self, method: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
+            if self._native_write_factory is None:
+                return await getattr(super(), method)(*args, **kwargs)
+            factory = self._native_write_factory
+
+            async def write() -> Any:
+                worker = factory()
+                worker._execution_fence = self._execution_fence
+                try:
+                    return await getattr(worker, method)(*args, **kwargs)
+                finally:
+                    await worker.close()
+
+            return await run_native_storage_write(write)
+
+        async def create_session(self, *args: Any, **kwargs: Any) -> Any:
+            return await self._write("create_session", args, kwargs)
+
+        async def append_event(self, *args: Any, **kwargs: Any) -> Any:
+            return await self._write("append_event", args, kwargs)
+
+        async def delete_session(self, *args: Any, **kwargs: Any) -> Any:
+            return await self._write("delete_session", args, kwargs)
+
+        @asynccontextmanager
+        async def _rollback_on_exception_session(
+            self, *, read_only: bool = False
+        ) -> AsyncIterator[Any]:
+            async with super()._rollback_on_exception_session(read_only=read_only) as session:
+                if self._execution_fence is not None and not read_only:
+                    statement, values = self._execution_fence.postgresql_guard()
+                    parameters = {}
+                    for index, value in enumerate(values):
+                        name = f"owa_owner_{index}"
+                        statement = statement.replace("?", f":{name}", 1)
+                        parameters[name] = value
+                    row = await session.execute(
+                        import_module("sqlalchemy").text(statement), parameters
+                    )
+                    if row.first() is None:
+                        raise InvocationStateConflict(
+                            "invocation execution ownership has expired or changed"
+                        )
+                yield session
+
 
 class NativeAdkRunner:
     """Execute a plan through an ADK dynamic FunctionNode child."""
@@ -49,27 +501,7 @@ class NativeAdkRunner:
     def __init__(self) -> None:
         self.available = ADK_AVAILABLE
 
-    async def invoke(
-        self,
-        runner: Callable[[Any], Awaitable[Any]],
-        input_data: Any,
-        *,
-        session_id: str,
-        user_id: str | None,
-        database_path: str | None = None,
-        invocation_id: str | None = None,
-    ) -> Any:
-        if (
-            not ADK_AVAILABLE
-            or Runner is None
-            or InMemorySessionService is None
-            or FunctionNode is None
-            or Context is None
-            or types is None
-        ):
-            raise RuntimeError("google-adk 2.x is not installed")
-        app_name = "open-workflow-agent"
-        user = user_id or "owa-user"
+    def _session_service(self, database_path: str | None) -> Any:
         if database_path and is_postgresql_datasource(database_path):
             if _DatabaseSessionService is None:
                 raise RuntimeError("PostgreSQL ADK persistence requires google-adk[db] and asyncpg")
@@ -85,41 +517,351 @@ class NativeAdkRunner:
                     parsed.fragment,
                 )
             )
-            sessions = _DatabaseSessionService(
-                db_url,
-                connect_args={"server_settings": {"search_path": "owa_adk,public"}},
+            return _FencedDatabaseSessionService(
+                db_url, connect_args={"server_settings": {"search_path": "owa_adk,public"}}
             )
-        elif database_path and SqliteSessionService is not None:
-            sessions = SqliteSessionService(database_path)
-        else:
-            sessions = InMemorySessionService()
-        existing = await sessions.get_session(
-            app_name=app_name,
-            user_id=user,
-            session_id=session_id,
-        )
-        if existing is None:
-            await sessions.create_session(
+        if database_path and SqliteSessionService is not None:
+            return _ClosingSqliteSessionService(database_path)
+        if InMemorySessionService is None:
+            raise RuntimeError("google-adk 2.x is not installed")
+        return InMemorySessionService()
+
+    @staticmethod
+    async def _close_sessions(sessions: Any) -> None:
+        try:
+            close = getattr(sessions, "close", None)
+            if close is not None:
+                await close()
+        except Exception:
+            raise InvocationStateError("native execution state could not be released") from None
+
+    @staticmethod
+    def _validate_resume_session(
+        session: Any,
+        invocation_id: str,
+        workflow_input: Any,
+        context: AdkRecoveryContext | None = None,
+    ) -> None:
+        try:
+            if session is None:
+                raise ValueError("session is absent")
+            validate_expression_data(workflow_input)
+            expected = json.dumps(workflow_input, sort_keys=True, allow_nan=False)
+            _timer_requests(session, invocation_id, context)
+            found_input = False
+            for event in session.events:
+                if event.invocation_id == invocation_id and event.author == "user":
+                    parts = event.content.parts if event.content else None
+                    if parts is not None and len(parts) == 1 and parts[0].function_response:
+                        # Only matched adapter-owned timer responses passed the
+                        # complete history check above; original text still binds input.
+                        continue
+                    if parts is None or len(parts) != 1 or not isinstance(parts[0].text, str):
+                        raise ValueError("original input is absent")
+                    saved = json.loads(parts[0].text, object_pairs_hook=_native_input_object)
+                    validate_expression_data(saved)
+                    if json.dumps(saved, sort_keys=True, allow_nan=False) != expected:
+                        raise ValueError("original input disagrees")
+                    # The SDK may retain matching user messages on replay.
+                    # Every message for this invocation must agree; the first
+                    # matching input cannot authorize contradictory later ones.
+                    found_input = True
+            if not found_input:
+                raise ValueError("invocation is absent")
+        except Exception:
+            raise InvocationStateError(
+                "native execution state is unavailable or inconsistent; recovery is required"
+            ) from None
+
+    async def admit_resume(
+        self,
+        workflow_input: Any,
+        *,
+        session_id: str,
+        user_id: str | None,
+        invocation_id: str,
+        database_path: str | None = None,
+        _recovery_context: AdkRecoveryContext | None = None,
+    ) -> None:
+        sessions = None
+        try:
+            sessions = self._session_service(database_path)
+            session = await sessions.get_session(
+                app_name="open-workflow-agent", user_id=user_id or "owa-user", session_id=session_id
+            )
+            self._validate_resume_session(session, invocation_id, workflow_input, _recovery_context)
+            if _recovery_context is not None:
+                _ReceiptEvents(_recovery_context).restore(session, invocation_id)
+                _timer_requests(session, invocation_id, _recovery_context)
+        except InvocationStateError:
+            raise
+        except Exception:
+            raise InvocationStateError("native execution state could not be recovered") from None
+        finally:
+            if sessions is not None:
+                await self._close_sessions(sessions)
+
+    async def invoke(
+        self,
+        runner: Callable[[Any], Awaitable[Any]],
+        input_data: Any,
+        *,
+        session_id: str,
+        user_id: str | None,
+        database_path: str | None = None,
+        invocation_id: str | None = None,
+        _resume: bool = False,
+        _execution_fence: NativeWriteFence | None = None,
+        _recovery_context: AdkRecoveryContext | None = None,
+    ) -> Any:
+        if (
+            not ADK_AVAILABLE
+            or Runner is None
+            or InMemorySessionService is None
+            or FunctionNode is None
+            or Context is None
+            or types is None
+        ):
+            raise RuntimeError("google-adk 2.x is not installed")
+        app_name = "open-workflow-agent"
+        user = user_id or "owa-user"
+        sessions = self._session_service(database_path)
+        receipt_events = _ReceiptEvents(_recovery_context) if _recovery_context else None
+        pending_timers: dict[str, TimerSuspension] = {}
+        pending_children: dict[str, ChildSuspension] = {}
+        postgresql = bool(database_path and is_postgresql_datasource(database_path))
+        if not postgresql:
+            sessions._execution_fence = _execution_fence
+        try:
+            existing = await sessions.get_session(
                 app_name=app_name,
                 user_id=user,
                 session_id=session_id,
-                state={"owa_input": input_data},
             )
-        else:
-            existing.state["owa_input"] = input_data
+            if postgresql:
+                # Initial reads may prepare the SDK's schema metadata. Do not
+                # hold the common ownership row on the main loop during that
+                # schema-only transaction. Actual mutations use SDK workers.
+                sessions._execution_fence = _execution_fence
+                if _execution_fence is not None:
+                    sessions._native_write_factory = lambda: self._session_service(database_path)
+            if _resume:
+                self._validate_resume_session(
+                    existing, invocation_id or "", input_data, _recovery_context
+                )
+                if receipt_events is not None:
+                    receipt_events.restore(existing, invocation_id or "")
+                pending_requests = _timer_requests(existing, invocation_id or "", _recovery_context)
+                pending_timers = {
+                    key: value
+                    for key, value in pending_requests.items()
+                    if isinstance(value, TimerSuspension)
+                }
+                pending_children = {
+                    key: value
+                    for key, value in pending_requests.items()
+                    if isinstance(value, ChildSuspension)
+                }
+            if existing is None:
+                await sessions.create_session(
+                    app_name=app_name,
+                    user_id=user,
+                    session_id=session_id,
+                    state={},
+                )
+        except BaseException:
+            await self._close_sessions(sessions)
+            raise
 
         result_value: Any = None
+        suspended: TimerSuspension | ChildSuspension | None = None
+        wake = _recovery_context.metadata.get("_timer_wake") if _recovery_context else None
+        wakes = _recovery_context.metadata.get("_timer_wakes") if _recovery_context else None
+        wake_id: str | None = None
+        if wakes is not None:
+            try:
+                validate_expression_data(wakes)
+            except Exception:
+                await self._close_sessions(sessions)
+                raise InvocationStateError("native timer wake map is inconsistent") from None
+            if not isinstance(wakes, dict) or any(
+                not isinstance(key, str)
+                or not isinstance(value, dict)
+                or set(value) != {"timer_key", "due_at", "reason"}
+                or value["timer_key"] != key
+                or type(value["due_at"]) not in {int, float}
+                or value["due_at"] <= 0
+                or not isinstance(value["reason"], str)
+                or value["reason"] not in {"timer_due", "resume_requested"}
+                for key, value in wakes.items()
+            ):
+                await self._close_sessions(sessions)
+                raise InvocationStateError("native timer wake map is inconsistent")
+        if pending_timers:
+            if wakes is not None:
+                matches = []
+                for key, timer in pending_timers.items():
+                    selected_wake = wakes.get(timer.timer_key)
+                    if selected_wake is None:
+                        continue
+                    if not _timer_wake_matches(timer, selected_wake):
+                        await self._close_sessions(sessions)
+                        raise InvocationStateError(
+                            "native timer wake does not match pending request"
+                        )
+                    matches.append(key)
+                if not matches:
+                    await self._close_sessions(sessions)
+                    raise next(iter(pending_timers.values()))
+                if len(matches) == 1:
+                    wake = wakes[pending_timers[matches[0]].timer_key]
+            else:
+                matches = [
+                    key for key, timer in pending_timers.items() if _timer_wake_matches(timer, wake)
+                ]
+            if len(matches) != 1:
+                await self._close_sessions(sessions)
+                raise InvocationStateError("native timer wake does not match pending request")
+            wake_id = matches[0]
+
+        child_wakes = _recovery_context.metadata.get("_child_wakes") if _recovery_context else None
+        if child_wakes is not None:
+            try:
+                validate_expression_data(child_wakes)
+                if not isinstance(child_wakes, dict) or _recovery_context is None:
+                    raise ValueError("invalid child wake map")
+                if _recovery_context.child_waits is None:
+                    raise ValueError("missing child admission store")
+                known_child_wakes = _recovery_context.child_waits.known_wakes(
+                    _recovery_context.invocation_id, _recovery_context.workflow_fingerprint
+                )
+                if any(
+                    not isinstance(key, str)
+                    or key not in known_child_wakes
+                    or known_child_wakes[key] != value
+                    for key, value in child_wakes.items()
+                ):
+                    raise ValueError("child wake map does not match evidence")
+            except Exception:
+                await self._close_sessions(sessions)
+                raise InvocationStateError("native child wake map is inconsistent") from None
+        if pending_children:
+            child_matches = []
+            for key, child in pending_children.items():
+                selected_child_wake = (child_wakes or {}).get(child.identity.key)
+                if selected_child_wake is None:
+                    continue
+                if not _child_wake_matches(child, selected_child_wake):
+                    await self._close_sessions(sessions)
+                    raise InvocationStateError("native child wake does not match pending request")
+                child_matches.append(key)
+            if not child_matches and wake_id is None:
+                try:
+                    if (
+                        len(pending_children) != 1
+                        or _recovery_context is None
+                        or receipt_events is None
+                        or _recovery_context.child_waits is None
+                    ):
+                        raise next(iter(pending_children.values()))
+                    request_id, interrupted = next(iter(pending_children.items()))
+                    rescan_wake = child_rescan_wake(
+                        interrupted,
+                        child_waits=_recovery_context.child_waits,
+                        journal=_recovery_context.journal,
+                        dependencies=receipt_events.dependencies,
+                        ready_wakes=child_wakes,
+                        invocation_id=_recovery_context.invocation_id,
+                        workflow_fingerprint=_recovery_context.workflow_fingerprint,
+                    )
+                    if rescan_wake is None:
+                        raise interrupted
+                    wake_id, wake = request_id, rescan_wake
+                except BaseException:
+                    await self._close_sessions(sessions)
+                    raise
+            if child_matches:
+                if len(child_matches) != 1 or wake_id is not None:
+                    await self._close_sessions(sessions)
+                    raise InvocationStateError("native wait wake is ambiguous")
+                wake_id = child_matches[0]
+                assert isinstance(child_wakes, dict)
+                wake = child_wakes[pending_children[wake_id].identity.key]
 
         async def root_node(ctx: Context) -> Any:
-            node_input = ctx.state.get("owa_input", {})
+            # A session can contain several invocations. Session-wide state is
+            # not an input binding for this native invocation.
+            node_input = input_data
+            if receipt_events is not None and _recovery_context is not None:
 
-            async def dynamic_node(node_input: Any) -> Any:
-                nonlocal result_value
-                result_value = await runner(node_input)
-                return result_value
+                async def receipt_observer(
+                    identity: EffectIdentity, receipt: EffectReceipt
+                ) -> None:
+                    await receipt_events.publish(
+                        sessions, ctx.session, invocation_id or "", "receipt", identity, receipt
+                    )
+
+                async def waiting_observer() -> None:
+                    await receipt_events.publish(
+                        sessions, ctx.session, invocation_id or "", "waiting"
+                    )
+
+                _recovery_context.metadata["_effect_receipt_observer"] = receipt_observer
+                _recovery_context.metadata["_waiting_checkpoint_observer"] = waiting_observer
+                await receipt_events.publish(sessions, ctx.session, invocation_id or "", "running")
+
+            async def dynamic_node(ctx: Context, node_input: Any) -> Any:
+                nonlocal result_value, suspended
+                if wake_id is not None and ctx.resume_inputs.get(wake_id) != wake:
+                    raise InvocationStateError("native timer wake input is inconsistent")
+                try:
+                    result_value = await runner(node_input)
+                    return result_value
+                except (TimerSuspension, ChildSuspension) as suspension:
+                    if _recovery_context is None or receipt_events is None:
+                        raise InvocationStateError(
+                            "native timer recovery context is absent"
+                        ) from None
+                    if isinstance(suspension, ChildSuspension):
+                        identity, child_admission_receipt = _child_admission(
+                            _recovery_context, suspension
+                        )
+                        dependency = receipt_events.dependencies.get(identity.key)
+                        if dependency != ReceiptDependency.capture(
+                            identity, child_admission_receipt
+                        ):
+                            raise InvocationStateError(
+                                "native child admission receipt was not checkpointed"
+                            ) from None
+                        interrupt_id = "owa-child:" + suspension.identity.key
+                    else:
+                        identity = suspension.identity
+                        armed = _recovery_context.journal.get(identity)
+                        dependency = receipt_events.dependencies.get(identity.key)
+                        if (
+                            identity.invocation_id != _recovery_context.invocation_id
+                            or identity.workflow_fingerprint
+                            != _recovery_context.workflow_fingerprint
+                            or identity.task_reference not in _recovery_context.task_references
+                            or armed is None
+                            or armed.status != "completed"
+                            or not isinstance(armed.output, dict)
+                            or armed.output.get("due_at") != suspension.due_at
+                            or dependency is None
+                            or dependency != ReceiptDependency.capture(identity, armed)
+                        ):
+                            raise InvocationStateError(
+                                "native timer arming evidence is inconsistent"
+                            ) from None
+                        interrupt_id = "owa-timer:" + suspension.timer_key
+                    suspended = suspension
+                    return RequestInput(
+                        interrupt_id=interrupt_id,
+                        payload=suspension.as_value(),
+                    )
 
             return await ctx.run_node(
-                dynamic_node,
+                FunctionNode(func=dynamic_node, name="owa_plan", rerun_on_resume=True),
                 node_input,
                 use_as_output=True,
                 run_id="owa-plan",
@@ -139,17 +881,121 @@ class NativeAdkRunner:
             role="user",
             parts=[types.Part(text=json.dumps(input_data, ensure_ascii=False, default=str))],
         )
+        if wake_id is not None:
+            message = types.Content(
+                role="user",
+                parts=[
+                    types.Part(
+                        function_response=types.FunctionResponse(
+                            id=wake_id, name="adk_request_input", response=wake
+                        )
+                    )
+                ],
+            )
         output = None
-        async for event in framework_runner.run_async(
-            user_id=user,
-            session_id=session_id,
-            invocation_id=invocation_id,
-            new_message=message,
-            yield_user_message=False,
-        ):
-            if getattr(event, "output", None) is not None:
-                output = event.output
+        try:
+            async with aclosing(
+                framework_runner.run_async(
+                    user_id=user,
+                    session_id=session_id,
+                    invocation_id=invocation_id,
+                    new_message=message,
+                    yield_user_message=False,
+                )
+            ) as events:
+                async for event in events:
+                    if getattr(event, "output", None) is not None:
+                        output = event.output
+        finally:
+            try:
+                await framework_runner.close()
+            finally:
+                await self._close_sessions(sessions)
+        if suspended is not None:
+            raise suspended
         return output if output is not None else result_value
+
+    async def scheduled_state_exists(
+        self,
+        workflow_input: Any,
+        *,
+        session_id: str,
+        user_id: str | None,
+        invocation_id: str,
+        database_path: str,
+        _recovery_context: AdkRecoveryContext,
+    ) -> bool:
+        postgresql = is_postgresql_datasource(database_path)
+        if not postgresql and not os.path.exists(database_path):
+            # A read predicate must not create an SDK database merely to discover
+            # that this atomically bound invocation has not been dispatched yet.
+            return False
+        if not postgresql:
+            readonly_path = Path(database_path).resolve().as_uri() + "?mode=ro"
+            try:
+                with closing(sqlite3.connect(readonly_path, uri=True)) as connection:
+                    tables = {
+                        row[0]
+                        for row in connection.execute(
+                            "SELECT name FROM sqlite_master WHERE type = 'table'"
+                        )
+                    }
+                if not tables:
+                    return False
+                if not {"sessions", "events", "app_states", "user_states"}.issubset(tables):
+                    raise InvocationStateError("native scheduled storage schema is incomplete")
+            except sqlite3.Error:
+                raise InvocationStateError("native scheduled storage could not be read") from None
+        sessions = self._session_service(database_path)
+        if not postgresql:
+            # Use the SDK's decoder/queries on a read-only connection. The
+            # current schema was checked above; no setup DDL or new database.
+            sessions._db_connect_path = readonly_path
+            sessions._db_connect_uri = True
+            sessions._schema_ready = True
+        try:
+            if postgresql:
+                # Inspect schema through the SDK's engine without creating or
+                # repairing native tables as a side effect of this predicate.
+                text = import_module("sqlalchemy").text
+                schema_utils = import_module("google.adk.sessions.migration._schema_check_utils")
+                async with sessions.db_engine.connect() as connection:
+                    connection = await connection.execution_options(postgresql_readonly=True)
+                    rows = await connection.execute(
+                        text(
+                            "SELECT table_name FROM information_schema.tables "
+                            "WHERE table_schema = 'owa_adk'"
+                        )
+                    )
+                    tables = set(rows.scalars())
+                    if not tables:
+                        return False
+                    if not {"sessions", "events", "app_states", "user_states"}.issubset(tables):
+                        raise InvocationStateError("native scheduled storage schema is incomplete")
+                    sessions._db_schema_version = await connection.run_sync(
+                        schema_utils.get_db_schema_version_from_connection
+                    )
+                sessions._tables_created = True
+            saved = await sessions.get_session(
+                app_name="open-workflow-agent", user_id=user_id or "owa-user", session_id=session_id
+            )
+            if saved is None:
+                return False
+            owned = [event for event in saved.events if event.invocation_id == invocation_id]
+            if not owned:
+                return False
+            self._validate_resume_session(saved, invocation_id, workflow_input, _recovery_context)
+            if all(event.author == "user" for event in owned):
+                return False
+            _ReceiptEvents(_recovery_context).restore(saved, invocation_id)
+            _timer_requests(saved, invocation_id, _recovery_context)
+            return True
+        except InvocationStateError:
+            raise
+        except Exception:
+            raise InvocationStateError("native scheduled storage could not be read") from None
+        finally:
+            await self._close_sessions(sessions)
 
     async def resume(
         self,
@@ -160,6 +1006,8 @@ class NativeAdkRunner:
         user_id: str | None,
         invocation_id: str,
         database_path: str | None = None,
+        _execution_fence: NativeWriteFence | None = None,
+        _recovery_context: AdkRecoveryContext | None = None,
     ) -> Any:
         """Resume an ADK invocation using its persisted native invocation id."""
         return await self.invoke(
@@ -169,4 +1017,7 @@ class NativeAdkRunner:
             user_id=user_id,
             invocation_id=invocation_id,
             database_path=database_path,
+            _resume=True,
+            _execution_fence=_execution_fence,
+            _recovery_context=_recovery_context,
         )

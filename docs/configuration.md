@@ -8,7 +8,7 @@ Configuration precedence is:
 built-in defaults < YAML file < environment variables
 ```
 
-The default YAML path is `/config/agent.yaml`; override it with `OWA_CONFIG_FILE`.
+The default bootstrap YAML path is `/config/agent.yaml`; override it with `OWA_CONFIG_FILE`. See [embedded defaults and workflow/bootstrap ownership](embedded-bootstrap.md). No file selects the local fake model and generated agent workflow in the staged source build. Validation errors omit rejected input values and YAML source.
 
 ## Environment overrides
 
@@ -94,7 +94,7 @@ sandbox:
   enabled: false
   backend: internal
   allow_shell: false
-  script_runtimes: [python]
+  script_runtimes: [python] # optional JavaScript candidate: [python, javascript]
   timeout_seconds: 30.0
   max_input_bytes: 1048576
   max_output_bytes: 1048576
@@ -149,6 +149,9 @@ The runtime always exposes `GET /metrics` in Prometheus text format. Metrics are
 in-process and reset when the runtime restarts; no additional configuration or
 third-party metrics service is required. Protect the endpoint at the deployment edge
 when it is reachable outside a trusted monitoring network.
+Task latency is observed for completed, faulted, and cancelled tasks, using only the
+engine and terminal outcome as labels. Invocation, session, task, and operation IDs,
+workflow input, and error details are not included in metric labels.
 
 ### Knowledge reload modes
 
@@ -172,6 +175,28 @@ The old single A2A bearer field (`a2a.auth_token`) has been removed. OWA has no 
 The same policy removed the remaining ad-hoc credential surfaces: external-catalog authentication (`bearer_token_env`, `basic_username_env`, `basic_password_env`) and the ambient outbound protocol credentials (`OWA_BEARER_TOKEN_ENV`, `OWA_BASIC_USERNAME_ENV`, `OWA_BASIC_PASSWORD_ENV`) are gone. All protocol, catalog, tool, and approval credentials now resolve exclusively through named `security.profiles`.
 
 The target schema is defined in [protocol-security-decisions.md](protocol-security-decisions.md). Profile definitions (`security.profiles`, `type`, `token`), A2A bearer authentication (`a2a.security_profile`), and per-principal A2A authorization (`a2a.authorization`) are implemented and strict-parsed today; verified implementation status is recorded in `PROJECT.md`.
+
+## Staged execution authorization
+
+S3-06 is authored work awaiting qualification. The deployment-only
+`execution_authorization` profile defaults to `enabled: false`; it does not add
+workflow DSL fields. Actual named ingress identity is retained independently of
+whether per-action policy is enabled. Caller correlation labels grant no authority.
+
+| Setting | Authored default / scope |
+| --- | --- |
+| `enabled` | `false`; action decisions and outcome seals require the originally admitted opt-in profile. |
+| `id`, `version` | `default`, `1`; bounded deployment policy references. |
+| `policy.rules` | Existing exact action/resource, role, scope and audience vocabulary; an enabled empty rule set permits no actions. |
+| `max_business_receipt_bytes` | 67,108,864 bytes maximum, configurable down to 1,024; a separate bound for opt-in business audit evidence. |
+
+Original authority, policy and audit bounds are pinned for continuation. Turning off
+current policy cannot downgrade previously protected history. The disabled profile
+retains legacy first-owner outcome semantics; existing source and gRPC ownership
+fences remain independently enforced. Oversize results after dispatch must retain
+uncertainty and prevent automatic resend. Policy records have separate smaller
+bounds. See [scope and required security evidence](s3-06-identity-security-acceptance.md)
+before treating this staged profile as delivered.
 
 ## Shared security profiles
 
@@ -261,6 +286,8 @@ traffic_policy:
 A security profile answers who the caller is and what it may do; traffic policy answers how much traffic may be admitted. Global limits apply to every HTTP request when enabled. The longest matching endpoint prefix and the authenticated principal's configured scope add further admission limits. Principal scopes use the identity declared by the named `server.api_security_profile` or `a2a.security_profile`; unauthenticated requests use no configured principal scope.
 
 ## `model`
+
+When `model.provider` is omitted, `fake/` names select the deterministic fake adapter and other names select LiteLLM. Explicit provider selection is preserved. A missing model block selects `fake/default` in the staged source build.
 
 For deterministic validation without a provider API:
 
@@ -390,6 +417,18 @@ Backends:
 
 The backend request/result/interface contract remains in `sandbox/contract.py`; portable requirements/capability compatibility live in `sandbox_capabilities.py`. These are intentionally separate concepts.
 
+The S3-04 authored, unqualified source profile adds `sandbox.script_sources`.
+Each deployment-owned entry contains `profile: owa/executable-source/v1`, `id`,
+`version`, literal HTTPS `uri`, `language: python`, exact UTF-8 `code` and mandatory
+SHA-256 `digest`. Code is private configuration, excluded from configuration
+representations; it must not contain credentials. The URI names preloaded approved
+bytes and triggers no network fetch or filesystem import. Registry entries are
+bounded to 32, with 1 MiB per source and 16 MiB total. Public workflows retain
+`run.script.source.endpoint`, while the private plan captures the verified bytes.
+Unknown or changed bindings fail admission/recovery. Imported catalog executable
+sources remain unsupported. Qualification is pending in
+[the acceptance record](s3-04-executable-source-acceptance.md).
+
 ## `tools`
 
 Configured tool types are:
@@ -407,6 +446,65 @@ The common client is pinned to MCP `2026-07-28` and A2A `1.0` wire semantics. Op
 ## Observability
 
 Lifecycle records use CloudEvents `1.0` structured JSON semantics and expose common identifiers plus sanitized error information. Engine-native checkpoint state and secrets are never part of the public lifecycle contract.
+
+Optional diagnostic history uses the configured persistent common SQLite or
+PostgreSQL database. The default lifecycle window remains process-local.
+
+```yaml
+observability:
+  history:
+    enabled: true
+    max_events: 1000
+    max_event_bytes: 65536
+    max_retained_bytes: 16777216
+    poll_interval_seconds: 0.05
+```
+
+The selected history retains sanitized lifecycle projections, original event IDs
+and timestamps across process restarts. It contains no workflow input, output,
+native checkpoint payload, or error message/details. Count and byte limits evict
+oldest records in commit order. Persistent storage is required; an in-memory
+datasource rejects this option. A record exceeding its bound fails with the
+common `lifecycle_history_error`; it is never silently truncated. Store failures
+also fail the selected history write, so an operation can have committed before
+its later diagnostic emission fails. This is diagnostic history, not an atomic
+business audit or execution/recovery authority. Metrics remain process-local.
+The candidate and remaining qualification are recorded in
+[S4-05](s4-05-observability-acceptance.md#durable-diagnostic-history-candidate--2026-10-25).
+
+Optional common execution tracing is independent of history retention:
+
+```yaml
+observability:
+  tracing:
+    enabled: true
+    propagate_http: false
+    max_spans: 1000
+    max_active_spans: 1024
+    max_retained_bytes: 4194304
+```
+
+The embedding application can read `services.tracing.snapshot()` for immutable
+invocation/task spans and inspect `dropped_spans`/`evicted_spans`. Retention bounds
+cover count and serialized UTF-8 record bytes, with a separate active-span cap;
+they are not process-memory limits. Saturation drops diagnostic spans without
+changing workflow execution. Spans contain UTC start time, monotonic duration,
+canonical outcome/status, common invocation/fingerprint/task references and
+parent correlation. They exclude bodies, prompts, credentials, exception text,
+URLs and native state. An invocation span covers one owned execution segment;
+`completed` means the segment returned normally, including a durable wait.
+Its separate invocation status distinguishes waiting from terminal completion.
+
+The generated version-00 `traceparent` is an optional lifecycle CloudEvents
+extension. Its trace ID is stable for the common invocation identity across
+service restarts; each segment/task gets a fresh span ID. Child invocations have
+their own trace ID and a parent invocation trace link. History retains the
+original event context; reading/replaying never generates a replacement context.
+Tracing does not consume incoming trace headers, `tracestate` or baggage, and
+does not provide an OpenTelemetry exporter or durable span storage. With
+`propagate_http: true`, the common HTTP client adds the active generated context
+when no caller `traceparent` header exists. This setting is independently false
+by default. Neither trace headers nor diagnostic records grant authority.
 
 ## Recommended deployment pattern
 

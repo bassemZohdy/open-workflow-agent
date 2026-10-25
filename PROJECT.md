@@ -4,10 +4,112 @@
 
 - `Project Definition.md` — architecture/product contract.
 - `PROJECT.md` — verified implementation and release state.
-- `TODO.md` — scoped backlog and intentionally deferred work.
+- `TODO.md` — ordered backlog and any blocked-task deferrals.
 - `AGENTS.md` — mandatory repository/contributor rules.
 
-## Current Phase — 2026-09-24
+## Development cleanup — 2026-10-25
+
+Automatic validation jobs now require `OWA_AUTOMATIC_CI=true`; manual validation
+remains available. Automatic publication separately requires
+`OWA_AUTOMATIC_RELEASES=true` and retains its existing exact-source release gates.
+Repository variables and branch protection were not changed. Manual qualification
+uses frozen branches so later development pushes do not cancel its runs. The
+automation change itself does not promote any task or feature. See the [review and remaining gaps](docs/development-cleanup-2026-10-25.md)
+and [automation controls](docs/development.md#fast-development-and-optional-automation).
+
+## Current backlog delivery mode
+
+Updated 2026-10-25. **31 of 37 tasks are verified; 6 remain open. None is deferred.**
+Eleven of the original 17 open tasks are verified. The user kept S4-09/S4-10/S4-11
+conditional. The three ready tasks are S4-02, S4-03 and S4-04.
+
+The full green `d72781f` checkpoint verifies eight finite task scopes. The full
+green `f66cd23` checkpoint adds S3-03 operation/background adapters, S4-05 bounded
+history/tracing/metrics/provenance and S4-07 release/rollback gates. Its CI attempt
+2 retains the original Windows file-read failure and successful targeted retry.
+Root has 5,197 passes and 90.26% coverage; all six workflows pass. See the
+[qualification record](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-f66cd23).
+
+The [main integration record](docs/validation-history/main-integration-2026-10-25.md)
+tracks PR #64 and keeps accepted task evidence separate from later candidates.
+At `5310f5a`, Framework, External Sandbox, Security and Docs pass; CI and
+PostgreSQL remain partial at integration time. The PostgreSQL native fixture
+assumed a missing hosted process API. Its owned-child repair passes all eight
+Linux store/routing/scope cases without that API and four Windows PostgreSQL
+cases. This is not a full green hosted result for the repaired source.
+
+S4-02 remains the next ordered ready task, beginning with native memory. Bounded
+Send, the owned wait/end repair and Docker cache ordering have focused evidence.
+Memory, streams, public state updates, replay and time travel remain open.
+
+S4-03 has bounded literal set/do/raise execution with 13 shared success/fault
+cases; public identity, durable services, expressions and full engine behavior
+remain missing. S4-04 has a new 13-case actual native outcome comparison with
+source/SDK/runtime/fixture/schema checks; broader CTK/proposed/schema coverage
+remains unverified. These later candidates do not qualify the integration
+for release or change any research row into a shipped capability.
+
+After the progress audit, development uses one active feature, focused local
+checks and one full qualification per locally green batch. Runtime source must
+remain frozen during recovery validation. Update task records immediately after
+qualification; keep supporting-tool work bounded. Automatic CI remains off by
+default, and running/failed checks do not establish task deferral.
+
+The encoded-reference follow-up fixes URI decoding in OpenAPI/pure AsyncAPI and
+rejects an unsupported Windows LangGraph/PostgreSQL loop before starting engine
+services. Common checks pass 309 tests; both principal engines pass the four new
+Windows SQLite/PostgreSQL witnesses with the supported loop configuration.
+The first Linux candidate passes 74 OpenAPI call/process cases per engine and
+seven additional LangGraph adapter checks; the final LangGraph lookup correction
+passes 57 call/adapter checks. Both final images pass packaged and sandbox scripts.
+Docker build caching now retains model assets across source edits. See the
+[current scope and evidence](docs/s3-03-operation-adapters-acceptance.md#encoded-reference-and-host-admission-follow-up--2026-10-25).
+
+The earlier Docker batch passed 663 checks per principal engine, 77 return/receipt
+checks per engine, four PostgreSQL tool/resume integrations per engine, and all
+packaged/restricted-sandbox scripts. Its native OpenAPI/gRPC grid ran all 114
+SQLite/PostgreSQL cases per engine. Windows background recovery passed 13 checks
+per engine; the common PostgreSQL selection passed 195 and the four Windows-only
+IPC controls passed. Scope, intentional skips and earlier failures are retained
+in the [Docker record](docs/s3-03-operation-adapters-acceptance.md#docker-and-postgresql-follow-up--2026-10-25).
+
+The earlier full local batch (5,004 passed, 3,206 skipped, 90.54% coverage) predates
+subsequent fixes. See its [validation record](docs/validation-history/pending-batch-results.md#corrected-working-tree-batch--local-validation-before-hosted-requalification).
+S3-02's finite profile remains verified at `3b6b329`; S3-01 at `af4acd6`.
+Those accepted scopes exclude full protocol/proposed-test and independent
+JavaScript conformance.
+
+| Work | Current state | Acceptance record |
+| --- | --- | --- |
+| S2-05 | Finite embedded event profile verified at `58de90e`; current-source regression qualification remains open. | [Event acceptance](docs/s2-05-event-acceptance.md), [regression evidence](docs/validation-history/pending-batch-results.md#event-backend-admission-order-follow-up-at-9d4d3ec) |
+| S2-07 / S2-08 | Verified CH01-CH10 / LC01-LC08 at 6b23e5d / 96ce610. | [Children](docs/s2-07-child-workflow-acceptance.md), [lifecycle](docs/s2-08-lifecycle-acceptance.md) |
+| S2-09 | Finite VM01-VM08 continuation/recovery policy verified at PR head 9578459; A086/T44 in-place mapping remains unsupported. | [Version recovery](docs/s2-09-version-recovery-acceptance.md) |
+| S3-01 | Finite Python MCP01-MCP08 profile verified at exact source `af4acd6`; full MCP/JS and proposed-test scope remains separate. | [MCP acceptance](docs/s3-01-mcp-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-af4acd6) |
+| S3-02 | Finite Python A2A profile verified at exact source `3b6b329`; all six hosted workflows passed. Durable Task/receipt expiry, push, delegated identity, JavaScript and full proposed criteria remain outside this qualification. | [A2A acceptance](docs/s3-02-a2a-acceptance.md), [exact-source results](docs/validation-history/pending-batch-results.md#exact-source-qualification-3b6b329) |
+| S3-03 | Finite operation/background profile verified at `f66cd23`; deployment opt-in stays disabled by default. | [Operation adapters](docs/s3-03-operation-adapters-acceptance.md#exact-source-qualification-f66cd23), [qualification](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-f66cd23) |
+| S3-04 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-04-executable-source-acceptance.md#exact-source-qualification-d72781f) |
+| S3-05 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-05-protected-approval-acceptance.md#exact-source-qualification-d72781f) |
+| S3-06 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-06-identity-security-acceptance.md#exact-source-qualification-d72781f) |
+| S3-07 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-07-agent-pattern-acceptance.md#exact-source-qualification-d72781f) |
+| S3-08 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s3-08-selected-adapter-acceptance.md#exact-source-qualification-d72781f) |
+| S4-01 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s4-01-native-extension-acceptance.md#exact-source-qualification-d72781f) |
+| S4-02 | Bounded channels/reducers, Command and Send have focused native/store evidence. The wait/end follow-up awaits qualification; memory, streams, state updates, replay and time travel remain open. | [Native scope and gates](docs/s4-02-native-channels-acceptance.md) |
+| S4-03 | TypeScript admission and literal set/do/raise execution are implemented. Full public identity, durability, expressions, calls and independent engine parity remain open. | [JavaScript execution scope](docs/s4-03-javascript-execution-acceptance.md) |
+| S4-04 | Thirteen actual native literal outcomes match locally. All 443 proposed and 774 schema rows remain unmapped/unexecuted; full conformance remains open. | [Literal comparison](docs/s4-04-literal-parity-acceptance.md), [coverage bridge](resources/compatibility/README.md) |
+| S4-05 | Finite bounded history/tracing/metrics/provenance profile verified at `f66cd23`; incoming propagation, durable spans and vendor exporters remain excluded. | [Observability acceptance](docs/s4-05-observability-acceptance.md#exact-source-qualification-f66cd23) |
+| S4-06 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/benchmarks.md#exact-source-qualification-d72781f) |
+| S4-07 | Finite source/version/release-manifest and rollback-policy gates verified at `f66cd23`; automatic CI/release remain opt-in. Actual publication and rollback were not performed. | [Release gate acceptance](docs/s4-07-release-gates-acceptance.md#exact-source-qualification-f66cd23) |
+| S4-08 | Verified finite profile at `d72781f`; broader full-feature/proposed and independent JS scope stays separately tracked. | [Acceptance](docs/s4-08-compatibility-decision.md#exact-source-qualification-d72781f) |
+
+Historical source outcomes, full commands, hashes and correction details are
+retained in the [validation history](docs/validation-history/pending-batch-results.md).
+Partial results never close an unchecked task or inventory row.
+
+Continue ready work in parallel, complete a coherent source batch before testing it, and push validated feature work. Running checks and failures with an actionable fix remain active. Only a repeated blocker with no next step moves the original unchecked task to the final deferred section, with full evidence and resume conditions. See [TODO.md](TODO.md) for the complete ordered scope, [documentation guide](docs/README.md) for topic navigation, and [earlier delivery checkpoints](docs/validation-history/backlog-delivery-2026-10-13.md) for retained history.
+
+## Historical project baseline — 2026-09-24
+
+Historical released baseline; current unfinished roadmap work is summarized above.
 
 `v0.1.0` is the previous formal release. `v0.2.0` is the current formal
 release for the principal-bound A2A task-access work. It was published from
@@ -22,52 +124,81 @@ No broad A2A, MCP, OpenAPI, CloudEvents, Open Workflow, OpenShift, or multi-engi
 
 ## Architecture
 
-The runtime pipeline is:
+Core owns the public OWS 1.0.3 contract and common services; principal adapters retain native checkpoints. Deployment-selected executable operations use SandboxManager. Detailed accepted decisions and historical validations remain in [the evidence archive](docs/validation-history/project-implementation-evidence.md).
 
-```text
-load
-  -> official Open Workflow schema validation
-  -> Portable Profile capability gate
-  -> normalize
-  -> immutable canonical execution plan
-  -> selected engine
-```
+### Dependency audit correction — 2026-10-11 (verified)
 
-Core is framework-neutral. Engine adapters own framework-native construction, execution, checkpoints, and resume behavior.
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#dependency-audit-correction--2026-10-11-verified).
 
-Production runtime engines:
+### S2-04 retry, timeout and exception work — 2026-10-12 (verified)
 
-```text
-ADK
-LangGraph
-```
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-04-retry-timeout-and-exception-work--2026-10-12-verified).
+Current-source note: Windows timer run `38632792174` failed the duration-bound
+retry assertion on both engines (`workflow_execution_error` instead of
+`model_error`). Complete local retry selections passed on both engines; the
+assertion now captures the error and timing evidence for hosted requalification.
+The 2026-10-20 PostgreSQL ADK native-recovery lane exposed the same expected
+output mismatch after 357 passes. The fixture's three-second logical budget
+was also an actual per-attempt wall-clock timeout, too short for durable ADK/
+PostgreSQL overhead. The current correction scales the logical duration and
+delay by 100 while preserving the exact retry-boundary ratio; the focused ADK
+SQLite selection passes locally. Hosted PostgreSQL and Windows requalification
+is pending. The exact-source Windows native lifecycle/receiver job was then
+cancelled at its 20-minute job timeout while running the expanded recovery
+selector. The same selector had taken 19m45s previously; its CI cap is now
+30 minutes with a selector guard, and exact-source requalification is pending.
 
-Optional evaluation adapter:
+### S2-06 durable timer and schedule work — 2026-10-13 (verified)
 
-```text
-Microsoft Agent Framework
-```
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-06-durable-timer-and-schedule-work--2026-10-13-verified).
 
-Every request executes a workflow. If no workflow is supplied, the runtime generates the default one-task workflow.
+### S2-05 embedded event work — 2026-10-12 (verified)
 
-Common protocol/runtime services remain in core where practical:
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-05-embedded-event-work--2026-10-12-verified).
 
-```text
-HTTP
-MCP
-A2A
-OpenAPI
-knowledge
-memory
-invocation metadata
-approvals
-scheduling
-sandbox policy
-lifecycle events
-security policy primitives
-```
+### S2-03 checkpoint recovery — 2026-10-12 (verified)
 
-Engine-native state never becomes the public API contract.
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-03-checkpoint-recovery--2026-10-12-verified).
+
+### S2-02 competitive fork decisions — 2026-10-11 (verified)
+
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-02-competitive-fork-decisions--2026-10-11-verified).
+
+### S2-01 ordered fork results — 2026-10-11 (verified)
+
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s2-01-ordered-fork-results--2026-10-11-verified).
+
+### S1-08 current implementation audit — 2026-10-11 (verified)
+
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-08-current-implementation-audit--2026-10-11-verified).
+
+### S1-07 reusable definitions and resource identity — 2026-10-11 (verified)
+
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-07-reusable-definitions-and-resource-identity--2026-10-11-verified).
+
+### S1-06 embedded/bootstrap defaults — 2026-10-11 (verified)
+
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-06-embeddedbootstrap-defaults--2026-10-11-verified).
+
+### S1-05 native task execution — 2026-10-11 (verified)
+
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-05-native-task-execution--2026-10-11-verified).
+
+### Stage 1 admission work — 2026-10-11 (verified)
+
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#stage-1-admission-work--2026-10-11-verified).
+
+### S1-02 expression work — 2026-10-11 (verified)
+
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-02-expression-work--2026-10-11-verified).
+
+### S1-03 data-flow work — 2026-10-11 (verified)
+
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-03-data-flow-work--2026-10-11-verified).
+
+### S1-04 control-flow work — 2026-10-11 (verified)
+
+[Recorded acceptance, revisions and limitations](docs/validation-history/project-implementation-evidence.md#s1-04-control-flow-work--2026-10-11-verified).
 
 ## Formal Release v0.1.0 — 2026-08-28
 
@@ -388,7 +519,10 @@ Agent Card now advertises `securitySchemes` and `security` requirements when aut
 
 ## A2A Deferred Scope
 
-The bounded inbound protocol profile — Task state, authorization, skills, async semantics, and streaming/resubscription — is complete (see Security Architecture State and Current A2A State). Remaining deferred work is listed in `TODO.md`.
+The released bounded inbound profile covers Task state, authorization, skills,
+async semantics and streaming/resubscription. S3-02 adds workflow-to-agent and
+agent-to-workflow work plus fresh peer/native/backend qualification; it remains
+open until those gates pass. See the acceptance record in [TODO.md](TODO.md).
 
 The official A2A v1 semantics are the guide: ordinary `SendMessage` blocks by default, while `returnImmediately=true` is the protocol-native non-blocking request and returns Task state for later `GetTask`/subscription. OWA will not add a custom async flag.
 
@@ -551,11 +685,9 @@ these readiness foundations.
 
 ## Current Backlog State
 
-The authoritative backlog is `TODO.md`. The earlier core/readiness foundation
-remains complete at its recorded scope. The accepted 2026-10-11 consolidation
-roadmap adds staged work and full tracking; runtime claims expand only after
-verification. `ENGINE-5` through `ENGINE-8`, `EVENT-1` through `EVENT-5`, push
-notifications, multi-tenancy and delegated identity stay visible conditional work.
+See the [current backlog delivery mode](#current-backlog-delivery-mode)
+and the ordered [TODO.md](TODO.md). Failed validation does not advance completion;
+no task currently satisfies the stuck-task deferral rule.
 
 ## Canonical repository consolidation — 2026-10-11
 
@@ -565,8 +697,9 @@ selected fixtures are adapted for canonical contract verification. Independent
 assistant/pipeline recipes and an eight-family catalog preserve useful patterns
 without copying unlicensed source. All 109 Apache files of `specs-agent-platform`
 are now imported as references after the user authorized the explained
-private-to-public transfer. The origin remains private. Archival remains pending
-and currently needs user action because the browser is not authenticated. The full tracker records 658 features, 443
+private-to-public transfer. The origin remains private. GitHub metadata now
+confirms all three named predecessors are archived; MIG-02 source-preservation
+checks pass. The full tracker records 658 features, 443
 proposed tests and 774 schema constraints. This is source consolidation and gap
 tracking, not completed native lowering or full OWS/LangGraph conformance.
 
@@ -576,10 +709,13 @@ formatting, strict mypy and Markdown links passed. These selected fixture runs
 use canonical ADK/LangGraph adapters in the root environment, not proof of new
 native compiler behavior or JS parity. Remote CI remains a publication gate.
 
-## Intentionally Deferred
+## Deferred product scope (not blocked backlog tasks)
+
+These are product-scope exclusions, not tasks deferred under the blocked-task
+rule. Blocked backlog entries, if any, are listed at the end of [TODO.md](TODO.md).
 
 - A2A push notifications.
-- Broad/full A2A conformance claim until async/streaming/interoperability gates are green.
+- Broad/full A2A conformance beyond the separately accepted bounded profiles.
 - Multi-tenancy.
 - Delegated-user identity/token exchange/consent inside OWA.
 
@@ -598,7 +734,7 @@ uv sync --locked --extra knowledge
 uv run ruff format --check core engines tests
 uv run ruff check .
 uv run mypy --package open_workflow_agent --package open_workflow_agent_adk --package open_workflow_agent_langgraph --package open_workflow_agent_agent_framework
-uv run --locked pytest -q --cov=core/src/open_workflow_agent --cov-fail-under=90
+uv run --locked pytest -q --cov=core/src/open_workflow_agent --cov-fail-under=90 --cov-precision=2
 uv build
 uv build --directory core
 uv run --directory engines/adk --locked --extra native --extra knowledge --with pytest --with pytest-asyncio pytest ../../tests/adk ../../tests/contract ../../tests/ctk -q
@@ -607,3 +743,12 @@ uv run --directory engines/agent-framework --locked --extra native --extra knowl
 ```
 
 The CI source-integrity gate caught three ignored predecessor reference files missing from the initial PR. Those exact source bytes are now explicitly tracked; the gate remains enforced. MIG-01 transfer/license disposition is complete: both imported sources retain Apache attribution, and unlicensed generic source stays at origin. No active compiler, checkpoint service or unsafe approval implementation is introduced by the frozen reference import.
+
+## Current S2-09 and S3-02 implementation notes
+
+S2-09's finite original-definition continuation and bounded recovery policy is
+verified; successful in-place version mapping and full native history remain
+unsupported. Its S2-09/S3-01 prerequisites were met before the finite S3-02
+Python A2A profile qualified at exact source `3b6b329`. See the [S2-09 record](docs/s2-09-version-recovery-acceptance.md),
+[A2A record](docs/s3-02-a2a-acceptance.md), status table above and
+[validation history](docs/validation-history/pending-batch-results.md).

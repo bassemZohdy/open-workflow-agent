@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import asyncio
+from pathlib import Path
+from typing import Any
+
 import pytest
 from open_workflow_agent.catalog import FakeModel
 from open_workflow_agent.config import RuntimeConfig
@@ -7,14 +11,14 @@ from open_workflow_agent.engine import PortableWorkflowEngine
 from open_workflow_agent.errors import (
     ScheduleOperationConflict,
     ScheduleValidationError,
-    UnsupportedWorkflowFeature,
 )
+from open_workflow_agent.schedule_profile import parse_schedule
 from open_workflow_agent.scheduling import ScheduleStore, WorkflowScheduler, schedule_period
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow
 
 
-def _workflow(schedule):
+def _workflow(schedule: dict[str, Any]) -> dict[str, Any]:
     return {
         "document": {
             "dsl": "1.0.3",
@@ -27,7 +31,7 @@ def _workflow(schedule):
     }
 
 
-def test_schedule_store_survives_restart_and_claims_due_work(tmp_path):
+def test_schedule_store_survives_restart_and_claims_due_work(tmp_path: Path) -> None:
     plan = compile_workflow(_workflow({"after": {"milliseconds": 10}}))
     database = tmp_path / "runtime.sqlite3"
     first = ScheduleStore(database)
@@ -47,14 +51,15 @@ def test_schedule_store_survives_restart_and_claims_due_work(tmp_path):
     reopened.close()
 
 
-def test_schedule_profile_rejects_cron_and_requires_one_supported_mode():
-    with pytest.raises(UnsupportedWorkflowFeature):
-        compile_workflow(_workflow({"cron": "* * * * *"}))
+def test_schedule_profile_admits_cron_and_requires_one_supported_mode() -> None:
+    assert parse_schedule({"cron": "* * * * *"}).kind == "cron"
+    with pytest.raises(ScheduleValidationError):
+        parse_schedule({"cron": "not a cron expression"})
     with pytest.raises(ScheduleValidationError):
         schedule_period({"after": 1, "every": 1})
 
 
-def test_schedule_store_lifecycle_and_rejection_paths(tmp_path):
+def test_schedule_store_lifecycle_and_rejection_paths(tmp_path: Path) -> None:
     plan = compile_workflow(_workflow({"every": {"seconds": 2}}))
     other_plan = compile_workflow(
         {
@@ -76,29 +81,40 @@ def test_schedule_store_lifecycle_and_rejection_paths(tmp_path):
         assert record.as_dict()["status"] == "active"
         assert store.get("missing") is None
         assert store.claim_due(now=11) is None
-        claimed = store.claim_due(now=12, lease_seconds=1)
-        assert claimed is not None
-        assert claimed.lease_until == 13
-        store.set_invocation(record.schedule_id, "inv-1")
+        claimed = store.claim_due(now=12, lease_seconds=30)
+        assert claimed is not None and claimed._claim is not None
+        assert claimed.lease_until == 42
+        handle = store.bind_invocation(claimed, engine="test", now=12)
+        store.set_invocation(record.schedule_id, handle.invocation_id, claim=claimed._claim, now=12)
+        handle.status = "completed"
+        store.invocations.update(handle, completed_at=20)
         finished = store.finish(
-            record.schedule_id, invocation_id="inv-1", status="completed", now=20
+            record.schedule_id,
+            invocation_id=handle.invocation_id,
+            status="completed",
+            now=20,
+            claim=claimed._claim,
         )
         assert finished.status == "active"
-        assert finished.next_run_at == 22
+        assert finished.next_run_at == 14
         assert finished.last_status == "completed"
         assert store.status_counts() == {"active": 1}
         assert store.cancel(record.schedule_id).status == "cancelled"
         assert store.cancel(record.schedule_id).status == "cancelled"
-        assert (
-            store.finish(record.schedule_id, invocation_id="inv-2", status="faulted").status
-            == "cancelled"
-        )
+        with pytest.raises(ScheduleOperationConflict):
+            store.finish(
+                record.schedule_id,
+                invocation_id=handle.invocation_id,
+                status="faulted",
+                claim=claimed._claim,
+                now=21,
+            )
         assert store.status_counts() == {"cancelled": 1}
 
         with pytest.raises(ScheduleValidationError, match="unsupported"):
             store.finish(record.schedule_id, invocation_id="inv-3", status="unknown")
         with pytest.raises(KeyError):
-            store.set_invocation("missing", "inv")
+            store.cancel("missing")
         with pytest.raises(ScheduleOperationConflict, match="idempotency"):
             store.create(other_plan, {}, operation_key="key", now=1)
         with pytest.raises(ScheduleValidationError, match="JSON serializable"):
@@ -108,18 +124,53 @@ def test_schedule_store_lifecycle_and_rejection_paths(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_workflow_scheduler_executes_and_stops_cleanly(tmp_path):
+async def test_workflow_scheduler_executes_and_stops_cleanly(tmp_path: Path) -> None:
     services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
     engine = PortableWorkflowEngine()
     await engine.initialize(services)
     plan = compile_workflow(_workflow({"after": {"seconds": 1}}))
     record = services.schedules.create(plan, {"value": 1}, now=0)
     scheduler = WorkflowScheduler(services, engine, poll_seconds=0.001)
-    await scheduler._execute(record)
-    assert services.schedules.get(record.schedule_id).status == "completed"
+    claimed = services.schedules.claim_due()
+    assert claimed is not None
+    await scheduler._execute(claimed)
+    saved = services.schedules.get(record.schedule_id)
+    assert saved is not None and saved.status == "active"
     await scheduler.start()
     await scheduler.start()
     await scheduler.stop()
     await scheduler.stop()
     await scheduler.cancel(record.schedule_id, operation_id="cancel-after-complete")
     services.close()
+
+
+@pytest.mark.asyncio
+async def test_manual_tick_stop_drains_admitted_worker_and_heartbeat(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    engine = PortableWorkflowEngine()
+    await engine.initialize(services)
+    entered, released = asyncio.Event(), asyncio.Event()
+
+    async def hold(_handle: Any, _plan: Any, _input: Any) -> None:
+        entered.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            released.set()
+
+    monkeypatch.setattr(engine, "dispatch_scheduled", hold)
+    services.schedules.create(compile_workflow(_workflow({"after": {"seconds": 2}})), {}, now=1000)
+    scheduler = WorkflowScheduler(services, engine, clock=lambda: 1002)
+    try:
+        assert await scheduler.tick() == 1
+        await asyncio.wait_for(entered.wait(), 1)
+        assert scheduler._task is None
+        workers = tuple(scheduler._workers.values())
+        await scheduler.stop()
+        assert released.is_set() and all(task.done() for task in workers)
+        assert scheduler._workers == {} and scheduler._active == {}
+    finally:
+        await scheduler.stop()
+        services.close()

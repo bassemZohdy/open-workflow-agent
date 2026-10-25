@@ -7,7 +7,11 @@ import socket
 import httpx
 import pytest
 from open_workflow_agent.catalog import FakeModel
-from open_workflow_agent.config import ExternalCatalogConfig, RuntimeConfig
+from open_workflow_agent.config import (
+    CatalogAuthenticationConfig,
+    ExternalCatalogConfig,
+    RuntimeConfig,
+)
 from open_workflow_agent.errors import ToolError, UnsupportedWorkflowFeature, WorkflowSchemaError
 from open_workflow_agent.external_catalog import (
     CatalogFunctionReference,
@@ -18,8 +22,8 @@ from open_workflow_agent.external_catalog import (
     _endpoint_uri,
     _function_uri,
     _header,
-    _HostBoundAuthentication,
     _nested_values,
+    _OriginBoundAuthentication,
     _referenced_functions,
     _resolve_external_destination,
     _validate_function_definition,
@@ -28,7 +32,7 @@ from open_workflow_agent.external_catalog import (
     parse_catalog_function_reference,
 )
 from open_workflow_agent.protocols import HttpClient
-from open_workflow_agent.security import SecurityConfig
+from open_workflow_agent.security import ProfileAuthentication, SecurityConfig
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import (
     WorkflowExecutor,
@@ -90,6 +94,64 @@ async def test_external_catalog_function_is_resolved_and_executed(services):
         plan, {"value": "hello"}
     )
     assert result == {"echo": "hello"}
+
+
+@pytest.mark.parametrize("profile", ["catalog-reader", "missing"])
+@pytest.mark.asyncio
+async def test_prebound_profile_is_resolved_under_catalog_policy_and_host_bound(
+    services, monkeypatch, profile
+):
+    monkeypatch.setenv("OWA_PREBOUND_TOKEN", "prebound-secret")
+    security = SecurityConfig.model_validate(
+        {
+            "profiles": {
+                "catalog-reader": {"type": "bearer", "token": {"from_env": "OWA_PREBOUND_TOKEN"}}
+            }
+        }
+    )
+    requests = []
+
+    async def handler(request):
+        requests.append(str(request.url))
+        if request.url.host == "catalog.test":
+            assert request.headers.get("authorization") == "Bearer prebound-secret"
+            return httpx.Response(200, text=FUNCTION_YAML)
+        assert request.url.host == "api.test"
+        assert "authorization" not in request.headers
+        return httpx.Response(200, json={"echo": json.loads(request.content)["value"]})
+
+    policy = ExternalCatalogConfig(
+        allowed_hosts=["catalog.test", "api.test"],
+        authentication=CatalogAuthenticationConfig(security_profile=profile),
+    )
+    resolver = ExternalCatalogResolver(
+        {"trusted": policy},
+        http=HttpClient(
+            transport=httpx.MockTransport(handler),
+            authentication=ProfileAuthentication(security, "catalog-reader"),
+        ),
+    )
+    services.external_catalogs = resolver
+    if profile == "missing":
+        with pytest.raises(ToolError, match="resolution failed"):
+            await resolve_and_compile_workflow(
+                _workflow(),
+                trusted_catalogs=resolver.policies,
+                resolver=resolver,
+                catalog=services.catalog,
+            )
+        assert requests == []
+        return
+    plan = await resolve_and_compile_workflow(
+        _workflow(),
+        trusted_catalogs=resolver.policies,
+        resolver=resolver,
+        catalog=services.catalog,
+    )
+    assert await WorkflowExecutor(services.catalog, services=services).execute(
+        plan, {"value": 1}
+    ) == {"echo": 1}
+    assert len(requests) == 2
 
 
 @pytest.mark.asyncio
@@ -423,7 +485,7 @@ def test_external_catalog_reference_and_uri_helpers():
 
 def test_external_catalog_definition_and_recursive_helpers():
     reference = CatalogFunctionReference("echo", "1.0.0", "trusted")
-    valid = {"call": "http", "with": {"endpoint": "https://api.test"}}
+    valid = {"call": "http", "with": {"method": "get", "endpoint": "https://api.test"}}
     assert _validate_function_definition(valid, reference) == ("http", valid["with"])
     assert _contains_key({"nested": [{"$ref": "x"}]}, "$ref") is True
     assert _contains_key({"nested": []}, "$ref") is False
@@ -447,7 +509,12 @@ def test_external_catalog_definition_and_recursive_helpers():
         with pytest.raises((UnsupportedWorkflowFeature, WorkflowSchemaError), match=message):
             _validate_function_definition(definition, reference)
 
-    workflow = {"do": [{"call": "echo:1.0.0@trusted"}, {"call": "noop:1.0.0@default"}]}
+    workflow = {
+        "do": [
+            {"remote": {"call": "echo:1.0.0@trusted"}},
+            {"local": {"call": "noop:1.0.0@default"}},
+        ]
+    }
     assert _referenced_functions(workflow) == {reference}
 
 
@@ -463,12 +530,23 @@ def test_external_catalog_invocation_destinations_and_headers(monkeypatch):
     assert _header({}, "etag") is None
 
     class Provider:
+        calls: list[str] = []
+
         def headers(self, endpoint: str) -> dict[str, str]:
+            self.calls.append(endpoint)
             return {"X-Endpoint": endpoint}
 
-    bound = _HostBoundAuthentication(Provider(), "api.test")
+    provider = Provider()
+    bound = _OriginBoundAuthentication(provider, "https://api.test/catalog/function.yaml")
     assert bound.headers("https://api.test/one") == {"X-Endpoint": "https://api.test/one"}
     assert bound.headers("https://other.test/one") == {}
+    assert bound.headers("https://api.test:8443/one") == {}
+    assert bound.headers("http://api.test/one") == {}
+    assert bound.headers("https://api.test:443/one") == {"X-Endpoint": "https://api.test:443/one"}
+    assert provider.calls == [
+        "https://api.test/one",
+        "https://api.test:443/one",
+    ]
 
     assert _authentication(type("Auth", (), {"security_profile": None})(), None) is None
     with pytest.raises(ToolError, match="runtime security configuration"):

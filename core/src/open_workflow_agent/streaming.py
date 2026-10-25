@@ -116,7 +116,7 @@ def lifecycle_sse_stream(
     return stream()
 
 
-def streaming_capabilities() -> dict[str, Any]:
+def streaming_capabilities(*, durable_history: bool = False) -> dict[str, Any]:
     """Describe only the bounded common streaming surface implemented here."""
 
     defaults = StreamLimits()
@@ -125,8 +125,12 @@ def streaming_capabilities() -> dict[str, Any]:
         "transport": "sse",
         "endpoint": "/v1/events/lifecycle/stream",
         "eventModel": "cloudevents-1.0-lifecycle",
-        "ordering": "emission_order_per_runtime",
-        "replay": "bounded_snapshot_by_last_event_id",
+        "ordering": "commit_order_in_shared_history"
+        if durable_history
+        else "emission_order_per_runtime",
+        "replay": "bounded_durable_history_by_last_event_id"
+        if durable_history
+        else "bounded_snapshot_by_last_event_id",
         "disconnectCancelsInvocation": False,
         "backpressure": "bounded_queue_disconnect",
         "defaults": {

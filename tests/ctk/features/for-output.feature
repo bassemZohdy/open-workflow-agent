@@ -15,7 +15,7 @@ Feature: For Task Output
       - decorate:
           for:
             each: color
-            in: .colors
+            in: '${ .colors }'
           do:
             - mark:
                 set:

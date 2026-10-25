@@ -9,6 +9,8 @@ paths.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import math
 import os
 import shutil
 import signal
@@ -16,6 +18,8 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
 
@@ -28,11 +32,15 @@ from ...errors import (
     SandboxTimeoutError,
 )
 from ..contract import (
-    RESERVED_ENVIRONMENT,
     SandboxExecutionRequest,
     SandboxExecutionResult,
     SandboxSecretReference,
+    SandboxStdioRequest,
+    SandboxStdioSession,
+    is_reserved_environment_name,
 )
+
+WORKSPACE_TEMPORARY_ENVIRONMENT = frozenset({"TEMP", "TMP"})
 
 
 class _OutputBudget:
@@ -55,24 +63,72 @@ class InternalSandboxBackend:
     def __init__(self, config: SandboxConfig) -> None:
         self.config = config
         self._active: dict[str, asyncio.subprocess.Process] = {}
+        self._awaited_jobs: dict[str, Any] = {}
+        self._awaited_starts: dict[str, asyncio.Task[Any]] = {}
+        self._awaited_stops: set[str] = set()
+        self._stdio_sessions: dict[str, SandboxStdioSession] = {}
+        self._stdio_starting: set[str] = set()
+        self._stdio_starts: dict[str, asyncio.Task[Any]] = {}
+        self._stdio_closing = False
+
+    @asynccontextmanager
+    async def open_stdio(self, request: SandboxStdioRequest) -> AsyncIterator[SandboxStdioSession]:
+        from ..stdio import open_internal_stdio
+
+        async with open_internal_stdio(self, request) as session:
+            yield session
 
     def capabilities(self) -> dict[str, Any]:
         posix = os.name == "posix"
         enabled = self.config.enabled and self.config.backend == "internal"
+        awaited = enabled and not self._stdio_closing
+        try:
+            self._validate_awaited_controls()
+        except SandboxPolicyError:
+            awaited = False
+        stdio_enabled = enabled and self.config.mcp_stdio.enabled and not self._stdio_closing
+        if stdio_enabled:
+            from ..stdio_policy import validate_stdio_transport
+
+            try:
+                server = self.config.mcp_stdio.servers[0]
+                validate_stdio_transport(
+                    {"stdio": {"command": server.command, "arguments": list(server.arguments)}},
+                    self.config,
+                )
+            except (SandboxPolicyError, IndexError):
+                stdio_enabled = False
+        runtimes = [
+            name
+            for name in self.config.script_runtimes
+            if name != "javascript" or shutil.which("node", path=self._effective_search_path())
+        ]
         return {
-            "enabled": enabled,
+            "enabled": awaited,
             "backend": "internal",
-            "internalProcess": enabled,
+            "internalProcess": awaited,
             "script": {
-                "enabled": enabled,
-                "runtimes": list(self.config.script_runtimes),
+                "enabled": awaited and bool(runtimes),
+                "runtimes": runtimes,
                 "externalSource": False,
             },
-            "shell": {"enabled": enabled and self.config.allow_shell},
+            "shell": {"enabled": awaited and self.config.allow_shell},
             "container": {"enabled": False},
             "cancellation": True,
             "resourceLimits": {
-                "posixRlimit": posix,
+                "posixRlimit": posix and awaited,
+                "windowsJob": os.name == "nt" and awaited,
+                "cpu": awaited and self.config.cpu_seconds is not None,
+                "memory": awaited and self.config.memory_bytes is not None,
+                "fileSize": posix and awaited and self.config.file_size_bytes is not None,
+                "processCount": awaited and self.config.process_count is not None,
+                "processTree": (
+                    "windows_job"
+                    if os.name == "nt" and awaited
+                    else "posix_process_group"
+                    if posix and awaited
+                    else "unavailable"
+                ),
                 "workspaceQuota": "monitored",
                 "outputBytes": True,
                 "timeout": True,
@@ -80,11 +136,105 @@ class InternalSandboxBackend:
             "filesystemIsolation": "workspace_cwd_only",
             "networkIsolation": "none",
             "hardIsolation": False,
+            "mcpStdio": {
+                "enabled": stdio_enabled,
+                "duplex": True,
+                "externalBackends": False,
+                "processTree": "windows_job" if not posix else "posix_process_group",
+                "maxFrameBytes": self.config.mcp_stdio.max_frame_bytes,
+                "resourceControls": {
+                    "windowsJob": not posix,
+                    "posixRlimit": posix,
+                    "fileSize": posix,
+                    "workspaceQuota": "monitored",
+                    "inputOutputBytes": True,
+                    "wholeDeadline": True,
+                },
+            },
         }
+
+    def _validate_awaited_controls(self) -> None:
+        if not math.isfinite(self.config.timeout_seconds) or self.config.timeout_seconds <= 0:
+            raise SandboxPolicyError("sandbox timeout must be finite and positive")
+        if os.name == "nt":
+            if self.config.file_size_bytes is not None:
+                raise SandboxPolicyError("Windows awaited file-size enforcement is unavailable")
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+            proactor = getattr(asyncio, "ProactorEventLoop", None)
+            if loop is not None and (proactor is None or not isinstance(loop, proactor)):
+                raise SandboxPolicyError("Windows awaited processes require a Proactor event loop")
+            return
+        if os.name != "posix":
+            raise SandboxPolicyError("awaited sandbox process controls are unavailable")
+        import resource
+
+        if not callable(getattr(resource, "setrlimit", None)) or not callable(
+            getattr(os, "killpg", None)
+        ):
+            raise SandboxPolicyError("awaited sandbox process controls are unavailable")
+        for name, value in (
+            ("RLIMIT_CPU", self.config.cpu_seconds),
+            ("RLIMIT_AS", self.config.memory_bytes),
+            ("RLIMIT_FSIZE", self.config.file_size_bytes),
+            ("RLIMIT_NPROC", self.config.process_count),
+        ):
+            if value is not None and not hasattr(resource, name):
+                raise SandboxPolicyError(
+                    "requested awaited process resource control is unavailable"
+                )
+        if self.config.process_count is not None and getattr(os, "getuid", lambda: 0)() == 0:
+            raise SandboxPolicyError("privileged awaited process-count enforcement is unavailable")
+
+    @staticmethod
+    def _close_awaited_tree(process: asyncio.subprocess.Process, job: Any) -> None:
+        if job is not None:
+            job.close()
+        elif os.name == "posix":
+            killpg = getattr(os, "killpg", None)
+            sigkill = getattr(signal, "SIGKILL", None)
+            if not callable(killpg) or sigkill is None:
+                raise SandboxProcessError("awaited process group control is unavailable")
+            try:
+                killpg(process.pid, sigkill)
+            except ProcessLookupError:
+                pass
+
+    async def _wait_awaited_leader(self, process: asyncio.subprocess.Process, job: Any) -> int:
+        # Process.wait can wait for inherited pipes as well as the leader on
+        # asyncio. Observe the actual exit before closing descendants' pipes.
+        while process.returncode is None:
+            await asyncio.sleep(0.01)
+        code = process.returncode
+        self._close_awaited_tree(process, job)
+        return code
 
     async def execute(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
         if not self.config.enabled or self.config.backend != "internal":
             raise SandboxPolicyError("internal sandbox execution is disabled")
+        if self._stdio_closing:
+            raise SandboxPolicyError("internal sandbox is shutting down")
+        self._validate_awaited_controls()
+        if (
+            request.execution_id in self._active
+            or request.execution_id in self._awaited_starts
+            or request.execution_id in self._stdio_starting
+            or request.execution_id in self._stdio_sessions
+        ):
+            raise SandboxPolicyError("sandbox execution identity is already active")
+        owner = asyncio.current_task()
+        if owner is None:
+            raise SandboxPolicyError("sandbox execution ownership is unavailable")
+        self._awaited_starts[request.execution_id] = owner
+        try:
+            return await self._execute_awaited(request)
+        finally:
+            self._awaited_starts.pop(request.execution_id, None)
+            self._awaited_stops.discard(request.execution_id)
+
+    async def _execute_awaited(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
         self._validate_request_size(request)
         root = Path(self.config.workspace_root)
         root.mkdir(parents=True, exist_ok=True)
@@ -93,58 +243,88 @@ class InternalSandboxBackend:
             workspace = Path(temporary)
             executable, arguments = self._prepare_command(request, workspace)
             environment = self._build_environment(request, workspace)
+            from ..credential_guard import process_credential_guard
+
+            output_guard = process_credential_guard(request, environment)
             self._check_workspace(workspace)
+            process = None
+            job: Any = None
+            tasks: list[asyncio.Task[Any]] = []
+            if os.name == "nt":
+                from .._windows_job import WindowsProcessJob
+
+                job = WindowsProcessJob(self.config)
             try:
-                process = await asyncio.create_subprocess_exec(
-                    executable,
-                    *arguments,
-                    cwd=workspace,
-                    env=environment,
-                    stdin=asyncio.subprocess.PIPE,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                    start_new_session=os.name == "posix",
-                    close_fds=True,
-                    preexec_fn=self._resource_limiter(),
-                )
-            except (OSError, subprocess.SubprocessError) as exc:
-                raise SandboxProcessError(
-                    "sandbox process failed to start",
-                    details={"execution_id": request.execution_id},
-                ) from exc
-            self._active[request.execution_id] = process
-            budget = _OutputBudget(self.config.max_output_bytes)
-            tasks: list[asyncio.Task[Any]] = [
-                asyncio.create_task(self._write_stdin(process, request.stdin)),
-                asyncio.create_task(self._read_stream(process.stdout, budget)),
-                asyncio.create_task(self._read_stream(process.stderr, budget)),
-                asyncio.create_task(process.wait()),
-                asyncio.create_task(self._monitor_workspace(process, workspace)),
-            ]
-            try:
-                async with asyncio.timeout(self.config.timeout_seconds):
+                remaining = self.config.timeout_seconds - (time.perf_counter() - started)
+                if remaining <= 0:
+                    raise TimeoutError
+                async with asyncio.timeout(remaining):
+                    try:
+                        process = await asyncio.create_subprocess_exec(
+                            executable,
+                            *arguments,
+                            cwd=workspace,
+                            env=environment,
+                            stdin=asyncio.subprocess.PIPE,
+                            stdout=asyncio.subprocess.PIPE,
+                            stderr=asyncio.subprocess.PIPE,
+                            start_new_session=os.name == "posix",
+                            close_fds=True,
+                            preexec_fn=self._resource_limiter(),
+                            creationflags=0x00000004 if os.name == "nt" else 0,
+                        )
+                    except (OSError, subprocess.SubprocessError) as exc:
+                        raise SandboxProcessError(
+                            "sandbox process failed to start",
+                            details={"execution_id": request.execution_id},
+                        ) from exc
+                    self._active[request.execution_id] = process
+                    if job is not None:
+                        self._awaited_jobs[request.execution_id] = job
+                        job.assign_and_resume(process.pid)
+                    budget = _OutputBudget(self.config.max_output_bytes)
+                    tasks = [
+                        asyncio.create_task(self._write_stdin(process, request.stdin)),
+                        asyncio.create_task(self._read_stream(process.stdout, budget)),
+                        asyncio.create_task(self._read_stream(process.stderr, budget)),
+                        asyncio.create_task(self._wait_awaited_leader(process, job)),
+                        asyncio.create_task(self._monitor_workspace(process, workspace)),
+                    ]
                     results = await asyncio.gather(*tasks)
             except TimeoutError as exc:
-                await self._terminate_process(process)
-                await self._cancel_tasks(tasks)
                 raise SandboxTimeoutError(
                     "sandbox execution timed out",
                     details={"timeout_seconds": self.config.timeout_seconds},
                 ) from exc
-            except asyncio.CancelledError:
-                await self._terminate_process(process)
-                await self._cancel_tasks(tasks)
-                raise
-            except Exception:
-                await self._terminate_process(process)
-                await self._cancel_tasks(tasks)
-                raise
             finally:
                 self._active.pop(request.execution_id, None)
-            stdout = cast(str, results[1])
-            stderr = cast(str, results[2])
+                self._awaited_jobs.pop(request.execution_id, None)
+                if process is not None:
+                    self._close_awaited_tree(process, job)
+                    unwinding = sys.exc_info()[0] is not None
+                    try:
+                        await asyncio.wait_for(self._terminate_process(process), timeout=2)
+                    except TimeoutError:
+                        if not unwinding:
+                            raise SandboxProcessError(
+                                "sandbox process cleanup could not be verified"
+                            ) from None
+                    finally:
+                        await self._cancel_tasks(tasks)
+                        transport = getattr(process, "_transport", None)
+                        if transport is not None:
+                            transport.close()
+                elif job is not None:
+                    job.close()
+            stdout = output_guard.text(cast(str, results[1]))
+            stderr = output_guard.text(cast(str, results[2]))
             exit_code = cast(int, results[3])
             self._check_workspace(workspace)
+            if request.execution_id in self._awaited_stops:
+                raise SandboxProcessError(
+                    "sandbox execution was stopped before completion",
+                    details={"exit_code": exit_code},
+                )
             if exit_code != 0:
                 if exit_code < 0 and self._resource_signal(-exit_code):
                     raise SandboxResourceLimitError(
@@ -164,17 +344,63 @@ class InternalSandboxBackend:
             )
 
     async def cancel(self, execution_id: str) -> None:
+        awaited = self._awaited_starts.get(execution_id)
+        if awaited is not None and execution_id not in self._active:
+            if awaited is not asyncio.current_task():
+                awaited.cancel()
+                await asyncio.gather(awaited, return_exceptions=True)
+        starting = self._stdio_starts.get(execution_id)
+        if starting is not None and starting is not asyncio.current_task():
+            starting.cancel()
+            await asyncio.gather(starting, return_exceptions=True)
+        session = self._stdio_sessions.get(execution_id)
+        if session is not None:
+            await session.aclose()
         process = self._active.get(execution_id)
         if process is not None:
-            await self._terminate_process(process)
+            if process.returncode is None:
+                self._awaited_stops.add(execution_id)
+            await self._stop_awaited_process(process, self._awaited_jobs.get(execution_id))
+
+    async def _stop_awaited_process(self, process: asyncio.subprocess.Process, job: Any) -> None:
+        if job is not None:
+            job.close()
+        await self._terminate_process(process)
+        self._close_awaited_tree(process, job)
 
     async def shutdown(self) -> None:
-        processes = list(self._active.values())
+        self._stdio_closing = True
+        self._awaited_stops.update(
+            identifier for identifier, process in self._active.items() if process.returncode is None
+        )
+        awaited = tuple(
+            owner
+            for identifier, owner in self._awaited_starts.items()
+            if identifier not in self._active and owner is not asyncio.current_task()
+        )
+        for owner in awaited:
+            owner.cancel()
+        await asyncio.gather(*awaited, return_exceptions=True)
+        starting = tuple(
+            task for task in self._stdio_starts.values() if task is not asyncio.current_task()
+        )
+        for task in starting:
+            task.cancel()
+        await asyncio.gather(*starting, return_exceptions=True)
         await asyncio.gather(
-            *(self._terminate_process(process) for process in processes),
+            *(session.aclose() for session in tuple(self._stdio_sessions.values())),
+            return_exceptions=True,
+        )
+        self._stdio_sessions.clear()
+        await asyncio.gather(
+            *(
+                self._stop_awaited_process(process, self._awaited_jobs.get(identifier))
+                for identifier, process in tuple(self._active.items())
+            ),
             return_exceptions=True,
         )
         self._active.clear()
+        self._awaited_jobs.clear()
 
     def _validate_request_size(self, request: SandboxExecutionRequest) -> None:
         values = [
@@ -195,6 +421,30 @@ class InternalSandboxBackend:
                 details={"max_input_bytes": self.config.max_input_bytes},
             )
 
+    def validate_background_request(self, request: SandboxExecutionRequest) -> None:
+        """Validate a transformed request without workspace, secret reads or launch."""
+        if not self.config.enabled or request.kind not in {"script", "shell"}:
+            raise SandboxPolicyError("background internal operation is unavailable")
+        self._validate_request_size(request)
+        if request.kind == "script":
+            if (
+                request.script_language != "python"
+                or request.script_language not in self.config.script_runtimes
+                or not isinstance(request.script_code, str)
+            ):
+                raise SandboxPolicyError("only enabled inline Python jobs are supported")
+        else:
+            # Shell preparation only resolves the explicitly approved search
+            # path; unlike script preparation it creates no workspace file.
+            self._prepare_command(request, Path())
+        for name, value in request.environment:
+            if (
+                is_reserved_environment_name(name)
+                or not isinstance(value, SandboxSecretReference)
+                or value.name not in self.config.secret_environment
+            ):
+                raise SandboxPolicyError("background environment reference is not approved")
+
     def _prepare_command(
         self, request: SandboxExecutionRequest, workspace: Path
     ) -> tuple[str, tuple[str, ...]]:
@@ -206,23 +456,30 @@ class InternalSandboxBackend:
                     "sandbox script runtime is not enabled",
                     details={"runtime": request.script_language},
                 )
-            if request.script_language != "python" or request.script_code is None:
-                raise SandboxPolicyError("only inline Python scripts are supported")
-            path = workspace / "main.py"
+            if request.script_code is None:
+                raise SandboxPolicyError("sandbox script requires inline source")
+            if request.script_language == "python":
+                executable, filename = sys.executable, "main.py"
+            elif request.script_language == "javascript":
+                executable = self._javascript_executable()
+                filename = "main.cjs"
+            else:
+                raise SandboxPolicyError("sandbox script runtime is unsupported")
+            path = workspace / filename
             path.write_text(request.script_code, encoding="utf-8")
-            return sys.executable, (str(path), *request.arguments)
+            return executable, (str(path), *request.arguments)
         if not self.config.allow_shell:
             raise SandboxPolicyError("sandbox shell execution is disabled")
         command = request.command or ""
         if not command or "/" in command or (os.altsep and os.altsep in command):
             raise SandboxPolicyError("shell command must be a direct executable name")
-        executable = shutil.which(command, path=self._effective_search_path())
-        if executable is None:
+        resolved_executable = shutil.which(command, path=self._effective_search_path())
+        if resolved_executable is None:
             raise SandboxPolicyError(
                 "shell executable is not available in the approved search path",
                 details={"command": command},
             )
-        return executable, request.arguments
+        return resolved_executable, request.arguments
 
     def _build_environment(
         self, request: SandboxExecutionRequest, workspace: Path
@@ -237,8 +494,12 @@ class InternalSandboxBackend:
             inherited_value = os.getenv(name)
             if inherited_value is not None:
                 environment[name] = inherited_value
+        # Python and Windows native tools prefer TEMP/TMP over TMPDIR. Bind
+        # all standard temporary-directory variables back to this execution's
+        # workspace after deployment allowlisted values have been applied.
+        environment.update({name: str(workspace) for name in WORKSPACE_TEMPORARY_ENVIRONMENT})
         for name, configured_value in request.environment:
-            if name in RESERVED_ENVIRONMENT:
+            if is_reserved_environment_name(name):
                 raise SandboxPolicyError(
                     "sandbox environment cannot override runtime isolation variables",
                     details={"name": name},
@@ -258,6 +519,11 @@ class InternalSandboxBackend:
                 environment[name] = resolved
             else:
                 environment[name] = configured_value
+        if request.kind == "script" and request.script_language == "python":
+            # The admitted Python source/input are UTF-8 on every host. This
+            # controlled interpreter binding overrides a requested host codec;
+            # no ambient locale/environment is inherited for encoding identity.
+            environment["PYTHONIOENCODING"] = "utf-8:strict"
         total = sum(
             len(key.encode()) + len(environment_value.encode())
             for key, environment_value in environment.items()
@@ -268,6 +534,27 @@ class InternalSandboxBackend:
                 details={"max_input_bytes": self.config.max_input_bytes},
             )
         return environment
+
+    def _javascript_executable(self) -> str:
+        executable = shutil.which("node", path=self._effective_search_path())
+        if executable is None:
+            raise SandboxPolicyError("JavaScript interpreter is unavailable in the approved path")
+        return executable
+
+    def script_runtime_snapshot(self) -> dict[str, Any]:
+        """Bind optional interpreters to recovery without executing host commands."""
+        if "javascript" not in self.config.script_runtimes:
+            return {}
+        path = Path(self._javascript_executable()).resolve(strict=True)
+        digest = hashlib.sha256()
+        size = 0
+        with path.open("rb") as source:
+            while chunk := source.read(1_048_576):
+                size += len(chunk)
+                if size > 268_435_456:
+                    raise SandboxPolicyError("JavaScript interpreter exceeds the attestation bound")
+                digest.update(chunk)
+        return {"javascript": {"path": str(path), "sha256": digest.hexdigest(), "bytes": size}}
 
     def _effective_search_path(self) -> str:
         values = [

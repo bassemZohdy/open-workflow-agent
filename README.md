@@ -23,6 +23,9 @@ Use Open Workflow Agent when you want to:
 
 Every invocation runs as a workflow. If you do not provide one, the runtime generates a default workflow that calls the configured agent.
 
+See the [documentation guide](docs/README.md), [verified project status](PROJECT.md)
+and [remaining backlog](TODO.md) for the supported profiles and work in progress.
+
 ## Published container images
 
 End users can pull the prebuilt runtime images from Docker Hub or GitHub Container Registry (GHCR). Docker Hub is used in end-user examples because it gives the shortest standard Docker image name; GHCR remains the canonical release/provenance registry.
@@ -257,6 +260,8 @@ MODEL_NAME=ollama/<local-model-name>
 OWA__MODEL__OPTIONS__API_BASE=http://host.docker.internal:11434
 ```
 
+Repository Compose builds use embedded SQLite and start only the selected engine by default. Optional local PostgreSQL uses `-f compose.yaml -f compose.postgres.yaml`; existing PostgreSQL deployments must keep that override and their original volumes. See [bootstrap/default boundaries](docs/embedded-bootstrap.md).
+
 `compose.yaml` passes the local `.env` through to the runtime container so LiteLLM can read provider-specific variables. `.env` is ignored by git; use deployment secrets rather than `.env` in production.
 
 For another LiteLLM provider, set `MODEL_NAME=<provider-prefix>/<model>` and add the provider-specific environment variables to `.env`. Custom/OpenAI-compatible endpoints can use `OWA__MODEL__OPTIONS__API_KEY`, `OWA__MODEL__OPTIONS__API_BASE`, and `OWA__MODEL__OPTIONS__API_VERSION`.
@@ -329,7 +334,9 @@ ADK and LangGraph are implementation engines, not public application contracts. 
 - [Getting started](docs/getting-started.md) — run a published image and invoke your first agent.
 - [Configuration](docs/configuration.md) — runtime configuration and model-provider reference.
 - [API guide](docs/api.md) — HTTP endpoints and request/response examples.
-- [Protocol baselines](docs/protocol-baselines.md) — pinned latest-stable external protocol/specification versions.
+- [Protocol baselines](docs/protocol-baselines.md) — reviewed protocol versions and the explicit OWS prerelease/schema-snapshot pin.
+- [Workflow admission](docs/workflow-admission.md) — supported definition profile and fail-closed boundaries.
+- [Schema resources](docs/schema-resources.md) — deployment-approved capture and offline validation.
 - [Protocol and security decisions](docs/protocol-security-decisions.md) — version policy, security profiles, authorization vocabulary, traffic-policy separation, and A2A task/skill decisions.
 - [Deployment guide](docs/deployment.md) — Docker Hub/GHCR images, persistence, Docker, Kubernetes, and OpenShift.
 - [Developer guide](docs/development.md) — source checkout, repository structure, tests, and contribution workflow.
@@ -362,3 +369,7 @@ pending archival. [TODO.md](TODO.md) contains staged implementation gaps; the
 [full tracker](resources/compatibility/feature-tracker.json) preserves every
 reviewed feature and proposed test. Imported references are not advertised as
 implemented capabilities.
+
+Reusable OWS task functions and named error/retry/timeout definitions use the
+[common resolution contract](docs/reusable-definitions.md), with original
+descriptors and immutable catalog content identity.

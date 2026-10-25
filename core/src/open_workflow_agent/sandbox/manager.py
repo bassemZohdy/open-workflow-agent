@@ -2,17 +2,94 @@
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from typing import Any, Literal
 
-from .contract import SandboxBackend, SandboxExecutionRequest, SandboxExecutionResult
+from ..errors import SandboxPolicyError
+from .contract import (
+    SandboxBackend,
+    SandboxExecutionRequest,
+    SandboxExecutionResult,
+    SandboxStdioRequest,
+    SandboxStdioSession,
+)
+from .job_backend import SandboxJobBackend, SandboxJobLaunch, SandboxJobObservation
+from .jobs import SandboxJobBackendBinding, SandboxJobProfile
 
 
 class SandboxManager:
-    def __init__(self, backend: SandboxBackend) -> None:
+    def __init__(
+        self, backend: SandboxBackend, *, job_backend: SandboxJobBackend | None = None
+    ) -> None:
         self.backend = backend
+        self._job_backend = job_backend
+
+    def validate_job_profile(self, profile: SandboxJobProfile) -> None:
+        from . import background_qualification
+
+        backend = self._job_backend
+        if not background_qualification.BACKGROUND_EXECUTION_PROFILE_QUALIFIED:
+            raise SandboxPolicyError("background execution profile has not passed qualification")
+        selected = self.backend.capabilities()
+        if (
+            backend is None
+            or backend.profile() != profile
+            or not selected.get("enabled", False)
+            or selected.get("backend") != profile.backend
+        ):
+            raise SandboxPolicyError("sandbox job deployment profile is unavailable or changed")
+
+    def validate_job_profile_from_admission(self, admission: dict[str, Any]) -> None:
+        self.validate_job_profile(SandboxJobProfile(**admission["backend_profile"]))
+
+    def _jobs(self, launch: SandboxJobLaunch) -> SandboxJobBackend:
+        self.validate_job_profile(launch.profile)
+        if self._job_backend is None:
+            raise SandboxPolicyError("sandbox job backend is unavailable")
+        return self._job_backend
+
+    def validate_job_request(self, request: SandboxExecutionRequest) -> None:
+        from .backends.internal import InternalSandboxBackend
+
+        if type(self.backend) is not InternalSandboxBackend:
+            raise SandboxPolicyError(
+                "background request preflight requires the selected internal backend"
+            )
+        self.backend.validate_background_request(request)
+
+    async def submit_job(self, launch: SandboxJobLaunch) -> SandboxJobObservation:
+        self.validate_job_request(launch.request)
+        return await self._jobs(launch).submit(launch)
+
+    async def inspect_job(
+        self, launch: SandboxJobLaunch, binding: SandboxJobBackendBinding | None
+    ) -> SandboxJobObservation:
+        return await self._jobs(launch).inspect(launch, binding)
+
+    async def cancel_job(
+        self,
+        launch: SandboxJobLaunch,
+        binding: SandboxJobBackendBinding,
+        *,
+        generation: int,
+        reason: Literal["cancel", "deadline"],
+    ) -> SandboxJobObservation:
+        return await self._jobs(launch).cancel(
+            launch, binding, generation=generation, reason=reason
+        )
 
     async def execute(self, request: SandboxExecutionRequest) -> SandboxExecutionResult:
         return await self.backend.execute(request)
+
+    @asynccontextmanager
+    async def open_stdio(self, request: SandboxStdioRequest) -> AsyncIterator[SandboxStdioSession]:
+        from .backends.internal import InternalSandboxBackend
+
+        if not isinstance(self.backend, InternalSandboxBackend):
+            raise SandboxPolicyError("selected sandbox backend does not support MCP stdio")
+        async with self.backend.open_stdio(request) as session:
+            yield session
 
     async def cancel(self, execution_id: str) -> None:
         await self.backend.cancel(execution_id)
@@ -21,4 +98,48 @@ class SandboxManager:
         await self.backend.shutdown()
 
     def capabilities(self) -> dict[str, Any]:
-        return self.backend.capabilities()
+        from . import background_qualification
+
+        value = dict(self.backend.capabilities())
+        value["awaitedReturn"] = {
+            "enabled": bool(value.get("enabled", False)),
+            "default": "stdout",
+            "modes": ["stdout", "stderr", "code", "all", "none"],
+            "processResultFields": ["code", "stdout", "stderr"],
+        }
+        value["backgroundExecution"] = False
+        if self._job_backend is not None:
+            from .internal_jobs import InternalSandboxJobBackend
+
+            backend = self._job_backend
+            if (
+                background_qualification.BACKGROUND_EXECUTION_PROFILE_QUALIFIED
+                and isinstance(backend, InternalSandboxJobBackend)
+                and backend.config.background.enabled
+                and backend.store.connection.kind == "sqlite"
+                and value.get("enabled") is True
+                and value.get("backend") == "internal"
+            ):
+                try:
+                    self.validate_job_profile(backend.profile())
+                except SandboxPolicyError:
+                    pass
+                else:
+                    value["backgroundExecution"] = True
+                    value["backgroundProfile"] = {
+                        "profile": "owa/internal-background-job/v1",
+                        "backend": "internal",
+                        "storage": "embedded-sqlite",
+                        "kinds": ["script", "shell"],
+                        "scriptRuntimes": ["python"],
+                        "lifetime": "independent",
+                        "returns": "transformed-task-input",
+                        "environment": "secret-references",
+                        "timeoutSeconds": backend.config.timeout_seconds,
+                        "survivesRuntimeStop": True,
+                        "automaticAmbiguousRelaunch": False,
+                        "supervisorLoss": "uncertain-no-adoption",
+                        "supervisorLivenessRequiredForWallTime": True,
+                        "hardIsolation": False,
+                    }
+        return value

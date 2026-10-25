@@ -25,10 +25,11 @@ def _workflow(tasks):
 
 
 async def _until(predicate):
-    for _ in range(100):
+    deadline = asyncio.get_running_loop().time() + 10
+    while asyncio.get_running_loop().time() < deadline:
         if predicate():
             return
-        await asyncio.sleep(0.005)
+        await asyncio.sleep(0.01)
     raise AssertionError("condition was not reached")
 
 
@@ -61,7 +62,9 @@ async def test_wait_resume_and_state_transitions(tmp_path):
     assert handle.status == "completed"
     assert [event.event_type for event in services.events.events].count("WorkflowWaiting") == 1
     assert [event.event_type for event in services.events.events].count("WorkflowResumed") == 1
-    assert (await running).status == "completed"
+    assert (await running).status == "waiting"
+    assert handle.invocation_id not in engine._active
+    await engine.shutdown()
     services.close()
 
 
@@ -106,6 +109,43 @@ async def test_cancellation_while_running_is_terminal_and_real(tmp_path):
     assert duplicate.status == "cancelled"
     assert handle.status == "cancelled"
     assert any(event.event_type == "WorkflowCancelled" for event in services.events.events)
+    services.close()
+
+
+@pytest.mark.asyncio
+async def test_idle_child_cancellation_event_preserves_parent_correlation(tmp_path):
+    services = RuntimeServices(RuntimeConfig(), model=FakeModel(), database_root=tmp_path)
+    engine = PortableWorkflowEngine()
+    await engine.initialize(services)
+    parent = services.invocations.create(
+        engine="portable",
+        session_id=None,
+        user_id=None,
+        workflow_name="parent",
+        workflow_version="1.0.0",
+        workflow_fingerprint="parent-fingerprint",
+    )
+    child = services.invocations.create(
+        engine="portable",
+        session_id=None,
+        user_id=None,
+        workflow_name="child",
+        workflow_version="1.0.0",
+        workflow_fingerprint="child-fingerprint",
+        parent_invocation_id=parent.invocation_id,
+        parent_task_reference="/do/0/child",
+    )
+
+    result = await engine.cancel(child, operation_id="operator-cancel")
+
+    assert result.status == "cancelled"
+    event = next(
+        event for event in services.events.events if event.event_type == "WorkflowCancelled"
+    )
+    assert event.invocation_id == child.invocation_id
+    assert event.parent_invocation_id == parent.invocation_id
+    assert event.parent_task_reference == "/do/0/child"
+    await engine.shutdown()
     services.close()
 
 

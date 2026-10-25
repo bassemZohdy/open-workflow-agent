@@ -21,8 +21,10 @@ GET /metrics
 
 The endpoint returns Prometheus text format `0.0.4`. It exposes bounded, runtime-local
 metric families for workflow starts/completions and latency, active invocations, task
-events, sandbox executions, HTTP requests/errors (including the A2A surface), traffic
-policy admissions/rejections, scheduler jobs, and pending approvals.
+events and terminal task latency, sandbox executions, HTTP requests/errors (including
+the A2A surface), traffic policy admissions/rejections, scheduler jobs, and pending
+approvals. Task duration is reported by engine and terminal outcome only; identifiers
+and workflow data are not metric labels.
 
 `/metrics` is outside the `/v1/*` API authentication profile. Deployments that expose
 it beyond a trusted monitoring network must protect it at the edge or through the
@@ -143,9 +145,24 @@ accepts a limit from 1 through 100, and `delete_memory` requires an integer id.
 
 ## Scheduling
 
-Scheduling is durable and owned by the single runtime process. The schedule rule
-(`after` or `every`) comes from the configured workflow definition; the API request
-supplies the input for each scheduled invocation.
+Scheduling uses durable, fenced claims over the configured common SQLite or
+PostgreSQL store. The schedule rule comes from the Open Workflow definition;
+the API request supplies invocation input. `/v1/capabilities` reports the
+supported profile for the active backend.
+
+`every` retains nominal cadence and permits overlapping invocations within the
+configured concurrency limit. `after` repeats following successful completion
+plus its delay and stops after fault or cancellation. `cron` accepts the bounded
+five-field calendar profile; bootstrap `execution_timing.timezone` defaults to
+UTC and accepts IANA zones. Missed occurrences retain their nominal slots and
+are delivered in bounded batches. `on` creates a separate invocation for each
+completed event-selection cycle and requires the embedded event store; memory
+and arbitrary custom buses reject event schedule creation.
+
+Schedule ownership is fenced across workers sharing the tested common store.
+The default deployment retains one container. General workflow migration,
+external event transports and broader deployment scale-out have their own
+acceptance gates.
 
 Create a schedule:
 
@@ -228,6 +245,27 @@ Last-Event-ID    optional replay cursor
 ```
 
 This stream carries common lifecycle events only. It is not general output/token streaming and is not itself an A2A binding.
+
+When `observability.history.enabled` is selected, snapshot and `Last-Event-ID`
+replay use bounded persistent diagnostic history. Capabilities report
+`ordering=commit_order_in_shared_history` and
+`replay=bounded_durable_history_by_last_event_id`. Other processes using the same
+history store become visible through bounded polling. A retained cursor replays
+only newer records; an expired or unknown cursor returns 409. Retention overtaking
+a live observer, or unread records exceeding its queue bound, ends that stream
+with `backpressure`. The existing `events.read` policy guards both endpoints.
+History does not certify native resume readiness or authorize workflow actions.
+
+With `observability.tracing.enabled`, lifecycle CloudEvents emitted inside a
+common invocation/task scope include the optional top-level `traceparent`
+extension. Retained events and SSE replay preserve its original value.
+`features.tracing` reports the selected generated-version-00 profile, optional
+HTTP propagation and the absence of incoming context, durable spans or an
+exporter. Incoming API trace headers do not select identity or authority. The
+authorized invocation recovery diagnostic adds a stable invocation trace link
+when enabled and verified definition/runtime profile digests when available.
+These projections disclose no original input or native payload and never prove
+native resume readiness.
 
 The transport-neutral rules for event identity, schema evolution, idempotency,
 replay, security, and any future AsyncAPI binding are documented in the [event

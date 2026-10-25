@@ -1,0 +1,96 @@
+document:
+  dsl: 1.0.3
+  namespace: patterns
+  name: refine-until-good
+  version: 1.0.0
+  title: Refine Until Good
+  summary: Bounded canonical OWS recipe. Named roles are immutable deployment bindings;
+    model output never grants authority.
+input:
+  schema:
+    format: json
+    document:
+      type: object
+      required:
+      - question
+      properties:
+        question:
+          type: string
+          maxLength: 65536
+      additionalProperties: false
+timeout:
+  after:
+    seconds: 120
+do:
+- attempts:
+    for:
+      each: attempt
+      in:
+      - 1
+      - 2
+      - 3
+    while: ${ ($context.quality // false) != true }
+    do:
+    - draft:
+        call: agent-drafter:1.0.0@default
+        with:
+          input: ${ {question:$workflow.input.question,previous:($context.draft //
+            null),feedback:($context.feedback // null)} }
+        timeout:
+          after:
+            seconds: 30
+        output:
+          schema:
+            format: json
+            document:
+              type: object
+              required:
+              - text
+              properties:
+                text:
+                  type: string
+                  maxLength: 65536
+              additionalProperties: false
+        export:
+          as: ${ $context + {draft:.text} }
+    - evaluate:
+        call: agent-critic:1.0.0@default
+        with:
+          input: ${ {question:$workflow.input.question,text:$context.draft} }
+        timeout:
+          after:
+            seconds: 30
+        output:
+          schema:
+            format: json
+            document:
+              type: object
+              required:
+              - quality
+              - feedback
+              properties:
+                quality:
+                  type: boolean
+                feedback:
+                  type: string
+                  maxLength: 65536
+              additionalProperties: false
+        export:
+          as: ${ $context + {quality:.quality,feedback:.feedback} }
+- quality:
+    switch:
+    - good:
+        when: ${ $context.quality == true }
+        then: finish
+    - exhausted:
+        then: reject
+- reject:
+    raise:
+      error:
+        type: https://open-workflow-specification.org/spec/1.0.0/errors/validation
+        status: 422
+        title: Refinement exhausted its three attempt budget
+- finish:
+    set:
+      text: ${ $context.draft }
+      quality: true

@@ -87,14 +87,11 @@ class SandboxBackend(Protocol):
     async def execute(
         self,
         request: SandboxExecutionRequest,
-    ) -> SandboxExecutionResult:
-        ...
+    ) -> SandboxExecutionResult: ...
 
-    async def cancel(self, execution_id: str) -> None:
-        ...
+    async def cancel(self, execution_id: str) -> None: ...
 
-    def capabilities(self) -> SandboxCapabilities:
-        ...
+    def capabilities(self) -> SandboxCapabilities: ...
 ```
 
 A request should carry only engine-neutral execution information, for example:
@@ -147,6 +144,10 @@ Minimum behavior:
 - use an argument-vector API rather than implicit shell interpolation whenever the Open Workflow operation permits it;
 - do not inherit the complete runtime environment by default;
 - provide an explicit environment allowlist/injection model;
+- bind `TMPDIR`, `TEMP`, and `TMP` to the execution workspace so language
+  runtimes do not place temporary files in a host default directory;
+- reject runtime isolation environment names without case sensitivity so
+  Windows casing cannot bypass the workspace boundary;
 - create a dedicated temporary working directory for each execution;
 - do not inherit the runtime's current working directory as an execution workspace;
 - bound stdin size, stdout size, stderr size, and total captured output;
@@ -242,6 +243,45 @@ The implementation prefers direct executable/argument execution for operations t
 `run.script` supports explicit, capability-advertised runtimes (`sandbox.script_runtimes`, `python` by default).
 
 The runtime never dynamically installs interpreters or packages during startup or execution. Script runtimes must already exist in the selected release image or be provided by an external sandbox image.
+
+The JavaScript portability candidate accepts `javascript` as an explicit member
+of `sandbox.script_runtimes`. It uses a preinstalled Node executable from the
+approved executable search path and the same SandboxManager, workspace,
+environment, output, timeout, process-group/Windows Job and cleanup machinery as
+Python. Source is written as a CommonJS `.cjs` file; arguments follow the filename
+and cannot become interpreter flags. It does not enable executable background
+JavaScript or captured external JavaScript sources. The production image candidate
+copies only the Node 24 binary from a digest-pinned official image, without npm.
+Both production image candidates pass the local packaged JavaScript gate at
+source `a6a95cd`. Full Linux/backend and exact-source hosted qualification remain
+pending; this is not a release.
+
+The selected JavaScript test profile sets `memory_bytes: null`: V8 reserves a
+large virtual address range, so the existing small POSIX address-space limit is
+not a portable JavaScript memory budget. The image acceptance separately enforces
+a Docker memory limit. Capabilities report only the controls actually selected;
+this does not turn the internal process boundary into hard isolation. Windows
+deployments explicitly allow `SYSTEMROOT` through `inherited_environment` and
+use a Proactor event loop for child processes. Selector-loop awaited execution
+fails closed; Windows LangGraph/PostgreSQL's Selector-only profile therefore
+does not provide awaited executable operations.
+
+On Linux, `RLIMIT_NPROC` counts threads belonging to the same user, including
+other applications. Node needs several threads during startup. A shared runner
+whose user already exceeds the selected quota can therefore abort Node before
+the script runs. Shared-host JavaScript test fixtures explicitly omit that one
+quota; they do not alter runtime defaults or claim process-count enforcement.
+The image gate explicitly selects a quota of 32 under a dedicated arbitrary UID,
+plus Docker's independent PID and memory limits. Isolated contract runners use
+`OWA_TEST_ISOLATED_PROCESS_USER=1` to require that quota as well. The application
+default remains 64.
+
+For an enabled internal JavaScript profile, recovery includes the resolved
+interpreter path, physical binary SHA-256 and byte count. A changed interpreter
+rejects continuation before ownership/native/common mutation. No interpreter is
+launched to generate that identity, and unselected JavaScript adds no profile
+field to an existing Python-only invocation. Replacing a Node installation is
+not an in-place migration of saved JavaScript invocations.
 
 Arbitrary dependency installation initiated by workflow input is outside the internal sandbox profile.
 

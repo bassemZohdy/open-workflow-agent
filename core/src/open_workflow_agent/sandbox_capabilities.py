@@ -7,8 +7,9 @@ identifiers so engine adapters and public lifecycle state remain portable.
 
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass, field
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath, PureWindowsPath
 from typing import Literal
 
 from .errors import SandboxPolicyError
@@ -28,8 +29,45 @@ class SandboxInputFile:
 
     def __post_init__(self) -> None:
         normalized = PurePosixPath(self.path)
-        if normalized.is_absolute() or not self.path or ".." in normalized.parts:
+        # This is a portable contract, so validate path syntax on both path
+        # grammars. A Windows drive or backslash traversal is still dangerous
+        # when the request is authored on POSIX and later consumed by Windows.
+        windows = PureWindowsPath(self.path)
+        if (
+            normalized.is_absolute()
+            or windows.is_absolute()
+            or windows.drive
+            or "\\" in self.path
+            or not self.path
+            or ".." in normalized.parts
+            or ".." in windows.parts
+        ):
             raise ValueError("sandbox input file path must be relative and traversal-free")
+
+        # Windows reserves several path characters and device names even when
+        # they appear below an ordinary directory (for example, ``input/NUL``
+        # or ``input/data.json:stream``). Reject these in the portable contract
+        # so an accepted POSIX-authored request cannot acquire different file
+        # semantics when staged by a Windows backend.
+        windows_invalid = '<>:"|?*'
+        reserved_devices = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"}
+        components = self.path.split("/")
+        for component in components:
+            base_name = component.split(".", 1)[0].rstrip(" .").upper()
+            numbered_device = (
+                len(base_name) == 4
+                and base_name[:3] in {"COM", "LPT"}
+                and base_name[3] in "123456789¹²³"
+            )
+            if (
+                component.endswith((".", " "))
+                or any(
+                    ord(character) < 32 or character in windows_invalid for character in component
+                )
+                or base_name in reserved_devices
+                or numbered_device
+            ):
+                raise ValueError("sandbox input file path is not portable to Windows")
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,6 +121,20 @@ class SandboxExecutionRequirements:
     requires_secret_references: bool = False
     resources: SandboxResourceRequirements = field(default_factory=SandboxResourceRequirements)
     isolation: SandboxIsolationRequirements = field(default_factory=SandboxIsolationRequirements)
+
+    def __post_init__(self) -> None:
+        # Two distinct POSIX paths can refer to one destination on a
+        # case-insensitive or Unicode-normalizing filesystem. Reject aliases
+        # at the portable request boundary before a backend stages either
+        # file and silently overwrites the other.
+        destinations: set[str] = set()
+        for input_file in self.input_files:
+            destination = unicodedata.normalize(
+                "NFC", PurePosixPath(input_file.path).as_posix()
+            ).casefold()
+            if destination in destinations:
+                raise ValueError("sandbox input file paths must not alias on portable filesystems")
+            destinations.add(destination)
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,10 +225,10 @@ def internal_backend_capabilities(
         supports_timeout=bool(resource_limits.get("timeout")),
         supports_output_limit=bool(resource_limits.get("outputBytes")),
         supports_workspace_limit=bool(resource_limits.get("workspaceQuota")),
-        supports_cpu_limit=posix_limits,
-        supports_memory_limit=posix_limits,
-        supports_file_size_limit=posix_limits,
-        supports_process_limit=posix_limits,
+        supports_cpu_limit=bool(resource_limits.get("cpu", posix_limits)),
+        supports_memory_limit=bool(resource_limits.get("memory", posix_limits)),
+        supports_file_size_limit=bool(resource_limits.get("fileSize", posix_limits)),
+        supports_process_limit=bool(resource_limits.get("processCount", posix_limits)),
         filesystem_modes=("workspace_cwd_only",),
         network_modes=("unrestricted",),
         hard_isolation=bool(runtime_capabilities.get("hardIsolation")),
