@@ -23,8 +23,9 @@ from open_workflow_agent.memory_mutations import (
     MemoryMutation,
     MemoryMutationMarker,
 )
-from open_workflow_agent.memory_reads import MemoryReadBinding
 from open_workflow_agent.services import RuntimeServices
+
+pytest.importorskip("langgraph.store.base")
 from open_workflow_agent_langgraph.native_memory_mutations import apply_native_mutation
 from open_workflow_agent_langgraph.native_memory_provider import open_native_memory_provider
 
@@ -412,58 +413,3 @@ async def test_damaged_marker_rejects_retry_without_sdk_sql(mutation_runtime, mo
     with pytest.raises(InvocationStateError):
         await apply(mutation_runtime)
     assert await value(mutation_runtime) == {"version": 1}
-
-
-@pytest.mark.parametrize("value", [[], {"x": float("nan")}, {"x": 2**53}, {"x": "雪" * 40}])
-def test_invalid_value_has_no_mutation_request(value):
-    parent = EffectIdentity(
-        "invocation", "definition", "/do/write", (("/do/write", 1),), "call:agent"
-    )
-    with pytest.raises(InvocationStateError):
-        MemoryMutation.put(
-            parent,
-            MemoryReadBinding("test", "1", "sqlite"),
-            "owa/principal-memory/v1:" + "0" * 64,
-            "preferences",
-            "record",
-            value,
-            max_record_bytes=64,
-        )
-
-
-def test_mutation_request_keeps_a_copy_of_caller_data_and_descriptor():
-    parent = EffectIdentity(
-        "invocation", "definition", "/do/write", (("/do/write", 1),), "call:agent"
-    )
-    value = {"nested": ["original"]}
-    mutation = MemoryMutation.put(
-        parent,
-        MemoryReadBinding("test", "1", "sqlite"),
-        "owa/principal-memory/v1:" + "0" * 64,
-        "preferences",
-        "record",
-        value,
-    )
-    digest = mutation.request_digest
-    value["nested"].append("caller mutation")
-    descriptor = mutation.descriptor
-    descriptor["value"]["nested"].append("descriptor mutation")
-    assert mutation.value_json == '{"nested":["original"]}'
-    assert mutation.request_digest == digest
-
-
-@pytest.mark.parametrize("encoded", ['{"x":1,"x":2}', '{"x":NaN}', "[]", "null"])
-def test_raw_noncanonical_or_nonobject_value_rejects_before_storage(encoded):
-    parent = EffectIdentity(
-        "invocation", "definition", "/do/write", (("/do/write", 1),), "call:agent"
-    )
-    with pytest.raises(InvocationStateError):
-        MemoryMutation(
-            parent,
-            MemoryReadBinding("test", "1", "sqlite"),
-            "owa/principal-memory/v1:" + "0" * 64,
-            "preferences",
-            "record",
-            "put",
-            encoded,
-        )

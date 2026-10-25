@@ -12,6 +12,8 @@ from open_workflow_agent.config import RuntimeConfig
 from open_workflow_agent.errors import ConfigurationError
 from open_workflow_agent.services import RuntimeServices
 from open_workflow_agent.workflow import compile_workflow, generate_default_workflow
+
+pytest.importorskip("langgraph.store.base")
 from open_workflow_agent_langgraph import LangGraphWorkflowEngine
 from open_workflow_agent_langgraph import native_memory_provider as providers
 
