@@ -15,6 +15,7 @@ from typing import Any
 
 from langgraph.store.base import PutOp
 from open_workflow_agent.errors import InvocationStateConflict, OwaError, ToolError
+from open_workflow_agent.memory_capacity import TABLE as NAMESPACE_TABLE
 from open_workflow_agent.memory_mutations import (
     MAX_MUTATIONS,
     TABLE,
@@ -31,6 +32,8 @@ from open_workflow_agent.ownership import (
 from open_workflow_agent.persistence import ExecutionHandle, InvocationStore
 from open_workflow_agent.storage import is_postgresql_datasource
 
+from .native_memory_capacity import NAMESPACE_DDL, check_capacity, expired_deletes, guard_namespace
+
 
 async def prepare_mutation_storage(store: Any, *, postgresql: bool) -> None:
     """Deployment setup only; no workflow data or ownership token is stored."""
@@ -43,6 +46,7 @@ async def prepare_mutation_storage(store: Any, *, postgresql: bool) -> None:
             async with cursor.connection.transaction():
                 await cursor.execute("SELECT pg_advisory_xact_lock(%s,%s)", (0x4F5741, 0x4D573031))
                 await cursor.execute(ddl)
+                await cursor.execute(NAMESPACE_DDL)
                 await cursor.execute(
                     "CREATE INDEX IF NOT EXISTS owa_memory_mutations_invocation_v1 "
                     f"ON {TABLE}(invocation_id)"
@@ -51,6 +55,7 @@ async def prepare_mutation_storage(store: Any, *, postgresql: bool) -> None:
         async with store.lock:
             try:
                 await store.conn.execute(ddl)
+                await store.conn.execute(NAMESPACE_DDL)
                 await store.conn.execute(
                     "CREATE INDEX IF NOT EXISTS owa_memory_mutations_invocation_v1 "
                     f"ON {TABLE}(invocation_id)"
@@ -117,25 +122,34 @@ async def _apply_in_transaction(
         (marker.identity, marker.invocation_id, marker.fingerprint, marker.request_digest),
     )
     namespace = ("owa_native_memory_v1", request.namespace.rsplit(":", 1)[1], request.collection)
+    prefix = await guard_namespace(cursor, request, namespace, postgresql=postgresql)
+    if request.kind == "sweep":
+        assert request.namespace_limits is not None
+        operations = await expired_deletes(
+            cursor, prefix, namespace, request.namespace_limits, postgresql=postgresql
+        )
+    else:
+        operations = [
+            PutOp(
+                namespace,
+                request.key,
+                None if request.value_json is None else json.loads(request.value_json),
+                index=False,
+                ttl=None,
+            )
+        ]
     # Call the pinned SDK's original batch implementation/SQL, bypassing its
     # batching queue so this one operation uses our already owned transaction.
     store._mutation_cursor = cursor
     try:
-        await store.abatch(
-            [
-                PutOp(
-                    namespace,
-                    request.key,
-                    None if request.value_json is None else json.loads(request.value_json),
-                    index=False,
-                    ttl=None,
-                )
-            ]
-        )
+        if operations:
+            await store.abatch(operations)
     finally:
         store._mutation_cursor = None
     if request.kind == "put" and request.retention is not None:
         await _set_record_expiry(cursor, namespace, request, postgresql=postgresql)
+    if request.kind == "put" and request.namespace_limits is not None:
+        await check_capacity(cursor, prefix, request.namespace_limits, postgresql=postgresql)
     if not postgresql:
         # Recheck lease time at the end, including a delete of an absent item.
         await cursor.execute(
@@ -259,7 +273,10 @@ async def apply_native_mutation(
                         return marker
             await store.setup()
             await install_sqlite_native_fence(
-                store.conn, fence, native_database=database, tables=("store", TABLE)
+                store.conn,
+                fence,
+                native_database=database,
+                tables=("store", TABLE, NAMESPACE_TABLE),
             )
             async with store.lock:
                 await store.conn.execute("BEGIN IMMEDIATE")

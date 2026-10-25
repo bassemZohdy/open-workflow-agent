@@ -6,11 +6,12 @@ import re
 import sqlite3
 from contextlib import closing
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from open_workflow_agent.effects import effect_request_digest
 from open_workflow_agent.errors import ConfigurationError, ToolError
 from open_workflow_agent.execution_context import current_action_context
+from open_workflow_agent.memory_capacity import MemoryNamespaceBounds
 from open_workflow_agent.memory_mutations import TABLE, MemoryMutation, MemoryMutationMarker
 from open_workflow_agent.memory_reads import MemoryReadBinding
 from open_workflow_agent.memory_retention import MemoryRecordRetention
@@ -22,7 +23,11 @@ from open_workflow_agent.storage import is_postgresql_datasource
 from .native_memory_mutations import apply_native_mutation
 
 
-def mutation_storage_identity(database: str, retention: MemoryRecordRetention | None = None) -> str:
+def mutation_storage_identity(
+    database: str,
+    retention: MemoryRecordRetention | None = None,
+    namespace_limits: MemoryNamespaceBounds | None = None,
+) -> str:
     """Bind the installed location without retaining authentication secrets."""
     if is_postgresql_datasource(database):
         from psycopg.conninfo import conninfo_to_dict
@@ -36,9 +41,14 @@ def mutation_storage_identity(database: str, retention: MemoryRecordRetention | 
         location = str(Path(database).resolve()) if database != ":memory:" else database
     identity = effect_request_digest("owa/memory-storage/v1", {"location": location})
     if retention is not None:
-        return effect_request_digest(
+        identity = effect_request_digest(
             "owa/memory-storage-policy/v1",
             {"location": identity, "retention": retention.descriptor},
+        )
+    if namespace_limits is not None:
+        identity = effect_request_digest(
+            "owa/memory-storage-capacity/v1",
+            {"location": identity, "namespace_limits": namespace_limits.descriptor},
         )
     return identity
 
@@ -91,15 +101,20 @@ def mutation_backend(
     database: str,
     binding: MemoryReadBinding,
     retention: MemoryRecordRetention | None = None,
+    namespace_limits: MemoryNamespaceBounds | None = None,
 ) -> MemoryMutationBackend:
     def inspect(request: MemoryMutation) -> MemoryMutationMarker | None:
         if request.retention != retention:
             raise ConfigurationError("native memory retention differs from the installed policy")
+        if request.namespace_limits != namespace_limits:
+            raise ConfigurationError("native memory capacity differs from the installed policy")
         return inspect_native_marker(database, request)
 
     async def apply(request: MemoryMutation, handle: ExecutionHandle) -> MemoryMutationMarker:
         if request.retention != retention:
             raise ConfigurationError("native memory retention differs from the installed policy")
+        if request.namespace_limits != namespace_limits:
+            raise ConfigurationError("native memory capacity differs from the installed policy")
         if handle._execution_lease is None:
             raise ConfigurationError("native memory requires original execution ownership")
         return await apply_native_mutation(
@@ -112,7 +127,7 @@ def mutation_backend(
 
     return MemoryMutationBackend(
         binding,
-        mutation_storage_identity(database, retention),
+        mutation_storage_identity(database, retention, namespace_limits),
         apply,
         inspect,
     )
@@ -129,6 +144,7 @@ class NativeMemoryWriter:
         *,
         max_record_bytes: int = 65_536,
         retention: MemoryRecordRetention | None = None,
+        namespace_limits: MemoryNamespaceBounds | None = None,
     ) -> None:
         if (
             type(collection) is not str
@@ -136,36 +152,49 @@ class NativeMemoryWriter:
             or type(max_record_bytes) is not int
             or not 1 <= max_record_bytes <= 65_536
             or (retention is not None and not isinstance(retention, MemoryRecordRetention))
+            or (
+                namespace_limits is not None
+                and not isinstance(namespace_limits, MemoryNamespaceBounds)
+            )
         ):
             raise ValueError("native memory writes require finite collection and record bounds")
         self._services, self._binding = services, binding
         self._collection, self._maximum = collection, max_record_bytes
         self._retention = retention
+        self._namespace_limits = namespace_limits
 
     async def put(self, key: str, value: dict[str, Any]) -> None:
-        await self._write(key, value, delete=False)
+        await self._write(key, value, kind="put")
 
     async def delete(self, key: str) -> None:
-        await self._write(key, None, delete=True)
+        await self._write(key, None, kind="delete")
 
-    async def _write(self, key: str, value: dict[str, Any] | None, *, delete: bool) -> None:
+    async def sweep_expired(self) -> None:
+        if self._namespace_limits is None:
+            raise ConfigurationError("native memory cleanup requires installed namespace bounds")
+        await self._write("expired", None, kind="sweep")
+
+    async def _write(
+        self, key: str, value: dict[str, Any] | None, *, kind: Literal["put", "delete", "sweep"]
+    ) -> None:
         if not self._services.memory_enabled:
             raise ConfigurationError("native memory is disabled by deployment")
         context = current_action_context()
         namespace = self._services._memory_namespace()
         if context is None or namespace is None:
             raise ConfigurationError("native memory requires original invocation authority")
-        if delete:
+        if kind != "put":
             request = MemoryMutation(
                 context.identity,
                 self._binding,
                 namespace,
                 self._collection,
                 key,
-                "delete",
+                kind,
                 None,
                 self._maximum,
                 self._retention,
+                self._namespace_limits,
             )
         else:
             if type(value) is not dict:
@@ -179,9 +208,14 @@ class NativeMemoryWriter:
                 value,
                 max_record_bytes=self._maximum,
                 retention=self._retention,
+                namespace_limits=self._namespace_limits,
             )
+        # Permission covers the fixed principal scope, as for portable memory
+        # tools. Common intents bind individual contents, allowing a parent
+        # action to issue several distinct writes without changing permission.
         await self._services.authorize_current_action(
-            "memory.delete" if delete else "memory.add", "memory:self", request.request_digest
+            "memory.add" if kind == "put" else "memory.delete",
+            "memory:self",
         )
         await self._services.memory_writes.mutate(
             context.handle, request, observer=context.observer
