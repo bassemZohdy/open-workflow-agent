@@ -75935,6 +75935,7 @@
         "description": "Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.",
         "effort": "M",
         "status": "Pending",
+        "progress_record": "docs/s4-08-compatibility-decision.md",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
       },
       {

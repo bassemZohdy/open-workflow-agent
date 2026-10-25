@@ -50,8 +50,8 @@ def test_original_authority_postgresql_profiles_gate_images():
         job = jobs[name]
         assert name in jobs["postgres-runtime"]["needs"] and "needs" not in job
         assert job["services"]["postgres"]["image"] == "postgres:16"
-        shell_timeout = "25m" if engine == "adk" else "20m"
-        job_timeout = "30" if engine == "adk" else "25"
+        shell_timeout = "30m" if engine == "adk" else "20m"
+        job_timeout = "35" if engine == "adk" else "25"
         assert job["timeout-minutes"] == job_timeout
         text = command(job)
         assert f"--directory engines/{engine}" in text

@@ -72,7 +72,7 @@ JavaScript conformance.
 | S4-05 | Bounded task metrics and correlation have local evidence. Durable history, trace/causation propagation, richer provenance and replay diagnostics remain open. | [Observability acceptance](docs/s4-05-observability-acceptance.md) |
 | S4-06 | Matched benchmark harness and historical measurements are retained. Fresh qualification and documented measurement/recovery limitations remain open. | [Matched benchmark profile and limits](docs/benchmarks.md) |
 | S4-07 | Publication guards remain fail-closed; automatic CI/release are opt-in. Fresh exact-source gates, security, rollback and broader version/capability acceptance remain open. | [Release gate acceptance](docs/s4-07-release-gates-acceptance.md), [hosted result](docs/validation-history/pending-batch-results.md#hosted-outcome-for-source-0d812b2), [corrected local batch](docs/validation-history/pending-batch-results.md#corrected-working-tree-batch--local-validation-before-hosted-requalification) |
-| S4-08 | No predecessor import/CLI/install aliases are promised. The local validation CLI passes; package-name ownership and consumer-migration decisions remain open. | [Compatibility decision](docs/s4-08-compatibility-decision.md) |
+| S4-08 | Canonical names, source/OCI delivery, disabled index publication and manual migration in separate environments are decided. Metadata and real CLI checks pass; full qualification remains open. | [Compatibility decision](docs/s4-08-compatibility-decision.md) |
 
 Historical source outcomes, full commands, hashes and correction details are
 retained in the [validation history](docs/validation-history/pending-batch-results.md).

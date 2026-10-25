@@ -37,6 +37,7 @@ def test_javascript_physical_and_both_native_windows_sqlite_profiles_are_require
     }
     assert "../../tests/contract/test_javascript_sandbox_contract.py" in command(native)
     assert "-k sqlite" in command(native)
+    assert jobs["engines"]["env"]["OWA_TEST_JAVASCRIPT_ENGINE"] == "${{ matrix.engine }}"
 
 
 def test_javascript_actual_postgresql_profiles_gate_runtime_images():
@@ -45,6 +46,7 @@ def test_javascript_actual_postgresql_profiles_gate_runtime_images():
         name = f"postgres-{engine}-operations"
         job = jobs[name]
         require_node(job)
+        assert job["env"]["OWA_TEST_JAVASCRIPT_ENGINE"] == engine
         assert job["services"]["postgres"]["image"] == "postgres:16"
         assert name in jobs["postgres-runtime"]["needs"]
         assert "../../tests/contract/test_javascript_sandbox_contract.py" in command(job)
@@ -61,3 +63,18 @@ def test_javascript_packaged_runtime_exercises_a_real_interactive_container():
         dockerfile = (ROOT / f"docker/Dockerfile.{engine}").read_text()
         assert "node:24-bookworm-slim@sha256:" in dockerfile
         assert "COPY --from=javascript /usr/local/bin/node /usr/local/bin/node" in dockerfile
+
+
+def test_validation_workflows_have_no_duplicate_mapping_keys():
+    def check(node):
+        if isinstance(node, yaml.MappingNode):
+            names = [key.value for key, _ in node.value]
+            assert len(names) == len(set(names)), names
+            for _, value in node.value:
+                check(value)
+        elif isinstance(node, yaml.SequenceNode):
+            for value in node.value:
+                check(value)
+
+    for path in (ROOT / ".github/workflows").glob("*.yml"):
+        check(yaml.compose(path.read_text(), Loader=yaml.BaseLoader))

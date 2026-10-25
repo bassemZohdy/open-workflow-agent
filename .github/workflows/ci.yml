@@ -589,8 +589,9 @@ jobs:
     # Full shared recovery selections exceeded eight minutes at 46-51%.
     name: ${{ matrix.engine }} native and contract tests
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     env:
+      OWA_TEST_JAVASCRIPT_ENGINE: ${{ matrix.engine }}
       OWA_TEST_REQUIRED_JAVASCRIPT: "1"
       UV_PYTHON_PREFERENCE: only-system
     strategy:
@@ -635,8 +636,8 @@ jobs:
         run: |
           set -euo pipefail
           # The hosted ADK profile reached 95% at the 30-minute cap; leave room
-          # for the remaining native/shared cases within the 45-minute job.
-          timeout --signal=TERM --kill-after=30s 40m \
+          # for the remaining native/shared cases and real JavaScript OS-stop proofs.
+          timeout --signal=TERM --kill-after=30s 45m \
             uv run --locked --extra knowledge --extra ${{ matrix.extra }} --with pytest --with pytest-asyncio \
             pytest ../../tests/${{ matrix.test_dir }} ../../tests/contract -vv --durations=20 \
             --ignore=../../tests/contract/test_external_operation_keys.py \

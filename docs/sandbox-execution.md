@@ -252,7 +252,9 @@ Python. Source is written as a CommonJS `.cjs` file; arguments follow the filena
 and cannot become interpreter flags. It does not enable executable background
 JavaScript or captured external JavaScript sources. The production image candidate
 copies only the Node 24 binary from a digest-pinned official image, without npm.
-Linux/image and exact-source qualification remain pending; this is not a release.
+Both production image candidates pass the local packaged JavaScript gate at
+source `a6a95cd`. Full Linux/backend and exact-source hosted qualification remain
+pending; this is not a release.
 
 The selected JavaScript test profile sets `memory_bytes: null`: V8 reserves a
 large virtual address range, so the existing small POSIX address-space limit is

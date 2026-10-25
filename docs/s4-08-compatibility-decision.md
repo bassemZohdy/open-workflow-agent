@@ -12,9 +12,10 @@ source remain available for consumers that need its API.
 Any useful developer tooling selected for the canonical runtime must be
 implemented and documented as canonical tooling, with its own supported
 commands and contracts. It must not import or execute frozen predecessor
-modules. The selected canonical tool is `owa validate PATH`, described below;
-the compatibility task remains open for the separately documented distribution
-identity and migration decision.
+modules. The selected canonical tool is `owa validate PATH`, described below.
+The repository delivery and migration decision is now explicit in
+[the distribution policy](../resources/python-distribution-policy.json).
+Task completion still requires the current-source acceptance gates.
 
 The canonical root package now provides an `owa validate PATH` command. It loads
 and compiles a workflow against the default OWA portable profile and reports a
@@ -22,20 +23,47 @@ safe common error without exposing the internal execution plan. It does not
 resolve deployment credentials or trusted external catalogs and does not apply
 engine-specific capability or runtime configuration. A workflow that depends
 on those settings still needs validation in its target deployment. Its focused
-tests passed locally in the corrected consolidated batch; this does not
-complete S4-08. The [developer guide](development.md#validate-a-workflow-locally)
+tests passed locally in the corrected consolidated batch. A real official-schema
+and compiler check also verifies that workflow data and the private plan are
+not printed. The [developer guide](development.md#validate-a-workflow-locally)
 documents source-checkout installation and use, its default-profile limits, and
 the fact that validation performs no model invocation or credential resolution.
 
-Before publishing a future Python distribution, resolve the distribution-name
-collision explicitly. Both package metadata records use the normalized
-distribution name `open-workflow-agent-adk`, while their import roots and
-contents differ. The archived metadata is version 0.2.1 and the canonical
-adapter metadata is version 0.2.0. They cannot be treated as two independently
-installable distributions under that same name; choose and document the
-canonical release identity and migration path before publishing or replacing
-the predecessor package. This repository decision does not itself transfer
-ownership of an external package index name or remove existing releases.
+The canonical source distribution retains `open-workflow-agent-adk` and the
+`open_workflow_agent_adk` import. Supported delivery is a pinned source checkout
+or a qualified OCI image. Python package-index publication is disabled; the
+release workflow publishes OCI images and GitHub release notes. CI checks the
+real metadata, absence of predecessor shims, canonical CLI entry point and
+absence of an index publisher. The existing canonical package/API names stay
+unchanged, and no automatic predecessor replacement is offered.
+
+Both metadata records use the normalized distribution name
+`open-workflow-agent-adk`, with different import roots and contents. The archived
+metadata is version 0.2.1 and the canonical metadata is version 0.2.0. Install
+them in separate environments; they cannot coexist as independent distributions
+under that name. This version ordering promises no upgrade path between them.
+A future index publisher needs a verified owner/transfer record, a release-version
+decision and consumer migration evidence before its policy can be activated.
+Existing predecessor releases remain available.
+
+## Consumer migration
+
+1. Retain the predecessor environment, pinned dependency set and saved workflows
+   needed to reproduce its outcomes.
+2. Create a separate canonical checkout/environment or use a qualified canonical
+   image. Use its own locked ADK environment from the developer guide; do not
+   install it over a predecessor environment.
+3. Port workflow resources to the canonical OWS 1.0.3, model, tool, role and
+   deployment-security contracts. Replace predecessor host API calls explicitly;
+   no import or CLI alias performs this translation.
+4. Run `owa validate PATH`, then exercise the workflow on the selected native
+   engine and persistence backend with deterministic fixtures. Confirm outputs,
+   rejection behavior and saved-invocation recovery against the intended profile.
+5. Move a consumer only after its outcome checks pass. Keep the original
+   environment for rollback; predecessor checkpoints are not canonical checkpoints.
+
+This is an opt-in manual migration policy. This repository change performs no
+consumer discovery, automatic rewrite, package transfer or deployment.
 
 ## Evidence and limits
 
@@ -64,7 +92,7 @@ the repository. The manifest preserves a source snapshot and selected refs,
 including tags through `v0.2.0`; it does not preserve the complete Git history
 or a separately verified `0.2.1` release artifact. The `0.2.1` evidence here is
 the frozen snapshot's package metadata and changelog. Those external release
-and consumer facts remain unresolved. Existing predecessor releases should be
-retained, and any release-name or consumer-migration action requires separate
-evidence and ownership decisions. Frozen Apache files keep their provenance
-and are not active compatibility code.
+and consumer facts remain unresolved and gate any future index publication or
+managed migration service. They do not change the chosen no-shim, isolated
+environment policy. Frozen Apache files keep their provenance and are not active
+compatibility code.

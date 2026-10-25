@@ -35,8 +35,8 @@ def test_isolated_principal_postgresql_operation_profiles_gate_images():
         assert job["services"]["postgres"]["image"] == "postgres:16"
         assert f"--directory engines/{engine}" in text
         assert "--locked --exact --extra knowledge --extra postgres" in text
-        shell_timeout = "25m" if engine == "adk" else "20m"
-        job_timeout = "30" if engine == "adk" else "25"
+        shell_timeout = "30m" if engine == "adk" else "20m"
+        job_timeout = "35" if engine == "adk" else "25"
         assert "-k postgresql" in text and f"--kill-after=30s {shell_timeout}" in text
         assert all(f"../../tests/contract/{name}" in text for name in CONTRACTS)
         assert "../../tests/core/test_executable_source_admission.py" in text

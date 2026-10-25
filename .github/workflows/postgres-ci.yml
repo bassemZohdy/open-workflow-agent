@@ -33,6 +33,7 @@ on:
       - "tests/contract/test_javascript_sandbox_contract.py"
       - "tests/core/test_javascript_sandbox.py"
       - "tests/javascript_fixture_policy.py"
+      - "tests/contract/_javascript_sandbox_recovery_worker.py"
       - "tests/contract/_executable_source*.py"
       - "tests/contract/test_openapi*.py"
       - "tests/contract/test_grpc*.py"
@@ -682,8 +683,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       UV_PYTHON_PREFERENCE: only-system
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
+      OWA_TEST_JAVASCRIPT_ENGINE: adk
     # Each SDK has a fresh database and bounded independent recovery job.
-    timeout-minutes: 30
+    timeout-minutes: 35
     services:
       postgres:
         image: postgres:16
@@ -698,8 +701,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
-    env:
-      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
     steps:
       - uses: actions/checkout@v7
         with:
@@ -727,7 +728,7 @@ jobs:
           set -euo pipefail
           uv run --directory engines/adk --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio python -c "import os, signal; assert callable(getattr(os, 'pidfd_open', None)); assert callable(getattr(signal, 'pidfd_send_signal', None)); fd = os.pidfd_open(os.getpid()); os.close(fd)"
-          timeout --signal=TERM --kill-after=30s 25m \
+          timeout --signal=TERM --kill-after=30s 30m \
             uv run --directory engines/adk --locked --exact --extra knowledge --extra postgres \
             --with pytest --with pytest-asyncio pytest ../../tests/contract/test_openapi_calls.py \
             ../../tests/contract/test_openapi_process_recovery.py \
@@ -752,6 +753,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       UV_PYTHON_PREFERENCE: only-system
+      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
+      OWA_TEST_JAVASCRIPT_ENGINE: langgraph
     # Each SDK has a fresh database and bounded independent recovery job.
     timeout-minutes: 25
     services:
@@ -768,8 +771,6 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 12
-    env:
-      OWA_TEST_REQUIRED_JAVASCRIPT: "1"
     steps:
       - uses: actions/checkout@v7
         with:

@@ -126,6 +126,27 @@ is a CI environment correction, not ignored typing or relaxed coverage. The
 remaining `67279ed` jobs retain their own outcomes; this source is not an
 aggregate acceptance checkpoint.
 
+Its Windows operation job `121106101729` also fails one cancellation/takeover
+case (1,059 passed, 475 skipped). The first cancel observation is `unknown`;
+the log does not retain authenticated state/heartbeat evidence to identify why.
+The fixture now preserves the submitted control bytes and requires a later
+authenticated terminal/cancel acknowledgement, without publishing the control
+again. A deterministic first-unknown observation and the stale-control negative
+case pass locally (three cases). Permanent unknown state still fails the bounded
+wait. Runtime heartbeat bounds, control authorization and original deadlines
+are unchanged; this is not proof that every unknown outcome is recoverable.
+
+The JavaScript addition is recorded in the
+[executable acceptance record](../s3-04-executable-source-acceptance.md).
+Its packaged image/source baseline is `a6a95cd`. The following test/CI corrections
+give core and shared fixtures distinct module names, preserve the PostgreSQL
+job's original Python selection in one `env` mapping and guard against duplicate
+workflow keys. The new physical OS-stop cases retain full known/uncertain proof;
+their added run time has a larger finite CI aggregate budget, without changing
+operation, owner-lease or workflow deadlines. All 8,326 pre-process-addition tests
+collect together after the filename correction. No passing checkpoint is inferred
+from collection or from the separate image run.
+
 Dependency/SDK changes intentionally change recovery-profile identity. They do
 not grant in-place migration of existing invocations. Retained invocations need
 their original matching runtime/lock profile; this record authorizes no rollout,

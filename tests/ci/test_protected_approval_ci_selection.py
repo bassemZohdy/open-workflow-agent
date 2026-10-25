@@ -50,8 +50,8 @@ def test_postgresql_approval_operations_profiles_remain_isolated_and_gate_images
     name = f"postgres-{engine}-operations"
     job = jobs[name]
     assert name in jobs["postgres-runtime"]["needs"] and "needs" not in job
-    shell_timeout = "25m" if engine == "adk" else "20m"
-    job_timeout = "30" if engine == "adk" else "25"
+    shell_timeout = "30m" if engine == "adk" else "20m"
+    job_timeout = "35" if engine == "adk" else "25"
     assert job["timeout-minutes"] == job_timeout
     assert job["services"]["postgres"]["image"] == "postgres:16"
     step = next(step for step in job["steps"] if "pytest" in step.get("run", ""))

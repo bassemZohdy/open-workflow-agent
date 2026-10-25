@@ -52,8 +52,8 @@ def test_root_and_both_principal_environments_keep_full_shared_coverage():
     assert "--cov-precision=2" in root_tests["run"]
     assert "--kill-after=30s 45m" in root_tests["run"]
     assert jobs["root"]["timeout-minutes"] == "60"
-    assert jobs["engines"]["timeout-minutes"] == "45"
-    assert "--kill-after=30s 40m" in _runs(jobs["engines"])
+    assert jobs["engines"]["timeout-minutes"] == "50"
+    assert "--kill-after=30s 45m" in _runs(jobs["engines"])
     engines = jobs["engines"]
     assert {entry["engine"] for entry in engines["strategy"]["matrix"]["include"]} == {
         "adk",
@@ -103,7 +103,7 @@ def test_postgresql_profiles_run_independently_and_gate_both_images():
         assert jobs[name]["timeout-minutes"] == (
             "45"
             if name in {"postgres-adk", "postgres-langgraph"}
-            else "30"
+            else "35"
             if name == "postgres-adk-operations"
             else "25"
             if name == "postgres-langgraph-operations"
@@ -115,7 +115,7 @@ def test_postgresql_profiles_run_independently_and_gate_both_images():
         jobs["postgres-langgraph"]
     )
     assert "--kill-after=30s 12m" in _runs(jobs["postgres-agent-framework"])
-    assert "--kill-after=30s 25m" in _runs(jobs["postgres-adk-operations"])
+    assert "--kill-after=30s 30m" in _runs(jobs["postgres-adk-operations"])
     assert "--kill-after=30s 20m" in _runs(jobs["postgres-langgraph-operations"])
 
 

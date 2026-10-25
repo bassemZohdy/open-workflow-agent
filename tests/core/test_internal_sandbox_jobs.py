@@ -35,7 +35,7 @@ from open_workflow_agent.sandbox.internal_jobs import (
     internal_job_profile,
     launch_value,
 )
-from open_workflow_agent.sandbox.job_backend import SandboxJobLaunch
+from open_workflow_agent.sandbox.job_backend import SandboxJobLaunch, SandboxJobObservation
 from open_workflow_agent.sandbox.job_dispatcher import SandboxJobDispatcher
 from open_workflow_agent.sandbox.jobs import SandboxJobBackendBinding, SandboxJobStore, job_id
 from open_workflow_agent.sandbox.manager import SandboxManager
@@ -273,7 +273,10 @@ async def test_stale_signed_control_does_not_disable_later_authorized_cancel(sup
     assert value.control_ack_generation == control["generation"] and value.original_deadline is None
 
 
-async def test_actual_job_owner_takeover_fences_old_control_before_ipc(supervisor):
+@pytest.mark.parametrize("first_observation", ["live", "unknown"])
+async def test_actual_job_owner_takeover_fences_old_control_before_ipc(
+    supervisor, monkeypatch, first_observation
+):
     # Leave room for cold supervisor startup and the second owner's admission
     # under a loaded test runner; the test is about fencing, not deadline expiry.
     _, store, old_lease, backend, _, old_launch = supervisor(
@@ -295,9 +298,25 @@ async def test_actual_job_owner_takeover_fences_old_control_before_ipc(superviso
                 old_launch, observed.binding, generation=control["generation"], reason="cancel"
             )
         assert not path.exists()
-        value = await backend.cancel(
-            launch, observed.binding, generation=control["generation"], reason="cancel"
-        )
+        inspect = backend.inspect
+
+        async def temporarily_unknown(*args):
+            return SandboxJobObservation("unknown", observed.binding)
+
+        with monkeypatch.context() as patch:
+            if first_observation == "unknown":
+                patch.setattr(backend, "inspect", temporarily_unknown)
+            value = await backend.cancel(
+                launch, observed.binding, generation=control["generation"], reason="cancel"
+            )
+        submitted = path.read_bytes()
+        assert backend.inspect == inspect
+        if value.state != "terminal":
+            assert value.state == "unknown" and value.outcome is None
+            # A stale heartbeat is uncertainty, not an ACK. Resolve it with
+            # authenticated reads only; never repeat the control publication.
+            value = await terminal(backend, launch, observed.binding)
+        assert path.read_bytes() == submitted
         assert value.state == "terminal" and value.reason == "cancel"
         assert value.control_ack_generation == control["generation"]
     finally:

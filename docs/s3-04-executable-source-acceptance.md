@@ -23,6 +23,27 @@ packaged images and exact-source hosted acceptance remain required. The
 V8 memory policy and Windows event-loop distinction. This candidate does not
 close S3-04 or qualify independent JavaScript workflow execution under S4-03.
 
+The frozen `a6a95cd` ADK and LangGraph images both pass a real native JavaScript
+invocation with read-only root, no network, arbitrary UID, Docker memory/CPU/PID
+bounds, filtered ambient credentials/options, UTF-8 input/arguments, exact public
+result and removed execution workspace. LangGraph's first build failed a PyPI
+connection timeout; its unchanged-source retry and packaged execution pass.
+All five runtime package wheel/source builds pass; recovery provenance and 257
+actual source/resource payload comparisons pass. This image batch predates the
+later test/CI-only corrections and is not a whole-source acceptance checkpoint.
+
+The new forced-stop witness passes four Windows cases per ADK/SQLite,
+LangGraph/SQLite and ADK/PostgreSQL profile: five return projections in one real
+native invocation, known/uncertain JavaScript producer stops, and physical
+interpreter-drift rejection. Separate recovery processes retain original source,
+input, identity, receipt digest, clock and native reference after natural lease
+expiry. A non-deduplicating, physically flushed business log stays at one commit.
+The unknown case never launches the operation again. Live child OS handles are
+used only for test cleanup after the producer stop; POSIX orphan isolation is not
+claimed. Earlier fixture failures used the wrong native-snapshot representation;
+the final checks require actual invocation-scoped native row counts and hashes.
+Linux SQLite/PostgreSQL and full hosted qualification remain required.
+
 Portable `SandboxInputFile` requests now validate path syntax under both POSIX
 and Windows grammars. Drive-qualified paths, UNC paths and backslash traversal
 are rejected before a request reaches a different platform. Windows device

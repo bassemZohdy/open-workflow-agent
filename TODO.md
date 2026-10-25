@@ -486,17 +486,16 @@ treated as a deferred task or as additional feature completion.
   Remaining S4-07 release/rollback and broader capability/version acceptance
   stay open. See the [release gate record](docs/s4-07-release-gates-acceptance.md).
 - [ ] **S4-08** (M) — Decide and document old openworkflow_adk import/CLI/package compatibility; port useful developer tooling.
-  Compatibility decision is recorded in
-  [the S4-08 decision](docs/s4-08-compatibility-decision.md): no drop-in
-  aliases are promised, and the same distribution-name collision must be
-  resolved before future Python publication. No consumer inventory or package
-  index ownership/transfer evidence is available. Selecting and implementing
-  the canonical `owa validate PATH` command, its focused tests and scope
-  documentation pass the local focused batch. The command
-  checks the default portable profile only; deployment credentials, trusted
-  external catalogs, and engine-specific capability/runtime configuration
-  remain outside its scope. External release-name or consumer-migration
-  decisions also remain open; this task is not complete.
+  [The S4-08 decision](docs/s4-08-compatibility-decision.md) retains canonical
+  metadata/import names, delivers through pinned source and qualified OCI
+  images, disables Python index publication, and requires separate environments
+  plus an explicit workflow port for consumers. No compatibility aliases or
+  automatic checkpoint migration are offered. The machine-readable policy and
+  real package/entry-point/publisher guards pass locally, as do four CLI cases
+  including actual official-schema/compiler admission. `owa validate PATH`
+  checks the default portable profile; target deployment settings still need
+  their own admission. A future index publisher requires verified ownership,
+  version and consumer evidence. Current-source full qualification remains open.
 - [ ] **S4-09** (L) — Preserve ENGINE-5 through ENGINE-8 as optional Agent Framework hardening; activate only after an explicit support decision and require isolated native durability, security, and release acceptance.
   Activation needs a named user need, deployment target, compatibility promise,
   and rollback owner. Until then, keep the adapter optional and CI/evaluation

@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from _version_recovery_worker import native_snapshot
+from _grpc_recovery_worker import native_snapshot
 from engine_cases import engine_cases
 from javascript_fixture_policy import javascript_path
 from open_workflow_agent.catalog import FakeModel
@@ -17,11 +20,20 @@ from open_workflow_agent.errors import InvocationStateError
 from open_workflow_agent.sandbox import compile_sandbox_workflow
 from open_workflow_agent.services import RuntimeServices
 from sandbox_fixture_policy import supported_process_limits
-from test_execution_authority_isolation import actual_native
+from test_process_crash_recovery import _environment
 from test_workflow_version_recovery import _common_snapshot
 
 pytestmark = pytest.mark.usefixtures("explicit_workflow_delivery")
 ENGINES = [case for case in engine_cases() if case[0] in {"adk", "langgraph"}]
+
+
+def actual_native(engine, name):
+    available = engine.native.available if name == "adk" else engine.native.task_nodes_available
+    if not available:
+        required = os.getenv("OWA_TEST_JAVASCRIPT_ENGINE") or os.getenv("OWA_TEST_REQUIRED_ENGINE")
+        if required == name:
+            pytest.fail("required native JavaScript engine SDK is unavailable")
+        pytest.skip("actual independent native SDK is required")
 
 
 def runtime(tmp_path, backend, *, interpreter=None):
@@ -122,7 +134,7 @@ async def test_actual_native_javascript_return_modes_share_one_sandbox_manager(
             "all": {"code": 0, "stdout": "雪arg", "stderr": "diagnostic"},
             "none": None,
         }
-        assert any(native_snapshot(services, handle, backend).values())
+        assert any(value["count"] for value in native_snapshot(services, handle, backend).values())
         completed = [
             e for e in services.events.events if e.event_type == "SandboxExecutionCompleted"
         ]
@@ -132,6 +144,102 @@ async def test_actual_native_javascript_return_modes_share_one_sandbox_manager(
     finally:
         await engine.shutdown()
         services.close()
+
+
+@pytest.mark.parametrize("backend", ["sqlite", "postgresql"])
+@pytest.mark.parametrize("engine_name,engine_type", ENGINES)
+@pytest.mark.parametrize("boundary", ["known", "pending"])
+def test_actual_stop_never_repeats_a_known_or_uncertain_javascript_commit(
+    tmp_path, backend, engine_name, engine_type, boundary
+):
+    from test_executable_source_process_recovery import ChildIdentity, read_boundary, stop
+
+    if backend == "postgresql" and not os.getenv("OWA_TEST_POSTGRES_URL"):
+        pytest.skip("actual PostgreSQL datasource is required")
+    actual_native(engine_type(), engine_name)
+    javascript_path()
+    original = {"subject": uuid4().hex, "null": None}
+    (tmp_path / "scenario.json").write_text(
+        json.dumps(
+            {
+                "engine": engine_name,
+                "backend": backend,
+                "boundary": boundary,
+                "input": original,
+            }
+        ),
+        encoding="utf-8",
+    )
+    worker = Path(__file__).with_name("_javascript_sandbox_recovery_worker.py")
+
+    def launch(mode):
+        return subprocess.Popen(
+            [getattr(sys, "_base_executable", sys.executable), str(worker), str(tmp_path), mode],
+            cwd=tmp_path,
+            env=_environment(),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+
+    producer = recovery = child = None
+    try:
+        producer = launch("start")
+        ready = read_boundary(tmp_path, "ready.json", producer, "start")
+        assert ready["pid"] == producer.pid != os.getpid()
+        assert ready["backend"] == backend and ready["input"] == original
+        assert ready["version"] == "1.0.0" and ready["model_calls"] == 0
+        assert len(ready["business"]) == 1 and ready["business"][0]["input"] == original
+        assert ready["business"][0]["pid"] not in {producer.pid, os.getpid()}
+        if boundary == "pending":
+            child = ChildIdentity(ready["business"][0]["pid"])
+        assert ready["receipt_status"] == ("completed" if boundary == "known" else "pending")
+        assert any(value["count"] for value in ready["native"].values())
+        producer.kill()
+        assert producer.wait(timeout=15) != 0 and not (tmp_path / "start-cleaned.json").exists()
+        if child is not None:
+            # Test cleanup of the held actual OS identity; no orphan isolation claim.
+            child.close_and_stop_fixture()
+        recovery = launch("recover")
+        assert recovery.wait(timeout=100) == 0, (
+            (tmp_path / "recover-failure.json").read_text(encoding="utf-8")
+            if (tmp_path / "recover-failure.json").exists()
+            else "recovery exited"
+        )
+        result = json.loads((tmp_path / "result.json").read_text(encoding="utf-8"))
+        assert result["pid"] == recovery.pid and result["pid"] not in {producer.pid, os.getpid()}
+        for key in (
+            "invocation_id",
+            "session_id",
+            "reference",
+            "fingerprint",
+            "version",
+            "input",
+            "identity",
+            "receipt_status",
+            "receipt_digest",
+            "clock",
+            "business",
+        ):
+            assert result[key] == ready[key], key
+        assert result["generation"] > ready["generation"] and result["model_calls"] == 0
+        if boundary == "known":
+            assert result["status"] == "completed" and json.loads(result["output"]) == original
+        else:
+            assert result["status"] == "faulted"
+            assert any(
+                word in json.dumps(result["error"]).lower()
+                for word in ("uncertain", "unresolved", "recovery")
+            )
+        assert len((tmp_path / "business.jsonl").read_text(encoding="utf-8").splitlines()) == 1
+        assert (tmp_path / "recover-cleaned.json").exists()
+    finally:
+        stop(recovery)
+        stop(producer)
+        if child is not None:
+            child.close_and_stop_fixture()
 
 
 @pytest.mark.asyncio

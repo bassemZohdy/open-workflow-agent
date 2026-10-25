@@ -73,3 +73,18 @@ def test_validate_reports_invalid_utf8_without_echoing_path(tmp_path: Path) -> N
     assert stdout.getvalue() == ""
     assert stderr.getvalue() == "workflow_schema_error: workflow source must be valid UTF-8\n"
     assert str(workflow_path) not in stderr.getvalue()
+
+
+def test_validate_real_official_schema_and_compiler_without_returning_private_data(tmp_path):
+    workflow_path = tmp_path / "real-workflow.yaml"
+    workflow_path.write_text(
+        "document:\n  dsl: '1.0.3'\n  namespace: cli\n  name: actual-admission\n"
+        "  version: '1.0.0'\ndo:\n  - assign:\n      set:\n"
+        "        private: private-plan-sentinel\n",
+        encoding="utf-8",
+    )
+    stdout, stderr = StringIO(), StringIO()
+    assert cli.main(["validate", str(workflow_path)], stdout=stdout, stderr=stderr) == 0
+    assert "valid for the default OWA portable profile" in stdout.getvalue()
+    assert "private-plan-sentinel" not in stdout.getvalue()
+    assert stderr.getvalue() == ""
