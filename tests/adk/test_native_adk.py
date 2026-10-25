@@ -128,6 +128,8 @@ async def test_adk_rejects_required_langgraph_channel_extension_before_native_mu
         workflow_fingerprint=plan.fingerprint,
     )
     native_path = Path(services.engine_database_path("adk", create_namespace=False))
+    connection = services.invocations.connection
+    before = tuple(connection.raw.iterdump())
     try:
         assert engine.capabilities().native_extensions == ()
         with pytest.raises(UnsupportedWorkflowFeature, match="required native workflow extension"):
@@ -137,7 +139,8 @@ async def test_adk_rejects_required_langgraph_channel_extension_before_native_mu
 
         assert services.model.calls == []
         persisted = services.invocations.get(handle.invocation_id)
-        assert persisted is not None and persisted.status == "created"
+        assert persisted is not None and persisted == handle
+        assert tuple(connection.raw.iterdump()) == before
         assert not native_path.exists()
     finally:
         await engine.shutdown()

@@ -116,6 +116,43 @@ def test_knowledge_service_indexes_supported_files_and_watches_changes(tmp_path:
         service.close()
 
 
+def test_pdf_parser_indexes_real_page_text_with_the_optional_dependency(tmp_path: Path):
+    pypdf = pytest.importorskip("pypdf")
+    from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
+
+    root = tmp_path / "knowledge"
+    root.mkdir()
+    path = root / "source.pdf"
+    writer = pypdf.PdfWriter()
+    page = writer.add_blank_page(width=200, height=200)
+    font = DictionaryObject(
+        {
+            NameObject("/Type"): NameObject("/Font"),
+            NameObject("/Subtype"): NameObject("/Type1"),
+            NameObject("/BaseFont"): NameObject("/Helvetica"),
+        }
+    )
+    page[NameObject("/Resources")] = DictionaryObject(
+        {NameObject("/Font"): DictionaryObject({NameObject("/F1"): font})}
+    )
+    content = DecodedStreamObject()
+    content.set_data(b"BT /F1 12 Tf 20 100 Td (portable PDF text) Tj ET")
+    page[NameObject("/Contents")] = content
+    writer.write(path)
+    writer.close()
+
+    service = KnowledgeService(
+        root, tmp_path / "knowledge.sqlite3", embedding=DeterministicEmbeddingProvider(8)
+    )
+    try:
+        assert service.reload() == {"added": 1, "updated": 0, "deleted": 0, "unchanged": 0}
+        result = service.search("portable PDF text", limit=1)
+        assert len(result) == 1 and result[0]["content"] == "portable PDF text"
+        assert result[0]["path"].endswith("source.pdf")
+    finally:
+        service.close()
+
+
 @pytest.mark.asyncio
 async def test_knowledge_watch_task_is_idempotent_and_stoppable(tmp_path: Path):
     root = tmp_path / "knowledge"

@@ -25,7 +25,14 @@ packages = ["src/open_workflow_agent_adk"]
 [tool.hatch.build.hooks.custom]
 
 [tool.uv]
-override-dependencies = ["pillow>=13.0.0,<14"]
+constraint-dependencies = ["filelock>=4.2.1,<5"]
+# ADK's upstream telemetry cap excludes the fixed tracestate parser. Keep the
+# API and SDK paired and qualify this compatibility override on both backends.
+override-dependencies = [
+  "pillow>=13.0.0,<14",
+  "opentelemetry-api==1.45.1",
+  "opentelemetry-sdk==1.45.1",
+]
 
 [tool.uv.sources]
 open-workflow-agent = { path = "../..", editable = true }

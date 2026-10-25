@@ -20,6 +20,10 @@ and [automation controls](docs/development.md#fast-development-and-optional-auto
 ## Current backlog delivery mode
 
 Updated 2026-10-25. **20 of 37 tasks are verified; 17 remain open. None is deferred.**
+The user kept S4-09/S4-10/S4-11 conditional; work continues on the 14 ready tasks.
+The [ready-task qualification record](docs/validation-history/ready-tasks-2026-10-25.md)
+tracks the frozen baseline, corrected test expectation and newly repaired
+dependency advisories. No focused scan or adapter result closes a task.
 S3-03 is the next ordered open task. Its remaining work includes current-source
 qualification and the wider operation-adapter inventory; its background profile
 remains disabled. Local checks do not waive hosted, security or release gates.

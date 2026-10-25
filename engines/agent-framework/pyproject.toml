@@ -25,6 +25,7 @@ packages = ["src/open_workflow_agent_agent_framework"]
 [tool.hatch.build.hooks.custom]
 
 [tool.uv]
+constraint-dependencies = ["filelock>=4.2.1,<5"]
 override-dependencies = ["pillow>=13.0.0,<14"]
 
 [tool.uv.sources]

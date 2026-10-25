@@ -27,7 +27,7 @@ model = ["litellm==1.98.0"]
 knowledge = [
   "fastembed==0.8.0",
   "numpy==2.5.2",
-  "pypdf==6.19.0",
+  "pypdf==6.21.2",
 ]
 postgres = ["psycopg[binary]==3.3.4"]
 
@@ -41,4 +41,5 @@ packages = ["src/open_workflow_agent"]
 [tool.hatch.build.hooks.custom]
 
 [tool.uv]
+constraint-dependencies = ["filelock>=4.2.1,<5"]
 override-dependencies = ["pillow>=13.0.0,<14"]
