@@ -11,9 +11,9 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from contract.test_process_crash_recovery import _environment
 from engine_cases import engine_cases
 from open_workflow_agent.tracing import invocation_trace_id, valid_traceparent
-from test_process_crash_recovery import _environment
 
 ENGINES = [case for case in engine_cases() if case[0] in {"adk", "langgraph"}]
 WORKER = Path(__file__).with_name("_traced_history_recovery_worker.py")
@@ -24,6 +24,10 @@ WORKER = Path(__file__).with_name("_traced_history_recovery_worker.py")
 def test_native_process_stop_retains_correlated_events_without_business_redispatch(
     tmp_path, backend, name, engine_type
 ):
+    run_case(tmp_path, backend, name, engine_type)
+
+
+def run_case(tmp_path, backend, name, engine_type, *, native_send=False):
     engine = engine_type()
     available = engine.native.available if name == "adk" else engine.native.task_nodes_available
     if not available:
@@ -33,7 +37,10 @@ def test_native_process_stop_retains_correlated_events_without_business_redispat
     if backend == "postgresql" and not os.getenv("OWA_TEST_POSTGRES_URL"):
         pytest.skip("actual PostgreSQL datasource required")
     (tmp_path / "scenario.json").write_text(
-        json.dumps({"engine": name, "backend": backend, "name": uuid4().hex}), encoding="utf-8"
+        json.dumps(
+            {"engine": name, "backend": backend, "name": uuid4().hex, "native_send": native_send}
+        ),
+        encoding="utf-8",
     )
 
     def launch(mode):

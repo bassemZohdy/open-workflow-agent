@@ -12,15 +12,24 @@ import random
 import re
 import time
 from collections import OrderedDict
-from collections.abc import Awaitable, Callable, Iterable, Iterator, Mapping, Sequence
-from contextlib import contextmanager, nullcontext
+from collections.abc import (
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Coroutine,
+    Iterable,
+    Iterator,
+    Mapping,
+    Sequence,
+)
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, contextmanager, nullcontext
 from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, NoReturn, Protocol, cast
+from typing import TYPE_CHECKING, Any, NoReturn, Protocol, cast, runtime_checkable
 from uuid import uuid4
 
 import yaml
@@ -1317,6 +1326,18 @@ class ExecutionState:
     scope_executor: ScopeExecutor | None = None
     task_visits: dict[str, int] = field(default_factory=dict)
     execution_path: tuple[tuple[str, int], ...] = ()
+
+
+BranchDispatcher = Callable[
+    [list[Coroutine[Any, Any, Any]]], AbstractAsyncContextManager[list[asyncio.Task[Any]]]
+]
+
+
+@runtime_checkable
+class BranchScopeExecutor(Protocol):
+    """Optional framework-neutral branch launch seam; common owns fork semantics."""
+
+    def branch_dispatcher(self) -> BranchDispatcher | None: ...
 
 
 class WorkflowExecutor:
@@ -3073,9 +3094,34 @@ class WorkflowExecutor:
                 state.flow.context = copy.deepcopy(child.context)
             return child.data
 
-        branch_tasks = [
-            asyncio.create_task(run_branch(index, branch)) for index, branch in enumerate(branches)
-        ]
+        async with self._dispatch_branch_tasks(
+            [run_branch(index, branch) for index, branch in enumerate(branches)], state
+        ) as branch_tasks:
+            return await self._join_fork(branch_tasks, state)
+
+    @asynccontextmanager
+    async def _dispatch_branch_tasks(
+        self, branches: list[Coroutine[Any, Any, Any]], state: ExecutionState
+    ) -> AsyncIterator[list[asyncio.Task[Any]]]:
+        dispatcher = (
+            state.scope_executor.branch_dispatcher()
+            if isinstance(state.scope_executor, BranchScopeExecutor)
+            else None
+        )
+        if dispatcher is not None:
+            async with dispatcher(branches) as tasks:
+                yield tasks
+            return
+        tasks = [asyncio.create_task(branch) for branch in branches]
+        try:
+            yield tasks
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def _join_fork(self, branch_tasks: list[asyncio.Task[Any]], state: ExecutionState) -> Any:
         ending = asyncio.create_task(state.flow.ended.wait())
         joined = asyncio.gather(*branch_tasks)
         try:

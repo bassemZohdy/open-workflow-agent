@@ -71,26 +71,34 @@ async def run(directory: Path, mode: str, scenario: dict) -> None:
 
     services.protocols = ProtocolServices(HttpClient(transport=httpx.MockTransport(peer)))
     services.tools.protocols = services.protocols
-    plan = compile_workflow(
-        {
-            "document": {
-                "dsl": "1.0.3",
-                "namespace": "history",
-                "name": scenario["name"],
-                "version": "1.0.0",
+    definition = {
+        "document": {
+            "dsl": "1.0.3",
+            "namespace": "history",
+            "name": scenario["name"],
+            "version": "1.0.0",
+        },
+        "do": [
+            {
+                "once": {
+                    "call": "http",
+                    "with": {"method": "POST", "endpoint": "https://service.test/once"},
+                }
             },
-            "do": [
-                {
-                    "once": {
-                        "call": "http",
-                        "with": {"method": "POST", "endpoint": "https://service.test/once"},
-                    }
-                },
-                {"pause": {"wait": {"seconds": 300}}},
-                {"done": {"set": {"ok": True}}},
-            ],
+            {"pause": {"wait": {"seconds": 300}}},
+            {"done": {"set": {"ok": True}}},
+        ],
+    }
+    if scenario.get("native_send", False):
+        assert name == "langgraph"
+        definition["document"]["metadata"] = {
+            "owa": {"nativeExtensions": [{"name": "langgraph.send", "version": "1.0.0"}]}
         }
-    )
+        action = definition["do"][0]
+        definition["do"][0] = {
+            "fan": {"fork": {"branches": [action, {"other": {"set": {"ok": True}}}]}}
+        }
+    plan = compile_workflow(definition)
     await engine.initialize(services)
     try:
         if mode == "start":

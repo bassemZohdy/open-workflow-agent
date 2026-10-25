@@ -27,6 +27,36 @@ Its focused sandbox validation/runtime selection passes 55 with 12 unconfigured
 PostgreSQL skips. This partial run cannot close S3-03 or a later candidate task.
 Other active jobs are allowed to finish so their results remain reviewable.
 
+The `aab518e` hosted batch is now complete: the other five workflows pass and CI
+has 19 successful jobs with the two failures sharing the stale negative test.
+Root records 5,151 passes, 3,291 skips and 90.19% coverage; ADK/LangGraph native
+shared suites pass 1,475/1,548 cases, plus 96 selected CTK cases each. Windows
+timers pass 744 with 813 explicit skips. No whole-source acceptance is claimed.
+
+## Tracing/fault candidate f66cd23 — exact-source local proof, hosted pending
+
+Source `f66cd23b399a707fda0683e180c9f34c7b6d6408` rebuilds both production images
+with matching full revision labels and passes their packaged JavaScript gates.
+Each independent actual SDK test image passes 215 cases with no skips, including
+common tracing/history/provenance, API replay/privacy, service and physical native
+SQLite/PostgreSQL history recovery and the 13 shared JavaScript success/fault
+fixtures. The isolated read-only, network-disabled, arbitrary-UID Node image
+passes all 48 tests. All 1,159 frozen source inputs remain byte-identical.
+Reports and manifests are retained under `tmp/javascript-sandbox-20261025/f66cd23/`.
+
+The preceding tracing source `134746412b44ebfa34e519f85010a37cb93616dc` separately
+passes 238 ADK checks (one explicit skip) and 330 LangGraph checks (five explicit
+skips), including the background/JavaScript/native channel/Command selection.
+Both production images pass; all 1,156 frozen inputs remain byte-identical.
+Those results remain separate from `f66cd23` and its later physical/fault tests.
+
+All six new hosted runs use `f66cd23` on the isolated
+`codex/qualification-f66cd23` branch, preserving the completed earlier batch:
+CI `40184938386`, PostgreSQL `40184940224`, Framework `40184942463`, external
+sandbox `40184944582`, security `40184946225` and docs `40184947964`. They are
+pending as a complete set at this recording. The source is also pushed on the
+draft PR branch. No additional checkbox or research criterion is promoted.
+
 ## Frozen baseline
 
 Commit `6f9ef5d0d8ea24a75cddca1b2b57060ee546f4bb` captures the preceding development

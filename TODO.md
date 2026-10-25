@@ -266,6 +266,10 @@ treated as a deferred task or as additional feature completion.
   See [acceptance](docs/s4-01-native-extension-acceptance.md#exact-source-qualification-d72781f) and [the source-matched results](docs/validation-history/ready-tasks-2026-10-25.md#exact-source-qualification-d72781f).
 
 - [ ] **S4-02** (L) — Add declared native channels/reducers, Command/Send, memory, streams, state updates, replay and time travel.
+  A later bounded native Send candidate dispatches non-competing forks through
+  the actual SDK while core retains join/end/error/receipt policy. Thirteen
+  focused cases include physical SQLite/PostgreSQL recovery; Linux/full-source
+  and frozen default-fork regression qualification remain pending.
   A bounded required `langgraph.command@1.0.0` candidate now uses real SDK
   Command updates and per-scope transitions without a new public payload.
   Required/optional root/nested routes and ADK admission rejection pass locally.

@@ -29,6 +29,7 @@ from open_workflow_agent.expressions import (
 )
 from open_workflow_agent.native_extensions import (
     LANGGRAPH_COMMAND,
+    LANGGRAPH_SEND,
     MAX_CHANNEL_VALUE_BYTES,
     MAX_CHANNEL_VALUE_TOTAL_BYTES,
     NATIVE_CHANNEL_VARIABLE,
@@ -37,6 +38,7 @@ from open_workflow_agent.native_extensions import (
 from open_workflow_agent.timers import TimerSuspension
 from open_workflow_agent.timing import root_clock_identity
 from open_workflow_agent.workflow import (
+    BranchDispatcher,
     ExecutionState,
     ScopePlan,
     TaskPlan,
@@ -316,6 +318,10 @@ class LangGraphScopeExecutor:
             item.required and item.capability_id == LANGGRAPH_COMMAND
             for item in plan.native_extensions
         )
+        self.native_send = any(
+            item.required and item.capability_id == LANGGRAPH_SEND
+            for item in plan.native_extensions
+        )
         self._channels_by_id = (
             {channel.channel_id: channel for channel in plan.native_channels.channels}
             if plan.native_channels is not None
@@ -345,6 +351,13 @@ class LangGraphScopeExecutor:
         if self.native_channels is None:
             return None
         return {channel.channel_id: channel.initial for channel in self.native_channels.channels}
+
+    def branch_dispatcher(self) -> BranchDispatcher | None:
+        if not self.native_send:
+            return None
+        from .branch_dispatch import dispatch_with_native_send
+
+        return dispatch_with_native_send
 
     def checkpoint_config(self, reference: str, occurrence: int) -> dict[str, Any]:
         identity = json.dumps(

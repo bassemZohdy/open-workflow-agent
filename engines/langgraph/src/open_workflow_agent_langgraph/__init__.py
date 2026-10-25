@@ -14,9 +14,15 @@ from open_workflow_agent.errors import (
     InvocationCancelled,
     InvocationStateError,
     OwaError,
+    UnsupportedWorkflowFeature,
     WorkflowExecutionError,
 )
-from open_workflow_agent.native_extensions import LANGGRAPH_CHANNELS, LANGGRAPH_COMMAND
+from open_workflow_agent.native_extensions import (
+    LANGGRAPH_CHANNELS,
+    LANGGRAPH_COMMAND,
+    LANGGRAPH_SEND,
+    MAX_NATIVE_SEND_BRANCHES,
+)
 from open_workflow_agent.persistence import ExecutionHandle
 from open_workflow_agent.storage import is_postgresql_datasource
 from open_workflow_agent.timers import TimerSuspension
@@ -152,6 +158,27 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
                 details={"reason": "native_state_missing", "stage": "native"},
             )
 
+    def _verify_workflow_capabilities(self, plan: WorkflowPlan) -> None:
+        super()._verify_workflow_capabilities(plan)
+        if not any(
+            item.required and item.capability_id == LANGGRAPH_SEND
+            for item in plan.native_extensions
+        ):
+            return
+        for scope in plan.scopes:
+            for task in scope.tasks:
+                fork = task.definition.get("fork")
+                if fork is None:
+                    continue
+                if (
+                    not isinstance(fork, dict)
+                    or fork.get("compete", False)
+                    or not 1 <= len(fork.get("branches", [])) <= MAX_NATIVE_SEND_BRANCHES
+                ):
+                    raise UnsupportedWorkflowFeature(
+                        "native Send requires non-competing forks of at most 64 branches"
+                    )
+
     def capabilities(self) -> EngineCapabilities:
         return EngineCapabilities(
             engine=self.engine_name,
@@ -161,7 +188,7 @@ class LangGraphWorkflowEngine(PortableWorkflowEngine):
             native_scope_step_limit=NATIVE_SCOPE_STEP_LIMIT
             if self.native.task_nodes_available
             else None,
-            native_extensions=(LANGGRAPH_CHANNELS, LANGGRAPH_COMMAND)
+            native_extensions=(LANGGRAPH_CHANNELS, LANGGRAPH_COMMAND, LANGGRAPH_SEND)
             if self.native.task_nodes_available
             else (),
         )

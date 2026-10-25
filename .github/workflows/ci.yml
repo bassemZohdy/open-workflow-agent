@@ -119,6 +119,7 @@ jobs:
           --with pytest --with pytest-asyncio pytest -vv
           ../../tests/langgraph/test_native_task_graph.py
           ../../tests/langgraph/test_native_commands.py
+          ../../tests/langgraph/test_native_send.py
           ../../tests/contract/test_native_channel_process_recovery.py
           ../../tests/langgraph/test_langgraph_initial_projection.py
           ../../tests/contract/test_scoped_flow.py

@@ -23,6 +23,9 @@ Updated 2026-10-25. **28 of 37 tasks are verified; 9 remain open. None is deferr
 The user kept S4-09/S4-10/S4-11 conditional; work continues on the six ready tasks.
 The S4-02 channel/Command subset passes its recorded source-matched checks;
 Send, memory, streams, state updates, replay and time travel remain open.
+A later Send candidate adds bounded native fan-out for non-competing forks;
+focused actual SDK and physical SQLite/PostgreSQL recovery cases pass. Its
+frozen regression, Linux and full-source gates remain open.
 An additional S4-05 candidate adds opt-in bounded diagnostic history on the
 common database, with local physical-stop, real API and principal-engine/backend
 restart checks. Full-source qualification and broader tracing/provenance remain

@@ -74,3 +74,44 @@ and the adapter/Command selection passes all 11 cases. PostgreSQL forged-binding
 cases pass again in the final candidate. All 195 CI guard tests pass. Formatting,
 runtime typing and documentation links pass; full-source native and hosted checks
 remain separate acceptance gates.
+
+## Bounded native Send candidate — 2026-10-25
+
+The exact required declaration `langgraph.send@1.0.0` selects actual SDK `Send`
+fan-out for standard non-competing forks with one to 64 branches. Required
+competitive/oversized scopes reject during capability admission before business
+or native mutation. Optional declarations keep the existing common launch path;
+ADK rejects the required capability. No native extension data or public plan
+format is added, and no arbitrary node destination, host code or Send payload
+is accepted. Packets contain only a private admitted branch index.
+
+Core owns branch state copies, ordered results, end/fault/cancellation handling,
+wait/child suspensions and common receipts. An optional framework-neutral scope
+launch seam lets the SDK dispatch the original common branch Tasks, preserving
+their exact ownership identities. The Send wrapper graph is transient with
+checkpointing explicitly disabled; the existing native branch graphs retain
+their original durable scope checkpoints and synchronous write fences.
+The wrapper does not provide distributed execution or a new recovery authority.
+
+The first integration run found the pinned SDK inheriting synchronous durability
+into a graph with checkpointing disabled (`AsyncPregelLoop` lacked
+`_put_checkpoint_fut`). The pinned native adapter now sets its private dispatch
+configuration to exit durability without inheriting the parent saver. Existing
+branch scopes still explicitly use synchronous persistence. The final SDK
+selection passes without that warning/failure: 22 adapter/Command/Send cases,
+and three actual ADK required-extension admission rejections.
+
+Thirteen focused actual LangGraph cases pass on Windows, including two physical
+SQLite/PostgreSQL recoveries. A producer commits its fork action and native wait,
+is killed without cleanup, and a different process resumes with original
+identity, retained trace/history, fresh span IDs and one fsynced transport-fake
+business dispatch. Other cases prove default/required routing, nested scopes,
+ordered results, common end/fault draining, admission bounds, startup-failure
+cleanup and cancellation. Windows/native and PostgreSQL/native CI selections
+explicitly require this file; full-source/Linux qualification remains pending.
+
+A concurrent working-tree default-fork selection reported 138 passes, 26 skips
+and one `runtime_profile_changed` recovery rejection while adapter files were
+being edited. That run is not acceptance; a frozen-source rerun is required.
+This candidate does not complete S4-02: native memory, streams, public state
+updates, replay and time travel retain their separate capability/acceptance gaps.
