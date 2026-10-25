@@ -1,0 +1,253 @@
+[
+  {
+    "id": "literal-object",
+    "tasks": [
+      {
+        "answer": {
+          "set": {
+            "ok": true,
+            "values": [
+              null,
+              1,
+              "雪"
+            ]
+          }
+        }
+      }
+    ],
+    "input": {
+      "original": true
+    },
+    "expected": {
+      "ok": true,
+      "values": [
+        null,
+        1,
+        "雪"
+      ]
+    }
+  },
+  {
+    "id": "literal-string",
+    "tasks": [
+      {
+        "answer": {
+          "set": "literal"
+        }
+      }
+    ],
+    "input": null,
+    "expected": "literal"
+  },
+  {
+    "id": "sequence",
+    "tasks": [
+      {
+        "first": {
+          "set": {
+            "phase": 1
+          }
+        }
+      },
+      {
+        "last": {
+          "set": {
+            "phase": 2
+          }
+        }
+      }
+    ],
+    "input": [],
+    "expected": {
+      "phase": 2
+    }
+  },
+  {
+    "id": "named-transition",
+    "tasks": [
+      {
+        "first": {
+          "set": {
+            "phase": 1
+          },
+          "then": "last"
+        }
+      },
+      {
+        "skipped": {
+          "set": {
+            "wrong": true
+          }
+        }
+      },
+      {
+        "last": {
+          "set": {
+            "phase": 2
+          }
+        }
+      }
+    ],
+    "input": null,
+    "expected": {
+      "phase": 2
+    }
+  },
+  {
+    "id": "continue",
+    "tasks": [
+      {
+        "first": {
+          "set": {
+            "phase": 1
+          },
+          "then": "continue"
+        }
+      },
+      {
+        "last": {
+          "set": {
+            "phase": 2
+          }
+        }
+      }
+    ],
+    "input": false,
+    "expected": {
+      "phase": 2
+    }
+  },
+  {
+    "id": "nested-sequence",
+    "tasks": [
+      {
+        "outer": {
+          "do": [
+            {
+              "inside": {
+                "set": {
+                  "nested": true
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "input": {},
+    "expected": {
+      "nested": true
+    }
+  },
+  {
+    "id": "nested-exit",
+    "tasks": [
+      {
+        "outer": {
+          "do": [
+            {
+              "inside": {
+                "set": {
+                  "phase": 1
+                },
+                "then": "exit"
+              }
+            },
+            {
+              "skipped": {
+                "set": {
+                  "wrong": true
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "last": {
+          "set": {
+            "phase": 2
+          }
+        }
+      }
+    ],
+    "input": {},
+    "expected": {
+      "phase": 2
+    }
+  },
+  {
+    "id": "nested-end",
+    "tasks": [
+      {
+        "outer": {
+          "do": [
+            {
+              "inside": {
+                "set": {
+                  "phase": 1
+                },
+                "then": "end"
+              }
+            },
+            {
+              "skipped": {
+                "set": {
+                  "wrong": true
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "skipped": {
+          "set": {
+            "wrong": true
+          }
+        }
+      }
+    ],
+    "input": {},
+    "expected": {
+      "phase": 1
+    }
+  },
+  {
+    "id": "prototype-names",
+    "tasks": [
+      {
+        "__proto__": {
+          "set": {
+            "phase": 1
+          },
+          "then": "constructor"
+        }
+      },
+      {
+        "toString": {
+          "set": {
+            "wrong": true
+          }
+        }
+      },
+      {
+        "constructor": {
+          "set": {
+            "__proto__": {
+              "safe": true
+            },
+            "value": "literal"
+          }
+        }
+      }
+    ],
+    "input": {},
+    "expected": {
+      "__proto__": {
+        "safe": true
+      },
+      "value": "literal"
+    }
+  }
+]

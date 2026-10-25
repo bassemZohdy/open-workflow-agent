@@ -75875,6 +75875,7 @@
         "description": "Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.",
         "effort": "L",
         "status": "Pending",
+        "progress_record": "docs/s4-03-javascript-execution-acceptance.md",
         "acceptance": "Relevant inventory tests plus repository contract/native acceptance; record actual evidence before completion"
       },
       {

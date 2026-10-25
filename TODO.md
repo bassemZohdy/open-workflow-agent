@@ -380,6 +380,12 @@ treated as a deferred task or as additional feature completion.
   qualification remain pending. Broader S4-02 features remain open. See
   [the S4-02 acceptance record](docs/s4-02-native-channels-acceptance.md).
 - [ ] **S4-03** (L) — Implement and independently qualify JavaScript/TypeScript; keep Python-only and JS-only differences visible.
+  An experimental native literal execution component now supports `set`, nested
+  `do` and fixed scope transitions. Nine exact fixtures run on Node and Python;
+  unsupported features reject before native graph construction. It has no public
+  invocation identity, persistence, recovery, expressions or calls and is not a
+  full engine adapter. Windows Node 24 passes 43 package tests; further actual
+  SDK/Linux qualification and the broader task scope remain required.
   An optional pinned LangGraph/TypeScript scaffold and native smoke test now
   exist under `engines/langgraph-js`. Its loader validates YAML/JSON against the
   SHA-256-pinned official OWS 1.0.3 schema and sanitizes malformed-YAML errors;
@@ -393,9 +399,8 @@ treated as a deferred task or as additional feature completion.
   equivalent string-keyed JSON, with error-category parity cases. The Node 24
   package suite (10 tests) and production dependency audit passed locally for
   the consolidated batch; exact-head hosted qualification remains pending. The
-  package does not
-  compile or execute OWS definitions and has no execution-adapter parity;
-  implement those and independently qualify the engine before claiming full
+  package's wider OWS compilation/execution and execution-adapter parity remain
+  unimplemented; complete those and independently qualify the engine before claiming full
   parity. Frozen predecessor sources remain
   reference-only.
 - [ ] **S4-04** (L) — Automate official CTK plus all proposed tests, schema constraints, parity and cross-engine outcome checks.

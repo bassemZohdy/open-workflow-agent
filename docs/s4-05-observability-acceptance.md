@@ -79,3 +79,11 @@ Reports are retained under `tmp/javascript-sandbox-20261025/`.
 This candidate still needs Linux/native and coherent full-source qualification.
 Trace-context/causation propagation, richer authenticated provenance and broader
 replay diagnostics remain open. No S4-05 task or inventory row is promoted.
+
+Frozen source `352034921fdb9688cc19ccf005c7bd31b9c82e97` now also passes the
+Linux candidate selection: 45 ADK cases (11 explicit skips) and 137 LangGraph
+cases (15 explicit skips), including all 15 common history cases, each selected
+SDK's two database restart cases and the three API tests. Both freshly rebuilt
+production images pass the JavaScript packaged gate; all 1,145 frozen inputs
+remain byte-identical. This is focused Linux evidence, not the pending complete
+hosted gate. Reports are retained in `tmp/javascript-sandbox-20261025/3520349/`.

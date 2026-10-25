@@ -1,0 +1,13 @@
+# Optional test image; not a production or release engine target.
+FROM node:24-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
+WORKDIR /workspace
+COPY engines/langgraph-js/package.json engines/langgraph-js/package-lock.json ./engines/langgraph-js/
+RUN npm install --global npm@12.0.2 && npm ci --prefix engines/langgraph-js
+COPY engines/langgraph-js/src ./engines/langgraph-js/src
+COPY engines/langgraph-js/test ./engines/langgraph-js/test
+COPY engines/langgraph-js/tsconfig.json ./engines/langgraph-js/tsconfig.json
+COPY resources/open-workflow/1.0.3/workflow.yaml ./resources/open-workflow/1.0.3/workflow.yaml
+COPY tests/fixtures/workflow-definition-admission.json tests/fixtures/javascript-literal-execution.json ./tests/fixtures/
+RUN npm run build --prefix engines/langgraph-js
+USER node
+CMD ["node", "--test", "engines/langgraph-js/dist/test/*.test.js"]

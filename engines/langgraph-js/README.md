@@ -11,11 +11,32 @@ separate from workflow validation.
 `WorkflowDefinitionError` with a bounded diagnostic. It rejects source above
 1 MiB measured as UTF-8 before parsing; this local admission bound does not
 replace deployment request limits. Schema validity is only
-the first admission layer: this package does not compile or execute workflows,
-validate the OWA Portable Profile, provide an engine adapter, or establish
-parity with Python. Unsupported execution features must remain explicit when
-those layers are implemented; schema-valid input alone must never imply that a
-feature is executable.
+the first admission layer; schema-valid input alone does not imply that a feature
+is executable. This package does not provide the OWA Portable Profile, public
+invocation identity or a production-qualified engine adapter.
+
+`executeLiteralWorkflow(source, input)` is an experimental execution component.
+It validates the complete official definition, derives a typed immutable private
+program, and builds actual LangGraph nodes for literal `set` and nested `do`
+tasks. Fixed `continue`, scope-local named transitions, `exit`, and workflow `end`
+are supported. Whole-definition admission precedes native graph construction.
+Missing source generates the canonical one-task `agent:1.0.0@default` workflow,
+which explicitly rejects because catalog calls are outside this component.
+
+The profile rejects expressions, data transforms/schemas, calls, other task types,
+native extensions, persistence and recovery. It has no public plan or durable
+handle. Values must be finite JSON, at most 1 MiB and depth 64, with integers in
+JavaScript's safe range; executable literal strings containing `${` reject.
+Compilation caps task names at 256 UTF-8 bytes, task references at 8 KiB,
+total tasks at 256 and nested scope depth at eight; a shared
+512-step budget bounds routing loops. `literalExecutionCapabilities()` exposes
+these restrictions. `WorkflowExecutionError.asDict()` projects a bounded common
+error code/message/reference without SDK objects or source excerpts.
+
+Nine exact shared fixtures exercise this component and the Python adapters.
+They cover literal data, sequences, local jumps, nested exit and workflow end;
+they do not establish full cross-language parity. Neither checkpointing nor
+common invocation identity is qualified by these cases.
 
 The package is optional and is not included in production images, release
 artifacts, or Python environments. Its future engine API must accept canonical
@@ -26,4 +47,7 @@ Python-only and JavaScript-only behavior still require separate evidence.
 Run `npm ci` followed by `npm test` from this directory to check pinned schema
 loading/validation and the native graph smoke test. The required Node 24 CI job
 runs these checks and audits production dependencies; this validates the loader
-foundation only, not JavaScript execution parity.
+foundation and the bounded literal component, not full JavaScript execution parity.
+
+`Dockerfile.tests` builds an optional Node test image with dependencies and
+compiled code installed at build time. It is not a production/release target.
